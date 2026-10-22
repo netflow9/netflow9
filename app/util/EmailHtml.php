@@ -15,6 +15,8 @@
 	links are checked again once filled (only http(s) / mailto).
 	//CLD: 2026-10-23T01:00:00+03:00: except, in an HTML block, a {{ }} that is only a call of markdown(...): its text as HTML (util\Markdown: safe, everything of the text escaped),
 	//styled as the block's own tags (headings, lists, tables, code, ...); its text version as plain text
+	//CLD: 2026-10-23T02:30:00+03:00: and a {{ }} that is only a field named html (e.g. {{ ai.html }}: an AI step's answer as HTML): its HTML cleaned to formatting only
+	//(util\HtmlSafe: whatever made it), then styled as the block's tags
 
     Throws on an expression that fails (as the steps' other settings)
 */
@@ -134,6 +136,12 @@ HTML;
 		continue;
 	    }
 	    $value = \util\Expression::render(\sys\J\Template::OPEN . $code . \sys\J\Template::CLOSE, $vars);
+	    //CLD: 2026-10-23T02:30:00+03:00: {{ x.html }}: HTML, cleaned (util\HtmlSafe), not escaped
+	    if (self::isHtmlField($code)) {
+		$out .= substr($html, $at, $p['open'] - $at) . \util\HtmlSafe::clean($value);
+		$at = $p['end'] + strlen(\sys\J\Template::CLOSE);
+		continue;
+	    }
 	    $out .= substr($html, $at, $p['open'] - $at) . htmlspecialchars(\util\Expression::toText($value), ENT_QUOTES | ENT_HTML5);
 	    $at = $p['end'] + strlen(\sys\J\Template::CLOSE);
 	}
@@ -153,6 +161,19 @@ HTML;
 	    return null;
 	$arg = $e['arguments'][0];
 	return substr($code, (int)$arg['start'], (int)$arg['end'] - (int)$arg['start']);
+    }
+
+    //CLD: 2026-10-23T02:30:00+03:00: whether expression $code is only a field named html (`ai.html`, `page.result.html`, `x?.html`; not a call, not `"<b>" + x.html`)
+    public static function isHtmlField($code) {
+	if (!str_contains($code, 'html'))
+	    return false;
+	$parsed = \sys\J\Parser::parse($code, [ 'mode' => 'expression' ]);
+	if ($parsed->hasErrors())
+	    return false;
+	$e = $parsed->ast['body'][0]['expression'] ?? null;
+	if (($e['type'] ?? '') === 'ChainExpression')
+	    $e = $e['expression'] ?? null;
+	return ($e['type'] ?? '') === 'MemberExpression' && empty($e['computed']) && ($e['property']['type'] ?? '') === 'Identifier' && ($e['property']['name'] ?? '') === 'html';
     }
 
     //plain text with {{ }} evaluated (not escaped: the caller escapes where it is HTML)

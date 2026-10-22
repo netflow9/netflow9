@@ -18,8 +18,8 @@ what the AI steps share (Claude - NodeAppClaude, OpenAI - NodeAppOpenAI; not a s
 	The agent loop: the model is called, the tools it asks for are run and their results sent back, until it answers (at most `maxRounds` calls).
 	    The provider classes build the requests: startConversation(), callModel(), addToolResults().
 	The variable (default `ai`): { text, json, model, stop_reason, rounds, tool_calls: [ { tool, arguments, error } ], usage: { input_tokens, output_tokens } }; on error { error }
-	//CLD: 2026-10-23T01:10:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page or an HTTP request; in an email write
-	//{{ markdown(ai.text) }} (an email escapes {{ ai.html }})
+	//CLD: 2026-10-23T01:10:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page or an HTTP request
+	//CLD: 2026-10-23T02:30:00+03:00: in an email {{ ai.html }} shows it formatted (util\EmailHtml; was escaped: {{ markdown(ai.text) }} only)
 */
 
 namespace models\node;
@@ -294,7 +294,7 @@ abstract class NodeAppAi extends \models\WfNode {
 	    'fields' => [
 		'text' => [ 'type' => 'string', 'info' => 'the answer' ],
 		//CLD: 2026-10-23T01:10:00+03:00: the answer's Markdown as HTML
-		'html' => [ 'type' => 'string', 'info' => 'the answer as safe HTML (its Markdown converted); in an email use {{ markdown(ai.text) }}' ], 'json' => [ 'type' => 'any', 'info' => 'the answer as JSON (answer: JSON)' ], 'model' => [ 'type' => 'string' ], 'stop_reason' => [ 'type' => 'string' ],
+		'html' => [ 'type' => 'string', 'info' => 'the answer as safe HTML (its Markdown converted); in an email {{ ai.html }} shows it formatted' ], 'json' => [ 'type' => 'any', 'info' => 'the answer as JSON (answer: JSON)' ], 'model' => [ 'type' => 'string' ], 'stop_reason' => [ 'type' => 'string' ],
 		'rounds' => [ 'type' => 'number' ], 'tool_calls' => [ 'type' => 'array', 'items' => [ 'type' => 'object', 'fields' => [ 'tool' => [ 'type' => 'string' ], 'arguments' => [ 'type' => 'object' ], 'error' => [ 'type' => 'boolean' ] ] ] ],
 		'usage' => [ 'type' => 'object', 'fields' => [ 'input_tokens' => [ 'type' => 'number' ], 'output_tokens' => [ 'type' => 'number' ] ] ], 'error' => [ 'type' => 'string', 'info' => 'on error only' ],
 	    ] ] ] : [];
