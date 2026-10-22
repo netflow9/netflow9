@@ -91,7 +91,9 @@ class WorkflowSpec {
 	    $s['help'] = (string)$f['helpText'];
 	//CLD: 2026-10-19T17:02:48+03:00: an email built with the email designer (models\EmailBlocks): its shape, so agents can write one (they could not: "add at least one block")
 	if (($f['type'] ?? '') === 'emaildesigner')
+	    //CLD: 2026-10-23T01:10:00+03:00: + {{ markdown(...) }} (an AI step's answer formatted)
 	    $s['format'] = '{ preheader: "", blocks: [ { type: "html", html: "<p>text with {{ expressions }}</p>" } ] }: at least one block; html blocks take p, br, strong, em, u, h1-h3, ul / ol / li, a href; '
+		. 'values in {{ }} are shown as plain text; Markdown text (e.g. an AI step\'s answer) is shown formatted with {{ markdown(ai.text) }} alone in its {{ }} (e.g. <p>{{ markdown(ai.text) }}</p>); '
 		. 'image blocks: { type: "image", file: <image file id (list_files)>, alt, width (px, at most ' . \models\EmailBlocks::WIDTH . '), align (left / center / right), href }';
 	//CLD: 2026-10-14T20:17:14+03:00: + required_if; a condition { key, operator, value } as it is (util\Conditions' operators; was the JS text of showIf)
 	foreach([ 'showIf' => 'shown_if', 'hideIf' => 'hidden_if', 'requiredIf' => 'required_if' ] as $k => $name) {

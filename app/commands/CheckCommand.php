@@ -35,7 +35,7 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-21T20:10:00+03:00: + tenant (the account guard of sys\ObjectManager; the sign-in of a name used in two accounts)
     //CLD: 2026-10-22T00:41:28+03:00: + microsoft (the MicrosoftIntegration plugin: its credentials and steps; skipped without the plugin)
     //CLD: 2026-10-22T01:36:46+03:00: + localai (the Lemonade AI and Ollama steps and credentials, against a fake server: commands/tests/AiTestServer.php)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'localmcp', 'suspend', 'ftp', 'ldap', 'tenant', 'audit', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'localmcp', 'suspend', 'markdown', 'ftp', 'ldap', 'tenant', 'audit', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -2679,6 +2679,43 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('json: refused (a bad escape, a lone surrogate, too deep, not UTF-8)', [
 		'JSON: `\x` is not an escape at line 1, column 4', 'JSON: a lone surrogate `\uD83D` at line 1, column 3', 'JSON: nested deeper than 128 at line 1, column 129', 'JSON: not UTF-8 text' ],
 	    [ $refused('["a\x41"]'), $refused('["\ud83d"]'), $refused(str_repeat('[', 129) . str_repeat(']', 129)), $refused("[\"\xff\"]") ]);
+    }
+
+    //CLD: 2026-10-23T01:10:00+03:00: Markdown (util\Markdown): the blocks and marks as HTML, nothing of the text as HTML (escaped), links only http(s) / mailto, images as links,
+    //the plain text; markdown() in expressions; in an email {{ markdown(x) }} alone is HTML, anything else escaped; the AI steps' `html`
+    private function suiteMarkdown() {
+	$M = \util\Markdown::class;
+	$this->check('blocks: headings, paragraph with a line break, rule', [ '<h1>T</h1>', '<h2>S</h2>', '<p>a<br>b</p>', '<hr>' ],
+	    [ $M::toHtml('# T'), $M::toHtml("S\n---"), $M::toHtml("a\nb"), $M::toHtml('***') ]);
+	$this->check('lists: ordered with a start, nested, a blank line between items', [ '<ol start="3"><li>a</li><li>b</li></ol>', '<ul><li>a<ul><li>b</li></ul></li><li>c</li></ul>',
+	    '<ul><li>a</li><li>b</li></ul>' . "\n" . '<p>after</p>' ],
+	    [ $M::toHtml("3. a\n4. b"), $M::toHtml("- a\n  - b\n- c"), $M::toHtml("- a\n\n- b\n\nafter") ]);
+	$this->check('quote, code, table with alignment', [ '<blockquote><p><strong>q</strong></p></blockquote>', '<pre><code>&lt;x&gt;</code></pre>',
+	    '<table><thead><tr><th>A</th><th align="right">B</th></tr></thead><tbody><tr><td>1</td><td align="right">a | b</td></tr></tbody></table>' ],
+	    [ $M::toHtml('> **q**'), $M::toHtml("```\n<x>\n```"), $M::toHtml("| A | B |\n|---|--:|\n| 1 | a \\| b |") ]);
+	$this->check('inline: bold, italic, struck, code, snake_case and 2*3*4 left alone', [ '<p><strong>a <em>b</em></strong> <del>c</del> <code>&lt;d&gt;</code> x_y_z 2*3*4</p>' ],
+	    [ $M::toHtml('**a *b*** ~~c~~ `<d>` x_y_z 2*3*4') ]);
+	$this->check('safe: HTML escaped, links only http(s) / mailto (with parentheses), images as links, bare addresses linked', [
+	    '<p>&lt;script&gt;x&lt;/script&gt; &lt;img src=x onerror=y&gt;</p>', '<p>bad</p>', '<p><a href="https://w.org/a_(b)">w</a></p>', '<p><a href="mailto:a@b.c">m</a></p>',
+	    '<p><a href="https://i.org/p.png">pic</a></p>', '<p>see <a href="https://e.org/x">https://e.org/x</a>.</p>' ], [
+	    $M::toHtml('<script>x</script> <img src=x onerror=y>'), $M::toHtml('[bad](javascript:alert(1))'), $M::toHtml('[w](https://w.org/a_(b))'), $M::toHtml('[m](mailto:a@b.c)'),
+	    $M::toHtml('![pic](https://i.org/p.png)'), $M::toHtml('see https://e.org/x.') ]);
+	$this->check('plain text: no marks, links as text (address), table rows', "Title\n\n- a (https://e.org)\n- b\n\nA | B\n1 | 2",
+	    $M::toText("## Title\n\n- [a](https://e.org)\n- **b**\n\n| A | B |\n|---|---|\n| 1 | 2 |"));
+
+	$this->check('expressions: markdown() known, suggested, gives HTML; a variable of that name wins', [ [], true, '<p><em>x</em></p>', 'mine' ], [
+	    \util\Expression::check('{{ markdown(t) }}', [ 't' => [ 'type' => 'string' ] ]),
+	    in_array('markdown', array_column(\util\Expression::complete('{{ mark', '{{ mark', [])['items'], 'label'), true),
+	    \util\Expression::render('{{ markdown(t) }}', [ 't' => '*x*' ]), \util\Expression::render('{{ markdown }}', [ 'markdown' => 'mine' ]) ]);
+
+	$fill = fn($html, $vars = []) => \util\EmailHtml::fill($html, $vars + [ 'ai' => [ 'text' => '**b** <i>', 'html' => '<p><b>x</b></p>' ] ]);
+	$this->check('email: {{ markdown(x) }} alone is HTML; other expressions, ai.html and markdown(..) + text are escaped', [ '<p><strong>b</strong> &lt;i&gt;</p>',
+	    '**b** &lt;i&gt;', '&lt;p&gt;&lt;b&gt;x&lt;/b&gt;&lt;/p&gt;', '&lt;p&gt;&lt;strong&gt;b&lt;/strong&gt; &amp;lt;i&amp;gt;&lt;/p&gt;!' ],
+	    [ $fill('{{ markdown(ai.text) }}'), $fill('{{ ai.text }}'), $fill('{{ ai.html }}'), $fill('{{ markdown(ai.text) + "!" }}') ]);
+	$r = \util\EmailHtml::render([ 'preheader' => '', 'blocks' => [ [ 'type' => 'html', 'html' => '<p>{{ markdown(ai.text) }}</p>' ] ] ], [ 'ai' => [ 'text' => "## News\n\n- one\n- two" ] ], 'x');
+	$this->check('email: styled as the block (no empty paragraph around it), its text version', [ true, true, false, "News\n\n- one\n- two\n" ],
+	    [ str_contains($r['html'], '<h2 style="'), str_contains($r['html'], '<ul style="'), (bool)preg_match('~<p[^>]*>\s*</p>~', $r['html']), $r['text'] ]);
+	$this->check('AI steps: `html` among the variable\'s fields', true, isset(\models\node\NodeAppClaude::outputVariables([])['ai']['fields']['html']));
     }
 
     //CLD: 2026-10-22T23:00:00+03:00: a suspended account (state `disabled`, set by a super-admin: the Admin plugin): its users cannot sign in (unless a super-admin views it), it
