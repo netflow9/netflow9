@@ -191,8 +191,12 @@ class McpClient {
 	    throw new \Exception('the MCP server answered more than ' . (self::MAX_RESPONSE / 1048576) . ' MB');
 	if ($error !== '')
 	    throw new \Exception('no answer from ' . preg_replace('/[?#].*$/', '', $this->url) . ": {$error}");
-	if ($status === 401 || $status === 403)
-	    throw new \Exception("the MCP server refused the credential (HTTP status {$status})");
+	//CLD: 2026-10-23T00:20:00+03:00: the credential named only when one was sent (an Authorization or another header given); the server's reason added (was always "refused the
+	//credential", also for a server that refuses the Host header, e.g. Playwright MCP: "Access is only allowed at localhost:8931")
+	if ($status === 401 || $status === 403) {
+	    $reason = trim(mb_substr(preg_replace('/\s+/', ' ', strip_tags((string)$body)), 0, 200));
+	    throw new \Exception('the MCP server refused ' . ($this->headers ? 'the credential' : 'the request') . " (HTTP status {$status})" . ($reason !== '' ? ": {$reason}" : ''));
+	}
 	if (isset($respHeaders['mcp-session-id']) && $respHeaders['mcp-session-id'] !== '')
 	    $this->sessionId = $respHeaders['mcp-session-id'];
 	return [ $status, strtolower((string)($respHeaders['content-type'] ?? '')), $body ];
