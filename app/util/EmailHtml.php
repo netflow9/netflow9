@@ -1,0 +1,175 @@
+<?php
+
+/*
+    the conversion of an email made of blocks (models\EmailBlocks) into what is sent
+	the step renders, util\EmailSend sends).
+    Readable in Outlook (Word engine), Gmail, Yahoo, Apple Mail and the iOS / Android apps:
+	- tables for the layout (no flex / grid), one column, fluid up to EmailBlocks::WIDTH px (max-width), a fixed-width table for Outlook (<!--[if mso]>)
+	- inline styles on every element (many clients drop <style>); <style> only adds the phone tweaks (@media) where it is kept
+	- images embedded (cid:, util\EmailSend attaches them), with width, alt, display:block, border:0
+	- a hidden preheader (the line shown after the subject in the inbox)
+	- a plain-text version (multipart/alternative)
+
+    $r = \util\EmailHtml::render($email, $vars, $subject);  ->  [ html, text, images: [ cid => file id ] ]
+	{{ }} in the HTML blocks, image links and the preheader are evaluated with $vars (util\Expression) and HTML-escaped;
+	links are checked again once filled (only http(s) / mailto).
+
+    Throws on an expression that fails (as the steps' other settings)
+*/
+namespace util;
+
+class EmailHtml {
+    const FONT = 'Arial, Helvetica, sans-serif';
+    const PADDING = 32;
+
+    //inline styles of the HTML blocks' tags (a block's own style comes after: its color / alignment win)
+    const TAG_STYLES = [
+	'p' => 'margin: 0 0 16px 0;',
+	'div' => 'margin: 0;',
+	'h1' => 'margin: 0 0 16px 0; font-size: 28px; line-height: 1.25; font-weight: bold;',
+	'h2' => 'margin: 0 0 14px 0; font-size: 22px; line-height: 1.3; font-weight: bold;',
+	'h3' => 'margin: 0 0 12px 0; font-size: 18px; line-height: 1.35; font-weight: bold;',
+	'ul' => 'margin: 0 0 16px 0; padding: 0 0 0 24px;',
+	'ol' => 'margin: 0 0 16px 0; padding: 0 0 0 24px;',
+	'li' => 'margin: 0 0 6px 0;',
+	'blockquote' => 'margin: 0 0 16px 0; padding: 0 0 0 12px; border-left: 3px solid #d0d5dd; color: #555555;',
+	'a' => 'color: #1a73e8; text-decoration: underline;',
+    ];
+
+    public static function render(array $email, array $vars, $subject = '') {
+	$email = \models\EmailBlocks::normalize($email);
+	$images = [];
+	$rows = '';
+	$text = [];
+	$inner = \models\EmailBlocks::WIDTH - 2 * self::PADDING;
+	foreach($email['blocks'] as $b) {
+	    if ($b['type'] === 'html') {
+		$html = self::style(self::fill($b['html'], $vars));
+		$rows .= '<tr><td class="qsm-pad" style="padding: 16px ' . self::PADDING . 'px; font-family: ' . self::FONT . '; font-size: 16px; line-height: 1.5; color: #222222; '
+		    . 'mso-line-height-rule: exactly;">' . $html . '</td></tr>' . "\n";
+		$text[] = self::text($html);
+	    } elseif ($b['type'] === 'image' && $b['file'] !== '') {
+		$cid = 'img' . (count($images) + 1) . '.' . bin2hex(random_bytes(4)) . '@qsm';
+		$images[$cid] = $b['file'];
+		$full = $b['width'] >= \models\EmailBlocks::WIDTH;
+		$width = $full ? \models\EmailBlocks::WIDTH : min($b['width'], $inner);
+		$alt = htmlspecialchars($b['alt'], ENT_QUOTES | ENT_HTML5);
+		$img = '<img src="cid:' . $cid . '" width="' . $width . '" alt="' . $alt . '" class="qsm-img" style="display: block; width: 100%; max-width: ' . $width . 'px; height: auto; '
+		    . 'border: 0; outline: none; text-decoration: none;' . ($b['align'] === 'center' ? ' margin: 0 auto;' : ($b['align'] === 'right' ? ' margin: 0 0 0 auto;' : '')) . '">';
+		$href = self::link(self::fillText($b['href'], $vars));
+		if ($href !== '')
+		    $img = '<a href="' . htmlspecialchars($href, ENT_QUOTES | ENT_HTML5) . '" style="display: block;">' . $img . '</a>';
+		$rows .= '<tr><td align="' . $b['align'] . '" class="' . ($full ? '' : 'qsm-pad') . '" style="padding: ' . ($full ? '0' : '8px ' . self::PADDING . 'px') . ';">' . $img . '</td></tr>' . "\n";
+		if ($b['alt'] !== '')
+		    $text[] = '[' . $b['alt'] . ']' . ($href !== '' ? " ({$href})" : '');
+	    }
+	}
+
+	$preheader = htmlspecialchars(self::fillText($email['preheader'], $vars), ENT_QUOTES | ENT_HTML5);
+	$title = htmlspecialchars((string)$subject, ENT_QUOTES | ENT_HTML5);
+	$w = \models\EmailBlocks::WIDTH;
+	$html = <<<HTML
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+<title>{$title}</title>
+<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+<style type="text/css">
+body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+table, td { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+img { -ms-interpolation-mode: bicubic; }
+@media only screen and (max-width: 620px) {
+  .qsm-pad { padding-left: 16px !important; padding-right: 16px !important; }
+  .qsm-img { width: 100% !important; height: auto !important; }
+}
+</style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f2f3f5;">
+<div style="display: none; font-size: 1px; line-height: 1px; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all;">{$preheader}&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f2f3f5;">
+<tr><td align="center" style="padding: 24px 8px;">
+<!--[if mso]><table role="presentation" width="{$w}" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: {$w}px; background-color: #ffffff; margin: 0 auto;">
+{$rows}</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr>
+</table>
+</body>
+</html>
+HTML;
+	return [ 'html' => $html, 'text' => trim(implode("\n\n", array_filter($text, fn($t) => $t !== ''))) . "\n", 'images' => $images ];
+    }
+
+    //the {{ }} of HTML $html evaluated, each value HTML-escaped (the expression's own text is HTML: entities decoded first)
+    public static function fill($html, array $vars) {
+	$out = '';
+	$at = 0;
+	foreach(\sys\J\Template::parts($html) as $p) {
+	    if (!$p['closed'])
+		break;
+	    $code = html_entity_decode(substr($html, $p['start'], $p['end'] - $p['start']), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+	    $value = \util\Expression::render(\sys\J\Template::OPEN . $code . \sys\J\Template::CLOSE, $vars);
+	    $out .= substr($html, $at, $p['open'] - $at) . htmlspecialchars(\util\Expression::toText($value), ENT_QUOTES | ENT_HTML5);
+	    $at = $p['end'] + strlen(\sys\J\Template::CLOSE);
+	}
+	return $out . substr($html, $at);
+    }
+
+    //plain text with {{ }} evaluated (not escaped: the caller escapes where it is HTML)
+    public static function fillText($text, array $vars) {
+	return trim(\util\Expression::toText(\util\Expression::render((string)$text, $vars)));
+    }
+
+    //a link once filled: http(s) / mailto only, else none
+    private static function link($href) {
+	return preg_match('~^(https?://|mailto:)~i', $href) ? $href : '';
+    }
+
+    //inline styles on the tags of an HTML block; links checked again (a filled {{ }} could have made anything)
+    private static function style($html) {
+	if (trim($html) === '')
+	    return '';
+	$doc = new \DOMDocument();
+	libxml_use_internal_errors(true);
+	$doc->loadHTML('<?xml encoding="utf-8"?><div id="__root">' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+	libxml_clear_errors();
+	$root = $doc->getElementById('__root');
+	foreach(iterator_to_array($root->getElementsByTagName('*')) as $el) {
+	    $tag = strtolower($el->tagName);
+	    if ($tag === 'a') {
+		$href = self::link(trim($el->getAttribute('href')));
+		if ($href === '')
+		    $el->removeAttribute('href');
+		else
+		    $el->setAttribute('href', $href);
+		$el->setAttribute('target', '_blank');
+	    }
+	    if (isset(self::TAG_STYLES[$tag]))
+		$el->setAttribute('style', trim(self::TAG_STYLES[$tag] . ' ' . $el->getAttribute('style')));
+	}
+	$out = '';
+	foreach($root->childNodes as $c)
+	    $out .= $doc->saveHTML($c);
+	return $out;
+    }
+
+    //the text version of an HTML block: paragraphs / headings / items on their own lines, links as "text (address)"
+    private static function text($html) {
+	$html = preg_replace_callback('~<a\b[^>]*href="([^"]*)"[^>]*>(.*?)</a>~is', function($m) {
+	    $label = trim(strip_tags($m[2]));
+	    $href = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+	    return $label === '' || $label === $href ? $href : "{$label} ({$href})";
+	}, $html);
+	$html = preg_replace('~<li\b[^>]*>~i', "\n- ", $html);
+	$html = preg_replace('~<br\s*/?>~i', "\n", $html);
+	$html = preg_replace('~</(p|div|h1|h2|h3|ul|ol|blockquote)>~i', "\n\n", $html);
+	$text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+	$text = preg_replace("/[ \t]+/", ' ', $text);
+	$text = preg_replace("/ *\n */", "\n", $text);
+	return trim(preg_replace("/\n{3,}/", "\n\n", $text));
+    }
+}
