@@ -17,6 +17,9 @@ namespace plugins\SysMCPTools;
 
 class Plugin {
 
+    //CLD: 2026-10-22T17:00:00+03:00: whether the project menu shows the MCP server link (hidden for the moment: true shows it again)
+    const SHOW_MENU = false;
+
     public function __construct() {
 	\V::app()->om->registerObjects([
 	    //the same object name as in the core (stored tokens, audit entries and roles keep working)
@@ -75,6 +78,9 @@ class Plugin {
 
 	//the MCP server link of the project menu (its tokens); checked on an unsaved token of the current project (project scope = membership)
 	\V::app()->hooks->addHook('layout:aside-project-menu', function($crtProject) {
+	    //CLD: 2026-10-22T17:00:00+03:00: hidden for the moment (SHOW_MENU); /mcp and the token pages (/SysMCPTools/token/list) still work
+	    if (!self::SHOW_MENU)
+		return;
 	    if (!\V::app()->user->can('McpToken::list', [ 'object' => \V::app()->om->create('McpToken', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ]))
 		return;
 	    echo \V::app()->html->link(
