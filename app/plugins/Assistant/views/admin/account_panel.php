@@ -7,8 +7,8 @@ use plugins\Assistant\models\AssistantSettings;
 use plugins\Assistant\models\AssistantWallet;
 use plugins\Assistant\models\AssistantCreditLedger;
 
-$e = fn($v) => \V::app()->html->escape((string)$v);
-$csrf = '<input type="hidden" name="' . \V::app()->csrf->csrf_key . '" value="' . $e(\V::app()->csrf->getToken(false)) . '">';
+//CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly (was a $e wrapper)
+$csrf = '<input type="hidden" name="' . \V::app()->csrf->csrf_key . '" value="' . \V::app()->html->escape(\V::app()->csrf->getToken(false)) . '">';
 $aid = (string)$account->_id;
 $provider = (string)($settings->provider ?? '');
 $held = array_sum(array_column($wallet['holds'], 'credits'));
@@ -17,7 +17,7 @@ usort($topups, fn($a, $b) => $b['at'] <=> $a['at']);
 ?>
 <h6>Assistant</h6>
 <div class="small text-muted mb-2">
-    Provider: <?= $e($provider !== '' ? (AssistantSettings::PROVIDERS[$provider] ?? $provider) : 'not set up') ?>
+    Provider: <?= \V::app()->html->escape($provider !== '' ? (AssistantSettings::PROVIDERS[$provider] ?? $provider) : 'not set up') ?>
     <?php if ($provider !== '' && $provider !== 'system'): ?> &middot; this month <?= sprintf('%.2f USD', $usage->cost) ?>, <?= number_format($usage->requests) ?> request(s) on its own key<?php endif; ?>
 </div>
 
@@ -30,7 +30,7 @@ usort($topups, fn($a, $b) => $b['at'] <=> $a['at']);
     <div class="row g-3">
 	<div class="col-md-5">
 	    <form method="post" action="<?= \V::app()->createUrl('/Assistant/admin/plan') ?>" class="m-0">
-		<?= $csrf ?><input type="hidden" name="id" value="<?= $e($aid) ?>">
+		<?= $csrf ?><input type="hidden" name="id" value="<?= \V::app()->html->escape($aid) ?>">
 		<label class="form-label small mb-1" for="plan-credits">Monthly allowance <span class="text-muted">(empty: the installation's, <?= (int)(\V::app()->config('assistant.system')['monthly_credits'] ?? 0) ?>)</span></label>
 		<div class="d-flex gap-2">
 		    <input id="plan-credits" type="number" min="0" step="1" name="credits" class="form-control form-control-sm" value="<?= $wallet['plan'] === null ? '' : (int)$wallet['plan'] ?>" placeholder="<?= (int)AssistantWallet::planOf(array_merge($wallet, [ 'plan' => null ])) ?>">
@@ -40,7 +40,7 @@ usort($topups, fn($a, $b) => $b['at'] <=> $a['at']);
 	</div>
 	<div class="col-md-7">
 	    <form method="post" action="<?= \V::app()->createUrl('/Assistant/admin/grant') ?>" class="m-0">
-		<?= $csrf ?><input type="hidden" name="id" value="<?= $e($aid) ?>">
+		<?= $csrf ?><input type="hidden" name="id" value="<?= \V::app()->html->escape($aid) ?>">
 		<label class="form-label small mb-1" for="topup-credits">Top-up <span class="text-muted">(valid <?= AssistantWallet::TOPUP_MONTHS ?> months)</span></label>
 		<div class="d-flex gap-2">
 		    <input id="topup-credits" type="number" min="1" step="1" name="credits" class="form-control form-control-sm" style="max-width: 120px" placeholder="Credits" required>
@@ -54,7 +54,7 @@ usort($topups, fn($a, $b) => $b['at'] <=> $a['at']);
     <?php if ($topups): ?>
     <div class="small mt-3">Top-ups:
 	<?php foreach($topups as $t): ?>
-	<span class="badge <?= $t['left'] > 0 && $t['expires'] > time() ? 'text-bg-light border' : 'text-bg-secondary' ?> fw-normal"><?= number_format($t['left']) ?>/<?= number_format($t['granted']) ?> until <?= gmdate('Y-m-d', $t['expires']) ?><?= $t['note'] !== '' ? ' &middot; ' . $e($t['note']) : '' ?></span>
+	<span class="badge <?= $t['left'] > 0 && $t['expires'] > time() ? 'text-bg-light border' : 'text-bg-secondary' ?> fw-normal"><?= number_format($t['left']) ?>/<?= number_format($t['granted']) ?> until <?= gmdate('Y-m-d', $t['expires']) ?><?= $t['note'] !== '' ? ' &middot; ' . \V::app()->html->escape($t['note']) : '' ?></span>
 	<?php endforeach; ?>
     </div>
     <?php endif; ?>
@@ -65,8 +65,8 @@ usort($topups, fn($a, $b) => $b['at'] <=> $a['at']);
 	<tbody>
 	<?php foreach($ledger as $l): ?>
 	    <tr>
-		<td class="text-nowrap"><?= $l->created_at instanceof \MongoDB\BSON\UTCDateTime ? $e(gmdate('Y-m-d H:i', $l->created_at->toDateTime()->getTimestamp())) : '' ?></td>
-		<td><?= $e(AssistantCreditLedger::TYPES[$l->type] ?? $l->type) ?><?= (string)$l->note !== '' ? ' <span class="text-muted">' . $e($l->note) . '</span>' : '' ?></td>
+		<td class="text-nowrap"><?= $l->created_at instanceof \MongoDB\BSON\UTCDateTime ? \V::app()->html->escape(gmdate('Y-m-d H:i', $l->created_at->toDateTime()->getTimestamp())) : '' ?></td>
+		<td><?= \V::app()->html->escape(AssistantCreditLedger::TYPES[$l->type] ?? $l->type) ?><?= (string)$l->note !== '' ? ' <span class="text-muted">' . \V::app()->html->escape($l->note) . '</span>' : '' ?></td>
 		<td class="text-end <?= $l->credits < 0 ? 'text-danger' : 'text-success' ?>"><?= ($l->credits > 0 ? '+' : '') . number_format((float)$l->credits) ?></td>
 		<td class="text-end"><?= number_format((float)$l->balance) ?></td>
 	    </tr>
