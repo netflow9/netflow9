@@ -19,6 +19,8 @@ class WfExecution extends \sys\BaseModel {
     //cycle inside a pass)
     //CLD: 2026-10-14T21:17:55+03:00: of the loop around them (a loop cannot be inside another loop: Workflow::validateFlow)
     const MAX_STEPS = 10000;
+    //CLD: 2026-10-23T00:40:00+03:00: a running execution is saved after a pass at most this often (s), so its progress shows (run())
+    const SAVE_EVERY = 2;
 
     //log entries kept per execution
     const MAX_LOG = 500;
@@ -281,6 +283,16 @@ class WfExecution extends \sys\BaseModel {
 		\models\ExecutionLog::record('execution.start', null, 'trigger: ' . $this->trigger . ($this->version ? ', v' . (int)$this->version : ', draft'));
 	    }
 
+	    //CLD: 2026-10-23T00:40:00+03:00: saved as running at once (was: `new` in the database until the whole run ended - minutes with a long AI step), then after the passes,
+	    //at most every SAVE_EVERY s (the designer's Executions panel shows the steps as they run)
+	    if ($this->state == 'new') {
+		$this->state = 'run';
+		if (empty($this->start_at))
+		    $this->start_at = new \MongoDB\BSON\UTCDateTime();
+		$this->save();
+	    }
+	    $saved = microtime(true);
+
 	    $this->steps = 0;
 	    while ($this->canRun()) {
 		//CLD: 2026-10-17T19:29:50+03:00: keep the sync slot while running
@@ -289,6 +301,10 @@ class WfExecution extends \sys\BaseModel {
 		$progress = $this->advance();
 		if (!$progress)
 		    break;
+		if ($this->state == 'run' && microtime(true) - $saved >= self::SAVE_EVERY) {
+		    $this->save();
+		    $saved = microtime(true);
+		}
 	    }
 	    $this->save();
 
