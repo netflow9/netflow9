@@ -62,6 +62,11 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 .exec-row { line-height: 1.9; }
 .exec-row:hover { background: rgba(255, 255, 255, 0.06); }
 .exec-row.exec-selected { background: rgba(217, 119, 87, 0.25); }
+/* CLD: 2026-10-23T02:00:00+03:00: the list wider (theme: 380px; on phones the theme's layout), a row on one line: the time and the duration never wrap, the trigger / version is cut */
+@media (min-width: 768px) { .exec-panel .exec-list { width: 460px; } }
+.exec-row { white-space: nowrap; }
+.exec-row .exec-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.exec-row .exec-time, .exec-row .exec-duration { flex-shrink: 0; }
 ");
 
 \V::app()->cs->addPageScript("
@@ -262,9 +267,9 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 	    box.innerHTML = this.list.map((e) => `
 		<div class='exec-row d-flex align-items-center gap-2 px-1 rounded\${e.id === this.selected ? ' exec-selected' : ''}' data-id='\${this.esc(e.id)}' title='\${this.esc(e.error || '')}' style='cursor: pointer'>
 		    \${this.badge(e.state)}
-		    <span>\${this.esc(e.started || e.created)}</span>
-		    <span style='color: var(--qsm-debug-muted)'>\${this.esc(e.trigger)} \${this.esc(this.versionLabel(e))}</span>
-		    <span class='ms-auto' style='color: var(--qsm-debug-muted)'>\${this.duration(e.duration)}</span>
+		    <span class='exec-time'>\${this.esc(e.started || e.created)}</span>
+		    <span class='exec-what' style='color: var(--qsm-debug-muted)' title='\${this.esc(e.trigger + ' ' + this.versionLabel(e))}'>\${this.esc(e.trigger)} \${this.esc(this.versionLabel(e))}</span>
+		    <span class='exec-duration ms-auto' style='color: var(--qsm-debug-muted)'>\${this.duration(e.duration)}</span>
 		</div>`).join('');
 	},
 
