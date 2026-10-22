@@ -35,6 +35,11 @@ class Expression {
 
     const LITERALS = [ 'true', 'false', 'null', 'undefined' ];
 
+    //CLD: 2026-10-23T01:00:00+03:00: the app's own functions in every expression (functions()), with their help: name => text. A variable of the same name hides one
+    const FUNCTIONS = [
+	'markdown' => 'markdown(text): Markdown (e.g. an AI step\'s answer) as safe HTML; in an email, {{ markdown(...) }} alone in its {{ }} shows it formatted',
+    ];
+
     //J's global names (built-ins) and their members, computed once per process
     private static $globals = null;
 
@@ -66,7 +71,8 @@ class Expression {
 	    throw new \ErrorException("Expression {$label}: {$e['message']} (column {$e['column']})");
 	}
 
-	$context = [];
+	//CLD: 2026-10-23T01:00:00+03:00: the app's functions first (a variable of the same name wins)
+	$context = self::functions();
 	foreach($vars as $name => $value) {
 	    if (\util\Validator::isIdentifier((string)$name))
 		$context[(string)$name] = self::hostValue($value, true);
@@ -131,7 +137,8 @@ class Expression {
 	    return $problems;
 
 	//names that are neither variables nor built-ins nor declared in the expressions
-	$known = array_merge(array_keys($vars), array_keys(self::globals()), self::LITERALS);
+	//CLD: 2026-10-23T01:00:00+03:00: + the app's functions
+	$known = array_merge(array_keys($vars), array_keys(self::globals()), array_keys(self::FUNCTIONS), self::LITERALS);
 	//CLD: 2026-10-13T15:30:33+03:00: a script: the names it assigns (they become workflow variables) are known
 	if ($syntax === 'script')
 	    $known = array_merge($known, self::assignedNames($parsed->ast));
@@ -322,6 +329,10 @@ class Expression {
 	    return [ 'replace' => mb_strlen($prefix, 'UTF-8'), 'items' => self::filter($items, $prefix) ];
 	foreach(self::globals() as $name => $members)
 	    $items[] = [ 'label' => $name, 'kind' => 'global', 'detail' => $members ? 'built-in object' : 'built-in' ];
+	//CLD: 2026-10-23T01:00:00+03:00: the app's functions
+	foreach(self::FUNCTIONS as $name => $help)
+	    if (!isset($vars[$name]))
+		$items[] = [ 'label' => $name, 'kind' => 'global', 'detail' => $help ];
 	foreach(self::LITERALS as $l)
 	    $items[] = [ 'label' => $l, 'kind' => 'literal', 'detail' => '' ];
 	return [ 'replace' => mb_strlen($prefix, 'UTF-8'), 'items' => self::filter($items, $prefix) ];
@@ -521,6 +532,13 @@ class Expression {
 	}
 	usort($scored, fn($a, $b) => [ $a[0], $a[1], $a[2] ] <=> [ $b[0], $b[1], $b[2] ]);
 	return array_slice(array_column($scored, 3), 0, self::MAX_ITEMS);
+    }
+
+    //CLD: 2026-10-23T01:00:00+03:00: the app's functions (FUNCTIONS) as J may call them: name => \Closure
+    public static function functions() {
+	return [
+	    'markdown' => fn($text = '') => \util\Markdown::toHtml($text),
+	];
     }
 
     //[ global name => [ member names ] ] of J's built-ins (from J itself, so they stay in sync)
