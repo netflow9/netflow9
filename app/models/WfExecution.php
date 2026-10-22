@@ -82,6 +82,9 @@ class WfExecution extends \sys\BaseModel {
     //values of $input['vars'] become the first variables
     //CLD: 2026-10-08T08:57:32+03:00: + $startNode: wfid of the trigger step that started it; only that step gets a token (default: all trigger steps)
     public static function startFor($wf, $trigger = 'manual', $input = null, $startNode = null) {
+	//CLD: 2026-10-22T23:00:00+03:00: none for a suspended account
+	if (\models\Account::isSuspended($wf->aid))
+	    throw new \ErrorException('the account is suspended');
 	$data = [
 	    'aid' => $wf->aid,
 	    'project' => $wf->project,

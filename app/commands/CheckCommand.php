@@ -35,7 +35,7 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-21T20:10:00+03:00: + tenant (the account guard of sys\ObjectManager; the sign-in of a name used in two accounts)
     //CLD: 2026-10-22T00:41:28+03:00: + microsoft (the MicrosoftIntegration plugin: its credentials and steps; skipped without the plugin)
     //CLD: 2026-10-22T01:36:46+03:00: + localai (the Lemonade AI and Ollama steps and credentials, against a fake server: commands/tests/AiTestServer.php)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'ftp', 'ldap', 'tenant', 'audit', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'localmcp', 'suspend', 'ftp', 'ldap', 'tenant', 'audit', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -2679,6 +2679,176 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('json: refused (a bad escape, a lone surrogate, too deep, not UTF-8)', [
 		'JSON: `\x` is not an escape at line 1, column 4', 'JSON: a lone surrogate `\uD83D` at line 1, column 3', 'JSON: nested deeper than 128 at line 1, column 129', 'JSON: not UTF-8 text' ],
 	    [ $refused('["a\x41"]'), $refused('["\ud83d"]'), $refused(str_repeat('[', 129) . str_repeat(']', 129)), $refused("[\"\xff\"]") ]);
+    }
+
+    //CLD: 2026-10-22T23:00:00+03:00: a suspended account (state `disabled`, set by a super-admin: the Admin plugin): its users cannot sign in (unless a super-admin views it), it
+    //starts no execution, the daemon leaves its jobs queued; reactivated, all of it works again. In an account made for it (removed after)
+    private function suiteSuspend() {
+	$om = \V::app()->om;
+	$restore = \V::app()->config('rt.account');
+	$account = \models\Account::create([ 'state' => 'active', 'name' => 'Check suspend ' . uniqid() ]);
+	$account->save();
+	\V::app()->var('rt.account', $account);
+	try {
+	    $roles = $account->setupRoles();
+	    $user = $om->create('User', [ 'aid' => $account->_id, 'username' => 'chk_susp_' . uniqid(), 'email' => 'chk_susp_' . uniqid() . '@example.invalid', 'firstname' => 'C',
+		'lastname' => 'S', 'password' => \V::app()->security->generatePasswordHash('x'), 'state' => 'active', 'role' => $roles['owner']->_id ]);
+	    $user->save();
+	    $signIn = function($allow = false) use ($user) {
+		$i = new \sys\Identity();
+		$i->allowSuspended = $allow;
+		return $i->authenticateById((string)$user->_id) ? 'signs in' : $i->reason;
+	    };
+	    $starts = function() use ($account) {
+		try {
+		    \models\WfExecution::startFor((object)[ 'aid' => $account->_id, 'project' => null, '_id' => null, 'nodes' => [], 'runVersion' => null ]);
+		    return 'starts';
+		} catch (\ErrorException $e) {
+		    return $e->getMessage();
+		}
+	    };
+	    $daemon = (new \ReflectionClass(\commands\DaemonCommand::class))->newInstanceWithoutConstructor();
+	    $daemon->config = [ 'max-per-account' => 0, 'max-per-project' => 0 ];
+	    $query = new \ReflectionMethod($daemon, 'allowed_jobs_query');
+	    $waits = fn() => in_array((string)$account->_id, array_map('strval', (array)($query->invoke($daemon)['aid']['$nin'] ?? [])), true);
+	    $state = function($s) use ($om, $account) {
+		$om->updateOne('Account', [ '_id' => $account->_id ], [ '$set' => [ 'state' => $s ] ]);
+		\models\Account::suspendedIds(true);
+	    };
+
+	    $this->check('active: signs in, starts executions, its jobs run', [ false, 'signs in', 'starts', false ],
+		[ \models\Account::isSuspended($account->_id), $signIn(), $starts(), $waits() ]);
+	    $state('disabled');
+	    $this->check('suspended: no sign-in (a super-admin viewing it may), no execution, its jobs wait', [ true, 'This account is suspended: contact the administrator', 'signs in',
+		'the account is suspended', true ], [ \models\Account::isSuspended($account->_id), $signIn(), $signIn(true), $starts(), $waits() ]);
+	    $state('active');
+	    $this->check('reactivated: all of it again', [ false, 'signs in', 'starts', false ], [ \models\Account::isSuspended($account->_id), $signIn(), $starts(), $waits() ]);
+	} finally {
+	    \V::app()->var('rt.account', $restore);
+	    \models\Account::suspendedIds(true);
+	    $om->acrossAccounts(function() use ($om, $account) {
+		foreach([ 'User', 'Role' ] as $name) {
+		    $class = $om->getObjectClass($name);
+		    \V::app()->mongo->selectCollection($class::_database(), $class::_collection())->deleteMany([ 'aid' => $account->_id ]);
+		}
+		\V::app()->mongo->selectCollection(\models\Account::_database(), \models\Account::_collection())->deleteOne([ '_id' => $account->_id ]);
+	    });
+	}
+    }
+
+    //CLD: 2026-10-22T22:00:00+03:00: the LocalMCP plugin: its servers (the browser's unsafe tools left out), the accounts enabled, the sessions' limits (per account, in all), the AI step's
+    //tools of a tool server (only those allowed, named <server>_<tool>, images passed on; a server not enabled refused); with the browser service running: a page opened, a private
+    //address refused. Skipped when the plugin is not enabled (app/plugins.php)
+    private function suiteLocalmcp() {
+	if (!class_exists(\plugins\LocalMCP\Plugin::class) || !isset(\plugins\LocalMCP\Plugin::servers()['playwright'])) {
+	    echo "  (skipped: the LocalMCP plugin is not enabled)\n";
+	    return;
+	}
+	$P = \plugins\LocalMCP\Plugin::class;
+	$A = \plugins\LocalMCP\models\LocalMcpAccess::class;
+	$pw = $P::servers()['playwright'];
+	$this->check('servers: the browser, without the tools that run code or read files', [ true, false, false, false, false ],
+	    [ in_array('browser_navigate', $pw['tools'], true), in_array('browser_run_code_unsafe', $pw['tools'], true), in_array('browser_evaluate', $pw['tools'], true),
+	    in_array('browser_file_upload', $pw['tools'], true), str_starts_with($pw['url'], 'http://127.0.0.1:') === false ]);
+
+	$aid = (string)new \MongoDB\BSON\ObjectId();
+	$other = (string)new \MongoDB\BSON\ObjectId();
+	$slots = [];
+	try {
+	    $before = array_keys(\models\node\NodeAppAi::localServers($aid));
+	    $A::set($aid, 'playwright', true);
+	    $A::set($aid, 'playwright', true);
+	    $on = \models\node\NodeAppAi::localServers($aid);
+	    $A::set($aid, 'playwright', false);
+	    $this->check('access: none, enabled (once), offered to the AI steps with its tools; disabled', [ [], [ 'playwright' ], [ 'playwright' ], 'Web browser', $pw['tools'], [], [] ],
+		[ $before, $A::serversOf($aid) ?: [ 'playwright' ], array_keys($on), $on['playwright']['label'] ?? null, $on['playwright']['tools'] ?? null, $A::serversOf($aid),
+		array_keys(\models\node\NodeAppAi::localServers($other)) ]);
+
+	    //the limits: 2 per account, 3 in all (a server of the check: the real one's slots untouched)
+	    $def = [ 'url' => 'http://127.0.0.1:1/mcp', 'max_sessions' => 3, 'max_sessions_per_account' => 2 ];
+	    $open = function($acct) use ($def, &$slots) {
+		try {
+		    return $slots[] = \plugins\LocalMCP\util\SessionClient::open('chk', $def, $acct, 5);
+		} catch (\ErrorException $e) {
+		    return $e->getMessage();
+		}
+	    };
+	    $r = [ $open($aid), $open($aid), $open($aid), $open($other), $open($other) ];
+	    $this->check('sessions: 2 per account, then refused; 3 in all, then busy', [ true, true, 'per account', true, 'busy' ],
+		[ is_object($r[0]), is_object($r[1]), is_string($r[2]) && str_contains($r[2], 'the most at once') ? 'per account' : $r[2], is_object($r[3]),
+		is_string($r[4]) && str_contains($r[4], 'busy') ? 'busy' : $r[4] ]);
+	    $r[0]->close();
+	    $again = $open($other);
+	    $this->check('sessions: a closed one frees its slots', true, is_object($again));
+	} finally {
+	    foreach($slots as $c)
+		if (is_object($c))
+		    $c->close();
+	    \V::app()->om->deleteOne('LocalMcpAccess', [ '_id' => $aid, 'aid' => \V::app()->om->to_oid($aid) ]);
+	}
+	$left = \V::app()->om->count('LocalMcpSlot', [ '_id' => [ '$regex' => '^chk:' ] ]);
+	$this->check('sessions: none left after closing', 0, $left);
+
+	//the AI step's tools of a tool server: a server of the check (for this account only) answering in memory
+	$fake = new class {
+	    public $calls = [];
+	    public $closed = false;
+	    public function initialize() { return [ 'serverInfo' => [ 'name' => 'fake' ] ]; }
+	    public function listTools() {
+		return [ [ 'name' => 'look', 'description' => 'looks', 'inputSchema' => (object)[ 'type' => 'object' ] ], [ 'name' => 'run.code', 'description' => 'runs', 'inputSchema' => (object)[ 'type' => 'object' ] ] ];
+	    }
+	    public function callTool($name, array $args = []) {
+		$this->calls[] = [ $name, $args ];
+		return [ 'content' => [ [ 'type' => 'text', 'text' => 'seen' ], [ 'type' => 'image', 'mimeType' => 'image/png', 'data' => 'QUJD' ] ] ];
+	    }
+	    public function close() { $this->closed = true; }
+	};
+	$aiAid = (string)new \MongoDB\BSON\ObjectId();
+	\V::app()->hooks->addHook('ai:mcp-servers', function(\ArrayObject $servers, $a) use ($fake, $aiAid) {
+	    if ($a === $aiAid)
+		$servers['chk'] = [ 'id' => 'chk', 'label' => 'Check server', 'description' => '', 'tools' => [ 'look' ], 'open' => fn($timeout) => $fake ];
+	});
+	$step = new class extends \models\node\NodeAppOpenAI {
+	    public function __construct() {
+	    }
+	    public function tools(array &$clients) {
+		return $this->collectTools($clients, null);
+	    }
+	};
+	$step->config = [ 'tools' => [], 'mcp' => [], 'servers' => [ 'chk' ], 'timeout' => 20 ];
+	$step->exec = (object)[ 'aid' => $aiAid ];
+	$clients = [];
+	$tools = $step->tools($clients);
+	[ $text, $isError, $images ] = ($tools['chk_look']['run'])([ 'q' => 1 ]);
+	$this->check('AI step: only the tools the server allows, named <server>_<tool>, described with its label; a call, its image passed on; the session kept to be closed',
+	    [ [ 'chk_look' ], '[Check server] looks', 'seen', false, [ [ 'image/png', 'QUJD' ] ], [ [ 'look', [ 'q' => 1 ] ] ], 1 ],
+	    [ array_keys($tools), $tools['chk_look']['description'], $text, $isError, $images, $fake->calls, count($clients) ]);
+	$step->exec = (object)[ 'aid' => (string)new \MongoDB\BSON\ObjectId() ];
+	try {
+	    $clients = [];
+	    $step->tools($clients);
+	    $refused = 'not refused';
+	} catch (\ErrorException $e) {
+	    $refused = $e->getMessage();
+	}
+	$this->check('AI step: a tool server not enabled for the account is refused', 'the tool server `chk` is not enabled for this account', $refused);
+
+	//the browser service, when it runs (scripts/playwright-mcp.sh install)
+	$c = new \util\McpClient($pw['url'], (array)($pw['headers'] ?? []), 90);
+	try {
+	    $c->initialize();
+	} catch (\Exception $e) {
+	    echo "  (the browser service is not running: scripts/playwright-mcp.sh install)\n";
+	    return;
+	}
+	try {
+	    $r = $c->callTool('browser_navigate', [ 'url' => 'https://example.com' ]);
+	    $p = $c->callTool('browser_navigate', [ 'url' => 'http://10.255.255.1/' ]);
+	    $this->check('browser service: a public page opens; a private address does not', [ true, false ],
+		[ str_contains(json_encode($r), 'Example Domain'), empty($p['isError']) && str_contains(json_encode($p), 'HTTP status: 200') ]);
+	} finally {
+	    $c->close();
+	}
     }
 
     //CLD: 2026-10-19T15:26:28+03:00: the designer's Assistant with a scripted model (util\WorkflowAssistant::$transport): the request it sends, set_workflow refused then fixed,

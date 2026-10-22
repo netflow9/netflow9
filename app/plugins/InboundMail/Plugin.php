@@ -31,6 +31,26 @@ class Plugin {
 	//a completed Email inbound run deletes its raw message (in every mode: the daemon runs them)
 	\V::app()->hooks->addHook('execution:end', [ models\NodeTriggerEmail::class, 'afterExecutionEnd' ]);
 
+	//CLD: 2026-10-22T23:00:00+03:00: Haraka, a service of the administration (the Admin plugin): its unit (scripts/services-install.sh), its PID file before, SMTP answering on port 25
+	\V::app()->hooks->addHook('admin:services', function(\ArrayObject $services) {
+	    $services['haraka'] = [
+		'label' => 'Inbound mail (Haraka)',
+		'description' => 'Receives the mail of the Email (inbound) trigger, on port 25',
+		'unit' => 'nfn-haraka.service',
+		'pidfile' => BASE . '/run/haraka.pid',
+		'health' => function() {
+		    $s = @stream_socket_client('tcp://127.0.0.1:25', $errno, $errstr, 2);
+		    if (!$s)
+			return [ false, 'port 25 does not answer' . ($errstr ? ": {$errstr}" : '') ];
+		    stream_set_timeout($s, 3);
+		    $banner = trim((string)fgets($s, 512));
+		    @fwrite($s, "QUIT\r\n");
+		    fclose($s);
+		    return str_starts_with($banner, '220') ? [ true, 'SMTP answers on port 25' ] : [ false, 'port 25: ' . ($banner !== '' ? mb_substr($banner, 0, 80) : 'no greeting') ];
+		},
+	    ];
+	});
+
 	if (\V::app()->config('app.mode') != 'web')
 	    return;
 
