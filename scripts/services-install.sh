@@ -5,10 +5,12 @@
 #  nfn-daemon.service       the workflow daemon (app/v.php daemon::run), as the app's user (was started as root by scripts/daemon.sh)
 #  nfn-haraka.service       Haraka, inbound mail (as root: port 25; it forks, its PID file as before), only when Haraka is installed
 #  + a polkit rule: the app's user (the web server's PHP) may start / stop / restart these units and playwright-mcp.service (scripts/playwright-mcp.sh), nothing else
+#CLD: 2026-10-22T23:30:00+03:00: + playwright-mcp.service, the AI steps' web browser: installed by scripts/playwright-mcp.sh install (called here) when the shared Chromium of
+#scripts/playwright-install.sh is there; --no-playwright: not
 #The processes started by scripts/daemon.sh and scripts/haraka.sh (their PID files) are stopped first; those scripts are no longer needed after this.
 #Run as root:
-#   sudo scripts/services-install.sh install       write the units and the rule, move the running services to them, start at boot
-#   sudo scripts/services-install.sh uninstall     stop and remove the units and the rule (start the old scripts again by hand if needed)
+#   sudo scripts/services-install.sh install [--no-playwright]     write the units and the rule, move the running services to them, start at boot
+#   sudo scripts/services-install.sh uninstall [--no-playwright]   stop and remove the units and the rule (start the old scripts again by hand if needed)
 #   scripts/services-install.sh status
 
 set -euo pipefail
@@ -23,6 +25,16 @@ HARAKA_UNIT=nfn-haraka.service
 MANAGED="$DAEMON_UNIT $HARAKA_UNIT playwright-mcp.service"
 
 command="${1:-}"
+[ -n "$command" ] && shift || true
+#CLD: 2026-10-22T23:30:00+03:00: the browser service too (scripts/playwright-mcp.sh), unless --no-playwright
+PLAYWRIGHT=1
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        --no-playwright) PLAYWRIGHT=0 ;;
+        *) echo "unknown option: $1"; exit 1 ;;
+    esac
+    shift
+done
 
 need_root() {
     [ "$(id -u)" -eq 0 ] || { echo "run it as root: sudo $0 $command"; exit 1; }
@@ -129,14 +141,27 @@ case "$command" in
         systemctl try-reload-or-restart polkit.service || true
 
         #the workflow daemon: from the script (as root) to the unit (as the app's user); the files root left
-        stop_pidfile "$BASE/run/daemon.pid" "the workflow daemon"
-        rm -f "$BASE/run/job-notify.sock"
+        #CLD: 2026-10-22T23:30:00+03:00: only when the unit does not run yet (run again: the units' own processes are left alone)
+        if ! systemctl is-active --quiet "$DAEMON_UNIT"; then
+            stop_pidfile "$BASE/run/daemon.pid" "the workflow daemon"
+            rm -f "$BASE/run/job-notify.sock"
+        fi
         chown "$APP_USER:$APP_USER" "$BASE/logs/daemon.log" 2>/dev/null || true
         systemctl enable --now "$DAEMON_UNIT"
 
         if [ "$haraka" -eq 1 ]; then
-            stop_pidfile "$BASE/run/haraka.pid" "Haraka"
+            #the unit's Haraka writes the same PID file: stopped only when it was started by the script
+            systemctl is-active --quiet "$HARAKA_UNIT" || stop_pidfile "$BASE/run/haraka.pid" "Haraka"
             systemctl enable --now "$HARAKA_UNIT"
+        fi
+
+        #CLD: 2026-10-22T23:30:00+03:00: the AI steps' web browser (its own script: user, firewall, unit), when the shared Chromium is there
+        if [ "$PLAYWRIGHT" -eq 1 ]; then
+            if ls -d /opt/playwright/browsers/chromium-[0-9]*/chrome-linux64/chrome >/dev/null 2>&1; then
+                "$BASE/scripts/playwright-mcp.sh" install
+            else
+                echo "! the web browser for the AI steps is not installed: no shared Chromium; run scripts/playwright-install.sh first, then this again (or scripts/playwright-mcp.sh install)"
+            fi
         fi
         sleep 2
         systemctl --no-pager --lines=3 status $DAEMON_UNIT $([ "$haraka" -eq 1 ] && echo $HARAKA_UNIT) || true
@@ -150,16 +175,28 @@ case "$command" in
         done
         rm -f "$POLKIT_RULE"
         systemctl daemon-reload
+        if [ "$PLAYWRIGHT" -eq 1 ] && [ -f "$UNIT_DIR/playwright-mcp.service" ]; then
+            "$BASE/scripts/playwright-mcp.sh" uninstall
+        fi
         echo "Removed; start the services with scripts/daemon.sh and scripts/haraka.sh if needed"
         ;;
     status)
+        #CLD: 2026-10-22T23:30:00+03:00: a unit not installed says so (was: inactive); the polkit rule: unknown when its folder cannot be read (only root may)
         for u in $DAEMON_UNIT $HARAKA_UNIT playwright-mcp.service; do
-            printf '%-26s %s\n' "$u" "$(systemctl is-active "$u" 2>/dev/null || true)"
+            if [ "$(systemctl show "$u" -p LoadState --value 2>/dev/null)" = "loaded" ]; then
+                printf '%-26s %s\n' "$u" "$(systemctl is-active "$u" 2>/dev/null || true)"
+            else
+                printf '%-26s %s\n' "$u" "not installed"
+            fi
         done
-        [ -f "$POLKIT_RULE" ] && echo "polkit rule: $POLKIT_RULE" || echo "polkit rule: not installed"
+        if [ -r "$(dirname "$POLKIT_RULE")" ]; then
+            [ -f "$POLKIT_RULE" ] && echo "polkit rule: $POLKIT_RULE" || echo "polkit rule: not installed"
+        else
+            echo "polkit rule: unknown (run status as root to check)"
+        fi
         ;;
     *)
-        echo "usage: sudo $0 {install | uninstall | status}"
+        echo "usage: sudo $0 {install | uninstall | status} [--no-playwright]"
         exit 1
         ;;
 esac
