@@ -2,7 +2,8 @@
 
 #CLD: 2026-10-22T22:00:00+03:00: new: the Playwright MCP server (a web browser for the AI steps: the LocalMCP plugin, server `playwright`) as a system service:
 #  - its own user (pwmcp), no login, writing only in /var/lib/playwright-mcp
-#  - on 127.0.0.1:8931 only (Streamable HTTP: http://127.0.0.1:8931/mcp), headless, a fresh in-memory browser profile per session
+#  - on 127.0.0.1:8931 only (Streamable HTTP: http://localhost:8931/mcp), headless, a fresh in-memory browser profile per session
+#    CLD: 2026-10-23T00:20:00+03:00: + --allowed-hosts: the Host headers localhost:<port> and 127.0.0.1:<port> (it accepted only localhost: 403 for http://127.0.0.1:...)
 #  - the shared Chromium of scripts/playwright-install.sh (run that first)
 #  - a firewall table (nftables) refusing the user's new connections to private, loopback and link-local addresses (the cloud metadata 169.254.169.254 too): the browser reaches
 #    only the public internet (Playwright's own --blocked-origins is not a security boundary: kept as a second layer only)
@@ -105,7 +106,7 @@ Environment=HOME=$HOME_DIR
 Environment=PLAYWRIGHT_BROWSERS_PATH=$BROWSERS_PATH
 #the firewall table first (as root: +), removed when the service stops
 ExecStartPre=+/usr/sbin/nft -f $CONF_DIR/egress.nft
-ExecStart=$(npm prefix -g)/bin/playwright-mcp --headless --isolated --host 127.0.0.1 --port $PORT --executable-path $chrome --output-dir $HOME_DIR/output --output-max-size 209715200 --idle-timeout 300000 --timeout-navigation 30000 --blocked-origins "http://localhost;https://localhost;http://127.0.0.1;https://127.0.0.1;http://169.254.169.254"
+ExecStart=$(npm prefix -g)/bin/playwright-mcp --headless --isolated --host 127.0.0.1 --port $PORT --allowed-hosts localhost:$PORT,127.0.0.1:$PORT --executable-path $chrome --output-dir $HOME_DIR/output --output-max-size 209715200 --idle-timeout 300000 --timeout-navigation 30000 --blocked-origins "http://localhost;https://localhost;http://127.0.0.1;https://127.0.0.1;http://169.254.169.254"
 ExecStopPost=+-/usr/sbin/nft delete table inet $NFT_TABLE
 Restart=on-failure
 RestartSec=5
