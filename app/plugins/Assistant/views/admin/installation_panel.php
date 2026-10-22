@@ -6,7 +6,7 @@
 use plugins\Assistant\models\AssistantSettings;
 use plugins\Assistant\models\AssistantWallet;
 
-$e = fn($v) => \V::app()->html->escape((string)$v);
+//CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly (was a $e wrapper)
 $unit = (float)$table['credit_usd'];
 $models = array_keys((array)$table['models']);
 if ($system)
@@ -17,8 +17,8 @@ $cfg = (array)\V::app()->config('assistant.system');
 <h6 class="mb-2">Assistant (System)</h6>
 <div class="small mb-2">
     <?php if ($system): ?>
-    <?= $e(AssistantSettings::PROVIDERS[$system->provider] ?? $system->provider) ?>, model <code><?= $e($system->model) ?></code><?= $system->url !== '' ? ' at <code>' . $e($system->url) . '</code>' : '' ?>
-    &middot; <?= (int)($cfg['monthly_credits'] ?? 0) ?> credits per account per month &middot; at most <?= (int)($cfg['max_credits_per_request'] ?? 0) ?: 'any' ?> per request &middot; 1 credit = <?= $e($unit) ?> USD
+    <?= \V::app()->html->escape(AssistantSettings::PROVIDERS[$system->provider] ?? $system->provider) ?>, model <code><?= \V::app()->html->escape($system->model) ?></code><?= $system->url !== '' ? ' at <code>' . \V::app()->html->escape($system->url) . '</code>' : '' ?>
+    &middot; <?= (int)($cfg['monthly_credits'] ?? 0) ?> credits per account per month &middot; at most <?= (int)($cfg['max_credits_per_request'] ?? 0) ?: 'any' ?> per request &middot; 1 credit = <?= \V::app()->html->escape($unit) ?> USD
     <?php else: ?>
     <span class="text-muted">No System server (app.env ASSISTANT_PROVIDER, ASSISTANT_MODEL): accounts use their own keys.</span>
     <?php endif; ?>
@@ -34,13 +34,13 @@ $cfg = (array)\V::app()->config('assistant.system');
 	    $margin = $r && $p && $p[0] > 0 ? round(($r[0] * $unit / $p[0] - 1) * 100) . '%' : '';
 	?>
 	    <tr>
-		<td><code><?= $e($model) ?></code><?= $system && $i === 0 ? ' <span class="badge text-bg-primary">System</span>' : '' ?></td>
+		<td><code><?= \V::app()->html->escape($model) ?></code><?= $system && $i === 0 ? ' <span class="badge text-bg-primary">System</span>' : '' ?></td>
 		<?php if ($r): foreach([ 0, 1, 2 ] as $j): ?>
 		<td class="text-end"><?= $num($r[$j]) ?> <span class="text-muted">/ <?= $p ? '$' . $num($p[$j]) : '?' ?></span></td>
 		<?php endforeach; else: ?>
 		<td colspan="3" class="text-end text-danger">no rates: set them in credit_rates.php</td>
 		<?php endif; ?>
-		<td class="text-end"><?= $e($margin) ?></td>
+		<td class="text-end"><?= \V::app()->html->escape($margin) ?></td>
 	    </tr>
 	<?php endforeach; ?>
 	</tbody>
