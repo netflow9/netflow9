@@ -37,7 +37,7 @@ class Expression {
 
     //CLD: 2026-10-23T01:00:00+03:00: the app's own functions in every expression (functions()), with their help: name => text. A variable of the same name hides one
     const FUNCTIONS = [
-	'markdown' => 'markdown(text): Markdown (e.g. an AI step\'s answer) as safe HTML; in an email, {{ markdown(...) }} alone in its {{ }} shows it formatted',
+	'markdown' => 'markdown(text): Markdown as safe HTML; in an email, {{ markdown(...) }} alone in its {{ }} shows it formatted (an AI step\'s answer: also {{ ai.html }})',
     ];
 
     //J's global names (built-ins) and their members, computed once per process

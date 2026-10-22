@@ -2709,9 +2709,16 @@ class CheckCommand extends \sys\BaseController {
 	    \util\Expression::render('{{ markdown(t) }}', [ 't' => '*x*' ]), \util\Expression::render('{{ markdown }}', [ 'markdown' => 'mine' ]) ]);
 
 	$fill = fn($html, $vars = []) => \util\EmailHtml::fill($html, $vars + [ 'ai' => [ 'text' => '**b** <i>', 'html' => '<p><b>x</b></p>' ] ]);
-	$this->check('email: {{ markdown(x) }} alone is HTML; other expressions, ai.html and markdown(..) + text are escaped', [ '<p><strong>b</strong> &lt;i&gt;</p>',
-	    '**b** &lt;i&gt;', '&lt;p&gt;&lt;b&gt;x&lt;/b&gt;&lt;/p&gt;', '&lt;p&gt;&lt;strong&gt;b&lt;/strong&gt; &amp;lt;i&amp;gt;&lt;/p&gt;!' ],
-	    [ $fill('{{ markdown(ai.text) }}'), $fill('{{ ai.text }}'), $fill('{{ ai.html }}'), $fill('{{ markdown(ai.text) + "!" }}') ]);
+	//CLD: 2026-10-23T02:30:00+03:00: {{ ai.html }} is HTML too, cleaned (was escaped)
+	$this->check('email: {{ markdown(x) }} and {{ x.html }} alone are HTML; other expressions and markdown(..) + text are escaped', [ '<p><strong>b</strong> &lt;i&gt;</p>',
+	    '**b** &lt;i&gt;', '<p><b>x</b></p>', '&lt;p&gt;&lt;strong&gt;b&lt;/strong&gt; &amp;lt;i&amp;gt;&lt;/p&gt;!', '&lt;b&gt;&lt;p&gt;&lt;b&gt;x&lt;/b&gt;&lt;/p&gt;' ],
+	    [ $fill('{{ markdown(ai.text) }}'), $fill('{{ ai.text }}'), $fill('{{ ai.html }}'), $fill('{{ markdown(ai.text) + "!" }}'), $fill('{{ "<b>" + ai.html }}') ]);
+	$H = \util\HtmlSafe::class;
+	$this->check('email: an html field cleaned to formatting: scripts / styles / frames / images out, attributes out, links http(s) / mailto, stray < kept', [
+	    '<h2>T</h2><p>a <b>b</b></p>', 'ok', '<a>l</a> <a href="https://e.org">m</a>', 'pic', 'text', '<table><tr><td align="center">c</td></tr></table>', 'a &lt; b' ], [
+	    $H::clean('<h2 style="x" onclick="y">T</h2><p>a <b>b</b></p>'), $H::clean('<script>alert(1)</script><style>p{}</style>ok'),
+	    $H::clean('<a href="javascript:x" onmouseover="y">l</a> <a href="https://e.org" target="_blank">m</a>'), $H::clean('<img src=https://t.org/p.gif>pic<iframe src=x></iframe>'),
+	    $H::clean('<font color=red>text</font><!-- c -->'), $H::clean('<table><tr><td align="center" colspan="2x" onclick=1>c</td></tr></table>'), $H::clean('a < b') ]);
 	$r = \util\EmailHtml::render([ 'preheader' => '', 'blocks' => [ [ 'type' => 'html', 'html' => '<p>{{ markdown(ai.text) }}</p>' ] ] ], [ 'ai' => [ 'text' => "## News\n\n- one\n- two" ] ], 'x');
 	$this->check('email: styled as the block (no empty paragraph around it), its text version', [ true, true, false, "News\n\n- one\n- two\n" ],
 	    [ str_contains($r['html'], '<h2 style="'), str_contains($r['html'], '<ul style="'), (bool)preg_match('~<p[^>]*>\s*</p>~', $r['html']), $r['text'] ]);
