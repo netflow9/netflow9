@@ -10,6 +10,8 @@
 !/app.env.example
 
 # --- never commit (secrets / runtime) ---
+# CLD: 2026-10-22T18:30:00+03:00: published assets: copies the app writes itself (sys\Assets::publishFile)
+public_html/assets/
 app.env
 *.key
 *.pem
