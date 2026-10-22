@@ -2786,8 +2786,10 @@ class CheckCommand extends \sys\BaseController {
 	    [ $r['reply'], count(array_filter($r['nodes'] ?? [], fn($n) => !empty($n['isNode']))), $r['usage']['input_tokens'] ]);
 
 	//CLD: 2026-10-19T16:24:37+03:00: the provider of the account settings (the designer offers its credentials only); missing or unknown: Anthropic
-	$this->check('account provider: openai, unknown and missing are anthropic', [ 'openai', 'anthropic', 'anthropic' ], [ \plugins\Assistant\util\WorkflowAssistant::providerOf((object)[ 'provider' => 'openai' ]),
-	    \plugins\Assistant\util\WorkflowAssistant::providerOf((object)[ 'provider' => 'gemini' ]), \plugins\Assistant\util\WorkflowAssistant::providerOf(null) ]);
+	//CLD: 2026-10-22T14:00:00+03:00: gemini is a provider now (was the unknown one)
+	$this->check('account provider: openai, gemini; unknown and missing are anthropic', [ 'openai', 'gemini', 'anthropic', 'anthropic' ], [ \plugins\Assistant\util\WorkflowAssistant::providerOf((object)[ 'provider' => 'openai' ]),
+	    \plugins\Assistant\util\WorkflowAssistant::providerOf((object)[ 'provider' => 'gemini' ]), \plugins\Assistant\util\WorkflowAssistant::providerOf((object)[ 'provider' => 'nope' ]),
+	    \plugins\Assistant\util\WorkflowAssistant::providerOf(null) ]);
 
 	//CLD: 2026-10-20T10:00:00+03:00: the server of the settings (credentialOf; was accountServer, OpenAI-compatible only): its URL or the provider's, the key as the provider
 	//wants it; ready with a model; the models it lists (Connect)
@@ -2809,6 +2811,107 @@ class CheckCommand extends \sys\BaseController {
 	    [ [ 'id' => 'claude-opus-5-5', 'label' => 'Claude Opus 5.5 (claude-opus-5-5)' ], [ 'id' => 'x', 'label' => 'x' ] ] ], [ $listed, $models ]);
 	$WA::models((object)[ 'provider' => 'openai' ], function($headers, $body, $path) use (&$listed) { $listed = $path; return (object)[ 'data' => [] ]; });
 	$this->check('models: OpenAI-compatible: GET /models', '/models', $listed);
+
+	//CLD: 2026-10-22T14:00:00+03:00: bring your own key: Gemini, Ollama, Lemonade speak OpenAI chat completions at their own URLs (Bearer key); Gemini's model ids without models/;
+	//System is the installation's server (config assistant.system), refused when there is none; the prices, the budget (the loop stops once it is spent)
+	$AS = \plugins\Assistant\models\AssistantSettings::class;
+	$gem = $WA::credentialOf((object)[ 'provider' => 'gemini', 'api_key' => 'g1' ]);
+	$this->check('gemini, ollama, lemonade: their own URLs, Bearer key', [ 'https://generativelanguage.googleapis.com/v1beta/openai', [ 'Authorization' => 'Bearer g1' ], 'http://localhost:11434/v1', 'http://localhost:8000/api/v1', [] ],
+	    [ $gem->baseUrl, $gem->httpAuth()['headers'], $WA::credentialOf((object)[ 'provider' => 'ollama' ])->baseUrl, $WA::credentialOf((object)[ 'provider' => 'lemonade' ])->baseUrl,
+	    $WA::credentialOf((object)[ 'provider' => 'ollama' ])->httpAuth()['headers'] ]);
+	$models = $WA::models((object)[ 'provider' => 'gemini', 'api_key' => 'g1' ], function($headers, $body, $path) use (&$listed) {
+	    $listed = $path;
+	    return json_decode(\util\JSON::encode([ 'data' => [ [ 'id' => 'models/gemini-x' ] ] ]));
+	});
+	$this->check('models: gemini: GET /models, ids without models/', [ '/models', 'gemini-x' ], [ $listed, $models[0]['id'] ?? null ]);
+	$savedSystem = \V::app()->config('assistant.system');
+	\V::app()->config('assistant.system', [ 'provider' => '', 'model' => '' ]);
+	$noSystem = [ $WA::isReady((object)[ 'provider' => 'system' ]), $AS::systemAvailable() ];
+	try {
+	    $WA::credentialOf((object)[ 'provider' => 'system' ]);
+	    $noSystem[] = 'not refused';
+	} catch (\ErrorException $e) {
+	    $noSystem[] = str_contains($e->getMessage(), 'provides no Assistant server');
+	}
+	\V::app()->config('assistant.system', [ 'provider' => 'anthropic', 'url' => '', 'api_key' => 'sys-key', 'model' => 'claude-sonnet-5-5', 'effort' => 'low', 'monthly_credits' => 100 ]);
+	$sysCred = $WA::credentialOf((object)[ 'provider' => 'system', 'api_key' => 'mine', 'url' => 'http://evil.invalid' ]);
+	$this->check('system: none: not ready, refused; else the installation\'s server and key (not the account\'s)', [ false, false, true, true, 'https://api.anthropic.com', 'sys-key' ],
+	    array_merge($noSystem, [ $WA::isReady((object)[ 'provider' => 'system' ]), $sysCred->baseUrl, $sysCred->httpAuth()['headers']['x-api-key'] ?? null ]));
+	//CLD: 2026-10-22T15:00:00+03:00: System: no USD budget (credits instead; was the smaller of the account's and the installation's)
+	$this->check('budget: the account\'s; none with system (credits); 0 none', [ 10.0, null, null ],
+	    [ $AS::budgetOf((object)[ 'provider' => 'anthropic', 'budget' => 10 ]), $AS::budgetOf((object)[ 'provider' => 'system', 'budget' => 10 ]),
+	    $AS::budgetOf((object)[ 'provider' => 'anthropic', 'budget' => 0 ]) ]);
+	$s = new \plugins\Assistant\util\WorkflowAssistant($wf, $this->project, (object)[ 'provider' => 'system', 'model' => 'ignored' ]);
+	$s->transport = $scripted([ [ 'end_turn', [ [ 'type' => 'text', 'text' => 'ok' ] ] ] ], $sentS);
+	$s->ask([], 'x', $existing);
+	$this->check('system: the installation\'s model and effort', [ 'claude-sonnet-5-5', 'low', 'sys-key' ], [ $sentS[0][1]['model'], $sentS[0][1]['output_config']['effort'], $sentS[0][0]['x-api-key'] ?? null ]);
+	\V::app()->config('assistant.system', $savedSystem);
+	$this->check('prices: known Claude models, set ones, local free, else unknown', [ [ 4.0, 20.0, 0.2 ], [ 1.0, 2.0, 0.1 ], [ 0, 0, 0 ], null ],
+	    [ $AS::pricesOf((object)[ 'model' => 'claude-opus-5-5' ]), $AS::pricesOf((object)[ 'model' => 'gpt-x', 'price_input' => 1, 'price_output' => 2 ]),
+	    $AS::pricesOf((object)[ 'provider' => 'ollama', 'model' => 'qwen' ]), $AS::pricesOf((object)[ 'provider' => 'openai', 'model' => 'gpt-x' ]) ]);
+	//10 input + 5 output tokens per turn at 4 / 20 USD per 1M: 0.00014 USD a turn; a budget of 0.0002 is spent after 2 turns
+	$a->budget = 0.0002;
+	$a->transport = $scripted([ [ 'tool_use', [ $tool('t1', [ 'steps' => $fixed, 'connections' => $conn ]) ] ], [ 'tool_use', [ $tool('t2', [ 'steps' => $fixed, 'connections' => $conn ]) ] ],
+	    [ 'end_turn', [ [ 'type' => 'text', 'text' => 'never' ] ] ] ], $sent);
+	$r = $a->ask([], 'x', $existing);
+	$a->budget = null;
+	$this->check('budget spent: stopped after 2 turns, the canvas kept, said, the cost', [ 2, 2, true, 'the monthly budget of the Assistant is spent', true, 0.00028 ],
+	    [ count($sent), $r['rounds'], $r['nodes'] !== null, $r['stopped'], str_contains($r['reply'], 'Stopped before finishing'), $r['cost'] ]);
+
+	//CLD: 2026-10-22T15:00:00+03:00: System's credits (AssistantWallet): per model (its own rates, or the provider's price + the margin), the month's allowance without rollover,
+	//top-ups that expire, used allowance first then the top-up that expires first, the account's monthly limit, reserved then settled; the loop stops at the reserved credits
+	$W = \plugins\Assistant\models\AssistantWallet::class;
+	$table = [ 'credit_usd' => 0.01, 'default_margin' => 0.30, 'models' => [ 'claude-opus-5-5' => [ 'margin' => 0.25 ], 'my-model' => [ 'in' => 100, 'out' => 400 ] ] ];
+	$this->check('credits per model: price + margin, the default margin, own rates, unknown', [ [ 500.0, 2500.0, 25.0 ], [ 260.0, 1300.0, 26.0 ], [ 100.0, 400.0, 10.0 ], null ],
+	    [ $W::ratesOf((object)[ 'model' => 'claude-opus-5-5' ], $table), $W::ratesOf((object)[ 'model' => 'claude-sonnet-5-5' ], $table),
+	    $W::ratesOf((object)[ 'model' => 'my-model' ], $table), $W::ratesOf((object)[ 'provider' => 'openai', 'model' => 'gpt-x' ], $table) ]);
+	$this->check('credits of a request: tokens x rates (cache write 1.25 x in), charged whole, at least 1', [ 0.775, 1, 1, 3, 2 ],
+	    [ $W::creditsOf([ 500, 2500, 25 ], [ 'input_tokens' => 1000, 'output_tokens' => 100, 'cache_read_input_tokens' => 1000, 'cache_creation_input_tokens' => 0 ]),
+	    $W::charge(0.775), $W::charge(0), $W::charge(2.001), $W::charge(2.0000001) ]);
+	$t0 = gmmktime(12, 0, 0, 3, 15, 2026);
+	$w = $W::blank();
+	$w['plan'] = 100;
+	[ $w, $e1 ] = $W::refresh($w, $t0);
+	$w['topups'] = [ [ 'id' => 'late', 'granted' => 50, 'left' => 50, 'at' => $t0, 'expires' => $t0 + 86400 * 300, 'note' => '' ],
+	    [ 'id' => 'soon', 'granted' => 30, 'left' => 30, 'at' => $t0, 'expires' => $t0 + 86400 * 5, 'note' => '' ] ];
+	[ $w, $unpaid ] = $W::debit($w, 120);
+	$left = array_column($w['topups'], 'left', 'id');
+	$this->check('wallet: the allowance first, then the top-up that expires first', [ 0, 10, 50, 0, 60, 120 ], [ $w['allowance_left'], $left['soon'], $left['late'], $unpaid, $W::balance($w), $w['month_used'] ]);
+	$this->check('wallet: a monthly limit counts the month\'s use and the reservations', [ 60, 30, 0 ],
+	    [ $W::available($w), $W::available($w, 150), $W::available(array_merge($w, [ 'holds' => [ [ 'id' => 'h', 'credits' => 40, 'until' => $t0 + 60 ] ] ]), 150) ]);
+	$w['allowance_left'] = 40;
+	[ $w2, $e2 ] = $W::refresh($w, $t0 + 86400 * 20);
+	$this->check('wallet: next month the allowance is renewed, not carried over; an expired top-up is emptied', [ '2026-04', 100, 0, 0, [ 'allowance', 'expire' ], true ],
+	    [ $w2['month'], $w2['allowance_left'], $w2['month_used'], array_column($w2['topups'], 'left', 'id')['soon'], array_column($e2, 'type'), str_contains($e2[0]['note'], '40 left of the last one lost') ]);
+	//the database: a test account's wallet (removed after)
+	$aid = (string)new \MongoDB\BSON\ObjectId();
+	try {
+	    $W::setPlan($aid, 20);
+	    $t = $W::grant($aid, 30, 'check');
+	    $h1 = $W::reserve($aid, 25);
+	    $h2 = $W::reserve($aid, 0, 40);
+	    $h3 = $W::reserve($aid, 0, 40);
+	    $after = $W::settle($aid, $h1[0], 22, [ 'wfid' => 'w1' ]);
+	    $W::settle($aid, $h2[0], 0);
+	    $cur = $W::current($aid);
+	    $types = array_map(fn($e) => $e->type, iterator_to_array(\plugins\Assistant\models\AssistantCreditLedger::recent($aid, 10), false));
+	    $this->check('wallet (db): reserve at most the limit, within the monthly limit, none left; settled from the allowance then the top-up; the ledger',
+		[ 12, 25, 15, null, 28, 0, 28, 22, [ 'debit', 'topup', 'adjust', 'allowance' ] ],
+		[ (int)round(($t['expires'] - $t['at']) / 86400 / 30.4), $h1[1], $h2[1], $h3, $after, $cur['allowance_left'], array_sum(array_column($cur['topups'], 'left')), $cur['month_used'], array_values(array_unique($types)) ]);
+	} finally {
+	    \V::app()->om->deleteOne('AssistantWallet', [ '_id' => $aid, 'aid' => \V::app()->om->to_oid($aid) ]);
+	    $L = \plugins\Assistant\models\AssistantCreditLedger::class;
+	    \V::app()->mongo->selectCollection($L::_database(), $L::_collection())->deleteMany([ 'aid' => \V::app()->om->to_oid($aid) ]);
+	}
+	//the loop limited by the reserved credits: 10 + 5 tokens a turn at 500 / 2500 credits per 1M = 0.0175 credits; 0.03 reserved: 2 turns
+	$a->rates = [ 500, 2500, 25 ];
+	$a->budget = 0.03;
+	$a->transport = $scripted([ [ 'tool_use', [ $tool('t1', [ 'steps' => $fixed, 'connections' => $conn ]) ] ], [ 'tool_use', [ $tool('t2', [ 'steps' => $fixed, 'connections' => $conn ]) ] ],
+	    [ 'end_turn', [ [ 'type' => 'text', 'text' => 'never' ] ] ] ], $sent);
+	$r = $a->ask([], 'x', $existing);
+	$credits = $a->credits;
+	$a->rates = $a->budget = null;
+	$this->check('credits reserved used up: stopped after 2 turns, the credits counted', [ 2, 'the credits reserved for this request are used up', 0.035 ], [ count($sent), $r['stopped'], round($credits, 6) ]);
 
 	//CLD: 2026-10-19T17:02:48+03:00: a setting the model leaves wrong: the steps are applied, the setting is for the person; a refusal every time: said in the answer
 	$a->transport = $scripted([ [ 'tool_use', [ $tool('t1', [ 'steps' => $steps, 'connections' => $conn ]) ] ], [ 'end_turn', [ [ 'type' => 'text', 'text' => 'Built it.' ] ] ] ], $sent);

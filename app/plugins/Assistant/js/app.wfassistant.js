@@ -175,7 +175,11 @@ window.app.WfAssistant = (function() {
 		//CLD: 2026-10-19T17:02:48+03:00: said plainly: the answer alone may read as if something was built
 		change = `<div class="mt-1 pt-1 border-top small text-muted"><i class="bi bi-dash-circle me-1"></i>The canvas was not changed</div>`;
 	    }
-	    return `<div class="mb-2"><div class="wfa-msg wfa-bot rounded-3 px-2 py-1 small"><div>${format(m.text)}</div>${change}</div></div>`;
+	    //CLD: 2026-10-22T15:00:00+03:00: System: the credits the answer used, and those left
+	    let credits = '';
+	    if (m.credits)
+		credits = `<div class="mt-1 text-muted" style="font-size: .75rem"><i class="bi bi-coin me-1"></i>&minus;${esc(m.credits)} credit${m.credits === 1 ? '' : 's'}${m.creditsLeft != null ? ` &middot; ${esc(m.creditsLeft)} left` : ''}</div>`;
+	    return `<div class="mb-2"><div class="wfa-msg wfa-bot rounded-3 px-2 py-1 small"><div>${format(m.text)}</div>${change}${credits}</div></div>`;
 	}
 
 	render() {
@@ -254,6 +258,11 @@ window.app.WfAssistant = (function() {
 		if (this.xhr !== req)
 		    return;
 		const m = { role: 'assistant', text: resp.reply || '' };
+		//CLD: 2026-10-22T15:00:00+03:00: System: the credits used (AssistantController::ask)
+		if (resp.credits) {
+		    m.credits = resp.credits;
+		    m.creditsLeft = resp.credits_left;
+		}
 		if (Array.isArray(resp.nodes)) {
 		    //the canvas was changed meanwhile: the person decides
 		    if (JSON.stringify(this.designer().getNodes()) !== sent && !confirm('You changed the canvas while the assistant was working. Replace it with the assistant\'s version?')) {
