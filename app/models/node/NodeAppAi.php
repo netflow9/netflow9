@@ -18,6 +18,8 @@ what the AI steps share (Claude - NodeAppClaude, OpenAI - NodeAppOpenAI; not a s
 	The agent loop: the model is called, the tools it asks for are run and their results sent back, until it answers (at most `maxRounds` calls).
 	    The provider classes build the requests: startConversation(), callModel(), addToolResults().
 	The variable (default `ai`): { text, json, model, stop_reason, rounds, tool_calls: [ { tool, arguments, error } ], usage: { input_tokens, output_tokens } }; on error { error }
+	//CLD: 2026-10-23T01:10:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page or an HTTP request; in an email write
+	//{{ markdown(ai.text) }} (an email escapes {{ ai.html }})
 */
 
 namespace models\node;
@@ -287,10 +289,12 @@ abstract class NodeAppAi extends \models\WfNode {
     public static function outputVariables($config) {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'ai') : 'ai';
 	return \util\Validator::isIdentifier($name) ? [ $name => [ 'type' => 'object',
-	    'info' => 'the answer: { text, json, model, stop_reason, rounds, tool_calls, usage }; on error { error }',
+	    'info' => 'the answer: { text, html, json, model, stop_reason, rounds, tool_calls, usage }; on error { error }',
 	    //CLD: 2026-10-13T12:34:29+03:00: the fields and their types (suggested after `ai.`; was a list of names)
 	    'fields' => [
-		'text' => [ 'type' => 'string', 'info' => 'the answer' ], 'json' => [ 'type' => 'any', 'info' => 'the answer as JSON (answer: JSON)' ], 'model' => [ 'type' => 'string' ], 'stop_reason' => [ 'type' => 'string' ],
+		'text' => [ 'type' => 'string', 'info' => 'the answer' ],
+		//CLD: 2026-10-23T01:10:00+03:00: the answer's Markdown as HTML
+		'html' => [ 'type' => 'string', 'info' => 'the answer as safe HTML (its Markdown converted); in an email use {{ markdown(ai.text) }}' ], 'json' => [ 'type' => 'any', 'info' => 'the answer as JSON (answer: JSON)' ], 'model' => [ 'type' => 'string' ], 'stop_reason' => [ 'type' => 'string' ],
 		'rounds' => [ 'type' => 'number' ], 'tool_calls' => [ 'type' => 'array', 'items' => [ 'type' => 'object', 'fields' => [ 'tool' => [ 'type' => 'string' ], 'arguments' => [ 'type' => 'object' ], 'error' => [ 'type' => 'boolean' ] ] ] ],
 		'usage' => [ 'type' => 'object', 'fields' => [ 'input_tokens' => [ 'type' => 'number' ], 'output_tokens' => [ 'type' => 'number' ] ] ], 'error' => [ 'type' => 'string', 'info' => 'on error only' ],
 	    ] ] ] : [];
@@ -440,7 +444,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	    throw new \ErrorException("the model did not finish in {$maxRounds} rounds (raise Rounds)");
 
 	$text = trim((string)$answer['text']);
-	$result = [ 'text' => $text, 'json' => null, 'model' => $answer['model'], 'stop_reason' => $answer['stop_reason'], 'rounds' => min($round, $maxRounds),
+	//CLD: 2026-10-23T01:10:00+03:00: + html (util\Markdown)
+	$result = [ 'text' => $text, 'html' => \util\Markdown::toHtml($text), 'json' => null, 'model' => $answer['model'], 'stop_reason' => $answer['stop_reason'], 'rounds' => min($round, $maxRounds),
 	    'tool_calls' => $calls, 'usage' => $usage ];
 	if ($json) {
 	    $clean = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $text);
