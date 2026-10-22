@@ -6,6 +6,8 @@ class Identity {
 
     public $reason = null;
     public $data = [];
+    //CLD: 2026-10-22T23:00:00+03:00: users of a suspended account may sign in (only a super-admin's "view as": plugins\Admin)
+    public $allowSuspended = false;
     //CLD: 2026-10-21T20:10:00+03:00: the users (of several accounts) the name and password of authenticate() fit, when more than one
     public $choices = [];
 
@@ -21,6 +23,11 @@ class Identity {
     public function __auth($user) {
 	if ($user->state != 'active')
 	    return false;
+	//CLD: 2026-10-22T23:00:00+03:00: the account suspended (models\Account::isSuspended): no sign-in
+	if (!$this->allowSuspended && \models\Account::isSuspended($user->aid)) {
+	    $this->reason = \V::t('This account is suspended: contact the administrator');
+	    return false;
+	}
 
 	$this->data = $user->data();
 	//CLD: 2026-10-10T09:14:41+03:00: never the encrypted fields (e.g. tfa_secret): the identity data goes into the session (stored in the database)

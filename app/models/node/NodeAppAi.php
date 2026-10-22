@@ -11,6 +11,8 @@ what the AI steps share (Claude - NodeAppClaude, OpenAI - NodeAppOpenAI; not a s
 	the answer as text or JSON (an optional JSON schema),
 	tools the model may use - this project's tools (util\McpTools, run directly, without permission checks: the workflow's own step) and the tools of MCP server credentials(util\McpClient) -,
 	//CLD: 2026-10-20T23:40:00+03:00: this project's tools come from the plugins (util\MCPTools; the SysMCPTools plugin gives its MCP server's tools), none without them
+	//CLD: 2026-10-22T22:00:00+03:00: + the installation's tool servers (`servers`: MCP servers the plugins run on this machine, e.g. a web browser - the LocalMCP plugin), those the
+	//administrator enabled for the account (hook ai:mcp-servers, localServers()); one session each per run, closed after it
 	rounds, max tokens, timeout, the variable, on error (fail | the `error` output).
 	//CLD: 2026-10-17T21:00:54+03:00: + images: project image files sent with the prompt; images in tool results (read_image, MCP servers' image content) go to the model as images too
 	The agent loop: the model is called, the tools it asks for are run and their results sent back, until it answers (at most `maxRounds` calls).
@@ -57,6 +59,17 @@ abstract class NodeAppAi extends \models\WfNode {
 	return \util\MCPTools::all();
     }
 
+    //CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers account $aid may use, given by the plugins (hook `ai:mcp-servers`: its arguments are an \ArrayObject the
+    //plugin adds them to, and $aid): [ id => [ id, label, description, open: fn(int $timeout) => an MCP client (initialize, listTools, callTool, close: as util\McpClient),
+    //tools: the tool names the model may use (null: all the server lists) ] ]. $aid null: none (outside an account)
+    public static function localServers($aid) {
+	if (empty($aid))
+	    return [];
+	$servers = new \ArrayObject();
+	\V::app()->hooks->applyHook('ai:mcp-servers', [ $servers, (string)$aid ]);
+	return $servers->getArrayCopy();
+    }
+
     //CLD: 2026-10-17T21:00:54+03:00: image file $f as [ mimeType, data (base64) ]; \ErrorException when it is not an image the models read (File::$imageMimeTypes) or is too large
     //CLD: 2026-10-20T23:40:00+03:00: here (was util\McpTools::fileImage: the AI steps send images without the SysMCPTools plugin)
     public static function fileImage($f) {
@@ -89,6 +102,10 @@ abstract class NodeAppAi extends \models\WfNode {
 	$tools = [];
 	foreach(static::projectTools() as $t)
 	    $tools[$t['name']] = $t['title'] . ' (' . $t['name'] . ')';
+	//CLD: 2026-10-22T22:00:00+03:00: the installation's tool servers of the account (designer)
+	$servers = [];
+	foreach(static::localServers(\V::app()->config('app.mode') == 'web' ? (\V::app()->config('rt.account')->_id ?? null) : null) as $id => $srv)
+	    $servers[$id] = $srv['label'];
 
 	return array_merge([
 	    [
@@ -189,6 +206,17 @@ abstract class NodeAppAi extends \models\WfNode {
 		'help' => 'MCP server credentials of the project whose tools the model may use',
 		'ui' => [ 'placeholder' => 'None' ],
 	    ],
+	    //CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers (localServers)
+	    [
+		'key' => 'servers',
+		'type' => 'select',
+		'multiple' => true,
+		'choices' => $servers,
+		'label' => 'Tool servers',
+		'default' => [],
+		'help' => 'Tools this installation runs for the account (e.g. a web browser); each run gets its own session, closed after it',
+		'ui' => [ 'placeholder' => $servers ? 'None' : 'None enabled for this account' ],
+	    ],
 	    [
 		'key' => 'maxRounds',
 		'type' => 'number',
@@ -284,6 +312,15 @@ abstract class NodeAppAi extends \models\WfNode {
 		break;
 	    }
 	}
+	//CLD: 2026-10-22T22:00:00+03:00: the tool servers: enabled for the workflow's account
+	$enabled = static::localServers($this->workflow->aid ?? null);
+	foreach((array)$this->cfg('servers', []) as $id) {
+	    if (!isset($enabled[(string)$id])) {
+		$this->errors('config', "Tool servers: `{$id}` is not enabled for this account");
+		$valid = false;
+		break;
+	    }
+	}
 	$known = array_keys(static::projectTools());
 	foreach((array)$this->cfg('tools', []) as $name) {
 	    if (!in_array($name, $known, true)) {
@@ -358,65 +395,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	//CLD: 2026-10-17T21:00:54+03:00: the images sent with the prompt
 	$images = $this->promptImages($project);
 
-	//the tools: [ name => [ name, description, schema (object), run: fn(args) => [ text, isError ] ] ]
-	//CLD: 2026-10-17T21:00:54+03:00: run: fn(args) => [ text, isError, images: [ [ mimeType, data ] ] ]
-	$tools = [];
-	$wanted = array_map('strval', (array)$this->cfg('tools', []));
-	foreach(static::projectTools() as $t) {
-	    if (!in_array($t['name'], $wanted, true))
-		continue;
-	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
-	    $tools[$t['name']] = [ 'name' => $t['name'], 'description' => $t['description'], 'schema' => json_decode(\util\JSON::encode($t['inputSchema'])),
-		'run' => function(array $args) use ($t, $project) {
-		    try {
-			//CLD: 2026-10-17T21:00:54+03:00: the images of the result (read_image) apart
-			//CLD: 2026-10-20T23:40:00+03:00: the tool's run (projectTools; was util\McpTools::images(call()))
-			[ $result, $images ] = ($t['run'])($args, $project);
-			return [ json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), false, $images ];
-		    } catch (\ErrorException $e) {
-			return [ $e->getMessage(), true, [] ];
-		    }
-		} ];
-	}
-	foreach((array)$this->cfg('mcp', []) as $i => $id) {
-	    $mcp = \models\Credential::findFor($this->exec, (string)$id, 'mcp');
-	    if (empty($mcp))
-		throw new \ErrorException('an MCP server credential is no longer available');
-	    $client = $mcp->client((int)$this->cfg('timeout', 300));
-	    $clients[] = $client;
-	    try {
-		$client->initialize();
-		$list = $client->listTools();
-	    } catch (\Exception $e) {
-		throw new \ErrorException("MCP server `{$mcp->name}`: " . $e->getMessage());
-	    }
-	    //names unique and as the providers want them (letters, digits, _ -, at most 64): mcp<n>_<tool>
-	    foreach($list as $t) {
-		$tn = substr('mcp' . ($i + 1) . '_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $t['name']), 0, 64);
-		$tools[$tn] = [ 'name' => $tn, 'description' => "[{$mcp->name}] " . ($t['description'] ?: ($t['title'] ?? $t['name'])), 'schema' => $t['inputSchema'],
-		    'run' => function(array $args) use ($client, $t) {
-			$r = $client->callTool($t['name'], $args);
-			$parts = [];
-			$images = [];
-			foreach((array)($r['content'] ?? []) as $c) {
-			    //CLD: 2026-10-17T21:00:54+03:00: image content goes as an image (was its JSON, base64 included), when it is a type the models read and not too large
-			    if (($c['type'] ?? '') === 'image') {
-				$mime = strtolower((string)($c['mimeType'] ?? ''));
-				$size = (int)(strlen((string)($c['data'] ?? '')) * 3 / 4);
-				if (in_array($mime, self::IMAGE_TYPES, true) && $size <= self::MAX_IMAGE) //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::MAX_IMAGE)
-				    $images[] = [ $mime, (string)$c['data'] ];
-				else
-				    $parts[] = "[an image ({$mime}, {$size} bytes) the model cannot be sent]";
-				continue;
-			    }
-			    $parts[] = ($c['type'] ?? '') === 'text' ? (string)$c['text'] : json_encode($c, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-			}
-			if (!$parts && !$images && isset($r['structuredContent']))
-			    $parts[] = json_encode($r['structuredContent'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-			return [ implode("\n", $parts), !empty($r['isError']), $images ];
-		    } ];
-	    }
-	}
+	//CLD: 2026-10-22T22:00:00+03:00: collectTools() (was here)
+	$tools = $this->collectTools($clients, $project);
 
 	$state = $this->startConversation($cred, $system, $prompt, $json ? ($schema ?: true) : null, $images);
 	$maxRounds = max(1, min(self::MAX_ROUNDS, (int)$this->cfg('maxRounds', 10)));
@@ -471,6 +451,98 @@ abstract class NodeAppAi extends \models\WfNode {
 	}
 	$this->exec->log($this->wfid, static::$label . ": {$answer['model']}, {$result['rounds']} round(s), " . count($calls) . " tool call(s), {$usage['input_tokens']} + {$usage['output_tokens']} tokens");
 	return $result;
+    }
+
+    //CLD: 2026-10-22T22:00:00+03:00: new (was in run()): the tools the model may use: [ name => [ name, description, schema (object), run: fn(args) => [ text, isError, images ] ] ];
+    //$clients gets the MCP sessions opened (closed by execute()). The project's tools, the MCP server credentials' tools (mcp<n>_<tool>), the installation's tool servers' tools
+    //(<server>_<tool>: only those the server allows)
+    protected function collectTools(array &$clients, $project) {
+	//the tools: [ name => [ name, description, schema (object), run: fn(args) => [ text, isError ] ] ]
+	//CLD: 2026-10-17T21:00:54+03:00: run: fn(args) => [ text, isError, images: [ [ mimeType, data ] ] ]
+	$tools = [];
+	$wanted = array_map('strval', (array)$this->cfg('tools', []));
+	foreach(static::projectTools() as $t) {
+	    if (!in_array($t['name'], $wanted, true))
+		continue;
+	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+	    $tools[$t['name']] = [ 'name' => $t['name'], 'description' => $t['description'], 'schema' => json_decode(\util\JSON::encode($t['inputSchema'])),
+		'run' => function(array $args) use ($t, $project) {
+		    try {
+			//CLD: 2026-10-17T21:00:54+03:00: the images of the result (read_image) apart
+			//CLD: 2026-10-20T23:40:00+03:00: the tool's run (projectTools; was util\McpTools::images(call()))
+			[ $result, $images ] = ($t['run'])($args, $project);
+			return [ json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), false, $images ];
+		    } catch (\ErrorException $e) {
+			return [ $e->getMessage(), true, [] ];
+		    }
+		} ];
+	}
+	$timeout = (int)$this->cfg('timeout', 300);
+	foreach((array)$this->cfg('mcp', []) as $i => $id) {
+	    $mcp = \models\Credential::findFor($this->exec, (string)$id, 'mcp');
+	    if (empty($mcp))
+		throw new \ErrorException('an MCP server credential is no longer available');
+	    $client = $mcp->client($timeout);
+	    $clients[] = $client;
+	    //names unique and as the providers want them (letters, digits, _ -, at most 64): mcp<n>_<tool>
+	    $tools += $this->mcpTools($client, 'mcp' . ($i + 1), "MCP server `{$mcp->name}`", (string)$mcp->name, null);
+	}
+	//CLD: 2026-10-22T22:00:00+03:00: the installation's tool servers enabled for the account: a session each (the server's open() may refuse: too many at once)
+	$enabled = static::localServers($this->exec->aid ?? null);
+	foreach((array)$this->cfg('servers', []) as $id) {
+	    $srv = $enabled[(string)$id] ?? null;
+	    if ($srv === null)
+		throw new \ErrorException("the tool server `{$id}` is not enabled for this account");
+	    try {
+		$client = ($srv['open'])($timeout);
+	    } catch (\Exception $e) {
+		throw new \ErrorException("{$srv['label']}: " . $e->getMessage());
+	    }
+	    $clients[] = $client;
+	    $tools += $this->mcpTools($client, (string)$id, (string)$srv['label'], (string)$srv['label'], $srv['tools'] ?? null);
+	}
+	return $tools;
+    }
+
+    //CLD: 2026-10-22T22:00:00+03:00: new (was in run(), for the MCP server credentials): the tools of MCP session $client (initialized here) named <$prefix>_<tool>, described with [$label];
+    //$allow: the tool names offered (null: all); $what names the server in errors
+    protected function mcpTools($client, $prefix, $what, $label, $allow) {
+	try {
+	    $client->initialize();
+	    $list = $client->listTools();
+	} catch (\Exception $e) {
+	    throw new \ErrorException("{$what}: " . $e->getMessage());
+	}
+	$tools = [];
+	foreach($list as $t) {
+	    if ($allow !== null && !in_array($t['name'], $allow, true))
+		continue;
+	    //names unique and as the providers want them (letters, digits, _ -, at most 64)
+	    $tn = substr(preg_replace('/[^A-Za-z0-9_-]/', '_', $prefix . '_' . $t['name']), 0, 64);
+	    $tools[$tn] = [ 'name' => $tn, 'description' => "[{$label}] " . ($t['description'] ?: ($t['title'] ?? $t['name'])), 'schema' => $t['inputSchema'],
+		'run' => function(array $args) use ($client, $t) {
+		    $r = $client->callTool($t['name'], $args);
+		    $parts = [];
+		    $images = [];
+		    foreach((array)($r['content'] ?? []) as $c) {
+			//CLD: 2026-10-17T21:00:54+03:00: image content goes as an image (was its JSON, base64 included), when it is a type the models read and not too large
+			if (($c['type'] ?? '') === 'image') {
+			    $mime = strtolower((string)($c['mimeType'] ?? ''));
+			    $size = (int)(strlen((string)($c['data'] ?? '')) * 3 / 4);
+			    if (in_array($mime, self::IMAGE_TYPES, true) && $size <= self::MAX_IMAGE) //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::MAX_IMAGE)
+				$images[] = [ $mime, (string)$c['data'] ];
+			    else
+				$parts[] = "[an image ({$mime}, {$size} bytes) the model cannot be sent]";
+			    continue;
+			}
+			$parts[] = ($c['type'] ?? '') === 'text' ? (string)$c['text'] : json_encode($c, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		    }
+		    if (!$parts && !$images && isset($r['structuredContent']))
+			$parts[] = json_encode($r['structuredContent'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		    return [ implode("\n", $parts), !empty($r['isError']), $images ];
+		} ];
+	}
+	return $tools;
     }
 
     //CLD: 2026-10-17T21:00:54+03:00: the image files of setting Images (file ids: one, a list, objects with `id` / `file` - e.g. an attachment -, or text with ids) of project $project:

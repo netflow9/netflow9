@@ -237,7 +237,9 @@ class DaemonCommand extends \sys\BaseController {
 
 	//$nin also matches events without aid / project (system work: not limited)
 	$full = fn($counts, $limit) => $limit > 0 ? array_map(fn($id) => \V::app()->om->to_oid($id), array_keys(array_filter($counts, fn($n) => $n >= $limit))) : [];
-	if ($aids = $full($per_aid, (int)$this->config['max-per-account']))
+	//CLD: 2026-10-22T23:00:00+03:00: + the suspended accounts (models\Account::isSuspended): their jobs wait in the queue
+	$aids = array_merge($full($per_aid, (int)$this->config['max-per-account']), array_map(fn($id) => \V::app()->om->to_oid($id), array_keys(\models\Account::suspendedIds())));
+	if ($aids)
 	    $query['aid'] = [ '$nin' => $aids ];
 	if ($projects = $full($per_project, (int)$this->config['max-per-project']))
 	    $query['project'] = [ '$nin' => $projects ];

@@ -75,6 +75,13 @@ class Boot {
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
 	}
 
+	//CLD: 2026-10-22T23:00:00+03:00: a suspended account (state `disabled`) is signed out at once, unless a super-admin is viewing it (session `impersonator`: plugins\Admin)
+	if ($account->state === 'disabled' && empty($_SESSION['impersonator'])) {
+	    \V::app()->log->info('Boot: signed out user ' . \V::app()->user->_id . ': the account is suspended');
+	    \V::app()->user->logout();
+	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	}
+
 	\V::app()->config('rt.account', $account);
 
 	//CLD: 2026-10-21T23:00:00+03:00: the account's session limits (Account `session_idle`, minutes, and `session_max`, hours), for every session, "remember me" too
@@ -114,6 +121,9 @@ class Boot {
     //only set it up (MFA_SETUP_ROUTES): pages go to the profile, other requests (ajax) are refused
     public function enforce_mfa() {
 	if (\V::app()->user->isGuest || empty($this->user) || !empty($this->user->tfa_secret))
+	    return;
+	//CLD: 2026-10-22T23:00:00+03:00: not while a super-admin views the account (they passed their own 2FA; the account's user may have none)
+	if (!empty($_SESSION['impersonator']))
 	    return;
 	if (empty(\V::app()->config('rt.account')->enforce_mfa ?? null))
 	    return;

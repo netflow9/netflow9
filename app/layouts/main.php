@@ -6,6 +6,8 @@ require(dirname(__FILE__) . '/_scripts.php');
 ob_start();
 ?>
 
+<?php //CLD: 2026-10-22T23:00:00+03:00: the plugins' notices over the page (outside the content pjax replaces; e.g. the Admin plugin's "viewing as" bar) ?>
+<?php \V::app()->hooks->applyHook('layout:page-top'); ?>
 <main class="app-shell">
     <!-- SIDEBAR -->
     <aside class="sidebar">

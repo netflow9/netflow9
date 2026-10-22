@@ -46,6 +46,30 @@ class Plugin {
 	    );
 	}
 
+	//CLD: 2026-10-22T23:00:00+03:00: the administration (the Admin plugin): an account's System credits (plan, top-ups, ledger: controllers/AdminController), the System server and the
+	//credit rates; read across the accounts (the super-admin's own account is not the one shown)
+	\V::app()->hooks->addHook('admin:account-summary', function($account, \ArrayObject $items) {
+	    $w = \V::app()->om->acrossAccounts(fn() => models\AssistantWallet::current($account->_id));
+	    if ($w['v'] > 0)
+		$items[] = number_format(models\AssistantWallet::balance($w)) . ' credits';
+	});
+	\V::app()->hooks->addHook('admin:account-panels', function($account) {
+	    $om = \V::app()->om;
+	    $data = $om->acrossAccounts(fn() => [
+		'account' => $account,
+		'settings' => $om->findOne('AssistantSettings', [ 'aid' => $account->_id ]),
+		'wallet' => models\AssistantWallet::current($account->_id),
+		'ledger' => iterator_to_array(models\AssistantCreditLedger::recent($account->_id, 10), false),
+		'usage' => models\AssistantUsage::current($account->_id),
+		'system' => models\AssistantSettings::system(),
+	    ]);
+	    echo \V::app()->view->renderFile('/plugins/Assistant/views/admin/account_panel', $data);
+	});
+	\V::app()->hooks->addHook('admin:installation-panels', function() {
+	    echo \V::app()->view->renderFile('/plugins/Assistant/views/admin/installation_panel', [ 'system' => models\AssistantSettings::system(),
+		'table' => models\AssistantWallet::rateTable() ]);
+	});
+
 	\V::app()->hooks->addHook('workflow:designer-toolbar', [ $this, 'designerToolbar' ]);
 	\V::app()->hooks->addHook('workflow:designer-panels', [ $this, 'designerPanel' ]);
 	\V::app()->hooks->addHook('layout:settings-menu', function() {

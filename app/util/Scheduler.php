@@ -27,6 +27,9 @@ class Scheduler {
 		$versionNodes[(string)$v->_id] = is_array($v->nodes) ? $v->nodes : [];
 	}
 	foreach($wfs as $wf) {
+	    //CLD: 2026-10-22T23:00:00+03:00: not for a suspended account
+	    if (\models\Account::isSuspended($wf['aid'] ?? null))
+		continue;
 	    foreach(self::scheduleNodes($versionNodes[(string)$wf['version']] ?? [], $types) as $node) {
 		$cfg = is_array($node['config'] ?? null) ? $node['config'] : [];
 		if (!\models\WfSchedule::matches($cfg, $t))
@@ -59,6 +62,9 @@ class Scheduler {
 
 	$queued = 0;
 	foreach(\V::app()->om->find('WfExecution', [ 'state' => 'sleep', 'wake_at' => [ '$lte' => $now ] ], [ 'projection' => [ 'aid' => 1, 'project' => 1, 'wake_at' => 1 ] ]) as $exe) {
+	    //CLD: 2026-10-22T23:00:00+03:00: a suspended account's executions keep sleeping (woken after it is reactivated)
+	    if (\models\Account::isSuspended($exe->aid))
+		continue;
 	    $id = \models\Job::submit('\util\Scheduler::resume', [
 		'exe' => (string)$exe->_id,
 	    ], [

@@ -52,7 +52,8 @@ class Account extends \sys\BaseModel {
 		'choices' => [
 		    'incomplete' => 'Incomplete',
 		    'active' => 'Active',
-		    'disabled' => 'Disabled',
+		    //CLD: 2026-10-22T23:00:00+03:00: suspended by a super-admin (the Admin plugin): no sign-in, no new executions, its queued jobs wait (isSuspended)
+		    'disabled' => 'Suspended',
 		],
 		'showInForms' => false,
 	    ],
@@ -139,6 +140,23 @@ class Account extends \sys\BaseModel {
 
     //CLD: 2026-10-16T12:14:57+03:00: the system roles of a new account (data\SysRoles: Owner, Member, Participant); [ iname => Role ] (was written in the seed command; also used by
     //the sign-up)
+    //CLD: 2026-10-22T23:00:00+03:00: the ids of the suspended accounts (state `disabled`), read again after 30 s (the daemon runs for days; $fresh: now): [ id => true ]
+    public static function suspendedIds($fresh = false) {
+	static $ids = null, $at = 0;
+	if ($fresh || $ids === null || time() - $at >= 30) {
+	    $ids = [];
+	    foreach(\V::app()->om->acrossAccounts(fn() => iterator_to_array(\V::app()->om->find('Account', [ 'state' => 'disabled' ], [ 'projection' => [ '_id' => 1 ] ]), false)) as $a)
+		$ids[(string)$a->_id] = true;
+	    $at = time();
+	}
+	return $ids;
+    }
+
+    //CLD: 2026-10-22T23:00:00+03:00: whether account $aid is suspended
+    public static function isSuspended($aid) {
+	return !empty($aid) && isset(self::suspendedIds()[(string)$aid]);
+    }
+
     public function setupRoles() {
 	$roles = [];
 	foreach(\data\SysRoles::$data as $def) {
