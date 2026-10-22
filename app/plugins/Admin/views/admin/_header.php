@@ -1,8 +1,3 @@
-<?php
-/*
-    CLD: 2026-10-22T23:00:00+03:00: new: the administration pages' header: breadcrumbs, the tabs ($tab: installation | accounts), the message of the last action (AdminController::flash)
-*/
-?>
 <div class="main-header py-2 px-3">
     <?php
     $exp = new \sys\html\BtnExpandSidebar();
