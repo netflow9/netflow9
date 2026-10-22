@@ -80,6 +80,16 @@ class User extends \sys\BaseModel {
 		//CLD: 2026-10-10T18:54:42+03:00: not a form field (set by the password change / system)
 		'showInForms' => false,
 	    ],
+	    //CLD: 2026-10-22T23:00:00+03:00: a super-admin of the installation (the Admin plugin's pages: every account); set only from the console (./v Admin::admins::grant), never by a form
+	    [
+		'key' => 'superadmin',
+		'type' => 'checkbox',
+		'label' => 'Super-admin',
+		'default' => false,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
+	    ],
 	    //conf_code
 	    [
 		'key' => 'conf_code',

@@ -1,6 +1,8 @@
 <?php
 
 return [
+    //CLD: 2026-10-22T23:00:00+03:00: the installation's administration (super-admins: the accounts, their credits and tool servers, the services); first: the others add their sections
+    'Admin',
     'Registration',
     //CLD: 2026-10-19T20:10:00+03:00: the workflow designer's Assistant (was in the core)
     'Assistant',
@@ -14,4 +16,6 @@ return [
     'GoogleIntegration',
     //CLD: 2026-10-22T00:41:28+03:00: Microsoft: Microsoft 365 Mail (IMAP; was in the core) and the Microsoft Graph credentials and steps (Outlook Mail, Outlook Calendar, OneDrive / SharePoint, Excel, Teams)
     'MicrosoftIntegration',
+    //CLD: 2026-10-22T22:00:00+03:00: the installation's tool servers for the AI steps (MCP servers run on this machine, e.g. a web browser), for the accounts the administrator enables
+    'LocalMCP',
 ];
