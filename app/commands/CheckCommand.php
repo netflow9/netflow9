@@ -2749,7 +2749,7 @@ class CheckCommand extends \sys\BaseController {
 	$pw = $P::servers()['playwright'];
 	$this->check('servers: the browser, without the tools that run code or read files', [ true, false, false, false, false ],
 	    [ in_array('browser_navigate', $pw['tools'], true), in_array('browser_run_code_unsafe', $pw['tools'], true), in_array('browser_evaluate', $pw['tools'], true),
-	    in_array('browser_file_upload', $pw['tools'], true), str_starts_with($pw['url'], 'http://127.0.0.1:') === false ]);
+	    in_array('browser_file_upload', $pw['tools'], true), !in_array(parse_url($pw['url'], PHP_URL_HOST), [ 'localhost', '127.0.0.1' ], true) ]);
 
 	$aid = (string)new \MongoDB\BSON\ObjectId();
 	$other = (string)new \MongoDB\BSON\ObjectId();
