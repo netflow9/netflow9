@@ -54,7 +54,18 @@ if [ "$DRY_RUN" -eq 0 ] && [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-command -v node >/dev/null && command -v npm >/dev/null || { echo "Node.js and npm are needed first"; exit 1; }
+#CLD: 2026-10-22T21:00:00+03:00: the system's Node.js, not root's own (sudo kept root's nvm Node first in PATH: the package went to /root/.nvm/..., which other users cannot read)
+unset NVM_DIR NVM_BIN NVM_INC NPM_CONFIG_PREFIX npm_config_prefix
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+
+command -v node >/dev/null && command -v npm >/dev/null || { echo "Node.js and npm are needed first (system-wide, in /usr/bin or /usr/local/bin)"; exit 1; }
+
+#the global packages must be readable by every user
+GLOBAL_ROOT=$(npm root -g)
+case "$GLOBAL_ROOT" in
+    /root/*|/home/*) echo "npm installs global packages into $GLOBAL_ROOT, a user's own folder: use a system-wide Node.js (npm config get prefix: /usr/local)"; exit 1 ;;
+esac
+echo "Node.js $(node -v) ($(command -v node)), global packages in $GLOBAL_ROOT"
 
 #the project's version: the installed one, else the one package.json asks for (^1.64.0 -> 1.64.0)
 if [ -z "$VERSION" ]; then
