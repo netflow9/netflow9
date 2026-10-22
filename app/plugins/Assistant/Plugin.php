@@ -18,6 +18,17 @@ class Plugin {
 	    'AssistantSettings' => [
 		'class' => __NAMESPACE__ . '\\models\\AssistantSettings',
 	    ],
+	    //CLD: 2026-10-22T14:00:00+03:00: what the Assistant spent per account and month (the monthly budget)
+	    'AssistantUsage' => [
+		'class' => __NAMESPACE__ . '\\models\\AssistantUsage',
+	    ],
+	    //CLD: 2026-10-22T15:00:00+03:00: the System provider's credits per account, and their ledger
+	    'AssistantWallet' => [
+		'class' => __NAMESPACE__ . '\\models\\AssistantWallet',
+	    ],
+	    'AssistantCreditLedger' => [
+		'class' => __NAMESPACE__ . '\\models\\AssistantCreditLedger',
+	    ],
 	]);
 
 	if (\V::app()->config('app.mode') != 'web')

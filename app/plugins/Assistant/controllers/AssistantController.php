@@ -10,6 +10,9 @@
 namespace plugins\Assistant\controllers;
 
 use plugins\Assistant\util\WorkflowAssistant;
+use plugins\Assistant\models\AssistantSettings;
+use plugins\Assistant\models\AssistantUsage;
+use plugins\Assistant\models\AssistantWallet;
 
 class AssistantController extends \sys\BaseController {
 
@@ -48,6 +51,31 @@ class AssistantController extends \sys\BaseController {
 
 	if (!WorkflowAssistant::isReady($settings))
 	    $resp->sendJSON([ 'error' => 'The Assistant is not set up: connect to a server and choose a model in Assistant settings (Settings menu)' ], true, 400);
+	//CLD: 2026-10-22T14:00:00+03:00: the monthly budget (AssistantSettings::budgetOf): refused once it is spent, else what is left limits the request (WorkflowAssistant::$budget)
+	$budget = AssistantSettings::budgetOf($settings);
+	$left = $budget !== null ? $budget - AssistantUsage::current($wf->aid)->cost : null;
+	if ($left !== null && $left <= 0)
+	    $resp->sendJSON([ 'error' => sprintf('The Assistant\'s monthly budget (%.2f USD) is spent: it is available again next month, or raise the budget in Assistant settings (Settings menu)', $budget) ], true, 429);
+	//CLD: 2026-10-22T15:00:00+03:00: System: paid in credits. The model's rates (AssistantWallet::ratesOf), then credits reserved (at most the installation's per-request limit, within
+	//the account's monthly limit): they limit the request (WorkflowAssistant::$budget, in credits); settled after it (settle)
+	$hold = null;
+	$rates = null;
+	if (WorkflowAssistant::providerOf($settings) === 'system') {
+	    $rates = AssistantWallet::ratesOf(WorkflowAssistant::resolve($settings));
+	    if ($rates === null) {
+		\V::app()->log->error('Assistant: no credit rates for the System model: set them in plugins/Assistant/credit_rates.php');
+		$resp->sendJSON([ 'error' => 'The Assistant of this installation is not priced yet: ask its administrator' ], true, 503);
+	    }
+	    try {
+		$hold = AssistantWallet::reserve($wf->aid, (int)(\V::app()->config('assistant.system')['max_credits_per_request'] ?? 0), (int)$settings->credit_cap ?: null);
+	    } catch (\ErrorException $e) {
+		$resp->sendJSON([ 'error' => $e->getMessage() ], true, 503);
+	    }
+	    if ($hold === null)
+		$resp->sendJSON([ 'error' => 'The Assistant\'s credits are used up' . ((int)$settings->credit_cap ? ' (or the account\'s monthly limit is reached)' : '')
+		    . ': the monthly allowance comes back on the 1st; ask who manages the account for a top-up' ], true, 429);
+	    $left = $hold[1];
+	}
 	$project = \V::app()->om->findOne('Project', [ '_id' => $wf->project, 'aid' => $wf->aid ]);
 	if (empty($project))
 	    $resp->sendJSON([ 'error' => 'The project of this workflow is not available' ], true, 400);
@@ -61,13 +89,53 @@ class AssistantController extends \sys\BaseController {
 	//the model can take minutes: the session is not held meanwhile (the designer's other requests, e.g. the Executions panel, go on)
 	session_write_close();
 	set_time_limit(0);
+	$assistant = null;
 	try {
 	    $assistant = new WorkflowAssistant($wf, $project, $settings);
+	    $assistant->budget = $left;
+	    $assistant->rates = $rates;
 	    $result = $assistant->ask(is_array($history) ? $history : [], (string)($data['message'] ?? ''), $nodes);
 	} catch (\ErrorException $e) {
+	    //CLD: 2026-10-22T14:00:00+03:00: the tokens of a failed request were spent too
+	    $this->addUsage($wf->aid, $assistant);
+	    $this->settle($wf, $hold, $assistant);
 	    $resp->sendJSON([ 'error' => $e->getMessage() ], true, 502);
 	}
+	$this->addUsage($wf->aid, $assistant);
+	//CLD: 2026-10-22T15:00:00+03:00: System: the credits it used, and those left
+	if ($hold !== null)
+	    [ $result['credits'], $result['credits_left'] ] = $this->settle($wf, $hold, $assistant);
 	$resp->sendJSON($result);
+    }
+
+    //CLD: 2026-10-22T15:00:00+03:00: new: System: reservation $hold of workflow $wf's account settled with what $assistant used (nothing when no model answered: the reservation is
+    //freed) => [ credits charged, credits left ]
+    private function settle($wf, $hold, $assistant) {
+	if ($hold === null)
+	    return [ 0, null ];
+	$used = $assistant !== null && array_sum($assistant->usage) ? AssistantWallet::charge($assistant->credits) : 0;
+	try {
+	    $left = AssistantWallet::settle($wf->aid, $hold[0], $used, $used ? [
+		'wfid' => (string)$wf->_id, 'uid' => (string)\V::app()->user->_id, 'cost_usd' => round($assistant->cost, 6),
+		'input_tokens' => (int)$assistant->usage['input_tokens'] + (int)$assistant->usage['cache_read_input_tokens'] + (int)$assistant->usage['cache_creation_input_tokens'],
+		'output_tokens' => (int)$assistant->usage['output_tokens'] ] : []);
+	} catch (\Exception $e) {
+	    //the reservation frees itself (AssistantWallet::HOLD_LEASE); the credits are not taken
+	    \V::app()->log->error("Assistant: {$used} credits of account {$wf->aid} not taken: " . $e->getMessage());
+	    $left = null;
+	}
+	return [ $used, $left ];
+    }
+
+    //CLD: 2026-10-22T14:00:00+03:00: new: what $assistant spent (its last ask()) added to account $aid's month (AssistantUsage); nothing when no model answered
+    private function addUsage($aid, $assistant) {
+	if ($assistant === null || !array_sum($assistant->usage))
+	    return;
+	try {
+	    AssistantUsage::add($aid, $assistant->cost, $assistant->usage);
+	} catch (\Exception $e) {
+	    \V::app()->log->error('Assistant: the usage was not recorded: ' . $e->getMessage());
+	}
     }
 
     //the Assistant's settings of the account (models\AssistantSettings;), for who may change the account
@@ -79,15 +147,27 @@ class AssistantController extends \sys\BaseController {
 	$settings = $this->findSettings();
 
 	if ($req->is('post')) {
+	    //CLD: 2026-10-22T14:00:00+03:00: the saved key belongs to the saved provider and Server URL: another one without a new key starts without it (never sent to another server)
+	    $before = [ (string)$settings->provider, trim((string)$settings->url) ];
 	    //the form's fields the user may update (an empty API key keeps the stored one: BaseModel::assign)
 	    $settings->assign($req->data, true);
+	    if ($before !== [ (string)$settings->provider, trim((string)$settings->url) ] && (string)($req->data['api_key'] ?? '') === '')
+		$settings->api_key = '';
 	    if ($settings->validates() && $settings->save())
 		$this->addToast('success', 'OK', 'Assistant settings saved!');
 	    else
 		$this->addToast('error', 'Not saved', 'Check the settings marked in the form');
 	}
 
-	$this->render('settings', compact('settings'));
+	//CLD: 2026-10-22T14:00:00+03:00: + this month's spending, the installation's server (System; null: none)
+	$usage = AssistantUsage::current($settings->aid);
+	$system = AssistantSettings::system();
+	//CLD: 2026-10-22T15:00:00+03:00: System's credits: the wallet, its last entries, the model's rates
+	$wallet = AssistantWallet::current($settings->aid);
+	$ledger = \plugins\Assistant\models\AssistantCreditLedger::recent($settings->aid, 10);
+	$ledger = is_array($ledger) ? $ledger : iterator_to_array($ledger, false);
+	$rates = $system ? AssistantWallet::ratesOf($system) : null;
+	$this->render('settings', compact('settings', 'usage', 'system', 'wallet', 'ledger', 'rates'));
     }
 
     //CLD: 2026-10-20T10:00:00+03:00: the Assistant's settings of the current account; new (not saved) when it has none yet
@@ -110,6 +190,9 @@ class AssistantController extends \sys\BaseController {
 	//CLD: 2026-10-20T10:30:00+03:00: AssistantSettings::PROVIDERS (was WorkflowAssistant::)
 	if (!array_key_exists($provider, \plugins\Assistant\models\AssistantSettings::PROVIDERS))
 	    $resp->sendJSON([ 'error' => 'Choose a provider' ], true, 400);
+	//CLD: 2026-10-22T14:00:00+03:00: System: the installation's model, nothing to connect to (its server and key are never used from here)
+	if ($provider === 'system')
+	    $resp->sendJSON([ 'error' => 'System uses the model of this installation: nothing to connect' ], true, 400);
 	$url = trim((string)($data['url'] ?? ''));
 	if ($url !== '' && !preg_match('~^https?://[^\s?#]+$~i', $url))
 	    $resp->sendJSON([ 'error' => 'Server URL: an http:// or https:// URL, without ? or #' ], true, 400);

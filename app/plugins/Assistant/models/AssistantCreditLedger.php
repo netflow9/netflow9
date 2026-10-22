@@ -1,0 +1,44 @@
+<?php
+
+/*
+    CLD: 2026-10-22T15:00:00+03:00: new: every change of an account's System credits (AssistantWallet): the monthly allowance, a top-up, an expiry, a request's debit, a plan change;
+    with the balance after it and, for a request, the workflow, the person, the tokens and the provider's cost. Written by AssistantWallet only; shown on the settings page
+*/
+
+namespace plugins\Assistant\models;
+
+class AssistantCreditLedger extends \sys\BaseModel {
+    protected static $collection = 'assistant_credit_ledger';
+    public static $indexes = [
+	[ [ 'aid' => 1, 'created_at' => -1 ], [] ],
+    ];
+
+    const TYPES = [ 'allowance' => 'Monthly allowance', 'topup' => 'Top-up', 'expire' => 'Expired', 'debit' => 'Used', 'adjust' => 'Plan changed' ];
+
+    public function getSchema() {
+	return array_merge([
+	    [ 'key' => 'type', 'type' => 'select', 'label' => 'Type', 'choices' => self::TYPES ],
+	    [ 'key' => 'credits', 'type' => 'number', 'label' => 'Credits' ],
+	    [ 'key' => 'balance', 'type' => 'number', 'label' => 'Balance' ],
+	    [ 'key' => 'note', 'type' => 'text', 'label' => 'Note' ],
+	    [ 'key' => 'wfid', 'type' => 'text', 'label' => 'Workflow' ],
+	    [ 'key' => 'uid', 'type' => 'text', 'label' => 'User' ],
+	    [ 'key' => 'input_tokens', 'type' => 'number', 'label' => 'Input tokens' ],
+	    [ 'key' => 'output_tokens', 'type' => 'number', 'label' => 'Output tokens' ],
+	    [ 'key' => 'cost_usd', 'type' => 'number', 'label' => 'Cost (USD)' ],
+	], $this->getSystemSchema());
+    }
+
+    //an entry of account $aid: $e = { type, credits, balance, note, wfid?, uid?, input_tokens?, output_tokens?, cost_usd? }
+    public static function add($aid, array $e) {
+	$m = \V::app()->om->create('AssistantCreditLedger', [ 'aid' => \V::app()->om->to_oid($aid) ]);
+	$m->assign(array_intersect_key($e, array_flip([ 'type', 'credits', 'balance', 'note', 'wfid', 'uid', 'input_tokens', 'output_tokens', 'cost_usd' ])));
+	if (!$m->save())
+	    \V::app()->log->error('AssistantCreditLedger: not saved: ' . json_encode($m->errors()));
+    }
+
+    //the last $n entries of account $aid, the newest first
+    public static function recent($aid, $n = 10) {
+	return \V::app()->om->find('AssistantCreditLedger', [ 'aid' => \V::app()->om->to_oid($aid) ], [ 'sort' => [ 'created_at' => -1 ], 'limit' => $n ]);
+    }
+}
