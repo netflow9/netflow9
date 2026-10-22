@@ -228,7 +228,8 @@ class BaseHtml extends \sys\BaseObject {
 	if (is_array($value))
 	    return array_map(array($this, __FUNCTION__), $value);
 
-	return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+	//CLD: 2026-10-23T01:30:00+03:00: (string): null and numbers too (htmlspecialchars takes only a string: views wrapped it to cast)
+	return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
     }
 
     /**

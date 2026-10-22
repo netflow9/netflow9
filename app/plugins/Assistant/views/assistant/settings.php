@@ -20,7 +20,7 @@ $model = (string)$settings->model;
 $connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/Assistant/assistant/connect'), 'auto' => $model !== '' && (string)$settings->provider !== 'system',
     'system' => $system !== null, 'urls' => AssistantSettings::DEFAULT_URLS ]);
 $budget = AssistantSettings::budgetOf($settings);
-$esc = fn($v) => \V::app()->html->escape((string)$v);
+//CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly (was a $esc wrapper)
 
 //CLD: 2026-10-20T10:00:00+03:00: nowdoc: the script's text as is
 \V::app()->cs->addPageScript("+function(o) {" . <<<'JS'
@@ -133,7 +133,7 @@ JS . "}({$connectJs});");
 		<div class="form-group row mb-2">
 		    <div class="col-sm-9 offset-sm-3 small text-muted">
 			<?php if ($system): ?>
-			<i class="bi bi-hdd-network me-1"></i>The Assistant runs on this installation's server: <?= $esc(AssistantSettings::PROVIDERS[$system->provider]) ?>, model <code><?= $esc($system->model) ?></code>.
+			<i class="bi bi-hdd-network me-1"></i>The Assistant runs on this installation's server: <?= \V::app()->html->escape(AssistantSettings::PROVIDERS[$system->provider]) ?>, model <code><?= \V::app()->html->escape($system->model) ?></code>.
 			No key to set: it is paid with credits<?= $rates ? sprintf(' (%s input / %s output credits per 1M tokens)', rtrim(rtrim(number_format($rates[0], 2), '0'), '.'), rtrim(rtrim(number_format($rates[1], 2), '0'), '.')) : '' ?>.
 			<?php else: ?>
 			<i class="bi bi-exclamation-triangle me-1"></i>This installation provides no Assistant server: choose a provider and set your own key.
@@ -160,7 +160,7 @@ JS . "}({$connectJs});");
 			<?php if ($topups): ?>
 			<ul class="ps-3 mb-0">
 			    <?php foreach($topups as $t): ?>
-			    <li><?= number_format($t['left']) ?> of <?= number_format($t['granted']) ?>, until <?= gmdate('Y-m-d', $t['expires']) ?><?= $t['note'] !== '' ? ' &middot; ' . $esc($t['note']) : '' ?></li>
+			    <li><?= number_format($t['left']) ?> of <?= number_format($t['granted']) ?>, until <?= gmdate('Y-m-d', $t['expires']) ?><?= $t['note'] !== '' ? ' &middot; ' . \V::app()->html->escape($t['note']) : '' ?></li>
 			    <?php endforeach; ?>
 			</ul>
 			<?php endif; ?>
@@ -177,8 +177,8 @@ JS . "}({$connectJs});");
 			    <tbody>
 			    <?php foreach($ledger as $e): ?>
 				<tr>
-				    <td class="text-nowrap"><?= $e->created_at instanceof \MongoDB\BSON\UTCDateTime ? $esc(gmdate('Y-m-d H:i', $e->created_at->toDateTime()->getTimestamp())) : $esc($e->created_at) ?></td>
-				    <td><?= $esc(AssistantCreditLedger::TYPES[$e->type] ?? $e->type) ?><?= (string)$e->note !== '' ? '<div class="text-muted">' . $esc($e->note) . '</div>' : '' ?></td>
+				    <td class="text-nowrap"><?= $e->created_at instanceof \MongoDB\BSON\UTCDateTime ? \V::app()->html->escape(gmdate('Y-m-d H:i', $e->created_at->toDateTime()->getTimestamp())) : \V::app()->html->escape($e->created_at) ?></td>
+				    <td><?= \V::app()->html->escape(AssistantCreditLedger::TYPES[$e->type] ?? $e->type) ?><?= (string)$e->note !== '' ? '<div class="text-muted">' . \V::app()->html->escape($e->note) . '</div>' : '' ?></td>
 				    <td class="text-end <?= $e->credits < 0 ? 'text-danger' : 'text-success' ?>"><?= ($e->credits > 0 ? '+' : '') . number_format((float)$e->credits) ?></td>
 				    <td class="text-end"><?= number_format((float)$e->balance) ?></td>
 				</tr>

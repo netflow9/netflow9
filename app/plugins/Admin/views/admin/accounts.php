@@ -4,7 +4,7 @@
     the plugins' short texts per account (hook admin:account-summary)
 */
 $this->pageTitle = 'Administration::Accounts';
-$e = fn($v) => \V::app()->html->escape((string)$v);
+//CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly (was a $e wrapper)
 $tab = 'accounts';
 $crumbs = [ [ 'label' => 'Accounts' ] ];
 require __DIR__ . '/_header.php';
@@ -13,7 +13,7 @@ $states = [ 'active' => 'text-bg-success', 'disabled' => 'text-bg-danger', 'inco
 
 <div class="main-body p-4">
     <form method="get" action="<?= \V::app()->createUrl('/Admin/admin/accounts') ?>" class="d-flex gap-2 mb-3" style="max-width: 480px">
-	<input type="search" name="q" value="<?= $e($q) ?>" class="form-control form-control-sm" placeholder="Name, hostname, or a user's email" aria-label="Search accounts">
+	<input type="search" name="q" value="<?= \V::app()->html->escape($q) ?>" class="form-control form-control-sm" placeholder="Name, hostname, or a user's email" aria-label="Search accounts">
 	<button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
     </form>
 
@@ -28,16 +28,16 @@ $states = [ 'active' => 'text-bg-success', 'disabled' => 'text-bg-danger', 'inco
 	    ?>
 		<tr>
 		    <td>
-			<a href="<?= \V::app()->createUrl('/Admin/admin/account', [ 'id' => $aid ]) ?>" class="fw-semibold"><?= $e((string)$a->name !== '' ? $a->name : '(no name)') ?></a>
-			<div class="text-muted"><?= $e($a->hostname) ?></div>
+			<a href="<?= \V::app()->createUrl('/Admin/admin/account', [ 'id' => $aid ]) ?>" class="fw-semibold"><?= \V::app()->html->escape((string)$a->name !== '' ? $a->name : '(no name)') ?></a>
+			<div class="text-muted"><?= \V::app()->html->escape($a->hostname) ?></div>
 		    </td>
-		    <td><span class="badge <?= $states[(string)$a->state] ?? 'text-bg-secondary' ?>"><?= $e($a->schema['state']->choices[(string)$a->state] ?? $a->state) ?></span></td>
-		    <td class="text-nowrap"><?= $e(gmdate('Y-m-d', $a->_id->getTimestamp())) ?></td>
+		    <td><span class="badge <?= $states[(string)$a->state] ?? 'text-bg-secondary' ?>"><?= \V::app()->html->escape($a->schema['state']->choices[(string)$a->state] ?? $a->state) ?></span></td>
+		    <td class="text-nowrap"><?= \V::app()->html->escape(gmdate('Y-m-d', $a->_id->getTimestamp())) ?></td>
 		    <td class="text-end"><?= number_format($counts['users'][$aid] ?? 0) ?></td>
 		    <td class="text-end"><?= number_format($counts['projects'][$aid] ?? 0) ?></td>
 		    <td class="text-end"><?= number_format($counts['workflows'][$aid] ?? 0) ?></td>
 		    <td class="text-end"><?= number_format($counts['runs'][$aid] ?? 0) ?></td>
-		    <td class="text-muted"><?= implode(' &middot; ', array_map($e, $also->getArrayCopy())) ?></td>
+		    <td class="text-muted"><?= implode(' &middot; ', \V::app()->html->escape($also->getArrayCopy())) ?></td>
 		</tr>
 	    <?php endforeach; ?>
 	    <?php if (!$accounts): ?>
