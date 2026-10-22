@@ -18,6 +18,9 @@
 //account settings (assistant_openai_model), else the first one the server lists. The provider follows the credential; the loop is the same (turnAnthropic / turnOpenAI)
 //CLD: 2026-10-20T10:00:00+03:00: only the Assistant's settings (models\AssistantSettings: provider, url, api_key, model, effort; credentialOf) are used, no longer a credential
 //of the workflow's project; models(): the models of the settings' server (the settings page's Connect)
+//CLD: 2026-10-22T14:00:00+03:00: bring your own key: the settings' provider (System: the installation's server, AssistantSettings::system; Claude, OpenAI, Gemini, Ollama, Lemonade) is
+//resolved to its server (resolve) and spoken to with its protocol (AssistantSettings::PROTOCOLS: anthropic | openai). The cost of each turn is counted (AssistantSettings::pricesOf);
+//with $budget (USD left this month) the loop stops once it is spent: what was built so far is returned, `stopped` says why
 */
 
 namespace plugins\Assistant\util;
@@ -67,6 +70,17 @@ class WorkflowAssistant {
     private $model;
     private $effort;
     private $provider;
+    //CLD: 2026-10-22T14:00:00+03:00: the API the provider speaks: anthropic | openai (was $provider itself); the prices [ input, output, cache read ] USD per 1M tokens (null: not known)
+    private $protocol;
+    private $prices;
+
+    //CLD: 2026-10-22T14:00:00+03:00: USD that may still be spent by this request (null: no limit); what the last ask() spent: cost (USD), usage (tokens). Set also when ask() fails
+    //CLD: 2026-10-22T15:00:00+03:00: + $rates (System: the credits per 1M tokens, AssistantWallet::ratesOf): then $budget is in credits, and $credits what the last ask() used
+    public $budget = null;
+    public $cost = 0.0;
+    public $usage = [];
+    public $rates = null;
+    public $credits = 0.0;
 
     //the call to the API: fn(array $headers, ?array $body (null: GET), string $path) => object (the decoded answer); null = HTTP (the checks give their own)
     //CLD: 2026-10-19T16:05:12+03:00: + $path (/v1/messages, /chat/completions, /models), GET
@@ -79,29 +93,37 @@ class WorkflowAssistant {
 	$this->wf = $wf;
 	$this->project = $project;
 	$settings = $settings ?? \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
+	//CLD: 2026-10-22T14:00:00+03:00: System: the installation's server
+	$settings = self::resolve($settings);
 
 	$this->provider = self::providerOf($settings);
+	$this->protocol = AssistantSettings::PROTOCOLS[$this->provider];
 	$this->cred = self::credentialOf($settings);
+	$this->prices = AssistantSettings::pricesOf($settings);
 	//CLD: 2026-10-19T16:05:12+03:00: OpenAI-compatible: the model ('' = the server's first, see turnOpenAI); effort is Claude's only
-	if ($this->provider === 'openai') {
+	if ($this->protocol === 'openai') {
 	    $this->model = trim((string)($settings->model ?? ''));
 	    return;
 	}
 	$model = trim((string)($settings->model ?? ''));
 	$this->model = $model !== '' ? $model : AssistantSettings::DEFAULT_MODEL;
-	$this->effort = $settings->effort ?? AssistantSettings::DEFAULT_EFFORT;
+	//CLD: 2026-10-22T14:00:00+03:00: an unknown effort is the default (was sent as it was: the API refuses it)
+	$effort = (string)($settings->effort ?? '');
+	$this->effort = array_key_exists($effort, \models\node\NodeAppClaude::EFFORT) ? $effort : AssistantSettings::DEFAULT_EFFORT;
     }
 
     //CLD: 2026-10-20T10:00:00+03:00: the server of the Assistant's settings $settings (provider, url, api_key) as a credential: baseUrl, httpAuth (Anthropic: x-api-key and
     //anthropic-version, as models\credential\CredentialAnthropic; OpenAI-compatible: Bearer, when there is a key), provides (the provider). Was accountServer (OpenAI-compatible only)
+    //CLD: 2026-10-22T14:00:00+03:00: System: the installation's server (resolve); the headers by the provider's protocol (Gemini, Ollama, Lemonade: Bearer, as OpenAI)
     public static function credentialOf($settings) {
+	$settings = self::resolve($settings);
 	$provider = self::providerOf($settings);
 	$url = trim((string)($settings->url ?? ''));
 	//CLD: 2026-10-20T10:45:00+03:00: AssistantSettings::DEFAULT_URLS (was self::)
 	return new class($provider, $url !== '' ? $url : AssistantSettings::DEFAULT_URLS[$provider], (string)($settings->api_key ?? '')) {
 	    public function __construct(private $provider, public $baseUrl, private $apiKey) {}
 	    public function httpAuth() {
-		if ($this->provider === 'anthropic')
+		if (AssistantSettings::PROTOCOLS[$this->provider] === 'anthropic')
 		    return [ 'headers' => [ 'x-api-key' => $this->apiKey, 'anthropic-version' => \models\credential\CredentialAnthropic::API_VERSION ], 'query' => [] ];
 		return [ 'headers' => $this->apiKey !== '' ? [ 'Authorization' => 'Bearer ' . $this->apiKey ] : [], 'query' => [] ];
 	    }
@@ -110,23 +132,42 @@ class WorkflowAssistant {
     }
 
     //CLD: 2026-10-20T10:00:00+03:00: whether the Assistant can work with $settings: a model was chosen (after a Connect, on the settings page)
+    //CLD: 2026-10-22T14:00:00+03:00: System: when the installation provides a server
     public static function isReady($settings) {
+	if (self::providerOf($settings) === 'system')
+	    return AssistantSettings::systemAvailable();
 	return trim((string)($settings->model ?? '')) !== '';
+    }
+
+    //CLD: 2026-10-22T14:00:00+03:00: new: $settings with the System provider replaced by the installation's server (AssistantSettings::system: its provider, URL, key, model, effort,
+    //prices; the account's own fields are not used); others as they are. Fails when the installation provides none
+    public static function resolve($settings) {
+	if (self::providerOf($settings) !== 'system')
+	    return $settings;
+	$system = AssistantSettings::system();
+	if ($system === null)
+	    throw new \ErrorException('this installation provides no Assistant server: choose a provider and set your key in Assistant settings (Settings menu)');
+	return $system;
     }
 
     //CLD: 2026-10-20T10:00:00+03:00: the models the server of $settings lists (Anthropic: GET /v1/models, OpenAI-compatible: GET /models): [ { id, label } ], in the server's
     //order; \ErrorException when it cannot be reached or refuses the key. $transport: as the instances' (the checks)
+    //CLD: 2026-10-22T14:00:00+03:00: by the provider's protocol; Gemini's ids come as models/<id>: listed without the prefix (its chat completions take both)
     public static function models($settings, $transport = null) {
+	$settings = self::resolve($settings);
 	$provider = self::providerOf($settings);
+	$protocol = AssistantSettings::PROTOCOLS[$provider];
 	$cred = self::credentialOf($settings);
-	$path = $provider === 'anthropic' ? '/v1/models?limit=1000' : '/models';
+	$path = $protocol === 'anthropic' ? '/v1/models?limit=1000' : '/models';
 	$headers = $cred->httpAuth()['headers'];
 	$r = $transport !== null ? $transport($headers, null, $path)
-	    : self::http(rtrim((string)$cred->baseUrl, '/') . $path, $headers, null, $provider === 'anthropic' ? 'Anthropic' : 'The server', self::MODELS_TIMEOUT);
+	    : self::http(rtrim((string)$cred->baseUrl, '/') . $path, $headers, null, self::nameOf($provider), self::MODELS_TIMEOUT);
 	$r = json_decode(\util\JSON::encode($r), true);
 	$models = [];
 	foreach((array)($r['data'] ?? []) as $m) {
 	    $id = is_array($m) ? trim((string)($m['id'] ?? '')) : '';
+	    if ($provider === 'gemini')
+		$id = preg_replace('~^models/~', '', $id);
 	    if ($id === '' || isset($models[$id]))
 		continue;
 	    $name = trim((string)($m['display_name'] ?? ''));
@@ -141,6 +182,20 @@ class WorkflowAssistant {
 	$p = (string)($settings->provider ?? '');
 	//CLD: 2026-10-20T10:30:00+03:00: AssistantSettings' providers (were self::)
 	return array_key_exists($p, AssistantSettings::PROVIDERS) ? $p : AssistantSettings::DEFAULT_PROVIDER;
+    }
+
+    //CLD: 2026-10-22T14:00:00+03:00: who answers, in messages
+    private static function nameOf($provider) {
+	return [ 'anthropic' => 'Anthropic', 'openai' => 'OpenAI', 'gemini' => 'Gemini', 'ollama' => 'Ollama', 'lemonade' => 'Lemonade' ][$provider] ?? 'The server';
+    }
+
+    //CLD: 2026-10-22T14:00:00+03:00: the cost (USD) of $usage (tokens) at the prices; 0 when they are not known (the settings ask for them when there is a budget)
+    private function costOf(array $usage) {
+	if ($this->prices === null)
+	    return 0.0;
+	[ $in, $out, $cacheRead ] = $this->prices;
+	return ((int)($usage['input_tokens'] ?? 0) * $in + (int)($usage['output_tokens'] ?? 0) * $out
+	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * AssistantSettings::CACHE_WRITE) / 1000000;
     }
 
     //one request of the person: $message, after the earlier turns $history ([ { role: user | assistant, text } ]), on the designer's current $nodes (a list or a map)
@@ -163,17 +218,31 @@ class WorkflowAssistant {
 	$tools = $this->tools();
 	//CLD: 2026-10-19T16:05:12+03:00: the provider's turns (turnAnthropic / turnOpenAI: the model's turn added to $messages, as the provider wants them) and tool results
 	//(addResults); was the Anthropic API only, here
-	if ($this->provider === 'openai')
+	if ($this->protocol === 'openai')
 	    array_unshift($messages, [ 'role' => 'system', 'content' => self::systemPrompt() . "\n\n" . self::stepTypesText() ]);
-	$usage = [ 'input_tokens' => 0, 'output_tokens' => 0, 'cache_read_input_tokens' => 0, 'cache_creation_input_tokens' => 0 ];
+	//CLD: 2026-10-22T14:00:00+03:00: $this->usage, $this->cost (were $usage only: also known when the request fails)
+	$this->usage = [ 'input_tokens' => 0, 'output_tokens' => 0, 'cache_read_input_tokens' => 0, 'cache_creation_input_tokens' => 0 ];
+	$this->cost = 0.0;
+	$this->credits = 0.0;
+	$stopped = null;
 	$reply = '';
 	$reminders = 0;
 	for($round = 1; ; $round++) {
+	    //CLD: 2026-10-22T14:00:00+03:00: the budget is spent: no more turns (the last turn's tools ran: the canvas keeps what it built)
+	    //CLD: 2026-10-22T15:00:00+03:00: with credits: the credits reserved for it
+	    if ($round > 1 && $this->budget !== null && ($this->rates !== null ? $this->credits : $this->cost) >= $this->budget) {
+		$stopped = $this->rates !== null ? 'the credits reserved for this request are used up' : 'the monthly budget of the Assistant is spent';
+		$round--;
+		break;
+	    }
 	    if ($round > self::MAX_ROUNDS)
 		throw new \ErrorException('the assistant did not finish in ' . self::MAX_ROUNDS . ' rounds: ask for a smaller change');
-	    $turn = $this->provider === 'openai' ? $this->turnOpenAI($messages, $tools) : $this->turnAnthropic($messages, $tools);
+	    $turn = $this->protocol === 'openai' ? $this->turnOpenAI($messages, $tools) : $this->turnAnthropic($messages, $tools);
 	    foreach($turn['usage'] as $k => $n)
-		$usage[$k] += $n;
+		$this->usage[$k] += $n;
+	    $this->cost += $this->costOf($turn['usage']);
+	    if ($this->rates !== null)
+		$this->credits += \plugins\Assistant\models\AssistantWallet::creditsOf($this->rates, $turn['usage']);
 	    if ($turn['text'] !== '')
 		$reply = $turn['text'];
 	    $results = [];
@@ -207,6 +276,9 @@ class WorkflowAssistant {
 	//CLD: 2026-10-19T17:02:48+03:00: set_workflow refused every time: said, whatever the model's answer claims
 	if (!$this->changed && $this->lastError !== null)
 	    $reply = trim($reply . "\n\n(The canvas was not changed: " . $this->lastError . ')');
+	//CLD: 2026-10-22T14:00:00+03:00: stopped by the budget
+	if ($stopped !== null)
+	    $reply = trim($reply . "\n\n(Stopped before finishing: {$stopped}" . ($this->changed ? '; the canvas has what was built so far' : '') . '.)');
 	return [
 	    'reply' => $reply !== '' ? $reply : ($this->changed ? 'Done: the canvas is updated.' : ''),
 	    'nodes' => $this->changed ? $this->nodes : null,
@@ -214,7 +286,10 @@ class WorkflowAssistant {
 	    //CLD: 2026-10-19T17:02:48+03:00: the settings the person still has to fill in or correct (step title: message)
 	    'to_fix' => $this->changed ? $this->toFix : [],
 	    'rounds' => $round,
-	    'usage' => $usage,
+	    'usage' => $this->usage,
+	    //CLD: 2026-10-22T14:00:00+03:00: the cost of this request (USD), and why it stopped early (null: it finished)
+	    'cost' => round($this->cost, 6),
+	    'stopped' => $stopped,
 	];
     }
 
@@ -318,7 +393,7 @@ TXT;
 
     //CLD: 2026-10-19T16:05:12+03:00: the results of the calls of one turn added to $messages: Anthropic, one user turn of tool_result blocks; OpenAI, one `tool` message per call
     private function addResults(array &$messages, array $results) {
-	if ($this->provider === 'openai') {
+	if ($this->protocol === 'openai') {
 	    foreach($results as [ $id, $text, $isError ])
 		$messages[] = [ 'role' => 'tool', 'tool_call_id' => $id, 'content' => ($isError ? 'ERROR: ' : '') . $text ];
 	    return;
@@ -459,15 +534,17 @@ TXT;
 	if ($this->transport !== null)
 	    return ($this->transport)($headers, $body, $path);
 	//CLD: 2026-10-20T10:00:00+03:00: http() (static: also for models(); was post())
-	return self::http(rtrim((string)$this->cred->baseUrl, '/') . $path, $headers, $body, $this->provider === 'openai' ? 'The server' : 'Anthropic');
+	//CLD: 2026-10-22T14:00:00+03:00: the provider's name (nameOf)
+	return self::http(rtrim((string)$this->cred->baseUrl, '/') . $path, $headers, $body, self::nameOf($this->provider));
     }
 
     //CLD: 2026-10-19T16:52:30+03:00: ?array $body (null: GET, the server's models; was array: the GET of serverModel() failed with a TypeError)
     //CLD: 2026-10-20T10:00:00+03:00: static, + $name: who answers, in messages (was post(), the instance's provider), + $timeout (s)
     private static function http($url, array $headers, ?array $body, $name, $timeout = self::TIMEOUT) {
 	$lines = [ 'Content-Type: application/json', 'Accept: application/json', 'User-Agent: QSM-Workflow' ];
-	foreach($headers as $name => $value)
-	    $lines[] = $name . ': ' . $value;
+	//CLD: 2026-10-22T14:00:00+03:00: $h (was $name: the last header's name replaced who answers, in the messages)
+	foreach($headers as $h => $value)
+	    $lines[] = $h . ': ' . $value;
 	$raw = '';
 	$tooLarge = false;
 	$ch = curl_init($url);

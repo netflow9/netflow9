@@ -47,7 +47,8 @@ $assistantJs = \util\JSON::encode([ 'wfid' => (string)$wf->_id, 'url' => \V::app
 	<div class="p-3 small text-muted">
 	    <p class="mb-2">Describe the workflow you need in your own words, and the Assistant builds its steps and connections here.</p>
 	    <?php //CLD: 2026-10-20T10:00:00+03:00: not set up: Assistant settings (was: add a credential to the project) ?>
-	    <p class="mb-0"><i class="bi bi-plug me-1"></i>It is not set up yet: in <a href="<?= \V::app()->createUrl('/Assistant/assistant/settings') ?>">Assistant settings</a>, connect to Claude or an OpenAI-compatible server and choose a model<?= \V::app()->user->can('Account::update') ? '' : ' (ask who manages the account)' ?>, then reopen this workflow.</p>
+	    <?php //CLD: 2026-10-22T14:00:00+03:00: the providers: System, or your own key (Claude, OpenAI, Gemini, Ollama, Lemonade) ?>
+	    <p class="mb-0"><i class="bi bi-plug me-1"></i>It is not set up yet: in <a href="<?= \V::app()->createUrl('/Assistant/assistant/settings') ?>">Assistant settings</a>, choose System, or a provider (Claude, OpenAI, Gemini, Ollama, Lemonade) with your key, and a model<?= \V::app()->user->can('Account::update') ? '' : ' (ask who manages the account)' ?>, then reopen this workflow.</p>
 	</div>
 	<?php else: ?>
 	    <div class="wfa-messages flex-grow-1 overflow-auto px-3 py-2" style="min-height: 0"></div>
