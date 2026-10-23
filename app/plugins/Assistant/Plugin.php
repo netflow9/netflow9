@@ -28,6 +28,8 @@ class Plugin {
 	    //CLD: 2026-10-23T23:45:00+03:00: the conversation of each workflow (was the browser tab's sessionStorage)
 	    'AssistantChat' => [
 		'class' => __NAMESPACE__ . '\\models\\AssistantChat',
+		//CLD: 2026-10-24T00:04:00+03:00: not in the audit log: deleting a workflow would copy its conversation there (SOC2.md gap 11); the workflow's deletion is recorded
+		'auditLog' => false,
 	    ],
 	]);
 	//CLD: 2026-10-23T23:45:00+03:00: a deleted workflow's conversation goes with it (in every mode: the console deletes workflows too)
