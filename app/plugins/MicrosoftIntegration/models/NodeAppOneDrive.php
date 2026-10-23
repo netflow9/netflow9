@@ -510,32 +510,9 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
     //GET of a signed download address into a temporary stream: [ stream, size, content type ]; \RuntimeException when larger than $maxBytes or refused
     protected function fetch($url, $maxBytes) {
 	$stream = fopen('php://temp/maxmemory:' . (2 * 1024 * 1024), 'w+b');
-	$size = 0;
-	$tooLarge = false;
-	$ch = curl_init($url);
-	curl_setopt_array($ch, [
-	    CURLOPT_HTTPGET => true,
-	    CURLOPT_HTTPHEADER => [ 'User-Agent: NetFlow9-Workflow' ],
-	    CURLOPT_FOLLOWLOCATION => true,
-	    CURLOPT_MAXREDIRS => 5,
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-	    CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
-	    CURLOPT_CONNECTTIMEOUT => 10,
-	    CURLOPT_TIMEOUT => $this->transferTimeout(),
-	    CURLOPT_WRITEFUNCTION => function($ch, $chunk) use ($stream, &$size, &$tooLarge, $maxBytes) {
-		if ($size + strlen($chunk) > $maxBytes) {
-		    $tooLarge = true;
-		    return 0;
-		}
-		$size += strlen($chunk);
-		return fwrite($stream, $chunk);
-	    },
-	]);
-	$ok = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$curlError = $ok === false ? curl_error($ch) : '';
-	$contentType = strtolower(trim(explode(';', (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE))[0]));
-	curl_close($ch);
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+	$r = \util\Http::request('GET', $url, [ 'headers' => [], 'timeout' => $this->transferTimeout(), 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5, 'https' => true ]);
+	[ $status, $size, $contentType, $tooLarge, $curlError ] = [ $r['status'], $r['size'], $r['mime'], $r['tooLarge'], $r['tooLarge'] ? '' : (string)$r['error'] ];
 
 	if ($tooLarge || $curlError !== '' || $status >= 400) {
 	    rewind($stream);
@@ -563,20 +540,9 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	    if ($chunk === '')
 		throw new \RuntimeException('the file could not be read');
 	    $end = $offset + strlen($chunk) - 1;
-	    $ch = curl_init($url);
-	    curl_setopt_array($ch, [
-		CURLOPT_CUSTOMREQUEST => 'PUT',
-		CURLOPT_POSTFIELDS => $chunk,
-		CURLOPT_HTTPHEADER => [ 'User-Agent: NetFlow9-Workflow', 'Expect:', 'Content-Length: ' . strlen($chunk), "Content-Range: bytes {$offset}-{$end}/{$size}" ],
-		CURLOPT_RETURNTRANSFER => true,
-		CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-		CURLOPT_CONNECTTIMEOUT => 10,
-		CURLOPT_TIMEOUT => $this->transferTimeout(),
-	    ]);
-	    $answer = curl_exec($ch);
-	    $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	    $curlError = $answer === false ? curl_error($ch) : '';
-	    curl_close($ch);
+	    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+	    $r = \util\Http::request('PUT', $url, [ 'headers' => [ 'Content-Length: ' . strlen($chunk), "Content-Range: bytes {$offset}-{$end}/{$size}" ], 'body' => $chunk, 'timeout' => $this->transferTimeout(), 'https' => true ]);
+	    [ $answer, $status, $curlError ] = [ $r['body'], $r['status'], (string)$r['error'] ];
 	    $data = json_decode((string)$answer, true);
 	    if ($curlError !== '' || $status >= 400) {
 		//the session is left to expire; a DELETE would end it sooner

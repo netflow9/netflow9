@@ -153,8 +153,6 @@ class McpClient {
     //an HTTP exchange: [ status, content type, body ]; keeps the session id the server gives
     protected function send($method, $msg) {
 	$lines = [ 'Accept: application/json, text/event-stream', 'User-Agent: NetFlow9-Workflow' ];
-	if ($msg !== null)
-	    $lines[] = 'Content-Type: application/json';
 	if ($this->protocolVersion !== null)
 	    $lines[] = 'MCP-Protocol-Version: ' . $this->protocolVersion;
 	if ($this->sessionId !== null)
@@ -162,41 +160,16 @@ class McpClient {
 	foreach($this->headers as $name => $value)
 	    $lines[] = $name . ': ' . str_replace([ "\r", "\n" ], ' ', (string)$value);
 
-	$body = '';
-	$tooLarge = false;
-	$respHeaders = [];
-	$ch = curl_init($this->url);
-	curl_setopt_array($ch, [
-	    CURLOPT_CUSTOMREQUEST => $method,
-	    CURLOPT_HTTPHEADER => $lines,
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-	    CURLOPT_CONNECTTIMEOUT => min(10, $this->timeout),
-	    CURLOPT_TIMEOUT => $this->timeout,
-	    CURLOPT_HEADERFUNCTION => function($ch, $line) use (&$respHeaders) {
-		if (($p = strpos($line, ':')) !== false)
-		    $respHeaders[strtolower(trim(substr($line, 0, $p)))] = trim(substr($line, $p + 1));
-		return strlen($line);
-	    },
-	    CURLOPT_WRITEFUNCTION => function($ch, $chunk) use (&$body, &$tooLarge) {
-		if (strlen($body) + strlen($chunk) > self::MAX_RESPONSE) {
-		    $tooLarge = true;
-		    return 0;
-		}
-		$body .= $chunk;
-		return strlen($chunk);
-	    },
-	]);
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here; the message still util\JSON::encode)
+	$o = [ 'headers' => $lines, 'timeout' => $this->timeout, 'maxBytes' => self::MAX_RESPONSE ];
 	if ($msg !== null)
-	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
-	    curl_setopt($ch, CURLOPT_POSTFIELDS, \util\JSON::encode($msg, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-	$ok = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$error = $ok === false && !$tooLarge ? curl_error($ch) : '';
-	curl_close($ch);
-	if ($tooLarge)
+	    $o['json'] = $msg;
+	$r = Http::request($method, $this->url, $o);
+	if ($r['tooLarge'])
 	    throw new \Exception('the MCP server answered more than ' . (self::MAX_RESPONSE / 1048576) . ' MB');
-	if ($error !== '')
-	    throw new \Exception('no answer from ' . preg_replace('/[?#].*$/', '', $this->url) . ": {$error}");
+	if ($r['error'] !== null)
+	    throw new \Exception('no answer from ' . Http::shown($this->url) . ": {$r['error']}");
+	[ $status, $body, $respHeaders ] = [ $r['status'], $r['body'], $r['headers'] ];
 	//CLD: 2026-10-23T00:20:00+03:00: the credential named only when one was sent (an Authorization or another header given); the server's reason added (was always "refused the
 	//credential", also for a server that refuses the Host header, e.g. Playwright MCP: "Access is only allowed at localhost:8931")
 	if ($status === 401 || $status === 403) {

@@ -131,49 +131,15 @@ class NodeAppDownload extends NodeAppHttp {
 	$maxBytes = max(1, min(self::MAX_SIZE_MB, (int)$this->cfg('maxSize', 25))) * 1024 * 1024;
 	$timeout = max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120)));
 	$stream = fopen('php://temp/maxmemory:' . (2 * 1024 * 1024), 'w+b');
-	$respHeaders = [];
-	$size = 0;
-	$tooLarge = false;
-	$ch = curl_init($url);
-	curl_setopt_array($ch, [
-	    CURLOPT_HTTPGET => true,
-	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: NetFlow9-Workflow' ], array_values($headers)),
-	    CURLOPT_FOLLOWLOCATION => true,
-	    CURLOPT_MAXREDIRS => 5,
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-	    CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-	    CURLOPT_CONNECTTIMEOUT => min(10, $timeout),
-	    CURLOPT_TIMEOUT => $timeout,
-	    CURLOPT_HEADERFUNCTION => function($ch, $line) use (&$respHeaders) {
-		if (preg_match('~^HTTP/\S+\s+\d+~', $line))
-		    $respHeaders = [];
-		elseif (($p = strpos($line, ':')) !== false)
-		    $respHeaders[strtolower(trim(substr($line, 0, $p)))] = trim(substr($line, $p + 1));
-		return strlen($line);
-	    },
-	    CURLOPT_WRITEFUNCTION => function($ch, $chunk) use ($stream, &$size, &$tooLarge, $maxBytes) {
-		if ($size + strlen($chunk) > $maxBytes) {
-		    $tooLarge = true;
-		    return 0;
-		}
-		$size += strlen($chunk);
-		return fwrite($stream, $chunk);
-	    },
-	]);
-	$start = microtime(true);
-	$okExec = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$curlError = $okExec === false ? curl_error($ch) : '';
-	$contentType = strtolower(trim(explode(';', (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE))[0]));
-	$effective = (string)curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-	curl_close($ch);
-	$ms = (int)round((microtime(true) - $start) * 1000);
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here); public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE
+	$r = \util\Http::request('GET', $url, self::guard() + [ 'headers' => array_values($headers), 'timeout' => $timeout, 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5 ]);
+	[ $status, $size, $contentType, $effective, $respHeaders, $ms ] = [ $r['status'], $r['size'], $r['mime'], $r['url'], $r['headers'], $r['time_ms'] ];
 
 	$error = null;
-	if ($tooLarge)
+	if ($r['tooLarge'])
 	    $error = 'the file is larger than ' . (int)($maxBytes / 1048576) . ' MB';
-	elseif ($curlError !== '')
-	    $error = $curlError;
+	elseif ($r['error'] !== null)
+	    $error = $r['error'];
 	elseif ($status >= 400)
 	    $error = "HTTP status {$status}";
 

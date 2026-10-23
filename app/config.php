@@ -58,6 +58,9 @@ function get_config($mode = 'web') {
 	'mail.inbound_domain' => defined('MAIL_INBOUND_DOMAIN') ? MAIL_INBOUND_DOMAIN : null,
 	'mail.from' => defined('MAIL_FROM') ? MAIL_FROM : 'noreply@' . (defined('SMTP_DOMAIN') && SMTP_DOMAIN ? SMTP_DOMAIN : 'localhost'),
 	'app.executions.max_sync' => defined('MAX_SYNC_EXECUTIONS') ? (int)MAX_SYNC_EXECUTIONS : 0,
+	//CLD: 2026-10-23T15:00:00+03:00: the HTTP Request and Download File steps may call this machine and its network (private / internal addresses): HTTP_STEPS_ALLOW_PRIVATE in app.env
+	//(default false: public addresses only, checked by util\Http for each redirect too)
+	'http.steps.allow_private' => defined('HTTP_STEPS_ALLOW_PRIVATE') && filter_var(HTTP_STEPS_ALLOW_PRIVATE, FILTER_VALIDATE_BOOLEAN),
 	'app.base_url' => defined('BASE_URL') ? BASE_URL : null,
 	//CLD: 2026-10-22T14:00:00+03:00: the Assistant's System provider (plugins\Assistant: the server this installation offers to every account; off without ASSISTANT_PROVIDER / ASSISTANT_MODEL):
 	//its provider (anthropic, openai, gemini, ollama, lemonade), Server URL (empty: the provider's own), key, model, effort (Claude),

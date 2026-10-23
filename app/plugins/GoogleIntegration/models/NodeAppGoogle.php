@@ -201,35 +201,12 @@ abstract class NodeAppGoogle extends \models\WfNode {
 
     //one request (https): the answer decoded as JSON ([] when it is not), kept up to $maxBytes; \RuntimeException on no answer or a status of 400 or more
     protected function call($method, $url, array $headers, $body, $maxBytes = self::MAX_ANSWER) {
-	$data = '';
-	$tooLarge = false;
-	$ch = curl_init($url);
-	$opts = [
-	    CURLOPT_CUSTOMREQUEST => $method,
-	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: NetFlow9-Workflow', 'Expect:' ], $headers),
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-	    CURLOPT_CONNECTTIMEOUT => 10,
-	    CURLOPT_TIMEOUT => $this->apiTimeout(),
-	    CURLOPT_ENCODING => '',
-	    CURLOPT_WRITEFUNCTION => function($ch, $chunk) use (&$data, &$tooLarge, $maxBytes) {
-		if (strlen($data) + strlen($chunk) > $maxBytes) {
-		    $tooLarge = true;
-		    return 0;
-		}
-		$data .= $chunk;
-		return strlen($chunk);
-	    },
-	];
-	if ($body !== null)
-	    $opts[CURLOPT_POSTFIELDS] = $body;
-	curl_setopt_array($ch, $opts);
-	$ok = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$curlError = $ok === false ? curl_error($ch) : '';
-	curl_close($ch);
-	if ($tooLarge)
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+	$r = \util\Http::request($method, $url, [ 'headers' => $headers, 'body' => $body, 'timeout' => $this->apiTimeout(), 'maxBytes' => $maxBytes, 'https' => true, 'compressed' => true ]);
+	if ($r['tooLarge'])
 	    throw new \RuntimeException('the answer is larger than ' . (int)($maxBytes / 1048576) . ' MB');
-	$answer = json_decode($data, true);
+	[ $status, $curlError ] = [ $r['status'], (string)$r['error'] ];
+	$answer = json_decode($r['body'], true);
 	if ($curlError !== '' || $status >= 400)
 	    throw new \RuntimeException(self::errorText($status, $answer, $curlError !== '' ? $curlError : "HTTP status {$status}"));
 	return is_array($answer) ? $answer : [];

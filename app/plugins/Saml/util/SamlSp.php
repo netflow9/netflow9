@@ -338,38 +338,14 @@ class SamlSp {
 	if (!filter_var($url, FILTER_VALIDATE_URL) || strtolower($parts['scheme'] ?? '') !== 'https' || empty($parts['host']))
 	    throw new SamlException('not an https:// address');
 	//a public address only (not this machine, nor its network), the one connected to
-	$host = trim($parts['host'], '[]');
-	$ips = filter_var($host, FILTER_VALIDATE_IP) ? [ $host ] : array_merge(array_column(@dns_get_record($host, DNS_A) ?: [], 'ip'), array_column(@dns_get_record($host, DNS_AAAA) ?: [], 'ipv6'));
-	if (!$ips)
-	    throw new SamlException('the host ' . $host . ' is not found');
-	foreach($ips as $ip) {
-	    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE))
-		throw new SamlException('the host ' . $host . ' is not a public address');
-	}
-	$port = (int)($parts['port'] ?? 443);
-	$ch = curl_init($url);
-	$body = '';
-	curl_setopt_array($ch, [
-	    CURLOPT_RESOLVE => [ "{$host}:{$port}:" . (str_contains($ips[0], ':') ? '[' . $ips[0] . ']' : $ips[0]) ],
-	    CURLOPT_FOLLOWLOCATION => false,
-	    CURLOPT_TIMEOUT => 15,
-	    CURLOPT_CONNECTTIMEOUT => 10,
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-	    CURLOPT_HTTPHEADER => [ 'Accept: application/samlmetadata+xml, application/xml, text/xml' ],
-	    CURLOPT_WRITEFUNCTION => function($ch, $chunk) use (&$body) {
-		$body .= $chunk;
-		return strlen($body) > self::MAX_METADATA ? 0 : strlen($chunk);
-	    },
-	]);
-	$ok = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$error = curl_error($ch);
-	if (strlen($body) > self::MAX_METADATA)
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (its `public` guard; was curl and the address check here)
+	$r = \util\Http::request('GET', $url, [ 'headers' => [ 'Accept: application/samlmetadata+xml, application/xml, text/xml' ], 'timeout' => 15, 'maxBytes' => self::MAX_METADATA, 'https' => true, 'public' => true ]);
+	if ($r['tooLarge'])
 	    throw new SamlException('the metadata is too large');
-	if ($ok === false)
-	    throw new SamlException('the metadata was not read: ' . $error);
-	if ($status !== 200)
-	    throw new SamlException('the metadata was not read: HTTP ' . $status);
-	return $body;
+	if ($r['error'] !== null)
+	    throw new SamlException(str_starts_with($r['error'], 'the host ') ? $r['error'] : 'the metadata was not read: ' . $r['error']);
+	if ($r['status'] !== 200)
+	    throw new SamlException('the metadata was not read: HTTP ' . $r['status']);
+	return $r['body'];
     }
 }
