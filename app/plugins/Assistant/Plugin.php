@@ -6,6 +6,7 @@
       util/WorkflowAssistant.php         the agent loop (Anthropic Messages API or an OpenAI-compatible server)
       controllers/AssistantController    /Assistant/assistant/ask (the designer's requests), /Assistant/assistant/script (js/)
       js/app.wfassistant.js              the panel
+      models/AssistantChat.php           CLD: 2026-10-23T23:45:00+03:00: the conversation of each workflow (/Assistant/assistant/chat_add, chat_clear)
       views/designer_panel.php           the panel in the designer (hook workflow:designer-panels); the top-bar button: designerToolbar (workflow:designer-toolbar)
     //CLD: 2026-10-23T10:00:00+03:00: the provider System is the System AI (plugins\SystemAI: its server, credits and rates; enabled before this plugin in app/plugins.php)
 */
@@ -24,7 +25,13 @@ class Plugin {
 		'class' => __NAMESPACE__ . '\\models\\AssistantUsage',
 	    ],
 	    //CLD: 2026-10-23T10:00:00+03:00: the System provider's credits: plugins\SystemAI (were AssistantWallet, AssistantCreditLedger here)
+	    //CLD: 2026-10-23T23:45:00+03:00: the conversation of each workflow (was the browser tab's sessionStorage)
+	    'AssistantChat' => [
+		'class' => __NAMESPACE__ . '\\models\\AssistantChat',
+	    ],
 	]);
+	//CLD: 2026-10-23T23:45:00+03:00: a deleted workflow's conversation goes with it (in every mode: the console deletes workflows too)
+	\V::app()->hooks->addHook('workflow:before-delete', [ models\AssistantChat::class, 'beforeWorkflowDelete' ]);
 
 	if (\V::app()->config('app.mode') != 'web')
 	    return;
