@@ -21,10 +21,8 @@ node_modules/
 *.tgz
 playwright.config.js
 make-archive.sh
-TODO.txt
-SUMMARY.md
-ISO27001.md
-SOC2.md
+# CLD: 2026-10-23T23:40:00+03:00: compliance documents (SOC2.md, ISO27001.md, TODO.txt, SUMMARY.md; were at the root)
+compliance/
 package.json
 package-lock.json
 frontend/
