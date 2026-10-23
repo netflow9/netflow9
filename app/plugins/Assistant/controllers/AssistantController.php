@@ -3,6 +3,7 @@
 /*
     the requests of the Assistant plugin, served at /Assistant/assistant/<action>:
 	ask      the designer's Assistant (was WorkflowController::assistant)
+	chat_add, chat_clear  CLD: 2026-10-23T23:45:00+03:00: the conversation of the workflow, kept (models\AssistantChat)
 	settings the Assistant's settings of the account
 	connect  the models of a server (the settings page's Connect)
 */
@@ -12,6 +13,7 @@ namespace plugins\Assistant\controllers;
 use plugins\Assistant\util\WorkflowAssistant;
 use plugins\Assistant\models\AssistantSettings;
 use plugins\Assistant\models\AssistantUsage;
+use plugins\Assistant\models\AssistantChat;
 use plugins\SystemAI\util\SystemAi;
 use plugins\SystemAI\models\SystemAiWallet;
 
@@ -108,6 +110,28 @@ class AssistantController extends \sys\BaseController {
 	if ($hold !== null)
 	    [ $result['credits'], $result['credits_left'] ] = $this->settle($wf, $hold, $assistant);
 	$resp->sendJSON($result);
+    }
+
+    //CLD: 2026-10-23T23:45:00+03:00: new: a message of the panel added to the conversation of workflow ?id (POST: `message`, JSON: AssistantChat::clean) => { message }
+    //(as kept: + uid, by, at). Workflow::update (as ask)
+    public function chat_add($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$wf = $this->findWorkflow('Workflow::update');
+	$data = is_array($req->data) ? $req->data : [];
+	$m = isset($data['message']) ? json_decode((string)$data['message'], true) : null;
+	if (!is_array($m))
+	    $resp->sendJSON([ 'error' => 'No message' ], true, 400);
+	$resp->sendJSON([ 'message' => AssistantChat::add($wf, $m) ]);
+    }
+
+    //CLD: 2026-10-23T23:45:00+03:00: new: a new conversation of workflow ?id (POST) => { cleared: true }. Workflow::update
+    public function chat_clear($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$wf = $this->findWorkflow('Workflow::update');
+	AssistantChat::clear($wf);
+	$resp->sendJSON([ 'cleared' => true ]);
     }
 
     //CLD: 2026-10-22T15:00:00+03:00: new: System: reservation $hold of workflow $wf's account settled with what $assistant used (nothing when no model answered: the reservation is
