@@ -1,10 +1,11 @@
 <?php
 
 /*
-    CLD: 2026-10-23T02:30:00+03:00: new: HTML of unknown origin (e.g. an AI step's `html`, a web page's) cleaned to formatting only, for an email (util\EmailHtml):
+    HTML of unknown origin (e.g. an AI step's `html`, a web page's) cleaned to formatting only, for an email (util\EmailHtml):
 	\util\HtmlSafe::clean($html)
     Kept: the tags of FORMATTING (their text, nothing else of them); links' href only http(s) / mailto (and title), ol start, table cells' align / colspan / rowspan.
-    Dropped with their content: DROPPED (scripts, styles, frames, forms, media...). Other tags: their content stays (the tag goes). Every other attribute goes (style, class, on*, ...);
+    Dropped with their content: DROPPED (scripts, styles, frames, forms, media...).
+    Other tags: their content stays (the tag goes). Every other attribute goes (style, class, on*, ...);
     images go too (no remote images in an email: tracking)
 */
 namespace util;
@@ -14,6 +15,7 @@ class HtmlSafe {
 	'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr' ];
     const DROPPED = [ 'script', 'style', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet', 'form', 'input', 'button', 'select', 'textarea', 'head', 'title', 'meta', 'link',
 	'base', 'noscript', 'template', 'svg', 'math', 'video', 'audio', 'source', 'track', 'canvas', 'img', 'picture' ];
+
     //the attributes kept, per tag
     const ATTRIBUTES = [ 'a' => [ 'href', 'title' ], 'ol' => [ 'start' ], 'th' => [ 'align', 'colspan', 'rowspan' ], 'td' => [ 'align', 'colspan', 'rowspan' ] ];
     //the longest HTML cleaned (bytes); the rest is cut
