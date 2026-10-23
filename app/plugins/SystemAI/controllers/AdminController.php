@@ -2,13 +2,14 @@
 
 /*
     CLD: 2026-10-22T23:00:00+03:00: new: an account's System credits in the administration (the Admin plugin's account page; super-admins only):
-	/Assistant/admin/plan    POST: id = account, credits (empty: the installation's monthly allowance)
-	/Assistant/admin/grant   POST: id = account, credits, note: a top-up (models\AssistantWallet::grant)
+    CLD: 2026-10-23T10:00:00+03:00: the System AI's (were /Assistant/admin/<action>)
+	/SystemAI/admin/plan    POST: id = account, credits (empty: the installation's monthly allowance)
+	/SystemAI/admin/grant   POST: id = account, credits, note: a top-up (models\SystemAiWallet::grant)
 */
 
-namespace plugins\Assistant\controllers;
+namespace plugins\SystemAI\controllers;
 
-use plugins\Assistant\models\AssistantWallet;
+use plugins\SystemAI\models\SystemAiWallet;
 
 class AdminController extends \sys\BaseController {
 
@@ -24,8 +25,8 @@ class AdminController extends \sys\BaseController {
 	$credits = trim((string)($req->data['credits'] ?? ''));
 	if ($credits !== '' && (!ctype_digit($credits) || (int)$credits > 100000000))
 	    $this->back($account, 'danger', 'The allowance: a whole number of credits, or empty');
-	$plan = \V::app()->om->acrossAccounts(fn() => AssistantWallet::setPlan($account->_id, $credits === '' ? null : (int)$credits));
-	\plugins\Admin\Plugin::audit('credits_plan', $account, "Assistant monthly allowance: {$plan} credits" . ($credits === '' ? ' (the installation\'s)' : ''));
+	$plan = \V::app()->om->acrossAccounts(fn() => SystemAiWallet::setPlan($account->_id, $credits === '' ? null : (int)$credits));
+	\plugins\Admin\Plugin::audit('credits_plan', $account, "System AI monthly allowance: {$plan} credits" . ($credits === '' ? ' (the installation\'s)' : ''));
 	$this->back($account, 'success', "Monthly allowance: {$plan} credits");
     }
 
@@ -35,8 +36,8 @@ class AdminController extends \sys\BaseController {
 	if (!ctype_digit($credits) || (int)$credits < 1 || (int)$credits > 100000000)
 	    $this->back($account, 'danger', 'The top-up: a whole number of credits, at least 1');
 	$note = trim(mb_substr((string)($req->data['note'] ?? ''), 0, 200));
-	$t = \V::app()->om->acrossAccounts(fn() => AssistantWallet::grant($account->_id, (int)$credits, $note));
-	\plugins\Admin\Plugin::audit('credits_topup', $account, "Assistant top-up: +{$credits} credits until " . gmdate('Y-m-d', $t['expires']) . ($note !== '' ? " ({$note})" : ''));
+	$t = \V::app()->om->acrossAccounts(fn() => SystemAiWallet::grant($account->_id, (int)$credits, $note));
+	\plugins\Admin\Plugin::audit('credits_topup', $account, "System AI top-up: +{$credits} credits until " . gmdate('Y-m-d', $t['expires']) . ($note !== '' ? " ({$note})" : ''));
 	$this->back($account, 'success', "+{$credits} credits, until " . gmdate('Y-m-d', $t['expires']));
     }
 

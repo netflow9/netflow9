@@ -62,19 +62,25 @@ function get_config($mode = 'web') {
 	//CLD: 2026-10-22T14:00:00+03:00: the Assistant's System provider (plugins\Assistant: the server this installation offers to every account; off without ASSISTANT_PROVIDER / ASSISTANT_MODEL):
 	//its provider (anthropic, openai, gemini, ollama, lemonade), Server URL (empty: the provider's own), key, model, effort (Claude),
 	//and the prices (USD per 1M tokens; empty: the known prices of Claude models)
-	//CLD: 2026-10-22T15:00:00+03:00: paid in credits (plugins\Assistant\models\AssistantWallet; was a USD budget, ASSISTANT_BUDGET): the credits each account gets per month (no rollover),
-	//the most one request may reserve (0: no limit). The credits per model and the margin: plugins/Assistant/credit_rates.php
-	'assistant.system' => [
-	    'provider' => defined('ASSISTANT_PROVIDER') ? (string)ASSISTANT_PROVIDER : '',
-	    'url' => defined('ASSISTANT_URL') ? (string)ASSISTANT_URL : '',
-	    'api_key' => defined('ASSISTANT_API_KEY') ? (string)ASSISTANT_API_KEY : '',
-	    'model' => defined('ASSISTANT_MODEL') ? (string)ASSISTANT_MODEL : '',
-	    'effort' => defined('ASSISTANT_EFFORT') ? (string)ASSISTANT_EFFORT : '',
-	    'price_input' => defined('ASSISTANT_PRICE_INPUT') ? (float)ASSISTANT_PRICE_INPUT : 0,
-	    'price_output' => defined('ASSISTANT_PRICE_OUTPUT') ? (float)ASSISTANT_PRICE_OUTPUT : 0,
-	    'monthly_credits' => defined('ASSISTANT_MONTHLY_CREDITS') ? (int)ASSISTANT_MONTHLY_CREDITS : 0,
-	    'max_credits_per_request' => defined('ASSISTANT_MAX_CREDITS_PER_REQUEST') ? (int)ASSISTANT_MAX_CREDITS_PER_REQUEST : 0,
-	],
+	//CLD: 2026-10-22T15:00:00+03:00: paid in credits (was a USD budget, ASSISTANT_BUDGET): the credits each account gets per month (no rollover),
+	//the most one request may reserve (0: no limit)
+	//CLD: 2026-10-23T10:00:00+03:00: the System AI provider (plugins\SystemAI; was assistant.system, the Assistant's only): used by the Assistant and by the AI steps of its provider.
+	//SYSTEM_AI_* in app.env (ASSISTANT_*, the names before, are still read when a SYSTEM_AI_ one is empty or not set). The credits per model and the margin: plugins/SystemAI/credit_rates.php
+	'ai.system' => (function() {
+	    $env = fn($name, $default = '') => defined('SYSTEM_AI_' . $name) && (string)constant('SYSTEM_AI_' . $name) !== '' ? constant('SYSTEM_AI_' . $name)
+		: (defined('ASSISTANT_' . $name) && (string)constant('ASSISTANT_' . $name) !== '' ? constant('ASSISTANT_' . $name) : $default);
+	    return [
+		'provider' => (string)$env('PROVIDER'),
+		'url' => (string)$env('URL'),
+		'api_key' => (string)$env('API_KEY'),
+		'model' => (string)$env('MODEL'),
+		'effort' => (string)$env('EFFORT'),
+		'price_input' => (float)$env('PRICE_INPUT', 0),
+		'price_output' => (float)$env('PRICE_OUTPUT', 0),
+		'monthly_credits' => (int)$env('MONTHLY_CREDITS', 0),
+		'max_credits_per_request' => (int)$env('MAX_CREDITS_PER_REQUEST', 0),
+	    ];
+	})(),
 
 	//components configuration
 	'components' => [
