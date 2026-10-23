@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-23T15:00:00+03:00: new utility: the HTTP requests of the app (curl), one place for what each caller repeated: the protocols, timeouts, the User-Agent,
+    the HTTP requests of the app (curl), one place for what each caller repeated: the protocols, timeouts, the User-Agent,
     the largest answer kept, the answer streamed to a file, an upload from a stream, redirects, the response headers, a public-address guard (no request to this machine
     or its network: each address the host resolves to is checked, the one checked is the one connected to, for each redirect too).
 

@@ -9,7 +9,7 @@ class ObjectManager {
 
     public function __construct() {
 	$this->registry = \data\SysObjects::get();
-	//CLD: 2026-10-10T09:27:09+03:00: the core variants are checked too (they are not registered through registerObject)
+	//the core variants are checked too
 	foreach(array_keys($this->registry) as $objectName)
 	    $this->checkVariant($objectName);
     }
@@ -101,7 +101,7 @@ class ObjectManager {
 	    $this->checkVariant($objectName);
     }
 
-    //CLD: 2026-10-10T09:27:09+03:00: a variant ('variant-of' => base) must name a registered base with 'has-variants', and its class must extend the base's class
+    //a variant ('variant-of' => base) must name a registered base with 'has-variants', and its class must extend the base's class
     //(it shares the base's collection, methods and permissions); a wrong entry fails at registration instead of at first use
     protected function checkVariant($objectName) {
 	$base = $this->registry[$objectName]['variant-of'] ?? null;
@@ -169,7 +169,7 @@ class ObjectManager {
 
 
     // =========================================================================================
-    //CLD: 2026-10-21T20:10:00+03:00: the account guard (SOC2.md gap 15): in a web request whose account is known (rt.account), the reads, updates and deletes of the objects
+    //the account guard (SOC2.md gap 15): in a web request whose account is known (rt.account), the reads, updates and deletes of the objects
     //of an account (models that are not `global`) are limited to that account: a query without `aid` gets the account's, a query for another account is refused. Was: each
     //query had to add its `aid`, and one that did not reached every account's objects. Code that must reach other accounts (e.g. a sign-in, a token of another account)
     //runs inside acrossAccounts(). The console (daemon, checks, commands) is not limited
@@ -234,8 +234,8 @@ class ObjectManager {
 	}
     }
 
-    //CLD: 2026-10-18T16:50:00+03:00: the _id of $query for the write methods (updateMany, updateOne, deleteOne, findOneAndUpdate): an ObjectId, or a string that is one, is an ObjectId;
-    //CLD: 2026-10-18T17:05:00+03:00: also for find, findOne (findById) and count
+    //the _id of $query for the write methods (updateMany, updateOne, deleteOne, findOneAndUpdate): an ObjectId, or a string that is one, is an ObjectId;
+    //also for find, findOne (findById) and count
     //another non-empty string is kept as it is (objects keyed by a string, e.g. ExecutionSlot `<aid>:<n>`); an operator array is left alone; anything else is invalid
     public static function keyIdQuery(array $query, $method) {
 	if (!array_key_exists('_id', $query) || is_array($query['_id']) || $query['_id'] instanceof \MongoDB\BSON\ObjectId)
@@ -283,7 +283,7 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//CLD: 2026-10-18T17:05:00+03:00: a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
 	$query = self::keyIdQuery($query, __METHOD__);
 
 	if ($this->isVariant($objectName))
@@ -292,7 +292,7 @@ class ObjectManager {
 	$objectClass = $objDef['class'] ?? null;
 	if (empty($objectClass))
 	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
-	//CLD: 2026-10-21T20:10:00+03:00: the account guard (accountQuery)
+	//the account guard (accountQuery)
 	$query = $this->accountQuery($objectName, $objectClass, $query, __METHOD__);
 
 	//get object collection
@@ -324,17 +324,18 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//CLD: 2026-10-18T17:05:00+03:00: a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept
 	$query = self::keyIdQuery($query, __METHOD__);
 
-	//CLD: 2026-10-09T17:32:53+03:00: also when querying by _id (a variant's findById returned an object of another variant with that id)
+	//also when querying by _id (a variant's findById returned an object of another variant with that id)
 	if ($this->isVariant($objectName))
 	    $query['__variant'] = $objectName;
 
 	$objectClass = $objDef['class'] ?? null;
 	if (empty($objectClass))
 	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
-	//CLD: 2026-10-21T20:10:00+03:00: the account guard (accountQuery)
+
+	//the account guard (accountQuery)
 	$query = $this->accountQuery($objectName, $objectClass, $query, __METHOD__);
 
 	//get object collection
@@ -371,7 +372,7 @@ class ObjectManager {
 	return $this->findOne($objectName, [ '_id' => $id ], $options);
     }
 
-    //CLD: 2026-10-12T12:21:36+03:00: removes every object of $objectName by dropping its collection (e.g. the rows of a deleted data table). Not for a variant or a family with
+    //removes every object of $objectName by dropping its collection (e.g. the rows of a deleted data table). Not for a variant or a family with
     //variants (they share one collection); objects are not loaded, so no model hooks run (no audit entries per object)
     public function drop($objectName) {
 	$objDef = $this->getObjectDef($objectName);
@@ -391,7 +392,7 @@ class ObjectManager {
 	\V::app()->mongo->selectCollection($database, $collection)->drop();
     }
 
-    //CLD: 2026-10-12T12:26:21+03:00: changes every object of $objectName matching $query with the MongoDB update $update (operators, or an aggregation pipeline: a list); the objects
+    //changes every object of $objectName matching $query with the MongoDB update $update (operators, or an aggregation pipeline: a list); the objects
     //are not loaded, so no model hooks or checks run (e.g. re-dating immutable log entries). Returns the number of objects changed
     public function updateMany($objectName, array $query, array $update) {
 	$objDef = $this->getObjectDef($objectName);
@@ -399,7 +400,7 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//CLD: 2026-10-18T16:50:00+03:00: a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
 	$query = self::keyIdQuery($query, __METHOD__);
 	//a variant changes only its own objects (as find)
 	if ($this->isVariant($objectName))
@@ -408,7 +409,8 @@ class ObjectManager {
 	$objectClass = $objDef['class'] ?? null;
 	if (empty($objectClass))
 	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
-	//CLD: 2026-10-21T20:10:00+03:00: the account guard (accountQuery)
+
+	//the account guard (accountQuery)
 	$query = $this->accountQuery($objectName, $objectClass, $query, __METHOD__);
 	$collection = $objDef['collection'] ?? $objectClass::_collection();
 	if (empty($collection))
@@ -418,7 +420,7 @@ class ObjectManager {
 	return \V::app()->mongo->selectCollection($database, $collection)->updateMany($query, $update)->getModifiedCount();
     }
 
-    //CLD: 2026-10-18T16:35:00+03:00: changes ONE object of $objectName matching $query with the MongoDB update $update (as updateMany); options: upsert. Returns the number changed or
+    //changes ONE object of $objectName matching $query with the MongoDB update $update (as updateMany); options: upsert. Returns the number changed or
     //inserted (0 / 1). No model hooks or checks run for the change; a duplicate key (e.g. an upsert on a taken _id) throws as the driver does. An _id that is not an ObjectId
     //(e.g. a string key) is given as [ '$eq' => $id ] (a plain _id is converted)
     public function updateOne($objectName, array $query, array $update, array $options = []) {
@@ -427,7 +429,7 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//CLD: 2026-10-18T16:50:00+03:00: a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
 	$query = self::keyIdQuery($query, __METHOD__);
 	if ($this->isVariant($objectName))
 	    $query['__variant'] = $objectName;
@@ -435,7 +437,8 @@ class ObjectManager {
 	$objectClass = $objDef['class'] ?? null;
 	if (empty($objectClass))
 	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
-	//CLD: 2026-10-21T20:10:00+03:00: the account guard (accountQuery)
+
+	//the account guard (accountQuery)
 	$query = $this->accountQuery($objectName, $objectClass, $query, __METHOD__);
 	$collection = $objDef['collection'] ?? $objectClass::_collection();
 	if (empty($collection))
@@ -446,7 +449,7 @@ class ObjectManager {
 	return $result->getModifiedCount() + (int)$result->getUpsertedCount();
     }
 
-    //CLD: 2026-10-18T16:35:00+03:00: deletes ONE object of $objectName matching $query, without loading it (no model hooks: no beforeDelete, no audit entry); returns the number
+    //deletes ONE object of $objectName matching $query, without loading it (no model hooks: no beforeDelete, no audit entry); returns the number
     //deleted (0 / 1). _id as in updateOne
     public function deleteOne($objectName, array $query) {
 	$objDef = $this->getObjectDef($objectName);
@@ -454,7 +457,7 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//CLD: 2026-10-18T16:50:00+03:00: a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
 	$query = self::keyIdQuery($query, __METHOD__);
 	if ($this->isVariant($objectName))
 	    $query['__variant'] = $objectName;
@@ -462,7 +465,8 @@ class ObjectManager {
 	$objectClass = $objDef['class'] ?? null;
 	if (empty($objectClass))
 	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
-	//CLD: 2026-10-21T20:10:00+03:00: the account guard (accountQuery)
+
+	//the account guard (accountQuery)
 	$query = $this->accountQuery($objectName, $objectClass, $query, __METHOD__);
 	$collection = $objDef['collection'] ?? $objectClass::_collection();
 	if (empty($collection))
@@ -472,7 +476,7 @@ class ObjectManager {
 	return \V::app()->mongo->selectCollection($database, $collection)->deleteOne($query)->getDeletedCount();
     }
 
-    //CLD: 2026-10-12T12:31:46+03:00: changes ONE object of $objectName matching $query with the MongoDB update $update, atomically, and returns it as changed (or as it was, option
+    //changes ONE object of $objectName matching $query with the MongoDB update $update, atomically, and returns it as changed (or as it was, option
     //'returnDocument' => 'before'); null when none matches. For counters that must never repeat (e.g. Workflow::nextVersionNumber). Options: projection, sort,
     //upsert, returnDocument (after | before). No model hooks or checks run for the change
     public function findOneAndUpdate($objectName, array $query, array $update, array $options = []) {
@@ -481,7 +485,7 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//CLD: 2026-10-18T16:50:00+03:00: a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
 	$query = self::keyIdQuery($query, __METHOD__);
 	if ($this->isVariant($objectName))
 	    $query['__variant'] = $objectName;
@@ -489,7 +493,8 @@ class ObjectManager {
 	$objectClass = $objDef['class'] ?? null;
 	if (empty($objectClass))
 	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
-	//CLD: 2026-10-21T20:10:00+03:00: the account guard (accountQuery)
+
+	//the account guard (accountQuery)
 	$query = $this->accountQuery($objectName, $objectClass, $query, __METHOD__);
 	$collection = $objDef['collection'] ?? $objectClass::_collection();
 	if (empty($collection))
@@ -513,7 +518,7 @@ class ObjectManager {
 	return $o;
     }
 
-    //CLD: 2026-10-12T13:54:43+03:00: stores new objects $models (models of $objectName, e.g. checked with validates()) in one write: their data as save() stores it
+    //stores new objects $models (models of $objectName, e.g. checked with validates()) in one write: their data as save() stores it
     //(storageDocument), with created_at; for many objects at once (e.g. a data table import). No model hooks run (no beforeSave, no audit entry per
     //object). Returns the number stored
     public function insertMany($objectName, array $models) {
@@ -548,10 +553,10 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//CLD: 2026-10-18T17:05:00+03:00: a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept
 	$query = self::keyIdQuery($query, __METHOD__);
 
-	//CLD: 2026-10-09T17:32:53+03:00: a variant counts only its own objects (as find; was the whole family)
+	//a variant counts only its own objects
 	if ($this->isVariant($objectName))
 	    $query['__variant'] = $objectName;
 
@@ -559,7 +564,8 @@ class ObjectManager {
 	$objectClass = $objDef['class'] ?? null;
 	if (empty($objectClass))
 	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
-	//CLD: 2026-10-21T20:10:00+03:00: the account guard (accountQuery)
+
+	//the account guard (accountQuery)
 	$query = $this->accountQuery($objectName, $objectClass, $query, __METHOD__);
 
 	$collection = $objDef['collection'] ?? null;
@@ -577,8 +583,8 @@ class ObjectManager {
 	return \V::app()->mongo->selectCollection($database, $collection)->count($query, $options);
     }
 
-    //CLD: 2026-10-19T12:52:41+03:00: creates the indexes every model declares (static $indexes of its class, plugins' models included; was SeedCommand::indexes, also used by the
-    //initial setup); creating an index that exists does nothing. Returns [ [ 'label' => collection keys options, 'name' => index name | null, 'error' => message | null ], ... ]
+    //creates the indexes every model declares (static $indexes of its class, plugins' models included);
+    //creating an index that exists does nothing. Returns [ [ 'label' => collection keys options, 'name' => index name | null, 'error' => message | null ], ... ]
     public function createIndexes() {
 	$done = [];
 	$result = [];
