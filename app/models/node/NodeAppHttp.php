@@ -2,7 +2,7 @@
 
 /*
     HTTP Request - calls an HTTP endpoint (an API).
-    Settings: method, URL, query parameters, headers, body (none / JSON / form / text),
+    Settings: method, URL, query parameters, headers, body (none / JSON / form / text; JSON checked on save, also as a JSON-RPC 2.0 request when `jsonRpc`),
 	an optional credential of the project providing `http` (API key, Basic, Bearer, OAuth: httpAuth()),
 	timeout; URL, values and body may hold {{ }} expressions.
 	The response goes into one variable (default `response`): { ok, status, headers, body, error, time_ms } - body parsed when it is JSON,
@@ -34,6 +34,9 @@ class NodeAppHttp extends \models\WfNode {
     ];
     const BODY_TYPES = [ 'none' => 'None', 'json' => 'JSON', 'form' => 'Form (urlencoded)', 'text' => 'Text' ];
     const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
+
+    //CLD: 2026-10-23T12:30:00+03:00: the JSON-RPC request proposed when JSON-RPC is switched on
+    const JSON_RPC_TEMPLATE = "{\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"\",\n    \"params\": {},\n    \"id\": 1\n}";
 
     //the largest response body kept, and the timeout limits (seconds)
     const MAX_RESPONSE = 5 * 1024 * 1024;
@@ -111,12 +114,31 @@ class NodeAppHttp extends \models\WfNode {
 		    'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ]
 		],
 	    ],
+	    //CLD: 2026-10-23T12:30:00+03:00: JSON-RPC 2.0: the content is checked as a request; switching it on proposes one (ui propose: when the content is empty, else asked)
+	    [
+		'key' => 'jsonRpc',
+		'type' => 'switch',
+		'label' => 'JSON-RPC 2.0',
+		'default' => false,
+		'help' => 'The content is checked as a JSON-RPC request: { "jsonrpc": "2.0", "method": ..., "params": ..., "id": ... }, or a list of them (a batch)',
+		'ui' => [
+		    'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ],
+		    'showIf' => [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'json' ],
+		    'propose' => [ 'key' => 'body', 'value' => self::JSON_RPC_TEMPLATE, 'confirm' => 'Replace the content with a JSON-RPC request?' ],
+		],
+	    ],
+	    //CLD: 2026-10-23T12:30:00+03:00: a code editor (app.CodeEditor); its syntax follows the body type (syntaxBy: JSON / JSON-RPC checked live, util\JsonCheck; text: the {{ }} only)
 	    [
 		'key' => 'body',
 		'type' => 'textarea',
 		'label' => 'Content',
 		'help' => 'JSON: a JSON text, or {{ ... }} giving an object / list',
-		'ui' => [ 'rows' => 5, 'expression' => true, 'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ], 'showIf' => [ 'key' => 'bodyType', 'operator' => 'in', 'value' => [ 'json', 'text' ] ] ],
+		'ui' => [ 'rows' => 8, 'expression' => 'text', 'code' => true,
+		    'syntaxBy' => [
+			[ 'syntax' => 'jsonrpc', 'if' => [ [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'json' ], [ 'key' => 'jsonRpc', 'operator' => 'eq', 'value' => true ] ] ],
+			[ 'syntax' => 'json', 'if' => [ [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'json' ] ] ],
+		    ],
+		    'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ], 'showIf' => [ 'key' => 'bodyType', 'operator' => 'in', 'value' => [ 'json', 'text' ] ] ],
 	    ],
 	    $pairs('form', 'Form fields', 'Form field', 'Add field', [ 'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ], 'showIf' => [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'form' ] ]),
 	    [
@@ -174,6 +196,15 @@ class NodeAppHttp extends \models\WfNode {
 	if ($cred !== '' && (!$this->workflow || empty(\models\Credential::findFor($this->workflow, $cred, 'http')))) {
 	    $this->errors('config', 'Credential: choose an HTTP credential of this project');
 	    $valid = false;
+	}
+	//CLD: 2026-10-23T12:30:00+03:00: a JSON body must be JSON (a JSON-RPC request when switched on); the {{ }} parts are checked by parent::validates
+	if (!in_array($this->cfg('method', 'GET'), [ 'GET', 'HEAD' ], true) && $this->cfg('bodyType', 'none') === 'json') {
+	    foreach(\util\Expression::checkJson((string)$this->cfg('body', ''), !empty($this->cfg('jsonRpc', false))) as $p) {
+		if ($p['severity'] !== 'error')
+		    continue;
+		$this->errors('config', "Content: {$p['message']} (column {$p['column']}" . ($p['line'] > 1 ? ", line {$p['line']}" : '') . ')');
+		$valid = false;
+	    }
 	}
 	return $valid;
     }
