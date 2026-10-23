@@ -187,7 +187,7 @@ class Credential extends \sys\BaseModel {
     //CLD: 2026-10-12T21:15:28+03:00: for the connection tests of HTTP API credentials (AI servers): GET $url with $headers (name => value), the decoded JSON
     //answer; an exception when there is no answer, the status is 400 or more (with the server's error message when it gives one) or the answer is not JSON
     protected static function getJson($url, array $headers = [], $timeout = 15) {
-	$lines = [ 'Accept: application/json', 'User-Agent: QSM-Workflow' ];
+	$lines = [ 'Accept: application/json', 'User-Agent: NetFlow9-Workflow' ];
 	foreach($headers as $name => $value)
 	    $lines[] = $name . ': ' . $value;
 	$ch = curl_init($url);

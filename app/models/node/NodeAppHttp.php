@@ -297,7 +297,7 @@ class NodeAppHttp extends \models\WfNode {
 	$ch = curl_init($url);
 	$opts = [
 	    CURLOPT_CUSTOMREQUEST => $method,
-	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: QSM-Workflow', 'Accept: application/json, text/plain, */*' ], $headers),
+	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: NetFlow9-Workflow', 'Accept: application/json, text/plain, */*' ], $headers),
 	    CURLOPT_FOLLOWLOCATION => true,
 	    CURLOPT_MAXREDIRS => 5,
 	    CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,

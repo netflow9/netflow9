@@ -221,7 +221,7 @@ abstract class NodeAppMicrosoft extends \models\WfNode {
 	$ch = curl_init($url);
 	$opts = [
 	    CURLOPT_CUSTOMREQUEST => $method,
-	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: QSM-Workflow', 'Expect:' ], $headers),
+	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: NetFlow9-Workflow', 'Expect:' ], $headers),
 	    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
 	    CURLOPT_CONNECTTIMEOUT => 10,
 	    CURLOPT_TIMEOUT => $this->apiTimeout(),

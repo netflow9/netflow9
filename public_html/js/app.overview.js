@@ -25,7 +25,7 @@ window.app.Overview = (function() {
 	cancel: [ 'Cancelled', 'bi-slash-circle', 'text-secondary' ],
 	new: [ 'New', 'bi-circle', 'text-secondary' ],
     };
-    const STORE = 'qsm.overview.period';
+    const STORE = 'netflow9.overview.period';
 
     const esc = (s) => window.app.utils.escapeHtml(String(s === undefined || s === null ? '' : s));
     const nf = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 });

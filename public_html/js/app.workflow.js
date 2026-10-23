@@ -816,7 +816,7 @@ window.app.Workflow = (function() {
 	//CLD: 2026-10-19T23:20:00+03:00: new: pinch to zoom on touch screens (two fingers on the canvas; the wheel is setupZoom). The point between the fingers stays
 	//under them: the canvas zooms by the change of their distance and moves with their midpoint, so it also pans. Started when a second finger touches the canvas
 	//while the first one pans it (not during a step drag, resize or a new connection), ending that pan; ends when a finger lifts (the other one does not pan
-	//then: a new touch does). #canvas-wrap has touch-action none (theme qsm/_workflow.scss), so the browser does not zoom or scroll the page instead
+	//then: a new touch does). #canvas-wrap has touch-action none (theme netflow9/_workflow.scss), so the browser does not zoom or scroll the page instead
 	setupPinch() {
 	    const touches = new Map(); //pointerId -> { x, y }, the fingers down on the canvas
 	    this.pinchState = null;
@@ -1640,8 +1640,8 @@ window.app.Workflow = (function() {
 	    el.className = 'modal fade wf-editor';
 	    //CLD: 2026-10-13T18:23:00+03:00: a step with a form designer (Form trigger, Human task) gets an extra-large dialog
 	    //CLD: 2026-10-13T20:12:00+03:00: full screen (Bootstrap modal-fullscreen; was modal-xl)
-	    //CLD: 2026-10-13T20:23:54+03:00: nearly full screen, a margin all around (.modal-near-fullscreen, theme scss/qsm/_modal.scss; was modal-fullscreen: it did not read as a dialog)
-	    //CLD: 2026-10-19T22:19:24+03:00: + modal-fullscreen-sm-down: the whole screen on phones (the near-fullscreen one too: theme qsm/_modal.scss)
+	    //CLD: 2026-10-13T20:23:54+03:00: nearly full screen, a margin all around (.modal-near-fullscreen, theme scss/netflow9/_modal.scss; was modal-fullscreen: it did not read as a dialog)
+	    //CLD: 2026-10-19T22:19:24+03:00: + modal-fullscreen-sm-down: the whole screen on phones (the near-fullscreen one too: theme netflow9/_modal.scss)
 	    el.tabIndex = -1;
 	    el.innerHTML = `
 		<!-- CLD: 2026-10-16T12:01:59+03:00: + the email designer (Send Email) -->
@@ -2053,7 +2053,7 @@ window.app.Workflow = (function() {
 
 	    //CLD: 2026-10-19T19:05:00+03:00: the width set by the handle is kept in localStorage (this browser), and used again when a designer opens; lastWidth starts
 	    //at the panel's own width (a click on the handle without a drag stores that, not minWidth)
-	    const WIDTH_KEY = 'qsm.wf.inspector.width';
+	    const WIDTH_KEY = 'netflow9.wf.inspector.width';
 	    lastWidth = Math.max(minWidth, Math.min(maxWidth, Math.round(el.outerWidth()) || minWidth));
 	    try {
 		const stored = parseInt(localStorage.getItem(WIDTH_KEY), 10);
@@ -2066,7 +2066,7 @@ window.app.Workflow = (function() {
 	    //CLD: 2026-10-19T22:00:00+03:00: namespaced, removed by destroy()
 	    this.unlisten.push(() => handle.off('.wfdesigner'));
 	    //CLD: 2026-10-19T23:05:00+03:00: pointer events (mouse, touch and pen; were mouse events), as setupPanelResize: the pointer is captured by the handle,
-	    //pointercancel ends the drag like pointerup; touch-action none on the handle (theme qsm/_workflow.scss)
+	    //pointercancel ends the drag like pointerup; touch-action none on the handle (theme netflow9/_workflow.scss)
 	    handle.on('pointerdown.wfdesigner', (e) => {
 		//main button only (a touch or a pen contact is button 0 too)
 		if (e.button !== 0)
@@ -2126,7 +2126,7 @@ window.app.Workflow = (function() {
 
 	    //CLD: 2026-10-19T19:20:00+03:00: the height set by the handle is kept in localStorage (this browser), one per panel, and used again when a designer opens (opening a panel
 	    //lower than 120px still makes it 300px: debug.open / exec.open in views/workflow/index.php)
-	    const HEIGHT_KEY = el.hasClass('exec-panel') ? 'qsm.wf.exec.height' : el.hasClass('wf-debug-panel') ? 'qsm.wf.debug.height' : null;
+	    const HEIGHT_KEY = el.hasClass('exec-panel') ? 'netflow9.wf.exec.height' : el.hasClass('wf-debug-panel') ? 'netflow9.wf.debug.height' : null;
 	    if (HEIGHT_KEY) {
 		try {
 		    const stored = parseInt(localStorage.getItem(HEIGHT_KEY), 10);
@@ -2144,7 +2144,7 @@ window.app.Workflow = (function() {
 	    this.unlisten.push(() => handle.off('.wfdesigner'));
 	    //CLD: 2026-10-19T22:55:00+03:00: pointer events (mouse, touch and pen; were mouse events: no resize on touch screens). The pointer is captured by the
 	    //handle, so its moves come to the handle even outside it; pointercancel (e.g. the browser takes the gesture) ends the drag like pointerup.
-	    //The handle has touch-action none (theme qsm/_debug.scss), so a touch drag does not scroll the page
+	    //The handle has touch-action none (theme netflow9/_debug.scss), so a touch drag does not scroll the page
 	    handle.on('pointerdown.wfdesigner', (e) => {
 		//main button only (a touch or a pen contact is button 0 too)
 		if (e.button !== 0)

@@ -1,20 +1,20 @@
 <?php
 //CLD: 2026-10-13T18:28:46+03:00: a form to fill in (a Form trigger's page, a Human task): $form (util\FormSchema, normalized), $url (POST: JSON { answers }), $submitLabel;
 //the server's answer: { ok, message } (the form gives way to the message) or { error, errors: { key: message } } (shown at the fields)
-$id = 'qsm-fill-' . bin2hex(random_bytes(4));
+$id = 'netflow9-fill-' . bin2hex(random_bytes(4));
 //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was the local $json(), the same flags as util\JSON + JSON_UNESCAPED_UNICODE)
-echo "<div id='{$id}'><div class='qsm-fill-form'></div>"
-    . "<div class='d-flex gap-2 align-items-center mt-2'><button type='button' class='btn btn-primary qsm-fill-send'><i class='bi bi-send me-1'></i>" . \V::app()->html->escape($submitLabel) . "</button>"
-    . "<span class='small text-danger qsm-fill-msg'></span></div></div>";
+echo "<div id='{$id}'><div class='netflow9-fill-form'></div>"
+    . "<div class='d-flex gap-2 align-items-center mt-2'><button type='button' class='btn btn-primary netflow9-fill-send'><i class='bi bi-send me-1'></i>" . \V::app()->html->escape($submitLabel) . "</button>"
+    . "<span class='small text-danger netflow9-fill-msg'></span></div></div>";
 
 \V::app()->cs->addPageScript("(function() {
     const root = document.getElementById(" . \util\JSON::encode($id, JSON_UNESCAPED_UNICODE) . ");
     if (!root)
 	return;
-    const form = new app.smartform(root.querySelector('.qsm-fill-form'), Object.assign({}, " . \util\JSON::encode($form, JSON_UNESCAPED_UNICODE) . ", { method: 'post' }));
+    const form = new app.smartform(root.querySelector('.netflow9-fill-form'), Object.assign({}, " . \util\JSON::encode($form, JSON_UNESCAPED_UNICODE) . ", { method: 'post' }));
     form.render();
-    const btn = root.querySelector('.qsm-fill-send');
-    const msg = root.querySelector('.qsm-fill-msg');
+    const btn = root.querySelector('.netflow9-fill-send');
+    const msg = root.querySelector('.netflow9-fill-msg');
     btn.addEventListener('click', async () => {
 	msg.textContent = '';
 	if (!form.validate()) {

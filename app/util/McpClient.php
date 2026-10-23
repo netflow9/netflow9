@@ -1,10 +1,16 @@
 <?php
 
-//CLD: 2026-10-12T21:51:51+03:00: new class: a client of an MCP server over Streamable HTTP (for models\credential\CredentialMcp and the AI steps): JSON-RPC requests by POST,
-//answers as JSON or as an SSE stream (text/event-stream: the message with the request's id is taken), the server's Mcp-Session-Id kept and sent back,
-//MCP-Protocol-Version sent after initialize. initialize() first, then listTools() / callTool(); close() ends the session. Errors: \Exception with a message for the user
-//  $c = new \util\McpClient('https://host/mcp', [ 'Authorization' => 'Bearer ...' ]);
-//  $info = $c->initialize(); $tools = $c->listTools(); $result = $c->callTool('name', [ ... ]); $c->close();
+/*
+    a client of an MCP server over Streamable HTTP (for models\credential\CredentialMcp and the AI steps):
+    JSON-RPC requests by POST, answers as JSON or as an SSE stream (text/event-stream: the message with the request's id is taken),
+    the server's Mcp-Session-Id kept and sent back, MCP-Protocol-Version sent after initialize. initialize() first, then listTools() / callTool(); close() ends the session. Errors: \Exception with a message for the user
+
+    $c = new \util\McpClient('https://host/mcp', [ 'Authorization' => 'Bearer ...' ]);
+    $info = $c->initialize();
+    $tools = $c->listTools();
+    $result = $c->callTool('name', [ ... ]);
+    $c->close();
+*/
 
 namespace util;
 
@@ -37,7 +43,7 @@ class McpClient {
 	$result = $this->request('initialize', [
 	    'protocolVersion' => self::PROTOCOL_VERSION,
 	    'capabilities' => (object)[],
-	    'clientInfo' => [ 'name' => 'qsm', 'title' => 'QSM workflows', 'version' => '1.0' ],
+	    'clientInfo' => [ 'name' => 'netflow9', 'title' => 'NetFlow9 workflows', 'version' => '1.0' ],
 	]);
 	$this->protocolVersion = (string)($result['protocolVersion'] ?? self::PROTOCOL_VERSION);
 	$this->serverInfo = is_array($result['serverInfo'] ?? null) ? $result['serverInfo'] : [];
@@ -146,7 +152,7 @@ class McpClient {
 
     //an HTTP exchange: [ status, content type, body ]; keeps the session id the server gives
     protected function send($method, $msg) {
-	$lines = [ 'Accept: application/json, text/event-stream', 'User-Agent: QSM-Workflow' ];
+	$lines = [ 'Accept: application/json, text/event-stream', 'User-Agent: NetFlow9-Workflow' ];
 	if ($msg !== null)
 	    $lines[] = 'Content-Type: application/json';
 	if ($this->protocolVersion !== null)

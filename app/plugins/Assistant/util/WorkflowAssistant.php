@@ -541,7 +541,7 @@ TXT;
     //CLD: 2026-10-19T16:52:30+03:00: ?array $body (null: GET, the server's models; was array: the GET of serverModel() failed with a TypeError)
     //CLD: 2026-10-20T10:00:00+03:00: static, + $name: who answers, in messages (was post(), the instance's provider), + $timeout (s)
     private static function http($url, array $headers, ?array $body, $name, $timeout = self::TIMEOUT) {
-	$lines = [ 'Content-Type: application/json', 'Accept: application/json', 'User-Agent: QSM-Workflow' ];
+	$lines = [ 'Content-Type: application/json', 'Accept: application/json', 'User-Agent: NetFlow9-Workflow' ];
 	//CLD: 2026-10-22T14:00:00+03:00: $h (was $name: the last header's name replaced who answers, in the messages)
 	foreach($headers as $h => $value)
 	    $lines[] = $h . ': ' . $value;

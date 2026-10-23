@@ -487,7 +487,7 @@ class NodeAppGmail extends NodeAppGoogle {
 
     //a message (multipart: the JSON metadata, then the RFC 822 message) to the upload endpoint
     protected function upload($path, $meta, $raw) {
-	$boundary = 'qsm-' . bin2hex(random_bytes(8));
+	$boundary = 'netflow9-' . bin2hex(random_bytes(8));
 	$body = "--{$boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" . json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\r\n"
 	    . "--{$boundary}\r\nContent-Type: message/rfc822\r\n\r\n{$raw}\r\n--{$boundary}--\r\n";
 	return $this->call('POST', self::UPLOAD_API . $path . '?uploadType=multipart', array_merge($this->authHeaders(), [ 'Accept: application/json',

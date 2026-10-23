@@ -79,7 +79,7 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
     //the panel lists the latest executions and shows one (summary, log, variables), refreshed every 2 s while one is new / running
     //CLD: 2026-10-19T19:35:00+03:00: the bottom panel last open (exec | debug; none when closed) is kept in localStorage (this browser) and opened again when a designer opens
     const bottomPanel = {
-	KEY: 'qsm.wf.bottom.panel',
+	KEY: 'netflow9.wf.bottom.panel',
 	get() {
 	    try {
 		return localStorage.getItem(this.KEY) || '';
@@ -261,15 +261,15 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 	    if (!box)
 		return;
 	    if (!this.list.length) {
-		box.innerHTML = `<div style='color: var(--qsm-debug-muted)'>No executions yet\${this.hasTrigger ? ': use Run' : ''}</div>`;
+		box.innerHTML = `<div style='color: var(--netflow9-debug-muted)'>No executions yet\${this.hasTrigger ? ': use Run' : ''}</div>`;
 		return;
 	    }
 	    box.innerHTML = this.list.map((e) => `
 		<div class='exec-row d-flex align-items-center gap-2 px-1 rounded\${e.id === this.selected ? ' exec-selected' : ''}' data-id='\${this.esc(e.id)}' title='\${this.esc(e.error || '')}' style='cursor: pointer'>
 		    \${this.badge(e.state)}
 		    <span class='exec-time'>\${this.esc(e.started || e.created)}</span>
-		    <span class='exec-what' style='color: var(--qsm-debug-muted)' title='\${this.esc(e.trigger + ' ' + this.versionLabel(e))}'>\${this.esc(e.trigger)} \${this.esc(this.versionLabel(e))}</span>
-		    <span class='exec-duration ms-auto' style='color: var(--qsm-debug-muted)'>\${this.duration(e.duration)}</span>
+		    <span class='exec-what' style='color: var(--netflow9-debug-muted)' title='\${this.esc(e.trigger + ' ' + this.versionLabel(e))}'>\${this.esc(e.trigger)} \${this.esc(this.versionLabel(e))}</span>
+		    <span class='exec-duration ms-auto' style='color: var(--netflow9-debug-muted)'>\${this.duration(e.duration)}</span>
 		</div>`).join('');
 	},
 
@@ -279,12 +279,12 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 	    if (!box || !e)
 		return;
 	    const vars = JSON.stringify(e.variables || {}, null, 2);
-	    const log = (e.log || []).map((l) => `<div class='debug-log-line'><span style='color: var(--qsm-debug-muted)'>\${this.esc((l.time || '').slice(11))}</span> \${l.title ? `<span class='tag'>[\${this.esc(l.title)}]</span>` : ''}\${this.esc(l.message)}</div>`).join('');
+	    const log = (e.log || []).map((l) => `<div class='debug-log-line'><span style='color: var(--netflow9-debug-muted)'>\${this.esc((l.time || '').slice(11))}</span> \${l.title ? `<span class='tag'>[\${this.esc(l.title)}]</span>` : ''}\${this.esc(l.message)}</div>`).join('');
 	    box.innerHTML = `
-		<div class='mb-1'>\${this.badge(e.state)} <span style='color: var(--qsm-debug-muted)'>\${this.esc(e.trigger)} \${this.esc(this.versionLabel(e))}, started \${this.esc(e.started || e.created || '-')}\${e.duration !== null ? ', ' + this.duration(e.duration) : ''}\${e.wake_at ? ', wakes at ' + this.esc(e.wake_at) : ''}</span></div>
+		<div class='mb-1'>\${this.badge(e.state)} <span style='color: var(--netflow9-debug-muted)'>\${this.esc(e.trigger)} \${this.esc(this.versionLabel(e))}, started \${this.esc(e.started || e.created || '-')}\${e.duration !== null ? ', ' + this.duration(e.duration) : ''}\${e.wake_at ? ', wakes at ' + this.esc(e.wake_at) : ''}</span></div>
 		\${e.error ? `<div class='text-danger mb-1'>\${this.esc(e.error)}</div>` : ''}
 		<div class='debug-panel-title mt-2 mb-1'>Log</div>
-		\${log || `<div style='color: var(--qsm-debug-muted)'>(empty)</div>`}
+		\${log || `<div style='color: var(--netflow9-debug-muted)'>(empty)</div>`}
 		<div class='debug-panel-title mt-2 mb-1'>Variables</div>
 		<pre class='mb-0' style='color: inherit; white-space: pre-wrap'>\${this.esc(vars)}</pre>`;
 	},
@@ -540,7 +540,7 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
     //CLD: 2026-10-19T19:50:00+03:00: the canvas pan / zoom per workflow, kept in localStorage (this browser): { <workflow id>: { x, y, zoom, t } } in one key, the MAX most recent
     //workflows; written PAUSE ms after the view stops moving (panning / zooming call onCanvasChange on every move)
     const canvasView = {
-	KEY: 'qsm.wf.canvas',
+	KEY: 'netflow9.wf.canvas',
 	MAX: 50,
 	PAUSE: 300,
 	wfid: '{$wfIdJs}',
@@ -683,7 +683,7 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
     //CLD: 2026-10-19T18:05:00+03:00: removed the Save button's handler: changes are saved automatically (autosave)
 
     //CLD: 2026-10-19T22:19:24+03:00: the small-screen note: closed once, not shown again in this browser (localStorage may be blocked: then it shows again)
-    const NOTE_KEY = 'qsm.wf.smallScreenNote';
+    const NOTE_KEY = 'netflow9.wf.smallScreenNote';
     const note = document.querySelector('.wf-small-screen-note');
     if (note) {
 	try {
@@ -850,7 +850,7 @@ $formOptions = [
 </div>
 <!-- DEBUG PANEL: drag the handle above it to resize vertically -->
 <?php //CLD: 2026-10-11T19:57:28+03:00: wf-debug-panel (its own toggle, as the Executions panel), the workflow's errors and warnings (debug.render); removed the Clear button (nothing to clear) ?>
-<div class="debug-panel wf-debug-panel d-none" style="background: var(--qsm-debug-bg)">
+<div class="debug-panel wf-debug-panel d-none" style="background: var(--netflow9-debug-bg)">
     <div class="debug-resize-handle"></div>
     <div class="debug-panel-header">
 	<div class="debug-panel-title"><i class="bi bi-bug"></i> Debug</div>
@@ -864,7 +864,7 @@ $formOptions = [
     </div>
 </div>
 <?php //CLD: 2026-10-10T19:08:46+03:00: Executions panel (same look as the debug panel): the list on the left, the selected execution on the right ?>
-<div class="debug-panel exec-panel d-none" style="background: var(--qsm-debug-bg)">
+<div class="debug-panel exec-panel d-none" style="background: var(--netflow9-debug-bg)">
     <div class="debug-resize-handle"></div>
     <div class="debug-panel-header">
 	<div class="debug-panel-title"><i class="bi bi-clock-history"></i> Executions</div>
@@ -873,9 +873,9 @@ $formOptions = [
 	    <button class="debug-icon-btn btn-exec-close" title="Close panel"><i class="bi bi-x-lg"></i></button>
 	</div>
     </div>
-    <?php //CLD: 2026-10-19T22:19:24+03:00: the list's width is in the theme (qsm/_workflow.scss: .exec-panel .exec-list; was style width 380px): the list goes above the details on phones ?>
+    <?php //CLD: 2026-10-19T22:19:24+03:00: the list's width is in the theme (netflow9/_workflow.scss: .exec-panel .exec-list; was style width 380px): the list goes above the details on phones ?>
     <div class="debug-panel-body d-flex gap-3 p-0">
 	<div class="exec-list overflow-auto py-2 ps-3 pe-2 border-end border-secondary"></div>
-	<div class="exec-detail overflow-auto flex-grow-1 py-2 pe-3"><span style="color: var(--qsm-debug-muted)">Select an execution</span></div>
+	<div class="exec-detail overflow-auto flex-grow-1 py-2 pe-3"><span style="color: var(--netflow9-debug-muted)">Select an execution</span></div>
     </div>
 </div>

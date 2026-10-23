@@ -23,7 +23,7 @@ window.app.WfAssistant = (function() {
     const undo = {};
     const MAX_KEPT = 40;
     //CLD: 2026-10-19T20:10:00+03:00: whether the panel is open, kept in localStorage (this browser; closed the first time)
-    const OPEN_KEY = 'qsm.wf.assistant.open';
+    const OPEN_KEY = 'netflow9.wf.assistant.open';
 
     //the one of the current designer page
     let current = null;

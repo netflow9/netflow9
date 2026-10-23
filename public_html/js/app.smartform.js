@@ -522,7 +522,7 @@ window.app.smartform = (function() {
 	}
     }
 
-    //CLD: 2026-10-13T20:41:25+03:00: new field type `email` (the QSM field type sys\fields\Field_email): an e-mail input, checked as an address
+    //CLD: 2026-10-13T20:41:25+03:00: new field type `email` (the NetFlow9 field type sys\fields\Field_email): an e-mail input, checked as an address
     class EmailField extends TextField {
 	renderInput() {
 	    const input = super.renderInput();
@@ -543,7 +543,7 @@ window.app.smartform = (function() {
 	}
     }
 
-    //CLD: 2026-10-14T19:54:21+03:00: new field type `url` (the QSM field type sys\fields\Field_url): a web-address input, checked as an http:// or https:// address (the browser's URL parser)
+    //CLD: 2026-10-14T19:54:21+03:00: new field type `url` (the NetFlow9 field type sys\fields\Field_url): a web-address input, checked as an http:// or https:// address (the browser's URL parser)
     class UrlField extends TextField {
 	renderInput() {
 	    const input = super.renderInput();

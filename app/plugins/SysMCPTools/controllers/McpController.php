@@ -45,7 +45,7 @@ class McpController extends \sys\BaseController {
 	$project = $token ? \V::app()->om->findOne('Project', [ '_id' => $token->project, 'aid' => $token->aid ]) : null;
 	$identity = new \sys\Identity();
 	if (!$token || !$project || !$identity->authenticateById($token->user)) {
-	    $resp->addHeader('WWW-Authenticate', 'Bearer realm="QSM MCP", error="invalid_token"');
+	    $resp->addHeader('WWW-Authenticate', 'Bearer realm="NetFlow9 MCP", error="invalid_token"');
 	    $resp->sendJSON($this->fail(null, -32000, 'A valid token is required (Authorization: Bearer <token>)'), true, 401, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	}
 	\V::app()->user->crtProject = $project->_id;
@@ -98,8 +98,8 @@ class McpController extends \sys\BaseController {
 		return $this->ok($id, [
 		    'protocolVersion' => in_array($asked, self::PROTOCOL_VERSIONS, true) ? $asked : self::PROTOCOL_VERSIONS[0],
 		    'capabilities' => [ 'tools' => [ 'listChanged' => false ] ],
-		    'serverInfo' => [ 'name' => 'qsm', 'title' => 'QSM workflows', 'version' => '1.0' ],
-		    'instructions' => "Tools of the QSM project `{$project->name}`: its data tables (list, query, insert / update / delete rows), workflows (list, run, executions), files (list, read) and variables. Use list_tables / list_workflows first to learn the names.",
+		    'serverInfo' => [ 'name' => 'netflow9', 'title' => 'NetFlow9 workflows', 'version' => '1.0' ],
+		    'instructions' => "Tools of the NetFlow9 project `{$project->name}`: its data tables (list, query, insert / update / delete rows), workflows (list, run, executions), files (list, read) and variables. Use list_tables / list_workflows first to learn the names.",
 		]);
 
 	    case 'ping':
