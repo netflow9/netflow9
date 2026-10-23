@@ -10,6 +10,8 @@
 //  tools: set_workflow (the whole new canvas: steps + connections, built by util\WorkflowSpec::nodesFrom and checked by Workflow::validates, as when saving in the designer;
 //  refused settings go back to the model with the reasons, it fixes them) and some read-only project tools (util\McpTools, as the user: their permissions apply).
 //CLD: 2026-10-20T23:40:00+03:00: the project tools come from the plugins (util\MCPTools; the SysMCPTools plugin's MCP tools): without them, set_workflow only
+//CLD: 2026-10-23T23:30:00+03:00: all of them (was a read-only few, PROJECT_TOOLS): tables and rows, files and images, workflows (but not update_workflow of this one: set_workflow), runs;
+//images in their results go to the model as images (as models\node\NodeAppClaude / NodeAppOpenAI)
 //Nothing is saved here: the designer shows the new steps, the person reviews and saves them (and publishes) as always.
 //The conversation is kept by the designer and sent back as text turns ([ { role, text } ]); thinking blocks are kept only within one request's loop.
 //ask() = { reply, nodes (the designer's data; null when the canvas was not changed), problems (Workflow::validateFlow of the new steps), rounds, usage }; \ErrorException on failure
@@ -47,14 +49,7 @@ class WorkflowAssistant {
     //the models server-side fallback is offered for (as NodeAppClaude::FALLBACK_MODELS)
     const FALLBACK_MODELS = '/^claude-(opus-5|sonnet-5-5|fable-5)/';
 
-    //the read-only project tools the model may use (util\McpTools, as the user)
-    const PROJECT_TOOLS = [
-	'list_tables',
-	'list_variables',
-	'list_workflows',
-	'get_workflow',
-	'list_files'
-    ];
+    //CLD: 2026-10-23T23:30:00+03:00: removed PROJECT_TOOLS (the read-only project tools): every tool of util\MCPTools is offered, as the user
 
     private $wf;
     private $cred;
@@ -320,6 +315,7 @@ class WorkflowAssistant {
     }
 
     //the rules and the step types (the same for every request of the project: cached)
+    //CLD: 2026-10-23T23:30:00+03:00: + the project tools that change things at once (all tools are offered), and set_workflow for the canvas
     private static function systemPrompt() {
 	return <<<'TXT'
 You are the Assistant of NetFlow9's workflow designer. You sit in a panel next to the person's canvas. They describe a workflow, or a change to the one on the canvas, in their own words; you build it on the canvas with the set_workflow tool.
@@ -335,6 +331,7 @@ How workflows work:
 How to work:
 - The current workflow is in the person's last message. set_workflow replaces the whole canvas, so always send every step and connection that should remain. Keep the ids of steps you keep: they keep their place and their server-set values. New steps are laid out automatically; relayout = true lays out every step again (use it when you restructure the workflow).
 - Give steps short, clear titles. Use the project tools (data tables, project variables, workflows, files) when the request refers to them, so the settings use real names.
+- The project tools also change things at once, unlike the canvas: they add, change and delete data tables, columns and rows, create and change other workflows, and run workflows. Use them only when the person asks for that; never delete anything they did not ask you to. The workflow on the canvas is changed with set_workflow only.
 - set_workflow refuses only steps it cannot build (an unknown type, a connection to a missing step, ...): fix what it reports and call it again. Steps with wrong or missing settings are applied, and those settings are returned as to_fix: correct the ones you can, the person fills in the others. It also returns connection problems: fix the errors.
 - When the request is unclear in a way that changes what you would build, ask a short question instead of guessing. When something only the person can provide is missing (a credential that does not exist yet, an address, a URL), build the rest and say what to fill in.
 - Nothing is saved by you: the person reviews the canvas, then saves it (the floppy icon) and publishes it themselves.
@@ -358,7 +355,8 @@ TXT;
 	    ], 'required' => [ 'steps', 'connections' ] ],
 	] ];
 	foreach(\util\MCPTools::all() as $t) { //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::definitions)
-	    if (in_array($t['name'], self::PROJECT_TOOLS, true))
+	    //CLD: 2026-10-23T23:30:00+03:00: every tool (was PROJECT_TOOLS only); a plugin's set_workflow would clash with the Assistant's own
+	    if ($t['name'] !== 'set_workflow')
 		$tools[] = [ 'name' => $t['name'], 'description' => mb_substr($t['description'], 0, 1000), 'input_schema' => $t['inputSchema'] ];
 	}
 	return $tools;
@@ -366,15 +364,24 @@ TXT;
 
     //call $id of tool $name: [ id, text, isError ]
     //CLD: 2026-10-19T16:05:12+03:00: the result as [ id, text, isError ] (addResults makes the provider's message; was an Anthropic tool_result block); $args null: not JSON
+    //CLD: 2026-10-23T23:30:00+03:00: + images: [ id, text, isError, images: [ [ mimeType, data (base64) ] ] ] (a tool such as read_image)
     private function runTool($id, $name, $args) {
+	$images = [];
 	try {
 	    if (!is_array($args))
 		throw new \ErrorException('the arguments are not a JSON object: send them again');
 	    if ($name === 'set_workflow')
 		$result = $this->setWorkflow($args);
+	    //CLD: 2026-10-23T23:30:00+03:00: the workflow on the canvas is changed with set_workflow (update_workflow would save its draft behind the designer's back)
+	    elseif ($name === 'update_workflow' && in_array(trim((string)($args['workflow'] ?? '')), [ (string)$this->wf->_id, (string)$this->wf->name ], true))
+		throw new \ErrorException('this is the workflow on the canvas: change it with set_workflow');
 	    //CLD: 2026-10-20T23:40:00+03:00: a project tool, as the user (util\MCPTools; was util\McpTools::call); none when no plugin gives it
-	    elseif (in_array($name, self::PROJECT_TOOLS, true) && ($tool = \util\MCPTools::all()[$name] ?? null))
-		$result = ($tool['run'])($args, $this->project, true)[0];
+	    //CLD: 2026-10-23T23:30:00+03:00: any of them (was PROJECT_TOOLS only), with the images of its result
+	    elseif ($tool = \util\MCPTools::all()[$name] ?? null) {
+		$answer = ($tool['run'])($args, $this->project, true);
+		$result = $answer[0];
+		$images = (array)($answer[1] ?? []);
+	    }
 	    else
 		throw new \ErrorException("unknown tool `{$name}`");
 	    $text = \util\JSON::encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -388,17 +395,36 @@ TXT;
 	}
 	if (mb_strlen($text) > self::MAX_TOOL_RESULT)
 	    $text = mb_substr($text, 0, self::MAX_TOOL_RESULT) . ' ... (cut)';
-	return [ $id, $text === '' ? '(empty)' : $text, $isError ];
+	return [ $id, $text === '' ? '(empty)' : $text, $isError, $images ];
     }
 
     //CLD: 2026-10-19T16:05:12+03:00: the results of the calls of one turn added to $messages: Anthropic, one user turn of tool_result blocks; OpenAI, one `tool` message per call
+    //CLD: 2026-10-23T23:30:00+03:00: + the images of the results: OpenAI, in one user message after the tool messages; Anthropic, image blocks in the tool_result
     private function addResults(array &$messages, array $results) {
 	if ($this->protocol === 'openai') {
-	    foreach($results as [ $id, $text, $isError ])
-		$messages[] = [ 'role' => 'tool', 'tool_call_id' => $id, 'content' => ($isError ? 'ERROR: ' : '') . $text ];
+	    $images = [];
+	    foreach($results as [ $id, $text, $isError, $resultImages ]) {
+		$messages[] = [ 'role' => 'tool', 'tool_call_id' => $id, 'content' => ($isError ? 'ERROR: ' : '') . $text . ($resultImages ? ' [' . count($resultImages) . ' image(s): in the next message]' : '') ];
+		foreach($resultImages as $image)
+		    $images[] = $image;
+	    }
+	    if ($images) {
+		$content = [ [ 'type' => 'text', 'text' => 'The images returned by the tools:' ] ];
+		foreach($images as $image)
+		    $content[] = [ 'type' => 'image_url', 'image_url' => [ 'url' => 'data:' . $image[0] . ';base64,' . $image[1] ] ];
+		$messages[] = [ 'role' => 'user', 'content' => $content ];
+	    }
 	    return;
 	}
-	$messages[] = [ 'role' => 'user', 'content' => array_map(fn($r) => [ 'type' => 'tool_result', 'tool_use_id' => $r[0], 'content' => $r[1], 'is_error' => $r[2] ], $results) ];
+	$messages[] = [ 'role' => 'user', 'content' => array_map(function($r) {
+	    $body = $r[1];
+	    if ($r[3]) {
+		$body = [ [ 'type' => 'text', 'text' => $r[1] ] ];
+		foreach($r[3] as $image)
+		    $body[] = [ 'type' => 'image', 'source' => [ 'type' => 'base64', 'media_type' => $image[0], 'data' => $image[1] ] ];
+	    }
+	    return [ 'type' => 'tool_result', 'tool_use_id' => $r[0], 'content' => $body, 'is_error' => $r[2] ];
+	}, $results) ];
     }
 
     //set_workflow: the new steps, checked as when saving; kept for the designer when valid
