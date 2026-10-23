@@ -232,6 +232,14 @@ class Setup {
 	    '#the HTTP Request and Download File steps may call this machine and its network (localhost, 10.x, 192.168.x, ...): true / false',
 	    'HTTP_STEPS_ALLOW_PRIVATE=false',
 	    '',
+	    //CLD: 2026-10-23T23:20:00+03:00: + APP_DEBUG (written false: no error details, no development-only endpoints)
+	    '#development mode: error details on the pages, development-only endpoints (DataController): true / false',
+	    'APP_DEBUG=false',
+	    '',
+	    //CLD: 2026-10-23T23:30:00+03:00: + LOG_LEVEL (written INFO)
+	    '#the least severe messages written to logs/app.log: ERROR, WARN, INFO or DEBUG',
+	    'LOG_LEVEL=INFO',
+	    '',
 	);
 	return implode("\n", $lines);
     }
