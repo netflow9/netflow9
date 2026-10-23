@@ -60,21 +60,21 @@ class EmailHtml {
 	foreach($email['blocks'] as $b) {
 	    if ($b['type'] === 'html') {
 		$html = self::style(self::fill($b['html'], $vars));
-		$rows .= '<tr><td class="qsm-pad" style="padding: 16px ' . self::PADDING . 'px; font-family: ' . self::FONT . '; font-size: 16px; line-height: 1.5; color: #222222; '
+		$rows .= '<tr><td class="netflow9-pad" style="padding: 16px ' . self::PADDING . 'px; font-family: ' . self::FONT . '; font-size: 16px; line-height: 1.5; color: #222222; '
 		    . 'mso-line-height-rule: exactly;">' . $html . '</td></tr>' . "\n";
 		$text[] = self::text($html);
 	    } elseif ($b['type'] === 'image' && $b['file'] !== '') {
-		$cid = 'img' . (count($images) + 1) . '.' . bin2hex(random_bytes(4)) . '@qsm';
+		$cid = 'img' . (count($images) + 1) . '.' . bin2hex(random_bytes(4)) . '@netflow9';
 		$images[$cid] = $b['file'];
 		$full = $b['width'] >= \models\EmailBlocks::WIDTH;
 		$width = $full ? \models\EmailBlocks::WIDTH : min($b['width'], $inner);
 		$alt = htmlspecialchars($b['alt'], ENT_QUOTES | ENT_HTML5);
-		$img = '<img src="cid:' . $cid . '" width="' . $width . '" alt="' . $alt . '" class="qsm-img" style="display: block; width: 100%; max-width: ' . $width . 'px; height: auto; '
+		$img = '<img src="cid:' . $cid . '" width="' . $width . '" alt="' . $alt . '" class="netflow9-img" style="display: block; width: 100%; max-width: ' . $width . 'px; height: auto; '
 		    . 'border: 0; outline: none; text-decoration: none;' . ($b['align'] === 'center' ? ' margin: 0 auto;' : ($b['align'] === 'right' ? ' margin: 0 0 0 auto;' : '')) . '">';
 		$href = self::link(self::fillText($b['href'], $vars));
 		if ($href !== '')
 		    $img = '<a href="' . htmlspecialchars($href, ENT_QUOTES | ENT_HTML5) . '" style="display: block;">' . $img . '</a>';
-		$rows .= '<tr><td align="' . $b['align'] . '" class="' . ($full ? '' : 'qsm-pad') . '" style="padding: ' . ($full ? '0' : '8px ' . self::PADDING . 'px') . ';">' . $img . '</td></tr>' . "\n";
+		$rows .= '<tr><td align="' . $b['align'] . '" class="' . ($full ? '' : 'netflow9-pad') . '" style="padding: ' . ($full ? '0' : '8px ' . self::PADDING . 'px') . ';">' . $img . '</td></tr>' . "\n";
 		if ($b['alt'] !== '')
 		    $text[] = '[' . $b['alt'] . ']' . ($href !== '' ? " ({$href})" : '');
 	    }
@@ -98,8 +98,8 @@ body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adju
 table, td { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
 img { -ms-interpolation-mode: bicubic; }
 @media only screen and (max-width: 620px) {
-  .qsm-pad { padding-left: 16px !important; padding-right: 16px !important; }
-  .qsm-img { width: 100% !important; height: auto !important; }
+  .netflow9-pad { padding-left: 16px !important; padding-right: 16px !important; }
+  .netflow9-img { width: 100% !important; height: auto !important; }
 }
 </style>
 </head>

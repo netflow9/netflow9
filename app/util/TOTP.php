@@ -7,7 +7,7 @@ class TOTP {
     private static $_base32 = [];
     private static $_base32lookup = [];
 
-    private $issuer = 'QSM';
+    private $issuer = 'NetFlow9';
     private $digits = 6;
     private $period = 30;
     private $algorithm = 'SHA256';

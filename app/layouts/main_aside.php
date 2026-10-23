@@ -210,7 +210,7 @@ $dd_items = implode('', $dd_items);
 		    if (\V::app()->user->can('Workflow::delete', [ 'object' => $wf ]))
 			$items .= "<a class='dropdown-item text-danger px-2' href='" . \V::app()->createUrl('/workflow/delete', [ 'id' => (string)$wf->_id ]) . "' data-method='post' data-confirm='Delete this workflow with all its versions and executions? This cannot be undone.'><i class='bi bi-trash me-2'></i>Delete</a>";
 		    //the menu opens fixed (popper strategy), so the scrolling list does not clip it
-		    //CLD: 2026-10-17T21:40:00+03:00: sidebar-item-menu: shown on hover (theme: qsm/_app.scss)
+		    //CLD: 2026-10-17T21:40:00+03:00: sidebar-item-menu: shown on hover (theme: netflow9/_app.scss)
 		    //CLD: 2026-10-17T21:42:00+03:00: vertical dots, small (was bi-three-dots)
 		    $menu = $items === '' ? '' : "
 			<div class='dropdown flex-shrink-0 sidebar-item-menu'>
@@ -230,7 +230,7 @@ $dd_items = implode('', $dd_items);
 	<!-- two-level menu, pinned to the bottom of the sidebar -->
 	<div class="sidebar-bottom-menu">
 	    <nav class="nav flex-column">
-		<a href="https://www.qsm.ro" class="nav-link px-2" target="_blank">
+		<a href="https://www.netflow9.io" class="nav-link px-2" target="_blank">
 		    <i class="bi bi-question-circle"></i> Help &amp; FAQ
 		    <i class="bi bi-box-arrow-up-right float-end"></i>
 		</a>

@@ -40,7 +40,7 @@
 	<script src="/js/vendor/docx-preview/docx-preview.min.js"></script>
 	<?php //CLD: 2026-10-14T21:41:02+03:00: Chart.js 4.5.1 (UMD) -> window.Chart: the charts of the project overview ?>
 	<script src="/js/vendor/chartjs-4.5.1/chart.umd.min.js"></script>
-	<?php //CLD: 2026-10-13T16:34:15+03:00: the ES module libraries (were imported by the components when first used): pdf.js -> window.pdfjsLib (app.pdfviewer.js), CodeMirror 6 -> window.CodeMirror6 (app.codeeditor.js; built by frontend/standalone-packages/CodeMirror6/qsm_build.sh) ?>
+	<?php //CLD: 2026-10-13T16:34:15+03:00: the ES module libraries (were imported by the components when first used): pdf.js -> window.pdfjsLib (app.pdfviewer.js), CodeMirror 6 -> window.CodeMirror6 (app.codeeditor.js; built by frontend/standalone-packages/CodeMirror6/netflow9_build.sh) ?>
 	<script type="module" src="/js/vendor/pdfjs/pdf.mjs"></script>
 	<script type="module" src="/js/vendor/codemirror-6/codemirror.mjs"></script>
 

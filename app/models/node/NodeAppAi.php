@@ -51,8 +51,6 @@ abstract class NodeAppAi extends \models\WfNode {
     //the largest model answer read (bytes)
     const MAX_RESPONSE = 10 * 1024 * 1024;
 
-    //the read-only QSM tools: ticked for a new step
-    //CLD: 2026-10-17T21:00:54+03:00: + read_image
     const DEFAULT_TOOLS = [ 'list_tables', 'query_table', 'list_workflows', 'get_execution', 'list_files', 'read_file', 'read_image', 'list_variables' ];
     //CLD: 2026-10-17T21:00:54+03:00: most images sent with the prompt
     const MAX_IMAGES = 20;
@@ -221,7 +219,7 @@ abstract class NodeAppAi extends \models\WfNode {
 		'type' => 'select',
 		'multiple' => true,
 		'choices' => $tools,
-		'label' => 'Use these tools', //CLD: 2026-10-22T12:30:00+03:00: was QSM tools
+		'label' => 'Use these tools',
 		'default' => array_values(array_intersect(self::DEFAULT_TOOLS, array_keys($tools))), //CLD: 2026-10-20T23:40:00+03:00: those there are (was DEFAULT_TOOLS)
 		'help' => 'What the model may do in this project (run by the workflow, without the users\' permission checks)',
 		'ui' => [ 'placeholder' => 'None' ],
@@ -367,7 +365,6 @@ abstract class NodeAppAi extends \models\WfNode {
 	$known = array_keys(static::projectTools());
 	foreach((array)$this->cfg('tools', []) as $name) {
 	    if (!in_array($name, $known, true)) {
-		//CLD: 2026-10-22T12:30:00+03:00: the field's label (was QSM tools)
 		$this->errors('config', "Use these tools: unknown tool `{$name}`" . ($known ? '' : ' (no plugin gives tools: is SysMCPTools enabled?)'));
 		$valid = false;
 	    }
@@ -673,7 +670,7 @@ abstract class NodeAppAi extends \models\WfNode {
     //POST $body as JSON to $url: the decoded answer ($assoc = false: as objects, to send parts of it back unchanged); \ErrorException when there is no answer, an HTTP
     //error (with the provider's message) or no JSON
     protected function postJson($url, array $headers, array $body, $assoc = true) {
-	$lines = [ 'Content-Type: application/json', 'Accept: application/json', 'User-Agent: QSM-Workflow' ];
+	$lines = [ 'Content-Type: application/json', 'Accept: application/json', 'User-Agent: NetFlow9-Workflow' ];
 	foreach($headers as $name => $value)
 	    $lines[] = $name . ': ' . $value;
 	$timeout = max(5, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 300)));

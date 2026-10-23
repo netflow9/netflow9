@@ -3,7 +3,7 @@
 /*
     the Email (inbound) trigger, mail to <prefix>-<code>@MAIL_INBOUND_DOMAIN starts a workflow.
     Haraka receives the mail (haraka/plugins/nfn.js: checks the address, stores the message, submits the job models/NodeTriggerEmail::deliver). Enabled in app/plugins.php,
-    active only when Haraka is found (harakaFound(): the Haraka install with QSM's plugin enabled); inactive, there is no Email (inbound) step and no settings link.
+    active only when Haraka is found (harakaFound(): the Haraka install with NetFlow9's plugin enabled); inactive, there is no Email (inbound) step and no settings link.
       models/NodeTriggerEmail.php        the step (was models\node\NodeTriggerEmail), its execution:end hook (was registered by sys\Boot)
       models/InboundMailSettings.php     the account's prefix (was the account field mail_prefix), read by the step and by Haraka
       controllers/InboundController      /InboundMail/inbound/settings (views/inbound/settings.php), linked from the Settings menu (hook layout:settings-menu)

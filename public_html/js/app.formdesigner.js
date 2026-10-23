@@ -4,7 +4,7 @@ if (!window.app)
 /*!
  * a form designer, builds an app.smartform schema
  * { direction, fields } - the forms of the Form trigger and Human task steps (smartform field type `formdesigner`, in the step dialog).
- * Fields: the QSM types (text, textarea, number, date, datetime, select, checkbox, switch, hidden) + design / layout nodes (title, paragraph, divider, columns).
+ * Fields: the NetFlow9 types (text, textarea, number, date, datetime, select, checkbox, switch, hidden) + design / layout nodes (title, paragraph, divider, columns).
  * Each input has a `key` (its name in the answers; from the label until edited). A condition { key, operator, value } shows a node only when another field
  * matches; its `showIf` is generated from it (the server does the same and drops any other showIf / hideIf / requiredIf).
  * CLD: 2026-10-14T20:17:14+03:00: the condition is the node's `showIf` itself (app.smartform evaluates it; no JS is generated); its operators are those of the field it reads

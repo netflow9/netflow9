@@ -33,7 +33,7 @@ $this->pageTitle = 'Overview';
     <?php //CLD: 2026-10-14T21:44:49+03:00: the dashboard (public_html/js/app.overview.js); chart colors as tokens: blue = completed, red = error (validated for color vision
     //deficiency on the light / dark card surface), recessive grid, text in the text tokens ?>
     <style>
-    .qsm-overview {
+    .netflow9-overview {
 	--ov-completed: #2a78d6;
 	--ov-error: #e34948;
 	--ov-surface: var(--bs-body-bg);
@@ -41,15 +41,15 @@ $this->pageTitle = 'Overview';
 	--ov-text: var(--bs-body-color);
 	--ov-muted: var(--bs-secondary-color);
     }
-    [data-bs-theme=dark] .qsm-overview {
+    [data-bs-theme=dark] .netflow9-overview {
 	--ov-completed: #3987e5;
 	--ov-error: #e66767;
 	--ov-grid: #343a40;
     }
-    .qsm-overview .ov-num { font-variant-numeric: tabular-nums; }
-    .qsm-overview .ov-spark { vertical-align: middle; }
-    .qsm-overview .ov-periods .btn:not(.active), .qsm-overview .ov-refresh { color: var(--bs-body-color); }
+    .netflow9-overview .ov-num { font-variant-numeric: tabular-nums; }
+    .netflow9-overview .ov-spark { vertical-align: middle; }
+    .netflow9-overview .ov-periods .btn:not(.active), .netflow9-overview .ov-refresh { color: var(--bs-body-color); }
     </style>
-    <div class="qsm-overview" id="qsm-overview"></div>
-    <?php \V::app()->cs->addPageScript("new app.Overview(document.getElementById('qsm-overview'), { url: '/site/overview' });"); ?>
+    <div class="netflow9-overview" id="netflow9-overview"></div>
+    <?php \V::app()->cs->addPageScript("new app.Overview(document.getElementById('netflow9-overview'), { url: '/site/overview' });"); ?>
 </div>

@@ -10,7 +10,7 @@ window.app.sidebar = (function() {
     let lastWidth = 0;
 
     //CLD: 2026-10-19T19:05:00+03:00: the width set by the resize handle is kept in localStorage (this browser), and used again on load
-    const WIDTH_KEY = 'qsm.sidebar.width';
+    const WIDTH_KEY = 'netflow9.sidebar.width';
     const storedWidth = () => {
 	try {
 	    const w = parseInt(localStorage.getItem(WIDTH_KEY), 10);
@@ -31,7 +31,7 @@ window.app.sidebar = (function() {
 	    sidebar[0].style.setProperty('--sidebar-w', w + 'px');
     };
 
-    //CLD: 2026-10-19T22:19:24+03:00: below lg (theme qsm/_app.scss: media-breakpoint-down(lg)) the sidebar is a drawer: .sidebar-open on .app-shell shows it;
+    //CLD: 2026-10-19T22:19:24+03:00: below lg (theme netflow9/_app.scss: media-breakpoint-down(lg)) the sidebar is a drawer: .sidebar-open on .app-shell shows it;
     //the desktop width and collapsed state are left as they are
     const mobileQuery = window.matchMedia('(max-width: 991.98px)');
     const isMobile = () => mobileQuery.matches;
@@ -118,7 +118,7 @@ window.app.sidebar = (function() {
 
 	    //CLD: 2026-10-19T23:05:00+03:00: pointer events (mouse, touch and pen; were mouse events: no resize on touch screens), as the designer's panels
 	    //(app.workflow.js setupPanelResize): the pointer is captured by the handle, pointercancel ends the drag like pointerup; touch-action none on the
-	    //handle (theme qsm/_app.scss). Delegated on the sidebar (was bound to the handle): the handle is new after the aside is rendered again (sidebar::refresh)
+	    //handle (theme netflow9/_app.scss). Delegated on the sidebar (was bound to the handle): the handle is new after the aside is rendered again (sidebar::refresh)
 	    sidebar.on('pointerdown', '.sidebar-resize-handle', (e) => {
 		//main button only (a touch or a pen contact is button 0 too)
 		if (e.button !== 0)

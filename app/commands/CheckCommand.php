@@ -730,8 +730,8 @@ class CheckCommand extends \sys\BaseController {
 	$urlForm = $F::normalize([ 'fields' => [ [ 'type' => 'url', 'key' => 'site', 'placeholder' => 'https://' ], [ 'type' => 'text', 'key' => 'phone', 'inputType' => 'tel' ] ] ]);
 	//CLD: 2026-10-14T19:59:06+03:00: the url rule only (any scheme it accepts)
 	$this->check('url: its own type; text loses inputType; addresses only', [ 'url', false, [], [], [ 'site' ] ],
-	    [ $urlForm['fields'][0]['type'], isset($urlForm['fields'][1]['inputType']), $F::answers($urlForm, [ 'site' => 'https://qsm.ro/x' ])[1],
-		$F::answers($urlForm, [ 'site' => 'ftp://qsm.ro' ])[1], array_keys($F::answers($urlForm, [ 'site' => 'qsm.ro' ])[1]) ]);
+	    [ $urlForm['fields'][0]['type'], isset($urlForm['fields'][1]['inputType']), $F::answers($urlForm, [ 'site' => 'https://netflow9.io/x' ])[1],
+		$F::answers($urlForm, [ 'site' => 'ftp://netflow9.io' ])[1], array_keys($F::answers($urlForm, [ 'site' => 'netflow9.io' ])[1]) ]);
 	//CLD: 2026-10-18T14:00:00+03:00: answers checked and cast by a sys\NestedModel (util\SmartForm::fieldDef): the form's messages first, real dates only, a required checkbox
 	//checked, the pattern anchored, an unknown single choice refused, blank text null, dates cast
 	$more = $F::normalize([ 'fields' => [ [ 'type' => 'number', 'key' => 'n', 'min' => 1 ], [ 'type' => 'date', 'key' => 'd' ], [ 'type' => 'datetime', 'key' => 'dt' ],
@@ -783,7 +783,7 @@ class CheckCommand extends \sys\BaseController {
 	//CLD: 2026-10-18T13:00:00+03:00: sys\NestedModel (was models\WfNodeConfig; option nestedSchema, was configSchema)
 	$urlModel = \sys\NestedModel::create([], [ 'objectName' => 'NestedModel', 'nestedSchema' => [ [ 'key' => 'site', 'type' => 'url', 'label' => 'Site' ] ] ]);
 	//CLD: 2026-10-14T19:59:06+03:00: refuses what is not an address (was: refuses other schemes than http(s))
-	$urlModel->assign([ 'site' => 'qsm.ro' ]);
+	$urlModel->assign([ 'site' => 'netflow9.io' ]);
 	$this->check('url: the model field refuses a non-address, its form field is url', [ false, 'url' ],
 	    [ $urlModel->validates(), $F::modelFields($urlModel)[0]['type'] ]);
 
@@ -899,7 +899,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-17T21:00:54+03:00: images for the AI steps: read_image (QSM tool), the step's Images setting, the requests of Claude and OpenAI (no model is called)
+    //CLD: 2026-10-17T21:00:54+03:00: images for the AI steps: read_image (NetFlow9 tool), the step's Images setting, the requests of Claude and OpenAI (no model is called)
     //CLD: 2026-10-18T12:30:00+03:00: NodeAppOpenAI (was NodeAppLemonade)
     private function suiteImages() {
 	$n = [ self::class, 'node' ];
@@ -1808,7 +1808,7 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-23T10:00:00+03:00: new (was in suiteLocalAi): the fake AI server (commands/tests/AiTestServer.php, PHP's built-in server on a free port, API key check-key) =>
     //{ port, log (the requests' file), requests: fn($path) => the bodies sent to $path, proc, dir }; null when it did not start (a failure named $what)
     private function startAiServer($what) {
-	$dir = sys_get_temp_dir() . '/qsm-check-ai-' . uniqid();
+	$dir = sys_get_temp_dir() . '/netflow9-check-ai-' . uniqid();
 	@mkdir($dir, 0700, true);
 	$log = "{$dir}/requests.log";
 	$port = 0;
@@ -2418,25 +2418,25 @@ class CheckCommand extends \sys\BaseController {
 	$webp = (string)\models\File::createFromString('check.webp', 'x', [ 'metadata' => [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'source' => 'check' ] ]);
 	try {
 	    $email = [ 'preheader' => 'Order {{ order }}', 'blocks' => [
-		[ 'type' => 'image', 'file' => $fid, 'alt' => 'Logo', 'width' => 200, 'href' => 'https://qsm.ro/{{ order }}' ],
+		[ 'type' => 'image', 'file' => $fid, 'alt' => 'Logo', 'width' => 200, 'href' => 'https://netflow9.io/{{ order }}' ],
 		[ 'type' => 'html', 'html' => '<p>Hello {{ name }} &amp; <a href="{{ bad }}">x</a> <a href="{{ good }}">y</a></p>' ] ] ];
 	    $r = \util\EmailHtml::render($email, [ 'name' => '<b>Ana</b>', 'order' => 'A-1', 'bad' => 'javascript:alert(1)', 'good' => 'https://q.ro/?a=1&b=2' ], 'S');
 	    $this->check('html: values escaped, a javascript link dropped, Outlook table, preheader, the image by cid, the text version', [ true, false, true, true, true, true ],
 		[ str_contains($r['html'], 'Hello &lt;b&gt;Ana&lt;/b&gt;'), str_contains($r['html'], 'javascript:'), str_contains($r['html'], '<!--[if mso]><table role="presentation" width="600"'),
 		  str_contains($r['html'], 'Order A-1'), (bool)preg_match('~src="cid:([^"]+)"~', $r['html']) && array_values($r['images']) === [ $fid ],
-		  str_contains($r['text'], 'Hello <b>Ana</b> & x y (https://q.ro/?a=1&b=2)') && str_contains($r['text'], '[Logo] (https://qsm.ro/A-1)') ]);
+		  str_contains($r['text'], 'Hello <b>Ana</b> & x y (https://q.ro/?a=1&b=2)') && str_contains($r['text'], '[Logo] (https://netflow9.io/A-1)') ]);
 
 	    $file = \V::app()->om->findById('File', $fid);
-	    [ $h, $body ] = \util\EmailSend::compose([ 'from' => 'noreply@x.ro', 'from_name' => "QSM\r\nBcc: e@x.ro", 'to' => [ 'a@x.ro' ], 'subject' => "Bună ziua\r\nX-Evil: 1",
+	    [ $h, $body ] = \util\EmailSend::compose([ 'from' => 'noreply@x.ro', 'from_name' => "NetFlow9\r\nBcc: e@x.ro", 'to' => [ 'a@x.ro' ], 'subject' => "Bună ziua\r\nX-Evil: 1",
 		'html' => $r['html'], 'text' => $r['text'], 'images' => array_map(fn($f) => $file, $r['images']) ]);
 	    $back = new \util\MailParser($h . "\r\n\r\n" . $body);
 	    $att = $back->attachments()[0] ?? [];
-	    $this->check('mime: read back (subject, name kept on one line, html, the image inline, no injected header)', [ 'Bună ziua  X-Evil: 1', 'QSM  Bcc: e@x.ro', true, 'inline', true, false ],
+	    $this->check('mime: read back (subject, name kept on one line, html, the image inline, no injected header)', [ 'Bună ziua  X-Evil: 1', 'NetFlow9  Bcc: e@x.ro', true, 'inline', true, false ],
 		[ $back->subject(), $back->from()['name'] ?? null, str_contains($back->html(), 'cid:'), $att['disposition'] ?? null, ($att['content'] ?? null) === $png, (bool)preg_match('/^(Bcc|X-Evil):/mi', $h) ]);
 
 	    $n = [ self::class, 'node' ];
 	    $e = [ self::class, 'edge' ];
-	    $cfg = [ 'to' => '{{ who }}', 'cc' => '', 'bcc' => '', 'subject' => 'Hi {{ name }}', 'fromName' => 'QSM', 'replyTo' => '', 'email' => $email ];
+	    $cfg = [ 'to' => '{{ who }}', 'cc' => '', 'bcc' => '', 'subject' => 'Hi {{ name }}', 'fromName' => 'NetFlow9', 'replyTo' => '', 'email' => $email ];
 	    $before = \V::app()->om->count('Job', [ 'job_spec' => '\util\EmailSend::deliver' ]);
 	    //CLD: 2026-10-17T15:10:00+03:00: the Send email step is app::send-email (was app::email)
 	    $exe = $this->runFlow('email sent', [ $n('m', 'trigger::manual'), $n('s', 'app::send-email', $cfg), $e('e1', 'm', 's') ], [ 'who' => 'x@example.com, y@example.com', 'name' => 'Ana', 'order' => 'A-1', 'bad' => '', 'good' => 'https://q.ro' ]);
@@ -3523,7 +3523,7 @@ class CheckCommand extends \sys\BaseController {
 		(new $E(49, '', 'data 775'))->adReason() ]);
 
 	//the test servers
-	$work = sys_get_temp_dir() . '/qsm-check-ldap-' . bin2hex(random_bytes(4));
+	$work = sys_get_temp_dir() . '/netflow9-check-ldap-' . bin2hex(random_bytes(4));
 	mkdir($work, 0700);
 	$servers = [];
 	try {

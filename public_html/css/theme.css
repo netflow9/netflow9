@@ -11856,10 +11856,10 @@ textarea.form-control-lg {
 }
 /* ---------- DEBUG PANEL ---------- */
 :root {
-  --qsm-debug-accent:#D97757;
-  --qsm-debug-bg:#1E1B16;
-  --qsm-debug-text:#D9D2C5;
-  --qsm-debug-muted:#8A8175;
+  --netflow9-debug-accent:#D97757;
+  --netflow9-debug-bg:#1E1B16;
+  --netflow9-debug-text:#D9D2C5;
+  --netflow9-debug-muted:#8A8175;
 }
 
 .debug-resize-handle {
@@ -11887,7 +11887,7 @@ textarea.form-control-lg {
 }
 
 .debug-resize-handle:hover::after, .debug-resize-handle.dragging::after {
-  background: var(--qsm-debug-accent);
+  background: var(--netflow9-debug-accent);
 }
 
 /* CLD: 2026-10-19T22:55:00+03:00: dragged with pointer events (app.workflow.js setupPanelResize): touch-action none, so a drag on a touch screen resizes the
@@ -11911,8 +11911,8 @@ textarea.form-control-lg {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--qsm-debug-bg);
-  color: var(--qsm-debug-text);
+  background: var(--netflow9-debug-bg);
+  color: var(--netflow9-debug-text);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
@@ -11941,7 +11941,7 @@ textarea.form-control-lg {
 }
 
 .debug-panel-title i {
-  color: var(--qsm-debug-accent);
+  color: var(--netflow9-debug-accent);
   font-size: 13px;
 }
 
@@ -11954,7 +11954,7 @@ textarea.form-control-lg {
 .debug-icon-btn {
   background: transparent;
   border: none;
-  color: var(--qsm-debug-muted);
+  color: var(--netflow9-debug-muted);
   width: 26px;
   height: 26px;
   border-radius: 6px;
@@ -11985,12 +11985,12 @@ textarea.form-control-lg {
 }
 
 .debug-log-line .tag {
-  color: var(--qsm-debug-accent);
+  color: var(--netflow9-debug-accent);
   margin-right: 8px;
 }
 
 .debug-log-line .ts {
-  color: var(--qsm-debug-muted);
+  color: var(--netflow9-debug-muted);
   margin-right: 8px;
 }
 

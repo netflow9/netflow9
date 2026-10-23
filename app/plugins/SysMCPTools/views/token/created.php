@@ -3,7 +3,7 @@
 $esc = fn($v) => \V::app()->html->escape((string)$v);
 //CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://); was built from the request host
 $url = \V::app()->createAbsoluteUrl('/mcp');
-$config = json_encode([ 'mcpServers' => [ 'qsm' => [ 'type' => 'http', 'url' => $url, 'headers' => [ 'Authorization' => 'Bearer ' . $secret ] ] ] ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+$config = json_encode([ 'mcpServers' => [ 'netflow9' => [ 'type' => 'http', 'url' => $url, 'headers' => [ 'Authorization' => 'Bearer ' . $secret ] ] ] ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 $copy = fn($id) => "<button type='button' class='btn btn-sm btn-outline-secondary' onclick=\"navigator.clipboard.writeText(document.getElementById('{$id}').textContent); this.innerHTML='<i class=\\'bi bi-check2\\'></i>'\" title='Copy'><i class='bi bi-clipboard'></i></button>";
 
 $body = "

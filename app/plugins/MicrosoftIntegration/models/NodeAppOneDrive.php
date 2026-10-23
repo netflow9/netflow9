@@ -515,7 +515,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	$ch = curl_init($url);
 	curl_setopt_array($ch, [
 	    CURLOPT_HTTPGET => true,
-	    CURLOPT_HTTPHEADER => [ 'User-Agent: QSM-Workflow' ],
+	    CURLOPT_HTTPHEADER => [ 'User-Agent: NetFlow9-Workflow' ],
 	    CURLOPT_FOLLOWLOCATION => true,
 	    CURLOPT_MAXREDIRS => 5,
 	    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
@@ -567,7 +567,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	    curl_setopt_array($ch, [
 		CURLOPT_CUSTOMREQUEST => 'PUT',
 		CURLOPT_POSTFIELDS => $chunk,
-		CURLOPT_HTTPHEADER => [ 'User-Agent: QSM-Workflow', 'Expect:', 'Content-Length: ' . strlen($chunk), "Content-Range: bytes {$offset}-{$end}/{$size}" ],
+		CURLOPT_HTTPHEADER => [ 'User-Agent: NetFlow9-Workflow', 'Expect:', 'Content-Length: ' . strlen($chunk), "Content-Range: bytes {$offset}-{$end}/{$size}" ],
 		CURLOPT_RETURNTRANSFER => true,
 		CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
 		CURLOPT_CONNECTTIMEOUT => 10,

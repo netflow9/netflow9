@@ -137,7 +137,7 @@ class NodeAppDownload extends NodeAppHttp {
 	$ch = curl_init($url);
 	curl_setopt_array($ch, [
 	    CURLOPT_HTTPGET => true,
-	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: QSM-Workflow' ], array_values($headers)),
+	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: NetFlow9-Workflow' ], array_values($headers)),
 	    CURLOPT_FOLLOWLOCATION => true,
 	    CURLOPT_MAXREDIRS => 5,
 	    CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,

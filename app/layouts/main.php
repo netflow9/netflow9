@@ -13,7 +13,7 @@ ob_start();
     <aside class="sidebar">
 	<?php require(dirname(__FILE__) . '/main_aside.php') ?>
     </aside>
-    <?php //CLD: 2026-10-19T22:19:24+03:00: behind the sidebar when it is a drawer (small screens, theme qsm/_app.scss); a click closes it (app.sidebar) ?>
+    <?php //CLD: 2026-10-19T22:19:24+03:00: behind the sidebar when it is a drawer (small screens, theme netflow9/_app.scss); a click closes it (app.sidebar) ?>
     <div class="sidebar-backdrop"></div>
 
     <!-- MAIN -->

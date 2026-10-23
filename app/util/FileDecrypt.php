@@ -286,7 +286,7 @@ class FileDecrypt {
 
     //a private temporary folder
     public static function workDir() {
-	$dir = rtrim(sys_get_temp_dir(), '/') . '/qsm-' . bin2hex(random_bytes(8));
+	$dir = rtrim(sys_get_temp_dir(), '/') . '/netflow9-' . bin2hex(random_bytes(8));
 	if (!@mkdir($dir, 0700))
 	    throw new \RuntimeException('no temporary folder could be made');
 	return $dir;

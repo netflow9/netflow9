@@ -667,7 +667,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 	$ch = curl_init($url);
 	curl_setopt_array($ch, [
 	    CURLOPT_HTTPGET => true,
-	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: QSM-Workflow' ], $this->authHeaders()),
+	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: NetFlow9-Workflow' ], $this->authHeaders()),
 	    CURLOPT_FOLLOWLOCATION => true,
 	    CURLOPT_MAXREDIRS => 5,
 	    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
@@ -707,7 +707,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 	    CURLOPT_UPLOAD => true,
 	    CURLOPT_INFILESIZE => $size,
 	    CURLOPT_READFUNCTION => fn($ch, $fd, $length) => (string)fread($stream, $length),
-	    CURLOPT_HTTPHEADER => [ 'User-Agent: QSM-Workflow', "Content-Type: {$contentType}", 'Expect:' ],
+	    CURLOPT_HTTPHEADER => [ 'User-Agent: NetFlow9-Workflow', "Content-Type: {$contentType}", 'Expect:' ],
 	    CURLOPT_RETURNTRANSFER => true,
 	    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
 	    CURLOPT_CONNECTTIMEOUT => 10,
