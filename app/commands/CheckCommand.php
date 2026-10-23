@@ -39,7 +39,7 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-22T01:36:46+03:00: + localai (the Lemonade AI and Ollama steps and credentials, against a fake server: commands/tests/AiTestServer.php)
     //CLD: 2026-10-23T10:00:00+03:00: + systemai (the AI steps on the System AI: plugins\SystemAI, its credits)
     //CLD: 2026-10-23T15:00:00+03:00: + http (util\Http against a local server; the HTTP steps' private-address option)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -2996,6 +2996,70 @@ class CheckCommand extends \sys\BaseController {
 	} finally {
 	    \V::app()->var('rt.account', $restore);
 	    \models\Account::suspendedIds(true);
+	    $om->acrossAccounts(function() use ($om, $account) {
+		foreach([ 'User', 'Role' ] as $name) {
+		    $class = $om->getObjectClass($name);
+		    \V::app()->mongo->selectCollection($class::_database(), $class::_collection())->deleteMany([ 'aid' => $account->_id ]);
+		}
+		\V::app()->mongo->selectCollection(\models\Account::_database(), \models\Account::_collection())->deleteOne([ '_id' => $account->_id ]);
+	    });
+	}
+    }
+
+    //CLD: 2026-10-24T00:20:00+03:00: new: a 2FA code is accepted once (User::useTfaCode: the same code again, an older window's code, a wrong one refused; the next window's accepted);
+    //the "forgot password" limits (LoginThrottle reset_email: 3, reset_ip: 10 in an hour, then locked)
+    private function suiteSignin() {
+	$om = \V::app()->om;
+	$restore = \V::app()->config('rt.account');
+	$account = \models\Account::create([ 'state' => 'active', 'name' => 'Check signin ' . uniqid() ]);
+	$account->save();
+	\V::app()->var('rt.account', $account);
+	$T = \models\user\LoginThrottle::class;
+	$server = $_SERVER;
+	$keys = [];
+	try {
+	    $roles = $account->setupRoles();
+	    $totp = new \util\TOTP();
+	    $secret = $totp->createSecret();
+	    $user = $om->create('User', [ 'aid' => $account->_id, 'username' => 'chk_tfa_' . uniqid(), 'email' => 'chk_tfa_' . uniqid() . '@example.invalid', 'firstname' => 'C',
+		'lastname' => 'T', 'password' => \V::app()->security->generatePasswordHash('x'), 'state' => 'active', 'role' => $roles['owner']->_id, 'tfa_secret' => $secret ]);
+	    $user->save();
+	    $user = $om->findById('User', (string)$user->_id);
+	    $now = time();
+	    $code = $totp->getCode($secret, $now);
+	    $first = $user->useTfaCode($code);
+	    $again = $user->useTfaCode($code);
+	    $older = $user->useTfaCode($totp->getCode($secret, $now - 30));
+	    $wrong = $user->useTfaCode($code === '000000' ? '111111' : '000000');
+	    $next = $user->useTfaCode($totp->getCode($secret, $now + 30));
+	    $nextAgain = $user->useTfaCode($totp->getCode($secret, $now + 30));
+	    $this->check('signin: a 2FA code is accepted once; the same code again, an older window\'s code and a wrong one are refused; the next window\'s code once',
+		[ true, false, false, false, true, false ], [ $first, $again, $older, $wrong, $next, $nextAgain ]);
+	    $fresh = $om->findById('User', (string)$user->_id);
+	    $setup = $fresh->useTfaCode($totp->getCode($secret, $now + 30), $secret);
+	    $this->check('signin: the window is kept in the database (a code used in one request is refused in another)', [ false, true ],
+		[ $setup, (int)$fresh->tfa_last_slice === (int)floor(($now + 30) / 30) ]);
+
+	    //"forgot password": 3 requests per email, 10 per address, in an hour
+	    $email = 'chk_reset_' . uniqid() . '@example.invalid';
+	    $keys[] = $emailKey = $T::resetEmailKey(strtoupper($email));
+	    $locks = [];
+	    foreach(range(1, 3) as $i)
+		$locks[] = [ $T::lockedFor($emailKey) > 0, $T::fail($emailKey) ];
+	    $this->check('signin: "forgot password" per email: 3 requests, the third locks it; the key is the lower-case email', [
+		[ [ false, false ], [ false, false ], [ false, true ] ], true, 'reset_email:' . $email ], [ $locks, $T::lockedFor($emailKey) > 3500, $emailKey ]);
+	    $_SERVER['REMOTE_ADDR'] = '198.51.100.' . random_int(1, 254);
+	    $keys[] = $ipKey = $T::resetIpKey();
+	    $locked = [];
+	    foreach(range(1, 10) as $i)
+		$locked[] = $T::fail($ipKey);
+	    $this->check('signin: "forgot password" per address: the tenth request locks it for an hour', [ array_merge(array_fill(0, 9, false), [ true ]), true ],
+		[ $locked, $T::lockedFor($ipKey) > 3500 ]);
+	} finally {
+	    $_SERVER = $server;
+	    foreach($keys as $k)
+		$T::clear($k);
+	    \V::app()->var('rt.account', $restore);
 	    $om->acrossAccounts(function() use ($om, $account) {
 		foreach([ 'User', 'Role' ] as $name) {
 		    $class = $om->getObjectClass($name);

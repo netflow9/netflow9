@@ -122,6 +122,15 @@ class User extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		//CLD: 2026-10-10T18:54:42+03:00: not a form field (set by the password change / system)
 		'showInForms' => false,
+	    ],
+	    //CLD: 2026-10-24T00:20:00+03:00: the time window (TOTP time slice) of the last 2FA code accepted: a code is used once (useTfaCode)
+	    [
+		'key' => 'tfa_last_slice',
+		'type' => 'number',
+		'label' => 'Last 2FA window',
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
 	    ]
 	];
 	return array_merge($fields, $this->getSystemSchema());
@@ -129,6 +138,17 @@ class User extends \sys\BaseModel {
 
     public function __toString() {
 	return $this->firstname . ' ' . $this->lastname;
+    }
+
+    //CLD: 2026-10-24T00:20:00+03:00: new: 2FA code $code of $secret (default: the user's own) accepted only once: refused when its time window is not newer than the last one accepted
+    //(tfa_last_slice), so a code seen by someone else can't be used again within its ~90 s (SOC2.md gap 12). The window is claimed with one atomic update (two requests
+    //with the same code: only one is accepted), written directly (not save(): no audit entry for it)
+    public function useTfaCode($code, $secret = null) {
+	$slice = 0;
+	if (!(new \util\TOTP())->verifyCode($secret ?? $this->tfa_secret, (string)$code, 1, null, $slice))
+	    return false;
+	return \V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid, '$or' => [ [ 'tfa_last_slice' => [ '$lt' => $slice ] ], [ 'tfa_last_slice' => null ] ] ],
+	    [ '$set' => [ 'tfa_last_slice' => $slice ] ]) > 0;
     }
 
 

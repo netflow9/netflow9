@@ -136,7 +136,8 @@ class UserController extends \sys\BaseController {
 	if (empty($code))
 	    \V::app()->error(400, 'malformed request: missing code');
 
-	if ($totp->verifyCode($secret, $code)) {
+	//CLD: 2026-10-24T00:20:00+03:00: User::useTfaCode (was TOTP::verifyCode): the activation code can't then be used to sign in
+	if (!empty($secret) && $user->useTfaCode($code, $secret)) {
 	    $user->tfa_secret = $secret;
 	    $user->save();
 	    $this->addToast('success', 'OK', '2FA Activated!');
@@ -164,8 +165,8 @@ class UserController extends \sys\BaseController {
 	if (empty($code))
 	    \V::app()->error(400, 'malformed request: missing code');
 
-	$totp = new \util\TOTP();
-	if ($totp->verifyCode($user->tfa_secret, $code)) {
+	//CLD: 2026-10-24T00:20:00+03:00: a code is accepted once (User::useTfaCode; was TOTP::verifyCode)
+	if ($user->useTfaCode($code)) {
 	    $user->tfa_secret = null;
 	    $user->save();
 	    $this->addToast('success', 'OK', '2FA Deactivated!');

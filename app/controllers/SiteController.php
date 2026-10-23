@@ -130,9 +130,22 @@ class SiteController extends \sys\BaseController {
 	$sent = false;
 	if ($req->is('post')) {
 	    $form->assign($req->data);
-	    if ($form->validates()) {
+	    //CLD: 2026-10-24T00:20:00+03:00: rate limits (models\user\LoginThrottle; SOC2.md gap 12): per address, refused with 429 once over; per email, nothing is sent once over, with the same answer
+	    //(the page tells nothing about the accounts)
+	    $ipKey = \models\user\LoginThrottle::resetIpKey();
+	    $ipLocked = \models\user\LoginThrottle::lockedFor($ipKey);
+	    if ($ipLocked > 0) {
+		$form->errors('email', \models\user\LoginThrottle::message($ipLocked));
+		$resp->status = 429;
+	    } elseif ($form->validates()) {
+		if (\models\user\LoginThrottle::fail($ipKey))
+		    \V::app()->log->warn('SiteController: password reset requests locked for ' . $ipKey);
+		$emailKey = \models\user\LoginThrottle::resetEmailKey((string)$form->email);
+		$emailLocked = \models\user\LoginThrottle::lockedFor($emailKey) > 0;
+		if (!$emailLocked && \models\user\LoginThrottle::fail($emailKey))
+		    \V::app()->log->warn('SiteController: password reset emails locked for ' . $emailKey);
 		//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://); was built from the request host
-		foreach(\V::app()->om->find('User', [ 'email' => (string)$form->email, 'state' => 'active' ]) as $user) {
+		foreach($emailLocked ? [] : \V::app()->om->find('User', [ 'email' => (string)$form->email, 'state' => 'active' ]) as $user) {
 		    //CLD: 2026-10-21T10:00:00+03:00: not for a user whose password is kept elsewhere (e.g. an LDAP user: the directory's password)
 		    if (\sys\Identity::passwordSource($user) !== null)
 			continue;
@@ -233,11 +246,11 @@ class SiteController extends \sys\BaseController {
 	    //CLD: 2026-10-21T18:00:00+03:00: the 2FA throttle (models\user\LoginThrottle, per user): a locked user's code is not checked
 	    $tfaKey = \models\user\LoginThrottle::tfaKey($user_id);
 	    $lockedFor = \models\user\LoginThrottle::lockedFor($tfaKey);
-	    $totp = new \util\TOTP();
 	    if ($lockedFor > 0) {
 		$error = \models\user\LoginThrottle::message($lockedFor);
 		$resp->status = 429;
-	    } elseif (!empty($user) && $totp->verifyCode($user->tfa_secret, $code)) {
+	    //CLD: 2026-10-24T00:20:00+03:00: a code is accepted once (User::useTfaCode; was TOTP::verifyCode: a code could be used again within its window); a reused one counts as wrong
+	    } elseif (!empty($user) && $user->useTfaCode($code)) {
 		\models\user\LoginThrottle::clear($tfaKey);
 		//CLD: 2026-10-16T13:15:57+03:00: signIn() (was the login written here)
 		$this->signIn($user, $remember, 'with a 2FA code', true);
