@@ -39,6 +39,11 @@ if (!window.app)
  *   variableName  - (text) 'read' | 'write': the value is a variable name; the form's `expression` server suggests the available variables (app.ExprInput
  *                   mode `name`; 'read' also warns about a name no step before sets)
  *   code          - (textarea) CLD: 2026-10-13T15:33:17+03:00: the language of a code editor in place of the textarea (app.CodeEditor; 'j'); live help in the `expression` syntax
+ *                   CLD: 2026-10-23T12:30:00+03:00: the editor's language follows the syntax (app.CodeEditor LANGUAGES); `code`: true is enough
+ *   syntaxBy      - (textarea with `code`) CLD: 2026-10-23T12:30:00+03:00: the syntax follows other fields: [ { syntax, if: condition | [ conditions, all true ] } ], the first
+ *                   that holds wins, else the `expression` syntax; e.g. JSON / JSON-RPC by the body type of the HTTP Request step
+ *   propose       - (checkbox, switch) CLD: 2026-10-23T12:30:00+03:00: checking it proposes a value for another (top-level) field: { key, value, confirm }; set when that
+ *                   field is empty, else when the user agrees to `confirm` (no `confirm`: only when empty)
  *   expression    - (text, textarea) the value may hold expressions between {{ and }}: checked and completed live on the server (app.ExprInput),
  *                   when the form has the `expression` option
  *                   CLD: 2026-10-13T12:17:47+03:00: true = syntax `text` (text with any {{ }} parts), or the syntax name: 'reference' (only {{ variable }} /
@@ -425,6 +430,20 @@ window.app.smartform = (function() {
     	    return '';
 	}
 
+	//CLD: 2026-10-23T12:30:00+03:00: checked: the `propose` value for its field
+	handleInput(value) {
+	    super.handleInput(value);
+	    const p = this.schema.propose;
+	    if (!value || !p || !p.key || !this.api.setValue)
+		return;
+	    const current = (this.api.getContext().data || {})[p.key];
+	    if (current === p.value)
+		return;
+	    if (current !== undefined && current !== null && String(current).trim() !== '' && !(p.confirm && window.confirm(p.confirm)))
+		return;
+	    this.api.setValue(p.key, p.value);
+	}
+
 	//CLD: 2026-10-06T08:33:42+03:00: a non-editable checkbox must not submit its hidden "0" either
 	_applyEditableState() {
     	    super._applyEditableState();
@@ -644,11 +663,32 @@ window.app.smartform = (function() {
 	    if (Array.isArray(this.schema.rules) && this.schema.rules.length)
 		input.addEventListener('blur', () => this.validate(this.api.getContext()));
 	    //CLD: 2026-10-13T15:33:17+03:00: `code` (e.g. 'j'): a code editor (app.CodeEditor: CodeMirror, with the server's live help in the field's expression syntax) in place of the textarea
+	    //CLD: 2026-10-23T12:30:00+03:00: the syntax by syntaxBy (_syntax)
 	    if (this.schema.code && window.app.CodeEditor && this.api.expression)
-		this.codeEditor = new window.app.CodeEditor(input, Object.assign({}, this.api.expression, { syntax: typeof this.schema.expression === 'string' ? this.schema.expression : 'script' }));
+		this.codeEditor = new window.app.CodeEditor(input, Object.assign({}, this.api.expression, { syntax: this._syntax(this.api.getContext()) }));
 	    else
 		this._expression(input);
     	    return input;
+	}
+
+	//CLD: 2026-10-23T12:30:00+03:00: the code editor's syntax: the first of syntaxBy that holds, else the `expression` syntax (default script)
+	_syntax(context) {
+	    const by = (Array.isArray(this.schema.syntaxBy) ? this.schema.syntaxBy : []).find((s) => (Array.isArray(s.if) ? s.if : [ s.if ]).every((c) => evalExpr(c, context, false)));
+	    return by ? by.syntax : (typeof this.schema.expression === 'string' ? this.schema.expression : 'script');
+	}
+
+	//CLD: 2026-10-23T12:30:00+03:00: the syntax follows the other fields (applyConditions runs on every change of the form)
+	applyConditions(context) {
+	    super.applyConditions(context);
+	    if (this.codeEditor && this.schema.syntaxBy)
+		this.codeEditor.setSyntax(this._syntax(context));
+	}
+
+	//CLD: 2026-10-23T12:30:00+03:00: a value set from outside (setData, `propose`) shown by the code editor too
+	_reflectValue() {
+	    super._reflectValue();
+	    if (this.codeEditor)
+		this.codeEditor.setValue(this.currentValue);
 	}
     }
 
@@ -1822,6 +1862,12 @@ window.app.smartform = (function() {
         		this.recomputeVisibility();
         	    },
         	    getContext: () => ({ data: this.data, row: null, index: null }),
+		    //CLD: 2026-10-23T12:30:00+03:00: another field's value set by a field (`propose`)
+		    setValue: (key, value) => {
+			const field = this.fields.find((f) => f.key === key);
+			if (field)
+			    field.setValue(value);
+		    },
     		};
 
     		const fieldInstance = createField(node, api);

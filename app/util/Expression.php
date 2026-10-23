@@ -26,6 +26,9 @@ class Expression {
 	'value' => [ 'mode' => 'template', 'inner' => 'expression', 'whole' => true ],
 	//CLD: 2026-10-13T15:30:33+03:00: a J script (the Code step: statements, no {{ }}; names it assigns become workflow variables)
 	'script' => [ 'mode' => 'script' ],
+	//CLD: 2026-10-23T12:30:00+03:00: a JSON text with any {{ }} parts (the HTTP Request's body), its JSON syntax checked too (util\JsonCheck); jsonrpc: also a JSON-RPC 2.0 request
+	'json' => [ 'mode' => 'template', 'inner' => 'expression' ],
+	'jsonrpc' => [ 'mode' => 'template', 'inner' => 'expression' ],
     ];
 
     //suggestions returned at most
@@ -135,6 +138,9 @@ class Expression {
 	}
 	if ($parsed->hasErrors())
 	    return $problems;
+	//CLD: 2026-10-23T12:30:00+03:00: json / jsonrpc: the JSON syntax (and the JSON-RPC request)
+	if ($syntax === 'json' || $syntax === 'jsonrpc')
+	    $problems = array_merge($problems, self::checkJson($text, $syntax === 'jsonrpc'));
 
 	//names that are neither variables nor built-ins nor declared in the expressions
 	//CLD: 2026-10-23T01:00:00+03:00: + the app's functions
@@ -156,6 +162,12 @@ class Expression {
 	    $problems[] = self::problem($text, 'warning', "`{$node['property']['name']}` is not a field of `{$of}`", (int)$node['property']['start'], (int)$node['property']['end']);
 	});
 	return $problems;
+    }
+
+    //CLD: 2026-10-23T12:30:00+03:00: the JSON problems of $text (util\JsonCheck; $rpc: a JSON-RPC 2.0 request), as check() gives them
+    public static function checkJson($text, $rpc = false) {
+	$text = (string)$text;
+	return array_map(fn($p) => self::problem($text, $p['severity'], $p['message'], $p['start'], max($p['end'], $p['start'] + 1)), \util\JsonCheck::problems($text, $rpc));
     }
 
     private static function problem($text, $severity, $message, $byteStart, $byteEnd) {

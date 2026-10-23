@@ -10,10 +10,20 @@ if (!window.app)
  * with app.ExprInput's live help.
  *
  *   new app.CodeEditor(textarea, { url, params: () => ({ ... }), syntax: 'script' })
+ *
+ * CLD: 2026-10-23T12:30:00+03:00: the language follows the syntax (LANGUAGES: script - JavaScript, json / jsonrpc - JSON (CodeMirror6.json when the bundle has it, else JavaScript),
+ * other - plain text); setSyntax() changes it (and the server's checks), setValue() the text without an `input` event
  */
 window.app.CodeEditor = (function() {
 
     const KINDS = { variable: 'variable', global: 'namespace', method: 'method', property: 'property', literal: 'keyword' };
+
+    //CLD: 2026-10-23T12:30:00+03:00: the CodeMirror language of a syntax (none: plain text)
+    const LANGUAGES = {
+	script: (cm) => cm.javascript.javascript(),
+	json: (cm) => cm.json ? cm.json.json() : cm.javascript.javascript(),
+	jsonrpc: (cm) => cm.json ? cm.json.json() : cm.javascript.javascript(),
+    };
 
     function load() {
 	if (window.CodeMirror6)
@@ -32,6 +42,10 @@ window.app.CodeEditor = (function() {
 	    this.fallback = null;
 	    this.lintController = null;
 	    this.completeController = null;
+	    this.cm = null;
+	    this.language = null;
+	    //CLD: 2026-10-23T12:30:00+03:00: a change made by setValue(): no `input` event
+	    this.silent = false;
 
 	    textarea.classList.add('font-monospace');
 	    textarea.setAttribute('spellcheck', 'false');
@@ -58,13 +72,15 @@ window.app.CodeEditor = (function() {
 	    const ta = this.textarea;
 	    if (!ta.isConnected && !ta.parentNode)
 		return;
-	    const { EditorState } = cm.state;
+	    const { EditorState, Compartment } = cm.state;
 	    const { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection } = cm.view;
 	    const { syntaxHighlighting, defaultHighlightStyle, bracketMatching, indentOnInput } = cm.language;
 	    const { defaultKeymap, history, historyKeymap, indentWithTab } = cm.commands;
 	    const { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, completionStatus } = cm.autocomplete;
 	    const { linter, lintGutter } = cm.lint;
 
+	    this.cm = cm;
+	    this.language = new Compartment();
 	    const lines = Math.max(6, parseInt(ta.getAttribute('rows') || '10', 10));
 	    const state = EditorState.create({
 		doc: ta.value,
@@ -72,7 +88,7 @@ window.app.CodeEditor = (function() {
 		    lineNumbers(), highlightActiveLineGutter(), highlightActiveLine(), drawSelection(), history(), indentOnInput(), bracketMatching(), closeBrackets(),
 		    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
 		    keymap.of([ ...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...completionKeymap, indentWithTab ]),
-		    cm.javascript.javascript(),
+		    this.language.of(this.languageFor(this.syntax)),
 		    autocompletion({ override: [ (ctx) => this.complete(ctx) ], activateOnTyping: true }),
 		    linter((view) => this.lint(view), { delay: 400 }),
 		    lintGutter(),
@@ -80,7 +96,8 @@ window.app.CodeEditor = (function() {
 			if (!u.docChanged)
 			    return;
 			ta.value = u.state.doc.toString();
-			ta.dispatchEvent(new Event('input', { bubbles: true }));
+			if (!this.silent)
+			    ta.dispatchEvent(new Event('input', { bubbles: true }));
 		    }),
 		    EditorView.theme({
 			'&': { border: '1px solid var(--bs-border-color)', borderRadius: 'var(--bs-border-radius)', backgroundColor: 'var(--bs-body-bg)', fontSize: '.875rem' },
@@ -136,6 +153,37 @@ window.app.CodeEditor = (function() {
 		options: c.items.map((it) => ({ label: it.label, type: KINDS[it.kind] || 'text', detail: it.detail || '', apply: it.kind === 'method' ? it.label + '()' : it.label })),
 		validFor: /^[\w$]*$/,
 	    };
+	}
+
+	//CLD: 2026-10-23T12:30:00+03:00: the language extension of $syntax
+	languageFor(syntax) {
+	    return LANGUAGES[syntax] ? LANGUAGES[syntax](this.cm) : [];
+	}
+
+	//CLD: 2026-10-23T12:30:00+03:00: another syntax: its language, checked again by the server
+	setSyntax(syntax) {
+	    if (!syntax || syntax === this.syntax)
+		return;
+	    this.syntax = syntax;
+	    if (this.fallback)
+		this.fallback.syntax = syntax;
+	    if (!this.view)
+		return;
+	    this.view.dispatch({ effects: this.language.reconfigure(this.languageFor(syntax)) });
+	    this.cm.lint.forceLinting(this.view);
+	}
+
+	//CLD: 2026-10-23T12:30:00+03:00: the text set from outside (the textarea already has it)
+	setValue(text) {
+	    text = text === undefined || text === null ? '' : String(text);
+	    if (!this.view || this.view.state.doc.toString() === text)
+		return;
+	    this.silent = true;
+	    try {
+		this.view.dispatch({ changes: { from: 0, to: this.view.state.doc.length, insert: text } });
+	    } finally {
+		this.silent = false;
+	    }
 	}
 
 	destroy() {
