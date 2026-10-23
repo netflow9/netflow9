@@ -669,40 +669,17 @@ abstract class NodeAppAi extends \models\WfNode {
 
     //POST $body as JSON to $url: the decoded answer ($assoc = false: as objects, to send parts of it back unchanged); \ErrorException when there is no answer, an HTTP
     //error (with the provider's message) or no JSON
+    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here; the body still util\JSON::encode)
     protected function postJson($url, array $headers, array $body, $assoc = true) {
-	$lines = [ 'Content-Type: application/json', 'Accept: application/json', 'User-Agent: NetFlow9-Workflow' ];
-	foreach($headers as $name => $value)
-	    $lines[] = $name . ': ' . $value;
 	$timeout = max(5, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 300)));
-	$raw = '';
-	$tooLarge = false;
-	$ch = curl_init($url);
-	curl_setopt_array($ch, [
-	    CURLOPT_POST => true,
-	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
-	    CURLOPT_POSTFIELDS => \util\JSON::encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-	    CURLOPT_HTTPHEADER => $lines,
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-	    CURLOPT_CONNECTTIMEOUT => 10,
-	    CURLOPT_TIMEOUT => $timeout,
-	    CURLOPT_WRITEFUNCTION => function($ch, $chunk) use (&$raw, &$tooLarge) {
-		if (strlen($raw) + strlen($chunk) > self::MAX_RESPONSE) {
-		    $tooLarge = true;
-		    return 0;
-		}
-		$raw .= $chunk;
-		return strlen($chunk);
-	    },
-	]);
-	$ok = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$error = $ok === false && !$tooLarge ? curl_error($ch) : '';
-	curl_close($ch);
-	if ($tooLarge)
+	$r = \util\Http::json('POST', $url, [ 'headers' => $headers, 'json' => $body, 'timeout' => $timeout, 'maxBytes' => self::MAX_RESPONSE ]);
+	if ($r['tooLarge'])
 	    throw new \ErrorException('the answer is larger than ' . (self::MAX_RESPONSE / 1048576) . ' MB');
-	if ($error !== '')
-	    throw new \ErrorException('no answer from ' . preg_replace('/[?#].*$/', '', $url) . ": {$error}");
-	$data = json_decode($raw, true);
+	if ($r['error'] !== null)
+	    throw new \ErrorException('no answer from ' . \util\Http::shown($url) . ": {$r['error']}");
+	$status = $r['status'];
+	$raw = $r['body'];
+	$data = $r['data'];
 	if ($status >= 400) {
 	    $m = is_array($data) ? ($data['error']['message'] ?? $data['message'] ?? (is_string($data['error'] ?? null) ? $data['error'] : null)) : null;
 	    throw new \ErrorException(static::PROVIDER . " answered HTTP status {$status}" . (is_string($m) && $m !== '' ? ': ' . mb_substr($m, 0, 500) : ''));

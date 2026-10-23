@@ -186,26 +186,13 @@ class Credential extends \sys\BaseModel {
 
     //CLD: 2026-10-12T21:15:28+03:00: for the connection tests of HTTP API credentials (AI servers): GET $url with $headers (name => value), the decoded JSON
     //answer; an exception when there is no answer, the status is 400 or more (with the server's error message when it gives one) or the answer is not JSON
+    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
     protected static function getJson($url, array $headers = [], $timeout = 15) {
-	$lines = [ 'Accept: application/json', 'User-Agent: NetFlow9-Workflow' ];
-	foreach($headers as $name => $value)
-	    $lines[] = $name . ': ' . $value;
-	$ch = curl_init($url);
-	curl_setopt_array($ch, [
-	    CURLOPT_HTTPGET => true,
-	    CURLOPT_HTTPHEADER => $lines,
-	    CURLOPT_RETURNTRANSFER => true,
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-	    CURLOPT_CONNECTTIMEOUT => min(10, $timeout),
-	    CURLOPT_TIMEOUT => $timeout,
-	]);
-	$body = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$error = $body === false ? curl_error($ch) : '';
-	curl_close($ch);
-	if ($error !== '')
-	    throw new \Exception('no answer from ' . preg_replace('/[?#].*$/', '', $url) . ": {$error}");
-	$data = json_decode((string)$body, true);
+	$r = \util\Http::json('GET', $url, [ 'headers' => $headers, 'timeout' => $timeout ]);
+	if ($r['error'] !== null)
+	    throw new \Exception('no answer from ' . \util\Http::shown($url) . ": {$r['error']}");
+	$status = $r['status'];
+	$data = $r['data'];
 	if ($status >= 400) {
 	    $message = is_array($data) ? ($data['error']['message'] ?? $data['error'] ?? $data['message'] ?? null) : null;
 	    throw new \Exception("HTTP status {$status}" . (is_string($message) && $message !== '' ? ': ' . mb_substr($message, 0, 300) : ''));

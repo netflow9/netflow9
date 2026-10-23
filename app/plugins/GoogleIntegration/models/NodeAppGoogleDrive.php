@@ -662,32 +662,9 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
     //GET $url into a temporary stream (not kept in memory): [ stream, size, content type ]
     protected function fetch($url, $maxBytes) {
 	$stream = fopen('php://temp/maxmemory:' . (2 * 1024 * 1024), 'w+b');
-	$size = 0;
-	$tooLarge = false;
-	$ch = curl_init($url);
-	curl_setopt_array($ch, [
-	    CURLOPT_HTTPGET => true,
-	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: NetFlow9-Workflow' ], $this->authHeaders()),
-	    CURLOPT_FOLLOWLOCATION => true,
-	    CURLOPT_MAXREDIRS => 5,
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-	    CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
-	    CURLOPT_CONNECTTIMEOUT => 10,
-	    CURLOPT_TIMEOUT => max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120))),
-	    CURLOPT_WRITEFUNCTION => function($ch, $chunk) use ($stream, &$size, &$tooLarge, $maxBytes) {
-		if ($size + strlen($chunk) > $maxBytes) {
-		    $tooLarge = true;
-		    return 0;
-		}
-		$size += strlen($chunk);
-		return fwrite($stream, $chunk);
-	    },
-	]);
-	$ok = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$curlError = $ok === false ? curl_error($ch) : '';
-	$contentType = strtolower(trim(explode(';', (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE))[0]));
-	curl_close($ch);
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+	$r = \util\Http::request('GET', $url, [ 'headers' => $this->authHeaders(), 'timeout' => max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120))), 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5, 'https' => true ]);
+	[ $status, $size, $contentType, $tooLarge, $curlError ] = [ $r['status'], $r['size'], $r['mime'], $r['tooLarge'], $r['tooLarge'] ? '' : (string)$r['error'] ];
 
 	if ($tooLarge || $curlError !== '' || $status >= 400) {
 	    rewind($stream);
@@ -702,21 +679,9 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
     //PUT the $size bytes of $stream to the upload session $url: the decoded answer (the file)
     protected function put($url, $stream, $size, $contentType) {
-	$ch = curl_init($url);
-	curl_setopt_array($ch, [
-	    CURLOPT_UPLOAD => true,
-	    CURLOPT_INFILESIZE => $size,
-	    CURLOPT_READFUNCTION => fn($ch, $fd, $length) => (string)fread($stream, $length),
-	    CURLOPT_HTTPHEADER => [ 'User-Agent: NetFlow9-Workflow', "Content-Type: {$contentType}", 'Expect:' ],
-	    CURLOPT_RETURNTRANSFER => true,
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-	    CURLOPT_CONNECTTIMEOUT => 10,
-	    CURLOPT_TIMEOUT => max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120))),
-	]);
-	$answer = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$curlError = $answer === false ? curl_error($ch) : '';
-	curl_close($ch);
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+	$r = \util\Http::request('PUT', $url, [ 'headers' => [ "Content-Type: {$contentType}" ], 'upload' => [ $stream, $size ], 'timeout' => max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120))), 'https' => true ]);
+	[ $answer, $status, $curlError ] = [ $r['body'], $r['status'], (string)$r['error'] ];
 	$data = json_decode((string)$answer, true);
 	if ($curlError !== '' || $status >= 400 || !is_array($data))
 	    throw new \RuntimeException(self::errorText($status, $data, $curlError !== '' ? $curlError : "HTTP status {$status}"));

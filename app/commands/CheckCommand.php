@@ -6,6 +6,7 @@
 //  ../v check::run                        all suites except the slow one
 //  ../v check::run --only=loop,if         some suites: j, expr, types, if, switch, loop, mcp, vars, code, forms, email, urls, steps (slow: big loops and endless cycles, ~1 min)
 //CLD: 2026-10-21T10:00:00+03:00: + ldap (the Ldap plugin; its test LDAP server is started for the checks)
+//CLD: 2026-10-23T15:00:00+03:00: + http
 //  ../v check::run --project=<id>         where the workflows are created (default: the first project of the first account)
 //  ../v check::run --verbose              also the passed checks
 
@@ -37,7 +38,8 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-22T00:41:28+03:00: + microsoft (the MicrosoftIntegration plugin: its credentials and steps; skipped without the plugin)
     //CLD: 2026-10-22T01:36:46+03:00: + localai (the Lemonade AI and Ollama steps and credentials, against a fake server: commands/tests/AiTestServer.php)
     //CLD: 2026-10-23T10:00:00+03:00: + systemai (the AI steps on the System AI: plugins\SystemAI, its credits)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'steps' ];
+    //CLD: 2026-10-23T15:00:00+03:00: + http (util\Http against a local server; the HTTP steps' private-address option)
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -1805,38 +1807,117 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
+    //CLD: 2026-10-23T15:00:00+03:00: new: util\Http against a local server (commands/tests/HttpTestServer.php): headers, JSON / form bodies, redirects (the method kept or changed,
+    //the limit), the largest answer, an answer to a stream, an upload from a stream, https only, the public-address guard; the HTTP Request and Download File steps refused
+    //a private address unless http.steps.allow_private (app.env HTTP_STEPS_ALLOW_PRIVATE)
+    private function suiteHttp() {
+	$H = \util\Http::class;
+	$this->check('http: public addresses', [ true, true, false, false, false, false, false, false, false, false ], array_map([ $H, 'isPublicIp' ],
+	    [ '8.8.8.8', '2606:4700::1111', '127.0.0.1', '10.1.2.3', '192.168.0.1', '100.64.0.1', '169.254.169.254', '::1', '::ffff:127.0.0.1', '64:ff9b::7f00:1' ]));
+	$this->check('http: a host of this machine is not public', [ [], 'the host localhost is not a public address' ], $H::publicAddresses('localhost'));
+	$this->check('http: the guard before any connection; https only', [ 'the host 127.0.0.1 is not a public address', 'not an https:// address' ],
+	    [ $H::request('GET', 'http://127.0.0.1:1/', [ 'public' => true ])['error'], $H::request('GET', 'http://example.com/', [ 'https' => true ])['error'] ]);
+
+	$dir = sys_get_temp_dir() . '/netflow9-check-http-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('http', 'HttpTestServer.php', $dir);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$base = "http://127.0.0.1:{$port}";
+	$om = \V::app()->om;
+	$files = [];
+	$allow = \V::app()->config('http.steps.allow_private');
+	try {
+	    $r = $H::json('POST', "{$base}/echo?a=1", [ 'headers' => [ 'X-One' => "a\r\nb", 'X-Two: 2' ], 'json' => [ 'k' => 'v/ă' ] ]);
+	    $this->check('http: a JSON POST: the body, Content-Type, the User-Agent, the headers (CR / LF replaced); the answer decoded, its headers', [ true, 200, 'POST', '{"k":"v/ă"}',
+		'application/json', 'NetFlow9-Workflow', 'a  b', '2', 'application/json', [ 'a' => '1' ], 'two', [ [ 'X-Check', 'one' ], [ 'X-Check', 'two' ] ] ],
+		[ $r['ok'], $r['status'], $r['data']['method'] ?? null, $r['data']['body'] ?? null, $r['data']['headers']['content-type'] ?? null, $r['data']['headers']['user-agent'] ?? null,
+		$r['data']['headers']['x-one'] ?? null, $r['data']['headers']['x-two'] ?? null, $r['data']['headers']['accept'] ?? null, $r['data']['query'] ?? null, $r['headers']['x-check'] ?? null,
+		array_values(array_filter($r['headerList'], fn($h) => $h[0] === 'X-Check')) ]);
+	    $r = $H::json('PUT', "{$base}/echo", [ 'form' => [ 'a' => 'x y', 'b' => '&' ], 'headers' => [ 'User-Agent' => 'Mine' ] ]);
+	    $this->check('http: a form body; a User-Agent given is kept', [ 'PUT', 'a=x+y&b=%26', 'application/x-www-form-urlencoded', 'Mine' ],
+		[ $r['data']['method'] ?? null, $r['data']['body'] ?? null, $r['data']['headers']['content-type'] ?? null, $r['data']['headers']['user-agent'] ?? null ]);
+
+	    //redirects
+	    $r = $H::request('GET', "{$base}/redirect", []);
+	    $this->check('http: a redirect not followed by default', [ 302, '/echo', 'moved' ], [ $r['status'], $r['headers']['location'] ?? null, $r['body'] ]);
+	    $r = $H::json('POST', "{$base}/redirect?status=302&to=" . rawurlencode('echo?x=1'), [ 'body' => 'b', 'redirects' => 3, 'headers' => [ 'Authorization' => 'Bearer t' ] ]);
+	    $this->check('http: 302 of a POST followed as GET without the body (a relative Location; the same host: Authorization kept), the last address', [ true, 'GET', '', 'Bearer t', "{$base}/echo?x=1" ],
+		[ $r['ok'], $r['data']['method'] ?? null, $r['data']['body'] ?? null, $r['data']['headers']['authorization'] ?? null, $r['url'] ]);
+	    $r = $H::json('POST', "{$base}/redirect?status=307", [ 'body' => 'b', 'redirects' => 3 ]);
+	    $this->check('http: 307 keeps the method and the body', [ 'POST', 'b' ], [ $r['data']['method'] ?? null, $r['data']['body'] ?? null ]);
+	    $r = $H::json('GET', "{$base}/redirect?to=" . rawurlencode("http://localhost:{$port}/echo"), [ 'redirects' => 3, 'headers' => [ 'Authorization' => 'Bearer t', 'Cookie' => 'c=1', 'X-Keep' => 'k' ] ]);
+	    $this->check('http: a redirect to another host: Authorization and Cookie dropped', [ true, null, null, 'k' ],
+		[ $r['ok'], $r['data']['headers']['authorization'] ?? null, $r['data']['headers']['cookie'] ?? null, $r['data']['headers']['x-keep'] ?? null ]);
+	    $r = $H::request('GET', "{$base}/loop", [ 'redirects' => 2 ]);
+	    $this->check('http: more redirects than allowed', [ false, 'more than 2 redirects' ], [ $r['ok'], $r['error'] ]);
+	    $r = $H::request('GET', "{$base}/redirect?to=" . rawurlencode('ftp://x/'), [ 'redirects' => 2 ]);
+	    $this->check('http: a redirect to another scheme refused', 'a redirect to an address that is not http:// or https://', $r['error']);
+
+	    //sizes, streams, statuses
+	    $r = $H::request('GET', "{$base}/bytes?n=3000", [ 'maxBytes' => 2048 ]);
+	    $this->check('http: an answer larger than maxBytes', [ false, true, 'the answer is larger than 2 KB' ], [ $r['ok'], $r['tooLarge'], $r['error'] ]);
+	    $sink = fopen('php://temp', 'w+b');
+	    $r = $H::request('GET', "{$base}/redirect?to=" . rawurlencode('/bytes?n=1500'), [ 'sink' => $sink, 'redirects' => 1 ]);
+	    rewind($sink);
+	    $this->check('http: the answer into a stream (not the redirect\'s body)', [ true, 1500, '', 'text/plain', str_repeat('x', 1500) ], [ $r['ok'], $r['size'], $r['body'], $r['mime'], stream_get_contents($sink) ]);
+	    fclose($sink);
+	    $up = fopen('php://temp', 'w+b');
+	    fwrite($up, 'uploaded content');
+	    rewind($up);
+	    $r = $H::json('PUT', "{$base}/echo", [ 'upload' => [ $up, 16 ], 'headers' => [ 'Content-Type: text/plain' ] ]);
+	    fclose($up);
+	    $this->check('http: an upload from a stream', [ 'PUT', 'uploaded content', 'text/plain' ], [ $r['data']['method'] ?? null, $r['data']['body'] ?? null, $r['data']['headers']['content-type'] ?? null ]);
+	    $r = $H::json('GET', "{$base}/status?code=404");
+	    $this->check('http: an error status is an answer (error null, not ok)', [ false, 404, null, 'check error' ], [ $r['ok'], $r['status'], $r['error'], $r['data']['error']['message'] ?? null ]);
+	    $r = $H::request('GET', "http://127.0.0.1:1/");
+	    $this->check('http: no answer', [ false, 0, true ], [ $r['ok'], $r['status'], is_string($r['error']) && $r['error'] !== '' ]);
+
+	    //the HTTP steps: a private address only when allowed
+	    $n = [ self::class, 'node' ];
+	    $e = [ self::class, 'edge' ];
+	    $step = function($type, $url, $variable) use ($n, $e, $om, &$files) {
+		$exe = $this->runFlow("http {$type}", [ $n('m', 'trigger::manual'), $n('h', "app::{$type}", [ 'method' => 'GET', 'url' => $url, 'variable' => $variable, 'onError' => 'output', 'timeout' => 10 ]),
+		    $n('ok', 'app::set', [ 'variable' => 'route', 'value' => 'success' ]), $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]),
+		    $e('e1', 'm', 'h'), $e('e2', 'h', 'ok', 0), $e('e3', 'h', 'err', 1) ]);
+		$v = $exe?->getVariable($variable);
+		if (!empty($v['id']))
+		    $files[] = $om->to_oid($v['id']);
+		return [ $exe?->getVariable('route'), $v, self::logLine($exe, 'download') ];
+	    };
+	    \V::app()->config('http.steps.allow_private', false);
+	    [ $route, $v ] = $step('http', "{$base}/echo", 'response');
+	    $this->check('HTTP Request: a private address refused (not allowed)', [ 'error', 'the host 127.0.0.1 is not a public address' ], [ $route, $v['error'] ?? null ]);
+	    [ $route, $v, $log ] = $step('download', "{$base}/file", 'file');
+	    $this->check('Download File: a private address refused (not allowed)', [ 'error', null, true ], [ $route, $v, str_contains((string)$log, 'not a public address') ]);
+	    \V::app()->config('http.steps.allow_private', true);
+	    [ $route, $v ] = $step('http', "{$base}/redirect", 'response');
+	    $this->check('HTTP Request: allowed: redirects followed, the headers (a list when repeated), the JSON body', [ 'success', 200, [ 'one', 'two' ], 'GET', true ],
+		[ $route, $v['status'] ?? null, $v['headers']['x-check'] ?? null, $v['body']['method'] ?? null, is_int($v['time_ms'] ?? null) ]);
+	    [ $route, $v ] = $step('download', "{$base}/file", 'file');
+	    $this->check('Download File: allowed: the name from Content-Disposition, the size', [ 'success', 'report.csv', 8 ], [ $route, $v['filename'] ?? null, $v['size'] ?? null ]);
+	} finally {
+	    \V::app()->config('http.steps.allow_private', $allow);
+	    foreach($files as $fid)
+		$om->findOne('File', [ '_id' => $fid ])?->delete();
+	    proc_terminate($proc);
+	    @unlink("{$dir}/server.err");
+	    @rmdir($dir);
+	}
+    }
+
     //CLD: 2026-10-23T10:00:00+03:00: new (was in suiteLocalAi): the fake AI server (commands/tests/AiTestServer.php, PHP's built-in server on a free port, API key check-key) =>
     //{ port, log (the requests' file), requests: fn($path) => the bodies sent to $path, proc, dir }; null when it did not start (a failure named $what)
+    //CLD: 2026-10-23T15:00:00+03:00: the server started by startServer() (shared with the http suite)
     private function startAiServer($what) {
 	$dir = sys_get_temp_dir() . '/netflow9-check-ai-' . uniqid();
 	@mkdir($dir, 0700, true);
 	$log = "{$dir}/requests.log";
-	$port = 0;
-	for ($i = 0; $i < 20 && !$port; $i++) {
-	    $try = random_int(20000, 40000);
-	    $s = @fsockopen('127.0.0.1', $try, $errno, $errstr, 0.2);
-	    if ($s)
-		fclose($s);
-	    else
-		$port = $try;
-	}
-	$env = array_merge(getenv(), [ 'AI_TEST_LOG' => $log, 'AI_TEST_KEY' => 'check-key' ]);
-	$proc = proc_open([ PHP_BINARY, '-S', "127.0.0.1:{$port}", BASE . '/app/commands/tests/AiTestServer.php' ], [ 1 => [ 'file', '/dev/null', 'w' ], 2 => [ 'file', "{$dir}/server.err", 'w' ] ],
-	    $pipes, null, $env);
-	$up = false;
-	for ($i = 0; $i < 50 && !$up; $i++) {
-	    usleep(100000);
-	    $s = @fsockopen('127.0.0.1', $port, $errno, $errstr, 0.2);
-	    if ($s) {
-		fclose($s);
-		$up = true;
-	    }
-	}
-	if (!$up) {
-	    $this->fail("{$what}: the fake server did not start: " . trim((string)@file_get_contents("{$dir}/server.err")));
-	    proc_terminate($proc);
+	$server = $this->startServer($what, 'AiTestServer.php', $dir, [ 'AI_TEST_LOG' => $log, 'AI_TEST_KEY' => 'check-key' ]);
+	if (!$server)
 	    return null;
-	}
+	[ $port, $proc ] = $server;
 	$requests = function($path) use ($log) {
 	    $list = [];
 	    foreach(file($log, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
@@ -1847,6 +1928,37 @@ class CheckCommand extends \sys\BaseController {
 	    return $list;
 	};
 	return [ 'port' => $port, 'log' => $log, 'requests' => $requests, 'proc' => $proc, 'dir' => $dir ];
+    }
+
+    //CLD: 2026-10-23T15:00:00+03:00: new (was in startAiServer): a test server of commands/tests ($script, PHP's built-in server on a free port of 127.0.0.1, its errors in $dir/server.err,
+    //$env added to the environment) => [ port, proc ]; null when it did not start (a failure named $what)
+    private function startServer($what, $script, $dir, array $env = []) {
+	$port = 0;
+	for ($i = 0; $i < 20 && !$port; $i++) {
+	    $try = random_int(20000, 40000);
+	    $s = @fsockopen('127.0.0.1', $try, $errno, $errstr, 0.2);
+	    if ($s)
+		fclose($s);
+	    else
+		$port = $try;
+	}
+	$proc = proc_open([ PHP_BINARY, '-S', "127.0.0.1:{$port}", BASE . '/app/commands/tests/' . $script ], [ 1 => [ 'file', '/dev/null', 'w' ], 2 => [ 'file', "{$dir}/server.err", 'w' ] ],
+	    $pipes, null, array_merge(getenv(), $env));
+	$up = false;
+	for ($i = 0; $i < 50 && !$up; $i++) {
+	    usleep(100000);
+	    $s = @fsockopen('127.0.0.1', $port, $errno, $errstr, 0.2);
+	    if ($s) {
+		fclose($s);
+		$up = true;
+	    }
+	}
+	if (!$up) {
+	    $this->fail("{$what}: the test server did not start: " . trim((string)@file_get_contents("{$dir}/server.err")));
+	    proc_terminate($proc);
+	    return null;
+	}
+	return [ $port, $proc ];
     }
 
     private function stopAiServer(array $server) {

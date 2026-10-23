@@ -275,7 +275,8 @@ class NodeAppHttp extends \models\WfNode {
 	    }
 	}
 
-	$response = self::request($method, $url, array_map(fn($h) => $h[0] . ': ' . $h[1], array_values($headers)), $body, (int)$this->cfg('timeout', 30));
+	//CLD: 2026-10-23T15:00:00+03:00: public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE
+	$response = self::request($method, $url, array_map(fn($h) => $h[0] . ': ' . $h[1], array_values($headers)), $body, (int)$this->cfg('timeout', 30), self::guard());
 	$name = (string)$this->cfg('variable', 'response');
 	if (\util\Validator::isIdentifier($name))
 	    $this->exec->setVariable($name, $response);
@@ -288,56 +289,29 @@ class NodeAppHttp extends \models\WfNode {
 	throw new \ErrorException("HTTP Request: {$method} {$shownUrl}: " . $response['error']);
     }
 
+    //CLD: 2026-10-23T15:00:00+03:00: the util\Http options of the HTTP steps' requests (HTTP Request, Download File): public addresses only, unless app.env HTTP_STEPS_ALLOW_PRIVATE
+    public static function guard() {
+	return [ 'public' => !\V::app()->config('http.steps.allow_private') ];
+    }
+
     //one request (redirects followed, http / https only): [ ok, status, headers, body, error, time_ms ]
-    public static function request($method, $url, array $headers, $body, $timeout) {
+    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here); + $opts: more util\Http options (the step: `public` unless app.env HTTP_STEPS_ALLOW_PRIVATE)
+    public static function request($method, $url, array $headers, $body, $timeout, array $opts = []) {
 	$timeout = max(1, min(self::MAX_TIMEOUT, (int)$timeout));
-	$respHeaders = [];
-	$data = '';
-	$tooLarge = false;
-	$ch = curl_init($url);
-	$opts = [
-	    CURLOPT_CUSTOMREQUEST => $method,
-	    CURLOPT_HTTPHEADER => array_merge([ 'User-Agent: NetFlow9-Workflow', 'Accept: application/json, text/plain, */*' ], $headers),
-	    CURLOPT_FOLLOWLOCATION => true,
-	    CURLOPT_MAXREDIRS => 5,
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-	    CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-	    CURLOPT_CONNECTTIMEOUT => min(10, $timeout),
-	    CURLOPT_TIMEOUT => $timeout,
-	    CURLOPT_ENCODING => '',
-	    //the headers of the last response only (a redirect starts a new set)
-	    CURLOPT_HEADERFUNCTION => function($ch, $line) use (&$respHeaders) {
-		if (preg_match('~^HTTP/\S+\s+\d+~', $line))
-		    $respHeaders = [];
-		elseif (($p = strpos($line, ':')) !== false)
-		    $respHeaders[] = [ strtolower(trim(substr($line, 0, $p))), trim(substr($line, $p + 1)) ];
-		return strlen($line);
-	    },
-	    CURLOPT_WRITEFUNCTION => function($ch, $chunk) use (&$data, &$tooLarge) {
-		if (strlen($data) + strlen($chunk) > self::MAX_RESPONSE) {
-		    $tooLarge = true;
-		    return 0;
-		}
-		$data .= $chunk;
-		return strlen($chunk);
-	    },
-	];
-	if ($method === 'HEAD')
-	    $opts[CURLOPT_NOBODY] = true;
-	if ($body !== null)
-	    $opts[CURLOPT_POSTFIELDS] = $body;
-	curl_setopt_array($ch, $opts);
-	$start = microtime(true);
-	$okExec = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$curlError = $okExec === false ? curl_error($ch) : '';
-	$contentType = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-	curl_close($ch);
-	$ms = (int)round((microtime(true) - $start) * 1000);
+	$r = \util\Http::request($method, $url, $opts + [
+	    'headers' => array_merge([ 'Accept: application/json, text/plain, */*' ], $headers),
+	    'body' => $body,
+	    'timeout' => $timeout,
+	    'maxBytes' => self::MAX_RESPONSE,
+	    'redirects' => 5,
+	    'compressed' => true,
+	]);
+	[ $data, $contentType, $respHeaders, $ms ] = [ $r['body'], $r['contentType'], $r['headerList'], $r['time_ms'] ];
 
 	//headers by name, a list when repeated; names a database field cannot have are left out
 	$hdrs = [];
 	foreach($respHeaders as [ $n, $v ]) {
+	    $n = strtolower($n);
 	    if ($n === '' || str_contains($n, '.') || $n[0] === '$')
 		continue;
 	    if (!isset($hdrs[$n]))
@@ -358,15 +332,15 @@ class NodeAppHttp extends \models\WfNode {
 	}
 
 	$error = null;
-	if ($tooLarge)
+	if ($r['tooLarge'])
 	    $error = 'the response is larger than ' . (self::MAX_RESPONSE >> 20) . ' MB';
-	elseif ($curlError !== '')
-	    $error = $curlError;
-	elseif ($status >= 400)
-	    $error = "HTTP status {$status}";
+	elseif ($r['error'] !== null)
+	    $error = $r['error'];
+	elseif ($r['status'] >= 400)
+	    $error = "HTTP status {$r['status']}";
 	return [
 	    'ok' => $error === null,
-	    'status' => $status,
+	    'status' => $r['status'],
 	    'headers' => $hdrs,
 	    'body' => $parsed,
 	    'error' => $error,

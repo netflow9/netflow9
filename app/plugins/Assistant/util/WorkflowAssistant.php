@@ -540,41 +540,19 @@ TXT;
 
     //CLD: 2026-10-19T16:52:30+03:00: ?array $body (null: GET, the server's models; was array: the GET of serverModel() failed with a TypeError)
     //CLD: 2026-10-20T10:00:00+03:00: static, + $name: who answers, in messages (was post(), the instance's provider), + $timeout (s)
+    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here); $body null: GET (the server's models)
     private static function http($url, array $headers, ?array $body, $name, $timeout = self::TIMEOUT) {
-	$lines = [ 'Content-Type: application/json', 'Accept: application/json', 'User-Agent: NetFlow9-Workflow' ];
-	//CLD: 2026-10-22T14:00:00+03:00: $h (was $name: the last header's name replaced who answers, in the messages)
-	foreach($headers as $h => $value)
-	    $lines[] = $h . ': ' . $value;
-	$raw = '';
-	$tooLarge = false;
-	$ch = curl_init($url);
-	//CLD: 2026-10-19T16:05:12+03:00: $body null: GET (the server's models)
+	$o = [ 'headers' => $headers + [ 'Content-Type' => 'application/json', 'Accept' => 'application/json' ], 'timeout' => $timeout, 'maxBytes' => self::MAX_RESPONSE ];
 	if ($body !== null)
-	    curl_setopt_array($ch, [ CURLOPT_POST => true, CURLOPT_POSTFIELDS => \util\JSON::encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ]);
-	curl_setopt_array($ch, [
-	    CURLOPT_HTTPHEADER => $lines,
-	    CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-	    CURLOPT_CONNECTTIMEOUT => 10,
-	    CURLOPT_TIMEOUT => $timeout,
-	    CURLOPT_WRITEFUNCTION => function($ch, $chunk) use (&$raw, &$tooLarge) {
-		if (strlen($raw) + strlen($chunk) > self::MAX_RESPONSE) {
-		    $tooLarge = true;
-		    return 0;
-		}
-		$raw .= $chunk;
-		return strlen($chunk);
-	    },
-	]);
-	$ok = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$error = $ok === false && !$tooLarge ? curl_error($ch) : '';
-	curl_close($ch);
-	if ($tooLarge)
+	    $o['json'] = $body;
+	$r = \util\Http::request($body !== null ? 'POST' : 'GET', $url, $o);
+	if ($r['tooLarge'])
 	    throw new \ErrorException('the answer is too large');
 	//CLD: 2026-10-19T16:05:12+03:00: the provider's name in messages; the OpenAI-compatible servers' error shapes ({ error: { message } }, { error: text }, { message })
-	if ($error !== '')
-	    throw new \ErrorException("no answer from " . preg_replace('/[?#].*$/', '', $url) . ": {$error}");
-	$data = json_decode($raw);
+	if ($r['error'] !== null)
+	    throw new \ErrorException("no answer from " . \util\Http::shown($url) . ": {$r['error']}");
+	$status = $r['status'];
+	$data = json_decode($r['body']);
 	if ($status >= 400) {
 	    $m = is_object($data) ? ($data->error->message ?? (is_string($data->error ?? null) ? $data->error : ($data->message ?? null))) : null;
 	    throw new \ErrorException("{$name} answered HTTP status {$status}" . (is_string($m) && $m !== '' ? ': ' . mb_substr($m, 0, 500) : ''));

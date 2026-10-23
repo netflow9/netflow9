@@ -23,22 +23,13 @@ class OAuth2 {
     }
 
     //POST to the token endpoint; the answer [ access_token, refresh_token, expires_in, id_token, ... ] or an exception
+    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
     public static function token($endpoint, array $params) {
-	$ch = curl_init($endpoint);
-	curl_setopt_array($ch, [
-	    CURLOPT_POST => true,
-	    CURLOPT_POSTFIELDS => http_build_query($params, '', '&'),
-	    CURLOPT_RETURNTRANSFER => true,
-	    CURLOPT_TIMEOUT => 20,
-	    CURLOPT_HTTPHEADER => [ 'Accept: application/json' ],
-	]);
-	$body = curl_exec($ch);
-	$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-	$error = curl_error($ch);
-
-	if ($body === false)
-	    throw new \Exception('token request failed: ' . $error);
-	$data = json_decode($body, true);
+	$r = Http::json('POST', $endpoint, [ 'form' => $params, 'timeout' => 20 ]);
+	$status = $r['status'];
+	if ($r['error'] !== null)
+	    throw new \Exception('token request failed: ' . $r['error']);
+	$data = $r['data'];
 	if ($status !== 200 || !is_array($data) || empty($data['access_token'])) {
 	    $msg = is_array($data) ? trim(($data['error'] ?? '') . ': ' . ($data['error_description'] ?? ''), ': ') : '';
 	    throw new \Exception('token request refused (HTTP ' . $status . ')' . ($msg !== '' ? ': ' . $msg : ''));
