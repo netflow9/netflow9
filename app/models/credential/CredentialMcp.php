@@ -7,7 +7,7 @@
     
     client() = a util\McpClient for it.
 
-    Test: connects (initialize) and lists the tools. QSM's own server: https://<host>/mcp with a token of the project (menu: MCP server)
+    Test: connects (initialize) and lists the tools. Rail22's own server: https://<host>/mcp with a token of the project (menu: MCP server)
 */
 
 namespace models\credential;

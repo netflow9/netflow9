@@ -117,8 +117,8 @@
                                 				<tbody>
                                 				    <tr>
                                     					<td style="width:125px;">
-                                    					    <a href="https://qsm.ro/" target="_blank">
-                                        					<img alt="qsm" src="cid:n8n-logo" style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;" width="125" height="auto" />
+                                    					    <a href="https://www.example.com/" target="_blank">
+                                        					<img alt="rail22" src="cid:n8n-logo" style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;" width="125" height="auto" />
                                     					    </a>
                                     					</td>
                                 				    </tr>

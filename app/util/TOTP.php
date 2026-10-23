@@ -7,7 +7,7 @@ class TOTP {
     private static $_base32 = [];
     private static $_base32lookup = [];
 
-    private $issuer = 'QSM';
+    private $issuer = 'Rail22';
     private $digits = 6;
     private $period = 30;
     private $algorithm = 'SHA256';
