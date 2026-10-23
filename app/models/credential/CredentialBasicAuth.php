@@ -17,12 +17,14 @@ class CredentialBasicAuth extends \models\Credential {
 	    //CLD: 2026-10-10T18:44:22+03:00: 'default' => '' (in every document; was set by Credential::_init)
 	    [ 'key' => 'username', 'type' => 'text', 'label' => 'Username', 'required' => true, 'default' => '', 'ui' => [ 'width' => 6 ] ],
 	    //CLD: 2026-10-10T09:14:41+03:00: 'encrypt' => true (stored encrypted)
-	    [ 'key' => 'password', 'type' => 'password', 'label' => 'Password', 'required' => true, 'encrypt' => true, 'ui' => [ 'width' => 6 ] ],
+	    //CLD: 2026-10-23T16:30:00+03:00: password optional (some APIs take the username / key alone: "user:")
+	    [ 'key' => 'password', 'type' => 'password', 'label' => 'Password', 'encrypt' => true, 'ui' => [ 'width' => 6 ] ],
 	]);
     }
 
     public function httpAuth() {
-	$pair = $this->username . ':' . $this->password;
+	//CLD: 2026-10-23T16:30:00+03:00: no password: "username:"
+	$pair = $this->username . ':' . (string)$this->password;
 	return [ 'headers' => [ 'Authorization' => 'Basic ' . base64_encode($pair) ], 'query' => [] ];
     }
 }
