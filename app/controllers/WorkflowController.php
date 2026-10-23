@@ -442,6 +442,8 @@ class WorkflowController extends \sys\BaseController {
 	    $resp->sendJSON([ 'error' => 'The execution has not finished' ], true, 409);
 	if (!$exe->delete())
 	    $resp->sendJSON([ 'error' => 'The execution could not be deleted' ], true, 500);
+	//CLD: 2026-10-24T00:04:00+03:00: audit log (executions are not recorded by themselves; SOC2.md gap 4)
+	\models\AuditLog::record('workflow.execution.delete', $wf, 'execution ' . $eid);
 	$resp->sendJSON([ 'deleted' => $eid ]);
     }
 
@@ -460,6 +462,9 @@ class WorkflowController extends \sys\BaseController {
 	    else
 		$failed++;
 	}
+	//CLD: 2026-10-24T00:04:00+03:00: audit log: how many were deleted (SOC2.md gap 4)
+	if ($deleted)
+	    \models\AuditLog::record('workflow.executions.delete', $wf, $deleted . ' execution' . ($deleted == 1 ? '' : 's') . ' of the draft' . ($failed ? ", {$failed} not deleted" : ''));
 	$kept = \V::app()->om->count('WfExecution', [ 'wf' => $wf->_id, 'aid' => $wf->aid ]);
 	if ($failed && !$deleted)
 	    $resp->sendJSON([ 'error' => 'The executions could not be deleted' ], true, 500);
