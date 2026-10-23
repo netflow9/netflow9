@@ -424,6 +424,48 @@ class WorkflowController extends \sys\BaseController {
 	$resp->sendJSON([ 'execution' => $this->executionSummary($exe) + [ 'variables' => (object)(is_array($exe->variables) ? $exe->variables : []), 'log' => $log ] ]);
     }
 
+    //CLD: 2026-10-23T23:00:00+03:00: delete an execution of the draft (POST ?execution=<id>; the Executions panel): a designer Run / console run, not one of a
+    //published version, and not one still running or sleeping (canRun). Its entries in the execution log are kept. Answers { deleted }. Workflow::update (as Run)
+    public function execution_delete($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$wf = $this->findWorkflow('Workflow::update');
+	$eid = (string)($req->query['execution'] ?? '');
+	if (!\util\Validator::rule('oid', $eid))
+	    \V::app()->error(400, 'malformed request: not oid');
+	$exe = \V::app()->om->findOne('WfExecution', [ '_id' => $eid, 'wf' => $wf->_id, 'aid' => $wf->aid ], [ 'projection' => [ '_id' => 1, 'aid' => 1, 'version' => 1, 'state' => 1 ] ]);
+	if (empty($exe))
+	    \V::app()->error(404, 'Not found');
+	if (is_numeric($exe->version))
+	    $resp->sendJSON([ 'error' => 'Only executions of the draft can be deleted' ], true, 409);
+	if ($exe->canRun())
+	    $resp->sendJSON([ 'error' => 'The execution has not finished' ], true, 409);
+	if (!$exe->delete())
+	    $resp->sendJSON([ 'error' => 'The execution could not be deleted' ], true, 500);
+	$resp->sendJSON([ 'deleted' => $eid ]);
+    }
+
+    //CLD: 2026-10-23T23:30:00+03:00: delete all executions of the draft (POST; the Executions panel's trash button): as execution_delete, those of a published
+    //version and those still running or sleeping are kept. Answers { deleted: <count>, kept: <count> }. Workflow::update (as Run)
+    public function executions_delete($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$wf = $this->findWorkflow('Workflow::update');
+	$deleted = 0;
+	$failed = 0;
+	$exes = \V::app()->om->find('WfExecution', [ 'wf' => $wf->_id, 'aid' => $wf->aid, 'version' => null, 'state' => [ '$nin' => [ 'new', 'run', 'sleep' ] ] ], [ 'projection' => [ '_id' => 1, 'aid' => 1, 'version' => 1, 'state' => 1 ] ]);
+	foreach($exes as $exe) {
+	    if ($exe->delete())
+		$deleted++;
+	    else
+		$failed++;
+	}
+	$kept = \V::app()->om->count('WfExecution', [ 'wf' => $wf->_id, 'aid' => $wf->aid ]);
+	if ($failed && !$deleted)
+	    $resp->sendJSON([ 'error' => 'The executions could not be deleted' ], true, 500);
+	$resp->sendJSON([ 'deleted' => $deleted, 'kept' => $kept ]);
+    }
+
     //CLD: 2026-10-11T22:38:36+03:00: live help of an expression field (POST, JSON): the problems of `text` (util\Expression::check) and, with `before` (the text up to the cursor),
     //the suggestions there (util\Expression::complete); the variables are those available at step `node` (Workflow::variablesAt) of `nodes` (the designer's
     //current steps, JSON; else the saved ones). Workflow::read

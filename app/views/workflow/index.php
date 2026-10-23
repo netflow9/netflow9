@@ -30,6 +30,10 @@ $saveUrl = \V::app()->createUrl('/workflow/save', [ 'id' => (string)$wf->_id ]);
 //CLD: 2026-10-19T19:50:00+03:00: the key of the remembered canvas pan / zoom (canvasView); an ObjectId: hex only, safe in the script
 $wfIdJs = (string)$wf->_id;
 $executionUrl = \V::app()->createUrl('/workflow/execution', [ 'id' => (string)$wf->_id ]);
+//CLD: 2026-10-23T23:00:00+03:00: delete an execution of the draft (WorkflowController::execution_delete)
+$executionDeleteUrl = \V::app()->createUrl('/workflow/execution_delete', [ 'id' => (string)$wf->_id ]);
+//CLD: 2026-10-23T23:30:00+03:00: delete all executions of the draft (WorkflowController::executions_delete)
+$executionsDeleteUrl = \V::app()->createUrl('/workflow/executions_delete', [ 'id' => (string)$wf->_id ]);
 $canRun = \V::app()->user->can('Workflow::update', [ 'object' => $wf ]) ? 'true' : 'false';
 //CLD: 2026-10-11T13:51:42+03:00: versions (was a draft / published switch, 2026-10-11T13:29:36+03:00): the active version, whether the draft differs from it,
 //the version being viewed (?version, read-only: its steps on the canvas)
@@ -103,7 +107,9 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
     };
 
     const exec = {
-	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}' },
+	//CLD: 2026-10-23T23:00:00+03:00: + del (an execution of the draft)
+	//CLD: 2026-10-23T23:30:00+03:00: + delAll (all executions of the draft)
+	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}' },
 	canRun: {$canRun},
 	baseline: null,
 	dirty: false,
@@ -280,13 +286,91 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 		return;
 	    const vars = JSON.stringify(e.variables || {}, null, 2);
 	    const log = (e.log || []).map((l) => `<div class='debug-log-line'><span style='color: var(--netflow9-debug-muted)'>\${this.esc((l.time || '').slice(11))}</span> \${l.title ? `<span class='tag'>[\${this.esc(l.title)}]</span>` : ''}\${this.esc(l.message)}</div>`).join('');
+	    //CLD: 2026-10-23T23:00:00+03:00: + Delete (an execution of the draft that has finished; asked again in place: Yes / No)
+	    const del = this.deletable(e) ? `<span class='exec-delete ms-auto flex-shrink-0'><button type='button' class='debug-icon-btn btn-exec-delete' title='Delete this execution'><i class='bi bi-trash'></i></button></span>` : '';
 	    box.innerHTML = `
-		<div class='mb-1'>\${this.badge(e.state)} <span style='color: var(--netflow9-debug-muted)'>\${this.esc(e.trigger)} \${this.esc(this.versionLabel(e))}, started \${this.esc(e.started || e.created || '-')}\${e.duration !== null ? ', ' + this.duration(e.duration) : ''}\${e.wake_at ? ', wakes at ' + this.esc(e.wake_at) : ''}</span></div>
+		<div class='mb-1 d-flex align-items-center gap-1'><span>\${this.badge(e.state)} <span style='color: var(--netflow9-debug-muted)'>\${this.esc(e.trigger)} \${this.esc(this.versionLabel(e))}, started \${this.esc(e.started || e.created || '-')}\${e.duration !== null ? ', ' + this.duration(e.duration) : ''}\${e.wake_at ? ', wakes at ' + this.esc(e.wake_at) : ''}</span></span>\${del}</div>
 		\${e.error ? `<div class='text-danger mb-1'>\${this.esc(e.error)}</div>` : ''}
 		<div class='debug-panel-title mt-2 mb-1'>Log</div>
 		\${log || `<div style='color: var(--netflow9-debug-muted)'>(empty)</div>`}
 		<div class='debug-panel-title mt-2 mb-1'>Variables</div>
 		<pre class='mb-0' style='color: inherit; white-space: pre-wrap'>\${this.esc(vars)}</pre>`;
+	},
+
+	//CLD: 2026-10-23T23:00:00+03:00: an execution of the draft (no version) that is not running or sleeping, by a user who may run the workflow
+	deletable(e) {
+	    return this.canRun && (e.version === null || e.version === undefined) && ![ 'new', 'run', 'sleep' ].includes(e.state);
+	},
+
+	//CLD: 2026-10-23T23:00:00+03:00: the trash button becomes `Delete? Yes / No`
+	confirmDelete() {
+	    const box = document.querySelector('.exec-detail .exec-delete');
+	    if (!box)
+		return;
+	    box.innerHTML = `<span class='me-1'>Delete?</span><button type='button' class='debug-icon-btn btn-exec-delete-yes text-danger' title='Yes, delete it'><i class='bi bi-check-lg'></i></button><button type='button' class='debug-icon-btn btn-exec-delete-no' title='No'><i class='bi bi-x-lg'></i></button>`;
+	    box.querySelector('.btn-exec-delete-yes').focus();
+	},
+
+	//CLD: 2026-10-23T23:00:00+03:00: deletes the selected execution; the list and the details are updated
+	remove() {
+	    const id = this.selected;
+	    if (!id)
+		return;
+	    const url = this.urls.del + (this.urls.del.includes('?') ? '&' : '?') + 'execution=' + encodeURIComponent(id);
+	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': this.csrf() } })
+		.done(() => {
+		    this.list = this.list.filter((e) => e.id !== id);
+		    if (this.selected === id) {
+			this.selected = null;
+			this.detail = null;
+			const box = document.querySelector('.exec-detail');
+			if (box)
+			    box.innerHTML = `<span style='color: var(--netflow9-debug-muted)'>Select an execution</span>`;
+		    }
+		    this.renderList();
+		    this.toast('success', 'Deleted', 'Execution deleted');
+		})
+		.fail((xhr) => {
+		    this.toast('error', 'Not deleted', (xhr.responseJSON && xhr.responseJSON.error) || 'The execution could not be deleted');
+		    this.renderDetail();
+		});
+	},
+
+	//CLD: 2026-10-23T23:30:00+03:00: the header's trash button becomes `Delete all? Yes / No`; restoreDeleteAll() puts it back
+	confirmDeleteAll() {
+	    const box = document.querySelector('.exec-panel .exec-delete-all');
+	    if (!box)
+		return;
+	    box.innerHTML = `<span class='me-1'>Delete all?</span><button type='button' class='debug-icon-btn btn-exec-delete-all-yes text-danger' title='Yes, delete all executions of the draft'><i class='bi bi-check-lg'></i></button><button type='button' class='debug-icon-btn btn-exec-delete-all-no' title='No'><i class='bi bi-x-lg'></i></button>`;
+	    box.querySelector('.btn-exec-delete-all-yes').focus();
+	},
+
+	restoreDeleteAll() {
+	    const box = document.querySelector('.exec-panel .exec-delete-all');
+	    if (box)
+		box.innerHTML = `<button type='button' class='debug-icon-btn btn-exec-delete-all' title='Delete all executions of the draft (running / sleeping ones and those of published versions are kept)'><i class='bi bi-trash'></i></button>`;
+	},
+
+	//CLD: 2026-10-23T23:30:00+03:00: deletes all finished executions of the draft; the list is reloaded, the details cleared when the selected one is gone
+	removeAll() {
+	    $.ajax({ url: this.urls.delAll, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': this.csrf() } })
+		.done((resp) => {
+		    this.restoreDeleteAll();
+		    if (this.detail && this.deletable(this.detail)) {
+			this.selected = null;
+			this.detail = null;
+			const box = document.querySelector('.exec-detail');
+			if (box)
+			    box.innerHTML = `<span style='color: var(--netflow9-debug-muted)'>Select an execution</span>`;
+		    }
+		    this.refresh();
+		    const n = resp.deleted || 0;
+		    this.toast('success', 'Deleted', (n === 1 ? '1 execution deleted' : n + ' executions deleted') + (resp.kept ? ', ' + resp.kept + ' kept (running / sleeping or of a published version)' : ''));
+		})
+		.fail((xhr) => {
+		    this.restoreDeleteAll();
+		    this.toast('error', 'Not deleted', (xhr.responseJSON && xhr.responseJSON.error) || 'The executions could not be deleted');
+		});
 	},
     };
 
@@ -389,6 +473,32 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
     });
     $('.exec-panel').on('click', '.exec-row', function() {
 	exec.select(this.dataset.id);
+    });
+    //CLD: 2026-10-23T23:00:00+03:00: delete an execution of the draft (asked again in place)
+    $('.exec-panel').on('click', '.btn-exec-delete', (e) => {
+	e.preventDefault();
+	exec.confirmDelete();
+    });
+    $('.exec-panel').on('click', '.btn-exec-delete-yes', (e) => {
+	e.preventDefault();
+	exec.remove();
+    });
+    $('.exec-panel').on('click', '.btn-exec-delete-no', (e) => {
+	e.preventDefault();
+	exec.renderDetail();
+    });
+    //CLD: 2026-10-23T23:30:00+03:00: delete all executions of the draft (asked again in place)
+    $('.exec-panel').on('click', '.btn-exec-delete-all', (e) => {
+	e.preventDefault();
+	exec.confirmDeleteAll();
+    });
+    $('.exec-panel').on('click', '.btn-exec-delete-all-yes', (e) => {
+	e.preventDefault();
+	exec.removeAll();
+    });
+    $('.exec-panel').on('click', '.btn-exec-delete-all-no', (e) => {
+	e.preventDefault();
+	exec.restoreDeleteAll();
     });
 
 
@@ -869,6 +979,10 @@ $formOptions = [
     <div class="debug-panel-header">
 	<div class="debug-panel-title"><i class="bi bi-clock-history"></i> Executions</div>
 	<div class="debug-panel-actions">
+	    <?php //CLD: 2026-10-23T23:30:00+03:00: delete all executions of the draft (users who may run the workflow; exec.confirmDeleteAll / removeAll) ?>
+	    <?php if (\V::app()->user->can('Workflow::update', [ 'object' => $wf ])): ?>
+	    <span class="exec-delete-all d-inline-flex align-items-center"><button type="button" class="debug-icon-btn btn-exec-delete-all" title="Delete all executions of the draft (running / sleeping ones and those of published versions are kept)"><i class="bi bi-trash"></i></button></span>
+	    <?php endif; ?>
 	    <button class="debug-icon-btn btn-exec-refresh" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>
 	    <button class="debug-icon-btn btn-exec-close" title="Close panel"><i class="bi bi-x-lg"></i></button>
 	</div>
