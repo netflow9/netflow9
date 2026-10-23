@@ -980,7 +980,8 @@ $formOptions = [
 	<div class="debug-panel-title"><i class="bi bi-clock-history"></i> Executions</div>
 	<div class="debug-panel-actions">
 	    <?php //CLD: 2026-10-23T23:30:00+03:00: delete all executions of the draft (users who may run the workflow; exec.confirmDeleteAll / removeAll) ?>
-	    <?php if (\V::app()->user->can('Workflow::update', [ 'object' => $wf ])): ?>
+	    <?php //CLD: 2026-10-24T00:04:00+03:00: not while a published version is viewed (only the draft's executions are deleted) ?>
+	    <?php if (!$viewVersion && \V::app()->user->can('Workflow::update', [ 'object' => $wf ])): ?>
 	    <span class="exec-delete-all d-inline-flex align-items-center"><button type="button" class="debug-icon-btn btn-exec-delete-all" title="Delete all executions of the draft (running / sleeping ones and those of published versions are kept)"><i class="bi bi-trash"></i></button></span>
 	    <?php endif; ?>
 	    <button class="debug-icon-btn btn-exec-refresh" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>
