@@ -14,6 +14,8 @@ return [
     'SysMCPTools',
     //CLD: 2026-10-21T10:00:00+03:00: LDAP: the accounts' sign-in with their directory (settings: Settings menu, LDAP sign-in), the LDAP server credential and the LDAP step
     'Ldap',
+    //CLD: 2026-10-23T12:00:00+03:00: SAML 2.0 single sign-on: the accounts' sign-in at their identity provider (settings: Settings menu, SAML single sign-on; "Sign in with SSO" on the login page)
+    'Saml',
     //CLD: 2026-10-22T00:35:40+03:00: Google: the Google credentials (OAuth: Mail, Drive, Sheets, Calendar, Docs) and steps (Google Drive, Google Sheets, Gmail, Google Calendar, Google Docs; were in the core)
     'GoogleIntegration',
     //CLD: 2026-10-22T00:41:28+03:00: Microsoft: Microsoft 365 Mail (IMAP; was in the core) and the Microsoft Graph credentials and steps (Outlook Mail, Outlook Calendar, OneDrive / SharePoint, Excel, Teams)

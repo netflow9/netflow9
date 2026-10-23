@@ -32,11 +32,12 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-20T15:00:00+03:00: + gdocs (the Google Docs step)
     //CLD: 2026-10-20T16:00:00+03:00: + ftp (the FTP / SFTP step, util\FtpClient, util\FileDecrypt; real servers with CHECK_FTP_SERVERS: see suiteFtp)
     //CLD: 2026-10-21T10:00:00+03:00: + ldap (the Ldap plugin: its clients against a test server, the LDAP sign-in, the LDAP step; skipped without the plugin)
+    //CLD: 2026-10-23T12:00:00+03:00: + saml (the Saml plugin: the SP's request and metadata, the responses checked and refused, the SAML sign-in; skipped without the plugin)
     //CLD: 2026-10-21T20:10:00+03:00: + tenant (the account guard of sys\ObjectManager; the sign-in of a name used in two accounts)
     //CLD: 2026-10-22T00:41:28+03:00: + microsoft (the MicrosoftIntegration plugin: its credentials and steps; skipped without the plugin)
     //CLD: 2026-10-22T01:36:46+03:00: + localai (the Lemonade AI and Ollama steps and credentials, against a fake server: commands/tests/AiTestServer.php)
     //CLD: 2026-10-23T10:00:00+03:00: + systemai (the AI steps on the System AI: plugins\SystemAI, its credits)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'suspend', 'markdown', 'ftp', 'ldap', 'tenant', 'audit', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -3865,6 +3866,294 @@ class CheckCommand extends \sys\BaseController {
 	} finally {
 	    foreach($creds as $c)
 		$c->delete();
+	}
+    }
+
+    //CLD: 2026-10-23T12:00:00+03:00: the Saml plugin (skipped without it), in an account made for the checks (removed afterwards), with a test IdP made here (its key pair):
+    //the request and the metadata of the SP, the IdP metadata read, the responses checked (signed response / assertion, encrypted with RSA-OAEP SHA-1 / SHA-256) and refused
+    //(not signed, changed, another key, signature wrapping, audience, recipient, times, InResponseTo, issuer, status, DOCTYPE, encryption required), a comment in the NameID,
+    //the sign-in (provisioning, roles from groups, linking existing users, the last owner, the password of an SSO user refused), replays, the request's browser token
+    private function suiteSaml() {
+	if (!in_array('Saml', (array)\V::app()->config('modules'), true)) {
+	    echo "  skipped: the Saml plugin is not enabled\n";
+	    return;
+	}
+	$X = \plugins\Saml\util\SamlXml::class;
+	$Sp = \plugins\Saml\util\SamlSp::class;
+	$Auth = \plugins\Saml\util\SamlAuth::class;
+	$om = \V::app()->om;
+
+	//the test IdP's key pair
+	$idpKey = openssl_pkey_new([ 'private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA ]);
+	openssl_pkey_export($idpKey, $idpKeyPem);
+	openssl_x509_export(openssl_csr_sign(openssl_csr_new([ 'commonName' => 'idp.example.test' ], $idpKey, [ 'digest_alg' => 'sha256' ]), null, $idpKey, 30, [ 'digest_alg' => 'sha256' ]), $idpCert);
+	$otherKey = openssl_pkey_new([ 'private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA ]);
+	openssl_pkey_export($otherKey, $otherKeyPem);
+	openssl_x509_export(openssl_csr_sign(openssl_csr_new([ 'commonName' => 'evil.example.test' ], $otherKey, [ 'digest_alg' => 'sha256' ]), null, $otherKey, 30, [ 'digest_alg' => 'sha256' ]), $otherCert);
+
+	$account = \models\Account::create([ 'state' => 'active', 'name' => 'Check SAML ' . uniqid() ]);
+	$account->save();
+	$restore = $this->account;
+	\V::app()->var('rt.account', $account);
+	try {
+	    $roles = $account->setupRoles();
+	    $s = $om->create('SamlSettings', [ 'aid' => $account->_id ]);
+	    $s->keys();
+	    $s->assign([ 'enabled' => true, 'idpEntityId' => 'https://idp.example.test/saml', 'idpSsoUrl' => 'https://idp.example.test/sso?tenant=1', 'idpCerts' => $idpCert,
+		'groupMap' => [ [ 'group' => 'Devs', 'role' => (string)$roles['member']->_id ], [ 'group' => 'staff', 'role' => (string)$roles['participant']->_id ] ],
+		'defaultRole' => '', 'provision' => true, 'linkExisting' => false, 'domains' => 'example.com' ]);
+	    $valid = $s->validates();
+	    $this->check('SAML: the settings are valid, the SP has a key pair', [ true, [], true ], [ $valid, $s->errors(), (bool)openssl_pkey_get_private((string)$s->spKey) ]);
+	    if (!$valid)
+		return;
+	    $s->save();
+	    $Auth::reset();
+
+	    //the request: deflated, its fields, signed over the query with the SP's key
+	    $url = $Sp::requestUrl($s, '_req1', 'r s');
+	    parse_str((string)parse_url($url, PHP_URL_QUERY), $q);
+	    $req = $X::load(gzinflate(base64_decode($q['SAMLRequest'])))->documentElement;
+	    $signedPart = substr($url, strpos($url, 'SAMLRequest='), strpos($url, '&Signature=') - strpos($url, 'SAMLRequest='));
+	    $this->check('SAML request: the IdP\'s URL (its query kept), ID, ACS, Issuer, NameID format, RelayState, signed with the SP\'s certificate', [
+		'https://idp.example.test/sso?tenant=1&SAMLRequest=', '_req1', $s->acsUrl(), $s->spEntityId(), (string)$s->nameIdFormat, 'r s', 1 ],
+		[ substr($url, 0, strpos($url, 'SAMLRequest=') + 12), $req->getAttribute('ID'), $req->getAttribute('AssertionConsumerServiceURL'),
+		    $X::children($req, $X::SAML, 'Issuer')[0]->textContent ?? null, $X::children($req, $X::SAMLP, 'NameIDPolicy')[0]?->getAttribute('Format'), $q['RelayState'] ?? null,
+		    openssl_verify($signedPart, base64_decode($q['Signature']), (string)$s->spCert, 'sha256') ]);
+
+	    //the SP's metadata, read back as the IdP would
+	    $md = $X::load($Sp::metadata($s));
+	    $xp = $X::xpath($md);
+	    $this->check('SAML SP metadata: entity ID, the ACS (HTTP-POST), the certificate for signing and encryption', [ $s->spEntityId(), $s->acsUrl(), 2, true ], [
+		$md->documentElement->getAttribute('entityID'), $xp->query('//md:AssertionConsumerService[@Binding="' . $Sp::BINDING_POST . '"]')->item(0)?->getAttribute('Location'),
+		$xp->query('//md:KeyDescriptor//ds:X509Certificate')->length, $xp->query('//ds:X509Certificate')->item(0)?->textContent === $X::certBody($s->spCert) ]);
+
+	    //an IdP's metadata (an EntitiesDescriptor, a POST and a Redirect binding)
+	    $idpMd = '<md:EntitiesDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><md:EntityDescriptor entityID="https://idp.example.test/saml">'
+		. '<md:IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"><md:KeyDescriptor use="signing"><ds:KeyInfo><ds:X509Data><ds:X509Certificate>'
+		. $X::certBody($idpCert) . '</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor><md:KeyDescriptor use="encryption"><ds:KeyInfo><ds:X509Data><ds:X509Certificate>'
+		. $X::certBody($otherCert) . '</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor><md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>'
+		. '<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://idp.example.test/post"/>'
+		. '<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.example.test/redirect"/></md:IDPSSODescriptor></md:EntityDescriptor></md:EntitiesDescriptor>';
+	    $read = $Sp::idpMetadata($idpMd);
+	    $this->check('SAML IdP metadata: entity ID, the HTTP-Redirect sign-on URL, the signing certificate only', [ 'https://idp.example.test/saml', 'https://idp.example.test/redirect', $idpCert ],
+		[ $read['idpEntityId'], $read['idpSsoUrl'], $read['idpCerts'] ]);
+
+	    //a response of the test IdP; $o: what to change
+	    $now = time();
+	    $response = function(array $o = []) use ($s, $X, $Sp, $idpKeyPem, $idpCert, $now) {
+		$o += [ 'irt' => '_req1', 'issuer' => 'https://idp.example.test/saml', 'audience' => $s->spEntityId(), 'recipient' => $s->acsUrl(), 'destination' => $s->acsUrl(),
+		    'nameId' => 'ana@example.com', 'format' => 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress', 'notBefore' => $now - 60, 'notOnOrAfter' => $now + 300,
+		    'attributes' => [ 'givenName' => [ 'Ana' ], 'sn' => [ 'Pop' ], 'groups' => [ 'Devs' ] ], 'status' => $Sp::SUCCESS, 'signAssertion' => true, 'signResponse' => false,
+		    'encrypt' => null, 'key' => $idpKeyPem, 'cert' => $idpCert, 'change' => null ];
+		$t = fn($ts) => gmdate('Y-m-d\TH:i:s\Z', $ts);
+		$doc = new \DOMDocument();
+		$el = function(\DOMNode $parent, $ns, $name, $attrs = [], $text = null) use ($doc) {
+		    $e = $doc->createElementNS($ns, $name);
+		    foreach($attrs as $k => $v)
+			if ($v !== null)
+			    $e->setAttribute($k, (string)$v);
+		    if ($text !== null)
+			$e->appendChild($doc->createTextNode((string)$text));
+		    return $parent->appendChild($e);
+		};
+		$r = $el($doc, $X::SAMLP, 'samlp:Response', [ 'ID' => '_r' . bin2hex(random_bytes(8)), 'Version' => '2.0', 'IssueInstant' => $t($now), 'Destination' => $o['destination'],
+		    'InResponseTo' => $o['irt'] ]);
+		$r->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:saml', $X::SAML);
+		$el($r, $X::SAML, 'saml:Issuer', [], $o['issuer']);
+		$st = $el($r, $X::SAMLP, 'samlp:Status');
+		$el($st, $X::SAMLP, 'samlp:StatusCode', [ 'Value' => $o['status'] ]);
+		if ($o['status'] !== $Sp::SUCCESS)
+		    $el($st, $X::SAMLP, 'samlp:StatusMessage', [], 'no such user');
+		$a = $el($r, $X::SAML, 'saml:Assertion', [ 'ID' => '_a' . bin2hex(random_bytes(8)), 'Version' => '2.0', 'IssueInstant' => $t($now) ]);
+		$el($a, $X::SAML, 'saml:Issuer', [], $o['issuer']);
+		$sub = $el($a, $X::SAML, 'saml:Subject');
+		$el($sub, $X::SAML, 'saml:NameID', [ 'Format' => $o['format'] ], $o['nameId']);
+		$el($el($sub, $X::SAML, 'saml:SubjectConfirmation', [ 'Method' => $Sp::BEARER ]), $X::SAML, 'saml:SubjectConfirmationData',
+		    [ 'NotOnOrAfter' => $t($o['notOnOrAfter']), 'Recipient' => $o['recipient'], 'InResponseTo' => $o['irt'] ]);
+		$c = $el($a, $X::SAML, 'saml:Conditions', [ 'NotBefore' => $t($o['notBefore']), 'NotOnOrAfter' => $t($o['notOnOrAfter']) ]);
+		$el($el($c, $X::SAML, 'saml:AudienceRestriction'), $X::SAML, 'saml:Audience', [], $o['audience']);
+		$el($el($el($a, $X::SAML, 'saml:AuthnStatement', [ 'AuthnInstant' => $t($now), 'SessionIndex' => '_s1' ]), $X::SAML, 'saml:AuthnContext'), $X::SAML,
+		    'saml:AuthnContextClassRef', [], 'urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport');
+		$as = $el($a, $X::SAML, 'saml:AttributeStatement');
+		foreach($o['attributes'] as $name => $values) {
+		    $at = $el($as, $X::SAML, 'saml:Attribute', [ 'Name' => $name ]);
+		    foreach($values as $v)
+			$el($at, $X::SAML, 'saml:AttributeValue', [], $v);
+		}
+		if ($o['signAssertion'])
+		    $X::sign($a, $o['key'], $o['cert']);
+		if ($o['encrypt'] !== null)
+		    $X::encrypt($a, (string)$s->spCert, $o['encrypt']);
+		if ($o['signResponse'])
+		    $X::sign($r, $o['key'], $o['cert']);
+		if ($o['change'])
+		    ($o['change'])($doc, $X::xpath($doc));
+		return base64_encode($doc->saveXML());
+	    };
+	    $claims = function($b64, $expected = '_req1') use ($Sp, $s) {
+		try {
+		    return $Sp::response($s, $b64, $expected);
+		} catch (\plugins\Saml\util\SamlException $e) {
+		    return 'refused: ' . $e->getMessage();
+		}
+	    };
+	    $refused = fn($b64, $part, $expected = '_req1') => is_string($r = $claims($b64, $expected)) && str_contains($r, $part) ? true : $r;
+
+	    $c1 = $claims($response());
+	    $this->check('SAML response: a signed assertion: the NameID, its format, the attributes, signed by the assertion, InResponseTo read before the check', [
+		'ana@example.com', 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress', [ 'Ana' ], [ 'Devs' ], [ 'assertion' ], false, '_s1', '_req1' ],
+		[ $c1['nameId'] ?? $c1, $c1['format'] ?? null, $c1['attributes']['givenName'] ?? null, $c1['attributes']['groups'] ?? null, $c1['signedBy'] ?? null, $c1['encrypted'] ?? null,
+		    $c1['sessionIndex'] ?? null, $Sp::inResponseTo($response()) ]);
+	    $c2 = $claims($response([ 'signAssertion' => false, 'signResponse' => true ]));
+	    $c3 = $claims($response([ 'signResponse' => true, 'encrypt' => 'sha1' ]));
+	    $c4 = $claims($response([ 'encrypt' => 'sha256' ]));
+	    $this->check('SAML response: a signed response; both signed and the assertion encrypted (RSA-OAEP SHA-1, AES-256-GCM); encrypted with RSA-OAEP SHA-256', [
+		[ 'ana@example.com', [ 'response' ] ], [ 'ana@example.com', [ 'response', 'assertion' ], true ], [ 'ana@example.com', true ] ],
+		[ [ $c2['nameId'] ?? $c2, $c2['signedBy'] ?? null ], [ $c3['nameId'] ?? $c3, $c3['signedBy'] ?? null, $c3['encrypted'] ?? null ], [ $c4['nameId'] ?? $c4, $c4['encrypted'] ?? null ] ]);
+
+	    //a comment in the signed NameID (the canonical form leaves it out): the whole text is the NameID, not the part before the comment
+	    $c5 = $claims($response([ 'nameId' => 'ana@example.com.evil.test', 'change' => function($doc, $xp) {
+		$t = $xp->query('//saml:NameID')->item(0)->firstChild;
+		$t->splitText(strlen('ana@example.com'));
+		$t->parentNode->insertBefore($doc->createComment(''), $t->nextSibling);
+	    } ]));
+	    $this->check('SAML response: a comment put in the signed NameID: still valid, the NameID is all of its text', 'ana@example.com.evil.test', $c5['nameId'] ?? $c5);
+
+	    $nameId = fn($doc, $xp) => $xp->query('//saml:NameID')->item(0)->firstChild->data = 'admin@example.com';
+	    $this->check('SAML response refused: not signed, changed after signing, signed with another key, the assertion changed under a signed response', [ true, true, true, true ], [
+		$refused($response([ 'signAssertion' => false ]), 'neither the response nor the assertion is signed'),
+		$refused($response([ 'change' => $nameId ]), 'does not match'),
+		$refused($response([ 'key' => $otherKeyPem, 'cert' => $otherCert ]), 'is not the IdP\'s'),
+		$refused($response([ 'signAssertion' => false, 'signResponse' => true, 'change' => $nameId ]), 'does not match') ]);
+
+	    //signature wrapping: a forged assertion next to the signed one, the signed one hidden elsewhere, a second element with the signed ID, the signature moved
+	    $forged = function($doc, $xp, $where) {
+		$signed = $xp->query('//saml:Assertion')->item(0);
+		$evil = $signed->cloneNode(true);
+		foreach($xp->query('.//ds:Signature', $evil) as $sig)
+		    $sig->parentNode->removeChild($sig);
+		$xp->query('.//saml:NameID', $evil)->item(0)->firstChild->data = 'admin@example.com';
+		if ($where === 'sibling') {
+		    $signed->parentNode->insertBefore($evil, $signed);
+		} elseif ($where === 'hidden') {
+		    $evil->setAttribute('ID', '_evil');
+		    $ext = $doc->createElementNS(\plugins\Saml\util\SamlXml::SAMLP, 'samlp:Extensions');
+		    $signed->parentNode->insertBefore($ext, $xp->query('//samlp:Status')->item(0));
+		    $signed->parentNode->replaceChild($evil, $signed);
+		    $ext->appendChild($signed);
+		} else {
+		    $evil->setAttribute('ID', '_evil');
+		    $evil->insertBefore($xp->query('./ds:Signature', $signed)->item(0), $xp->query('./saml:Subject', $evil)->item(0));
+		    $signed->parentNode->replaceChild($evil, $signed);
+		}
+	    };
+	    $this->check('SAML response refused, signature wrapping: a forged assertion next to the signed one, the signed one moved to Extensions, the signature moved to a forged one', [ true, true, true ], [
+		$refused($response([ 'change' => fn($d, $x) => $forged($d, $x, 'sibling') ]), 'several assertions'),
+		$refused($response([ 'change' => fn($d, $x) => $forged($d, $x, 'hidden') ]), 'assertions elsewhere'),
+		$refused($response([ 'change' => fn($d, $x) => $forged($d, $x, 'moved') ]), 'the signature is not of the Assertion') ]);
+	    $dupId = function($doc, $xp) {
+		$a = $xp->query('//saml:Assertion')->item(0);
+		$copy = $doc->createElementNS(\plugins\Saml\util\SamlXml::SAMLP, 'samlp:Extensions');
+		$copy->setAttribute('ID', $a->getAttribute('ID'));
+		$a->parentNode->insertBefore($copy, $xp->query('//samlp:Status')->item(0));
+	    };
+	    $this->check('SAML response refused: another element with the signed ID', true, $refused($response([ 'change' => $dupId ]), 'more than once'));
+
+	    $this->check('SAML response refused: another audience, another recipient, another destination, expired, not valid yet, another request, unsolicited, another issuer', [
+		true, true, true, true, true, true, true, true ], [
+		$refused($response([ 'audience' => 'https://other.example.test' ]), 'for another service provider'),
+		$refused($response([ 'recipient' => 'https://other.example.test/acs' ]), 'Recipient'),
+		$refused($response([ 'destination' => 'https://other.example.test/acs' ]), 'Destination'),
+		$refused($response([ 'notOnOrAfter' => $now - 600, 'notBefore' => $now - 900 ]), 'expired'),
+		$refused($response([ 'notBefore' => $now + 900, 'notOnOrAfter' => $now + 1200 ]), 'not valid yet'),
+		$refused($response(), 'not the answer to the request sent', '_req2'),
+		$refused($response(), 'a request that is not waiting', null),
+		$refused($response([ 'issuer' => 'https://evil.example.test' ]), 'another IdP') ]);
+	    $s->requireEncryption = true;
+	    $enc = [ $refused($response(), 'not encrypted'), $claims($response([ 'encrypt' => 'sha1' ]))['nameId'] ?? null ];
+	    $s->requireEncryption = false;
+	    $this->check('SAML response: the IdP\'s refusal (status, message), a DOCTYPE refused, encryption required: a plain assertion refused, an encrypted one taken', [
+		true, true, true, 'ana@example.com' ], array_merge([ $refused($response([ 'status' => 'urn:oasis:names:tc:SAML:2.0:status:Responder' ]), 'Responder: no such user'),
+		$refused(base64_encode('<!DOCTYPE x [<!ENTITY e "x">]><samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"/>'), 'DOCTYPE') ], $enc));
+
+	    //the sign-in
+	    $signIn = function(array $o = [], $dry = false) use ($response, $claims, $Auth, $s, $account, $om) {
+		$c = $claims($response($o));
+		if (is_string($c))
+		    return $c;
+		$r = $Auth::signIn($s, $c, [ 'dry' => $dry ]);
+		\V::app()->var('rt.account', $account);
+		if (!$r['user'])
+		    return 'refused:' . $r['reason'];
+		return 'user:' . $r['user']->email . ':' . (string)$om->findById('Role', (string)$r['user']->role)?->iname;
+	    };
+	    $users = $om->count('User', [ 'aid' => $account->_id ]);
+	    $dry = $signIn([], true);
+	    $this->check('SAML sign-in: a test (dry): signed in, nothing saved', [ 'user:ana@example.com:member', $users ], [ $dry, $om->count('User', [ 'aid' => $account->_id ]) ]);
+	    $first = $signIn();
+	    $ana = $om->findOne('User', [ 'aid' => $account->_id, 'email' => 'ana@example.com' ]);
+	    $link = $ana ? \plugins\Saml\models\SamlLink::forUser($ana) : null;
+	    $this->check('SAML sign-in: the user created (names, role from the group), linked by its NameID, an SSO user; again: the same user', [
+		'user:ana@example.com:member', 'Ana Pop', 'ana@example.com', 'SSO', 'user:ana@example.com:member', 1 ],
+		[ $first, (string)$ana, $link?->subject, \sys\Identity::passwordSource($ana), $signIn(), $om->count('User', [ 'aid' => $account->_id, 'email' => 'ana@example.com' ]) ]);
+	    $this->check('SAML sign-in: a group as a DN (CN=Staff,...) matches the row `staff`; refused: in no group (no default role), a transient NameID without email', [
+		'user:carol@example.com:participant', 'refused:Your groups at the identity provider do not give you access to ' . \V::app()->config('app.name'),
+		'refused:The IdP sent no email address for you: ask the account owner' ], [
+		$signIn([ 'nameId' => 'c-123', 'format' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
+		    'attributes' => [ 'email' => [ 'Carol@Example.com' ], 'groups' => [ 'CN=Staff, OU=Groups,DC=example,DC=com' ] ] ]),
+		$signIn([ 'nameId' => 'dave@example.com', 'attributes' => [ 'groups' => [ 'Others' ] ] ]),
+		$signIn([ 'nameId' => '_t1', 'format' => \plugins\Saml\models\SamlSettings::TRANSIENT, 'attributes' => [ 'groups' => [ 'Devs' ] ] ]) ]);
+
+	    //an existing user with a password
+	    $erin = \models\User::create([ 'aid' => $account->_id, 'email' => 'erin@example.com', 'firstname' => 'Erin', 'lastname' => 'Local', 'state' => 'active', 'role' => $roles['member']->_id,
+		'password' => \V::app()->security->generatePasswordHash('localpw') ]);
+	    $erin->save();
+	    $erinIdp = [ 'nameId' => 'erin@example.com', 'attributes' => [ 'groups' => [ 'staff' ] ] ];
+	    $off = $signIn($erinIdp);
+	    $passwordBefore = (new \sys\Identity())->authenticate('erin@example.com', 'localpw');
+	    $s->linkExisting = true;
+	    $s->save();
+	    $Auth::reset();
+	    $on = $signIn($erinIdp);
+	    $identity = new \sys\Identity();
+	    $this->check('SAML sign-in: an existing user: refused with Link existing users off (its password works); on: linked, its password removed and refused (Identity says SSO)', [
+		'refused:You have a user with a password here: sign in with it, or ask the account owner to link it to single sign-on', true, 'user:erin@example.com:participant', '',
+		false, 'This user signs in with single sign-on: use "Sign in with SSO"' ],
+		[ $off, $passwordBefore, $on, (string)$om->findOne('User', [ 'aid' => $account->_id, 'email' => 'erin@example.com' ])?->password,
+		    $identity->authenticate('erin@example.com', 'localpw'), $identity->reason ]);
+	    \V::app()->var('rt.account', $account);
+
+	    //the last owner keeps the role
+	    $ana = $om->findById('User', (string)$ana->_id);
+	    $ana->role = $roles['owner']->_id;
+	    $ana->save();
+	    $this->check('SAML sign-in: the last owner keeps Owner', 'user:ana@example.com:owner', $signIn());
+
+	    //replays, the request's browser token, "Sign in with SSO"
+	    $once = $claims($response());
+	    $replay = [ $Auth::useOnce($account->_id, $once), $Auth::useOnce($account->_id, $once) ];
+	    [ $rq, $token ] = \plugins\Saml\models\SamlRequest::start($account->_id);
+	    [ $rq2, ] = \plugins\Saml\models\SamlRequest::start($account->_id);
+	    $taken = [ \plugins\Saml\models\SamlRequest::take($account->_id, $rq2->request_id, $token) === null, \plugins\Saml\models\SamlRequest::take($account->_id, $rq->request_id, $token)?->request_id,
+		\plugins\Saml\models\SamlRequest::take($account->_id, $rq->request_id, $token) ];
+	    $this->check('SAML: an assertion used once; a request taken with its browser\'s token only, once; Sign in with SSO: by the domain, an SSO user\'s email, not another domain', [
+		[ true, false ], [ true, $rq->request_id, null ], (string)$account->_id, (string)$account->_id, null ],
+		[ $replay, $taken, (string)$Auth::accountFor('Someone@Example.com')?->aid, (string)$Auth::accountFor('erin@example.com')?->aid, $Auth::accountFor('x@other.test') ]);
+
+	    $bad = $om->create('SamlSettings', [ 'aid' => $account->_id ]);
+	    $bad->assign([ 'enabled' => true, 'idpSsoUrl' => 'ftp://x', 'idpCerts' => '-----BEGIN CERTIFICATE-----x-----END CERTIFICATE-----', 'domains' => 'not_a_domain' ]);
+	    $bad->validates();
+	    $this->check('SAML settings refused: the sign-on URL, an unreadable certificate, a domain, no IdP entity ID', [ 'idpSsoUrl', 'idpCerts', 'domains', 'idpEntityId' ],
+		array_values(array_intersect([ 'idpSsoUrl', 'idpCerts', 'domains', 'idpEntityId' ], array_keys($bad->errors()))));
+	} finally {
+	    \V::app()->var('rt.account', $restore);
+	    foreach($om->find('User', [ 'aid' => $account->_id ]) as $u)
+		$u->delete();
+	    foreach([ 'SamlLink', 'SamlSettings', 'SamlRequest', 'SamlReplay', 'Role', 'Project' ] as $name)
+		foreach($om->find($name, [ 'aid' => $account->_id ]) as $o)
+		    $o->delete();
+	    $account->delete();
+	    $Auth::reset();
 	}
     }
 
