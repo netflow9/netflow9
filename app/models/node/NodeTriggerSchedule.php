@@ -58,6 +58,8 @@ class NodeTriggerSchedule extends \models\WfNode {
 	], $node['wfid']);
 	$exe->log($node['wfid'], 'scheduled run ' . $at);
 	$exe->save();
+	//CLD: 2026-10-23T12:00:00+03:00: log the start too (was only the end)
+	\V::app()->log->info("Scheduler: workflow `{$wf->name}`: execution {$exe->_id}: start");
 	$state = $exe->run();
 	\V::app()->log->info("Scheduler: workflow `{$wf->name}`: execution {$exe->_id}: {$state}");
     }
