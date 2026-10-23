@@ -1,12 +1,13 @@
 <?php
 
 /*
-    CLD: 2026-10-19T20:10:00+03:00: new: the workflow designer's Assistant (was in the core): describe a workflow or a change in your own words, a model builds it on the canvas.
+    CLD: 2026-10-19T20:10:00+03:00: new: the workflow designer's Assistant: describe a workflow or a change in your own words, a model builds it on the canvas.
     Enabled in app/plugins.php; without it the designer has no Assistant button / panel, the Settings menu no Assistant link.
-      util/WorkflowAssistant.php         the agent loop (Anthropic Messages API or an OpenAI-compatible server; was util\WorkflowAssistant)
-      controllers/AssistantController    /Assistant/assistant/ask (the designer's requests; was WorkflowController::assistant), /Assistant/assistant/script (js/)
-      js/app.wfassistant.js              the panel (was public_html/js)
+      util/WorkflowAssistant.php         the agent loop (Anthropic Messages API or an OpenAI-compatible server)
+      controllers/AssistantController    /Assistant/assistant/ask (the designer's requests), /Assistant/assistant/script (js/)
+      js/app.wfassistant.js              the panel
       views/designer_panel.php           the panel in the designer (hook workflow:designer-panels); the top-bar button: designerToolbar (workflow:designer-toolbar)
+    //CLD: 2026-10-23T10:00:00+03:00: the provider System is the System AI (plugins\SystemAI: its server, credits and rates; enabled before this plugin in app/plugins.php)
 */
 
 namespace plugins\Assistant;
@@ -22,13 +23,7 @@ class Plugin {
 	    'AssistantUsage' => [
 		'class' => __NAMESPACE__ . '\\models\\AssistantUsage',
 	    ],
-	    //CLD: 2026-10-22T15:00:00+03:00: the System provider's credits per account, and their ledger
-	    'AssistantWallet' => [
-		'class' => __NAMESPACE__ . '\\models\\AssistantWallet',
-	    ],
-	    'AssistantCreditLedger' => [
-		'class' => __NAMESPACE__ . '\\models\\AssistantCreditLedger',
-	    ],
+	    //CLD: 2026-10-23T10:00:00+03:00: the System provider's credits: plugins\SystemAI (were AssistantWallet, AssistantCreditLedger here)
 	]);
 
 	if (\V::app()->config('app.mode') != 'web')
@@ -48,26 +43,14 @@ class Plugin {
 
 	//CLD: 2026-10-22T23:00:00+03:00: the administration (the Admin plugin): an account's System credits (plan, top-ups, ledger: controllers/AdminController), the System server and the
 	//credit rates; read across the accounts (the super-admin's own account is not the one shown)
-	\V::app()->hooks->addHook('admin:account-summary', function($account, \ArrayObject $items) {
-	    $w = \V::app()->om->acrossAccounts(fn() => models\AssistantWallet::current($account->_id));
-	    if ($w['v'] > 0)
-		$items[] = number_format(models\AssistantWallet::balance($w)) . ' credits';
-	});
+	//CLD: 2026-10-23T10:00:00+03:00: the credits, the System AI and the rates: plugins\SystemAI; here the account's Assistant: its provider, its spending on its own key
 	\V::app()->hooks->addHook('admin:account-panels', function($account) {
 	    $om = \V::app()->om;
 	    $data = $om->acrossAccounts(fn() => [
-		'account' => $account,
 		'settings' => $om->findOne('AssistantSettings', [ 'aid' => $account->_id ]),
-		'wallet' => models\AssistantWallet::current($account->_id),
-		'ledger' => iterator_to_array(models\AssistantCreditLedger::recent($account->_id, 10), false),
 		'usage' => models\AssistantUsage::current($account->_id),
-		'system' => models\AssistantSettings::system(),
 	    ]);
 	    echo \V::app()->view->renderFile('/plugins/Assistant/views/admin/account_panel', $data);
-	});
-	\V::app()->hooks->addHook('admin:installation-panels', function() {
-	    echo \V::app()->view->renderFile('/plugins/Assistant/views/admin/installation_panel', [ 'system' => models\AssistantSettings::system(),
-		'table' => models\AssistantWallet::rateTable() ]);
 	});
 
 	\V::app()->hooks->addHook('workflow:designer-toolbar', [ $this, 'designerToolbar' ]);

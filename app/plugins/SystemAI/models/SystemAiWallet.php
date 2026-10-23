@@ -2,21 +2,25 @@
 
 /*
     CLD: 2026-10-22T15:00:00+03:00: new: the System provider's credits of an account (as a prepaid SIM): one document per account, _id = the account's id.
+    CLD: 2026-10-23T10:00:00+03:00: the System AI's (plugins\SystemAI: the Assistant and the AI steps use them; was plugins\Assistant\models\AssistantWallet, collection assistant_wallets)
 	allowance        the plan's credits of the month: granted on the first request of each calendar month (UTC), no rollover (what is left of the month before is lost).
-			 The plan: `plan` (set per account: CreditsCommand plan), else config assistant.system.monthly_credits
+			 The plan: `plan` (set per account: CreditsCommand plan), else config ai.system.monthly_credits (util\SystemAi::monthlyCredits)
 	topups           the credits granted on top (CreditsCommand add): [ { id, granted, left, at, expires (unix s: at + TOPUP_MONTHS), note } ]; used after the allowance,
 			 the one that expires first first; what is left at its expiry is lost
 	holds            the credits reserved by running requests (reserve): [ { id, credits, until (unix s) } ]; settled by settle(), else freed after HOLD_LEASE
-	month_used       the credits spent this month (the account's cap: AssistantSettings credit_cap)
+	month_used       the credits spent this month (the Assistant's cap: plugins\Assistant\models\AssistantSettings credit_cap)
     A model's credits per 1M tokens: credit_rates.php (ratesOf: its own, or the provider's price + a margin); a request costs at least 1 (charge).
     Every change is a new version of the document (`v`): written only when nobody changed it meanwhile, else done again (change()); each change is also written to
-    the ledger (AssistantCreditLedger)
+    the ledger (SystemAiLedger)
 */
 
-namespace plugins\Assistant\models;
+namespace plugins\SystemAI\models;
 
-class AssistantWallet extends \sys\BaseModel {
-    protected static $collection = 'assistant_wallets';
+use plugins\SystemAI\util\SystemAi;
+
+class SystemAiWallet extends \sys\BaseModel {
+    //CLD: 2026-10-23T10:00:00+03:00: systemai_wallets (was assistant_wallets)
+    protected static $collection = 'systemai_wallets';
 
     const TOPUP_MONTHS = 12;
     //a running request's reservation is freed after this (s), when it was not settled (the request died)
@@ -47,7 +51,8 @@ class AssistantWallet extends \sys\BaseModel {
 
     //the plan's credits per month of wallet $w
     public static function planOf(array $w) {
-	return $w['plan'] !== null ? (int)$w['plan'] : max(0, (int)(\V::app()->config('assistant.system')['monthly_credits'] ?? 0));
+	//CLD: 2026-10-23T10:00:00+03:00: SystemAi::monthlyCredits (was config assistant.system)
+	return $w['plan'] !== null ? (int)$w['plan'] : SystemAi::monthlyCredits();
     }
 
     //$w at time $now: a new month's allowance (the last one's left is lost), the expired top-ups emptied, the old reservations freed => [ $w, ledger entries ]
@@ -116,7 +121,7 @@ class AssistantWallet extends \sys\BaseModel {
     }
 
     //the credits per 1M tokens of the System's $settings (resolved: provider, model, prices): [ input, output, cache read ]: the model's own (credit_rates.php: in, out,
-    //cache_read), else from the provider's price (AssistantSettings::pricesOf) and the margin, rounded up; null: neither is known. $table: rateTable()
+    //cache_read), else from the provider's price (SystemAi::pricesOf) and the margin, rounded up; null: neither is known. $table: rateTable()
     public static function ratesOf($settings, $table = null) {
 	$table = $table ?? self::rateTable();
 	$model = (string)($settings->model ?? '');
@@ -129,7 +134,7 @@ class AssistantWallet extends \sys\BaseModel {
 	}
 	if (isset($def['in'], $def['out']))
 	    return [ (float)$def['in'], (float)$def['out'], (float)($def['cache_read'] ?? $def['in'] * 0.1) ];
-	$prices = AssistantSettings::pricesOf($settings);
+	$prices = SystemAi::pricesOf($settings); //CLD: 2026-10-23T10:00:00+03:00: (was AssistantSettings::pricesOf)
 	$unit = (float)$table['credit_usd'];
 	if ($prices === null || $unit <= 0)
 	    return null;
@@ -138,10 +143,11 @@ class AssistantWallet extends \sys\BaseModel {
     }
 
     //the credits of $usage (tokens: WorkflowAssistant's) at $rates (ratesOf), as a number (WorkflowAssistant counts with it)
+    //CLD: 2026-10-23T10:00:00+03:00: SystemAi::CACHE_WRITE (was AssistantSettings::)
     public static function creditsOf(array $rates, array $usage) {
 	[ $in, $out, $cacheRead ] = $rates;
 	return ((int)($usage['input_tokens'] ?? 0) * $in + (int)($usage['output_tokens'] ?? 0) * $out
-	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * AssistantSettings::CACHE_WRITE) / 1000000;
+	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * SystemAi::CACHE_WRITE) / 1000000;
     }
 
     //what a request charges for $credits counted: whole credits, at least 1
@@ -158,7 +164,7 @@ class AssistantWallet extends \sys\BaseModel {
     }
 
     private static function load($aid) {
-	$doc = \V::app()->om->findOne('AssistantWallet', [ '_id' => (string)$aid, 'aid' => \V::app()->om->to_oid($aid) ]);
+	$doc = \V::app()->om->findOne('SystemAiWallet', [ '_id' => (string)$aid, 'aid' => \V::app()->om->to_oid($aid) ]);
 	if (!$doc)
 	    return self::blank();
 	$w = self::blank();
@@ -184,18 +190,18 @@ class AssistantWallet extends \sys\BaseModel {
 	    $set = $w + [ 'aid' => $om->to_oid($aid), 'updated_at' => new \MongoDB\BSON\UTCDateTime($now * 1000) ];
 	    try {
 		//version $v: a new wallet is inserted (upsert); another one written meanwhile: no match, or a duplicate _id
-		$written = $om->updateOne('AssistantWallet', [ '_id' => (string)$aid, 'aid' => $om->to_oid($aid), 'v' => $v ], [ '$set' => $set ], [ 'upsert' => true ]);
+		$written = $om->updateOne('SystemAiWallet', [ '_id' => (string)$aid, 'aid' => $om->to_oid($aid), 'v' => $v ], [ '$set' => $set ], [ 'upsert' => true ]);
 	    } catch (\MongoDB\Driver\Exception\Exception $e) {
 		$written = 0;
 	    }
 	    if ($written) {
 		$balance = self::balance($w);
 		foreach($entries as $e)
-		    AssistantCreditLedger::add($aid, $e + [ 'balance' => $balance ]);
+		    SystemAiLedger::add($aid, $e + [ 'balance' => $balance ]);
 		return $result;
 	    }
 	    if ($try >= self::TRIES)
-		throw new \ErrorException('the Assistant credits are busy: try again');
+		throw new \ErrorException('the System AI credits are busy: try again');
 	    usleep(random_int(5000, 50000));
 	}
     }
@@ -217,11 +223,12 @@ class AssistantWallet extends \sys\BaseModel {
 
     //the request of reservation $holdId spent $credits: the reservation freed, the credits taken; $info: the request (workflow, user, tokens, cost) for the ledger.
     //=> the credits left
+    //CLD: 2026-10-23T10:00:00+03:00: + $info['source'] (SystemAiLedger::SOURCES: assistant | step) names the request in the ledger (was always an Assistant request)
     public static function settle($aid, $holdId, $credits, array $info = []) {
 	return self::change($aid, function($w, $now) use ($holdId, $credits, $info) {
 	    $w['holds'] = array_values(array_filter($w['holds'], fn($h) => $h['id'] !== $holdId));
 	    [ $w, $unpaid ] = self::debit($w, $credits);
-	    $note = 'Assistant request' . ($unpaid > 0 ? " ({$unpaid} over the balance, not taken)" : '');
+	    $note = (SystemAiLedger::SOURCES[$info['source'] ?? ''] ?? 'Request') . ($unpaid > 0 ? " ({$unpaid} over the balance, not taken)" : '');
 	    //nothing used (no model answered): only the reservation freed
 	    return [ $w, $credits > 0 ? [ [ 'type' => 'debit', 'credits' => -($credits - $unpaid), 'note' => $note ] + $info ] : [], self::balance($w) ];
 	});

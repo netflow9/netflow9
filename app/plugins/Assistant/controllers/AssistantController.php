@@ -12,7 +12,8 @@ namespace plugins\Assistant\controllers;
 use plugins\Assistant\util\WorkflowAssistant;
 use plugins\Assistant\models\AssistantSettings;
 use plugins\Assistant\models\AssistantUsage;
-use plugins\Assistant\models\AssistantWallet;
+use plugins\SystemAI\util\SystemAi;
+use plugins\SystemAI\models\SystemAiWallet;
 
 class AssistantController extends \sys\BaseController {
 
@@ -61,13 +62,14 @@ class AssistantController extends \sys\BaseController {
 	$hold = null;
 	$rates = null;
 	if (WorkflowAssistant::providerOf($settings) === 'system') {
-	    $rates = AssistantWallet::ratesOf(WorkflowAssistant::resolve($settings));
+	    //CLD: 2026-10-23T10:00:00+03:00: the System AI's credits (plugins\SystemAI: SystemAiWallet, SystemAi::maxCreditsPerRequest; were AssistantWallet, config assistant.system)
+	    $rates = SystemAiWallet::ratesOf(WorkflowAssistant::resolve($settings));
 	    if ($rates === null) {
-		\V::app()->log->error('Assistant: no credit rates for the System model: set them in plugins/Assistant/credit_rates.php');
+		\V::app()->log->error('Assistant: no credit rates for the System AI model: set them in plugins/SystemAI/credit_rates.php');
 		$resp->sendJSON([ 'error' => 'The Assistant of this installation is not priced yet: ask its administrator' ], true, 503);
 	    }
 	    try {
-		$hold = AssistantWallet::reserve($wf->aid, (int)(\V::app()->config('assistant.system')['max_credits_per_request'] ?? 0), (int)$settings->credit_cap ?: null);
+		$hold = SystemAiWallet::reserve($wf->aid, SystemAi::maxCreditsPerRequest(), (int)$settings->credit_cap ?: null);
 	    } catch (\ErrorException $e) {
 		$resp->sendJSON([ 'error' => $e->getMessage() ], true, 503);
 	    }
@@ -113,14 +115,15 @@ class AssistantController extends \sys\BaseController {
     private function settle($wf, $hold, $assistant) {
 	if ($hold === null)
 	    return [ 0, null ];
-	$used = $assistant !== null && array_sum($assistant->usage) ? AssistantWallet::charge($assistant->credits) : 0;
+	$used = $assistant !== null && array_sum($assistant->usage) ? SystemAiWallet::charge($assistant->credits) : 0;
 	try {
-	    $left = AssistantWallet::settle($wf->aid, $hold[0], $used, $used ? [
-		'wfid' => (string)$wf->_id, 'uid' => (string)\V::app()->user->_id, 'cost_usd' => round($assistant->cost, 6),
+	    //CLD: 2026-10-23T10:00:00+03:00: + source, model (the System AI's ledger: SystemAiLedger)
+	    $left = SystemAiWallet::settle($wf->aid, $hold[0], $used, $used ? [
+		'source' => 'assistant', 'model' => (string)(SystemAi::config()->model ?? ''), 'wfid' => (string)$wf->_id, 'uid' => (string)\V::app()->user->_id, 'cost_usd' => round($assistant->cost, 6),
 		'input_tokens' => (int)$assistant->usage['input_tokens'] + (int)$assistant->usage['cache_read_input_tokens'] + (int)$assistant->usage['cache_creation_input_tokens'],
 		'output_tokens' => (int)$assistant->usage['output_tokens'] ] : []);
 	} catch (\Exception $e) {
-	    //the reservation frees itself (AssistantWallet::HOLD_LEASE); the credits are not taken
+	    //the reservation frees itself (SystemAiWallet::HOLD_LEASE); the credits are not taken
 	    \V::app()->log->error("Assistant: {$used} credits of account {$wf->aid} not taken: " . $e->getMessage());
 	    $left = null;
 	}
@@ -163,11 +166,10 @@ class AssistantController extends \sys\BaseController {
 	$usage = AssistantUsage::current($settings->aid);
 	$system = AssistantSettings::system();
 	//CLD: 2026-10-22T15:00:00+03:00: System's credits: the wallet, its last entries, the model's rates
-	$wallet = AssistantWallet::current($settings->aid);
-	$ledger = \plugins\Assistant\models\AssistantCreditLedger::recent($settings->aid, 10);
-	$ledger = is_array($ledger) ? $ledger : iterator_to_array($ledger, false);
-	$rates = $system ? AssistantWallet::ratesOf($system) : null;
-	$this->render('settings', compact('settings', 'usage', 'system', 'wallet', 'ledger', 'rates'));
+	//CLD: 2026-10-23T10:00:00+03:00: the System AI's (SystemAiWallet); the last entries: on its own page (/SystemAI/credits/index)
+	$wallet = SystemAiWallet::current($settings->aid);
+	$rates = $system ? SystemAiWallet::ratesOf($system) : null;
+	$this->render('settings', compact('settings', 'usage', 'system', 'wallet', 'rates'));
     }
 
     //CLD: 2026-10-20T10:00:00+03:00: the Assistant's settings of the current account; new (not saved) when it has none yet

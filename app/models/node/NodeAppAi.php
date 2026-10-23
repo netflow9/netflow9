@@ -20,6 +20,9 @@ what the AI steps share (Claude - NodeAppClaude, OpenAI - NodeAppOpenAI; not a s
 	The variable (default `ai`): { text, json, model, stop_reason, rounds, tool_calls: [ { tool, arguments, error } ], usage: { input_tokens, output_tokens } }; on error { error }
 	//CLD: 2026-10-23T01:10:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page or an HTTP request
 	//CLD: 2026-10-23T02:30:00+03:00: in an email {{ ai.html }} shows it formatted (util\EmailHtml; was escaped: {{ markdown(ai.text) }} only)
+    //CLD: 2026-10-23T10:00:00+03:00: Credential `system` (SYSTEM): the installation's System AI instead of a credential of the project, when it is of the step's provider (a plugin gives
+    //it: hook ai:system-provider, systemProvider(); the SystemAI plugin). A run reserves the account's credits, counts each call's tokens in credits, stops before a call once the
+    //reserved ones are used up, and is charged what it used (its session: start, add, exhausted, finish)
 */
 
 namespace models\node;
@@ -36,6 +39,8 @@ abstract class NodeAppAi extends \models\WfNode {
     const PROVIDER = '';
 
     const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
+    //CLD: 2026-10-23T10:00:00+03:00: the Credential value of the System AI
+    const SYSTEM = 'system';
     const OUTPUT = [ 'text' => 'Text', 'json' => 'JSON' ];
 
     const MAX_ROUNDS = 25;
@@ -72,6 +77,26 @@ abstract class NodeAppAi extends \models\WfNode {
 	return $servers->getArrayCopy();
     }
 
+    //CLD: 2026-10-23T10:00:00+03:00: new: the installation's System AI for account $aid, when it is of this step's provider (static::CAPABILITY), given by a plugin (hook
+    //`ai:system-provider`: its arguments are an \ArrayObject the plugin sets `provider` of, and $aid): [ provider, model (the System's), label, credential: fn() => the credential
+    //(baseUrl, httpAuth, ...: as the provider's), start: fn(string $model, array $info) => the run's session (add([ input, output ]), exhausted(), reserved(), finish() =>
+    //[ credits charged, left ]; \ErrorException when the model is not priced or no credits are left) ]; null: none, another provider, or no account
+    public static function systemProvider($aid) {
+	if (empty($aid) || static::CAPABILITY === '')
+	    return null;
+	$box = new \ArrayObject();
+	\V::app()->hooks->applyHook('ai:system-provider', [ $box, (string)$aid ]);
+	$p = $box['provider'] ?? null;
+	return is_array($p) && ($p['provider'] ?? '') === static::CAPABILITY ? $p : null;
+    }
+
+    //CLD: 2026-10-23T10:00:00+03:00: new: the designer's account (null outside the designer: a web request of a person with a project), as the choices of the credentials
+    protected static function designerAccount() {
+	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
+	    return null;
+	return \V::app()->config('rt.account')->_id ?? null;
+    }
+
     //CLD: 2026-10-17T21:00:54+03:00: image file $f as [ mimeType, data (base64) ]; \ErrorException when it is not an image the models read (File::$imageMimeTypes) or is too large
     //CLD: 2026-10-20T23:40:00+03:00: here (was util\McpTools::fileImage: the AI steps send images without the SysMCPTools plugin)
     public static function fileImage($f) {
@@ -95,6 +120,10 @@ abstract class NodeAppAi extends \models\WfNode {
 
     public static function configSchema() {
 	$credentials = [];
+	//CLD: 2026-10-23T10:00:00+03:00: the System AI first, when it is of the step's provider
+	$system = static::systemProvider(static::designerAccount());
+	if ($system)
+	    $credentials[self::SYSTEM] = $system['label'];
 	foreach(static::choices(static::CAPABILITY) as $c)
 	    $credentials[$c['value']] = $c['label'];
 	//CLD: 2026-10-14T14:27:53+03:00: [ value => label ] (the choices of `select` fields; were smartform lists for `ui`)
@@ -115,7 +144,7 @@ abstract class NodeAppAi extends \models\WfNode {
 		'type' => 'select',
 		'label' => 'Credential',
 		'choices' => $credentials,
-		'help' => static::PROVIDER . ' credential of the project (menu: Credentials)',
+		'help' => static::PROVIDER . ' credential of the project (menu: Credentials)' . ($system ? ', or System AI: this installation\'s, paid with the account\'s credits (Settings menu: AI credits)' : ''), //CLD: 2026-10-23T10:00:00+03:00: + System AI
 		//CLD: 2026-10-14T14:18:23+03:00: required by the model (was only in the browser: `required` in ui); validates() checks it is a credential of the project
 		'required' => true,
 	    ],
@@ -266,13 +295,17 @@ abstract class NodeAppAi extends \models\WfNode {
     }
 
     //CLD: 2026-10-22T01:58:24+03:00: the models each credential of the current project (providing static::CAPABILITY) recorded: [ credential id => [ model ] ], for the designer
+    //CLD: 2026-10-23T10:00:00+03:00: + the System AI's model (SYSTEM)
     protected static function modelChoices() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
+	$map = [];
+	$system = static::systemProvider(static::designerAccount());
+	if ($system)
+	    $map[self::SYSTEM] = [ (string)$system['model'] ];
 	$variants = \models\Credential::variantsProviding(static::CAPABILITY);
 	if (!$variants)
-	    return [];
-	$map = [];
+	    return $map;
 	foreach(\V::app()->om->find(\models\Credential::FAMILY, [ 'aid' => \V::app()->config('rt.account')->_id ?? null, 'project' => \V::app()->om->to_oid(\V::app()->user->crtProject),
 	    '__variant' => [ '$in' => $variants ] ]) as $c)
 	    $map[(string)$c->_id] = array_values(array_map('strval', (array)($c->models ?? [])));
@@ -305,7 +338,13 @@ abstract class NodeAppAi extends \models\WfNode {
 	$valid = parent::validates($options);
 	$cred = (string)$this->cfg('credential', '');
 	//CLD: 2026-10-14T14:18:23+03:00: an empty one is reported by the field's `required` (was reported here too)
-	if ($cred !== '' && (!$this->workflow || empty(\models\Credential::findFor($this->workflow, $cred, static::CAPABILITY)))) {
+	//CLD: 2026-10-23T10:00:00+03:00: System AI: when the installation's is of this provider
+	if ($cred === self::SYSTEM) {
+	    if (!static::systemProvider($this->workflow->aid ?? null)) {
+		$this->errors('config', 'Credential: this installation\'s System AI does not serve ' . static::PROVIDER . ' steps: choose a credential of this project');
+		$valid = false;
+	    }
+	} elseif ($cred !== '' && (!$this->workflow || empty(\models\Credential::findFor($this->workflow, $cred, static::CAPABILITY)))) {
 	    $this->errors('config', 'Credential: choose ' . static::PROVIDER . ' credential of this project');
 	    $valid = false;
 	}
@@ -385,12 +424,21 @@ abstract class NodeAppAi extends \models\WfNode {
 
     //the agent loop; $clients gets the MCP clients opened (closed by execute())
     protected function run(array &$clients) {
-	$cred = \models\Credential::findFor($this->exec, (string)$this->cfg('credential', ''), static::CAPABILITY);
+	//CLD: 2026-10-23T10:00:00+03:00: System AI: its credential (the session, with the credits: below)
+	$system = null;
+	if ((string)$this->cfg('credential', '') === self::SYSTEM) {
+	    $system = static::systemProvider($this->exec->aid ?? null);
+	    if ($system === null)
+		throw new \ErrorException('this installation\'s System AI is no longer available for ' . static::PROVIDER . ' steps: choose a credential of the project');
+	    $cred = ($system['credential'])();
+	} else {
+	    $cred = \models\Credential::findFor($this->exec, (string)$this->cfg('credential', ''), static::CAPABILITY);
+	}
 	if (empty($cred))
 	    throw new \ErrorException('the credential is no longer available');
 	$project = \V::app()->om->findOne('Project', [ '_id' => $this->exec->project, 'aid' => $this->exec->aid ]);
 
-	$system = trim(\util\Expression::toText($this->expr('system', '')));
+	$systemPrompt = trim(\util\Expression::toText($this->expr('system', ''))); //CLD: 2026-10-23T10:00:00+03:00: $systemPrompt (was $system: now the System AI)
 	$prompt = trim(\util\Expression::toText($this->expr('prompt', '')));
 	if ($prompt === '')
 	    throw new \ErrorException('the prompt is empty');
@@ -402,15 +450,34 @@ abstract class NodeAppAi extends \models\WfNode {
 	//CLD: 2026-10-22T22:00:00+03:00: collectTools() (was here)
 	$tools = $this->collectTools($clients, $project);
 
-	$state = $this->startConversation($cred, $system, $prompt, $json ? ($schema ?: true) : null, $images);
+	$state = $this->startConversation($cred, $systemPrompt, $prompt, $json ? ($schema ?: true) : null, $images);
+	//CLD: 2026-10-23T10:00:00+03:00: System AI: the credits reserved for the run (refused: not priced, none left); charged what it used when it ends, also on failure
+	$session = $system ? ($system['start'])(trim((string)$this->cfg('model', '')), [ 'wfid' => (string)($this->exec->wf ?? ''), 'exid' => (string)($this->exec->_id ?? '') ]) : null;
+	try {
+	    return $this->loop($cred, $state, $tools, $json, $schema, $session);
+	} finally {
+	    if ($session) {
+		[ $charged, $left ] = $session->finish();
+		$this->exec->log($this->wfid, static::$label . ": System AI, {$charged} credit(s)" . ($left !== null ? ", {$left} left" : ''));
+	    }
+	}
+    }
+
+    //CLD: 2026-10-23T10:00:00+03:00: new (was in run()): the calls to the model and the tool calls, until it answers => the variable's value. $session: the System AI's (null: a credential
+    //of the project): each call's tokens counted, no call once its credits are used up
+    protected function loop($cred, array $state, array $tools, $json, $schema, $session) {
 	$maxRounds = max(1, min(self::MAX_ROUNDS, (int)$this->cfg('maxRounds', 10)));
 	$usage = [ 'input_tokens' => 0, 'output_tokens' => 0 ];
 	$calls = [];
 	$answer = null;
 	for($round = 1; $round <= $maxRounds; $round++) {
+	    if ($session && $round > 1 && $session->exhausted())
+		throw new \ErrorException('the System AI credits reserved for this step (' . $session->reserved() . ') are used up before the model finished');
 	    $answer = $this->callModel($cred, $state, $tools, $json ? ($schema ?: true) : null);
 	    $usage['input_tokens'] += (int)$answer['usage'][0];
 	    $usage['output_tokens'] += (int)$answer['usage'][1];
+	    if ($session)
+		$session->add($answer['usage']);
 	    if (!empty($answer['continue']))
 		continue;
 	    if (!$answer['calls'])

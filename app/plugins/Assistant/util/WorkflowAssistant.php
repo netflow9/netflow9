@@ -146,7 +146,7 @@ class WorkflowAssistant {
 	    return $settings;
 	$system = AssistantSettings::system();
 	if ($system === null)
-	    throw new \ErrorException('this installation provides no Assistant server: choose a provider and set your key in Assistant settings (Settings menu)');
+	    throw new \ErrorException('this installation provides no System AI: choose a provider and set your key in Assistant settings (Settings menu)'); //CLD: 2026-10-23T10:00:00+03:00: (was no Assistant server)
 	return $system;
     }
 
@@ -195,7 +195,7 @@ class WorkflowAssistant {
 	    return 0.0;
 	[ $in, $out, $cacheRead ] = $this->prices;
 	return ((int)($usage['input_tokens'] ?? 0) * $in + (int)($usage['output_tokens'] ?? 0) * $out
-	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * AssistantSettings::CACHE_WRITE) / 1000000;
+	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * \plugins\SystemAI\util\SystemAi::CACHE_WRITE) / 1000000; //CLD: 2026-10-23T10:00:00+03:00: (was AssistantSettings::)
     }
 
     //one request of the person: $message, after the earlier turns $history ([ { role: user | assistant, text } ]), on the designer's current $nodes (a list or a map)
@@ -242,7 +242,7 @@ class WorkflowAssistant {
 		$this->usage[$k] += $n;
 	    $this->cost += $this->costOf($turn['usage']);
 	    if ($this->rates !== null)
-		$this->credits += \plugins\Assistant\models\AssistantWallet::creditsOf($this->rates, $turn['usage']);
+		$this->credits += \plugins\SystemAI\models\SystemAiWallet::creditsOf($this->rates, $turn['usage']); //CLD: 2026-10-23T10:00:00+03:00: (was AssistantWallet)
 	    if ($turn['text'] !== '')
 		$reply = $turn['text'];
 	    $results = [];

@@ -4,6 +4,8 @@ return [
     //CLD: 2026-10-22T23:00:00+03:00: the installation's administration (super-admins: the accounts, their credits and tool servers, the services); first: the others add their sections
     'Admin',
     'Registration',
+    //CLD: 2026-10-23T10:00:00+03:00: the System AI: the installation's model server and the accounts' credits, for the Assistant and the AI steps; before the Assistant (it uses it)
+    'SystemAI',
     //CLD: 2026-10-19T20:10:00+03:00: the workflow designer's Assistant (was in the core)
     'Assistant',
     //CLD: 2026-10-19T21:10:00+03:00: inbound mail: the Email (inbound) trigger (was in the core); active only when Haraka is found

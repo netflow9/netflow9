@@ -35,7 +35,8 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-21T20:10:00+03:00: + tenant (the account guard of sys\ObjectManager; the sign-in of a name used in two accounts)
     //CLD: 2026-10-22T00:41:28+03:00: + microsoft (the MicrosoftIntegration plugin: its credentials and steps; skipped without the plugin)
     //CLD: 2026-10-22T01:36:46+03:00: + localai (the Lemonade AI and Ollama steps and credentials, against a fake server: commands/tests/AiTestServer.php)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'localmcp', 'suspend', 'markdown', 'ftp', 'ldap', 'tenant', 'audit', 'steps' ];
+    //CLD: 2026-10-23T10:00:00+03:00: + systemai (the AI steps on the System AI: plugins\SystemAI, its credits)
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'suspend', 'markdown', 'ftp', 'ldap', 'tenant', 'audit', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -1603,44 +1604,11 @@ class CheckCommand extends \sys\BaseController {
 	    [ array_slice($ollamaKeys, 1, 5), in_array('temperature', array_column(\models\node\NodeAppLemonade::configSchema(), 'key'), true) ]);
 
 	//the fake server
-	$dir = sys_get_temp_dir() . '/qsm-check-ai-' . uniqid();
-	@mkdir($dir, 0700, true);
-	$log = "{$dir}/requests.log";
-	$port = 0;
-	for ($i = 0; $i < 20 && !$port; $i++) {
-	    $try = random_int(20000, 40000);
-	    $s = @fsockopen('127.0.0.1', $try, $errno, $errstr, 0.2);
-	    if ($s)
-		fclose($s);
-	    else
-		$port = $try;
-	}
-	$env = array_merge(getenv(), [ 'AI_TEST_LOG' => $log, 'AI_TEST_KEY' => 'check-key' ]);
-	$proc = proc_open([ PHP_BINARY, '-S', "127.0.0.1:{$port}", BASE . '/app/commands/tests/AiTestServer.php' ], [ 1 => [ 'file', '/dev/null', 'w' ], 2 => [ 'file', "{$dir}/server.err", 'w' ] ],
-	    $pipes, null, $env);
-	$up = false;
-	for ($i = 0; $i < 50 && !$up; $i++) {
-	    usleep(100000);
-	    $s = @fsockopen('127.0.0.1', $port, $errno, $errstr, 0.2);
-	    if ($s) {
-		fclose($s);
-		$up = true;
-	    }
-	}
-	if (!$up) {
-	    $this->fail('local AI: the fake server did not start: ' . trim((string)@file_get_contents("{$dir}/server.err")));
-	    proc_terminate($proc);
+	//CLD: 2026-10-23T10:00:00+03:00: startAiServer() (was here: the systemai suite uses it too)
+	$server = $this->startAiServer('local AI');
+	if (!$server)
 	    return;
-	}
-	$requests = function($path) use ($log) {
-	    $list = [];
-	    foreach(file($log, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
-		$r = json_decode($line, true);
-		if (($r['path'] ?? '') === $path)
-		    $list[] = $r['body'];
-	    }
-	    return $list;
-	};
+	[ $port, $log, $requests ] = [ $server['port'], $server['log'], $server['requests'] ];
 	$creds = [];
 	try {
 	    $make = function($variant, $url, $key) use ($om, &$creds) {
@@ -1735,12 +1703,157 @@ class CheckCommand extends \sys\BaseController {
 	} finally {
 	    foreach($creds as $c)
 		$c->delete();
-	    proc_terminate($proc);
-	    proc_close($proc);
-	    @unlink($log);
-	    @unlink("{$dir}/server.err");
-	    @rmdir($dir);
+	    $this->stopAiServer($server);
 	}
+    }
+
+    //CLD: 2026-10-23T10:00:00+03:00: new: the AI steps on the System AI (plugins\SystemAI; Credential `system`): the step's credential per provider (URLs, keys), offered only to the
+    //steps of its provider, refused by the others; a run against the fake AI server (as a Lemonade System AI): the installation's key sent, the credits charged (the ledger: the step,
+    //its execution, the model), logged; a model not priced, the reserved credits used up, no credits left: the `error` output. The check account's credits are put back after
+    private function suiteSystemAi() {
+	if (!class_exists(\plugins\SystemAI\util\SystemAi::class)) {
+	    $this->fail('System AI: the SystemAI plugin is not enabled');
+	    return;
+	}
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$SA = \plugins\SystemAI\util\SystemAi::class;
+	$W = \plugins\SystemAI\models\SystemAiWallet::class;
+	$L = \plugins\SystemAI\models\SystemAiLedger::class;
+	$sys = fn($provider, $url = '', $key = 'k') => (object)[ 'provider' => $provider, 'url' => $url, 'api_key' => $key, 'model' => 'm' ];
+	$c = [ $SA::stepCredential($sys('anthropic')), $SA::stepCredential($sys('gemini', 'https://generativelanguage.googleapis.com/v1beta/openai')), $SA::stepCredential($sys('gemini')),
+	    $SA::stepCredential($sys('ollama', 'http://localhost:11434/v1', '')), $SA::stepCredential($sys('lemonade')), $SA::stepCredential($sys('openai', 'http://x/v1/')) ];
+	$this->check('System AI: a step\'s credential per provider (Gemini\'s own API, Ollama\'s without /v1; the keys as the providers want them)', [ 'https://api.anthropic.com', 'k',
+	    'https://generativelanguage.googleapis.com/v1beta', 'https://generativelanguage.googleapis.com/v1beta', [ 'x-goog-api-key' => 'k' ], 'http://localhost:11434', [],
+	    'http://localhost:8000/api/v1', 'http://x/v1', [ 'Authorization' => 'Bearer k' ] ],
+	    [ $c[0]->baseUrl, $c[0]->httpAuth()['headers']['x-api-key'] ?? null, $c[1]->baseUrl, $c[2]->baseUrl, $c[2]->httpAuth()['headers'], $c[3]->apiBase(), $c[3]->httpAuth()['headers'],
+	    $c[4]->baseUrl, $c[5]->baseUrl, $c[5]->httpAuth()['headers'] ]);
+
+	$aid = (string)$this->account->_id;
+	$savedConfig = \V::app()->config('ai.system');
+	$wallets = \V::app()->mongo->selectCollection($W::_database(), $W::_collection());
+	//the wallet's _id: the account's id as stored (ObjectId: the object manager's)
+	$savedWallet = $wallets->findOne([ '_id' => \V::app()->om->to_oid($aid) ]);
+	$since = new \MongoDB\BSON\UTCDateTime();
+	$server = null;
+	try {
+	    \V::app()->config('ai.system', [ 'provider' => '', 'model' => '' ]);
+	    $none = \models\node\NodeAppLemonade::systemProvider($aid);
+	    \V::app()->config('ai.system', [ 'provider' => 'lemonade', 'url' => 'http://127.0.0.1:1/api/v1', 'api_key' => 'check-key', 'model' => 'Qwen3-8B-GGUF' ]);
+	    $this->check('System AI: offered to the steps of its provider only; none without one', [ null, 'Qwen3-8B-GGUF', null, null, null ],
+		[ $none, \models\node\NodeAppLemonade::systemProvider($aid)['model'] ?? null, \models\node\NodeAppOpenAI::systemProvider($aid), \models\node\NodeAppClaude::systemProvider($aid),
+		\models\node\NodeAppLemonade::systemProvider(null) ]);
+	    $errors = $this->errorsOf('system ai ollama', [ $n('m', 'trigger::manual'), $n('s', 'app::ollama', [ 'credential' => 'system', 'model' => 'x', 'prompt' => 'hi' ]), $e('e1', 'm', 's') ]);
+	    $this->check('System AI: a step of another provider is refused; one of its provider is valid', [ true, [] ],
+		[ str_contains(json_encode($errors), 'System AI does not serve Ollama steps'),
+		$this->errorsOf('system ai lemonade', [ $n('m', 'trigger::manual'), $n('s', 'app::lemonade', [ 'credential' => 'system', 'model' => 'x', 'prompt' => 'hi' ]), $e('e1', 'm', 's') ]) ]);
+
+	    $server = $this->startAiServer('System AI');
+	    if (!$server)
+		return;
+	    $url = "http://127.0.0.1:{$server['port']}/api/v1";
+	    //1 USD per 1M input tokens, 2 output: a few credits per 1M, a request costs 1
+	    //as an OpenAI System AI (a local one prices every model at 0)
+	    \V::app()->config('ai.system', [ 'provider' => 'openai', 'url' => $url, 'api_key' => 'check-key', 'model' => 'Qwen3-8B-GGUF', 'price_input' => 1, 'price_output' => 2,
+		'monthly_credits' => 0, 'max_credits_per_request' => 0 ]);
+	    $W::setPlan($aid, 50);
+	    $start = $W::balance($W::current($aid));
+	    $withTool = isset(\util\MCPTools::all()['list_tables']);
+	    $flow = fn($name, $config) => $this->runFlow("system ai {$name}", [ $n('m', 'trigger::manual'), $n('s', 'app::openai', $config + [ 'credential' => 'system',
+		'model' => 'Qwen3-8B-GGUF', 'prompt' => 'Hi', 'tools' => [], 'mcp' => [], 'onError' => 'output', 'timeout' => 15 ]),
+		$n('ok', 'app::set', [ 'variable' => 'route', 'value' => 'success' ]), $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]),
+		$e('e1', 'm', 's'), $e('e2', 's', 'ok', 0), $e('e3', 's', 'err', 1) ]);
+
+	    $exe = $flow('run', []);
+	    $last = iterator_to_array($L::recent($aid, 1), false)[0] ?? null;
+	    $this->check('System AI: a run with the installation\'s key (the server asks for it); 1 credit charged; the ledger: the step, its execution and workflow, the model; logged',
+		[ 'success', 'Hello from Qwen3-8B-GGUF', $start - 1, 'debit', -1, 'step', (string)$exe?->_id, (string)$exe?->wf, 'Qwen3-8B-GGUF', 11, 'AI step', true ],
+		[ $exe?->getVariable('route'), $exe?->getVariable('ai')['text'] ?? null, $W::balance($W::current($aid)), $last?->type, (int)$last?->credits, $last?->source, $last?->exid,
+		$last?->wfid, $last?->model, (int)$last?->input_tokens, $last?->note, str_starts_with((string)self::logLine($exe, 'OpenAI: System AI'), 'OpenAI: System AI, 1 credit(s), ' . ($start - 1) . ' left') ]);
+
+	    $exe = $flow('not priced', [ 'model' => 'other-model' ]);
+	    $this->check('System AI: a model this installation does not price: the `error` output, nothing charged', [ 'error', true, $start - 1 ],
+		[ $exe?->getVariable('route'), str_contains((string)($exe?->getVariable('ai')['error'] ?? ''), 'the model `other-model` is not priced'), $W::balance($W::current($aid)) ]);
+
+	    if ($withTool) {
+		//a price that makes the first call cost more than the 2 credits a request may reserve: no second call
+		\V::app()->config('ai.system', [ 'max_credits_per_request' => 2, 'price_input' => 100000 ] + \V::app()->config('ai.system'));
+		$calls = count($server['requests']('/api/v1/chat/completions'));
+		$exe = $flow('used up', [ 'tools' => [ 'list_tables' ] ]);
+		$this->check('System AI: the credits reserved used up after a call: no more calls, the `error` output; what was used is charged', [ 'error', true, 1, true ],
+		    [ $exe?->getVariable('route'), str_contains((string)($exe?->getVariable('ai')['error'] ?? ''), 'credits reserved for this step (2) are used up'),
+		    count($server['requests']('/api/v1/chat/completions')) - $calls, $W::balance($W::current($aid)) < $start - 1 ]);
+	    }
+
+	    $W::setPlan($aid, 0);
+	    $wallets->updateOne([ '_id' => \V::app()->om->to_oid($aid) ], [ '$set' => [ 'topups' => [] ] ]);
+	    $exe = $flow('no credits', []);
+	    $this->check('System AI: no credits left: the `error` output', [ 'error', true ],
+		[ $exe?->getVariable('route'), str_contains((string)($exe?->getVariable('ai')['error'] ?? ''), 'credits of this account are used up') ]);
+	} catch (\ErrorException $ex) {
+	    $this->fail('System AI: ' . $ex->getMessage());
+	} finally {
+	    \V::app()->config('ai.system', $savedConfig);
+	    if ($savedWallet)
+		$wallets->replaceOne([ '_id' => \V::app()->om->to_oid($aid) ], $savedWallet);
+	    else
+		$wallets->deleteOne([ '_id' => \V::app()->om->to_oid($aid) ]);
+	    \V::app()->mongo->selectCollection($L::_database(), $L::_collection())->deleteMany([ 'aid' => \V::app()->om->to_oid($aid), 'created_at' => [ '$gte' => $since ] ]);
+	    if ($server)
+		$this->stopAiServer($server);
+	}
+    }
+
+    //CLD: 2026-10-23T10:00:00+03:00: new (was in suiteLocalAi): the fake AI server (commands/tests/AiTestServer.php, PHP's built-in server on a free port, API key check-key) =>
+    //{ port, log (the requests' file), requests: fn($path) => the bodies sent to $path, proc, dir }; null when it did not start (a failure named $what)
+    private function startAiServer($what) {
+	$dir = sys_get_temp_dir() . '/qsm-check-ai-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$log = "{$dir}/requests.log";
+	$port = 0;
+	for ($i = 0; $i < 20 && !$port; $i++) {
+	    $try = random_int(20000, 40000);
+	    $s = @fsockopen('127.0.0.1', $try, $errno, $errstr, 0.2);
+	    if ($s)
+		fclose($s);
+	    else
+		$port = $try;
+	}
+	$env = array_merge(getenv(), [ 'AI_TEST_LOG' => $log, 'AI_TEST_KEY' => 'check-key' ]);
+	$proc = proc_open([ PHP_BINARY, '-S', "127.0.0.1:{$port}", BASE . '/app/commands/tests/AiTestServer.php' ], [ 1 => [ 'file', '/dev/null', 'w' ], 2 => [ 'file', "{$dir}/server.err", 'w' ] ],
+	    $pipes, null, $env);
+	$up = false;
+	for ($i = 0; $i < 50 && !$up; $i++) {
+	    usleep(100000);
+	    $s = @fsockopen('127.0.0.1', $port, $errno, $errstr, 0.2);
+	    if ($s) {
+		fclose($s);
+		$up = true;
+	    }
+	}
+	if (!$up) {
+	    $this->fail("{$what}: the fake server did not start: " . trim((string)@file_get_contents("{$dir}/server.err")));
+	    proc_terminate($proc);
+	    return null;
+	}
+	$requests = function($path) use ($log) {
+	    $list = [];
+	    foreach(file($log, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
+		$r = json_decode($line, true);
+		if (($r['path'] ?? '') === $path)
+		    $list[] = $r['body'];
+	    }
+	    return $list;
+	};
+	return [ 'port' => $port, 'log' => $log, 'requests' => $requests, 'proc' => $proc, 'dir' => $dir ];
+    }
+
+    private function stopAiServer(array $server) {
+	proc_terminate($server['proc']);
+	proc_close($server['proc']);
+	@unlink($server['log']);
+	@unlink("{$server['dir']}/server.err");
+	@rmdir($server['dir']);
     }
 
 
@@ -3028,6 +3141,7 @@ class CheckCommand extends \sys\BaseController {
 
 	//CLD: 2026-10-22T14:00:00+03:00: bring your own key: Gemini, Ollama, Lemonade speak OpenAI chat completions at their own URLs (Bearer key); Gemini's model ids without models/;
 	//System is the installation's server (config assistant.system), refused when there is none; the prices, the budget (the loop stops once it is spent)
+	//CLD: 2026-10-23T10:00:00+03:00: the System AI (config ai.system, plugins\SystemAI; was assistant.system)
 	$AS = \plugins\Assistant\models\AssistantSettings::class;
 	$gem = $WA::credentialOf((object)[ 'provider' => 'gemini', 'api_key' => 'g1' ]);
 	$this->check('gemini, ollama, lemonade: their own URLs, Bearer key', [ 'https://generativelanguage.googleapis.com/v1beta/openai', [ 'Authorization' => 'Bearer g1' ], 'http://localhost:11434/v1', 'http://localhost:8000/api/v1', [] ],
@@ -3038,16 +3152,16 @@ class CheckCommand extends \sys\BaseController {
 	    return json_decode(\util\JSON::encode([ 'data' => [ [ 'id' => 'models/gemini-x' ] ] ]));
 	});
 	$this->check('models: gemini: GET /models, ids without models/', [ '/models', 'gemini-x' ], [ $listed, $models[0]['id'] ?? null ]);
-	$savedSystem = \V::app()->config('assistant.system');
-	\V::app()->config('assistant.system', [ 'provider' => '', 'model' => '' ]);
+	$savedSystem = \V::app()->config('ai.system');
+	\V::app()->config('ai.system', [ 'provider' => '', 'model' => '' ]);
 	$noSystem = [ $WA::isReady((object)[ 'provider' => 'system' ]), $AS::systemAvailable() ];
 	try {
 	    $WA::credentialOf((object)[ 'provider' => 'system' ]);
 	    $noSystem[] = 'not refused';
 	} catch (\ErrorException $e) {
-	    $noSystem[] = str_contains($e->getMessage(), 'provides no Assistant server');
+	    $noSystem[] = str_contains($e->getMessage(), 'provides no System AI');
 	}
-	\V::app()->config('assistant.system', [ 'provider' => 'anthropic', 'url' => '', 'api_key' => 'sys-key', 'model' => 'claude-sonnet-5-5', 'effort' => 'low', 'monthly_credits' => 100 ]);
+	\V::app()->config('ai.system', [ 'provider' => 'anthropic', 'url' => '', 'api_key' => 'sys-key', 'model' => 'claude-sonnet-5-5', 'effort' => 'low', 'monthly_credits' => 100 ]);
 	$sysCred = $WA::credentialOf((object)[ 'provider' => 'system', 'api_key' => 'mine', 'url' => 'http://evil.invalid' ]);
 	$this->check('system: none: not ready, refused; else the installation\'s server and key (not the account\'s)', [ false, false, true, true, 'https://api.anthropic.com', 'sys-key' ],
 	    array_merge($noSystem, [ $WA::isReady((object)[ 'provider' => 'system' ]), $sysCred->baseUrl, $sysCred->httpAuth()['headers']['x-api-key'] ?? null ]));
@@ -3059,7 +3173,7 @@ class CheckCommand extends \sys\BaseController {
 	$s->transport = $scripted([ [ 'end_turn', [ [ 'type' => 'text', 'text' => 'ok' ] ] ] ], $sentS);
 	$s->ask([], 'x', $existing);
 	$this->check('system: the installation\'s model and effort', [ 'claude-sonnet-5-5', 'low', 'sys-key' ], [ $sentS[0][1]['model'], $sentS[0][1]['output_config']['effort'], $sentS[0][0]['x-api-key'] ?? null ]);
-	\V::app()->config('assistant.system', $savedSystem);
+	\V::app()->config('ai.system', $savedSystem);
 	$this->check('prices: known Claude models, set ones, local free, else unknown', [ [ 4.0, 20.0, 0.2 ], [ 1.0, 2.0, 0.1 ], [ 0, 0, 0 ], null ],
 	    [ $AS::pricesOf((object)[ 'model' => 'claude-opus-5-5' ]), $AS::pricesOf((object)[ 'model' => 'gpt-x', 'price_input' => 1, 'price_output' => 2 ]),
 	    $AS::pricesOf((object)[ 'provider' => 'ollama', 'model' => 'qwen' ]), $AS::pricesOf((object)[ 'provider' => 'openai', 'model' => 'gpt-x' ]) ]);
@@ -3074,7 +3188,8 @@ class CheckCommand extends \sys\BaseController {
 
 	//CLD: 2026-10-22T15:00:00+03:00: System's credits (AssistantWallet): per model (its own rates, or the provider's price + the margin), the month's allowance without rollover,
 	//top-ups that expire, used allowance first then the top-up that expires first, the account's monthly limit, reserved then settled; the loop stops at the reserved credits
-	$W = \plugins\Assistant\models\AssistantWallet::class;
+	//CLD: 2026-10-23T10:00:00+03:00: the System AI's (plugins\SystemAI: SystemAiWallet, SystemAiLedger; were AssistantWallet, AssistantCreditLedger)
+	$W = \plugins\SystemAI\models\SystemAiWallet::class;
 	$table = [ 'credit_usd' => 0.01, 'default_margin' => 0.30, 'models' => [ 'claude-opus-5-5' => [ 'margin' => 0.25 ], 'my-model' => [ 'in' => 100, 'out' => 400 ] ] ];
 	$this->check('credits per model: price + margin, the default margin, own rates, unknown', [ [ 500.0, 2500.0, 25.0 ], [ 260.0, 1300.0, 26.0 ], [ 100.0, 400.0, 10.0 ], null ],
 	    [ $W::ratesOf((object)[ 'model' => 'claude-opus-5-5' ], $table), $W::ratesOf((object)[ 'model' => 'claude-sonnet-5-5' ], $table),
@@ -3108,13 +3223,13 @@ class CheckCommand extends \sys\BaseController {
 	    $after = $W::settle($aid, $h1[0], 22, [ 'wfid' => 'w1' ]);
 	    $W::settle($aid, $h2[0], 0);
 	    $cur = $W::current($aid);
-	    $types = array_map(fn($e) => $e->type, iterator_to_array(\plugins\Assistant\models\AssistantCreditLedger::recent($aid, 10), false));
+	    $types = array_map(fn($e) => $e->type, iterator_to_array(\plugins\SystemAI\models\SystemAiLedger::recent($aid, 10), false));
 	    $this->check('wallet (db): reserve at most the limit, within the monthly limit, none left; settled from the allowance then the top-up; the ledger',
 		[ 12, 25, 15, null, 28, 0, 28, 22, [ 'debit', 'topup', 'adjust', 'allowance' ] ],
 		[ (int)round(($t['expires'] - $t['at']) / 86400 / 30.4), $h1[1], $h2[1], $h3, $after, $cur['allowance_left'], array_sum(array_column($cur['topups'], 'left')), $cur['month_used'], array_values(array_unique($types)) ]);
 	} finally {
-	    \V::app()->om->deleteOne('AssistantWallet', [ '_id' => $aid, 'aid' => \V::app()->om->to_oid($aid) ]);
-	    $L = \plugins\Assistant\models\AssistantCreditLedger::class;
+	    \V::app()->om->deleteOne('SystemAiWallet', [ '_id' => $aid, 'aid' => \V::app()->om->to_oid($aid) ]);
+	    $L = \plugins\SystemAI\models\SystemAiLedger::class;
 	    \V::app()->mongo->selectCollection($L::_database(), $L::_collection())->deleteMany([ 'aid' => \V::app()->om->to_oid($aid) ]);
 	}
 	//the loop limited by the reserved credits: 10 + 5 tokens a turn at 500 / 2500 credits per 1M = 0.0175 credits; 0.03 reserved: 2 turns
