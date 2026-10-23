@@ -2,9 +2,10 @@
 /*
     CLD: 2026-10-22T23:00:00+03:00: new: the Assistant in the administration's installation page (hook admin:installation-panels): $system (AssistantSettings::system: null = none),
     $table (AssistantWallet::rateTable): the System server, its credits and the credit rates per model with their margins (as ./v Assistant::credits::rates)
+    CLD: 2026-10-23T10:00:00+03:00: the System AI's (plugins\SystemAI; $system: SystemAi::config, $table: SystemAiWallet::rateTable; as ./v SystemAI::credits::rates)
 */
-use plugins\Assistant\models\AssistantSettings;
-use plugins\Assistant\models\AssistantWallet;
+use plugins\SystemAI\util\SystemAi;
+use plugins\SystemAI\models\SystemAiWallet;
 
 //CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly (was a $e wrapper)
 $unit = (float)$table['credit_usd'];
@@ -12,15 +13,14 @@ $models = array_keys((array)$table['models']);
 if ($system)
     array_unshift($models, $system->model);
 $num = fn($n) => rtrim(rtrim(number_format($n, 2, '.', ''), '0'), '.');
-$cfg = (array)\V::app()->config('assistant.system');
 ?>
-<h6 class="mb-2">Assistant (System)</h6>
+<h6 class="mb-2">System AI</h6>
 <div class="small mb-2">
     <?php if ($system): ?>
-    <?= \V::app()->html->escape(AssistantSettings::PROVIDERS[$system->provider] ?? $system->provider) ?>, model <code><?= \V::app()->html->escape($system->model) ?></code><?= $system->url !== '' ? ' at <code>' . \V::app()->html->escape($system->url) . '</code>' : '' ?>
-    &middot; <?= (int)($cfg['monthly_credits'] ?? 0) ?> credits per account per month &middot; at most <?= (int)($cfg['max_credits_per_request'] ?? 0) ?: 'any' ?> per request &middot; 1 credit = <?= \V::app()->html->escape($unit) ?> USD
+    <?= \V::app()->html->escape(SystemAi::PROVIDERS[$system->provider] ?? $system->provider) ?>, model <code><?= \V::app()->html->escape($system->model) ?></code><?= $system->url !== '' ? ' at <code>' . \V::app()->html->escape($system->url) . '</code>' : '' ?>
+    &middot; <?= SystemAi::monthlyCredits() ?> credits per account per month &middot; at most <?= SystemAi::maxCreditsPerRequest() ?: 'any' ?> per request (an Assistant request, an AI step's run) &middot; 1 credit = <?= \V::app()->html->escape($unit) ?> USD
     <?php else: ?>
-    <span class="text-muted">No System server (app.env ASSISTANT_PROVIDER, ASSISTANT_MODEL): accounts use their own keys.</span>
+    <span class="text-muted">No System AI (app.env SYSTEM_AI_PROVIDER, SYSTEM_AI_MODEL): accounts use their own keys.</span>
     <?php endif; ?>
 </div>
 <div class="table-responsive mb-4">
@@ -29,8 +29,8 @@ $cfg = (array)\V::app()->config('assistant.system');
 	<tbody>
 	<?php foreach(array_unique($models) as $i => $model):
 	    $s = $system && $model === $system->model ? $system : (object)[ 'model' => $model ];
-	    $r = AssistantWallet::ratesOf($s, $table);
-	    $p = AssistantSettings::pricesOf($s);
+	    $r = SystemAiWallet::ratesOf($s, $table);
+	    $p = SystemAi::pricesOf($s);
 	    $margin = $r && $p && $p[0] > 0 ? round(($r[0] * $unit / $p[0] - 1) * 100) . '%' : '';
 	?>
 	    <tr>
@@ -45,5 +45,5 @@ $cfg = (array)\V::app()->config('assistant.system');
 	<?php endforeach; ?>
 	</tbody>
     </table>
-    <div class="form-text">Credits per 1M tokens / the provider's price (USD). Rates and margins: plugins/Assistant/credit_rates.php</div>
+    <div class="form-text">Credits per 1M tokens / the provider's price (USD). Rates and margins: plugins/SystemAI/credit_rates.php</div>
 </div>

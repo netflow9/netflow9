@@ -9,9 +9,12 @@
     //Ollama, Lemonade; each speaks one protocol (PROTOCOLS: the Anthropic Messages API or OpenAI chat completions). + a monthly budget (USD; the spending: AssistantUsage) and the prices
     //it is counted with (USD per 1M tokens; empty: PRICES, the known prices of Claude models)
     //CLD: 2026-10-22T15:00:00+03:00: System is paid in credits (AssistantWallet), not with the budget: + credit_cap, the most credits the account lets the Assistant use per month
+    //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (plugins\SystemAI: util\SystemAi, models\SystemAiWallet), shared with the AI steps; the known prices are its own too
 */
 
 namespace plugins\Assistant\models;
+
+use plugins\SystemAI\util\SystemAi;
 
 class AssistantSettings extends \sys\BaseModel {
     protected static $collection = 'assistant_settings';
@@ -21,7 +24,7 @@ class AssistantSettings extends \sys\BaseModel {
 
     //CLD: 2026-10-22T14:00:00+03:00: + system, gemini, ollama, lemonade; openai is OpenAI itself (still any OpenAI-compatible server with its Server URL, as the settings saved before)
     const PROVIDERS = [
-	'system' => 'System (provided by this installation)',
+	'system' => 'System AI (provided by this installation)', //CLD: 2026-10-23T10:00:00+03:00: (was System)
 	'anthropic' => 'Claude (Anthropic)',
 	'openai' => 'OpenAI (or another OpenAI-compatible server)',
 	'gemini' => 'Google Gemini',
@@ -41,25 +44,12 @@ class AssistantSettings extends \sys\BaseModel {
     ];
     //CLD: 2026-10-22T14:00:00+03:00: the providers that cannot work without a key (the others: only when their server asks for one); local ones cost nothing unless prices are set
     const KEY_REQUIRED = [ 'anthropic', 'openai', 'gemini' ];
-    const LOCAL = [ 'ollama', 'lemonade' ];
+    //CLD: 2026-10-23T10:00:00+03:00: LOCAL: SystemAi::LOCAL (was here)
     const DEFAULT_EFFORT = 'high';
     const DEFAULT_MODEL = 'claude-opus-5-5';
 
     //CLD: 2026-10-22T14:00:00+03:00: the prices of Claude models (Anthropic API, USD per 1M tokens: input, output, cache read), by model id prefix (the first that matches; longer ones first).
-    //A cache write is 1.25 x input. Other providers' prices change too often to be kept here: they are set in the settings (price_input, price_output)
-    const PRICES = [
-	'claude-fable-5' => [ 10.00, 50.00, 0.25 ],
-	'claude-mythos-5' => [ 10.00, 50.00, 0.25 ],
-	'claude-opus-5-5' => [ 4.00, 20.00, 0.20 ],
-	'claude-opus-5' => [ 5.00, 25.00, 0.50 ],
-	'claude-opus-4' => [ 5.00, 25.00, 0.50 ],
-	'claude-sonnet-5-5' => [ 2.00, 10.00, 0.20 ],
-	'claude-sonnet-5' => [ 2.00, 10.00, 0.20 ],
-	'claude-sonnet-4' => [ 3.00, 15.00, 0.30 ],
-	'claude-haiku-5-5' => [ 0.10, 0.50, 0.01 ],
-	'claude-haiku-4-5' => [ 1.00, 5.00, 0.10 ],
-    ];
-    const CACHE_WRITE = 1.25;
+    //CLD: 2026-10-23T10:00:00+03:00: they are SystemAi::PRICES, CACHE_WRITE (were here)
 
     public function getSchema() {
 	$fields = [
@@ -138,7 +128,8 @@ class AssistantSettings extends \sys\BaseModel {
 		'key' => 'credit_cap',
 		'type' => 'number',
 		'label' => 'Monthly credit limit',
-		'help' => 'The most credits the Assistant may use per calendar month (UTC), from the allowance and the top-ups. Empty or 0: no limit',
+		//CLD: 2026-10-23T10:00:00+03:00: the month's credits are the account's (the AI steps' too)
+		'help' => 'The Assistant stops once the credits the account used this calendar month (UTC: the Assistant and the AI steps on the System AI) reach it. Empty or 0: no limit',
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
 		'default' => '',
@@ -180,7 +171,7 @@ class AssistantSettings extends \sys\BaseModel {
 	$provider = (string)$this->provider;
 	if ($provider === 'system') {
 	    if (!self::systemAvailable()) {
-		$this->errors('provider', [ 'This installation provides no Assistant server: choose a provider and set your key' ]);
+		$this->errors('provider', [ 'This installation provides no System AI: choose a provider and set your key' ]); //CLD: 2026-10-23T10:00:00+03:00: (was no Assistant server)
 		$ok = false;
 	    }
 	    return $ok;
@@ -198,24 +189,13 @@ class AssistantSettings extends \sys\BaseModel {
     }
 
     //CLD: 2026-10-22T14:00:00+03:00: the server the installation provides (config assistant.system); null when there is none (no provider or model)
+    //CLD: 2026-10-23T10:00:00+03:00: the System AI (SystemAi::config: config ai.system)
     public static function system() {
-	$s = (array)\V::app()->config('assistant.system');
-	$provider = (string)($s['provider'] ?? '');
-	if (!isset(self::PROTOCOLS[$provider]) || trim((string)($s['model'] ?? '')) === '')
-	    return null;
-	return (object)[
-	    'provider' => $provider,
-	    'url' => trim((string)($s['url'] ?? '')),
-	    'api_key' => (string)($s['api_key'] ?? ''),
-	    'model' => trim((string)$s['model']),
-	    'effort' => array_key_exists((string)($s['effort'] ?? ''), \models\node\NodeAppClaude::EFFORT) ? (string)$s['effort'] : self::DEFAULT_EFFORT,
-	    'price_input' => (float)($s['price_input'] ?? 0),
-	    'price_output' => (float)($s['price_output'] ?? 0),
-	];
+	return SystemAi::config();
     }
 
     public static function systemAvailable() {
-	return self::system() !== null;
+	return SystemAi::available();
     }
 
     //CLD: 2026-10-22T14:00:00+03:00: the monthly limit (USD) for the account's settings $settings; null: no limit
@@ -229,24 +209,9 @@ class AssistantSettings extends \sys\BaseModel {
 
     //CLD: 2026-10-22T14:00:00+03:00: the prices for $settings (resolved: provider, model, price_input, price_output): [ input, output, cache read ] USD per 1M tokens; the settings' when
     //given, else the known ones of the model (PRICES), else nothing for a local server; null: not known
+    //CLD: 2026-10-23T10:00:00+03:00: SystemAi::pricesOf (was here)
     public static function pricesOf($settings) {
-	$in = (float)($settings->price_input ?? 0);
-	$out = (float)($settings->price_output ?? 0);
-	$model = (string)($settings->model ?? '');
-	$known = null;
-	foreach(self::PRICES as $prefix => $p) {
-	    if (str_starts_with($model, $prefix)) {
-		$known = $p;
-		break;
-	    }
-	}
-	if ($in > 0 || $out > 0)
-	    return [ $in, $out, $known && $known[0] == $in ? $known[2] : $in * 0.1 ];
-	if ($known)
-	    return $known;
-	if (in_array((string)($settings->provider ?? ''), self::LOCAL, true))
-	    return [ 0, 0, 0 ];
-	return null;
+	return SystemAi::pricesOf($settings);
     }
 
 }

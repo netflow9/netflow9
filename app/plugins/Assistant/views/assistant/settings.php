@@ -8,10 +8,11 @@
     //Lemonade (the Server URL's placeholder is the provider's own). + the monthly budget, the prices (not for System) and this month's spending ($usage)
     //CLD: 2026-10-22T15:00:00+03:00: System is paid in credits: the wallet ($wallet: this month's allowance, the top-ups and their expiry), the model's rates ($rates), the last
     //entries ($ledger), the account's monthly limit (credit_cap). The budget and the prices are for the other providers only
+    //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (plugins\SystemAI): here its credits left and the account's monthly limit for the Assistant; the allowance, the top-ups
+    //and the last changes on its own page (AI credits: /SystemAI/credits/index; no $ledger)
 */
 use plugins\Assistant\models\AssistantSettings;
-use plugins\Assistant\models\AssistantWallet;
-use plugins\Assistant\models\AssistantCreditLedger;
+use plugins\SystemAI\models\SystemAiWallet;
 
 $this->pageTitle = 'Assistant settings';
 
@@ -133,61 +134,28 @@ JS . "}({$connectJs});");
 		<div class="form-group row mb-2">
 		    <div class="col-sm-9 offset-sm-3 small text-muted">
 			<?php if ($system): ?>
-			<i class="bi bi-hdd-network me-1"></i>The Assistant runs on this installation's server: <?= \V::app()->html->escape(AssistantSettings::PROVIDERS[$system->provider]) ?>, model <code><?= \V::app()->html->escape($system->model) ?></code>.
+			<i class="bi bi-hdd-network me-1"></i>The Assistant runs on this installation's System AI: <?= \V::app()->html->escape(AssistantSettings::PROVIDERS[$system->provider]) ?>, model <code><?= \V::app()->html->escape($system->model) ?></code>.
 			No key to set: it is paid with credits<?= $rates ? sprintf(' (%s input / %s output credits per 1M tokens)', rtrim(rtrim(number_format($rates[0], 2), '0'), '.'), rtrim(rtrim(number_format($rates[1], 2), '0'), '.')) : '' ?>.
 			<?php else: ?>
-			<i class="bi bi-exclamation-triangle me-1"></i>This installation provides no Assistant server: choose a provider and set your own key.
+			<i class="bi bi-exclamation-triangle me-1"></i>This installation provides no System AI: choose a provider and set your own key.
 			<?php endif; ?>
 		    </div>
 		</div>
 
 		<?php if ($system):
 		    //CLD: 2026-10-22T15:00:00+03:00: the credits: this month's allowance, the top-ups (the one that expires first is used first), the last entries
+		    //CLD: 2026-10-23T10:00:00+03:00: the credits left; the rest on the System AI's page
 		    $held = array_sum(array_column($wallet['holds'], 'credits'));
-		    $topups = array_values(array_filter($wallet['topups'], fn($t) => $t['left'] > 0));
-		    usort($topups, fn($a, $b) => $a['expires'] <=> $b['expires']);
-		    $pctA = $wallet['allowance'] > 0 ? min(100, round(($wallet['allowance'] - $wallet['allowance_left']) / $wallet['allowance'] * 100)) : 100;
 		?>
 		<div class="form-group row mb-2">
 		    <label class="col-sm-3 col-form-label">Credits</label>
 		    <div class="col-sm-9 pt-2 small">
-			<div class="fs-5 fw-semibold"><?= number_format(AssistantWallet::balance($wallet)) ?> <span class="fs-6 fw-normal text-muted">credits left<?= $held ? ' (' . number_format($held) . ' reserved by running requests)' : '' ?></span></div>
-			<div class="mt-2">Monthly allowance: <?= number_format($wallet['allowance_left']) ?> of <?= number_format($wallet['allowance']) ?> left, renewed on <?= gmdate('F 1', strtotime('first day of next month')) ?> (what is left is not carried over)</div>
-			<div class="progress mt-1" style="height: 6px" role="progressbar" aria-label="Allowance used" aria-valuenow="<?= $pctA ?>" aria-valuemin="0" aria-valuemax="100">
-			    <div class="progress-bar <?= $pctA >= 100 ? 'bg-danger' : ($pctA >= 80 ? 'bg-warning' : '') ?>" style="width: <?= $pctA ?>%"></div>
-			</div>
-			<div class="mt-2">Top-ups: <?= $topups ? '' : 'none' ?></div>
-			<?php if ($topups): ?>
-			<ul class="ps-3 mb-0">
-			    <?php foreach($topups as $t): ?>
-			    <li><?= number_format($t['left']) ?> of <?= number_format($t['granted']) ?>, until <?= gmdate('Y-m-d', $t['expires']) ?><?= $t['note'] !== '' ? ' &middot; ' . \V::app()->html->escape($t['note']) : '' ?></li>
-			    <?php endforeach; ?>
-			</ul>
-			<?php endif; ?>
-			<div class="form-text">Used this month: <?= number_format($wallet['month_used']) ?> credits. The allowance is used first, then the top-up that expires first. Top-ups last <?= AssistantWallet::TOPUP_MONTHS ?> months.</div>
+			<span class="fs-5 fw-semibold"><?= number_format(SystemAiWallet::balance($wallet)) ?></span> <span class="text-muted">credits left<?= $held ? ' (' . number_format($held) . ' reserved by running requests)' : '' ?></span>
+			&middot; <a href="<?= \V::app()->createUrl('/SystemAI/credits/index') ?>">AI credits</a>
+			<div class="form-text">Shared with the AI steps that use the System AI. Used this month: <?= number_format($wallet['month_used']) ?> credits.</div>
 		    </div>
 		</div>
 		<?= $settings->schema['credit_cap']->input([ 'cols' => '3,9', 'input' => [ 'inputmode' => 'numeric', 'placeholder' => 'No limit' ] ]) ?>
-		<?php if ($ledger): ?>
-		<div class="form-group row mb-2">
-		    <label class="col-sm-3 col-form-label">Last changes</label>
-		    <div class="col-sm-9">
-			<table class="table table-sm small mb-0">
-			    <thead><tr><th>When (UTC)</th><th>What</th><th class="text-end">Credits</th><th class="text-end">Balance</th></tr></thead>
-			    <tbody>
-			    <?php foreach($ledger as $e): ?>
-				<tr>
-				    <td class="text-nowrap"><?= $e->created_at instanceof \MongoDB\BSON\UTCDateTime ? \V::app()->html->escape(gmdate('Y-m-d H:i', $e->created_at->toDateTime()->getTimestamp())) : \V::app()->html->escape($e->created_at) ?></td>
-				    <td><?= \V::app()->html->escape(AssistantCreditLedger::TYPES[$e->type] ?? $e->type) ?><?= (string)$e->note !== '' ? '<div class="text-muted">' . \V::app()->html->escape($e->note) . '</div>' : '' ?></td>
-				    <td class="text-end <?= $e->credits < 0 ? 'text-danger' : 'text-success' ?>"><?= ($e->credits > 0 ? '+' : '') . number_format((float)$e->credits) ?></td>
-				    <td class="text-end"><?= number_format((float)$e->balance) ?></td>
-				</tr>
-			    <?php endforeach; ?>
-			    </tbody>
-			</table>
-		    </div>
-		</div>
-		<?php endif; ?>
 		<?php endif; ?>
 	    </div>
 
