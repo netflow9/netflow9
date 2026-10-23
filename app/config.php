@@ -7,7 +7,8 @@ function get_config($mode = 'web') {
 
     $_config = [
 	//development switch; also enables development-only endpoints (DataController / data/get) - set false outside development
-	'app.debug' => true,
+	//CLD: 2026-10-23T23:20:00+03:00: APP_DEBUG in app.env (true / false; was true here): off when it is missing
+	'app.debug' => defined('APP_DEBUG') && filter_var(APP_DEBUG, FILTER_VALIDATE_BOOLEAN),
 	'app.name' => 'NetFlow9',
 	'app.author' => 'None',
 	'app.version' => '1.0.0',
@@ -92,7 +93,8 @@ function get_config($mode = 'web') {
 	    'log' => [
 		'class' => '\sys\Logger',
 		'enabled' => true,
-		'level' => 'DEBUG',
+		//CLD: 2026-10-23T23:30:00+03:00: LOG_LEVEL in app.env (ERROR, WARN, INFO or DEBUG; was DEBUG here): INFO when it is missing or not one of them
+		'level' => defined('LOG_LEVEL') && in_array(strtoupper(trim((string)LOG_LEVEL)), [ 'ERROR', 'WARN', 'INFO', 'DEBUG' ], true) ? strtoupper(trim((string)LOG_LEVEL)) : 'INFO',
 	    ],
 	    'om' => [
 		'class' => '\sys\ObjectManager',
