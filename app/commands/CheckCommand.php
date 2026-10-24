@@ -1606,7 +1606,8 @@ class CheckCommand extends \sys\BaseController {
 	    isset($all['app::ollama']), \models\credential\CredentialLemonade::$provides, \models\credential\CredentialOllama::$provides,
 	    \models\node\NodeAppOllama::outLabelsFor([ 'onError' => 'output' ]) ]);
 	$ollamaKeys = array_column(\models\node\NodeAppOllama::configSchema(), 'key');
-	$this->check('local AI: Ollama\'s own settings after the model; Lemonade has the OpenAI step\'s', [ [ 'model', 'temperature', 'contextLength', 'think', 'keepAlive' ], true ],
+	//CLD: 2026-10-24T13:06:54+03:00: temperature and thinking first (on the dialog's line 2, with the credential and the model; was temperature, contextLength, think, keepAlive)
+	$this->check('local AI: Ollama\'s own settings after the model; Lemonade has the OpenAI step\'s', [ [ 'model', 'temperature', 'think', 'contextLength', 'keepAlive' ], true ],
 	    [ array_slice($ollamaKeys, 1, 5), in_array('temperature', array_column(\models\node\NodeAppLemonade::configSchema(), 'key'), true) ]);
 
 	//the fake server

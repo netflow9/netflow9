@@ -144,34 +144,40 @@ abstract class NodeAppAi extends \models\WfNode {
 		'choices' => $credentials,
 		//CLD: 2026-10-23T10:00:00+03:00: + System AI
 		//CLD: 2026-10-24T12:42:45+03:00: shorter (one line; was: ... credential of the project (menu: Credentials), or System AI: this installation's, paid with the account's credits (Settings menu: AI credits))
-		'help' => static::PROVIDER . ' credential of the project' . ($system ? ', or System AI (paid with the account\'s AI credits)' : ''),
+		//CLD: 2026-10-24T13:04:58+03:00: shorter (one line, 4 wide; was: ... credential of the project, or System AI (paid with the account's AI credits)); 4 wide: the model and the provider's
+		//settings next to it on line 2
+		'help' => static::PROVIDER . ' credential' . ($system ? ', or System AI (AI credits)' : ''),
+		'ui' => [ 'width' => 4 ],
 		//CLD: 2026-10-14T14:18:23+03:00: required by the model (was only in the browser: `required` in ui); validates() checks it is a credential of the project
 		'required' => true,
 	    ],
 	    //CLD: 2026-10-22T01:58:24+03:00: in the form, a select of the models the chosen credential recorded (its Test: Credential::recordModels), a name not listed can be typed; on the server
 	    //it stays text (any model name: workflows made by the MCP tools / the Assistant, a list not refreshed yet)
 	    [
+		//CLD: 2026-10-24T13:04:58+03:00: layout: 4 wide (was 6); shorter help (was: Recorded by the credential's Test; or type a name)
 		'key' => 'model',
 		'type' => 'text',
 		'label' => 'Model',
 		'required' => true,
 		'default' => static::defaultModel(),
 		//CLD: 2026-10-24T12:44:00+03:00: shorter (one line; was: The models of the credential (Test on the credential records them); or type a model name)
-		'help' => 'Recorded by the credential\'s Test; or type a name',
+		'help' => 'Or type a name',
 		//CLD: 2026-10-24T12:42:45+03:00: next to the credential (the designer: 6 wide)
-		'ui' => [ 'width' => 6, 'type' => 'select', 'allowCustom' => true, 'placeholder' => 'Choose a model...', 'choicesBy' => [ 'key' => 'credential', 'choices' => (object)static::modelChoices(),
+		'ui' => [ 'width' => 4, 'type' => 'select', 'allowCustom' => true, 'placeholder' => 'Choose a model...', 'choicesBy' => [ 'key' => 'credential', 'choices' => (object)static::modelChoices(),
 		    'empty' => 'No models recorded: Test the credential, or type a name' ] ],
 	    ],
 	], static::providerSchema(), [
 	    [
+		//CLD: 2026-10-24T13:04:58+03:00: layout: 4 lines
 		'key' => 'system',
 		'type' => 'textarea',
 		'label' => 'System prompt',
 		//CLD: 2026-10-24T12:42:45+03:00: next to the prompt, as tall (was full width, 3 lines; the prompt 5 lines, was 6); shorter help (was: Who the model is and how it should work (optional); {{ ... }} for expressions)
 		'help' => 'Who the model is and how it works (optional)',
-		'ui' => [ 'rows' => 5, 'expression' => true, 'width' => 6, 'newRow' => true ],
+		'ui' => [ 'rows' => 4, 'expression' => true, 'width' => 6, 'newRow' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T13:04:58+03:00: layout: 4 lines
 		'key' => 'prompt',
 		'type' => 'textarea',
 		'label' => 'Prompt',
@@ -179,7 +185,7 @@ abstract class NodeAppAi extends \models\WfNode {
 		//CLD: 2026-10-13T08:15:00+03:00: the example after the Email trigger's message variable (mail.text; was mail_text)
 		'help' => 'The request; {{ ... }} for expressions, e.g. {{ mail.text }}',
 		//CLD: 2026-10-24T12:42:45+03:00: next to the system prompt
-		'ui' => [ 'rows' => 5, 'expression' => true, 'width' => 6 ],
+		'ui' => [ 'rows' => 4, 'expression' => true, 'width' => 6 ],
 	    ],
 	    [
 		'key' => 'output',
@@ -189,9 +195,10 @@ abstract class NodeAppAi extends \models\WfNode {
 		'default' => 'text',
 		'choices' => self::OUTPUT,
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
+		//CLD: 2026-10-24T13:04:58+03:00: not on a new line (line 2 is full: the credential, the model, the provider's settings)
 		//CLD: 2026-10-24T12:42:45+03:00: before the images, 3 wide on a new line (was 6, after them); shorter help (was: JSON: the answer is parsed (variable .json); a schema makes its shape precise)
 		'help' => 'JSON: parsed (variable .json)',
-		'ui' => [ 'width' => 3, 'newRow' => true ],
+		'ui' => [ 'width' => 3 ],
 	    ],
 	    //CLD: 2026-10-17T21:00:54+03:00: image files sent with the prompt
 	    [
@@ -259,12 +266,13 @@ abstract class NodeAppAi extends \models\WfNode {
 		'ui' => [ 'placeholder' => $servers ? 'None' : 'None enabled', 'width' => 3 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T13:06:25+03:00: shorter help (was: Most calls to the model (each tool use is one more))
 		'key' => 'maxRounds',
 		'type' => 'number',
 		'label' => 'Rounds',
 		'required' => true,
 		'default' => 10,
-		'help' => 'Most calls to the model (each tool use is one more)',
+		'help' => 'Calls to the model (tool uses too)',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_ROUNDS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_ROUNDS ] ],
 		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
 		//CLD: 2026-10-24T12:42:45+03:00: a limit: the designer puts it on the last line, before the timeout (was 4 wide)
