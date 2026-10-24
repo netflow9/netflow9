@@ -180,7 +180,8 @@ class FileEncrypt extends FileDecrypt {
 	    try {
 		$keys = self::importPublicKeys([ self::tool('gpg'), '--homedir', $home, '--batch', '--no-tty', '--no-permission-warning' ], $work, $cred->publicKey);
 		$uids = array_merge(...array_map(fn($k) => $k['uids'] ?: [ substr($k['fpr'], -16) ], $keys));
-		return count($keys) . ' recipient key(s): ' . implode(', ', array_slice($uids, 0, 5));
+		//CLD: 2026-10-24T16:30:00+03:00: Format::plural (was key(s))
+		return Format::plural(count($keys), 'recipient key') . ': ' . implode(', ', array_slice($uids, 0, 5));
 	    } finally {
 		$gpgconf = self::tool('gpgconf', false);
 		if ($gpgconf)
@@ -201,7 +202,8 @@ class FileEncrypt extends FileDecrypt {
 	    }
 	    if (!$names)
 		throw new \RuntimeException('no certificate');
-	    return count($names) . ' recipient certificate(s): ' . implode(', ', $names);
+	    //CLD: 2026-10-24T16:30:00+03:00: Format::plural (was certificate(s))
+	    return Format::plural(count($names), 'recipient certificate') . ': ' . implode(', ', $names);
 	}
 	if ((string)$cred->passphrase === '')
 	    throw new \RuntimeException('no ' . ($method === 'openssl-enc' ? 'password' : 'passphrase'));

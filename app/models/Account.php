@@ -156,8 +156,39 @@ class Account extends \sys\BaseModel {
 		    '365' => '1 year'
 		],
 	    ],
+	    //CLD: 2026-10-24T16:30:00+03:00: how dates are shown (util\Format::date / datetime, the date fields, the date pickers): date() tokens; empty: the app's
+	    //(app.format.date / app.format.datetime)
+	    [
+		'key' => 'date_format',
+		'type' => 'select',
+		'label' => 'Date format',
+		'help' => false,
+		'perm:read' => 'everybody',
+		'perm:update' => 'everybody',
+		'default' => '',
+		'choices' => self::formatChoices([ '', 'Y-m-d', 'd.m.Y', 'd/m/Y', 'm/d/Y', 'j M Y', 'M j, Y' ], 'app.format.date'),
+	    ],
+	    [
+		'key' => 'datetime_format',
+		'type' => 'select',
+		'label' => 'Date and time format',
+		'help' => false,
+		'perm:read' => 'everybody',
+		'perm:update' => 'everybody',
+		'default' => '',
+		'choices' => self::formatChoices([ '', 'Y-m-d H:i', 'Y-m-d H:i:s', 'd.m.Y H:i', 'd/m/Y H:i', 'm/d/Y g:i A', 'j M Y H:i', 'M j, Y g:i A' ], 'app.format.datetime'),
+	    ],
 	];
 	return array_merge($fields, $this->getSystemSchema());
+    }
+
+    //CLD: 2026-10-24T16:30:00+03:00: date formats as choices, labeled with an example (a fixed date); '' -> "Default", with the app's format ($config)
+    private static function formatChoices(array $formats, string $config) {
+	$sample = new \DateTimeImmutable('2026-12-31 15:45:30');
+	$choices = [];
+	foreach($formats as $f)
+	    $choices[$f] = $f === '' ? 'Default (' . $sample->format((string)\V::app()->config($config)) . ')' : $sample->format($f);
+	return $choices;
     }
 
     //CLD: 2026-10-16T12:14:57+03:00: the system roles of a new account (data\SysRoles: Owner, Member, Participant); [ iname => Role ] (was written in the seed command; also used by

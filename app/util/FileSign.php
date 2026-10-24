@@ -204,7 +204,8 @@ class FileSign extends FileDecrypt {
 	    $info = openssl_x509_parse($cert);
 	    if (($info['validTo_time_t'] ?? PHP_INT_MAX) < time())
 		throw new \RuntimeException('the certificate has expired');
-	    return 'signs as ' . (string)($info['subject']['CN'] ?? $info['name'] ?? '?') . ' (until ' . date('Y-m-d', (int)$info['validTo_time_t']) . ')';
+	    //CLD: 2026-10-24T16:30:00+03:00: the account's date format (Format::date; was Y-m-d)
+	    return 'signs as ' . (string)($info['subject']['CN'] ?? $info['name'] ?? '?') . ' (until ' . Format::date((int)$info['validTo_time_t']) . ')';
 	}
 	$types = [ OPENSSL_KEYTYPE_RSA => 'RSA', OPENSSL_KEYTYPE_EC => 'EC' ] + (defined('OPENSSL_KEYTYPE_ED25519') ? [ OPENSSL_KEYTYPE_ED25519 => 'Ed25519' ] : []);
 	return ($types[$details['type'] ?? -1] ?? 'a') . ' key' . (!empty($details['bits']) ? ' of ' . $details['bits'] . ' bits' : '');

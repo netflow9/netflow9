@@ -414,7 +414,7 @@ class WorkflowController extends \sys\BaseController {
 	foreach((is_array($exe->log) ? $exe->log : []) as $entry) {
 	    $node = $entry['node'] ?? null;
 	    $log[] = [
-		'time' => $this->localTime($entry['ts'] ?? null),
+		'time' => $this->localTime($entry['ts'] ?? null, 'Y-m-d H:i:s'),
 		'node' => $node,
 		'title' => $node !== null ? ($titles[$node] ?? $node) : null,
 		'message' => (string)($entry['message'] ?? ''),
@@ -464,7 +464,8 @@ class WorkflowController extends \sys\BaseController {
 	}
 	//CLD: 2026-10-24T00:04:00+03:00: audit log: how many were deleted (SOC2.md gap 4)
 	if ($deleted)
-	    \models\AuditLog::record('workflow.executions.delete', $wf, $deleted . ' execution' . ($deleted == 1 ? '' : 's') . ' of the draft' . ($failed ? ", {$failed} not deleted" : ''));
+	    //CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was the plural inline)
+	    \models\AuditLog::record('workflow.executions.delete', $wf, \util\Format::plural($deleted, 'execution') . ' of the draft' . ($failed ? ", {$failed} not deleted" : ''));
 	$kept = \V::app()->om->count('WfExecution', [ 'wf' => $wf->_id, 'aid' => $wf->aid ]);
 	if ($failed && !$deleted)
 	    $resp->sendJSON([ 'error' => 'The executions could not be deleted' ], true, 500);
@@ -554,11 +555,11 @@ class WorkflowController extends \sys\BaseController {
     }
 
     //Y-m-d H:i:s in the app's timezone; null when not a date
-    private function localTime($value) {
+    //CLD: 2026-10-24T16:30:00+03:00: util\Format::datetime: the account's datetime format, or $format (the log's times: with seconds, as before)
+    private function localTime($value, $format = null) {
 	if (!$value instanceof \MongoDB\BSON\UTCDateTime)
 	    return null;
-	$tz = new \DateTimeZone(\V::app()->config('app.timezone') ?: date_default_timezone_get());
-	return $value->toDateTime()->setTimezone($tz)->format('Y-m-d H:i:s');
+	return \util\Format::datetime($value, $format);
     }
 
     public function node_edit($req, $resp) {

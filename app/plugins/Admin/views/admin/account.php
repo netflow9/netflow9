@@ -1,4 +1,5 @@
 <?php
+//CLD: 2026-10-24T16:30:00+03:00: the dates in the account's format (util\Format::date; was Y-m-d, UTC), the numbers util\Format::number (was number_format)
 /*
     CLD: 2026-10-22T23:00:00+03:00: new: one account (AdminController::account): $account, $users, $projects, $roleNames ([ role id => name ]), $workflows ([ project id => n ]),
     $owner (whom "view as" signs in as; null: none); suspend / reactivate, view as; the plugins' sections (hook admin:account-panels)
@@ -20,7 +21,7 @@ $own = (string)$account->_id === (string)\V::app()->user->aid;
     <div class="d-flex flex-wrap align-items-start gap-3 mb-4">
 	<div class="me-auto">
 	    <h5 class="mb-1"><?= \V::app()->html->escape($name) ?> <span class="badge <?= $suspended ? 'text-bg-danger' : 'text-bg-success' ?> align-middle fs-6"><?= \V::app()->html->escape($account->schema['state']->choices[(string)$account->state] ?? $account->state) ?></span></h5>
-	    <div class="text-muted small"><?= \V::app()->html->escape($account->hostname) ?> &middot; created <?= \V::app()->html->escape(gmdate('Y-m-d', $account->_id->getTimestamp())) ?> &middot; id <code><?= \V::app()->html->escape($account->_id) ?></code></div>
+	    <div class="text-muted small"><?= \V::app()->html->escape($account->hostname) ?> &middot; created <?= \V::app()->html->escape(\util\Format::date($account->_id)) ?> &middot; id <code><?= \V::app()->html->escape($account->_id) ?></code></div>
 	</div>
 	<?php if (!$own): ?>
 	<form method="post" action="<?= \V::app()->createUrl('/Admin/admin/view_as') ?>" no-pjax class="m-0">
@@ -77,7 +78,7 @@ $own = (string)$account->_id === (string)\V::app()->user->aid;
 		<tr>
 		    <td><?= \V::app()->html->escape($p->name) ?><?= !empty($p->personal) ? ' <span class="text-muted">(personal)</span>' : '' ?></td>
 		    <td class="text-end"><?= count((array)($p->members ?? [])) ?></td>
-		    <td class="text-end"><?= number_format($workflows[(string)$p->_id] ?? 0) ?></td>
+		    <td class="text-end"><?= \util\Format::number($workflows[(string)$p->_id] ?? 0) ?></td>
 		</tr>
 	    <?php endforeach; ?>
 	    </tbody>

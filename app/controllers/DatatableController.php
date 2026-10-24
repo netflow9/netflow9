@@ -137,7 +137,8 @@ class DatatableController extends \sys\BaseController {
 	    elseif ($file['error'] > 0)
 		$error = 'The file could not be uploaded';
 	    elseif ($file['size'] > \util\TableImport::MAX_BYTES)
-		$error = 'The file is larger than ' . (\util\TableImport::MAX_BYTES >> 20) . ' MB';
+		//CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes (was the MB inline)
+		$error = 'The file is larger than ' . \util\Format::bytes(\util\TableImport::MAX_BYTES);
 	    elseif ($ext === 'xls')
 		$error = 'Old Excel files (.xls) cannot be read: save the file as .xlsx or CSV';
 	    elseif (!isset(\util\TableImport::TYPES[$ext]))
@@ -239,7 +240,8 @@ class DatatableController extends \sys\BaseController {
 	    \util\Tiers::check($account, 'datatables');
 	    $limit = \util\Tiers::limit($account, 'datatable_records');
 	    if ($limit !== null && count($dataRows) > $limit)
-		throw new \util\LimitException(\util\Tiers::limitMessage($account, 'datatable_records') . ' The file has ' . number_format(count($dataRows)) . ' rows.', 'datatable_records', $limit, 0);
+		//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was number_format)
+		throw new \util\LimitException(\util\Tiers::limitMessage($account, 'datatable_records') . ' The file has ' . \util\Format::plural(count($dataRows), 'row') . '.', 'datatable_records', $limit, 0);
 	} catch (\util\LimitException $e) {
 	    $errors['name'][] = $e->getMessage();
 	}
@@ -320,7 +322,8 @@ class DatatableController extends \sys\BaseController {
 	foreach($files as $f)
 	    @unlink($f);
 
-	$message = "{$imported} " . ($imported == 1 ? 'row' : 'rows') . ' imported';
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was the plural inline)
+	$message = \util\Format::plural($imported, 'row') . ' imported';
 	if ($skipped)
 	    $message .= '; skipped (not valid): row' . (count($skipped) > 1 ? 's ' : ' ') . implode(', ', array_slice($skipped, 0, 10)) . (count($skipped) > 10 ? '…' : '');
 	if ($unread)

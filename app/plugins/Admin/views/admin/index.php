@@ -6,13 +6,7 @@
 $this->pageTitle = 'Administration';
 //CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly (was a $e wrapper)
 $csrf = '<input type="hidden" name="' . \V::app()->csrf->csrf_key . '" value="' . \V::app()->html->escape(\V::app()->csrf->getToken(false)) . '">';
-$ago = function($ts) {
-    if (!$ts)
-	return '';
-    $d = time() - $ts;
-    return $d < 3600 ? round($d / 60) . ' min' : ($d < 86400 ? round($d / 3600, 1) . ' h' : round($d / 86400, 1) . ' days');
-};
-$gb = fn($b) => $b === false || $b === null ? '?' : number_format($b / 1073741824, 1) . ' GB';
+//CLD: 2026-10-24T16:30:00+03:00: util\Format::duration / bytes called directly (were the $ago / $gb helpers: min / h / days, GB); the numbers: util\Format::number (was number_format)
 $tab = 'installation';
 require __DIR__ . '/_header.php';
 ?>
@@ -36,7 +30,7 @@ require __DIR__ . '/_header.php';
 		    </td>
 		    <td class="text-nowrap">
 			<span class="badge <?= $badge ?>"><?= \V::app()->html->escape($st['running'] === true ? 'running' : ($st['running'] === false ? 'stopped' : 'unknown')) ?></span>
-			<div class="text-muted"><?= \V::app()->html->escape($st['state']) ?><?= $st['pid'] ? ' &middot; pid ' . (int)$st['pid'] : '' ?><?= $st['since'] ? ' &middot; up ' . \V::app()->html->escape($ago($st['since'])) : '' ?></div>
+			<div class="text-muted"><?= \V::app()->html->escape($st['state']) ?><?= $st['pid'] ? ' &middot; pid ' . (int)$st['pid'] : '' ?><?= $st['since'] ? ' &middot; up ' . \V::app()->html->escape(\util\Format::duration((time() - $st['since']) * 1000)) : '' ?></div>
 		    </td>
 		    <td>
 			<?php if ($hOk !== null): ?>
@@ -66,15 +60,15 @@ require __DIR__ . '/_header.php';
     <h6 class="mb-2">Installation</h6>
     <div class="row g-3 mb-4 small">
 	<?php foreach([
-	    'Accounts' => number_format($app['accounts']) . ($app['suspended'] ? ' (' . $app['suspended'] . ' suspended)' : ''),
-	    'Users' => number_format($app['users']),
-	    'Workflows' => number_format($app['workflows']),
-	    'Runs, last 24 h' => number_format($app['runs_24h']),
-	    'Jobs waiting' => number_format($app['jobs_waiting']),
+	    'Accounts' => \util\Format::number($app['accounts']) . ($app['suspended'] ? ' (' . $app['suspended'] . ' suspended)' : ''),
+	    'Users' => \util\Format::number($app['users']),
+	    'Workflows' => \util\Format::number($app['workflows']),
+	    'Runs, last 24 h' => \util\Format::number($app['runs_24h']),
+	    'Jobs waiting' => \util\Format::number($app['jobs_waiting']),
 	    'Version' => $app['commit'] ?? '?',
 	    'PHP / MongoDB' => $app['php'] . ' / ' . ($app['mongo'] ?? '?'),
-	    'Server' => \V::app()->html->escape($app['host']) . ($app['load'] ? ' &middot; load ' . implode(' ', array_map(fn($l) => number_format($l, 2), $app['load'])) : ''),
-	    'Disk free' => $gb($app['disk_free']) . ' of ' . $gb($app['disk_total']),
+	    'Server' => \V::app()->html->escape($app['host']) . ($app['load'] ? ' &middot; load ' . implode(' ', array_map(fn($l) => \util\Format::number($l, 2), $app['load'])) : ''),
+	    'Disk free' => ($app['disk_free'] === false ? '?' : \util\Format::bytes($app['disk_free'])) . ' of ' . ($app['disk_total'] === false ? '?' : \util\Format::bytes($app['disk_total'])),
 	] as $label => $value): ?>
 	<div class="col-6 col-md-4 col-xl-3">
 	    <div class="border rounded-3 p-2 h-100">

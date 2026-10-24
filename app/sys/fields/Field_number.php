@@ -38,11 +38,9 @@ class Field_number extends Field {
 	    return '';
 	$value = $this->binding->data($this->key);
 	switch($this->format) {
+	    //CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes: "1.5 MB" (was "1.50M", the unit from the number of digits: 1000 bytes were "0.98K")
 	    case 'bytes-human':
-    		$suffix = [ 'B', 'K', 'M', 'G', 'T', 'P' ];
-    		$decimals = 2;
-    		$factor = floor((strlen($value) - 1) / 3);
-    		return number_format($value / pow(1024, $factor), $decimals) . $suffix[$factor];
+    		return \util\Format::bytes($value, 2);
 	    default:
     		return \V::app()->html->escape((string)$this->binding->data($this->key));
 	}

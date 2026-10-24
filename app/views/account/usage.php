@@ -1,4 +1,5 @@
 <?php
+//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number (was number_format)
 /*
     CLD: 2026-10-24T09:45:36+03:00: new: the account's usage (AccountController::usage): $account, $usage (util\Tiers::usage), $limits (util\Tiers::limits), $projects ([ id => Project ]);
     each limit with what is used (yellow from 80%, red at the limit), the tier's features, the usage per project (a breakdown: the limits are the account's)
@@ -86,7 +87,7 @@ $recordsLimit = $limits['datatable_records'];
 		<tr>
 		    <td><?= \V::app()->html->escape($t['name']) ?></td>
 		    <td><?= \V::app()->html->escape(isset($projects[$t['project']]) ? $projects[$t['project']]->name : '') ?></td>
-		    <td class="text-end <?= $t['rows'] >= $recordsLimit ? 'text-danger' : 'text-warning-emphasis' ?>"><?= number_format($t['rows']) ?> / <?= number_format($recordsLimit) ?></td>
+		    <td class="text-end <?= $t['rows'] >= $recordsLimit ? 'text-danger' : 'text-warning-emphasis' ?>"><?= \util\Format::number($t['rows']) ?> / <?= \util\Format::number($recordsLimit) ?></td>
 		</tr>
 	    <?php endforeach; ?>
 	    </tbody>
@@ -108,8 +109,8 @@ $recordsLimit = $limits['datatable_records'];
 	    ?>
 		<tr>
 		    <td><?= $p ? \V::app()->html->escape($p->name) . (!empty($p->personal) ? ' <span class="text-muted">(personal)</span>' : '') : '<span class="text-muted">(removed project)</span>' ?></td>
-		    <td class="text-end"><?= number_format($u['datatables']) ?></td>
-		    <td class="text-end"><?= number_format($u['records']) ?></td>
+		    <td class="text-end"><?= \util\Format::number($u['datatables']) ?></td>
+		    <td class="text-end"><?= \util\Format::number($u['records']) ?></td>
 		    <td class="text-end"><?= \V::app()->html->escape(Tiers::format($u['files_bytes'], 'bytes')) ?></td>
 		</tr>
 	    <?php endforeach; ?>

@@ -176,8 +176,9 @@ class Tiers {
     public static function limitMessage($account, $key, $limit = null) {
 	$limit = $limit ?? self::limit($account, $key);
 	$what = [
-	    'datatables' => 'at most ' . number_format((int)$limit) . ' data ' . ($limit == 1 ? 'table' : 'tables'),
-	    'datatable_records' => 'at most ' . number_format((int)$limit) . ' ' . ($limit == 1 ? 'row' : 'rows') . ' in a data table',
+	    //CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was number_format and the plural inline)
+	    'datatables' => 'at most ' . Format::plural((int)$limit, 'data table'),
+	    'datatable_records' => 'at most ' . Format::plural((int)$limit, 'row') . ' in a data table',
 	    'files_bytes' => 'at most ' . self::format($limit, 'bytes') . ' of files',
 	][$key] ?? "at most {$limit} ({$key})";
 	return 'Your plan (' . self::labelOf($account) . ") allows {$what}. " . self::CONTACT;
@@ -240,13 +241,10 @@ class Tiers {
     public static function format($n, $unit = 'count') {
 	if ($n === null)
 	    return 'no limit';
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::number / bytes (was formatted here: KB / MB / GB)
 	if ($unit !== 'bytes')
-	    return number_format((int)$n);
-	foreach([ 'GB' => 1 << 30, 'MB' => 1 << 20, 'KB' => 1 << 10 ] as $suffix => $size) {
-	    if ($n >= $size)
-		return rtrim(rtrim(number_format($n / $size, 1), '0'), '.') . ' ' . $suffix;
-	}
-	return (int)$n . ' B';
+	    return Format::number((int)$n);
+	return Format::bytes($n);
     }
 
     //the account's id as an ObjectId

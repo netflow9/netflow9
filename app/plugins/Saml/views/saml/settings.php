@@ -1,4 +1,5 @@
 <?php
+//CLD: 2026-10-24T16:30:00+03:00: the certificate's end in the account's date format (util\Format::date; was Y-m-d)
 /*
     CLD: 2026-10-23T12:00:00+03:00: new: the SAML single sign-on settings page (SamlController::settings): the settings (app.smartform of models\SamlSettings, in sections; posted
     as one JSON value `settings_json`: the groups' rows are an edit grid), Import of the IdP's metadata into the form (SamlController::import: nothing saved), the details of
@@ -150,7 +151,7 @@ JS . "}({$js});");
 		    <div class="small text-muted">NameID format</div>
 		    <div class="small mb-3"><?= \V::app()->html->escape(SamlSettings::NAMEID_FORMATS[$settings->nameIdFormat] ?? $settings->nameIdFormat) ?></div>
 		    <div class="small text-muted">Certificate (signing, encryption)</div>
-		    <div class="small mb-3">Valid until <?= $expires ? \V::app()->html->escape(date('Y-m-d', $expires)) : '?' ?></div>
+		    <div class="small mb-3">Valid until <?= $expires ? \V::app()->html->escape(\util\Format::date($expires)) : '?' ?></div>
 		    <div class="d-flex flex-wrap gap-2">
 			<a class="btn btn-sm btn-outline-primary" href="<?= \V::app()->html->escape($settings->metadataUrl() . '?download=1') ?>"><i class="bi bi-download me-1"></i>Metadata</a>
 			<a class="btn btn-sm btn-outline-primary" href="<?= \V::app()->html->escape('data:application/x-pem-file;base64,' . base64_encode((string)$settings->spCert)) ?>" download="sp-certificate.pem"><i class="bi bi-file-earmark-lock me-1"></i>Certificate</a>

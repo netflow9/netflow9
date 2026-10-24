@@ -49,7 +49,8 @@ class Plugin {
 	\V::app()->hooks->addHook('admin:account-summary', function($account, \ArrayObject $items) {
 	    $w = \V::app()->om->acrossAccounts(fn() => models\SystemAiWallet::current($account->_id));
 	    if ($w['v'] > 0)
-		$items[] = number_format(models\SystemAiWallet::balance($w)) . ' credits';
+		//CLD: 2026-10-24T16:30:00+03:00: util\Format::number (was number_format)
+		$items[] = \util\Format::number(models\SystemAiWallet::balance($w)) . ' credits';
 	});
 	\V::app()->hooks->addHook('admin:account-panels', function($account) {
 	    $data = \V::app()->om->acrossAccounts(fn() => [
