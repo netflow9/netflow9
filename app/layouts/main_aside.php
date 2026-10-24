@@ -229,6 +229,15 @@ $dd_items = implode('', $dd_items);
 
 	<!-- two-level menu, pinned to the bottom of the sidebar -->
 	<div class="sidebar-bottom-menu">
+	    <?php //CLD: 2026-10-24T11:20:00+03:00: the theme of this browser: light, dark, auto (the system's) (app.theme in app.js) ?>
+	    <?php //CLD: 2026-10-24T12:10:00+03:00: the buttons only (the "Theme" label removed; the group keeps it as aria-label) ?>
+	    <div class="d-flex align-items-center justify-content-end px-2 pt-2 pb-1">
+		<div class="btn-group btn-group-sm" role="group" aria-label="Theme">
+		    <button type="button" class="btn btn-outline-secondary py-0" data-theme-value="light" title="Light" aria-pressed="false"><i class="bi bi-sun" aria-hidden="true"></i><span class="visually-hidden">Light</span></button>
+		    <button type="button" class="btn btn-outline-secondary py-0" data-theme-value="dark" title="Dark" aria-pressed="false"><i class="bi bi-moon-stars" aria-hidden="true"></i><span class="visually-hidden">Dark</span></button>
+		    <button type="button" class="btn btn-outline-secondary py-0" data-theme-value="auto" title="Auto (the system's)" aria-pressed="false"><i class="bi bi-circle-half" aria-hidden="true"></i><span class="visually-hidden">Auto</span></button>
+		</div>
+	    </div>
 	    <nav class="nav flex-column">
 		<a href="https://www.netflow9.io" class="nav-link px-2" target="_blank">
 		    <i class="bi bi-question-circle"></i> Help &amp; FAQ

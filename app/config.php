@@ -18,7 +18,8 @@ function get_config($mode = 'web') {
 	'app.timezone' => 'Europe/Bucharest',
 
 	'app.language' => 'en_US',
-	'app.color-scheme' => 'light',
+	//CLD: 2026-10-24T11:51:46+03:00: the theme of a browser that has not chosen one (light, dark, auto: the system's); each browser chooses its own (app.theme, the sidebar's switcher)
+	'app.color-scheme' => 'auto',
 
 	//proxies in front of nginx whose X-Forwarded-For is believed (addresses or CIDR ranges; sys\http\Request::userIP); none: the
 	//client's address is the connection's (REMOTE_ADDR), as nginx takes the connections itself

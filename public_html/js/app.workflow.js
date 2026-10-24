@@ -1554,7 +1554,8 @@ window.app.Workflow = (function() {
 		svg += edge.render();
 	    });
 
-	    svg += `<defs><marker id="arrowhead" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#b8bdc4"></path></marker></defs>`;
+	    //CLD: 2026-10-24T11:20:00+03:00: the edges' color of the theme (--wf-edge: the dark mode; was fill="#b8bdc4")
+	    svg += `<defs><marker id="arrowhead" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" style="fill:var(--wf-edge)"></path></marker></defs>`;
 	    this.svgEl.innerHTML = svg;
 
 

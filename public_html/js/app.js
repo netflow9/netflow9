@@ -531,6 +531,75 @@ app.template = (function() {
     };
 })();
 
+//CLD: 2026-10-24T11:20:00+03:00: new: the theme, light, dark or auto (the system's), chosen per browser (localStorage netflow9.theme; read first by the <head> script of
+//layouts/_webpage.php, which sets data-bs-theme / data-theme-choice on <html> before the styles load). The switcher: buttons [data-theme-value] (the sidebar's); auto follows
+//the system's changes, another tab's choice is followed too; when the theme shown changes: `app:themechange` on document ({ detail: { theme } }), e.g. the overview's charts
+app.theme = (function() {
+    const KEY = 'netflow9.theme';
+    const CHOICES = [ 'light', 'dark', 'auto' ];
+    const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+    const choice = () => {
+	const c = document.documentElement.getAttribute('data-theme-choice');
+	return CHOICES.includes(c) ? c : 'auto';
+    };
+    const resolved = (c) => (c === 'dark' || (c === 'auto' && media && media.matches)) ? 'dark' : 'light';
+
+    //shows choice $c: the theme on <html>, the switchers' buttons
+    const apply = (c) => {
+	const html = document.documentElement;
+	const before = html.getAttribute('data-bs-theme');
+	const theme = resolved(c);
+	html.setAttribute('data-theme-choice', c);
+	html.setAttribute('data-bs-theme', theme);
+	document.querySelectorAll('[data-theme-value]').forEach((b) => {
+	    const on = b.getAttribute('data-theme-value') === c;
+	    b.classList.toggle('active', on);
+	    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+	});
+	if (before !== theme)
+	    document.dispatchEvent(new CustomEvent('app:themechange', { detail: { theme: theme } }));
+    };
+
+    return {
+	init() {
+	    apply(choice());
+	    document.addEventListener('click', (e) => {
+		const b = e.target.closest('[data-theme-value]');
+		if (!b)
+		    return;
+		e.preventDefault();
+		this.set(b.getAttribute('data-theme-value'));
+	    });
+	    if (media)
+		media.addEventListener('change', () => {
+		    if (choice() === 'auto')
+			apply('auto');
+		});
+	    window.addEventListener('storage', (e) => {
+		if (e.key === KEY && CHOICES.includes(e.newValue))
+		    apply(e.newValue);
+	    });
+	},
+
+	//chooses $c (light, dark, auto) for this browser
+	set(c) {
+	    if (!CHOICES.includes(c))
+		return;
+	    try {
+		localStorage.setItem(KEY, c);
+	    } catch (e) {}
+	    apply(c);
+	},
+
+	//the choice (light, dark, auto) and the theme shown (light, dark)
+	choice: choice,
+	current() {
+	    return document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+	},
+    };
+})();
+
 +function() {
     console.log('app: initializing');
     const app_modules = Object.keys(window.app);
