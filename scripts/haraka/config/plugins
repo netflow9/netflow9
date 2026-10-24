@@ -1,0 +1,26 @@
+# CUSTOM
+aliases
+nfn
+
+# CONNECT
+relay
+
+# HELO
+early_talker
+helo.checks
+#tls
+
+# MAIL FROM
+mail_from.is_resolvable
+spf
+
+# RCPT TO
+rcpt_to.in_host_list
+#aliases
+
+# DATA
+bounce
+headers
+dkim
+limit
+
