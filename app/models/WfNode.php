@@ -130,6 +130,10 @@ class WfNode extends \sys\NestedModel {
 	    $this->start_at = new \MongoDB\BSON\UTCDateTime();
 	$this->state = 'run';
 
+	//CLD: 2026-10-24T10:27:54+03:00: a step of a feature the account's tier does not have (util\Tiers: its registry `feature`, e.g. LDAP, Google, Microsoft) does not run
+	if ($this->exec && !\util\Tiers::allows($this->exec->aid, $this->getObjectName()))
+	    throw new \ErrorException(static::$label . ': ' . \util\Tiers::featureMessage($this->exec->aid, \V::app()->om->registry[$this->getObjectName()]['feature']));
+
 	$result = $this->execute($edgeId);
 
 	if (is_array($result)) {

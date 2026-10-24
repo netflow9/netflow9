@@ -241,6 +241,7 @@ class Credential extends \sys\BaseModel {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
 	$c = \V::app()->om->findOne('Credential', [ '_id' => $id, 'aid' => $wf->aid, 'project' => $wf->project ]);
-	return ($c && $c->provides($capability)) ? $c : null;
+	//CLD: 2026-10-24T10:27:54+03:00: not one of a feature the account's tier does not have (util\Tiers: the variant's registry `feature`)
+	return ($c && $c->provides($capability) && \util\Tiers::allows($wf->aid, $c->getObjectName())) ? $c : null;
     }
 }

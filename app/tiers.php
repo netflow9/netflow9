@@ -13,6 +13,7 @@
 				  files_bytes          the size of all the files (bytes)
 				  ai_monthly_credits   the System AI credits of a month (null: the installation's, SYSTEM_AI_MONTHLY_CREDITS)
 		    features    the features of the tier (the plugins name theirs: hook tiers:features), e.g. saml, ldap
+				CLD: 2026-10-24T10:27:54+03:00: + google, microsoft (the GoogleIntegration / MicrosoftIntegration plugins)
     A super-admin sets an account's tier and changes its limits / features (Administration, the account's page: Tier & limits; ./v tiers::<show | set>)
 */
 
@@ -37,7 +38,7 @@ return [
 		'files_bytes' => 10 * 1024 * 1024 * 1024,
 		'ai_monthly_credits' => 2000,
 	    ],
-	    'features' => [],
+	    'features' => [ 'google', 'microsoft' ],
 	],
 	'enterprise' => [
 	    'label' => 'Enterprise',
@@ -47,7 +48,7 @@ return [
 		'files_bytes' => null,
 		'ai_monthly_credits' => null,
 	    ],
-	    'features' => [ 'saml', 'ldap' ],
+	    'features' => [ 'saml', 'ldap', 'google', 'microsoft' ],
 	],
     ],
 ];
