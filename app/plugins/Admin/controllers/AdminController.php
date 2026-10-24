@@ -7,6 +7,8 @@
 	accounts      the accounts (search by name, hostname or a user's email)
 	account       one account: its users and projects, suspend / reactivate, view as, the plugins' sections
 	account_state POST: suspend / reactivate
+	account_tier  POST: the account's tier and its own limits / features (util\Tiers; CLD: 2026-10-24T09:45:36+03:00)
+	account_feature POST: the account's own value of a feature (util\Tiers; CLD: 2026-10-24T10:06:05+03:00: was in account_tier)
 	view_as       POST: sign in as the account's owner, read-only (Plugin::startView)
 	exit_view     POST: back (allowed while viewing as)
 */
@@ -116,7 +118,9 @@ class AdminController extends \sys\BaseController {
 	    $roleNames[(string)$r->_id] = (string)$r->name;
 	$workflows = $this->countByAccount('Workflow', [ 'aid' => $aid ], 'project');
 	$owner = $this->ownerOf($account);
-	$this->render('account', compact('account', 'users', 'projects', 'roleNames', 'workflows', 'owner'));
+	//CLD: 2026-10-24T09:45:36+03:00: what the account uses of its tier's limits (util\Tiers)
+	$usage = \util\Tiers::usage($account);
+	$this->render('account', compact('account', 'users', 'projects', 'roleNames', 'workflows', 'owner', 'usage'));
     }
 
     public function account_state($req, $resp) {
@@ -137,6 +141,67 @@ class AdminController extends \sys\BaseController {
 	    Plugin::audit($state === 'disabled' ? 'account_suspend' : 'account_reactivate', $account, ($state === 'disabled' ? 'suspended' : 'reactivated') . ($reason !== '' ? ": {$reason}" : ''));
 	}
 	$this->flash('success', $state === 'disabled' ? 'Suspended: its users are signed out, nothing new runs, its queued jobs wait' : 'Reactivated');
+	$resp->redirect('/Admin/admin/account?id=' . $account->_id);
+    }
+
+    //CLD: 2026-10-24T09:45:36+03:00: the account's tier (empty: the default) and its own changes: limits[key] (empty: the tier's, `unlimited`, or a whole number; files_bytes in MB),
+    //features[key] (empty: the tier's, 1 / 0); hook tiers:changed ($account) after (e.g. the System AI's allowance)
+    //CLD: 2026-10-24T10:06:05+03:00: the features are no longer posted here (account_feature): the account's own are kept
+    public function account_tier($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$account = $this->findAccount($req->data['id'] ?? null);
+	$tier = (string)($req->data['tier'] ?? '');
+	if ($tier !== '' && !isset(\util\Tiers::names()[$tier]))
+	    \V::app()->error(400, 'Unknown tier');
+
+	$limits = [];
+	$posted = is_array($req->data['limits'] ?? null) ? $req->data['limits'] : [];
+	foreach(\util\Tiers::LIMITS as $key => [ $label, $unit ]) {
+	    $v = strtolower(trim((string)($posted[$key] ?? '')));
+	    if ($v === '')
+		continue;
+	    if ($v === 'unlimited')
+		$limits[$key] = null;
+	    elseif (preg_match('/^\d{1,12}$/', $v))
+		$limits[$key] = $unit === 'bytes' ? (int)$v * 1024 * 1024 : (int)$v;
+	    else {
+		$this->flash('danger', "{$label}: empty (the tier's), `unlimited`, or a whole number" . ($unit === 'bytes' ? ' (MB)' : ''));
+		$resp->redirect('/Admin/admin/account?id=' . $account->_id);
+	    }
+	}
+	$features = \util\Tiers::overridesOf($account)['features'];
+
+	$this->saveTier($account, $tier, $limits, $features);
+	$changes = [];
+	foreach($limits as $key => $n)
+	    $changes[] = "{$key} " . ($n === null ? 'unlimited' : $n);
+	Plugin::audit('account_tier', $account, 'tier: ' . \util\Tiers::labelOf($account) . ($tier === '' ? ' (the default)' : '') . ($changes ? '; ' . implode(', ', $changes) : ''));
+	\V::app()->hooks->applyHook('tiers:changed', [ $account ]);
+	$this->flash('success', 'Tier: ' . \util\Tiers::labelOf($account));
+	$resp->redirect('/Admin/admin/account?id=' . $account->_id);
+    }
+
+    //CLD: 2026-10-24T10:06:05+03:00: the account's own value of feature `feature`: `value` empty (the tier's), 1 (on) or 0 (off)
+    public function account_feature($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$account = $this->findAccount($req->data['id'] ?? null);
+	$feature = (string)($req->data['feature'] ?? '');
+	$label = \util\Tiers::features()[$feature] ?? null;
+	$value = (string)($req->data['value'] ?? '');
+	if ($label === null || !in_array($value, [ '', '1', '0' ], true))
+	    \V::app()->error(400, 'Unknown feature');
+	$o = \util\Tiers::overridesOf($account);
+	if ($value === '')
+	    unset($o['features'][$feature]);
+	else
+	    $o['features'][$feature] = $value === '1';
+	$this->saveTier($account, (string)$account->tier, $o['limits'], $o['features']);
+	$state = \util\Tiers::has($account, $feature) ? 'on' : 'off';
+	Plugin::audit('account_feature', $account, "{$label}: " . ($value === '' ? "the tier's ({$state})" : $state));
+	\V::app()->hooks->applyHook('tiers:changed', [ $account ]);
+	$this->flash('success', "{$label}: {$state}" . ($value === '' ? " (the tier's)" : ''));
 	$resp->redirect('/Admin/admin/account?id=' . $account->_id);
     }
 
@@ -207,6 +272,16 @@ class AdminController extends \sys\BaseController {
     //the smallest ObjectId of unix time $ts (objects created since then: _id >= it)
     private static function oidAt($ts) {
 	return new \MongoDB\BSON\ObjectId(sprintf('%08x', (int)$ts) . str_repeat('0', 16));
+    }
+
+    //CLD: 2026-10-24T10:06:05+03:00: writes the account's tier and its own limits / features (with the collection: the account's own checks, its form's permissions, are not the super-admin's)
+    private function saveTier($account, $tier, array $limits, array $features) {
+	$overrides = [ 'limits' => (object)$limits, 'features' => (object)$features ];
+	\V::app()->om->acrossAccounts(fn() => \V::app()->om->updateOne('Account', [ '_id' => $account->_id ], [ '$set' => [ 'tier' => $tier, 'tier_overrides' => $overrides,
+	    'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]));
+	$account->tier = $tier;
+	$account->tier_overrides = $overrides;
+	\util\Tiers::reset();
     }
 
     //a message for the next page

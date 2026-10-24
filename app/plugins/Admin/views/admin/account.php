@@ -2,6 +2,8 @@
 /*
     CLD: 2026-10-22T23:00:00+03:00: new: one account (AdminController::account): $account, $users, $projects, $roleNames ([ role id => name ]), $workflows ([ project id => n ]),
     $owner (whom "view as" signs in as; null: none); suspend / reactivate, view as; the plugins' sections (hook admin:account-panels)
+    CLD: 2026-10-24T09:45:36+03:00: + $usage (util\Tiers::usage): the tier, its limits / features and the account's own (_tier_panel.php)
+    CLD: 2026-10-24T10:06:05+03:00: the features (_features_panel.php) with the plugins' sections of what the account may use after them (hook admin:account-features: the tool servers)
 */
 $name = (string)$account->name !== '' ? (string)$account->name : '(no name)';
 $this->pageTitle = 'Administration::' . $name;
@@ -81,6 +83,11 @@ $own = (string)$account->_id === (string)\V::app()->user->aid;
 	    </tbody>
 	</table>
     </div>
+
+    <?php require __DIR__ . '/_tier_panel.php'; ?>
+
+    <?php require __DIR__ . '/_features_panel.php'; ?>
+    <?php \V::app()->hooks->applyHook('admin:account-features', [ $account ]); ?>
 
     <?php \V::app()->hooks->applyHook('admin:account-panels', [ $account ]); ?>
 </div>

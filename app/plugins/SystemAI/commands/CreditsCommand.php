@@ -18,7 +18,7 @@ class CreditsCommand extends \sys\BaseController {
 	$aid = $this->account($req);
 	$w = SystemAiWallet::current($aid);
 	echo "account {$aid}: " . SystemAiWallet::balance($w) . " credits\n";
-	echo "  allowance {$w['month']}: {$w['allowance_left']} of {$w['allowance']} left (plan: " . ($w['plan'] === null ? 'the installation\'s, ' : '') . SystemAiWallet::planOf($w) . " per month)\n";
+	echo "  allowance {$w['month']}: {$w['allowance_left']} of {$w['allowance']} left (plan: " . ($w['plan'] === null ? 'the tier\'s or the installation\'s, ' : '') . SystemAiWallet::planOf($w, $aid) . " per month)\n";
 	echo "  used this month: {$w['month_used']}" . ($w['holds'] ? ', reserved: ' . array_sum(array_column($w['holds'], 'credits')) : '') . "\n";
 	foreach($w['topups'] as $t)
 	    echo "  top-up {$t['id']}: {$t['left']} of {$t['granted']}, " . gmdate('Y-m-d', $t['at']) . ' to ' . gmdate('Y-m-d', $t['expires']) . ($t['note'] !== '' ? " ({$t['note']})" : '') . "\n";

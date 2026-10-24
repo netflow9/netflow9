@@ -39,7 +39,9 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-22T01:36:46+03:00: + localai (the Lemonade AI and Ollama steps and credentials, against a fake server: commands/tests/AiTestServer.php)
     //CLD: 2026-10-23T10:00:00+03:00: + systemai (the AI steps on the System AI: plugins\SystemAI, its credits)
     //CLD: 2026-10-23T15:00:00+03:00: + http (util\Http against a local server; the HTTP steps' private-address option)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'steps' ];
+    //CLD: 2026-10-24T09:45:36+03:00: + tiers (util\Tiers: the tier, the account's own changes, the limits of data tables / rows / files refused at the limit, SAML / LDAP off without the
+    //feature, the System AI allowance of the tier, the usage)
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'tiers', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -3008,6 +3010,129 @@ class CheckCommand extends \sys\BaseController {
 		}
 		\V::app()->mongo->selectCollection(\models\Account::_database(), \models\Account::_collection())->deleteOne([ '_id' => $account->_id ]);
 	    });
+	}
+    }
+
+    //CLD: 2026-10-24T09:45:36+03:00: new: the accounts' tiers (util\Tiers), on an account made for the checks: its tier (the default, set, the account's own changes), the limits refused at the
+    //limit (data tables, rows of a table: one and many, files: a file that does not fit is not kept), SAML / LDAP off without the feature, the System AI allowance, the usage
+    private function suiteTiers() {
+	$om = \V::app()->om;
+	$T = \util\Tiers::class;
+	$restore = \V::app()->config('rt.account');
+	$account = \models\Account::create([ 'state' => 'active', 'name' => 'Check tiers ' . uniqid() ]);
+	$account->save();
+	\V::app()->var('rt.account', $account);
+	$db = \sys\BaseModel::_database();
+	$iname = 'data-table-chk-tiers-' . uniqid();
+	$files = [];
+	//the account's tier and its own changes (in memory: Tiers reads the current account)
+	$set = function($tier, array $limits = [], array $features = []) use ($account, $T) {
+	    $account->tier = $tier;
+	    $account->tier_overrides = [ 'limits' => $limits, 'features' => $features ];
+	    $T::reset();
+	};
+	$refused = function(callable $fn) {
+	    try {
+		$fn();
+		return 'ok';
+	    } catch (\util\LimitException $e) {
+		return $e->key;
+	    }
+	};
+	try {
+	    $t = $T::table();
+	    $this->check('the default tier: an account without one', [ $t['default'], $t['default'] ], [ $T::tierOf($account), $T::tierOf((string)$account->_id) ]);
+	    $set('free');
+	    $free = $t['tiers']['free'];
+	    $this->check('free: its limits, no SAML / LDAP', [ $free['limits']['datatables'], $free['limits']['files_bytes'], false, false ],
+		[ $T::limit($account, 'datatables'), $T::limit($account, 'files_bytes'), $T::has($account, 'saml'), $T::has($account, 'ldap') ]);
+	    $set('free', [ 'datatables' => null, 'datatable_records' => 7 ], [ 'saml' => true ]);
+	    $this->check('the account\'s own: no limit, another limit, a feature on', [ null, 7, true, false ],
+		[ $T::limit($account, 'datatables'), $T::limit($account, 'datatable_records'), $T::has($account, 'saml'), $T::has($account, 'ldap') ]);
+	    $set('enterprise', [], [ 'ldap' => false ]);
+	    $this->check('enterprise: no limits; a feature off', [ null, true, false ], [ $T::limit($account, 'files_bytes'), $T::has($account, 'saml'), $T::has($account, 'ldap') ]);
+
+	    //data tables: 2 of the account's, the limit 2 refuses a third
+	    $defs = \V::app()->mongo->selectCollection($db, \models\DataTableDef::_collection());
+	    $defs->insertMany([ [ 'aid' => $account->_id, 'iname' => $iname, 'name' => 'chk_a', 'project' => null ], [ 'aid' => $account->_id, 'iname' => $iname . '-b', 'name' => 'chk_b', 'project' => null ] ]);
+	    $set('free', [ 'datatables' => 3 ]);
+	    $a = $refused(fn() => $T::check($account, 'datatables'));
+	    $set('free', [ 'datatables' => 2 ]);
+	    $this->check('data tables: one more within the limit, refused at it', [ 'ok', 'datatables' ], [ $a, $refused(fn() => $T::check($account, 'datatables')) ]);
+
+	    //rows of a table: 3 rows, the limit 5
+	    $rows = \V::app()->mongo->selectCollection($db, $iname);
+	    $rows->insertMany([ [ 'aid' => $account->_id ], [ 'aid' => $account->_id ], [ 'aid' => $account->_id ] ]);
+	    $set('free', [ 'datatable_records' => 5 ]);
+	    $this->check('rows: 2 more fit, 3 more refused (all or none), another table is its own', [ 'ok', 'datatable_records', 'ok' ],
+		[ $refused(fn() => $T::check($account, 'datatable_records', 2, $iname)), $refused(fn() => $T::check($account, 'datatable_records', 3, $iname)),
+		$refused(fn() => $T::check($account, 'datatable_records', 5, $iname . '-b')) ]);
+	    try {
+		$T::check($account, 'datatable_records', 3, $iname);
+		$message = '';
+	    } catch (\util\LimitException $e) {
+		$message = $e->getMessage();
+	    }
+	    $this->check('the message: the plan, the limit, whom to ask', true, str_contains($message, '(Free)') && str_contains($message, 'at most 5 rows in a data table') && str_contains($message, 'administrator'));
+
+	    //files: the limit 100 bytes
+	    $meta = [ 'metadata' => [ 'aid' => $account->_id, 'project' => null, 'owner' => null, 'source' => 'check' ] ];
+	    $set('free', [ 'files_bytes' => 100 ]);
+	    $a = $refused(function() use (&$files, $meta) {
+		$files[] = \models\File::createFromString('chk-a.txt', str_repeat('a', 60), $meta);
+	    });
+	    $b = $refused(function() use (&$files, $meta) {
+		$files[] = \models\File::createFromString('chk-b.txt', str_repeat('b', 60), $meta);
+	    });
+	    //a stream that does not say its size: written, then removed (over the limit)
+	    $c = $refused(function() use (&$files, $meta) {
+		$s = popen('head -c 60 /dev/zero', 'r');
+		try {
+		    $files[] = \models\File::createFromStream('chk-c.txt', $s, $meta);
+		} finally {
+		    pclose($s);
+		}
+	    });
+	    $this->check('files: one fits, the next refused, a stream of unknown size removed once written; the account keeps 1 file, 60 bytes', [ 'ok', 'files_bytes', 'files_bytes', 1, 60 ],
+		[ $a, $b, $c, \V::app()->mongo->selectCollection(\models\File::_database(), \models\File::_collection())->countDocuments([ 'metadata.aid' => $account->_id ]),
+		$T::used($account, 'files_bytes') ]);
+
+	    //SAML / LDAP: their sign-in off without the feature (settings kept)
+	    if (class_exists(\plugins\Saml\util\SamlAuth::class)) {
+		$set('free');
+		\plugins\Saml\util\SamlAuth::reset();
+		$this->check('SAML: no sign-in without the feature', null, \plugins\Saml\util\SamlAuth::enabledFor($account->_id));
+	    }
+	    if (class_exists(\plugins\Ldap\util\LdapAuth::class)) {
+		$set('free');
+		\plugins\Ldap\util\LdapAuth::reset();
+		$this->check('LDAP: no sign-in, the step and its credential not offered without the feature', [ null, false, false ],
+		    [ \plugins\Ldap\util\LdapAuth::enabledFor($account->_id), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ]);
+	    }
+
+	    //the System AI's allowance: the account's plan, else the tier's, else the installation's
+	    if (class_exists(\plugins\SystemAI\models\SystemAiWallet::class)) {
+		$W = \plugins\SystemAI\models\SystemAiWallet::class;
+		$set('free', [ 'ai_monthly_credits' => 123 ]);
+		$tierPlan = $W::planOf($W::blank(), $account->_id);
+		$own = $W::planOf([ 'plan' => 50 ] + $W::blank(), $account->_id);
+		$set('free', [ 'ai_monthly_credits' => null ]);
+		$this->check('System AI: the tier\'s allowance, the account\'s plan before it, the installation\'s without either', [ 123, 50, \plugins\SystemAI\util\SystemAi::monthlyCredits() ],
+		    [ $tierPlan, $own, $W::planOf($W::blank(), $account->_id) ]);
+	    }
+
+	    $u = $T::usage($account);
+	    $this->check('usage: tables, the largest table\'s rows, files; per project', [ 2, 3, 60, 2 ],
+		[ $u['totals']['datatables'], $u['totals']['datatable_records'], $u['totals']['files_bytes'], $u['projects']['']['datatables'] ?? null ]);
+	} finally {
+	    \V::app()->var('rt.account', $restore);
+	    $T::reset();
+	    foreach($files as $fid)
+		$om->acrossAccounts(fn() => $om->findOne('File', [ '_id' => $fid ]))?->delete();
+	    \V::app()->mongo->selectCollection(\models\File::_database(), \models\File::_collection())->deleteMany([ 'metadata.aid' => $account->_id ]);
+	    \V::app()->mongo->selectCollection($db, \models\DataTableDef::_collection())->deleteMany([ 'aid' => $account->_id ]);
+	    \V::app()->mongo->selectCollection($db, $iname)->drop();
+	    \V::app()->mongo->selectCollection(\models\Account::_database(), \models\Account::_collection())->deleteOne([ '_id' => $account->_id ]);
 	}
     }
 

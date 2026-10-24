@@ -23,6 +23,16 @@ class SysPermissions {
 		'scopes' => [ 'global' ],
 		'desc' => 'Update account settings'
 	    ],
+	    //CLD: 2026-10-24T09:45:36+03:00: the usage page (AccountController::usage): what the account uses of its tier's limits, in all and per project; owners (also the roles already stored)
+	    [
+		'name' => 'Account::usage',
+		'scopes' => [ 'global' ],
+		'desc' => 'View the account\'s usage and its plan\'s limits',
+		'defaults' => [
+		    'owner' => [ 'enabled' => true, 'scope' => 'global' ],
+		    'member' => [ 'enabled' => false ]
+		]
+	    ],
 	];
 
 	//user

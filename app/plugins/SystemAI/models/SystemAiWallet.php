@@ -5,6 +5,7 @@
     CLD: 2026-10-23T10:00:00+03:00: the System AI's (plugins\SystemAI: the Assistant and the AI steps use them; was plugins\Assistant\models\AssistantWallet, collection assistant_wallets)
 	allowance        the plan's credits of the month: granted on the first request of each calendar month (UTC), no rollover (what is left of the month before is lost).
 			 The plan: `plan` (set per account: CreditsCommand plan), else config ai.system.monthly_credits (util\SystemAi::monthlyCredits)
+			 CLD: 2026-10-24T09:45:36+03:00: the plan: `plan`, else the account's tier's (util\Tiers: ai_monthly_credits), else the installation's
 	topups           the credits granted on top (CreditsCommand add): [ { id, granted, left, at, expires (unix s: at + TOPUP_MONTHS), note } ]; used after the allowance,
 			 the one that expires first first; what is left at its expiry is lost
 	holds            the credits reserved by running requests (reserve): [ { id, credits, until (unix s) } ]; settled by settle(), else freed after HOLD_LEASE
@@ -50,17 +51,22 @@ class SystemAiWallet extends \sys\BaseModel {
     }
 
     //the plan's credits per month of wallet $w
-    public static function planOf(array $w) {
+    //CLD: 2026-10-24T09:45:36+03:00: + $aid: the account's, whose tier may set them (util\Tiers: ai_monthly_credits), before the installation's
+    public static function planOf(array $w, $aid = null) {
 	//CLD: 2026-10-23T10:00:00+03:00: SystemAi::monthlyCredits (was config assistant.system)
-	return $w['plan'] !== null ? (int)$w['plan'] : SystemAi::monthlyCredits();
+	if ($w['plan'] !== null)
+	    return (int)$w['plan'];
+	$tier = $aid !== null ? \util\Tiers::limit((string)$aid, 'ai_monthly_credits') : null;
+	return $tier !== null ? (int)$tier : SystemAi::monthlyCredits();
     }
 
     //$w at time $now: a new month's allowance (the last one's left is lost), the expired top-ups emptied, the old reservations freed => [ $w, ledger entries ]
-    public static function refresh(array $w, $now) {
+    //CLD: 2026-10-24T09:45:36+03:00: + $aid: the account's (planOf)
+    public static function refresh(array $w, $now, $aid = null) {
 	$entries = [];
 	$month = gmdate('Y-m', $now);
 	if ($w['month'] !== $month) {
-	    $plan = self::planOf($w);
+	    $plan = self::planOf($w, $aid);
 	    $lost = (int)$w['allowance_left'];
 	    $w['month'] = $month;
 	    $w['allowance'] = $w['allowance_left'] = $plan;
@@ -160,7 +166,7 @@ class SystemAiWallet extends \sys\BaseModel {
 
     //the wallet of account $aid as it is now (refreshed, not written): the array of blank()
     public static function current($aid) {
-	return self::refresh(self::load($aid), time())[0];
+	return self::refresh(self::load($aid), time(), $aid)[0];
     }
 
     private static function load($aid) {
@@ -183,7 +189,7 @@ class SystemAiWallet extends \sys\BaseModel {
 	    $now = time();
 	    $w = self::load($aid);
 	    $v = (int)$w['v'];
-	    [ $w, $entries ] = self::refresh($w, $now);
+	    [ $w, $entries ] = self::refresh($w, $now, $aid);
 	    [ $w, $more, $result ] = $fn($w, $now);
 	    $entries = array_merge($entries, $more);
 	    $w['v'] = $v + 1;
@@ -245,10 +251,11 @@ class SystemAiWallet extends \sys\BaseModel {
     }
 
     //sets the plan of account $aid: $credits per month (null: the installation's). This month's allowance changes by the difference (not below 0)
+    //CLD: 2026-10-24T09:45:36+03:00: null: the account's tier's, else the installation's (planOf)
     public static function setPlan($aid, $credits) {
-	return self::change($aid, function($w, $now) use ($credits) {
+	return self::change($aid, function($w, $now) use ($aid, $credits) {
 	    $w['plan'] = $credits === null ? null : max(0, (int)$credits);
-	    $plan = self::planOf($w);
+	    $plan = self::planOf($w, $aid);
 	    $diff = $plan - (int)$w['allowance'];
 	    $w['allowance'] = $plan;
 	    $w['allowance_left'] = max(0, (int)$w['allowance_left'] + $diff);

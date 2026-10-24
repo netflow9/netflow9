@@ -32,4 +32,18 @@ class AccountController extends \sys\BaseController {
 	$this->render('settings', compact('account'));
     }
 
+    //CLD: 2026-10-24T09:45:36+03:00: what the account uses of its tier's limits (util\Tiers), in all and per project (only a breakdown: the limits are the account's)
+    public function usage($req, $resp) {
+	if (!\V::app()->user->can('Account::usage'))
+	    \V::app()->error(403, 'Unauthorized');
+
+	$account = \V::app()->config('rt.account');
+	$usage = \util\Tiers::usage($account);
+	$limits = \util\Tiers::limits($account);
+	$projects = [];
+	foreach(\V::app()->om->find('Project', [ 'aid' => $account->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $p)
+	    $projects[(string)$p->_id] = $p;
+	$this->render('usage', compact('account', 'usage', 'limits', 'projects'));
+    }
+
 }

@@ -28,9 +28,9 @@ usort($topups, fn($a, $b) => $b['at'] <=> $a['at']);
 	<div class="col-md-5">
 	    <form method="post" action="<?= \V::app()->createUrl('/SystemAI/admin/plan') ?>" class="m-0">
 		<?= $csrf ?><input type="hidden" name="id" value="<?= \V::app()->html->escape($aid) ?>">
-		<label class="form-label small mb-1" for="plan-credits">Monthly allowance <span class="text-muted">(empty: the installation's, <?= SystemAi::monthlyCredits() ?>)</span></label>
+		<label class="form-label small mb-1" for="plan-credits">Monthly allowance <span class="text-muted">(empty: the tier's or the installation's, <?= (int)SystemAiWallet::planOf(array_merge($wallet, [ 'plan' => null ]), $aid) ?>)</span></label>
 		<div class="d-flex gap-2">
-		    <input id="plan-credits" type="number" min="0" step="1" name="credits" class="form-control form-control-sm" value="<?= $wallet['plan'] === null ? '' : (int)$wallet['plan'] ?>" placeholder="<?= (int)SystemAiWallet::planOf(array_merge($wallet, [ 'plan' => null ])) ?>">
+		    <input id="plan-credits" type="number" min="0" step="1" name="credits" class="form-control form-control-sm" value="<?= $wallet['plan'] === null ? '' : (int)$wallet['plan'] ?>" placeholder="<?= (int)SystemAiWallet::planOf(array_merge($wallet, [ 'plan' => null ]), $aid) ?>">
 		    <button type="submit" class="btn btn-sm btn-outline-secondary">Set</button>
 		</div>
 	    </form>

@@ -19,7 +19,7 @@ $states = [ 'active' => 'text-bg-success', 'disabled' => 'text-bg-danger', 'inco
 
     <div class="table-responsive">
 	<table class="table table-sm table-hover align-middle small">
-	    <thead><tr><th>Account</th><th>State</th><th>Created</th><th class="text-end">Users</th><th class="text-end">Projects</th><th class="text-end">Workflows</th><th class="text-end">Runs, 30 d</th><th>Also</th></tr></thead>
+	    <thead><tr><th>Account</th><th>State</th><th>Tier</th><th>Created</th><th class="text-end">Users</th><th class="text-end">Projects</th><th class="text-end">Workflows</th><th class="text-end">Runs, 30 d</th><th>Also</th></tr></thead>
 	    <tbody>
 	    <?php foreach($accounts as $a):
 		$aid = (string)$a->_id;
@@ -32,6 +32,8 @@ $states = [ 'active' => 'text-bg-success', 'disabled' => 'text-bg-danger', 'inco
 			<div class="text-muted"><?= \V::app()->html->escape($a->hostname) ?></div>
 		    </td>
 		    <td><span class="badge <?= $states[(string)$a->state] ?? 'text-bg-secondary' ?>"><?= \V::app()->html->escape($a->schema['state']->choices[(string)$a->state] ?? $a->state) ?></span></td>
+		    <?php //CLD: 2026-10-24T09:45:36+03:00: the account's tier (util\Tiers; the default's in grey) ?>
+		    <td class="<?= (string)$a->tier === '' ? 'text-muted' : '' ?>"><?= \V::app()->html->escape(\util\Tiers::labelOf($a)) ?></td>
 		    <td class="text-nowrap"><?= \V::app()->html->escape(gmdate('Y-m-d', $a->_id->getTimestamp())) ?></td>
 		    <td class="text-end"><?= number_format($counts['users'][$aid] ?? 0) ?></td>
 		    <td class="text-end"><?= number_format($counts['projects'][$aid] ?? 0) ?></td>
@@ -41,7 +43,7 @@ $states = [ 'active' => 'text-bg-success', 'disabled' => 'text-bg-danger', 'inco
 		</tr>
 	    <?php endforeach; ?>
 	    <?php if (!$accounts): ?>
-		<tr><td colspan="8" class="text-muted">No account<?= $q !== '' ? ' matches' : '' ?>.</td></tr>
+		<tr><td colspan="9" class="text-muted">No account<?= $q !== '' ? ' matches' : '' ?>.</td></tr>
 	    <?php endif; ?>
 	    </tbody>
 	</table>

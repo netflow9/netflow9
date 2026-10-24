@@ -280,6 +280,8 @@ class McpTools {
 		foreach($list as $i => $item) {
 		    $models[] = self::rowFrom($t, $columns, $item, null, 'row ' . ($i + 1) . ': ');
 		}
+		//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of rows in a data table (util\Tiers): all of them, or none
+		\util\Tiers::check($aid, 'datatable_records', count($models), $t->iname);
 		$ids = [];
 		foreach($models as $row) {
 		    $row->save();
@@ -309,6 +311,8 @@ class McpTools {
 		    throw new \ErrorException('columns: give at least one column');
 		if (count($columns) > self::MAX_COLUMNS)
 		    throw new \ErrorException('columns: at most ' . self::MAX_COLUMNS . ' columns');
+		//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of data tables (util\Tiers)
+		\util\Tiers::check($aid, 'datatables');
 		//the next free internal name (as the data table pages)
 		$n = $om->count('DataTableDef', [ 'aid' => $aid ]);
 		do {

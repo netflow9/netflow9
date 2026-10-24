@@ -57,6 +57,14 @@ class DatatableController extends \sys\BaseController {
 	    \V::app()->error(403, 'Unauthorized');
 
 	$account = \V::app()->var('rt.account');
+	//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of data tables (util\Tiers)
+	try {
+	    \util\Tiers::check($account, 'datatables');
+	} catch (\util\LimitException $e) {
+	    $this->addToast('danger', 'Limit reached', $e->getMessage());
+	    $this->redirect(\V::app()->createUrl('/datatable/list'));
+	    return;
+	}
 	$n = \V::app()->om->count('DataTableDef', [ 'aid' => $account->_id ]);
 
 	$dt = \V::app()->om->create('DataTableDef', [
@@ -105,6 +113,13 @@ class DatatableController extends \sys\BaseController {
 
 	if (!$req->is('post')) {
 	    $this->render('import_upload', [ 'error' => null ]);
+	    return;
+	}
+	//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of data tables (util\Tiers), before the file is uploaded
+	try {
+	    \util\Tiers::check(\V::app()->var('rt.account'), 'datatables');
+	} catch (\util\LimitException $e) {
+	    $this->render('import_upload', [ 'error' => $e->getMessage() ]);
 	    return;
 	}
 
@@ -219,6 +234,15 @@ class DatatableController extends \sys\BaseController {
 	$dt = \V::app()->om->create('DataTableDef', [ 'aid' => $account->_id, 'name' => $name, 'iname' => $iname, 'project' => $this->project->_id ]);
 	if (!$dt->validates())
 	    $errors['name'] = array_merge(...array_values(array_map(fn($m) => (array)$m, (array)$dt->errors())));
+	//CLD: 2026-10-24T09:45:36+03:00: the tier's limits (util\Tiers): one more table, and its rows (all the file's: some may be skipped)
+	try {
+	    \util\Tiers::check($account, 'datatables');
+	    $limit = \util\Tiers::limit($account, 'datatable_records');
+	    if ($limit !== null && count($dataRows) > $limit)
+		throw new \util\LimitException(\util\Tiers::limitMessage($account, 'datatable_records') . ' The file has ' . number_format(count($dataRows)) . ' rows.', 'datatable_records', $limit, 0);
+	} catch (\util\LimitException $e) {
+	    $errors['name'][] = $e->getMessage();
+	}
 
 	//the columns through the column form (models\datatable\FieldForm: key rules, types); select choices = the column's values
 	$forms = [];
@@ -457,7 +481,15 @@ class DatatableController extends \sys\BaseController {
 
 	if ($req->is('post')) {
 	    $row->assign($req->data, true);
-	    if ($row->validates()) {
+	    //CLD: 2026-10-24T09:45:36+03:00: the tier's limit of rows in a data table (util\Tiers)
+	    $over = null;
+	    try {
+		\util\Tiers::check(\V::app()->var('rt.account'), 'datatable_records', 1, $dt->iname);
+	    } catch (\util\LimitException $e) {
+		$over = $e->getMessage();
+		$this->addToast('danger', 'Limit reached', $over);
+	    }
+	    if ($over === null && $row->validates()) {
 		$row->save();
 		$this->addToast('success', 'OK', 'Row added!');
 		$this->addEvent('object::created', [ 'object' => $dt->iname, 'oid' => (string)$row->_id ]);

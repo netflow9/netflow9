@@ -4,7 +4,13 @@ $this->pageTitle = 'Workflow: ' . (string)$wf;
 
 //we need to build a list of available nodes for the builder
 //CLD: 2026-10-05T21:46:57+03:00: util\JSON::encode (same flags, shared)
-$nodeDefs = \util\JSON::encode(\models\WfNode::getAll());
+//CLD: 2026-10-24T09:45:36+03:00: the steps of a feature the account's tier does not have: `unavailable` (not in the palette; those already in the workflow are still shown)
+$nodeDefs = \models\WfNode::getAll();
+foreach($nodeDefs as $fq => $def) {
+    if (!\util\Tiers::allows(\V::app()->config('rt.account'), $def['objectName']))
+	$nodeDefs[$fq]['unavailable'] = true;
+}
+$nodeDefs = \util\JSON::encode($nodeDefs);
 
 //canvas state comes from the query string; accept only numbers, as it is injected in JS
 $__canvas_num = function($key) {

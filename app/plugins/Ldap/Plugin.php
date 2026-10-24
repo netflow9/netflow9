@@ -25,13 +25,16 @@ class Plugin {
 	    'LdapLink' => [
 		'class' => __NAMESPACE__ . '\\models\\LdapLink',
 	    ],
+	    //CLD: 2026-10-24T09:45:36+03:00: `feature`: of the accounts whose tier has it (util\Tiers: new credentials, the designer's palette)
 	    'CredentialLdap' => [
 		'class' => __NAMESPACE__ . '\\models\\CredentialLdap',
 		'variant-of' => 'Credential',
+		'feature' => 'ldap',
 	    ],
 	    'NodeAppLdap' => [
 		'class' => __NAMESPACE__ . '\\models\\NodeAppLdap',
 		'wfNode' => true,
+		'feature' => 'ldap',
 	    ],
 	]);
 
@@ -42,11 +45,17 @@ class Plugin {
 	\V::app()->hooks->addHook('identity:authenticate', [ util\LdapAuth::class, 'onAuthenticate' ]);
 	\V::app()->hooks->addHook('identity:password-source', [ util\LdapAuth::class, 'onPasswordSource' ]);
 
+	//CLD: 2026-10-24T09:45:36+03:00: a feature of the accounts' tiers (util\Tiers: `ldap`): without it, no LDAP sign-in, no settings, no new LDAP credentials, the LDAP step does not
+	//run (the settings and credentials are kept)
+	\V::app()->hooks->addHook('tiers:features', function(\ArrayObject $features) {
+	    $features['ldap'] = 'LDAP (sign-in, step)';
+	});
+
 	if (\V::app()->config('app.mode') != 'web')
 	    return;
 
 	\V::app()->hooks->addHook('layout:settings-menu', function() {
-	    if (\V::app()->user->can('Account::update'))
+	    if (\V::app()->user->can('Account::update') && \util\Tiers::has(\V::app()->var('rt.account'), 'ldap'))
 		echo '<a href="' . \V::app()->createUrl('/Ldap/ldap/settings') . '" class="nav-link"><i class="bi bi-diagram-3"></i> LDAP sign-in</a>';
 	});
     }

@@ -60,6 +60,19 @@ class Plugin {
 	    ]);
 	    echo \V::app()->view->renderFile('/plugins/SystemAI/views/admin/account_panel', $data);
 	});
+	//CLD: 2026-10-24T09:45:36+03:00: the tiers (util\Tiers): the credits used this month on the usage page; a new tier gives this month's allowance at once (when the account has no plan of its own)
+	\V::app()->hooks->addHook('tiers:usage', function($aid, \ArrayObject $extra) {
+	    if (!util\SystemAi::config())
+		return;
+	    $w = \V::app()->om->acrossAccounts(fn() => models\SystemAiWallet::current($aid));
+	    $extra['ai_monthly_credits'] = [ (int)$w['month_used'], (int)$w['allowance'] ];
+	});
+	\V::app()->hooks->addHook('tiers:changed', function($account) {
+	    \V::app()->om->acrossAccounts(function() use ($account) {
+		if (models\SystemAiWallet::current($account->_id)['plan'] === null)
+		    models\SystemAiWallet::setPlan($account->_id, null);
+	    });
+	});
 	\V::app()->hooks->addHook('admin:installation-panels', function() {
 	    echo \V::app()->view->renderFile('/plugins/SystemAI/views/admin/installation_panel', [ 'system' => util\SystemAi::config(),
 		'table' => models\SystemAiWallet::rateTable() ]);

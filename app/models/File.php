@@ -265,9 +265,27 @@ class File extends \sys\BaseModel {
 	if (!is_resource($stream))
 	    throw new \ErrorException('stream is not a resource');
 
+	//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of the account's files (util\Tiers): refused when the file's size (when the stream knows it) does not fit; checked again once written
+	//(a stream of unknown size): the file is removed when the account goes over the limit. LimitException: the step / the page shows its message
+	$aid = $options['metadata']['aid'] ?? null;
+	if (!empty($aid)) {
+	    $st = @fstat($stream);
+	    $size = is_array($st) && (int)($st['size'] ?? 0) > 0 ? max(0, (int)$st['size'] - (int)@ftell($stream)) : 0;
+	    \util\Tiers::check($aid, 'files_bytes', $size);
+	}
+
 	//CLD: 2026-10-06T09:07:47+03:00: GridFS only takes custom data in `metadata`: copy metadata.aid to a top-level `aid`
 	//on the stored file document right after the upload (as File::beforeSave does on model saves)
 	$file_id = self::_bucket()->uploadFromStream($filename, $stream, $options);
+
+	if (!empty($aid)) {
+	    try {
+		\util\Tiers::check($aid, 'files_bytes', 0);
+	    } catch (\util\LimitException $e) {
+		self::_bucket()->delete($file_id);
+		throw $e;
+	    }
+	}
 
 	//CLD: 2026-10-06T09:09:26+03:00: same for `project` (was aid only)
 	$set = [];
