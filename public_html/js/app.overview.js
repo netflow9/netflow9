@@ -93,6 +93,14 @@ window.app.Overview = (function() {
 		this.load();
 	    }));
 	    this.root.querySelector('.ov-refresh').addEventListener('click', () => this.load());
+	    //CLD: 2026-10-24T11:20:00+03:00: the charts take the theme's colors when it changes (app.theme); the listener goes away with the page (pjax: the overview no longer in it)
+	    const onTheme = () => {
+		if (!this.root.isConnected)
+		    document.removeEventListener('app:themechange', onTheme);
+		else if (this.data)
+		    this.render();
+	    };
+	    document.addEventListener('app:themechange', onTheme);
 	}
 
 	async load() {

@@ -16,11 +16,27 @@
 	<meta name="csrf-param" content="<?= \V::app()->csrf->getKey() ?>">
 	<meta name="csrf-token" content="<?= \V::app()->csrf->getToken() ?>">
 	
-	<meta name="color-scheme" content="<?= \V::app()->config('app.color-scheme') ?>">
+	<?php //CLD: 2026-10-24T11:51:46+03:00: light / dark / auto (the system's), chosen per browser (localStorage netflow9.theme: app.theme in app.js; default app.color-scheme), set on <html> before
+	//the styles load (no flash of the other theme) ?>
+	<meta name="color-scheme" content="light dark">
+	<script>
+	(function() {
+	    var choice = <?= \util\JSON::encode(in_array(\V::app()->config('app.color-scheme'), [ 'light', 'dark', 'auto' ], true) ? \V::app()->config('app.color-scheme') : 'auto') ?>;
+	    try {
+		var stored = localStorage.getItem('netflow9.theme');
+		if (stored === 'light' || stored === 'dark' || stored === 'auto')
+		    choice = stored;
+	    } catch (e) {}
+	    var dark = choice === 'dark' || (choice === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+	    document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+	    document.documentElement.setAttribute('data-theme-choice', choice);
+	})();
+	</script>
 
 	<link href="data:image/png;base64,<?= $icon ?>" rel="icon" type="image/png" />
 
-	<link rel="stylesheet" href="/css/theme.css">
+	<?php //CLD: 2026-10-24T11:51:46+03:00: + its modification time (a new build is loaded at once) ?>
+	<link rel="stylesheet" href="/css/theme.css?<?= @filemtime(BASE . '/public_html/css/theme.css') ?>">
 	<link rel="stylesheet" href="/css/bootstrap-icons.css">
 
 	<?= \V::app()->cs->renderPageCssFiles(); ?>
