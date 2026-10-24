@@ -8,6 +8,9 @@ class BaseController extends \sys\BaseObject {
 
     public $events = [];
 
+    //CLD: 2026-10-24T09:06:00+03:00: the events (e.g. toasts) of a full-page redirect, kept in the session for the next page (redirect / render)
+    const FLASH_EVENTS = 'flash.events';
+
     public function _init() {
 	parent::_init();
 
@@ -63,8 +66,20 @@ class BaseController extends \sys\BaseObject {
 	if ($this->layout === null && \V::app()->request->is('ajax'))
 	    $this->layout = 'ajax';
 
+	//CLD: 2026-10-24T09:06:00+03:00: + the events kept by a full-page redirect (redirect()), before this request's own; only on a page that shows them (pjax, or a full page; not
+	//an ajax fragment)
+	$shows = \V::app()->request->is('pjax') || !\V::app()->request->is('ajax');
+	$flash = $shows && \V::app()->session->hasState(self::FLASH_EVENTS) ? \V::app()->session->getState(self::FLASH_EVENTS) : null;
+	if (is_array($flash)) {
+	    \V::app()->session->setState(self::FLASH_EVENTS, null);
+	    $this->events = array_merge($flash, $this->events);
+	}
+
 	//render the template
 	\V::app()->view->meta = $this->events;
+	//CLD: 2026-10-24T09:06:00+03:00: a full page has no meta (pjax only): its events are dispatched by a page script, after app.js has set up app.events (toasts, ...)
+	if ($this->events && !\V::app()->request->is('pjax') && !\V::app()->request->is('ajax'))
+	    \V::app()->cs->addPageScript('if (window.app && app.events) ' . \util\JSON::encode($this->events) . '.forEach((e) => app.events.dispatch(e));');
 	return \V::app()->view->render($template, $data, $this->layout);
     }
 
@@ -81,6 +96,9 @@ class BaseController extends \sys\BaseObject {
 	    \V::app()->end();
 	}
 
+	//CLD: 2026-10-24T09:06:00+03:00: a full-page redirect: the events (e.g. toasts) are kept for the next page (were lost)
+	if ($this->events)
+	    \V::app()->session->setState(self::FLASH_EVENTS, array_merge((array)\V::app()->session->getState(self::FLASH_EVENTS), $this->events));
 	return \V::app()->response->redirect($url);
     }
 

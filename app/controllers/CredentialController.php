@@ -60,7 +60,6 @@ class CredentialController extends \sys\BaseController {
     }
 
     public function create($req, $resp) {
-	//CLD: 2026-10-09T17:21:14+03:00: ?type= is a Credential variant (was a CredentialType)
 	$type = (string)($req->query['type'] ?? '');
 	if (!\V::app()->om->isDefined($type))
 	    \V::app()->error(400, 'Unknown credential type');
@@ -80,9 +79,8 @@ class CredentialController extends \sys\BaseController {
 
     public function update($req, $resp) {
 	$cred = $this->findOrError('Credential::update');
-	//CLD: 2026-10-09T17:21:14+03:00: a stored variant that is no longer registered loads as a plain Credential
-	//CLD: 2026-10-10T18:33:37+03:00: checked with om->isVariant() on its object name (Credential::isVariant() removed)
-	if (\V::app()->om->isVariant($cred->getObjectName()) !== \models\Credential::FAMILY)
+	//a stored variant that is no longer registered loads as a plain Credential
+	if (\V::app()->om->isVariant($cred->getObjectName()) !== 'Credential')
 	    \V::app()->error(409, 'The type of this credential is not available (plugin disabled?)');
 
 	if ($req->is('post') && $this->saveForm($cred, $req->data)) {
@@ -95,8 +93,7 @@ class CredentialController extends \sys\BaseController {
     }
 
     //name + the variant's values; the variant never changes; false when invalid
-    //CLD: 2026-10-09T17:21:14+03:00: the credential is the form model: its form fields are assigned (with the field permissions) and validated together (was: the name,
-    //then the type's form model through assignValues)
+    //the credential is the form model: its form fields are assigned (with the field permissions) and validated together
     private function saveForm($cred, $data) {
 	$data = is_array($data) ? $data : [];
 	$before = $cred::isOAuth() ? [ $cred->clientId, $cred->tenant ] : null;
@@ -129,7 +126,6 @@ class CredentialController extends \sys\BaseController {
     }
 
     //the variant's connection test; the result is kept on the credential
-    //CLD: 2026-10-09T17:21:14+03:00: $cred->test() of its variant (was the type class's static test)
     public function test($req, $resp) {
 	$cred = $this->findOrError('Credential::update');
 	if (!$req->is('post'))
@@ -156,7 +152,7 @@ class CredentialController extends \sys\BaseController {
     public function connect($req, $resp) {
 	$cred = $this->findOrError('Credential::update');
 	if (!$cred::isOAuth())
-	    $this->back('This credential does not sign in at a provider', true);
+	    $this->back('danger', 'Not connected', 'This credential does not sign in at a provider');
 
 	$state = bin2hex(random_bytes(16));
 	$verifier = \util\OAuth2::newVerifier();
@@ -177,7 +173,7 @@ class CredentialController extends \sys\BaseController {
 
 	$state = (string)($req->query['state'] ?? '');
 	if (!is_array($pending) || $state === '' || !hash_equals((string)$pending['state'], $state) || $pending['expires'] < time()) {
-	    $this->back('The sign-in expired or did not start here; use Connect again', true);
+	    $this->back('danger', 'Not connected', 'The sign-in expired or did not start here; use Connect again');
 	}
 
 	$cred = \V::app()->om->findOne('Credential', [
@@ -186,11 +182,11 @@ class CredentialController extends \sys\BaseController {
 	    'project' => $this->project->_id,
 	]);
 	if (empty($cred) || !$cred::isOAuth() || !\V::app()->user->can('Credential::update', [ 'object' => $cred ])) {
-	    $this->back('Credential not found', true);
+	    $this->back('danger', 'Not connected', 'Credential not found');
 	}
 
 	if (!empty($req->query['error'])) {
-	    $this->back('The provider refused: ' . mb_substr((string)($req->query['error_description'] ?? $req->query['error']), 0, 300), true);
+	    $this->back('danger', 'Not connected', 'The provider refused: ' . mb_substr((string)($req->query['error_description'] ?? $req->query['error']), 0, 300));
 	}
 
 	try {
@@ -200,13 +196,15 @@ class CredentialController extends \sys\BaseController {
 	    $cred->save();
 	} catch (\Exception $e) {
 	    $cred->setStatus('error', $e->getMessage());
-	    $this->back('Sign-in failed: ' . $e->getMessage(), true);
+	    $this->back('danger', 'Not connected', 'Sign-in failed: ' . $e->getMessage());
 	}
-	$this->back('Connected ' . ($cred->email ?: $cred->name), false);
+	$this->back('success', 'Connected', 'Connected ' . ($cred->email ?: $cred->name));
     }
 
-    //back to the list (full page) with a message
-    private function back($message, $isError) {
-	\V::app()->response->redirect(\V::app()->createUrl('/credential/list', [ $isError ? 'error' : 'message' => $message ]));
+    //back to the list with a toast
+    //CLD: 2026-10-24T09:06:00+03:00: a toast (addToast, kept across the redirect by BaseController::redirect) and redirect() (was the message in the list's URL, ?error / ?message)
+    private function back($type, $title, $message) {
+	$this->addToast($type, $title, \V::app()->html->escape($message));
+	$this->redirect('/credential/list');
     }
 }
