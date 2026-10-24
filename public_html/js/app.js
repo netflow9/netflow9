@@ -280,12 +280,24 @@ app.formatter = (function() {
     }
 
     return {
-	bytes: function(bytes) {
-	    if (!bytes)
-		return '0 B';
-	    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-	    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-	    return (bytes / Math.pow(1024, i)).toFixed(i ? 1 : 0) + ' ' + units[i];
+	//CLD: 2026-10-24T18:00:00+03:00: as util\Format::bytes: 1536 -> "1.5 KB", 0 -> "0 B"; binary (1024) or decimal (1000) units, KB / MB / GB / TB / PB;
+	//trailing zeros dropped, rounding up to the next unit (1023.96 KB -> "1 MB"); empty or not a number -> '' (was "0 B"; always 1 decimal, up to TB)
+	bytes: function(bytes, decimals = 1, binary = true) {
+	    if (bytes === null || bytes === undefined || bytes === '' || isNaN(bytes))
+		return '';
+	    bytes = Number(bytes);
+	    const base = binary ? 1024 : 1000;
+	    const units = [ 'B', 'KB', 'MB', 'GB', 'TB', 'PB' ];
+	    let i = 0;
+	    while (Math.abs(bytes) >= base && i < units.length - 1) {
+		bytes /= base;
+		i++;
+	    }
+	    if (i > 0 && i < units.length - 1 && Math.abs(Number(bytes.toFixed(decimals))) >= base) {
+		bytes /= base;
+		i++;
+	    }
+	    return (i === 0 ? String(Math.trunc(bytes)) : String(Number(bytes.toFixed(decimals)))) + ' ' + units[i];
 	},
 
 	//CLD: 2026-10-24T17:30:00+03:00: a date / datetime in the account's format (<html> data-date-format / data-datetime-format: util\Format, PHP date() tokens,
