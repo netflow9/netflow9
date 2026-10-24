@@ -5,7 +5,8 @@ if (!window.app)
 //
 //   const designer = new app.Workflow('canvas-wrap', options);     (the canvas element, or its id)
 //
-//methods: fitView(), showNode(id), getNodes(), setNodes(nodes), undo(), redo(), commitNow(), hasPendingChange(), applySaved(sent, nodes), setStepIssues(issues), destroy();
+//CLD: 2026-10-24T00:30:00+03:00: + zoomBy(factor)
+//methods: fitView(), zoomBy(factor), showNode(id), getNodes(), setNodes(nodes), undo(), redo(), commitNow(), hasPendingChange(), applySaved(sent, nodes), setStepIssues(issues), destroy();
 //app.Workflow.current: the designer of the page (e.g. for the Assistant plugin). A new one destroys the previous one: its listeners on the document removed, its editor / picker closed
 //CLD: 2026-10-19T22:30:00+03:00: the designer's state and functions are the class's fields and methods (were the variables and functions of a closure run once per designer,
 //designer()); the steps / connections (WfNode, WfEdge) reach their designer through `d` (not enumerable: not in their JSON, the saved steps); the helpers without state
@@ -565,6 +566,12 @@ window.app.Workflow = (function() {
 	    this.render();
 	}
 
+	//CLD: 2026-10-24T00:30:00+03:00: new: zoom in (factor > 1) or out (< 1) about the middle of the canvas (the toolbar's + / - buttons)
+	zoomBy(factor) {
+	    const r = this.wrapEl.getBoundingClientRect();
+	    this.zoomAt(r.width / 2, r.height / 2, this.canvas.zoom * factor);
+	}
+
 	//CLD: 2026-10-11T19:57:28+03:00: select step `id` and centre the view on it (same zoom); e.g. a problem clicked in the debug panel
 	showNode(id) {
 	    const n = this.workflow.find(n => n.wfid === id);
@@ -883,21 +890,25 @@ window.app.Workflow = (function() {
 	    //CLD: 2026-10-19T22:00:00+03:00: listen() (was wrapEl.addEventListener)
 	    this.listen(this.wrapEl, 'wheel', (e)=>{
 		e.preventDefault();
-		const canvas = this.canvas;
 		const r = this.wrapEl.getBoundingClientRect();
-		const cx = e.clientX - r.left, cy = e.clientY - r.top;
-		const worldX = (cx - canvas.pan.x) / canvas.zoom, worldY = (cy - canvas.pan.y) / canvas.zoom;
-		const newZoom = Math.min(1.6, Math.max(0.4, canvas.zoom * (e.deltaY>0 ? 0.9 : 1.1)));
-		canvas.pan.x = cx - worldX * newZoom;
-		canvas.pan.y = cy - worldY * newZoom;
-		canvas.zoom = newZoom;
-
-		this.worldEl.style.transform = `translate(${canvas.pan.x}px, ${canvas.pan.y}px) scale(${canvas.zoom})`;
-
-		if (this.options.onCanvasChange)
-		    this.options.onCanvasChange(canvas.pan, canvas.zoom);
-
+		//CLD: 2026-10-24T00:30:00+03:00: zoomAt (shared with zoomBy; was written here)
+		this.zoomAt(e.clientX - r.left, e.clientY - r.top, this.canvas.zoom * (e.deltaY>0 ? 0.9 : 1.1));
 	    }, {passive:false});
+	}
+
+	//CLD: 2026-10-24T00:30:00+03:00: new (was in the wheel handler): zoom to `zoom` (kept within 0.4 - 1.6) with the canvas point at (cx, cy) staying where it is
+	zoomAt(cx, cy, zoom) {
+	    const canvas = this.canvas;
+	    const worldX = (cx - canvas.pan.x) / canvas.zoom, worldY = (cy - canvas.pan.y) / canvas.zoom;
+	    const newZoom = Math.min(1.6, Math.max(0.4, zoom));
+	    canvas.pan.x = cx - worldX * newZoom;
+	    canvas.pan.y = cy - worldY * newZoom;
+	    canvas.zoom = newZoom;
+
+	    this.worldEl.style.transform = `translate(${canvas.pan.x}px, ${canvas.pan.y}px) scale(${canvas.zoom})`;
+
+	    if (this.options.onCanvasChange)
+		this.options.onCanvasChange(canvas.pan, canvas.zoom);
 	}
 
 
