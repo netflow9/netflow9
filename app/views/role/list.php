@@ -20,6 +20,7 @@ $filter = \util\JSON::encode($sf['filter']);
 $schema = \util\JSON::encode($sf['schema']);
 
 //CLD: 2026-10-19T12:05:32+03:00: app.formatter.timeAgo (was app.timeAgo.inWords)
+//CLD: 2026-10-24T17:30:00+03:00: app.formatter.timeAgoHtml: the date and time in the account's format as a tooltip; from _iso (DataTrait: ISO 8601; the shown texts are in the account's format)
 $script = "
 +function(){
     new app.ListView(document.getElementById('roles-list'), {
@@ -29,7 +30,7 @@ $script = "
 	    <li class='list-group-item d-flex justify-content-between align-items-center bg-white'>
 		<a href='/role/update/{{item._id}}' class='text-decoration-none'>
     		    <h6 class='mb-0'>{{item.name}}</h6>
-    		    <small class='text-muted'>{{app.formatter.timeAgo(item.updated_at.length == 0 ? item.created_at : item.updated_at)}}</small>
+    		    <small class='text-muted'>{{app.formatter.timeAgoHtml((item._iso || {}).updated_at || (item._iso || {}).created_at)}}</small>
 		</a>
 	    </li>
 	`,

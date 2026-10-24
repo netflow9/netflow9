@@ -19,6 +19,7 @@ $schema = \util\JSON::encode($sf['schema']);
 $filter = \util\JSON::encode($sf['filter']);
 
 //CLD: 2026-10-19T12:05:32+03:00: app.formatter.timeAgo (was app.timeAgo.inWords)
+//CLD: 2026-10-24T17:30:00+03:00: app.formatter.timeAgoHtml: the date and time in the account's format as a tooltip; from _iso (DataTrait: ISO 8601; the shown texts are in the account's format)
 $script = "
 +function(){
     new app.ListView(document.getElementById('users-list'), {
@@ -29,7 +30,7 @@ $script = "
 	    <div class='col-5'>
 		<a href='/user/update/{{item._id}}' class='text-decoration-none'>
     		    <h6 class='mb-0'>{{item.firstname}} {{item.lastname}}</h6>
-    		    <small class='text-muted'>{{app.formatter.timeAgo(item.updated_at.length == 0 ? item.created_at : item.updated_at)}}</small>
+    		    <small class='text-muted'>{{app.formatter.timeAgoHtml((item._iso || {}).updated_at || (item._iso || {}).created_at)}}</small>
 		</a>
 	    </div>
 	    <div class='col-2'>

@@ -320,7 +320,7 @@ window.app.Overview = (function() {
 		    <td class="text-end text-nowrap ov-num">${sparkline(w.spark)} <span class="ms-1">${w.runs}</span></td>
 		    <td class="text-end ov-num">${w.success !== null && w.success < 0.9 ? `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${percent(w.success)}</span>` : percent(w.success)}</td>
 		    <td class="text-end ov-num">${duration(w.p50)}</td>
-		    <td class="text-end text-nowrap">${w.last ? esc(window.app.formatter.timeAgo(w.last.at, false)) + ' · ' + stateBadge(w.last.state) : '<span class="text-muted">never</span>'}</td>
+		    <td class="text-end text-nowrap">${w.last ? window.app.formatter.timeAgoHtml(w.last.at, false) + ' · ' + stateBadge(w.last.state) : '<span class="text-muted">never</span>'}</td>
 		</tr>`).join('')}</tbody></table>`;
 	    el.querySelectorAll('[data-sort]').forEach((th) => th.addEventListener('click', () => {
 		const k = th.dataset.sort;
@@ -337,13 +337,14 @@ window.app.Overview = (function() {
 		el.innerHTML = '';
 		return;
 	    }
+	    //CLD: 2026-10-24T17:30:00+03:00: app.formatter.timeAgoHtml: the date and time in the account's format as a tooltip (was timeAgo, escaped here)
 	    const stuck = (s) => {
-		const since = s.since ? window.app.formatter.timeAgo(s.since, false) : '';
+		const since = s.since ? window.app.formatter.timeAgoHtml(s.since, false) : '';
 		if (s.kind === 'task')
-		    return `<a href="/task/${esc(s.task)}" class="text-reset"><i class="bi bi-person-check me-1 text-warning"></i>Task "${esc(s.title)}" overdue</a> <span class="text-muted">· ${esc(s.workflow)} · due ${esc(since)}</span>`;
+		    return `<a href="/task/${esc(s.task)}" class="text-reset"><i class="bi bi-person-check me-1 text-warning"></i>Task "${esc(s.title)}" overdue</a> <span class="text-muted">· ${esc(s.workflow)} · due ${since}</span>`;
 		if (s.kind === 'running')
-		    return `<i class="bi bi-play-circle me-1 text-warning"></i>Still running, started ${esc(since)} <span class="text-muted">· ${esc(s.workflow)}</span>`;
-		return `<i class="bi bi-alarm me-1 text-warning"></i>Should have resumed ${esc(since)} <span class="text-muted">· ${esc(s.workflow)}</span>`;
+		    return `<i class="bi bi-play-circle me-1 text-warning"></i>Still running, started ${since} <span class="text-muted">· ${esc(s.workflow)}</span>`;
+		return `<i class="bi bi-alarm me-1 text-warning"></i>Should have resumed ${since} <span class="text-muted">· ${esc(s.workflow)}</span>`;
 	    };
 	    el.innerHTML = `<div class="row g-3 mb-3">
 		${d.failing.length ? `<div class="col-12 col-lg-7"><div class="card bg-body h-100"><div class="card-body">
@@ -351,7 +352,7 @@ window.app.Overview = (function() {
 		    <div class="small text-muted mb-2">The steps where executions failed, most often first</div>
 		    <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Step</th><th class="text-end">Failures</th><th>Last error</th></tr></thead><tbody>
 		    ${d.failing.map((f) => `<tr><td><a href="/workflow/index?id=${esc(f.wf)}" class="text-reset">${esc(f.step)}</a><div class="small text-muted">${esc(f.workflow)}</div></td>
-			<td class="text-end ov-num">${f.count}</td><td class="small"><span class="text-danger">${esc(f.error)}</span><div class="text-muted">${esc(window.app.formatter.timeAgo(f.at, false))}</div></td></tr>`).join('')}
+			<td class="text-end ov-num">${f.count}</td><td class="small"><span class="text-danger">${esc(f.error)}</span><div class="text-muted">${window.app.formatter.timeAgoHtml(f.at, false)}</div></td></tr>`).join('')}
 		    </tbody></table></div></div></div></div>` : ''}
 		${d.stuck.length ? `<div class="col-12 col-lg-${d.failing.length ? 5 : 12}"><div class="card bg-body h-100"><div class="card-body">
 		    <h6 class="mb-0"><i class="bi bi-exclamation-triangle text-warning me-1"></i>Needs attention</h6>
@@ -372,7 +373,7 @@ window.app.Overview = (function() {
 		<thead><tr><th>Workflow</th><th>Trigger</th><th>State</th><th class="text-end">Run time</th><th class="text-end">Started</th></tr></thead>
 		<tbody>${rows.map((r) => `<tr role="button" data-href="/workflow/index?id=${esc(r.wf)}">
 		    <td>${esc(r.workflow)}</td><td>${esc(TRIGGERS[r.trigger] || r.trigger)}</td><td>${stateBadge(r.state)}</td>
-		    <td class="text-end ov-num">${duration(r.duration)}</td><td class="text-end text-nowrap">${esc(window.app.formatter.timeAgo(r.at, false))}</td>
+		    <td class="text-end ov-num">${duration(r.duration)}</td><td class="text-end text-nowrap">${window.app.formatter.timeAgoHtml(r.at, false)}</td>
 		</tr>`).join('')}</tbody></table>`;
 	    el.querySelectorAll('[data-href]').forEach((tr) => tr.addEventListener('click', () => { window.location.href = tr.dataset.href; }));
 	}
