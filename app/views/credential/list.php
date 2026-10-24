@@ -1,14 +1,11 @@
 <?php
-//CLD: 2026-10-22T00:28:13+03:00: + the project variables (credentials of type Variable; were their own page)
 $this->pageTitle = 'Credentials & variables';
 
 $createBtn = '';
 $__new = \V::app()->om->create('Credential', [ 'aid' => \V::app()->config('rt.account')->_id, 'project' => \V::app()->user->crtProject ]);
 if (\V::app()->user->can('Credential::create', [ 'object' => $__new ])) {
     $groups = [];
-    //CLD: 2026-10-22T01:24:00+03:00: braces (the loop had one statement: the data-search line added at 01:18:42 became its body, so only the last type was listed)
     foreach(\V::app()->om->getVariants('Credential') as $name => $class) {
-	//CLD: 2026-10-22T01:18:42+03:00: + data-search (the type and its group, lower case: the search box filters on it)
 	$search = \V::app()->html->escape(str_replace("'", ' ', mb_strtolower($class::$label . ' ' . $class::$group)));
 	$groups[$class::$group][$class::$label] = "<li class=\"cred-type\" data-search=\"{$search}\"><a class=\"dropdown-item\" href=\"/credential/create?type=" . rawurlencode($name) . "\"><i class=\"bi " . $class::$icon . " me-2\"></i>" . \V::app()->html->escape($class::$label) . "</a></li>";
     }
@@ -17,7 +14,6 @@ if (\V::app()->user->can('Credential::create', [ 'object' => $__new ])) {
     $items = '';
     foreach($groups as $group => $links) {
 	ksort($links);
-	//CLD: 2026-10-22T01:18:42+03:00: cred-type-group: hidden by the search box when none of its types match
 	$items .= "<li class=\"cred-type-group\"><h6 class=\"dropdown-header\">" . \V::app()->html->escape($group) . "</h6></li>" . implode('', $links);
     }
     //one line, no single quotes: it goes into a JS string
@@ -29,7 +25,6 @@ if (\V::app()->user->can('Credential::create', [ 'object' => $__new ])) {
 
 //the grid gets the type's label: what each label can do
 $typeInfo = [];
-//CLD: 2026-10-10T18:33:37+03:00: from om->getVariants() (Credential::variants() removed)
 foreach(\V::app()->om->getVariants('Credential') as $name => $class)
     $typeInfo[$class::$label] = [ 'oauth' => $class::isOAuth(), 'testable' => (bool)$class::$testable ];
 $typeInfo = \util\JSON::encode($typeInfo);
@@ -41,13 +36,7 @@ unset($schema['created_at'], $schema['updated_at']);
 $schema = \util\JSON::encode($schema);
 $filter = \util\JSON::encode($sf['filter']);
 
-//result of Connect (OAuth), passed back in the URL
-$notice = '';
-foreach([ 'error' => 'danger', 'message' => 'success' ] as $key => $type) {
-    $text = \V::app()->request->query[$key] ?? '';
-    if (is_string($text) && $text !== '')
-	$notice .= "<div class='alert alert-{$type} py-2'>" . \V::app()->html->escape(mb_substr($text, 0, 500)) . "</div>";
-}
+//CLD: 2026-10-24T09:06:00+03:00: removed the result of Connect passed back in the URL (?error / ?message): CredentialController shows it as a toast
 
 $script = "
 +function() {
@@ -151,6 +140,5 @@ $script = "
 </div>
 
 <div class="main-body p-4">
-    <?= $notice ?>
     <div id="obj-list"></div>
 </div>
