@@ -1643,7 +1643,8 @@ window.app.Workflow = (function() {
 	    //the step name is stored in node.title, everything else in node.config
 	    const fields = [];
 	    if (!def.isNote)
-		fields.push({ type: 'text', key: '__title', label: 'Step name', required: true });
+		//CLD: 2026-10-24T12:06:57+03:00: its width from the step's dialog settings (def.editor.titleWidth: WfNode::$editor)
+		fields.push({ type: 'text', key: '__title', label: 'Step name', required: true, width: (def.editor && def.editor.titleWidth) || 12 });
 	    (def.configSchema || []).forEach(f => fields.push(Object.assign({}, f)));
 	    if (readonly)
 		fields.forEach(f => f.editable = false);
@@ -1654,10 +1655,13 @@ window.app.Workflow = (function() {
 	    //CLD: 2026-10-13T20:12:00+03:00: full screen (Bootstrap modal-fullscreen; was modal-xl)
 	    //CLD: 2026-10-13T20:23:54+03:00: nearly full screen, a margin all around (.modal-near-fullscreen, theme scss/netflow9/_modal.scss; was modal-fullscreen: it did not read as a dialog)
 	    //CLD: 2026-10-19T22:19:24+03:00: + modal-fullscreen-sm-down: the whole screen on phones (the near-fullscreen one too: theme netflow9/_modal.scss)
+	    //CLD: 2026-10-24T12:06:57+03:00: + a wider dialog for the steps that ask for it (def.editor.size xl: WfNode::$editor)
+	    const dialogSize = (def.configSchema || []).some((f) => [ 'formdesigner', 'emaildesigner' ].includes(f.type)) ? 'modal-near-fullscreen'
+		: (def.editor && def.editor.size === 'xl' ? 'modal-xl' : 'modal-lg');
 	    el.tabIndex = -1;
 	    el.innerHTML = `
 		<!-- CLD: 2026-10-16T12:01:59+03:00: + the email designer (Send Email) -->
-		<div class="modal-dialog ${(def.configSchema || []).some((f) => [ 'formdesigner', 'emaildesigner' ].includes(f.type)) ? 'modal-near-fullscreen' : 'modal-lg'} modal-fullscreen-sm-down modal-dialog-scrollable">
+		<div class="modal-dialog ${dialogSize} modal-fullscreen-sm-down modal-dialog-scrollable">
 		    <div class="modal-content">
 			<div class="modal-header">
 			    <span class="badge d-inline-flex align-items-center gap-1 me-2" style="background:${def.color}"><i class="bi ${def.icon}"></i>${esc(def.label)}</span>
