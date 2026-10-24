@@ -47,6 +47,13 @@ $this->pageTitle = 'Account::Settings';
 	    <div class="form-text">A shorter time also removes the older entries already written. Audit log entries are kept at least 1 year.</div>
 	</div>
 
+	<?php //CLD: 2026-10-24T16:30:00+03:00: how dates are shown (util\Format) ?>
+	<div class="pt-4 w-50">
+	    <h6>Dates</h6>
+	    <?= $account->schema['date_format']->input([ 'cols' => '6,6' ]) ?>
+	    <?= $account->schema['datetime_format']->input([ 'cols' => '6,6' ]) ?>
+	</div>
+
 	<?php //CLD: 2026-10-19T21:10:00+03:00: the inbound mail prefix moved into the InboundMail plugin (Settings menu: Inbound mail) ?>
 
 

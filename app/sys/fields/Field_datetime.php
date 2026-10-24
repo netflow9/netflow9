@@ -71,16 +71,11 @@ class Field_datetime extends Field {
 	if (!$this->checkAccess(\V::app()->user->_id, 'read'))
 	    return '';
 
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::date / datetime: the account's format (Account `date_format` / `datetime_format`; was app.format.date / app.format.datetime), in the app timezone
 	$format = $options['format'] ?? null;
-	if (empty($format))
-	    $format = \V::app()->config("app.format.{$this->format}");
-
 	if (empty($value = $this->binding->data($this->key)))
 	    return '';
-
-	$value = $value->toDateTime();
-	$value->setTimezone(new \DateTimeZone(date_default_timezone_get())); //Set timezone
-	return $value->format($format);
+	return $this->format == 'date' ? \util\Format::date($value, $format ?: null) : \util\Format::datetime($value, $format ?: null);
     }
 
     public function __input(&$options = []) {
@@ -93,7 +88,9 @@ class Field_datetime extends Field {
 	$fieldId = ($options['id'] ?? "field-{$this->key}-" . uniqid());
 	$inputOptions['id'] = $fieldId;
 
-	\V::app()->cs->addPageScript("new app.DatePicker('#{$fieldId}', { mode: '{$this->format}' });");
+	//CLD: 2026-10-24T16:30:00+03:00: the date picker shows the account's format (util\Format; was the picker's own, M j, Y)
+	$pickerFormat = json_encode($this->format == 'date' ? \util\Format::dateFormat() : \util\Format::datetimeFormat());
+	\V::app()->cs->addPageScript("new app.DatePicker('#{$fieldId}', { mode: '{$this->format}', format: {$pickerFormat} });");
 
 	return \V::app()->form->field($this->key, [
 	    'id' => $fieldId,

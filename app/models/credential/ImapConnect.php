@@ -25,7 +25,8 @@ class ImapConnect {
 	$folders = array_column($imap->listFolders(), 'name');
 	$imap->logout();
 	$shown = array_slice($folders, 0, 15);
-	return count($folders) . ' folder(s): ' . implode(', ', $shown) . (count($folders) > count($shown) ? ', ...' : '');
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was (s))
+	return \util\Format::plural(count($folders), 'folder') . ': ' . implode(', ', $shown) . (count($folders) > count($shown) ? ', ...' : '');
     }
 
     //OAuth types: XOAUTH2 with the credential's access token and account

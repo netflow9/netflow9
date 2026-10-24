@@ -1,7 +1,6 @@
 <?php
 //CLD: 2026-10-11T13:51:42+03:00: new view: the Versions dialog (WorkflowController::versions): newest first; view (read-only designer), publish again, copy into the draft
 $esc = fn($v) => \V::app()->html->escape((string)$v);
-$tz = new \DateTimeZone(\V::app()->config('app.timezone') ?: date_default_timezone_get());
 $id = (string)$wf->_id;
 $published = $wf->status === \models\Workflow::PUBLISHED;
 
@@ -12,7 +11,8 @@ foreach($versions as $v) {
     $badge = '';
     if ($isCurrent)
 	$badge = $published ? " <span class='badge text-bg-success'>published</span>" : " <span class='badge text-bg-secondary'>unpublished</span>";
-    $when = $v->created_at instanceof \MongoDB\BSON\UTCDateTime ? $v->created_at->toDateTime()->setTimezone($tz)->format('Y-m-d H:i') : '';
+    //CLD: 2026-10-24T16:30:00+03:00: the account's datetime format (util\Format; was Y-m-d H:i)
+    $when = \util\Format::datetime($v->created_at);
     $by = $names[(string)$v->published_by] ?? '';
     $note = $esc($v->note);
     if (is_numeric($v->from_number))

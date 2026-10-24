@@ -1,4 +1,5 @@
 <?php
+//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number (was number_format); the dates in the account's formats (util\Format::date / datetime; were Y-m-d / Y-m-d H:i, UTC)
 /*
     CLD: 2026-10-22T23:00:00+03:00: new: the account's Assistant in the administration (hook admin:account-panels): $account, $settings (AssistantSettings|null), $wallet (AssistantWallet::current),
     $ledger (the last entries), $usage (AssistantUsage::current), $system (AssistantSettings::system); the plan and a top-up (controllers/AdminController)
@@ -20,8 +21,8 @@ usort($topups, fn($a, $b) => $b['at'] <=> $a['at']);
 
 <div class="border rounded-3 p-3 mb-4" style="max-width: 880px">
     <div class="d-flex flex-wrap align-items-baseline gap-3 mb-2">
-	<div class="fs-5 fw-semibold"><?= number_format(SystemAiWallet::balance($wallet)) ?> <span class="fs-6 fw-normal text-muted">System credits</span></div>
-	<div class="small text-muted">allowance <?= number_format($wallet['allowance_left']) ?> of <?= number_format($wallet['allowance']) ?> &middot; used this month <?= number_format($wallet['month_used']) ?><?= $held ? ' &middot; ' . number_format($held) . ' reserved' : '' ?><?= $system ? '' : ' &middot; <span class="text-warning-emphasis">the installation has no System AI</span>' ?></div>
+	<div class="fs-5 fw-semibold"><?= \util\Format::number(SystemAiWallet::balance($wallet)) ?> <span class="fs-6 fw-normal text-muted">System credits</span></div>
+	<div class="small text-muted">allowance <?= \util\Format::number($wallet['allowance_left']) ?> of <?= \util\Format::number($wallet['allowance']) ?> &middot; used this month <?= \util\Format::number($wallet['month_used']) ?><?= $held ? ' &middot; ' . \util\Format::number($held) . ' reserved' : '' ?><?= $system ? '' : ' &middot; <span class="text-warning-emphasis">the installation has no System AI</span>' ?></div>
     </div>
 
     <div class="row g-3">
@@ -51,7 +52,7 @@ usort($topups, fn($a, $b) => $b['at'] <=> $a['at']);
     <?php if ($topups): ?>
     <div class="small mt-3">Top-ups:
 	<?php foreach($topups as $t): ?>
-	<span class="badge <?= $t['left'] > 0 && $t['expires'] > time() ? 'text-bg-light border' : 'text-bg-secondary' ?> fw-normal"><?= number_format($t['left']) ?>/<?= number_format($t['granted']) ?> until <?= gmdate('Y-m-d', $t['expires']) ?><?= $t['note'] !== '' ? ' &middot; ' . \V::app()->html->escape($t['note']) : '' ?></span>
+	<span class="badge <?= $t['left'] > 0 && $t['expires'] > time() ? 'text-bg-light border' : 'text-bg-secondary' ?> fw-normal"><?= \util\Format::number($t['left']) ?>/<?= \util\Format::number($t['granted']) ?> until <?= \V::app()->html->escape(\util\Format::date($t['expires'])) ?><?= $t['note'] !== '' ? ' &middot; ' . \V::app()->html->escape($t['note']) : '' ?></span>
 	<?php endforeach; ?>
     </div>
     <?php endif; ?>
@@ -62,10 +63,10 @@ usort($topups, fn($a, $b) => $b['at'] <=> $a['at']);
 	<tbody>
 	<?php foreach($ledger as $l): ?>
 	    <tr>
-		<td class="text-nowrap"><?= $l->created_at instanceof \MongoDB\BSON\UTCDateTime ? \V::app()->html->escape(gmdate('Y-m-d H:i', $l->created_at->toDateTime()->getTimestamp())) : '' ?></td>
+		<td class="text-nowrap"><?= \V::app()->html->escape(\util\Format::datetime($l->created_at)) ?></td>
 		<td><?= \V::app()->html->escape(SystemAiLedger::TYPES[$l->type] ?? $l->type) ?><?= (string)$l->model !== '' ? ' <code>' . \V::app()->html->escape($l->model) . '</code>' : '' ?><?= (string)$l->note !== '' ? ' <span class="text-muted">' . \V::app()->html->escape($l->note) . '</span>' : '' ?></td>
-		<td class="text-end <?= $l->credits < 0 ? 'text-danger' : 'text-success' ?>"><?= ($l->credits > 0 ? '+' : '') . number_format((float)$l->credits) ?></td>
-		<td class="text-end"><?= number_format((float)$l->balance) ?></td>
+		<td class="text-end <?= $l->credits < 0 ? 'text-danger' : 'text-success' ?>"><?= ($l->credits > 0 ? '+' : '') . \util\Format::number((float)$l->credits) ?></td>
+		<td class="text-end"><?= \util\Format::number((float)$l->balance) ?></td>
 	    </tr>
 	<?php endforeach; ?>
 	</tbody>

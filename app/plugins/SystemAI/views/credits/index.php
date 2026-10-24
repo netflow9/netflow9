@@ -1,4 +1,5 @@
 <?php
+//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number (was number_format); the dates in the account's formats (util\Format::date / datetime; were Y-m-d / Y-m-d H:i, UTC)
 /*
     CLD: 2026-10-23T10:00:00+03:00: new: the account's System AI credits (CreditsController::index; were on the Assistant's settings page): $system (SystemAi::config: null = none),
     $rates (its model's credits per 1M tokens), $wallet (SystemAiWallet::current: this month's allowance, the top-ups and their expiry), $ledger (the last entries),
@@ -54,8 +55,8 @@ $pctA = $wallet['allowance'] > 0 ? min(100, round(($wallet['allowance'] - $walle
 	<div class="form-group row mb-3">
 	    <label class="col-sm-3 col-form-label">Credits</label>
 	    <div class="col-sm-9 pt-2 small">
-		<div class="fs-5 fw-semibold"><?= number_format(SystemAiWallet::balance($wallet)) ?> <span class="fs-6 fw-normal text-muted">credits left<?= $held ? ' (' . number_format($held) . ' reserved by running requests)' : '' ?></span></div>
-		<div class="mt-2">Monthly allowance: <?= number_format($wallet['allowance_left']) ?> of <?= number_format($wallet['allowance']) ?> left, renewed on <?= gmdate('F 1', strtotime('first day of next month')) ?> (what is left is not carried over)</div>
+		<div class="fs-5 fw-semibold"><?= \util\Format::number(SystemAiWallet::balance($wallet)) ?> <span class="fs-6 fw-normal text-muted">credits left<?= $held ? ' (' . \util\Format::number($held) . ' reserved by running requests)' : '' ?></span></div>
+		<div class="mt-2">Monthly allowance: <?= \util\Format::number($wallet['allowance_left']) ?> of <?= \util\Format::number($wallet['allowance']) ?> left, renewed on <?= gmdate('F 1', strtotime('first day of next month')) ?> (what is left is not carried over)</div>
 		<div class="progress mt-1" style="height: 6px" role="progressbar" aria-label="Allowance used" aria-valuenow="<?= $pctA ?>" aria-valuemin="0" aria-valuemax="100">
 		    <div class="progress-bar <?= $pctA >= 100 ? 'bg-danger' : ($pctA >= 80 ? 'bg-warning' : '') ?>" style="width: <?= $pctA ?>%"></div>
 		</div>
@@ -63,11 +64,11 @@ $pctA = $wallet['allowance'] > 0 ? min(100, round(($wallet['allowance'] - $walle
 		<?php if ($topups): ?>
 		<ul class="ps-3 mb-0">
 		    <?php foreach($topups as $t): ?>
-		    <li><?= number_format($t['left']) ?> of <?= number_format($t['granted']) ?>, until <?= gmdate('Y-m-d', $t['expires']) ?><?= $t['note'] !== '' ? ' &middot; ' . \V::app()->html->escape($t['note']) : '' ?></li>
+		    <li><?= \util\Format::number($t['left']) ?> of <?= \util\Format::number($t['granted']) ?>, until <?= \V::app()->html->escape(\util\Format::date($t['expires'])) ?><?= $t['note'] !== '' ? ' &middot; ' . \V::app()->html->escape($t['note']) : '' ?></li>
 		    <?php endforeach; ?>
 		</ul>
 		<?php endif; ?>
-		<div class="form-text">Used this month: <?= number_format($wallet['month_used']) ?> credits. The allowance is used first, then the top-up that expires first. Top-ups last <?= SystemAiWallet::TOPUP_MONTHS ?> months.</div>
+		<div class="form-text">Used this month: <?= \util\Format::number($wallet['month_used']) ?> credits. The allowance is used first, then the top-up that expires first. Top-ups last <?= SystemAiWallet::TOPUP_MONTHS ?> months.</div>
 	    </div>
 	</div>
 
@@ -83,7 +84,7 @@ $pctA = $wallet['allowance'] > 0 ? min(100, round(($wallet['allowance'] - $walle
 			$wfid = (string)$e->wfid;
 		    ?>
 			<tr>
-			    <td class="text-nowrap"><?= $e->created_at instanceof \MongoDB\BSON\UTCDateTime ? \V::app()->html->escape(gmdate('Y-m-d H:i', $e->created_at->toDateTime()->getTimestamp())) : '' ?></td>
+			    <td class="text-nowrap"><?= \V::app()->html->escape(\util\Format::datetime($e->created_at)) ?></td>
 			    <td>
 				<?= \V::app()->html->escape(SystemAiLedger::TYPES[$e->type] ?? $e->type) ?>
 				<?= (string)$e->model !== '' ? ' <code>' . \V::app()->html->escape($e->model) . '</code>' : '' ?>
@@ -96,8 +97,8 @@ $pctA = $wallet['allowance'] > 0 ? min(100, round(($wallet['allowance'] - $walle
 				</div>
 				<?php endif; ?>
 			    </td>
-			    <td class="text-end <?= $e->credits < 0 ? 'text-danger' : 'text-success' ?>"><?= ($e->credits > 0 ? '+' : '') . number_format((float)$e->credits) ?></td>
-			    <td class="text-end"><?= number_format((float)$e->balance) ?></td>
+			    <td class="text-end <?= $e->credits < 0 ? 'text-danger' : 'text-success' ?>"><?= ($e->credits > 0 ? '+' : '') . \util\Format::number((float)$e->credits) ?></td>
+			    <td class="text-end"><?= \util\Format::number((float)$e->balance) ?></td>
 			</tr>
 		    <?php endforeach; ?>
 		    </tbody>
