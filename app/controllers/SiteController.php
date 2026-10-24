@@ -149,7 +149,8 @@ class SiteController extends \sys\BaseController {
 		    //CLD: 2026-10-21T10:00:00+03:00: not for a user whose password is kept elsewhere (e.g. an LDAP user: the directory's password)
 		    if (\sys\Identity::passwordSource($user) !== null)
 			continue;
-		    [ , $token ] = \models\user\PasswordReset::start($user, \V::app()->request->userIP);
+		    //CLD: 2026-10-24T08:20:00+03:00: User::startPasswordReset (was PasswordReset::start)
+		    $token = $user->startPasswordReset(\V::app()->request->userIP);
 		    $account = \V::app()->om->findById('Account', (string)$user->aid);
 		    \util\EmailSend::system('password_reset', (string)$user->email, [ 'username' => (string)($user->username ?: $user->email), 'email' => (string)$user->email,
 			'account' => (string)($account->name ?? '') ?: (string)$account->hostname, 'link' => \V::app()->createAbsoluteUrl('/site/reset', [ 't' => $token ]) ]);
@@ -168,9 +169,8 @@ class SiteController extends \sys\BaseController {
 	$this->layout = 'bare';
 	$token = (string)($req->query['t'] ?? '');
 
-	$reset = \V::app()->om->findOne('PasswordReset', [ 'token_hash' => hash('sha256', $token), 'expires_at' => [ '$gt' => new \MongoDB\BSON\UTCDateTime() ] ]);
-
-	$user = $reset ? \V::app()->om->findOne('User', [ '_id' => $reset->user, 'state' => 'active' ]) : null;
+	//CLD: 2026-10-24T08:20:00+03:00: User::findByResetToken (was a PasswordReset, then its user)
+	$user = \models\User::findByResetToken($token);
 	//CLD: 2026-10-21T10:00:00+03:00: a link of a user whose password is now kept elsewhere (e.g. became an LDAP user) no longer works
 	if ($user && \sys\Identity::passwordSource($user) !== null)
 	    $user = null;
@@ -182,8 +182,8 @@ class SiteController extends \sys\BaseController {
 		$user->password = \V::app()->security->generatePasswordHash((string)$form->new_password);
 		if (!$user->save())
 		    throw new \ErrorException('reset: the password was not saved: ' . json_encode($user->errors()));
-		foreach(\V::app()->om->find('PasswordReset', [ 'user' => $user->_id ]) as $r)
-		    $r->delete();
+		//CLD: 2026-10-24T08:20:00+03:00: User::clearPasswordReset (were the user's PasswordReset deleted)
+		$user->clearPasswordReset();
 		\V::app()->session->endFor($user->_id);
 		\models\AuditLog::record('password.reset', $user, 'with a "forgot" link; the other sessions ended', [], null, $user);
 		//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://); was built from the request host

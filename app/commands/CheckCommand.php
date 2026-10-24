@@ -2586,23 +2586,28 @@ class CheckCommand extends \sys\BaseController {
 	}
 	//CLD: 2026-10-16T13:22:53+03:00: forgot username or password: a reset link's token finds it (only its hash stored), a new link replaces the old one, an expired one is refused, the email holds the
 	//username and the link
+	//CLD: 2026-10-24T08:20:00+03:00: the link is the user's (User::startPasswordReset / findByResetToken / clearPasswordReset; was the PasswordReset model)
 	$user = \V::app()->om->findOne('User', [ 'state' => 'active' ]);
-	[ $old, $oldToken ] = \models\user\PasswordReset::start($user);
-	[ $reset, $token ] = \models\user\PasswordReset::start($user);
-	$found = \V::app()->om->findOne('PasswordReset', [ 'token_hash' => hash('sha256', $token), 'expires_at' => [ '$gt' => new \MongoDB\BSON\UTCDateTime() ] ]);
+	$oldToken = $user->startPasswordReset();
+	$token = $user->startPasswordReset('203.0.113.9');
+	$found = \models\User::findByResetToken($token);
+	$raw = \V::app()->mongo->selectCollection(\models\User::_database(), \models\User::_collection())->findOne([ '_id' => $user->_id ]);
 
 	//CLD: 2026-10-18T23:35:30+03:00: the link as SiteController builds it (V::createAbsoluteUrl; was https://x.ro/...)
 	$job = \util\EmailSend::system('password_reset', 'zz-check@example.com', [ 'username' => 'zz-user', 'email' => 'zz-check@example.com', 'account' => 'Co',
 	    'link' => \V::app()->createAbsoluteUrl('/site/reset', [ 't' => $token ]) ]);
 	$jobDoc = \V::app()->om->findById('Job', (string)$job);
 	$html = (string)($jobDoc->job_data['html'] ?? '');
-	$this->check('reset: the token finds it, the hash is stored, the older link is gone, the email has the username and the link', [ true, false, null, true, true ],
-	    [ $found && (string)$found->_id === (string)$reset->_id, $reset->token_hash === $token, \V::app()->om->findOne('PasswordReset', [ 'token_hash' => hash('sha256', $oldToken), 'expires_at' => [ '$gt' => new \MongoDB\BSON\UTCDateTime() ] ]) , str_contains($html, 'zz-user'), str_contains($html, $token) ]);
-	$reset->expires_at = new \MongoDB\BSON\UTCDateTime((time() - 1) * 1000);
-	$reset->save();
-	$this->check('reset: an expired link is refused', null, \V::app()->om->findOne('PasswordReset', [ 'token_hash' => hash('sha256', $token), 'expires_at' => [ '$gt' => new \MongoDB\BSON\UTCDateTime() ] ]));
+	$this->check('reset: the token finds its user, only the hash is stored (with the address), the older link is gone, the email has the username and the link', [ true, true, '203.0.113.9', null, true, true ],
+	    [ $found && (string)$found->_id === (string)$user->_id, ($raw['reset_token_hash'] ?? null) === hash('sha256', $token), $raw['reset_ip'] ?? null, \models\User::findByResetToken($oldToken), str_contains($html, 'zz-user'), str_contains($html, $token) ]);
+	\V::app()->om->updateOne('User', [ '_id' => $user->_id, 'aid' => $user->aid ], [ '$set' => [ 'reset_expires_at' => new \MongoDB\BSON\UTCDateTime((time() - 1) * 1000) ] ]);
+	$expired = \models\User::findByResetToken($token);
+	$token = $user->startPasswordReset();
+	$user->clearPasswordReset();
+	$raw = \V::app()->mongo->selectCollection(\models\User::_database(), \models\User::_collection())->findOne([ '_id' => $user->_id ]);
+	$this->check('reset: an expired link is refused; a used one (cleared) too, and the user keeps no reset field', [ null, null, false ],
+	    [ $expired, \models\User::findByResetToken($token), isset($raw['reset_token_hash']) || isset($raw['reset_expires_at']) || isset($raw['reset_ip']) ]);
 	$jobDoc?->delete();
-	$reset->delete();
     }
 
     //CLD: 2026-10-17T22:00:00+03:00: project invitations: a link's token finds it (only its hash stored), a new one replaces the address's older one, pending lists it, the email has the link

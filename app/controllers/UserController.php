@@ -35,7 +35,7 @@ class UserController extends \sys\BaseController {
 	if ($req->is('post')) {
 	    //CLD: 2026-10-05T20:41:34+03:00: only the fields the profile form shows; assigning the whole POST let a user change own role (Member -> Owner),
 	    //clear tfa_secret (disabling 2FA without a code), state, or store a plain-text password
-	    //CLD: 2026-10-10T18:54:42+03:00: the form fields the user may update (assign with permissions; password, state, tfa_secret, conf_code are not form fields); the role
+	    //CLD: 2026-10-10T18:54:42+03:00: the form fields the user may update (assign with permissions; password, state, tfa_secret, reset_* are not form fields); the role
 	    //is a form field (create) the user may update on itself (User::update scope own): left out here, explicitly
 	    $data = is_array($req->data) ? $req->data : [];
 	    unset($data['role']);

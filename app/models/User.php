@@ -4,12 +4,17 @@ namespace models;
 
 class User extends \sys\BaseModel {
     protected static $collection = 'users';
-    //CLD: 2026-10-12T12:18:11+03:00: login by username or email; users of an account (created by `v setup::indexes`)
+    //login by username or email; users of an account (created by `v setup::indexes`)
     public static $indexes = [
 	[ [ 'username' => 1 ], [] ],
 	[ [ 'email' => 1 ], [] ],
 	[ [ 'aid' => 1 ], [] ],
+	//CLD: 2026-10-24T08:20:00+03:00: a "forgot password" link's token (only its hash; sparse: most users have none)
+	[ [ 'reset_token_hash' => 1 ], [ 'unique' => true, 'sparse' => true ] ],
     ];
+
+    //CLD: 2026-10-24T08:20:00+03:00: how long a "forgot password" link works (was PasswordReset::VALID)
+    const RESET_VALID = 86400;
 
 
     // we use these attributes just readonly, usually for display only
@@ -77,10 +82,9 @@ class User extends \sys\BaseModel {
 		'help' => false,
 		'perm:read' => 'everybody',
 		'perm:update' => 'permission',
-		//CLD: 2026-10-10T18:54:42+03:00: not a form field (set by the password change / system)
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-10-22T23:00:00+03:00: a super-admin of the installation (the Admin plugin's pages: every account); set only from the console (./v Admin::admins::grant), never by a form
+	    //a super-admin of the installation (the Admin plugin's pages: every account); set only from the console (./v Admin::admins::grant), never by a form
 	    [
 		'key' => 'superadmin',
 		'type' => 'checkbox',
@@ -90,15 +94,30 @@ class User extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'showInForms' => false,
 	    ],
-	    //conf_code
+	    //CLD: 2026-10-24T08:20:00+03:00: the pending "forgot password" link (was the model models\user\PasswordReset; replaces conf_code, never used): the SHA-256 hash of its token (the
+	    //token is only in the email), when it stops working, the address that asked. Written by startPasswordReset / clearPasswordReset only (not save(): no audit entry)
 	    [
-		'key' => 'conf_code',
+		'key' => 'reset_token_hash',
 		'type' => 'text',
-		'label' => 'Confirmation code',
-		'required' => false,
+		'label' => 'Password reset token hash',
 		'perm:read' => 'nobody',
 		'perm:update' => 'nobody',
-		//CLD: 2026-10-10T18:54:42+03:00: not a form field (set by the password change / system)
+		'showInForms' => false,
+	    ],
+	    [
+		'key' => 'reset_expires_at',
+		'type' => 'datetime',
+		'label' => 'Password reset expires',
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
+	    ],
+	    [
+		'key' => 'reset_ip',
+		'type' => 'text',
+		'label' => 'Password reset asked from',
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
 		'showInForms' => false,
 	    ],
 	    //role
@@ -116,14 +135,12 @@ class User extends \sys\BaseModel {
 		'key' => 'tfa_secret',
 		'type' => 'text',
 		'label' => '2FA secret',
-		//CLD: 2026-10-10T09:14:41+03:00: stored encrypted
 		'encrypt' => true,
 		'perm:read' => 'nobody',
 		'perm:update' => 'nobody',
-		//CLD: 2026-10-10T18:54:42+03:00: not a form field (set by the password change / system)
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-10-24T00:20:00+03:00: the time window (TOTP time slice) of the last 2FA code accepted: a code is used once (useTfaCode)
+	    //the time window (TOTP time slice) of the last 2FA code accepted: a code is used once (useTfaCode)
 	    [
 		'key' => 'tfa_last_slice',
 		'type' => 'number',
@@ -138,6 +155,30 @@ class User extends \sys\BaseModel {
 
     public function __toString() {
 	return $this->firstname . ' ' . $this->lastname;
+    }
+
+    //CLD: 2026-10-24T08:20:00+03:00: new (was PasswordReset::start): a new "forgot password" link for this user, valid RESET_VALID seconds, asked from $ip; replaces the user's earlier one.
+    //Returns the token (for the email; only its hash is kept)
+    public function startPasswordReset($ip = null) {
+	$token = bin2hex(random_bytes(24));
+	\V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid ], [ '$set' => [
+	    'reset_token_hash' => hash('sha256', $token),
+	    'reset_expires_at' => new \MongoDB\BSON\UTCDateTime((time() + self::RESET_VALID) * 1000),
+	    'reset_ip' => $ip,
+	] ]);
+	return $token;
+    }
+
+    //CLD: 2026-10-24T08:20:00+03:00: new: the active user whose "forgot password" link has $token and still works, or null
+    public static function findByResetToken($token) {
+	if (!is_string($token) || $token === '')
+	    return null;
+	return \V::app()->om->findOne('User', [ 'reset_token_hash' => hash('sha256', $token), 'reset_expires_at' => [ '$gt' => new \MongoDB\BSON\UTCDateTime() ], 'state' => 'active' ]);
+    }
+
+    //CLD: 2026-10-24T08:20:00+03:00: new: the user's "forgot password" link used up (after the new password is set)
+    public function clearPasswordReset() {
+	\V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid ], [ '$unset' => [ 'reset_token_hash' => '', 'reset_expires_at' => '', 'reset_ip' => '' ] ]);
     }
 
     //CLD: 2026-10-24T00:20:00+03:00: new: 2FA code $code of $secret (default: the user's own) accepted only once: refused when its time window is not newer than the last one accepted
@@ -156,8 +197,6 @@ class User extends \sys\BaseModel {
 	$role = \V::app()->auth->getUserRole();
 
 	//build full permission name
-	//CLD: 2026-10-06T23:06:18+03:00: only when short: AAA::checkAccess passes the full name (e.g. User::update), which was doubled
-	//(User::User::update) and never matched a role permission; field checks pass the short one
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 

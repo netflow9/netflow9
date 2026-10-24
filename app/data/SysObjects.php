@@ -68,10 +68,7 @@ class SysObjects {
 		'class' => 'models\User',
 		'userSelectable' => true,
 	    ],
-	    'PasswordReset' => [
-		'class' => 'models\user\PasswordReset',
-		'auditLog' => false,
-	    ],
+	    //CLD: 2026-10-24T08:20:00+03:00: removed PasswordReset: the "forgot password" link is the user's (User reset_*)
 	    'ProjectInvite' => [
 		'class' => 'models\user\ProjectInvite',
 		'auditLog' => false,

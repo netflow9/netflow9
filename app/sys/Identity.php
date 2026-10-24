@@ -34,7 +34,8 @@ class Identity {
 	foreach($user->encryptedFields() as $key)
 	    unset($this->data[$key]);
 	//CLD: 2026-10-21T23:00:00+03:00: nor the password hash and the confirmation code (were kept in every session record)
-	unset($this->data['password'], $this->data['conf_code']);
+	//CLD: 2026-10-24T08:20:00+03:00: nor the "forgot password" link (User reset_*; was conf_code, removed)
+	unset($this->data['password'], $this->data['reset_token_hash'], $this->data['reset_expires_at'], $this->data['reset_ip']);
 	$this->data['name'] = (string)$user;
 	$this->data['id'] = (string)$user->_id;
 	$this->data['aid'] = $user->aid;
