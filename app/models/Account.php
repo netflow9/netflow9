@@ -57,6 +57,28 @@ class Account extends \sys\BaseModel {
 		],
 		'showInForms' => false,
 	    ],
+	    //CLD: 2026-10-24T09:45:36+03:00: the account's tier (util\Tiers, app/tiers.php; empty: the default) and its own changes of the tier's limits / features ({ limits, features });
+	    //set by a super-admin only (the Admin plugin, ./v tiers::set)
+	    [
+		'key' => 'tier',
+		'type' => 'select',
+		'label' => 'Tier',
+		'help' => false,
+		'perm:read' => 'everybody',
+		'perm:update' => 'nobody',
+		'default' => '',
+		'choices' => [ '' => 'Default' ] + \util\Tiers::names(),
+		'showInForms' => false,
+	    ],
+	    [
+		'key' => 'tier_overrides',
+		'type' => 'array',
+		'label' => 'Tier changes',
+		'help' => false,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
+	    ],
 	    //enforce_mfa
 	    [
 		'key' => 'enforce_mfa',

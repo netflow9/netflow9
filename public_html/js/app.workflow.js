@@ -1774,7 +1774,8 @@ window.app.Workflow = (function() {
 	    });
 
 	    //get distinct node typesfrom nodeDefs
-	    const allNodeTypes = Object.keys(nodeDefs);
+	    //CLD: 2026-10-24T09:45:36+03:00: without the steps the account's tier does not have (`unavailable`: views/workflow/index.php)
+	    const allNodeTypes = Object.keys(nodeDefs).filter((fqname) => !nodeDefs[fqname].unavailable);
 
 	    const types = allNodeTypes.map((fqname) => nodeDefs[fqname].type ).filter((value, index, self) => self.indexOf(value) === index)
 

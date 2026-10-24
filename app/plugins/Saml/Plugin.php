@@ -46,17 +46,24 @@ class Plugin {
 	\V::app()->hooks->addHook('identity:authenticate', [ util\SamlAuth::class, 'onAuthenticate' ]);
 	\V::app()->hooks->addHook('identity:password-source', [ util\SamlAuth::class, 'onPasswordSource' ]);
 
+	//CLD: 2026-10-24T09:45:36+03:00: a feature of the accounts' tiers (util\Tiers: `saml`): without it, no SAML sign-in, no settings (they are kept)
+	\V::app()->hooks->addHook('tiers:features', function(\ArrayObject $features) {
+	    $features['saml'] = 'SAML single sign-on';
+	});
+
 	if (\V::app()->config('app.mode') != 'web')
 	    return;
 
 	\V::app()->hooks->addHook('layout:settings-menu', function() {
-	    if (\V::app()->user->can('Account::update'))
+	    if (\V::app()->user->can('Account::update') && \util\Tiers::has(\V::app()->var('rt.account'), 'saml'))
 		echo '<a href="' . \V::app()->createUrl('/Saml/saml/settings') . '" class="nav-link"><i class="bi bi-shield-lock"></i> SAML single sign-on</a>';
 	});
 
 	//"Sign in with SSO", when an account of the installation has it on
 	\V::app()->hooks->addHook('site:login-links', function() {
-	    if (\V::app()->om->acrossAccounts(fn() => \V::app()->om->count('SamlSettings', [ 'enabled' => true ])) > 0)
+	    //CLD: 2026-10-24T09:45:36+03:00: of an account whose tier has it (util\Tiers)
+	    $on = \V::app()->om->acrossAccounts(fn() => iterator_to_array(\V::app()->om->find('SamlSettings', [ 'enabled' => true ], [ 'projection' => [ 'aid' => 1 ] ]), false));
+	    if (array_filter($on, fn($s) => \util\Tiers::has((string)$s->aid, 'saml')))
 		echo \V::app()->html->link(\V::t('Sign in with SSO'), '/Saml/sso/login', [ 'class' => 'pt-1' ]);
 	});
     }

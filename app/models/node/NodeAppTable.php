@@ -404,6 +404,8 @@ class NodeAppTable extends \models\WfNode {
 	    case 'insert':
 		$row = \V::app()->om->create($iname, [ 'aid' => $aid ]);
 		\models\DataTableDef::assignRow($row, $this->dataValues($columns, $render));
+		//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of rows in a data table (util\Tiers; the step fails with the message)
+		\util\Tiers::check($aid, 'datatable_records', 1, $iname);
 		$row->save();
 		$this->exec->log($this->wfid, "table {$label}: inserted row {$row->_id}");
 		return [ 'row' => \models\DataTableDef::rowValue($row, $columns) ];
@@ -426,6 +428,8 @@ class NodeAppTable extends \models\WfNode {
 		    \models\DataTableDef::assignRow($row, $item, 'item ' . ($i + 1) . ': ');
 		    $models[] = $row;
 		}
+		//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of rows in a data table (util\Tiers): all of them, or none
+		\util\Tiers::check($aid, 'datatable_records', count($models), $iname);
 		$inserted = 0;
 		foreach(array_chunk($models, 500) as $batch)
 		    $inserted += \V::app()->om->insertMany($iname, $batch);
@@ -444,6 +448,9 @@ class NodeAppTable extends \models\WfNode {
 		$operation = $row ? 'update' : 'insert';
 		$row = $row ?: \V::app()->om->create($iname, [ 'aid' => $aid ]);
 		\models\DataTableDef::assignRow($row, $values);
+		//CLD: 2026-10-24T09:45:36+03:00: a new row: the tier's limit of rows in a data table (util\Tiers)
+		if ($operation === 'insert')
+		    \util\Tiers::check($aid, 'datatable_records', 1, $iname);
 		$row->save();
 		$this->exec->log($this->wfid, "table {$label}: upsert by {$key} -> {$operation} row {$row->_id}");
 		return [ 'row' => \models\DataTableDef::rowValue($row, $columns), 'operation' => $operation ];

@@ -267,6 +267,12 @@ $dd_items = implode('', $dd_items);
 		<i class="bi bi-house-gear"></i> Account settings
 	    </a>
 	    <?php endif; ?>
+	    <?php //CLD: 2026-10-24T09:45:36+03:00: the account's usage of its plan's limits (Account::usage, as AccountController::usage) ?>
+	    <?php if (\V::app()->user->can('Account::usage')): ?>
+	    <a href="<?= \V::app()->createUrl('/account/usage') ?>" class="nav-link">
+		<i class="bi bi-speedometer2"></i> Usage
+	    </a>
+	    <?php endif; ?>
 	    <?php //CLD: 2026-10-19T20:40:00+03:00: the plugins' links (each prints its <a class="nav-link"> and checks its own permissions; e.g. the Assistant's settings) ?>
 	    <?php \V::app()->hooks->applyHook('layout:settings-menu'); ?>
 	    <?php

@@ -327,6 +327,9 @@ class NodeAppLdap extends \models\WfNode {
     //running
 
     public function execute($edgeId = null) {
+	//CLD: 2026-10-24T09:45:36+03:00: a feature of the account's tier (util\Tiers)
+	if (!\util\Tiers::has($this->exec->aid, 'ldap'))
+	    throw new \ErrorException('LDAP: ' . \util\Tiers::featureMessage($this->exec->aid, 'ldap'));
 	$vars = $this->exec->expressionVariables();
 	$operation = (string)$this->cfg('operation', 'search');
 	if (!isset(self::OPERATIONS[$operation]))

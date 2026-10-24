@@ -30,7 +30,8 @@ class SsoController extends \sys\BaseController {
     protected function settingsOf($aid, $enabled = true) {
 	$om = \V::app()->om;
 	$account = $om->acrossAccounts(fn() => $om->findById('Account', (string)$aid));
-	if (!$account || \models\Account::isSuspended($account->_id))
+	//CLD: 2026-10-24T09:45:36+03:00: + the account's tier has SAML (util\Tiers)
+	if (!$account || \models\Account::isSuspended($account->_id) || !\util\Tiers::has($account, 'saml'))
 	    return null;
 	$s = $om->acrossAccounts(fn() => $om->findOne('SamlSettings', [ 'aid' => $account->_id ] + ($enabled ? [ 'enabled' => true ] : [])));
 	if ($s)

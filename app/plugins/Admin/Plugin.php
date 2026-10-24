@@ -14,6 +14,7 @@
       admin:services ($services: \ArrayObject)        id => [ label, description, unit (systemd), pidfile (before the unit: a script's), health: fn() => [ ok (bool|null), text ] ]
       admin:installation-panels ()                    the installation page's sections (echo)
       admin:account-panels ($account)                 the account page's sections (echo)
+      admin:account-features ($account)               the account page's sections of what the account may use, after its features (echo; CLD: 2026-10-24T10:06:05+03:00: e.g. the tool servers)
       admin:account-summary ($account, $items: \ArrayObject)   short texts for the accounts list (e.g. the credits)
 */
 
