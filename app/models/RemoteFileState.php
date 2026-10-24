@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T16:00:00+03:00: new model: what the FTP / SFTP step (models\node\NodeAppFtp, "Only new files") has already taken from a server, per workflow + step:
+    what the FTP / SFTP step (models\node\NodeAppFtp, "Only new files") has already taken from a server, per workflow + step:
 	`seen`: md5(remote path) => "<modified>|<size>" (a file is new when it is not there, or was changed since), the last check, and a lock (`locked_until`) so two runs
 	of the step never download the same files at once.
 	Kept outside the workflow document (as models\MailPoll): saving the workflow in the designer must not reset it. Removed with its workflow (hook workflow:before-delete)

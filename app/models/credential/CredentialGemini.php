@@ -1,8 +1,11 @@
 <?php
 
-//CLD: 2026-10-22T12:00:00+03:00: new credential variant: the Google Gemini API (Google AI Studio): an API key (aistudio.google.com), sent as `x-goog-api-key`;
-//the base URL, up to the version (default https://generativelanguage.googleapis.com/v1beta), can be changed (e.g. a proxy).
-//Provides `gemini` (the Gemini step: baseUrl + httpAuth) and `http` (the HTTP Request step). Test: GET <base URL>/models (those that generate content)
+/*
+    the Google Gemini API (Google AI Studio): an API key (aistudio.google.com), sent as `x-goog-api-key`;
+    the base URL, up to the version (default https://generativelanguage.googleapis.com/v1beta), can be changed (e.g. a proxy).
+    Provides `gemini` (the Gemini step: baseUrl + httpAuth) and `http` (the HTTP Request step).
+    Test: GET <base URL>/models (those that generate content)
+*/
 
 namespace models\credential;
 

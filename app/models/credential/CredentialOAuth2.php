@@ -1,11 +1,11 @@
 <?php
 
-//base of the OAuth 2.0 credential types (authorization code + PKCE). The OAuth app (client id /secret) is part of the credential;
-//Connect (/credential/connect) sends the user to the provider, /credential/oauth_callback stores the
-//tokens (secrets access_token, refresh_token, expires_at) and the account address (config `email`, from the id_token).
-//Subclasses set the endpoints and scopes (e.g. CredentialTypeGoogleOAuth2 + a scope); not registered itself
-//CLD: 2026-10-09T17:21:14+03:00: base of the OAuth credential variants of models\Credential (was CredentialTypeOAuth2, a CredentialType form model); the
-//account address is the `email` field (was config `email`); instance methods (were static, given the credential)
+/*
+    base of the OAuth 2.0 credential types (authorization code + PKCE). The OAuth app (client id /secret) is part of the credential;
+    Connect (/credential/connect) sends the user to the provider,
+    /credential/oauth_callback stores the tokens (secrets access_token, refresh_token, expires_at) and the account address (config `email`, from the id_token).
+    Subclasses set the endpoints and scopes (e.g. CredentialTypeGoogleOAuth2 + a scope); not registered itself
+*/
 
 namespace models\credential;
 
@@ -14,7 +14,6 @@ abstract class CredentialOAuth2 extends \models\Credential {
 
     //the redirect URI to register in the provider's app (same for every OAuth credential)
     public static function redirectUri() {
-	//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://); was built from the request host
 	return \V::app()->createAbsoluteUrl('/credential/oauth_callback');
     }
 
@@ -44,7 +43,6 @@ abstract class CredentialOAuth2 extends \models\Credential {
 		'type' => 'text',
 		'label' => 'Client ID',
 		'required' => true,
-		//CLD: 2026-10-10T18:44:22+03:00: 'default' => '' (in every document; was set by Credential::_init)
 		'default' => '',
 		'help' => 'Of the OAuth app (web application) at the provider',
 	    ],
@@ -64,10 +62,33 @@ abstract class CredentialOAuth2 extends \models\Credential {
 		'perm:update' => 'nobody',
 	    ],
 	    //set by Connect / refresh; never shown or posted
-	    //CLD: 2026-10-10T18:44:22+03:00: showInForms false (were left out by Credential::formKeys)
-	    [ 'key' => 'access_token', 'type' => 'text', 'label' => 'Access token', 'encrypt' => true, 'perm:read' => 'nobody', 'perm:update' => 'nobody', 'showInForms' => false ],
-	    [ 'key' => 'refresh_token', 'type' => 'text', 'label' => 'Refresh token', 'encrypt' => true, 'perm:read' => 'nobody', 'perm:update' => 'nobody', 'showInForms' => false ],
-	    [ 'key' => 'expires_at', 'type' => 'number', 'label' => 'Access token expires', 'encrypt' => true, 'perm:read' => 'nobody', 'perm:update' => 'nobody', 'showInForms' => false ],
+	    [
+		'key' => 'access_token',
+		'type' => 'text',
+		'label' => 'Access token',
+		'encrypt' => true,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false
+	    ],
+	    [
+		'key' => 'refresh_token',
+		'type' => 'text',
+		'label' => 'Refresh token',
+		'encrypt' => true,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false
+	    ],
+	    [
+		'key' => 'expires_at',
+		'type' => 'number',
+		'label' => 'Access token expires',
+		'encrypt' => true,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false
+	    ],
 	]);
     }
 
