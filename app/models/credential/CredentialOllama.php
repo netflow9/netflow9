@@ -62,6 +62,7 @@ class CredentialOllama extends \models\Credential {
 	//CLD: 2026-10-22T01:58:24+03:00: recorded: the choices of the AI steps' Model
 	$this->recordModels($names);
 	$shown = array_slice($names, 0, 10);
-	return ($version !== '' ? "Ollama {$version}: " : '') . count($names) . ' model(s)' . ($shown ? ': ' . implode(', ', $shown) . (count($names) > count($shown) ? ', ...' : '') : '');
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was (s))
+	return ($version !== '' ? "Ollama {$version}: " : '') . \util\Format::plural(count($names), 'model') . ($shown ? ': ' . implode(', ', $shown) . (count($names) > count($shown) ? ', ...' : '') : '');
     }
 }

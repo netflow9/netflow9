@@ -334,8 +334,9 @@ class SmartForm {
 		$sf['type'] = in_array($type, self::INPUTS, true) ? $type : 'text';
 	    }
 	    //CLD: 2026-10-14T14:38:46+03:00: the date picker's display format (app.format.date / app.format.datetime)
+	    //CLD: 2026-10-24T16:30:00+03:00: the account's (util\Format::dateFormat / datetimeFormat; app.format.* without one)
 	    if ($type === 'date' || $type === 'datetime')
-		$sf['format'] = (string)\V::app()->config($f->format == 'date' ? 'app.format.date' : 'app.format.datetime');
+		$sf['format'] = $f->format == 'date' ? Format::dateFormat() : Format::datetimeFormat();
 	    //CLD: 2026-10-14T14:38:46+03:00: an object field: a select of the target's objects, value = id
 	    if ($type === 'object') {
 		$sf['type'] = 'select';

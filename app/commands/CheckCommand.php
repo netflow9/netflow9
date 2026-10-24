@@ -42,7 +42,8 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-24T09:45:36+03:00: + tiers (util\Tiers: the tier, the account's own changes, the limits of data tables / rows / files refused at the limit, SAML / LDAP off without the
     //feature, the System AI allowance of the tier, the usage)
     //CLD: 2026-10-24T10:28:12+03:00: + Google / Microsoft by tier
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'tiers', 'steps' ];
+    //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'tiers', 'format', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -1637,8 +1638,8 @@ class CheckCommand extends \sys\BaseController {
 		    return 'refused: ' . $ex->getMessage();
 		}
 	    };
-	    $this->check('local AI: the credentials\' tests (the models; Ollama: its version, the URL without /api); a wrong key refused', [ '2 model(s): Qwen3-8B-GGUF, Gemma-3-4b-it-GGUF',
-		'Ollama 0.0-check: 2 model(s): qwen3:8b, gemma3:4b', "http://127.0.0.1:{$port}", true ], [ $refused($lem), $refused($oll), $oll->apiBase(), str_contains($refused($bad), '401') ]);
+	    $this->check('local AI: the credentials\' tests (the models; Ollama: its version, the URL without /api); a wrong key refused', [ '2 models: Qwen3-8B-GGUF, Gemma-3-4b-it-GGUF',
+		'Ollama 0.0-check: 2 models: qwen3:8b, gemma3:4b', "http://127.0.0.1:{$port}", true ], [ $refused($lem), $refused($oll), $oll->apiBase(), str_contains($refused($bad), '401') ]);
 	    //CLD: 2026-10-22T01:58:24+03:00: the Test records the models (saved; the AI steps' Model choices): sorted, the embedding / speech / image ones left out
 	    $saved = fn($c) => $om->findOne('Credential', [ '_id' => $c->_id ])?->models;
 	    $this->check('local AI: the Test records the models on the credential (sorted)', [ [ 'Gemma-3-4b-it-GGUF', 'Qwen3-8B-GGUF' ], [ 'gemma3:4b', 'qwen3:8b' ] ], [ $saved($lem), $saved($oll) ]);
@@ -3013,6 +3014,56 @@ class CheckCommand extends \sys\BaseController {
 		\V::app()->mongo->selectCollection(\models\Account::_database(), \models\Account::_collection())->deleteOne([ '_id' => $account->_id ]);
 	    });
 	}
+    }
+
+    //CLD: 2026-10-24T16:30:00+03:00: new: util\Format (numbers, plurals, sizes, dates in the account's formats or the app's, timeago against a fixed now, durations)
+    private function suiteFormat() {
+	$F = \util\Format::class;
+	$this->check('numbers: number / compact / percent / ordinal / plural; empty -> ""', [ '1,234,568', '1,234,567.89', '', '999', '1.2K', '3.4M', '1M', '45.7%', '50%',
+	    '1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '112th', '1 row', '0 rows', '1,500 rows', '3 entries', '2 boxes', '2 days', '5 data tables', '2 people' ],
+	    [ $F::number(1234567.891), $F::number(1234567.891, 2), $F::number(null), $F::compact(999), $F::compact(1234), $F::compact(3400000), $F::compact(999990), $F::percent(0.4567),
+		$F::percent(50, 1, false), $F::ordinal(1), $F::ordinal(2), $F::ordinal(3), $F::ordinal(4), $F::ordinal(11), $F::ordinal(12), $F::ordinal(13), $F::ordinal(21), $F::ordinal(112),
+		$F::plural(1, 'row'), $F::plural(0, 'row'), $F::plural(1500, 'row'), $F::plural(3, 'entry'), $F::plural(2, 'box'), $F::plural(2, 'day'), $F::plural(5, 'data table'),
+		$F::plural(2, 'person', 'people') ]);
+	$this->check('sizes: bytes (binary, decimal, rounding up to the next unit), toBytes; not a size -> "" / null', [ '0 B', '1023 B', '1 KB', '1.5 KB', '1 MB', '10 MB', '1.5 GB', '1.5 kB',
+	    '1.5 KB', '1 KB', '', 2097152, 524288, 1610612736, 100, null ],
+	    [ $F::bytes(0), $F::bytes(1023), $F::bytes(1024), $F::bytes(1536), $F::bytes(1048575), $F::bytes(10 << 20), $F::bytes(1.5 * (1 << 30)), str_replace('KB', 'kB', $F::bytes(1500, 1, false)),
+		$F::bytes(1536, 2), $F::bytes(1000, 1, false), $F::bytes('x'), $F::toBytes('2M'), $F::toBytes('512 KB'), $F::toBytes('1.5G'), $F::toBytes('100'), $F::toBytes('lots') ]);
+
+	$tz = date_default_timezone_get();
+	date_default_timezone_set('Europe/Bucharest');
+	$saved = [ $this->account->date_format, $this->account->datetime_format ];
+	try {
+	    $utc = new \MongoDB\BSON\UTCDateTime(strtotime('2026-10-24 11:05:30 UTC') * 1000);
+	    $this->account->date_format = '';
+	    $this->account->datetime_format = '';
+	    $app = [ $F::date($utc), $F::datetime($utc) ];
+	    $this->account->date_format = 'd.m.Y';
+	    $this->account->datetime_format = 'd/m/Y H:i';
+	    $this->check("dates: the app's formats, then the account's; the app timezone; UTCDateTime / seconds / milliseconds / ObjectId / text / DateTime; empty or not a date -> \"\"",
+		[ (string)\V::app()->config('app.format.date') === 'Y-m-d' ? '2026-10-24' : $app[0], $app[1], '24.10.2026', '24/10/2026 14:05', '24/10/2026 14:05', '24/10/2026 14:05',
+		    '24.10.2026', '24/10/2026 14:05', '24/10/2026 14:05', '2026-10-24T14:05', '', '', 'd.m.Y', 'd/m/Y H:i' ],
+		[ $app[0], $app[1], $F::date($utc), $F::datetime($utc), $F::datetime(strtotime('2026-10-24 11:05:30 UTC')), $F::datetime(strtotime('2026-10-24 11:05:30 UTC') * 1000),
+		    $F::date(new \MongoDB\BSON\ObjectId(sprintf('%08x', strtotime('2026-10-24 11:05:30 UTC')) . '0000000000000000')), $F::datetime('2026-10-24T11:05:30Z'),
+		    $F::datetime(new \DateTime('2026-10-24 11:05:30', new \DateTimeZone('UTC'))), $F::datetime($utc, 'Y-m-d\TH:i'), $F::date(null), $F::datetime('not a date'),
+		    $F::dateFormat(), $F::datetimeFormat() ]);
+
+	    $now = strtotime('2026-10-24 12:00:00');
+	    $ago = fn($s) => $F::timeago($now - $s, $now);
+	    $this->check('timeago: just now, minutes, hours, yesterday (the day before), days, months, years; the future; past $maxDays: the date; empty -> ""',
+		[ 'just now', '1 minute ago', '5 minutes ago', 'about 1 hour ago', '3 hours ago', 'yesterday', 'yesterday', '3 days ago', '2 months ago', '1 year ago', '2 years ago',
+		    'in 2 hours', 'tomorrow', 'in 5 days', '14/10/2026 12:00', '' ],
+		[ $ago(10), $ago(60), $ago(300), $ago(3600), $ago(3 * 3600), $ago(13 * 3600), $ago(30 * 3600), $ago(3 * 86400), $ago(61 * 86400), $ago(400 * 86400), $ago(800 * 86400),
+		    $F::timeago($now + 2 * 3600, $now), $F::timeago($now + 86400, $now), $F::timeago($now + 5 * 86400, $now), $F::timeago($now - 10 * 86400, $now, 7), $F::timeago(null) ]);
+	    $this->check('timeagoHtml: a <time> element, ISO 8601 in datetime, the datetime as title', '<time datetime="2026-10-24T11:55:00+03:00" title="24/10/2026 11:55">5 minutes ago</time>',
+		$F::timeagoHtml($now - 300, $now));
+	} finally {
+	    [ $this->account->date_format, $this->account->datetime_format ] = $saved;
+	    date_default_timezone_set($tz);
+	}
+
+	$this->check('duration: ms, s, m s, h m, d h; empty -> ""', [ '850 ms', '12.4 s', '1 s', '2m 13s', '1h 05m', '3d 4h', '0 ms', '' ],
+	    [ $F::duration(850), $F::duration(12400), $F::duration(1000), $F::duration(133000), $F::duration(3900000), $F::duration((3 * 86400 + 4 * 3600) * 1000), $F::duration(-5), $F::duration(null) ]);
     }
 
     //CLD: 2026-10-24T09:45:36+03:00: new: the accounts' tiers (util\Tiers), on an account made for the checks: its tier (the default, set, the account's own changes), the limits refused at the

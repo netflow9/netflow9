@@ -317,7 +317,8 @@ class WfExecution extends \sys\BaseModel {
 		    \models\ExecutionLog::record('execution.error', null, (string)$this->error);
 		    break;
 		case 'sleep':
-		    $wake = $this->wake_at instanceof \MongoDB\BSON\UTCDateTime ? $this->wake_at->toDateTime()->setTimezone(new \DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i:s') : 'unknown';
+		    //CLD: 2026-10-24T16:30:00+03:00: util\Format::datetime (the account's format; the daemon: app.format.datetime)
+		    $wake = \util\Format::datetime($this->wake_at) ?: 'unknown';
 		    \models\ExecutionLog::record('execution.sleep', null, 'waiting until ' . $wake);
 		    break;
 	    }

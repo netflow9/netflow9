@@ -1,4 +1,5 @@
 <?php
+//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number (was number_format)
 /*
     the Assistant's settings page (AssistantController::settings;
     Only the settings of the chosen provider are shown (all are saved)
@@ -150,9 +151,9 @@ JS . "}({$connectJs});");
 		<div class="form-group row mb-2">
 		    <label class="col-sm-3 col-form-label">Credits</label>
 		    <div class="col-sm-9 pt-2 small">
-			<span class="fs-5 fw-semibold"><?= number_format(SystemAiWallet::balance($wallet)) ?></span> <span class="text-muted">credits left<?= $held ? ' (' . number_format($held) . ' reserved by running requests)' : '' ?></span>
+			<span class="fs-5 fw-semibold"><?= \util\Format::number(SystemAiWallet::balance($wallet)) ?></span> <span class="text-muted">credits left<?= $held ? ' (' . \util\Format::number($held) . ' reserved by running requests)' : '' ?></span>
 			&middot; <a href="<?= \V::app()->createUrl('/SystemAI/credits/index') ?>">AI credits</a>
-			<div class="form-text">Shared with the AI steps that use the System AI. Used this month: <?= number_format($wallet['month_used']) ?> credits.</div>
+			<div class="form-text">Shared with the AI steps that use the System AI. Used this month: <?= \util\Format::number($wallet['month_used']) ?> credits.</div>
 		    </div>
 		</div>
 		<?= $settings->schema['credit_cap']->input([ 'cols' => '3,9', 'input' => [ 'inputmode' => 'numeric', 'placeholder' => 'No limit' ] ]) ?>
@@ -207,7 +208,7 @@ JS . "}({$connectJs});");
 		    $pct = $budget ? min(100, round($usage->cost / $budget * 100)) : 0;
 		    ?>
 		    <div class="small"><?= sprintf('%.2f USD', $usage->cost) ?><?= $budget ? sprintf(' of %.2f USD', $budget) : '' ?>
-			&middot; <?= number_format($usage->requests) ?> request(s), <?= number_format($usage->input_tokens) ?> input / <?= number_format($usage->output_tokens) ?> output tokens</div>
+			&middot; <?= \util\Format::number((int)$usage->requests) ?> request(s), <?= \util\Format::number((int)$usage->input_tokens) ?> input / <?= \util\Format::number((int)$usage->output_tokens) ?> output tokens</div>
 		    <?php if ($budget): ?>
 		    <div class="progress mt-1" style="height: 6px" role="progressbar" aria-valuenow="<?= $pct ?>" aria-valuemin="0" aria-valuemax="100">
 			<div class="progress-bar <?= $pct >= 100 ? 'bg-danger' : ($pct >= 80 ? 'bg-warning' : '') ?>" style="width: <?= $pct ?>%"></div>

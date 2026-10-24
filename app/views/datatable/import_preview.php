@@ -1,4 +1,5 @@
 <?php
+//CLD: 2026-10-24T16:30:00+03:00: the rows / columns: util\Format::plural (was number_format, columns always plural)
 //CLD: 2026-10-11T20:51:55+03:00: new view: Import, step 2 (DatatableController::import): the table's name, the sheet (Excel), whether the first row is a header, the
 //columns found (import or not, name, key, type; sample values) and the first rows; changing the sheet or the header choice posts step=preview (the
 //columns are guessed again); Import posts step=import. $errors: [ 'name' | column index => [ messages ] ]
@@ -56,7 +57,7 @@ $content = "
     <input type='hidden' name='step' value='import'>
     <input type='hidden' name='header_set' value='1'>
     <input type='hidden' name='sheet_shown' value='" . $esc($sheet) . "'>
-    <p class='small text-muted mb-3'>" . $esc($meta['name']) . ': ' . number_format(count($dataRows)) . ' rows, ' . count($columns) . " columns. Types were guessed from the values: check them before importing.</p>
+    <p class='small text-muted mb-3'>" . $esc($meta['name']) . ': ' . \util\Format::plural(count($dataRows), 'row') . ', ' . \util\Format::plural(count($columns), 'column') . ". Types were guessed from the values: check them before importing.</p>
     <div class='row g-3 mb-3 align-items-end'>
 	<div class='col-md-5'>
 	    <label class='form-label'>Table name</label>

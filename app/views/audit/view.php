@@ -1,8 +1,8 @@
 <?php
 //CLD: 2026-10-11T17:35:22+03:00: new view: an audit log entry (AuditController::view, dialog): who, when, what, and its changes (before -> after)
 $esc = fn($v) => \V::app()->html->escape((string)$v);
-$tz = new \DateTimeZone(\V::app()->config('app.timezone') ?: date_default_timezone_get());
-$when = $entry->created_at instanceof \MongoDB\BSON\UTCDateTime ? $entry->created_at->toDateTime()->setTimezone($tz)->format('Y-m-d H:i:s') : '';
+//CLD: 2026-10-24T16:30:00+03:00: the account's datetime format (util\Format; was Y-m-d H:i:s)
+$when = \util\Format::datetime($entry->created_at);
 
 //a logged value: text as is, other values as JSON
 $show = function($v) use ($esc) {

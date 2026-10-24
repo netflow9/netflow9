@@ -57,6 +57,7 @@ class CredentialGemini extends \models\Credential {
 	//recorded: the choices of the AI steps' Model
 	$this->recordModels($ids);
 	$shown = array_slice($ids, 0, 10);
-	return count($ids) . ' model(s)' . ($shown ? ': ' . implode(', ', $shown) . (count($ids) > count($shown) ? ', ...' : '') : '');
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was (s))
+	return \util\Format::plural(count($ids), 'model') . ($shown ? ': ' . implode(', ', $shown) . (count($ids) > count($shown) ? ', ...' : '') : '');
     }
 }

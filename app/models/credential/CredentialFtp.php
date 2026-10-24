@@ -205,7 +205,8 @@ class CredentialFtp extends \models\Credential {
 	$known = \util\FtpClient::isFingerprint($this->hostKey);
 	$entries = $this->withClient(fn($client) => $client->list(''), 20);
 	$names = array_map(fn($e) => $e['name'] . ($e['type'] === 'dir' ? '/' : ''), array_slice($entries, 0, 10));
-	return 'connected to ' . $this->host . ': ' . count($entries) . ' entr' . (count($entries) == 1 ? 'y' : 'ies') . ($names ? ' (' . implode(', ', $names) . (count($entries) > count($names) ? ', ...' : '') . ')' : '')
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was the plural inline)
+	return 'connected to ' . $this->host . ': ' . \util\Format::plural(count($entries), 'entry') . ($names ? ' (' . implode(', ', $names) . (count($entries) > count($names) ? ', ...' : '') . ')' : '')
 	    . (!$known && $this->protocol === 'sftp' ? '; server key saved: ' . $this->hostKey : '');
     }
 }

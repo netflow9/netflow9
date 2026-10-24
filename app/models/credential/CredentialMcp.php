@@ -93,6 +93,7 @@ class CredentialMcp extends \models\Credential {
 	$client->close();
 	$server = trim((string)($client->serverInfo['name'] ?? 'server') . ' ' . (string)($client->serverInfo['version'] ?? ''));
 	$shown = array_slice($tools, 0, 12);
-	return "{$server}: " . count($tools) . ' tool(s)' . ($shown ? ': ' . implode(', ', $shown) . (count($tools) > count($shown) ? ', ...' : '') : '');
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was (s))
+	return "{$server}: " . \util\Format::plural(count($tools), 'tool') . ($shown ? ': ' . implode(', ', $shown) . (count($tools) > count($shown) ? ', ...' : '') : '');
     }
 }

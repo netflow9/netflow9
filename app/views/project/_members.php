@@ -101,9 +101,10 @@ if ($invites) {
     foreach($invites as $inv) {
 	$by = $inv->invited_by ? \V::app()->om->findById('User', $inv->invited_by) : null;
 	$q = [ 'id' => (string)$project->_id, 'invite' => (string)$inv->_id ];
+	//CLD: 2026-10-24T16:30:00+03:00: the invitation's end in the account's datetime format (util\Format; was Y-m-d H:i)
 	echo "<tr><td><i class='bi bi-envelope me-2 text-body-secondary'></i>" . $esc($inv->email) . "</td>"
 	    . "<td style='width: 16rem'>" . $esc($roles[(string)$inv->role] ?? '') . "</td>"
-	    . "<td class='small text-body-secondary'>" . ($by ? 'by ' . $esc($by) . ', ' : '') . 'until ' . $esc($inv->expires_at->toDateTime()->setTimezone(new \DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i')) . "</td>"
+	    . "<td class='small text-body-secondary'>" . ($by ? 'by ' . $esc($by) . ', ' : '') . 'until ' . $esc(\util\Format::datetime($inv->expires_at)) . "</td>"
 	    . "<td class='text-end text-nowrap' style='width: 14rem'>"
 	    . "<a class='btn btn-sm btn-outline-secondary me-1' href='" . \V::app()->createUrl('/project/member_invite_resend', $q) . "' data-method='post'><i class='bi bi-arrow-repeat me-1'></i>Resend</a>"
 	    . "<a class='btn btn-sm btn-outline-danger' href='" . \V::app()->createUrl('/project/member_invite_cancel', $q) . "' data-method='post' data-confirm='"

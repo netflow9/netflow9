@@ -38,7 +38,8 @@ class AdminController extends \sys\BaseController {
 	$note = trim(mb_substr((string)($req->data['note'] ?? ''), 0, 200));
 	$t = \V::app()->om->acrossAccounts(fn() => SystemAiWallet::grant($account->_id, (int)$credits, $note));
 	\plugins\Admin\Plugin::audit('credits_topup', $account, "System AI top-up: +{$credits} credits until " . gmdate('Y-m-d', $t['expires']) . ($note !== '' ? " ({$note})" : ''));
-	$this->back($account, 'success', "+{$credits} credits, until " . gmdate('Y-m-d', $t['expires']));
+	//CLD: 2026-10-24T16:30:00+03:00: the account's date format (util\Format; was Y-m-d, UTC)
+	$this->back($account, 'success', "+{$credits} credits, until " . \util\Format::date($t['expires']));
     }
 
     //the account of POST `id`

@@ -236,10 +236,9 @@ class File extends \sys\BaseModel {
 	return false;
     }
 
+    //CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes: "1.5 MB" (was "1.50M", the unit from the number of digits)
     function getSizeHuman($decimals = 2) {
-        $suffix = [ 'B', 'K', 'M', 'G', 'T', 'P' ];
-        $factor = floor((strlen($this->length) - 1) / 3);
-        return number_format($this->length / pow(1024, $factor), $decimals) . $suffix[$factor];
+        return \util\Format::bytes($this->length, $decimals);
     }
 
     //specific to File
