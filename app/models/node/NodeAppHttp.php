@@ -23,6 +23,8 @@ class NodeAppHttp extends \models\WfNode {
     public static $inputs = 1;
     public static $outputs = 1;
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];
+    //CLD: 2026-10-24T12:07:28+03:00: a wide settings dialog, the step name half its width (the response variable and On error next to it)
+    public static $editor = [ 'size' => 'xl', 'titleWidth' => 6 ];
 
     const METHODS = [
 	'GET' => 'GET',
@@ -63,7 +65,30 @@ class NodeAppHttp extends \models\WfNode {
 	    'ui' => array_merge([ 'addLabel' => $addLabel, 'compact' => true, 'maxRows' => 50 ], $extra),
 	];
 
+	//CLD: 2026-10-24T12:07:28+03:00: laid out for the wide dialog ($editor: xl, the step name 6 wide), less scrolling: step name / response variable / on error; method / URL /
+	//timeout; query parameters | headers side by side; credential / body / JSON-RPC; the content (or the form fields) full width (was one setting per line, the response
+	//variable and On error last)
 	return [
+	    [
+		'key' => 'variable',
+		'type' => 'text',
+		'label' => 'Response variable',
+		'required' => true,
+		'default' => 'response',
+		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
+		'ui' => [ 'variableName' => 'write', 'width' => 3 ],
+	    ],
+	    [
+		'key' => 'onError',
+		'type' => 'select',
+		'label' => 'On error',
+		'required' => true,
+		'default' => 'fail',
+		'choices' => self::ON_ERROR,
+		//CLD: 2026-10-24T12:13:10+03:00: shorter (one line in the narrow column; was: No answer, timeout, or a status of 400 or more)
+		'help' => 'No answer, timeout, status 400+',
+		'ui' => [ 'width' => 3 ],
+	    ],
 	    [
 		'key' => 'method',
 		'type' => 'select',
@@ -72,7 +97,15 @@ class NodeAppHttp extends \models\WfNode {
 		'default' => 'GET',
 		'choices' => self::METHODS,
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
-		'ui' => [ 'width' => 6 ],
+		'ui' => [ 'width' => 2 ],
+	    ],
+	    [
+		'key' => 'url',
+		'type' => 'text',
+		'label' => 'URL',
+		'required' => true,
+		'help' => 'http:// or https://; {{ ... }} for expressions',
+		'ui' => [ 'placeholder' => 'https://api.example.com/items', 'expression' => true, 'width' => 8 ],
 	    ],
 	    [
 		'key' => 'timeout',
@@ -82,27 +115,21 @@ class NodeAppHttp extends \models\WfNode {
 		'default' => 30,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_TIMEOUT, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_TIMEOUT ] ],
 		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
-		'ui' => [ 'width' => 6 ],
+		'ui' => [ 'width' => 2 ],
 	    ],
-	    [
-		'key' => 'url',
-		'type' => 'text',
-		'label' => 'URL',
-		'required' => true,
-		'help' => 'http:// or https://; {{ ... }} for expressions',
-		'ui' => [ 'placeholder' => 'https://api.example.com/items', 'expression' => true ],
-	    ],
+	    //CLD: 2026-10-24T12:19:00+03:00: query parameters | headers before the credential / body row (was after it): the body type and JSON-RPC stay next to the content
+	    $pairs('query', 'Query parameters', 'Query parameter', 'Add parameter', [ 'width' => 6 ]),
+	    $pairs('headers', 'Headers', 'Header', 'Add header', [ 'width' => 6 ]),
 	    [
 		'key' => 'credential',
 		'type' => 'select',
 		'label' => 'Credential',
 		'default' => '',
 		'choices' => $credentials,
-		'help' => 'API key, Basic, Bearer or OAuth credential of the project (menu: Credentials), added to the request',
-		'ui' => [ 'placeholder' => 'None' ],
+		//CLD: 2026-10-24T12:13:10+03:00: shorter (one line; was: API key, Basic, Bearer or OAuth credential of the project (menu: Credentials), added to the request)
+		'help' => 'API key, Basic, Bearer or OAuth credential of the project (menu: Credentials)',
+		'ui' => [ 'placeholder' => 'None', 'width' => 6 ],
 	    ],
-	    $pairs('query', 'Query parameters', 'Query parameter', 'Add parameter'),
-	    $pairs('headers', 'Headers', 'Header', 'Add header'),
 	    [
 		'key' => 'bodyType',
 		'type' => 'select',
@@ -111,7 +138,8 @@ class NodeAppHttp extends \models\WfNode {
 		'default' => 'none',
 		'choices' => self::BODY_TYPES,
 		'ui' => [
-		    'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ]
+		    'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ],
+		    'width' => 3,
 		],
 	    ],
 	    //CLD: 2026-10-23T12:30:00+03:00: JSON-RPC 2.0: the content is checked as a request; switching it on proposes one (ui propose: when the content is empty, else asked)
@@ -120,11 +148,13 @@ class NodeAppHttp extends \models\WfNode {
 		'type' => 'switch',
 		'label' => 'JSON-RPC 2.0',
 		'default' => false,
-		'help' => 'The content is checked as a JSON-RPC request: { "jsonrpc": "2.0", "method": ..., "params": ..., "id": ... }, or a list of them (a batch)',
+		//CLD: 2026-10-24T12:20:52+03:00: no help text (was: The content is checked as a JSON-RPC request: { "jsonrpc": "2.0", "method": ..., "params": ..., "id": ... }, or a list of them (a batch))
+		'help' => false,
 		'ui' => [
 		    'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ],
 		    'showIf' => [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'json' ],
 		    'propose' => [ 'key' => 'body', 'value' => self::JSON_RPC_TEMPLATE, 'confirm' => 'Replace the content with a JSON-RPC request?' ],
+		    'width' => 3,
 		],
 	    ],
 	    //CLD: 2026-10-23T12:30:00+03:00: a code editor (app.CodeEditor); its syntax follows the body type (syntaxBy: JSON / JSON-RPC checked live, util\JsonCheck; text: the {{ }} only)
@@ -133,7 +163,8 @@ class NodeAppHttp extends \models\WfNode {
 		'type' => 'textarea',
 		'label' => 'Content',
 		'help' => 'JSON: a JSON text, or {{ ... }} giving an object / list',
-		'ui' => [ 'rows' => 8, 'expression' => 'text', 'code' => true,
+		//CLD: 2026-10-24T12:13:10+03:00: 6 lines (was 8: the dialog scrolled)
+		'ui' => [ 'rows' => 6, 'expression' => 'text', 'code' => true,
 		    'syntaxBy' => [
 			[ 'syntax' => 'jsonrpc', 'if' => [ [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'json' ], [ 'key' => 'jsonRpc', 'operator' => 'eq', 'value' => true ] ] ],
 			[ 'syntax' => 'json', 'if' => [ [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'json' ] ] ],
@@ -141,24 +172,6 @@ class NodeAppHttp extends \models\WfNode {
 		    'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ], 'showIf' => [ 'key' => 'bodyType', 'operator' => 'in', 'value' => [ 'json', 'text' ] ] ],
 	    ],
 	    $pairs('form', 'Form fields', 'Form field', 'Add field', [ 'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ], 'showIf' => [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'form' ] ]),
-	    [
-		'key' => 'variable',
-		'type' => 'text',
-		'label' => 'Response variable',
-		'required' => true,
-		'default' => 'response',
-		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
-		'ui' => [ 'variableName' => 'write' ],
-	    ],
-	    [
-		'key' => 'onError',
-		'type' => 'select',
-		'label' => 'On error',
-		'required' => true,
-		'default' => 'fail',
-		'choices' => self::ON_ERROR,
-		'help' => 'No answer, timeout, or a status of 400 or more',
-	    ],
 	];
     }
 
