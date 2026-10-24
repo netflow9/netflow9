@@ -69,7 +69,8 @@ class Plugin {
 	    if ($on)
 		$items[] = 'tools: ' . implode(', ', array_map(fn($id) => self::servers()[$id]['label'] ?? $id, $on));
 	});
-	\V::app()->hooks->addHook('admin:account-panels', function($account) {
+	//CLD: 2026-10-24T10:06:05+03:00: with the account's features (admin:account-features; was admin:account-panels, after the other plugins' sections)
+	\V::app()->hooks->addHook('admin:account-features', function($account) {
 	    echo \V::app()->view->renderFile('/plugins/LocalMCP/views/admin/account_panel', [ 'account' => $account, 'servers' => self::servers(),
 		'enabled' => models\LocalMcpAccess::serversOf($account->_id), 'open' => models\LocalMcpSlot::open() ]);
 	});

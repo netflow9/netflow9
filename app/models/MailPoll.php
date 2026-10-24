@@ -326,15 +326,21 @@ class MailPoll extends \sys\BaseModel {
 	$files = [];
 	foreach($mail->attachments() as $att) {
 	    $entry = [ 'filename' => $att['filename'], 'contentType' => $att['contentType'], 'size' => $att['size'], 'disposition' => $att['disposition'] ];
+	    //CLD: 2026-10-24T09:45:36+03:00: an attachment over the tier's limit of files (util\Tiers) is not saved (`file` null, `error`: why); the message still starts its run
 	    if ($saveAttachments) {
-		$entry['file'] = (string)\models\File::createFromString($att['filename'], $att['content'], [ 'metadata' => [
-		    'project' => $meta['project'] ?? null,
-		    'aid' => $meta['aid'] ?? null,
-		    'owner' => null,
-		    'source' => 'mail',
-		    'wf' => $meta['wf'] ?? null,
-		    'created_at' => new \MongoDB\BSON\UTCDateTime(),
-		] ]);
+		try {
+		    $entry['file'] = (string)\models\File::createFromString($att['filename'], $att['content'], [ 'metadata' => [
+			'project' => $meta['project'] ?? null,
+			'aid' => $meta['aid'] ?? null,
+			'owner' => null,
+			'source' => 'mail',
+			'wf' => $meta['wf'] ?? null,
+			'created_at' => new \MongoDB\BSON\UTCDateTime(),
+		    ] ]);
+		} catch (\util\LimitException $e) {
+		    $entry['file'] = null;
+		    $entry['error'] = $e->getMessage();
+		}
 	    }
 	    $files[] = $entry;
 	}

@@ -49,9 +49,10 @@ class LdapAuth {
     }
 
     //the settings of account $aid when its LDAP sign-in is on, else null
+    //CLD: 2026-10-24T09:45:36+03:00: null too when the account's tier does not have LDAP (util\Tiers; its settings are kept)
     public static function enabledFor($aid) {
 	$key = (string)$aid;
-	if ($key === '')
+	if ($key === '' || !\util\Tiers::has($key, 'ldap'))
 	    return null;
 	if (!array_key_exists($key, self::$settings)) {
 	    $s = \V::app()->om->findOne('LdapSettings', [ 'aid' => \V::app()->om->to_oid($aid), 'enabled' => true ]);

@@ -24,6 +24,8 @@ class LdapController extends \sys\BaseController {
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
+	//CLD: 2026-10-24T09:45:36+03:00: a feature of the account's tier (util\Tiers)
+	\util\Tiers::requireFeature('ldap');
     }
 
     protected function settingsOfAccount() {

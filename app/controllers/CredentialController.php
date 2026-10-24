@@ -63,6 +63,9 @@ class CredentialController extends \sys\BaseController {
 	$type = (string)($req->query['type'] ?? '');
 	if (!\V::app()->om->isDefined($type))
 	    \V::app()->error(400, 'Unknown credential type');
+	//CLD: 2026-10-24T09:45:36+03:00: a type of a feature the account's tier does not have (util\Tiers)
+	if (!\util\Tiers::allows(\V::app()->config('rt.account'), $type))
+	    \V::app()->error(403, \util\Tiers::featureMessage(\V::app()->config('rt.account'), \V::app()->om->registry[$type]['feature']));
 
 	$cred = $this->projectCredential($type);
 	if (!\V::app()->user->can('Credential::create', [ 'object' => $cred ]))

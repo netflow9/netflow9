@@ -71,7 +71,12 @@ class FileController extends \sys\BaseController {
 		'created_at' => new \MongoDB\BSON\UTCDateTime(),
 	    ],
 	];
-	$file_id = \models\File::createFromStream($file['name'], $fp, $options);
+	//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of the account's files (util\Tiers; File::createFromStream checks it)
+	try {
+	    $file_id = \models\File::createFromStream($file['name'], $fp, $options);
+	} catch (\util\LimitException $e) {
+	    $resp->sendJSON([ 'error' => $e->getMessage() ], true, 413);
+	}
 	\models\node\NodeTriggerFile::uploaded($file_id);
 	$resp->sendJSON([ 'id' => (string)$file_id ]);
     }

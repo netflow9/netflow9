@@ -60,9 +60,10 @@ class SamlAuth {
     }
 
     //the settings of account $aid when its SAML sign-in is on, else null
+    //CLD: 2026-10-24T09:45:36+03:00: null too when the account's tier does not have SAML (util\Tiers; its settings are kept)
     public static function enabledFor($aid) {
 	$key = (string)$aid;
-	if ($key === '')
+	if ($key === '' || !\util\Tiers::has($key, 'saml'))
 	    return null;
 	if (!array_key_exists($key, self::$settings)) {
 	    $s = \V::app()->om->acrossAccounts(fn() => \V::app()->om->findOne('SamlSettings', [ 'aid' => \V::app()->om->to_oid($aid), 'enabled' => true ]));
@@ -92,7 +93,8 @@ class SamlAuth {
 		return reset($found);
 	    $domain = substr($email, $at + 1);
 	    foreach($om->find('SamlSettings', [ 'enabled' => true ]) as $s) {
-		if (in_array($domain, $s->domainList(), true))
+		//CLD: 2026-10-24T09:45:36+03:00: of an account whose tier has SAML (enabledFor)
+		if (in_array($domain, $s->domainList(), true) && self::enabledFor($s->aid))
 		    return $s;
 	    }
 	    return null;
