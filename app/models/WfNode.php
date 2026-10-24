@@ -2,8 +2,10 @@
 
 namespace models;
 
-//a sys\NestedModel: held inside a workflow's `nodes` (with the edges, keyed by wfid), never saved by itself;
-//its own schema, no system fields
+/*
+    a sys\NestedModel: held inside a workflow's `nodes` (with the edges, keyed by wfid), never saved by itself;
+    its own schema, no system fields
+*/
 
 class WfNode extends \sys\NestedModel {
     //static data/structure
@@ -115,8 +117,7 @@ class WfNode extends \sys\NestedModel {
 	return $fields;
     }
 
-    //CLD: 2026-10-06T23:21:04+03:00: runtime contract (replaces start/canStart/canRun/run/isDone/advance, which used $this->id while the designer
-    //saves nodes with `wfid`, so no token ever left the trigger):
+    //runtime contract:
     //  receive($edgeId) is called by WfExecution when a token reaches the node; it calls execute(), which returns
     //   - an array of output port numbers to continue on (the node is done),
     //   - WfNode::SLEEP: not finished, keep the token and try again later (e.g. Wait),

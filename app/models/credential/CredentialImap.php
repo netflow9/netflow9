@@ -1,7 +1,9 @@
 <?php
 
-//an IMAP server with username / password (or app password)
-////openImap() / test() are instance methods
+/*
+    an IMAP server with username / password (or app password)
+    openImap() / test() are instance methods
+*/
 
 namespace models\credential;
 
@@ -50,7 +52,6 @@ class CredentialImap extends \models\Credential {
 		    'starttls' => 'STARTTLS (port 143)',
 		    'none' => 'None (unencrypted)',
 		],
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 	    ],
 	    [
 		'key' => 'username',
@@ -71,7 +72,13 @@ class CredentialImap extends \models\Credential {
 		'help' => 'Gmail: an app password',
 		'ui' => [ 'width' => 6 ]
 	    ],
-	    [ 'key' => 'email', 'type' => 'email', 'label' => 'Email address', 'default' => '', 'help' => 'Optional, shown next to the name' ],
+	    [
+		'key' => 'email',
+		'type' => 'email',
+		'label' => 'Email address',
+		'default' => '',
+		'help' => 'Optional, shown next to the name'
+	    ],
 	]);
     }
 

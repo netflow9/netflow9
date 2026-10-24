@@ -1,8 +1,9 @@
 <?php
 
-//CLD: 2026-10-08T14:34:02+03:00: new credential type: an API key sent in a header (e.g. X-Api-Key) or in the query string; for HTTP nodes (httpAuth)
-//CLD: 2026-10-09T17:21:14+03:00: a variant of models\Credential (was CredentialTypeApiKey, a CredentialType form model): its fields are the credential's,
-//httpAuth() is an instance method (was static, given the credential)
+/*
+    an API key sent in a header (e.g. X-Api-Key) or in the query string; for HTTP nodes (httpAuth)
+    httpAuth() is an instance method
+*/
 
 namespace models\credential;
 
@@ -21,7 +22,6 @@ class CredentialApiKey extends \models\Credential {
 		'required' => true,
 		'default' => 'header',
 		'choices' => [ 'header' => 'A header', 'query' => 'The query string' ],
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'width' => 6 ],
 	    ],
 	    [
@@ -29,7 +29,6 @@ class CredentialApiKey extends \models\Credential {
 		'type' => 'text',
 		'label' => 'Name',
 		'required' => true,
-		//CLD: 2026-10-10T18:44:22+03:00: 'default' => '' (in every document; was set by Credential::_init)
 		'default' => '',
 		'validate' => [ [ 'regex', 'pattern' => '^[A-Za-z0-9_.-]+$', 'skipEmpty' => true, 'message' => 'Letters, digits, dot, dash or underscore' ] ],
 		'ui' => [ 'width' => 6, 'placeholder' => 'X-Api-Key' ],
@@ -39,7 +38,6 @@ class CredentialApiKey extends \models\Credential {
 		'type' => 'password',
 		'label' => 'Key',
 		'required' => true,
-		//CLD: 2026-10-10T09:14:41+03:00: 'encrypt' => true (stored encrypted)
 		'encrypt' => true,
 	    ],
 	]);

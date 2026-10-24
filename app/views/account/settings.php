@@ -1,8 +1,5 @@
 <?php
 $this->pageTitle = 'Account::Settings';
-
-//CLD: 2026-10-19T20:10:00+03:00: the Assistant's settings and their script moved into the Assistant plugin (hook account:settings below)
-//CLD: 2026-10-19T20:40:00+03:00: the hook is gone: the Assistant has its own settings page (Settings menu)
 ?>
 
 <div class="main-header py-2 px-3">
