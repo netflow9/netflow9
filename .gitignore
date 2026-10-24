@@ -15,7 +15,8 @@ public_html/assets/
 app.env
 *.key
 *.pem
-haraka/
+# CLD: 2026-10-24T11:05:00+03:00: the Haraka install at the root only (was haraka/: also scripts/haraka/, the templates of scripts/haraka-install.sh)
+/haraka/
 node_modules/
 *.log
 *.tgz
