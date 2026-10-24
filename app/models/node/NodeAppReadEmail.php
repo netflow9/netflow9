@@ -84,41 +84,48 @@ class NodeAppReadEmail extends \models\WfNode {
 
 	return [
 	    [
+		//CLD: 2026-10-24T12:55:27+03:00: shorter help (was: IMAP, Google Mail or Microsoft 365 Mail credentials of the project (menu: Credentials))
 		'key' => 'credential',
 		'type' => 'select',
 		'label' => 'Mail credential',
 		'choices' => $choices,
-		'help' => 'IMAP, Google Mail or Microsoft 365 Mail credentials of the project (menu: Credentials)',
+		'help' => 'IMAP, Google Mail or Microsoft 365 Mail credential of the project',
 		'required' => true,
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 6 wide
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
 		'required' => true,
 		'default' => 'INBOX',
+		'ui' => [ 'width' => 6 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:27+03:00: shorter help (was: The messages read, a list of objects, e.g. {{ mails.length }}, {{ mails[0].subject }}; a Loop over {{ mails }} handles them one by one)
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Messages variable',
 		'required' => true,
 		'default' => 'mails',
-		'help' => 'The messages read, a list of objects, e.g. {{ mails.length }}, {{ mails[0].subject }}; a Loop over {{ mails }} handles them one by one',
+		'help' => 'e.g. a Loop over {{ mails }}',
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'variableName' => 'write' ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 6 wide, on a new line; shorter help (was: New: the first run only notes where the folder is (an empty list); messages arriving after it are read by the next runs)
 		'key' => 'which',
 		'type' => 'select',
 		'label' => 'Read',
 		'required' => true,
 		'default' => 'new',
 		'choices' => self::WHICH,
-		'help' => 'New: the first run only notes where the folder is (an empty list); messages arriving after it are read by the next runs',
+		'help' => 'New: the first run notes where the folder ends; the next runs read what arrives',
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
+		'ui' => [ 'width' => 6, 'newRow' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide
 		'key' => 'after',
 		'type' => 'select',
 		'label' => 'Afterwards',
@@ -126,16 +133,27 @@ class NodeAppReadEmail extends \models\WfNode {
 		'default' => 'none',
 		'choices' => self::AFTER,
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
+		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide
 		'key' => 'moveTo',
 		'type' => 'text',
 		'label' => 'Move to folder',
 		'default' => '',
 		'requiredIf' => [ 'if' => 'after', 'in' => [ 'move' ] ],
-		'ui' => [ 'placeholder' => 'Processed', 'showIf' => [ 'key' => 'after', 'operator' => 'eq', 'value' => 'move' ] ],
+		'ui' => [ 'width' => 3, 'placeholder' => 'Processed', 'showIf' => [ 'key' => 'after', 'operator' => 'eq', 'value' => 'move' ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide, on a new line
+		'key' => 'saveAttachments',
+		'type' => 'switch',
+		'label' => 'Save attachments as project files',
+		'default' => true,
+		'ui' => [ 'width' => 3, 'newRow' => true ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:55:27+03:00: layout: a limit (the last line)
 		'key' => 'maxMessages',
 		'type' => 'number',
 		'label' => 'Messages per run',
@@ -143,9 +161,10 @@ class NodeAppReadEmail extends \models\WfNode {
 		'default' => 10,
 		'help' => 'Oldest first; the rest wait for the next run',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_MESSAGES, 'skipEmpty' => true, 'message' => 'Between 1 and ' . self::MAX_MESSAGES ] ],
-		'ui' => [ 'step' => 1, 'width' => 6 ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:27+03:00: layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest message (MB)',
@@ -153,13 +172,7 @@ class NodeAppReadEmail extends \models\WfNode {
 		'default' => 25,
 		'help' => 'Larger messages are skipped',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'Between 1 and ' . self::MAX_SIZE_MB ] ],
-		'ui' => [ 'step' => 1, 'width' => 6 ],
-	    ],
-	    [
-		'key' => 'saveAttachments',
-		'type' => 'switch',
-		'label' => 'Save attachments as project files',
-		'default' => true,
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6 ],
 	    ],
 	];
     }

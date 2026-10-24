@@ -124,119 +124,142 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
     const MAX_TIMEOUT = 600;
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: The file id or its Drive link (https://drive.google.com/file/d/...); {{ ... }} for expressions, e.g. {{ drive[0].id }})
 		'key' => 'fileId',
 		'type' => 'text',
 		'label' => 'File',
 		'default' => '',
-		'help' => 'The file id or its Drive link (https://drive.google.com/file/d/...); {{ ... }} for expressions, e.g. {{ drive[0].id }}',
+		'help' => 'The file id or its Drive link, e.g. {{ drive[0].id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_FILE ],
-		'ui' => [ 'placeholder' => '1AbC... or https://drive.google.com/...', 'expression' => true, 'showIf' => $op(self::ON_FILE) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://drive.google.com/...', 'expression' => true, 'showIf' => $op(self::ON_FILE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: The folder id or its Drive link; empty: list: the whole Drive, upload / create: My Drive)
 		'key' => 'folderId',
 		'type' => 'text',
 		'label' => 'Folder',
 		'default' => '',
-		'help' => 'The folder id or its Drive link; empty: list: the whole Drive, upload / create: My Drive; {{ ... }} for expressions',
+		'help' => 'Folder id or link; empty: list: all of Drive, upload / create: My Drive',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'move' ] ],
-		'ui' => [ 'placeholder' => 'root, 1AbC... or https://drive.google.com/drive/folders/...', 'expression' => true, 'showIf' => $op([ 'list', 'upload', 'createFolder', 'move' ]) ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'root, 1AbC... or https://drive.google.com/drive/folders/...', 'expression' => true, 'showIf' => $op([ 'list', 'upload', 'createFolder', 'move' ]) ],
 	    ],
 
 	    //list
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Name contains',
 		'default' => '',
-		'help' => 'Empty: any name; {{ ... }} for expressions',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'help' => 'Empty: any name',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
 		'key' => 'fileType',
 		'type' => 'select',
 		'label' => 'Type',
 		'required' => true,
 		'default' => 'any',
 		'choices' => self::FILE_TYPES,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
-		'key' => 'query',
-		'type' => 'text',
-		'label' => 'Drive query',
-		'default' => '',
-		'help' => 'More conditions in the Drive search syntax (q), e.g. modifiedTime > \'2026-01-01T00:00:00\' and starred = true; {{ ... }} for expressions',
-		'ui' => [ 'expression' => true, 'showIf' => $op([ 'list' ]) ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
 		'key' => 'orderBy',
 		'type' => 'select',
 		'label' => 'Order',
 		'required' => true,
 		'default' => 'modifiedTime desc',
 		'choices' => self::ORDER,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: shorter help (was: More conditions in the Drive search syntax (q), e.g. modifiedTime > '2026-01-01T00:00:00' and starred = true)
+		'key' => 'query',
+		'type' => 'text',
+		'label' => 'Drive query',
+		'default' => '',
+		'help' => 'More conditions (Drive\'s q syntax), e.g. modifiedTime > \'2026-01-01T00:00:00\' and starred = true',
+		'ui' => [ 'expression' => true, 'showIf' => $op([ 'list' ]) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: a limit (the last line)
 		'key' => 'maxResults',
 		'type' => 'number',
 		'label' => 'Largest number of results',
 		'required' => true,
 		'default' => 100,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_RESULTS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_RESULTS ] ],
-		'ui' => [ 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
 		'key' => 'includeTrashed',
 		'type' => 'switch',
 		'label' => 'Include files in the trash',
 		'default' => false,
-		'ui' => [ 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'list' ]) ],
 	    ],
 
 	    //download
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: Docs, Sheets, Slides and Drawings have no file of their own: they are exported (10 MB at most); other files are downloaded as they are)
 		'key' => 'exportFormat',
 		'type' => 'select',
 		'label' => 'Google files as',
 		'required' => true,
 		'default' => 'auto',
 		'choices' => self::EXPORT_FORMATS,
-		'help' => 'Docs, Sheets, Slides and Drawings have no file of their own: they are exported (10 MB at most); other files are downloaded as they are',
-		'ui' => [ 'showIf' => $op([ 'download' ]) ],
+		'help' => 'Docs, Sheets, Slides, Drawings are exported (10 MB at most)',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'showIf' => $op([ 'download' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: The name of the saved file; empty: the name in Drive (+ the extension of the export))
 		'key' => 'filename',
 		'type' => 'text',
 		'label' => 'Save as',
 		'default' => '',
-		'help' => 'The name of the saved file; empty: the name in Drive (+ the extension of the export); {{ ... }} for expressions',
-		'ui' => [ 'placeholder' => 'report-{{ id }}.pdf', 'expression' => true, 'showIf' => $op([ 'download' ]) ],
+		'help' => 'Empty: the name in Drive (+ the export\'s extension)',
+		'ui' => [ 'width' => 6, 'placeholder' => 'report-{{ id }}.pdf', 'expression' => true, 'showIf' => $op([ 'download' ]) ],
 	    ],
 
 	    //upload
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'source',
 		'type' => 'select',
 		'label' => 'Upload',
 		'required' => true,
 		'default' => 'file',
 		'choices' => self::SOURCES,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'upload' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'upload' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6); shorter help (was: Word, text, HTML -> Docs; Excel, CSV -> Sheets; PowerPoint -> Slides)
 		'key' => 'convert',
 		'type' => 'switch',
 		'label' => 'Convert to a Google file',
 		'default' => false,
-		'help' => 'Word, text, HTML -> Docs; Excel, CSV -> Sheets; PowerPoint -> Slides',
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'upload' ]) ],
+		'help' => 'To Docs / Sheets / Slides',
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'upload' ]) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: Upload: the name in Drive (empty: the project file's name); create folder: the folder's name)
+		'key' => 'name',
+		'type' => 'text',
+		'label' => 'Name',
+		'default' => '',
+		'help' => 'Upload: the name in Drive (empty: the file\'s); folder: its name',
+		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'createFolder' ] ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'notes-{{ id }}.txt', 'expression' => true, 'showIf' => $op([ 'upload', 'createFolder' ]) ],
 	    ],
 	    [
 		'key' => 'sourceFile',
@@ -255,65 +278,62 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => $op([ 'upload' ]), 'hideIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'file' ] ],
 	    ],
 	    [
-		'key' => 'name',
-		'type' => 'text',
-		'label' => 'Name',
-		'default' => '',
-		'help' => 'Upload: the name in Drive (empty: the project file\'s name); create folder: the folder\'s name; {{ ... }} for expressions',
-		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'createFolder' ] ],
-		'ui' => [ 'placeholder' => 'notes-{{ id }}.txt', 'expression' => true, 'showIf' => $op([ 'upload', 'createFolder' ]) ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest size (MB)',
 		'required' => true,
 		'default' => 25,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
-		'ui' => [ 'step' => 1, 'width' => 6, 'showIf' => $op([ 'download', 'upload' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'download', 'upload' ]) ],
 	    ],
 
 	    //share
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'shareWith',
 		'type' => 'select',
 		'label' => 'Share with',
 		'required' => true,
 		'default' => 'user',
 		'choices' => self::SHARE_WITH,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'share' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'share' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
 		'key' => 'role',
 		'type' => 'select',
 		'label' => 'As',
 		'required' => true,
 		'default' => 'reader',
 		'choices' => self::ROLES,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'share' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'share' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'email',
 		'type' => 'text',
 		'label' => 'Address',
 		'default' => '',
 		'help' => '{{ ... }} for expressions',
-		'ui' => [ 'placeholder' => 'someone@example.com', 'expression' => true, 'showIf' => $op([ 'share' ]), 'hideIf' => [ 'key' => 'shareWith', 'operator' => 'in', 'value' => [ 'domain', 'anyone' ] ] ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'someone@example.com', 'expression' => true, 'showIf' => $op([ 'share' ]), 'hideIf' => [ 'key' => 'shareWith', 'operator' => 'in', 'value' => [ 'domain', 'anyone' ] ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'domain',
 		'type' => 'text',
 		'label' => 'Domain',
 		'default' => '',
-		'ui' => [ 'placeholder' => 'example.com', 'expression' => true, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'domain' ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'example.com', 'expression' => true, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'domain' ],
 		    'hideIf' => [ 'key' => 'operation', 'operator' => 'ne', 'value' => 'share' ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
 		'key' => 'notify',
 		'type' => 'switch',
 		'label' => 'Send a notification email',
 		'default' => true,
-		'ui' => [ 'showIf' => $op([ 'share' ]), 'hideIf' => [ 'key' => 'shareWith', 'operator' => 'in', 'value' => [ 'domain', 'anyone' ] ] ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'share' ]), 'hideIf' => [ 'key' => 'shareWith', 'operator' => 'in', 'value' => [ 'domain', 'anyone' ] ] ],
 	    ],
 	    [
 		'key' => 'message',
@@ -326,16 +346,20 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
 	    //delete
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
 		'key' => 'permanent',
 		'type' => 'switch',
 		'label' => 'Delete permanently (not to the trash)',
 		'default' => false,
-		'ui' => [ 'showIf' => $op([ 'delete' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'delete' ]) ],
 	    ],
 
-	    static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request to Drive (API calls: ' . \models\node\NodeAppHttp::MAX_TIMEOUT . ' at most)'),
-	    static::variableField('List: a list of files; download: the saved project file (its Drive file in `drive`); else the Drive file'),
-	    static::onErrorField('An error from Google Drive (e.g. not found, no access), a file larger than the limit, or a type that may not be saved in the project'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request to Drive (API calls: ' . \models\node\NodeAppHttp::MAX_TIMEOUT . ' at most)'))
+	    static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: List: a list of files; download: the saved project file (its Drive file in `drive`); else the Drive file)
+	    static::variableField('Files, the saved file, or the Drive file'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Google Drive (e.g. not found, no access), a file larger than the limit, or a type that may not be saved in the project)
+	    static::onErrorField('Drive errors, too large, type not allowed'),
 	];
     }
 

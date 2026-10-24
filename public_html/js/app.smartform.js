@@ -30,6 +30,7 @@ if (!window.app)
  *   showIf        - JS expression string, or a condition
  *   hideIf        - JS expression string, or a condition (wins over showIf when both are true)
  *   width         - bootstrap column width 1-12 (default 12) used for simple 2/3/4-col layouts
+ *   newRow        - (with width) the field starts a new line instead of following the narrow fields before it (CLD: 2026-10-24T12:41:49+03:00)
  *   direction     - per-field override of "vertical" | "horizontal"
  *   default       - initial value
  *   helpText      - small muted helper text under the field
@@ -286,6 +287,8 @@ window.app.smartform = (function() {
     	    this._visible = visible;
     	    if (this.el)
     		this.el.classList.toggle(this._hiddenDisplayClass, !visible);
+	    //CLD: 2026-10-24T12:48:19+03:00: its column too, in a row of narrow fields (the fields after it on the line move up; was an empty column left in place)
+	    flowColVisible(this.el, visible);
 
     	    const required = !!this.schema.required || evalExpr(this.schema.requiredIf, context, false);
     	    this._required = required;
@@ -1408,6 +1411,7 @@ window.app.smartform = (function() {
     	    if (this.schema.hideIf && evalExpr(this.schema.hideIf, context, false)) visible = false;
     	    this._visible = visible;
     	    if (this.el) this.el.classList.toggle('d-none', !visible);
+	    flowColVisible(this.el, visible);
 	}
 
 	validate() {
@@ -1560,6 +1564,7 @@ window.app.smartform = (function() {
     	    if (this.schema.hideIf && evalExpr(this.schema.hideIf, context, false)) visible = false;
     	    this._visible = visible;
     	    if (this.el) this.el.classList.toggle('d-none', !visible);
+	    flowColVisible(this.el, visible);
     	    this._recomputeConditions();
 	}
 
@@ -1651,6 +1656,7 @@ window.app.smartform = (function() {
     	    if (this.schema.hideIf && evalExpr(this.schema.hideIf, context, false)) visible = false;
     	    this._visible = visible;
     	    if (this.el) this.el.classList.toggle('d-none', !visible);
+	    flowColVisible(this.el, visible);
 	}
 
 	getValue() {
@@ -1877,7 +1883,8 @@ window.app.smartform = (function() {
     		if (node.width && node.width < 12) {
         	    // Simple 2/3/4-column helper: give the field's own row a width and
         	    // let sibling fields with widths flow onto the same line.
-        	    this._appendToFlowRow(targetEl, colWrap(el, node.width));
+		    //CLD: 2026-10-24T12:41:42+03:00: + newRow: the field starts a new line (was always after the narrow fields before it)
+        	    this._appendToFlowRow(targetEl, colWrap(el, node.width), !!node.newRow);
     		} else {
         	    targetEl.appendChild(el);
     		}
@@ -1885,12 +1892,21 @@ window.app.smartform = (function() {
 	}
 
 	/** Groups consecutively-declared narrow-width fields onto shared Bootstrap rows. */
-	_appendToFlowRow(targetEl, colEl) {
+	_appendToFlowRow(targetEl, colEl, newRow) {
     	    let lastRow = targetEl.lastElementChild;
     	    const isFlowRow = lastRow && lastRow.dataset && lastRow.dataset.flowRow === '1';
+	    //CLD: 2026-10-24T12:50:33+03:00: a new line in the same row: a line break (Bootstrap's w-100 column; a new .row g-3 overlapped the line above by its negative margin)
+	    //no gutter of its own; shown / hidden with the field's column (flowColVisible)
+	    if (isFlowRow && newRow) {
+		const br = document.createElement('div');
+		br.className = 'w-100 mt-0 p-0';
+		lastRow.appendChild(br);
+		colEl._flowBreak = br;
+	    }
     	    if (!isFlowRow) {
     		lastRow = document.createElement('div');
-    		lastRow.className = 'row g-3';
+    		//CLD: 2026-10-24T12:52:25+03:00: no vertical gutter (gy-0; was g-3): the fields' own bottom margin spaces the lines, as it spaces the fields one under the other (the lines were twice as far apart)
+    		lastRow.className = 'row gx-3 gy-0';
     		lastRow.dataset.flowRow = '1';
     		targetEl.appendChild(lastRow);
     	    }
@@ -1905,8 +1921,15 @@ window.app.smartform = (function() {
 
 	/** Re-run show-if/hide-if/required-if across every top-level field. */
 	recomputeVisibility() {
-    	    const context = { data: this.data, row: null, index: null };
-    	    this.fields.forEach((f) => f.applyConditions(context));
+	    //CLD: 2026-10-24T12:50:55+03:00: in their order, a hidden field's value is empty for the conditions of the fields after it (a field shown by a hidden one's value is hidden too: e.g.
+	    //the link's scope when the share settings are hidden; was the hidden field's value, often its default)
+	    const data = Object.assign({}, this.data);
+    	    const context = { data: data, row: null, index: null };
+    	    this.fields.forEach((f) => {
+		f.applyConditions(context);
+		if (f.key && f._visible === false)
+		    data[f.key] = undefined;
+	    });
         }
 
 	/** Validate every visible field; returns true only if all pass. */
@@ -2100,7 +2123,17 @@ window.app.smartform = (function() {
 	return null;
     }
 
-    function evalExpr(expr, context, defaultValue) {
+    //CLD: 2026-10-24T12:48:19+03:00: shows / hides the column of a field shown in a row of narrow fields (app.smartform _appendToFlowRow), with the field
+function flowColVisible(el, visible) {
+    const col = el && el.parentElement;
+    if (col && col.parentElement && col.parentElement.dataset && col.parentElement.dataset.flowRow === '1' && col.children.length === 1) {
+	col.classList.toggle('d-none', !visible);
+	if (col._flowBreak)
+	    col._flowBreak.classList.toggle('d-none', !visible);
+    }
+}
+
+function evalExpr(expr, context, defaultValue) {
 	if (expr && typeof expr === 'object' && !Array.isArray(expr) && expr.key) {
 	    const scope = expr.scope === 'row' ? context.row : context.data;
 	    return holds(scope ? scope[expr.key] : undefined, expr.operator || 'eq', expr.value);

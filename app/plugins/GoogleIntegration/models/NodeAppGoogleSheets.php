@@ -66,6 +66,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
     protected $firstSheet = null;
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 	$notCreate = [ 'read', 'append', 'update', 'clear', 'info', 'addSheet' ];
 
@@ -73,52 +74,76 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 	    static::credentialField(),
 	    static::operationField(),
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: The spreadsheet id or its link (https://docs.google.com/spreadsheets/d/...); {{ ... }} for expressions, e.g. {{ drive.id }})
 		'key' => 'spreadsheetId',
 		'type' => 'text',
 		'label' => 'Spreadsheet',
 		'default' => '',
-		'help' => 'The spreadsheet id or its link (https://docs.google.com/spreadsheets/d/...); {{ ... }} for expressions, e.g. {{ drive.id }}',
+		'help' => 'The spreadsheet id or its link, e.g. {{ drive.id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => $notCreate ],
-		'ui' => [ 'placeholder' => '1AbC... or https://docs.google.com/spreadsheets/d/...', 'expression' => true, 'showIf' => $op($notCreate) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://docs.google.com/spreadsheets/d/...', 'expression' => true, 'showIf' => $op($notCreate) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
 		'key' => 'sheet',
 		'type' => 'text',
 		'label' => 'Sheet',
 		'default' => '',
-		'help' => 'The sheet (tab) name; empty: the first sheet; {{ ... }} for expressions',
+		'help' => 'The sheet (tab) name; empty: the first sheet',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'addSheet' ] ],
-		'ui' => [ 'placeholder' => 'Sheet1', 'expression' => true, 'width' => 6, 'showIf' => $op(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
+		'ui' => [ 'width' => 3, 'placeholder' => 'Sheet1', 'expression' => true, 'showIf' => $op(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6); shorter help (was: A1 notation, e.g. A1:D100, A:C, 5:5; update: the first cell written (e.g. A5); empty: the whole sheet (update: A1))
 		'key' => 'range',
 		'type' => 'text',
 		'label' => 'Cells',
 		'default' => '',
-		'help' => 'A1 notation, e.g. A1:D100, A:C, 5:5; update: the first cell written (e.g. A5); empty: the whole sheet (update: A1)',
+		'help' => 'A1 notation, e.g. A1:D100; empty: the whole sheet',
 		'validate' => [ [ 'regex', 'pattern' => '^\s*(\{\{.*\}\}|[A-Za-z]{0,3}[0-9]{0,7}(:[A-Za-z]{0,3}[0-9]{0,7})?)\s*$', 'skipEmpty' => true, 'message' => 'Cells in A1 notation, e.g. A1:D100' ] ],
-		'ui' => [ 'placeholder' => 'A1:D100', 'expression' => true, 'width' => 6, 'showIf' => $op([ 'read', 'update', 'clear' ]) ],
+		'ui' => [ 'width' => 3, 'placeholder' => 'A1:D100', 'expression' => true, 'showIf' => $op([ 'read', 'update', 'clear' ]) ],
 	    ],
 
 	    //read
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line; shorter help (was: The rows are also given as objects keyed by the header, e.g. {{ sheet.rows[0].Email }})
 		'key' => 'header',
 		'type' => 'switch',
 		'label' => 'First row is the header',
 		'default' => true,
-		'help' => 'The rows are also given as objects keyed by the header, e.g. {{ sheet.rows[0].Email }}',
-		'ui' => [ 'showIf' => $op([ 'read' ]) ],
+		'help' => 'Rows also as objects keyed by the header',
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'read' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'render',
 		'type' => 'select',
 		'label' => 'Read values',
 		'required' => true,
 		'default' => 'FORMATTED_VALUE',
 		'choices' => self::RENDER,
-		'ui' => [ 'showIf' => $op([ 'read' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'read' ]) ],
 	    ],
 
+	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		'key' => 'input',
+		'type' => 'select',
+		'label' => 'Write values',
+		'required' => true,
+		'default' => 'USER_ENTERED',
+		'choices' => self::INPUT,
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'append', 'update' ]) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide; shorter help (was: Rows as objects: keys not in the header become new columns (else they are left out))
+		'key' => 'addColumns',
+		'type' => 'switch',
+		'label' => 'Add the missing columns to the header',
+		'default' => true,
+		'help' => 'New keys become new columns',
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'append', 'update' ]) ],
+	    ],
 	    //append / update
 	    [
 		'key' => 'values',
@@ -129,46 +154,32 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'append', 'update' ] ],
 		'ui' => [ 'rows' => 5, 'expression' => true, 'placeholder' => '{{ [ { Name: mail.from_name, Email: mail.from } ] }}', 'showIf' => $op([ 'append', 'update' ]) ],
 	    ],
-	    [
-		'key' => 'input',
-		'type' => 'select',
-		'label' => 'Write values',
-		'required' => true,
-		'default' => 'USER_ENTERED',
-		'choices' => self::INPUT,
-		'ui' => [ 'showIf' => $op([ 'append', 'update' ]) ],
-	    ],
-	    [
-		'key' => 'addColumns',
-		'type' => 'switch',
-		'label' => 'Add the missing columns to the header',
-		'default' => true,
-		'help' => 'Rows as objects: keys not in the header become new columns (else they are left out)',
-		'ui' => [ 'showIf' => $op([ 'append', 'update' ]) ],
-	    ],
 
 	    //create
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
 		'key' => 'title',
 		'type' => 'text',
 		'label' => 'Title',
 		'default' => '',
 		'help' => '{{ ... }} for expressions',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'placeholder' => 'Report {{ date }}', 'expression' => true, 'showIf' => $op([ 'create' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'Report {{ date }}', 'expression' => true, 'showIf' => $op([ 'create' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: The sheet names, separated by commas; empty: one sheet, Sheet1)
 		'key' => 'sheets',
 		'type' => 'text',
 		'label' => 'Sheets',
 		'default' => '',
-		'help' => 'The sheet names, separated by commas; empty: one sheet, Sheet1',
-		'ui' => [ 'placeholder' => 'Orders, Customers', 'expression' => true, 'showIf' => $op([ 'create' ]) ],
+		'help' => 'Sheet names separated by commas; empty: Sheet1',
+		'ui' => [ 'width' => 6, 'placeholder' => 'Orders, Customers', 'expression' => true, 'showIf' => $op([ 'create' ]) ],
 	    ],
 
 	    static::timeoutField(60),
 	    static::variableField(),
-	    static::onErrorField('An error from Google Sheets, e.g. not found, no access, a sheet or range that does not exist'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Google Sheets, e.g. not found, no access, a sheet or range that does not exist)
+	    static::onErrorField('Sheets errors, no such sheet / range'),
 	];
     }
 

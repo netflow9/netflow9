@@ -70,67 +70,94 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	    static::credentialField(),
 	    static::operationField(),
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: Empty: your OneDrive; a SharePoint site (https://contoso.sharepoint.com/sites/Team: its documents) or a drive id)
 		'key' => 'drive',
 		'type' => 'text',
 		'label' => 'Drive',
 		'default' => '',
-		'help' => 'Empty: your OneDrive; a SharePoint site (https://contoso.sharepoint.com/sites/Team: its documents) or a drive id',
-		'ui' => [ 'placeholder' => 'https://contoso.sharepoint.com/sites/Team', 'expression' => true ],
+		'help' => 'Empty: your OneDrive; a SharePoint site link or a drive id',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'https://contoso.sharepoint.com/sites/Team', 'expression' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: The file / folder id, its path in the drive (/Reports/2026.xlsx) or a sharing link; {{ ... }} for expressions, e.g. {{ files[0].id }})
 		'key' => 'itemId',
 		'type' => 'text',
 		'label' => 'File',
 		'default' => '',
-		'help' => 'The file / folder id, its path in the drive (/Reports/2026.xlsx) or a sharing link; {{ ... }} for expressions, e.g. {{ files[0].id }}',
+		'help' => 'Id, path (/Reports/2026.xlsx) or sharing link, e.g. {{ files[0].id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_ITEM ],
-		'ui' => [ 'placeholder' => '/Reports/2026.xlsx', 'expression' => true, 'showIf' => $op(self::ON_ITEM) ],
+		'ui' => [ 'width' => 6, 'placeholder' => '/Reports/2026.xlsx', 'expression' => true, 'showIf' => $op(self::ON_ITEM) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: A folder id, path (/Reports) or sharing link; empty: the top of the drive)
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
 		'default' => '',
-		'help' => 'A folder id, path (/Reports) or sharing link; empty: the top of the drive',
-		'ui' => [ 'placeholder' => '/Reports', 'expression' => true, 'showIf' => $op(array_merge(self::IN_FOLDER, [ 'move' ])) ],
+		'help' => 'Id, path (/Reports) or sharing link; empty: the top',
+		'ui' => [ 'width' => 6, 'placeholder' => '/Reports', 'expression' => true, 'showIf' => $op(array_merge(self::IN_FOLDER, [ 'move' ])) ],
 	    ],
 
 	    //list
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: Words in the names and contents, in the whole drive (the folder is not used); empty: the files of the folder)
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Search',
 		'default' => '',
-		'help' => 'Words in the names and contents, in the whole drive (the folder is not used); empty: the files of the folder',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'help' => 'Words in names and contents (whole drive); empty: the folder\'s files',
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
 		'key' => 'maxResults',
 		'type' => 'number',
 		'label' => 'Largest number of files',
 		'required' => true,
 		'default' => 100,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_RESULTS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_RESULTS ] ],
-		'ui' => [ 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
 	    ],
 
 	    //download / upload
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: The name in the project Files; empty: the file's)
 		'key' => 'filename',
 		'type' => 'text',
 		'label' => 'Save as',
 		'default' => '',
 		'help' => 'The name in the project Files; empty: the file\'s',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'download' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'download' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'source',
 		'type' => 'select',
 		'label' => 'Upload',
 		'required' => true,
 		'default' => 'file',
 		'choices' => [ 'file' => 'A project file', 'text' => 'A text' ],
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'upload' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'upload' ]) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: upload: the name in the drive (empty: the project file's); create folder: the folder's; move: a new name (empty: kept))
+		'key' => 'name',
+		'type' => 'text',
+		'label' => 'Name',
+		'default' => '',
+		'help' => 'Upload / folder: its name; move: a new name (empty: kept)',
+		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'createFolder' ] ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'upload', 'createFolder', 'move' ]) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		'key' => 'conflict',
+		'type' => 'select',
+		'label' => 'When the name exists',
+		'required' => true,
+		'default' => 'rename',
+		'choices' => self::CONFLICT,
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'upload', 'createFolder' ]) ],
 	    ],
 	    [
 		'key' => 'sourceFile',
@@ -149,53 +176,39 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'rows' => 4, 'expression' => true, 'showIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'text' ] ],
 	    ],
 	    [
-		'key' => 'name',
-		'type' => 'text',
-		'label' => 'Name',
-		'default' => '',
-		'help' => 'upload: the name in the drive (empty: the project file\'s); create folder: the folder\'s; move: a new name (empty: kept)',
-		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'createFolder' ] ],
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'upload', 'createFolder', 'move' ]) ],
-	    ],
-	    [
-		'key' => 'conflict',
-		'type' => 'select',
-		'label' => 'When the name exists',
-		'required' => true,
-		'default' => 'rename',
-		'choices' => self::CONFLICT,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'upload', 'createFolder' ]) ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest size (MB)',
 		'required' => true,
 		'default' => 25,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
-		'ui' => [ 'step' => 1, 'width' => 6, 'showIf' => $op([ 'download', 'upload' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'download', 'upload' ]) ],
 	    ],
 
 	    //share
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'shareWith',
 		'type' => 'select',
 		'label' => 'Share with',
 		'required' => true,
 		'default' => 'link',
 		'choices' => self::SHARE_WITH,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'share' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'share' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'linkType',
 		'type' => 'select',
 		'label' => 'Access',
 		'required' => true,
 		'default' => 'view',
 		'choices' => self::LINK_TYPES,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'share' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'share' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'linkScope',
 		'type' => 'select',
 		'label' => 'Who can use the link',
@@ -203,44 +216,50 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'default' => 'organization',
 		'choices' => self::LINK_SCOPES,
 		'help' => 'Anyone: when the organization allows it',
-		'ui' => [ 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'link' ] ],
+		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'link' ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'people',
 		'type' => 'text',
 		'label' => 'People',
 		'default' => '',
 		'help' => 'Addresses separated by commas',
-		'ui' => [ 'expression' => true, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'people' ] ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'people' ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'notify',
 		'type' => 'switch',
 		'label' => 'Send them an email',
 		'default' => true,
-		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'people' ] ],
+		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'people' ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'message',
 		'type' => 'text',
 		'label' => 'Message',
 		'default' => '',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'people' ] ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'people' ] ],
 	    ],
 
 	    //delete
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line; shorter help (was: Else to the recycle bin; permanently: work / school accounts only)
 		'key' => 'permanent',
 		'type' => 'switch',
 		'label' => 'Delete permanently',
 		'default' => false,
-		'help' => 'Else to the recycle bin; permanently: work / school accounts only',
-		'ui' => [ 'showIf' => $op([ 'delete' ]) ],
+		'help' => 'Else to the recycle bin (permanently: work / school only)',
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'delete' ]) ],
 	    ],
 
-	    static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request (API calls: ' . \models\node\NodeAppHttp::MAX_TIMEOUT . ' at most)'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request (API calls: ' . \models\node\NodeAppHttp::MAX_TIMEOUT . ' at most)'))
+	    static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request'),
 	    static::variableField(),
-	    static::onErrorField('An error from OneDrive / SharePoint, e.g. not found, no access, too large, a type that may not be saved'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from OneDrive / SharePoint, e.g. not found, no access, too large, a type that may not be saved)
+	    static::onErrorField('OneDrive errors, too large, type not allowed'),
 	];
     }
 

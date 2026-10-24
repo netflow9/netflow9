@@ -38,12 +38,13 @@ class NodeTriggerFile extends \models\WfNode {
 		'ui' => [ 'placeholder' => 'Any file' ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: The uploaded file, e.g. {{ file.id }}, {{ file.filename }}, {{ file.type }})
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'File variable',
 		'required' => true,
 		'default' => 'file',
-		'help' => 'The uploaded file, e.g. {{ file.id }}, {{ file.filename }}, {{ file.type }}',
+		'help' => 'e.g. {{ file.id }}, {{ file.filename }}',
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'variableName' => 'write' ],
 	    ],

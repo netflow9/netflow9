@@ -49,45 +49,49 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
     const MAX_REPLACE = 100;
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: The document id or its link (https://docs.google.com/document/d/...); {{ ... }} for expressions, e.g. {{ doc.id }})
 		'key' => 'documentId',
 		'type' => 'text',
 		'label' => 'Document',
 		'default' => '',
-		'help' => 'The document id or its link (https://docs.google.com/document/d/...); {{ ... }} for expressions, e.g. {{ doc.id }}',
+		'help' => 'The document id or its link, e.g. {{ doc.id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_DOCUMENT ],
-		'ui' => [ 'placeholder' => '1AbC... or https://docs.google.com/document/d/...', 'expression' => true, 'showIf' => $op(self::ON_DOCUMENT) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://docs.google.com/document/d/...', 'expression' => true, 'showIf' => $op(self::ON_DOCUMENT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'title',
 		'type' => 'text',
 		'label' => 'Title',
 		'default' => '',
-		'help' => 'Copy: empty gives "Copy of <title>"; {{ ... }} for expressions',
+		'help' => 'Copy: empty gives "Copy of <title>"',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'placeholder' => 'Offer {{ client.name }}', 'expression' => true, 'showIf' => $op([ 'create', 'copy' ]) ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'Offer {{ client.name }}', 'expression' => true, 'showIf' => $op([ 'create', 'copy' ]) ],
 	    ],
 	    [
-		'key' => 'content',
-		'type' => 'textarea',
-		'label' => 'Content',
-		'default' => '',
-		'help' => 'Create: optional; {{ ... }} for expressions',
-		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'append' ] ],
-		'ui' => [ 'rows' => 8, 'expression' => true, 'placeholder' => "# Report {{ date }}\n\n- **Orders:** {{ orders.length }}", 'showIf' => $op(self::WRITE) ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'format',
 		'type' => 'select',
 		'label' => 'Content is',
 		'required' => true,
 		'default' => 'markdown',
 		'choices' => self::FORMATS,
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::WRITE) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op(self::WRITE) ],
+	    ],
+	    [
+		'key' => 'content',
+		'type' => 'textarea',
+		'label' => 'Content',
+		'default' => '',
+		'help' => 'Create: optional',
+		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'append' ] ],
+		'ui' => [ 'rows' => 8, 'expression' => true, 'placeholder' => "# Report {{ date }}\n\n- **Orders:** {{ orders.length }}", 'showIf' => $op(self::WRITE) ],
 	    ],
 	    [
 		'key' => 'replacements',
@@ -100,23 +104,27 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'ui' => [ 'addLabel' => 'Add replacement', 'compact' => true, 'maxRows' => self::MAX_REPLACE, 'showIf' => $op([ 'replace' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 9 wide, on a new line; shorter help (was: Optional: {{ ... }} giving an object, e.g. {{ row }}: each key's placeholder {{key}} in the document is replaced by its value)
 		'key' => 'placeholders',
 		'type' => 'text',
 		'label' => 'Placeholders',
 		'default' => '',
-		'help' => 'Optional: {{ ... }} giving an object, e.g. {{ row }}: each key\'s placeholder {{key}} in the document is replaced by its value',
-		'ui' => [ 'placeholder' => '{{ row }}', 'expression' => true, 'showIf' => $op([ 'replace' ]) ],
+		'help' => 'Optional: {{ ... }} giving an object: each {{key}} in the document gets its value',
+		'ui' => [ 'width' => 9, 'newRow' => true, 'placeholder' => '{{ row }}', 'expression' => true, 'showIf' => $op([ 'replace' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
 		'key' => 'matchCase',
 		'type' => 'switch',
 		'label' => 'Match case',
 		'default' => true,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'replace' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'replace' ]) ],
 	    ],
 	    static::timeoutField(60),
-	    static::variableField('Read: { id, title, url, text, markdown }; replace: { id, url, replaced, counts }; else { id, title, url }'),
-	    static::onErrorField('An error from Google Docs (e.g. not found, no access); copy: a credential without the Drive scope'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: Read: { id, title, url, text, markdown }; replace: { id, url, replaced, counts }; else { id, title, url })
+	    static::variableField('The document: { id, title, url, ... }'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Google Docs (e.g. not found, no access); copy: a credential without the Drive scope)
+	    static::onErrorField('Docs errors; copy: no Drive scope'),
 	];
     }
 

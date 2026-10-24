@@ -30,9 +30,10 @@ class NodeAppOpenAI extends NodeAppAi {
 		'type' => 'text',
 		'label' => 'Temperature',
 		'default' => '',
-		'help' => 'Optional, 0 - 2: lower is more predictable; empty: the server default',
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line (was 6); shorter help (was: Optional, 0 - 2: lower is more predictable; empty: the server default)
+		'help' => '0 - 2; empty: the default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		'ui' => [ 'width' => 6, 'placeholder' => 'default' ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'default' ],
 	    ],
 	];
     }

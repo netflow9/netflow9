@@ -53,6 +53,7 @@ class NodeAppFtp extends \models\WfNode {
     const FUZZ = 2 * 86400;
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$choices = fn($capability) => array_column(static::credentialChoices($capability), 'label', 'value');
 	$download = [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'download' ];
 
@@ -75,87 +76,108 @@ class NodeAppFtp extends \models\WfNode {
 		'ui' => [ 'width' => 6 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line; shorter help (was: /out/reports from the server's root, out/reports from the folder you start in; empty: that folder)
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
 		'default' => '',
-		'help' => '/out/reports from the server\'s root, out/reports from the folder you start in; empty: that folder; {{ ... }} for expressions',
-		'ui' => [ 'width' => 6, 'placeholder' => '/outgoing', 'expression' => true ],
+		'help' => '/out/reports (from the root) or out/reports; empty: the start folder',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '/outgoing', 'expression' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide; shorter help (was: Comma separated: *.csv, report_????.xlsx, 2026/*.csv (a path under the folder); /^inv_\d+\.xml$/i for a regular expression; not case sensitive)
+		'key' => 'pattern',
+		'type' => 'text',
+		'label' => 'File names',
+		'default' => '*',
+		'help' => '*.csv, report_????.xlsx, 2026/*.csv or /^inv_\\d+\\.xml$/i; any case',
+		'ui' => [ 'width' => 6, 'placeholder' => '*.csv, *.csv.gpg', 'expression' => true ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line; shorter help (was: Names not taken, as File names (e.g. files still being uploaded, hidden files))
+		'key' => 'exclude',
+		'type' => 'text',
+		'label' => 'Leave out',
+		'default' => '*.part, *.tmp, *.filepart, .*',
+		'help' => 'Names not taken (e.g. files still being uploaded)',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
 		'key' => 'subfolders',
 		'type' => 'switch',
 		'label' => 'Include subfolders',
 		'default' => false,
-		'ui' => [ 'width' => 6 ],
+		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
 		'key' => 'depth',
 		'type' => 'number',
 		'label' => 'Levels of subfolders',
 		'default' => 3,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_DEPTH, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_DEPTH ] ],
-		'ui' => [ 'width' => 6, 'step' => 1, 'showIf' => [ 'key' => 'subfolders', 'operator' => 'eq', 'value' => true ] ],
+		'ui' => [ 'width' => 3, 'step' => 1, 'showIf' => [ 'key' => 'subfolders', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 	    [
-		'key' => 'pattern',
-		'type' => 'text',
-		'label' => 'File names',
-		'default' => '*',
-		'help' => 'Comma separated: *.csv, report_????.xlsx, 2026/*.csv (a path under the folder); /^inv_\d+\.xml$/i for a regular expression; not case sensitive',
-		'ui' => [ 'width' => 6, 'placeholder' => '*.csv, *.csv.gpg', 'expression' => true ],
-	    ],
-	    [
-		'key' => 'exclude',
-		'type' => 'text',
-		'label' => 'Leave out',
-		'default' => '*.part, *.tmp, *.filepart, .*',
-		'help' => 'Names not taken, as File names (e.g. files still being uploaded, hidden files)',
-		'ui' => [ 'width' => 6, 'expression' => true ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: A date (2026-10-01, 2026-10-01T08:00:00Z) or relative (-24 hours, yesterday, -7 days); {{ ... }}; empty: any)
 		'key' => 'modifiedAfter',
 		'type' => 'text',
 		'label' => 'Modified after',
 		'default' => '',
-		'help' => 'A date (2026-10-01, 2026-10-01T08:00:00Z) or relative (-24 hours, yesterday, -7 days); {{ ... }}; empty: any',
-		'ui' => [ 'width' => 6, 'placeholder' => '-24 hours', 'expression' => true ],
+		'help' => '2026-10-01, -24 hours, yesterday; empty: any',
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '-24 hours', 'expression' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
 		'key' => 'modifiedBefore',
 		'type' => 'text',
 		'label' => 'Modified before',
 		'default' => '',
 		'help' => 'As Modified after; empty: any',
-		'ui' => [ 'width' => 6, 'placeholder' => 'today', 'expression' => true ],
+		'ui' => [ 'width' => 3, 'placeholder' => 'today', 'expression' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: Leaves files modified in the last minutes (still being written); 0: none left)
 		'key' => 'minAge',
 		'type' => 'number',
 		'label' => 'Unchanged for at least (minutes)',
 		'default' => 0,
-		'help' => 'Leaves files modified in the last minutes (still being written); 0: none left',
+		'help' => 'Leaves files changed in the last minutes',
 		'validate' => [ [ 'inRange', 'lower' => 0, 'upper' => 100000, 'skipEmpty' => true, 'message' => 'from 0 to 100000' ] ],
-		'ui' => [ 'width' => 6, 'step' => 1 ],
+		'ui' => [ 'width' => 3, 'step' => 1 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: Files this step has not taken in an earlier run (or changed since); a file that failed is tried again)
 		'key' => 'onlyNew',
 		'type' => 'switch',
 		'label' => 'Only new files',
 		'default' => false,
-		'help' => 'Files this step has not taken in an earlier run (or changed since); a file that failed is tried again',
-		'ui' => [ 'width' => 6 ],
+		'help' => 'Not taken by an earlier run (or changed)',
+		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line
+		'key' => 'order',
+		'type' => 'select',
+		'label' => 'Order',
+		'required' => true,
+		'default' => 'oldest',
+		'choices' => self::ORDER,
+		'ui' => [ 'width' => 3, 'newRow' => true ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
 		'key' => 'minSizeKb',
 		'type' => 'number',
 		'label' => 'Smallest size (KB)',
 		'default' => 0,
 		'help' => 'Smaller files are left; 0: also empty files',
 		'validate' => [ [ 'inRange', 'lower' => 0, 'upper' => self::MAX_SIZE_MB * 1024, 'skipEmpty' => true, 'message' => 'from 0 to ' . self::MAX_SIZE_MB * 1024 ] ],
-		'ui' => [ 'width' => 6 ],
+		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest size (MB)',
@@ -163,18 +185,10 @@ class NodeAppFtp extends \models\WfNode {
 		'default' => 25,
 		'help' => 'Larger files are left (in `skipped`)',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
-		'ui' => [ 'width' => 6 ],
+		'ui' => [ 'limit' => true, 'width' => 6 ],
 	    ],
 	    [
-		'key' => 'order',
-		'type' => 'select',
-		'label' => 'Order',
-		'required' => true,
-		'default' => 'oldest',
-		'choices' => self::ORDER,
-		'ui' => [ 'width' => 6 ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: a limit (the last line)
 		'key' => 'maxFiles',
 		'type' => 'number',
 		'label' => 'Files per run',
@@ -182,67 +196,74 @@ class NodeAppFtp extends \models\WfNode {
 		'default' => 20,
 		'help' => 'The rest wait for the next run',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_FILES, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_FILES ] ],
-		'ui' => [ 'width' => 6, 'step' => 1 ],
+		'ui' => [ 'limit' => true, 'width' => 6, 'step' => 1 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line; shorter help (was: The ending is removed from the saved name: report.csv.gpg -> report.csv)
 		'key' => 'decrypt',
 		'type' => 'select',
 		'label' => 'Decrypt',
 		'required' => true,
 		'default' => 'none',
 		'choices' => self::DECRYPT,
-		'help' => 'The ending is removed from the saved name: report.csv.gpg -> report.csv',
-		'ui' => [ 'showIf' => $download ],
+		'help' => 'The ending is removed: report.csv.gpg -> report.csv',
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $download ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide; shorter help (was: A Decryption key credential of the project: PGP / GPG, OpenSSL or S/MIME)
 		'key' => 'decryptCredential',
 		'type' => 'select',
 		'label' => 'Decryption key',
 		'default' => '',
 		'choices' => $choices('decrypt'),
 		'requiredIf' => [ 'if' => 'decrypt', 'in' => [ 'ext', 'all' ] ],
-		'help' => 'A Decryption key credential of the project: PGP / GPG, OpenSSL or S/MIME',
-		'ui' => [ 'showIf' => [ 'key' => 'decrypt', 'operator' => 'ne', 'value' => 'none' ] ],
+		'help' => 'A Decryption key credential: PGP / GPG, OpenSSL or S/MIME',
+		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'decrypt', 'operator' => 'ne', 'value' => 'none' ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		'key' => 'decompress',
 		'type' => 'switch',
 		'label' => 'Decompress .gz / .bz2 files',
 		'default' => false,
 		'help' => 'After decrypting: report.csv.gz -> report.csv',
-		'ui' => [ 'showIf' => $download ],
+		'ui' => [ 'width' => 3, 'showIf' => $download ],
 	    ],
 	    //CLD: 2026-10-20T20:00:00+03:00: signature checks
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line; shorter help (was: A file whose signature is bad, or made by another key, is not saved)
 		'key' => 'verifySignature',
 		'type' => 'select',
 		'label' => 'Check signature',
 		'required' => true,
 		'default' => 'none',
 		'choices' => self::VERIFY,
-		'help' => 'A file whose signature is bad, or made by another key, is not saved',
-		'ui' => [ 'showIf' => $download ],
+		'help' => 'Bad, or by another key: not saved',
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $download ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide; shorter help (was: A Verification key credential of the project: the sender's PGP public key, trusted S/MIME certificates, or a public key)
 		'key' => 'verifyCredential',
 		'type' => 'select',
 		'label' => 'Verification key',
 		'default' => '',
 		'choices' => $choices('verify'),
 		'requiredIf' => [ 'if' => 'verifySignature', 'in' => [ 'attached', 'detached' ] ],
-		'help' => 'A Verification key credential of the project: the sender\'s PGP public key, trusted S/MIME certificates, or a public key',
+		'help' => 'A Verification key credential: the sender\'s key or certificate',
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'verifySignature', 'operator' => 'ne', 'value' => 'none' ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
 		'key' => 'missingSignature',
 		'type' => 'select',
 		'label' => 'No signature file',
 		'required' => true,
 		'default' => 'skip',
 		'choices' => self::MISSING_SIGNATURE,
-		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'verifySignature', 'operator' => 'eq', 'value' => 'detached' ] ],
+		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'verifySignature', 'operator' => 'eq', 'value' => 'detached' ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'after',
 		'type' => 'select',
 		'label' => 'Afterwards',
@@ -250,15 +271,16 @@ class NodeAppFtp extends \models\WfNode {
 		'default' => 'none',
 		'choices' => self::AFTER,
 		'help' => 'Only for the files saved',
-		'ui' => [ 'width' => 6, 'showIf' => $download ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $download ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
 		'key' => 'moveTo',
 		'type' => 'text',
 		'label' => 'Move to folder',
 		'default' => '',
 		'requiredIf' => [ 'if' => 'after', 'in' => [ 'move' ] ],
-		'help' => 'Made when missing; {{ ... }} for expressions',
+		'help' => 'Made when missing',
 		'ui' => [ 'width' => 6, 'placeholder' => '/outgoing/done', 'expression' => true, 'showIf' => [ 'key' => 'after', 'operator' => 'eq', 'value' => 'move' ] ],
 	    ],
 	    [
@@ -271,23 +293,25 @@ class NodeAppFtp extends \models\WfNode {
 		'ui' => [ 'width' => 6 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: shorter help (was: e.g. a Loop over {{ ftp.files }}; {{ ftp.files[0].id }} is the saved file)
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Result variable',
 		'required' => true,
 		'default' => 'ftp',
-		'help' => 'e.g. a Loop over {{ ftp.files }}; {{ ftp.files[0].id }} is the saved file',
+		'help' => 'e.g. a Loop over {{ ftp.files }}',
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: shorter help (was: No connection, a folder that cannot be read, or a file that failed (the other files are still taken))
 		'key' => 'onError',
 		'type' => 'select',
 		'label' => 'On error',
 		'required' => true,
 		'default' => 'fail',
 		'choices' => self::ON_ERROR,
-		'help' => 'No connection, a folder that cannot be read, or a file that failed (the other files are still taken)',
+		'help' => 'No connection, unreadable folder, failed file',
 	    ],
 	];
     }

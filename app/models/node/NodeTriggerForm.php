@@ -69,12 +69,13 @@ class NodeTriggerForm extends \models\WfNode {
 		'ui' => [ 'width' => 8 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: The answers, by key ({{ form.amount }}); who sent them: <variable>_user)
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Answers variable',
 		'required' => true,
 		'default' => 'form',
-		'help' => 'The answers, by key ({{ form.amount }}); who sent them: <variable>_user',
+		'help' => 'The answers by key; who sent them: <variable>_user',
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [
 		    'width' => 6,

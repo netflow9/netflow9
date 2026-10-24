@@ -63,53 +63,79 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 	    static::credentialField(),
 	    static::operationField(),
 
-	    //send / draft
+	    //get / modify / delete
 	    [
-		'key' => 'replyTo',
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: The message id; {{ ... }} for expressions, e.g. {{ outlook[0].id }})
+		'key' => 'messageId',
 		'type' => 'text',
-		'label' => 'In reply to',
+		'label' => 'Message',
 		'default' => '',
-		'help' => 'Optional: the id of a message to answer (same conversation; to its sender when To is empty); {{ ... }} for expressions, e.g. {{ outlook[0].id }}',
-		'ui' => [ 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'help' => 'The message id, e.g. {{ outlook[0].id }}',
+		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_MESSAGE ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::ON_MESSAGE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: Addresses separated by commas; {{ ... }} for expressions, e.g. {{ mail.from }})
 		'key' => 'to',
 		'type' => 'text',
 		'label' => 'To',
 		'default' => '',
-		'help' => 'Addresses separated by commas; {{ ... }} for expressions, e.g. {{ mail.from }}',
-		'ui' => [ 'placeholder' => 'ana@example.com, Ion <ion@example.com>', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'help' => 'Addresses separated by commas, e.g. {{ mail.from }}',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, Ion <ion@example.com>', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'cc',
 		'type' => 'text',
 		'label' => 'Cc',
 		'default' => '',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'bcc',
 		'type' => 'text',
 		'label' => 'Bcc',
 		'default' => '',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 9 wide, on a new line
 		'key' => 'subject',
 		'type' => 'text',
 		'label' => 'Subject',
 		'default' => '',
 		'help' => 'A reply keeps the original subject when empty',
-		'ui' => [ 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 9, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Body',
 		'required' => true,
 		'default' => 'text',
 		'choices' => self::BODY_TYPES,
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op(self::COMPOSE) ],
+	    ],
+	    //send / draft
+	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: Optional: the id of a message to answer (same conversation; to its sender when To is empty); {{ ... }} for expressions, e.g. {{ outlook[0].id }})
+		'key' => 'replyTo',
+		'type' => 'text',
+		'label' => 'In reply to',
+		'default' => '',
+		'help' => 'Optional: the id of the message answered, e.g. {{ outlook[0].id }}',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: Project file ids, separated by commas, or a list; e.g. {{ file.id }} (Download File) or {{ mail.attachment_files }}; 3 MB in all)
+		'key' => 'attachments',
+		'type' => 'text',
+		'label' => 'Attachments',
+		'default' => '',
+		'help' => 'Project file ids separated by commas, or a list; 3 MB in all',
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
 		'key' => 'body',
@@ -119,114 +145,107 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'help' => '{{ ... }} for expressions',
 		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
-	    [
-		'key' => 'attachments',
-		'type' => 'text',
-		'label' => 'Attachments',
-		'default' => '',
-		'help' => 'Project file ids, separated by commas, or a list; e.g. {{ file.id }} (Download File) or {{ mail.attachment_files }}; 3 MB in all',
-		'ui' => [ 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
-	    ],
 
 	    //search
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 4 wide (was 6), on a new line; shorter help (was: inbox, archive, sentitems, drafts, deleteditems, junkemail or a folder id; empty: the whole mailbox)
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
 		'default' => 'inbox',
-		'help' => 'inbox, archive, sentitems, drafts, deleteditems, junkemail or a folder id; empty: the whole mailbox',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'search' ]) ],
+		'help' => 'inbox, archive, sentitems, ... or a folder id; empty: all',
+		'ui' => [ 'width' => 4, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 8 wide; shorter help (was: Outlook's search, e.g. from:ana@example.com, subject:invoice, hasattachments:yes, or words; empty: the newest messages)
+		'key' => 'query',
+		'type' => 'text',
+		'label' => 'Search',
+		'default' => '',
+		'help' => 'Outlook search, e.g. from:ana@example.com subject:invoice; empty: the newest',
+		'ui' => [ 'width' => 8, 'placeholder' => 'from:ana@example.com subject:invoice', 'expression' => true, 'showIf' => $op([ 'search' ]) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
 		'key' => 'maxResults',
 		'type' => 'number',
 		'label' => 'Messages',
 		'required' => true,
 		'default' => 10,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_MESSAGES, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_MESSAGES ] ],
-		'ui' => [ 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
-		'key' => 'query',
-		'type' => 'text',
-		'label' => 'Search',
-		'default' => '',
-		'help' => 'Outlook\'s search, e.g. from:ana@example.com, subject:invoice, hasattachments:yes, or words; empty: the newest messages',
-		'ui' => [ 'placeholder' => 'from:ana@example.com subject:invoice', 'expression' => true, 'showIf' => $op([ 'search' ]) ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'unreadOnly',
 		'type' => 'switch',
 		'label' => 'Unread only',
 		'default' => false,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6); shorter help (was: Allowed file types only; their ids in attachment_files)
 		'key' => 'saveAttachments',
 		'type' => 'switch',
 		'label' => 'Save the attachments in the project Files',
 		'default' => false,
-		'help' => 'Allowed file types only; their ids in attachment_files',
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'search', 'get' ]) ],
+		'help' => 'Allowed file types only (attachment_files)',
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'search', 'get' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest attachment (MB)',
 		'required' => true,
 		'default' => 10,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
-		'ui' => [ 'step' => 1, 'width' => 6, 'showIf' => [ 'key' => 'saveAttachments', 'operator' => 'eq', 'value' => true ] ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => [ 'key' => 'saveAttachments', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 
-	    //get / modify / delete
-	    [
-		'key' => 'messageId',
-		'type' => 'text',
-		'label' => 'Message',
-		'default' => '',
-		'help' => 'The message id; {{ ... }} for expressions, e.g. {{ outlook[0].id }}',
-		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_MESSAGE ],
-		'ui' => [ 'expression' => true, 'showIf' => $op(self::ON_MESSAGE) ],
-	    ],
 
 	    //modify
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'mark',
 		'type' => 'select',
 		'label' => 'Mark as',
 		'required' => true,
 		'default' => 'none',
 		'choices' => self::MARK,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6); shorter help (was: e.g. archive, or a folder id; empty: not moved)
 		'key' => 'moveTo',
 		'type' => 'text',
 		'label' => 'Move to folder',
 		'default' => '',
-		'help' => 'e.g. archive, or a folder id; empty: not moved',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'modify' ]) ],
+		'help' => 'e.g. archive, or a folder id',
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'addCategories',
 		'type' => 'text',
 		'label' => 'Add categories',
 		'default' => '',
 		'help' => 'Names separated by commas',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'removeCategories',
 		'type' => 'text',
 		'label' => 'Remove categories',
 		'default' => '',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 
 	    static::timeoutField(60),
 	    static::variableField(),
-	    static::onErrorField('An error from Outlook, e.g. not found, no access, attachments too large'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Outlook, e.g. not found, no access, attachments too large)
+	    static::onErrorField('Outlook errors, attachments too large'),
 	];
     }
 
