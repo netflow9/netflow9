@@ -1641,11 +1641,38 @@ window.app.Workflow = (function() {
 	    const esc = app.utils.escapeHtml;
 
 	    //the step name is stored in node.title, everything else in node.config
+	    //CLD: 2026-10-24T12:37:37+03:00: the settings every step places the same way (was the step's own order; HTTP's widths from WfNode::$editor, removed):
+	    //  row 1: Step name, the output variable (`variable` written by the step: variableName write; 3 wide), On error (`onError`, 3); the name takes the rest
+	    //  row 2: Credential (`credential`, or what the step works on: `resource`, e.g. the data table; 6; without an operation, the step's width for it, the step's first
+	    //  settings next to it), Operation (`operation`, 6)
+	    //  then the step's own settings, in their order and widths (`newRow`: a field starts a line)
+	    //  last row: the step's limits (`limit`: max size, max results, ...; 3 wide each, in their order), then Timeout (`timeout`, a number, 3)
+	    const own = (def.configSchema || []).map((f) => Object.assign({}, f));
+	    const take = (test) => {
+		const i = own.findIndex(test);
+		return i < 0 ? null : own.splice(i, 1)[0];
+	    };
+	    const output = take((f) => f.key === 'variable' && f.variableName === 'write');
+	    const onError = take((f) => f.key === 'onError');
+	    const credential = take((f) => f.key === 'credential' || f.resource);
+	    const operation = take((f) => f.key === 'operation');
+	    const timeout = take((f) => f.key === 'timeout' && f.type === 'number');
 	    const fields = [];
 	    if (!def.isNote)
-		//CLD: 2026-10-24T12:06:57+03:00: its width from the step's dialog settings (def.editor.titleWidth: WfNode::$editor)
-		fields.push({ type: 'text', key: '__title', label: 'Step name', required: true, width: (def.editor && def.editor.titleWidth) || 12 });
-	    (def.configSchema || []).forEach(f => fields.push(Object.assign({}, f)));
+		fields.push({ type: 'text', key: '__title', label: 'Step name', required: true, width: 12 - (output ? 3 : 0) - (onError ? 3 : 0) });
+	    if (output)
+		fields.push(Object.assign(output, { width: 3 }));
+	    if (onError)
+		fields.push(Object.assign(onError, { width: 3 }));
+	    if (credential)
+		fields.push(Object.assign(credential, { width: operation ? 6 : (credential.width || 6) }));
+	    if (operation)
+		fields.push(Object.assign(operation, { width: 6 }));
+	    const limits = own.filter((f) => f.limit).map((f) => Object.assign(f, { width: 3 }));
+	    own.filter((f) => !f.limit).forEach((f) => fields.push(f));
+	    if (timeout)
+		limits.push(Object.assign(timeout, { width: 3 }));
+	    limits.forEach((f, i) => fields.push(Object.assign(f, { newRow: i === 0 })));
 	    if (readonly)
 		fields.forEach(f => f.editable = false);
 
@@ -1655,9 +1682,8 @@ window.app.Workflow = (function() {
 	    //CLD: 2026-10-13T20:12:00+03:00: full screen (Bootstrap modal-fullscreen; was modal-xl)
 	    //CLD: 2026-10-13T20:23:54+03:00: nearly full screen, a margin all around (.modal-near-fullscreen, theme scss/netflow9/_modal.scss; was modal-fullscreen: it did not read as a dialog)
 	    //CLD: 2026-10-19T22:19:24+03:00: + modal-fullscreen-sm-down: the whole screen on phones (the near-fullscreen one too: theme netflow9/_modal.scss)
-	    //CLD: 2026-10-24T12:06:57+03:00: + a wider dialog for the steps that ask for it (def.editor.size xl: WfNode::$editor)
-	    const dialogSize = (def.configSchema || []).some((f) => [ 'formdesigner', 'emaildesigner' ].includes(f.type)) ? 'modal-near-fullscreen'
-		: (def.editor && def.editor.size === 'xl' ? 'modal-xl' : 'modal-lg');
+	    //CLD: 2026-10-24T12:37:37+03:00: two sizes: nearly full screen with a designer, else extra-large (was large, extra-large for the steps that asked: WfNode::$editor, removed)
+	    const dialogSize = (def.configSchema || []).some((f) => [ 'formdesigner', 'emaildesigner' ].includes(f.type)) ? 'modal-near-fullscreen' : 'modal-xl';
 	    el.tabIndex = -1;
 	    el.innerHTML = `
 		<!-- CLD: 2026-10-16T12:01:59+03:00: + the email designer (Send Email) -->

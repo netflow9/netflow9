@@ -54,137 +54,171 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 	. 'seriesMasterId,type,createdDateTime,lastModifiedDateTime,categories';
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: Empty: the account's calendar; or a calendar id (List the calendars gives them))
 		'key' => 'calendarId',
 		'type' => 'text',
 		'label' => 'Calendar',
 		'default' => '',
-		'help' => 'Empty: the account\'s calendar; or a calendar id (List the calendars gives them)',
-		'ui' => [ 'expression' => true, 'showIf' => $op([ 'list', 'create' ]) ],
+		'help' => 'Empty: the account\'s calendar; or a calendar id (List the calendars)',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'list', 'create' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: The event id, e.g. {{ calendar.id }} of a create, {{ calendar[0].id }} of a list)
 		'key' => 'eventId',
 		'type' => 'text',
 		'label' => 'Event',
 		'default' => '',
-		'help' => 'The event id, e.g. {{ calendar.id }} of a create, {{ calendar[0].id }} of a list; {{ ... }} for expressions',
+		'help' => 'The event id, e.g. {{ calendar.id }}, {{ calendar[0].id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_EVENT ],
-		'ui' => [ 'placeholder' => '{{ event.id }}', 'expression' => true, 'showIf' => $op(self::ON_EVENT) ],
+		'ui' => [ 'width' => 6, 'placeholder' => '{{ event.id }}', 'expression' => true, 'showIf' => $op(self::ON_EVENT) ],
 	    ],
 
 	    //list / freeBusy
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'timeMin',
 		'type' => 'text',
 		'label' => 'From',
 		'default' => '',
-		'help' => 'Empty: now; ISO 8601 or 2026-10-21 14:00; {{ ... }} for expressions',
-		'ui' => [ 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'width' => 6, 'showIf' => $op(self::PERIOD) ],
+		'help' => 'Empty: now; ISO 8601 or 2026-10-21 14:00',
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'timeMax',
 		'type' => 'text',
 		'label' => 'Until',
 		'default' => '',
 		'help' => 'Empty: 7 days after From',
-		'ui' => [ 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'width' => 6, 'showIf' => $op(self::PERIOD) ],
+		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: Words in the title, location or the start of the description; empty: all)
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Search',
 		'default' => '',
-		'help' => 'Words in the title, location or the start of the description; empty: all',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'help' => 'Words in the title, location or description; empty: all',
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
 		'key' => 'maxResults',
 		'type' => 'number',
 		'label' => 'Largest number of events',
 		'required' => true,
 		'default' => 50,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_RESULTS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_RESULTS ] ],
-		'ui' => [ 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'people',
 		'type' => 'text',
 		'label' => 'People / rooms',
 		'default' => '',
 		'help' => 'Addresses separated by commas; empty: the account',
-		'ui' => [ 'expression' => true, 'showIf' => $op([ 'freeBusy' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'freeBusy' ]) ],
 	    ],
 
 	    //create / update
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'subject',
 		'type' => 'text',
 		'label' => 'Title',
 		'default' => '',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		'key' => 'location',
+		'type' => 'text',
+		'label' => 'Location',
+		'default' => '',
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::EDIT) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: ISO 8601 or 2026-10-21 14:00 (all day: 2026-10-21))
 		'key' => 'start',
 		'type' => 'text',
 		'label' => 'Start',
 		'default' => '',
-		'help' => 'ISO 8601 or 2026-10-21 14:00 (all day: 2026-10-21)',
+		'help' => 'ISO 8601 or 2026-10-21 14:00',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6); shorter help (was: Empty: Start + Duration (all day: the same day))
 		'key' => 'end',
 		'type' => 'text',
 		'label' => 'End',
 		'default' => '',
-		'help' => 'Empty: Start + Duration (all day: the same day)',
-		'ui' => [ 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'help' => 'Empty: Start + Duration',
+		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'duration',
 		'type' => 'number',
 		'label' => 'Duration (minutes)',
 		'required' => true,
 		'default' => 60,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => 100000, 'skipEmpty' => true, 'message' => 'from 1 minute' ] ],
-		'ui' => [ 'step' => 5, 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'step' => 5, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'allDay',
 		'type' => 'switch',
 		'label' => 'All day',
 		'default' => false,
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		'key' => 'location',
-		'type' => 'text',
-		'label' => 'Location',
-		'default' => '',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op(self::EDIT) ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'showAs',
 		'type' => 'select',
 		'label' => 'Show as',
 		'default' => '',
 		'choices' => self::SHOW_AS,
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Description as',
 		'required' => true,
 		'default' => 'text',
 		'choices' => self::BODY_TYPES,
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		'key' => 'teams',
+		'type' => 'switch',
+		'label' => 'Add a Teams meeting',
+		'default' => false,
+		'help' => 'Work / school accounts',
+		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		'key' => 'timeZone',
+		'type' => 'text',
+		'label' => 'Time zone',
+		'default' => '',
+		'help' => 'e.g. Europe/Bucharest; empty: the app\'s',
+		'ui' => [ 'width' => 3, 'placeholder' => 'Europe/Bucharest', 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
 	    ],
 	    [
 		'key' => 'description',
@@ -194,33 +228,19 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'rows' => 3, 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: shorter help (was: Addresses separated by commas (they get an invitation); update: added to the attendees)
 		'key' => 'attendees',
 		'type' => 'text',
 		'label' => 'Attendees',
 		'default' => '',
-		'help' => 'Addresses separated by commas (they get an invitation); update: added to the attendees',
+		'help' => 'Addresses separated by commas (invited); update: added',
 		'ui' => [ 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
-	    [
-		'key' => 'teams',
-		'type' => 'switch',
-		'label' => 'Add a Teams meeting',
-		'default' => false,
-		'help' => 'Work / school accounts',
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::EDIT) ],
-	    ],
 
-	    [
-		'key' => 'timeZone',
-		'type' => 'text',
-		'label' => 'Time zone',
-		'default' => '',
-		'help' => 'e.g. Europe/Bucharest; empty: the app\'s',
-		'ui' => [ 'placeholder' => 'Europe/Bucharest', 'expression' => true, 'width' => 6, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
-	    ],
 	    static::timeoutField(60),
 	    static::variableField(),
-	    static::onErrorField('An error from Outlook, e.g. not found, no access, a time that cannot be read'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Outlook, e.g. not found, no access, a time that cannot be read)
+	    static::onErrorField('Outlook errors, times not read'),
 	];
     }
 

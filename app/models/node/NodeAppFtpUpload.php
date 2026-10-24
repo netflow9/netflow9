@@ -48,6 +48,7 @@ class NodeAppFtpUpload extends \models\WfNode {
     const PART = '.part';
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$choices = fn($capability) => array_column(static::credentialChoices($capability), 'label', 'value');
 	return [
 	    [
@@ -59,29 +60,52 @@ class NodeAppFtpUpload extends \models\WfNode {
 		'help' => 'An FTP / SFTP server credential of the project (menu: Credentials)',
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
 		'key' => 'source',
 		'type' => 'select',
 		'label' => 'Send',
 		'required' => true,
 		'default' => 'files',
 		'choices' => self::SOURCES,
-		'ui' => [ 'width' => 6 ],
+		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
+		'key' => 'ifExists',
+		'type' => 'select',
+		'label' => 'A file with that name is there',
+		'required' => true,
+		'default' => 'overwrite',
+		'choices' => self::IF_EXISTS,
+		'ui' => [ 'width' => 3 ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line; shorter help (was: /in/orders from the server's root, in/orders from the folder you start in; empty: that folder; {{ ... }})
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
 		'default' => '',
-		'help' => '/in/orders from the server\'s root, in/orders from the folder you start in; empty: that folder; {{ ... }}',
-		'ui' => [ 'width' => 6, 'placeholder' => '/incoming', 'expression' => true ],
+		'help' => '/in/orders (from the root) or in/orders; empty: the start folder',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '/incoming', 'expression' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide; shorter help (was: Empty: the file's own name. {name} {base} {ext} {date} {time} {n} for each file (e.g. {base}_{date}.{ext}))
+		'key' => 'filename',
+		'type' => 'text',
+		'label' => 'Name on the server',
+		'default' => '',
+		'requiredIf' => [ 'if' => 'source', 'in' => [ 'text' ] ],
+		'help' => 'Empty: the file\'s name; {name} {base} {ext} {date} {time} {n}',
+		'ui' => [ 'width' => 6, 'placeholder' => 'orders_{date}.csv', 'expression' => true ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:54:43+03:00: shorter help (was: File ids separated by commas, or {{ ... }} giving one or a list, e.g. {{ file.id }}, {{ ftp.files }}, {{ mail.attachment_files }})
 		'key' => 'files',
 		'type' => 'text',
 		'label' => 'Project files',
 		'default' => '',
 		'requiredIf' => [ 'if' => 'source', 'in' => [ 'files' ] ],
-		'help' => 'File ids separated by commas, or {{ ... }} giving one or a list, e.g. {{ file.id }}, {{ ftp.files }}, {{ mail.attachment_files }}',
+		'help' => 'File ids separated by commas, or {{ ... }}, e.g. {{ file.id }}, {{ ftp.files }}',
 		'ui' => [ 'placeholder' => '{{ file.id }}', 'expression' => true, 'showIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'files' ] ],
 	    ],
 	    [
@@ -89,100 +113,93 @@ class NodeAppFtpUpload extends \models\WfNode {
 		'type' => 'textarea',
 		'label' => 'Content',
 		'default' => '',
-		'help' => 'The file\'s text; {{ ... }} for expressions',
+		'help' => 'The file\'s text',
 		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'text' ] ],
 	    ],
 	    [
-		'key' => 'filename',
-		'type' => 'text',
-		'label' => 'Name on the server',
-		'default' => '',
-		'requiredIf' => [ 'if' => 'source', 'in' => [ 'text' ] ],
-		'help' => 'Empty: the file\'s own name. {name} {base} {ext} {date} {time} {n} for each file (e.g. {base}_{date}.{ext}); {{ ... }} for expressions',
-		'ui' => [ 'placeholder' => 'orders_{date}.csv', 'expression' => true ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'createFolders',
 		'type' => 'switch',
 		'label' => 'Make missing folders',
 		'default' => true,
-		'ui' => [ 'width' => 6 ],
+		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: The receiver never sees half a file; off for servers that refuse renames)
 		'key' => 'safeUpload',
 		'type' => 'switch',
 		'label' => 'Send as .part, rename when complete',
 		'default' => true,
-		'help' => 'The receiver never sees half a file; off for servers that refuse renames',
-		'ui' => [ 'width' => 6 ],
+		'help' => 'No half files seen; off: servers refusing renames',
+		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		'key' => 'ifExists',
-		'type' => 'select',
-		'label' => 'A file with that name is there',
-		'required' => true,
-		'default' => 'overwrite',
-		'choices' => self::IF_EXISTS,
-	    ],
-	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
 		'key' => 'compress',
 		'type' => 'switch',
 		'label' => 'Compress (gzip, .gz)',
 		'default' => false,
-		'ui' => [ 'width' => 6 ],
+		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		'key' => 'verify',
+		'type' => 'switch',
+		'label' => 'Check the size on the server',
+		'default' => true,
+		'ui' => [ 'width' => 3 ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: After compressing; the ending is added: .gpg, .asc, .enc, .p7m)
 		'key' => 'encrypt',
 		'type' => 'switch',
 		'label' => 'Encrypt',
 		'default' => false,
-		'help' => 'After compressing; the ending is added: .gpg, .asc, .enc, .p7m',
-		'ui' => [ 'width' => 6 ],
+		'help' => 'After compressing (.gpg, .asc, .enc, .p7m)',
+		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 9 wide; shorter help (was: An Encryption key credential of the project: the recipient's PGP public key, a passphrase, an OpenSSL password or S/MIME certificate)
 		'key' => 'encryptCredential',
 		'type' => 'select',
 		'label' => 'Encryption key',
 		'default' => '',
 		'choices' => $choices('encrypt'),
 		'requiredIf' => [ 'if' => 'encrypt', 'in' => [ true ] ],
-		'help' => 'An Encryption key credential of the project: the recipient\'s PGP public key, a passphrase, an OpenSSL password or S/MIME certificate',
-		'ui' => [ 'showIf' => [ 'key' => 'encrypt', 'operator' => 'eq', 'value' => true ] ],
+		'help' => 'An Encryption key credential: the recipient\'s PGP key, a passphrase, an OpenSSL password or S/MIME certificate',
+		'ui' => [ 'width' => 9, 'showIf' => [ 'key' => 'encrypt', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 	    //CLD: 2026-10-20T19:00:00+03:00: signing
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line; shorter help (was: With your private key, so the receiver can check the file is from you and unchanged)
 		'key' => 'sign',
 		'type' => 'switch',
 		'label' => 'Sign',
 		'default' => false,
-		'help' => 'With your private key, so the receiver can check the file is from you and unchanged',
+		'help' => 'With your private key: the receiver can check it',
+		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide; shorter help (was: A Signing key credential of the project: PGP private key, S/MIME certificate + key, or a private key (plain signature))
 		'key' => 'signCredential',
 		'type' => 'select',
 		'label' => 'Signing key',
 		'default' => '',
 		'choices' => $choices('sign'),
 		'requiredIf' => [ 'if' => 'sign', 'in' => [ true ] ],
-		'help' => 'A Signing key credential of the project: PGP private key, S/MIME certificate + key, or a private key (plain signature)',
+		'help' => 'A Signing key credential: PGP, S/MIME certificate + key, or a private key',
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'sign', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: A plain private key signature is always a separate file)
 		'key' => 'signMode',
 		'type' => 'select',
 		'label' => 'Signature',
 		'required' => true,
 		'default' => 'attached',
 		'choices' => self::SIGN_MODES,
-		'help' => 'A plain private key signature is always a separate file',
-		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'sign', 'operator' => 'eq', 'value' => true ] ],
-	    ],
-	    [
-		'key' => 'verify',
-		'type' => 'switch',
-		'label' => 'Check the size on the server',
-		'default' => true,
-		'ui' => [ 'width' => 6 ],
+		'help' => 'A plain private key: always a separate file',
+		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'sign', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 	    [
 		'key' => 'timeout',
@@ -194,23 +211,25 @@ class NodeAppFtpUpload extends \models\WfNode {
 		'ui' => [ 'width' => 6 ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: shorter help (was: e.g. {{ upload.files[0].path }}, {{ upload.count }})
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Result variable',
 		'required' => true,
 		'default' => 'upload',
-		'help' => 'e.g. {{ upload.files[0].path }}, {{ upload.count }}',
+		'help' => 'e.g. {{ upload.count }}',
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:54:43+03:00: shorter help (was: No connection, or a file that failed (the other files are still sent))
 		'key' => 'onError',
 		'type' => 'select',
 		'label' => 'On error',
 		'required' => true,
 		'default' => 'fail',
 		'choices' => self::ON_ERROR,
-		'help' => 'No connection, or a file that failed (the other files are still sent)',
+		'help' => 'No connection, or a failed file',
 	    ],
 	];
     }

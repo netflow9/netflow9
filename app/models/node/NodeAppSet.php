@@ -13,6 +13,7 @@ class NodeAppSet extends \models\WfNode {
     public static $outputs = 1;
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	return [
 	    [
 		'key' => 'variable',
@@ -32,7 +33,7 @@ class NodeAppSet extends \models\WfNode {
 		'key' => 'value',
 		'type' => 'textarea',
 		'label' => 'Value',
-		'help' => 'Text; {{ ... }} for expressions',
+		'help' => 'Text',
 		'ui' => [
 		    'rows' => 3,
 		    'expression' => true

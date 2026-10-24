@@ -47,11 +47,16 @@ class NodeAppDownload extends NodeAppHttp {
 	    $http[$f['key']] = $f;
 
 	//CLD: 2026-10-17T21:08:58+03:00: + data: URLs
-	$http['url']['help'] = 'The file to download (GET), http:// or https://, or a data: URL (data:image/png;base64,...); {{ ... }} for expressions';
+	//CLD: 2026-10-24T12:55:47+03:00: shorter (was: The file to download (GET), http:// or https://, or a data: URL (data:image/png;base64,...); {{ ... }} for expressions); 8 wide, next to the
+	//credential (HTTP's: 4), on line 2; the query parameters on a new line
+	$http['url']['help'] = 'The file (GET): http(s):// or a data: URL';
+	$http['url']['ui']['width'] = 8;
+	$http['query']['ui']['newRow'] = true;
 	$http['timeout']['default'] = 120;
 	$http['variable']['label'] = 'File variable';
 	$http['variable']['default'] = 'file';
-	$http['onError']['help'] = 'No answer, timeout, a status of 400 or more, or a file larger than the limit';
+	//CLD: 2026-10-24T12:55:47+03:00: shorter (was: No answer, timeout, a status of 400 or more, or a file larger than the limit)
+	$http['onError']['help'] = 'No answer, timeout, status 400+, too large';
 
 	return [
 	    $http['url'],
@@ -62,7 +67,7 @@ class NodeAppDownload extends NodeAppHttp {
 		'key' => 'filename',
 		'type' => 'text',
 		'label' => 'File name',
-		'help' => 'Empty: the name the server gives, else the last part of the URL; {{ ... }} for expressions',
+		'help' => 'Empty: the name the server gives, else the last part of the URL',
 		'ui' => [ 'placeholder' => 'report-{{ id }}.pdf', 'expression' => true ],
 	    ],
 	    [
@@ -73,7 +78,8 @@ class NodeAppDownload extends NodeAppHttp {
 		'default' => 25,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
 		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
-		'ui' => [ 'width' => 6 ],
+		//CLD: 2026-10-24T12:55:47+03:00: a limit: the designer puts it on the last line (was 6 wide)
+		'ui' => [ 'limit' => true ],
 	    ],
 	    $http['timeout'],
 	    $http['variable'],

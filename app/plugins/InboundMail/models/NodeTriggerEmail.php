@@ -66,12 +66,13 @@ class NodeTriggerEmail extends \models\WfNode {
 		'default' => true,
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: The message as one object, e.g. {{ mail.subject }}, {{ mail.from }}, {{ mail.text }})
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Message variable',
 		'required' => true,
 		'default' => 'mail',
-		'help' => 'The message as one object, e.g. {{ mail.subject }}, {{ mail.from }}, {{ mail.text }}',
+		'help' => 'e.g. {{ mail.subject }}, {{ mail.text }}',
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'variableName' => 'write' ],
 	    ],

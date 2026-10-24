@@ -142,7 +142,9 @@ abstract class NodeAppAi extends \models\WfNode {
 		'type' => 'select',
 		'label' => 'Credential',
 		'choices' => $credentials,
-		'help' => static::PROVIDER . ' credential of the project (menu: Credentials)' . ($system ? ', or System AI: this installation\'s, paid with the account\'s credits (Settings menu: AI credits)' : ''), //CLD: 2026-10-23T10:00:00+03:00: + System AI
+		//CLD: 2026-10-23T10:00:00+03:00: + System AI
+		//CLD: 2026-10-24T12:42:45+03:00: shorter (one line; was: ... credential of the project (menu: Credentials), or System AI: this installation's, paid with the account's credits (Settings menu: AI credits))
+		'help' => static::PROVIDER . ' credential of the project' . ($system ? ', or System AI (paid with the account\'s AI credits)' : ''),
 		//CLD: 2026-10-14T14:18:23+03:00: required by the model (was only in the browser: `required` in ui); validates() checks it is a credential of the project
 		'required' => true,
 	    ],
@@ -154,8 +156,10 @@ abstract class NodeAppAi extends \models\WfNode {
 		'label' => 'Model',
 		'required' => true,
 		'default' => static::defaultModel(),
-		'help' => 'The models of the credential (Test on the credential records them); or type a model name',
-		'ui' => [ 'type' => 'select', 'allowCustom' => true, 'placeholder' => 'Choose a model...', 'choicesBy' => [ 'key' => 'credential', 'choices' => (object)static::modelChoices(),
+		//CLD: 2026-10-24T12:44:00+03:00: shorter (one line; was: The models of the credential (Test on the credential records them); or type a model name)
+		'help' => 'Recorded by the credential\'s Test; or type a name',
+		//CLD: 2026-10-24T12:42:45+03:00: next to the credential (the designer: 6 wide)
+		'ui' => [ 'width' => 6, 'type' => 'select', 'allowCustom' => true, 'placeholder' => 'Choose a model...', 'choicesBy' => [ 'key' => 'credential', 'choices' => (object)static::modelChoices(),
 		    'empty' => 'No models recorded: Test the credential, or type a name' ] ],
 	    ],
 	], static::providerSchema(), [
@@ -163,8 +167,9 @@ abstract class NodeAppAi extends \models\WfNode {
 		'key' => 'system',
 		'type' => 'textarea',
 		'label' => 'System prompt',
-		'help' => 'Who the model is and how it should work (optional); {{ ... }} for expressions',
-		'ui' => [ 'rows' => 3, 'expression' => true ],
+		//CLD: 2026-10-24T12:42:45+03:00: next to the prompt, as tall (was full width, 3 lines; the prompt 5 lines, was 6); shorter help (was: Who the model is and how it should work (optional); {{ ... }} for expressions)
+		'help' => 'Who the model is and how it works (optional)',
+		'ui' => [ 'rows' => 5, 'expression' => true, 'width' => 6, 'newRow' => true ],
 	    ],
 	    [
 		'key' => 'prompt',
@@ -173,15 +178,8 @@ abstract class NodeAppAi extends \models\WfNode {
 		'required' => true,
 		//CLD: 2026-10-13T08:15:00+03:00: the example after the Email trigger's message variable (mail.text; was mail_text)
 		'help' => 'The request; {{ ... }} for expressions, e.g. {{ mail.text }}',
-		'ui' => [ 'rows' => 6, 'expression' => true ],
-	    ],
-	    //CLD: 2026-10-17T21:00:54+03:00: image files sent with the prompt
-	    [
-		'key' => 'images',
-		'type' => 'text',
-		'label' => 'Images',
-		'help' => 'Optional: image files of the project the model looks at with the prompt (PNG, JPEG, GIF, WebP; at most ' . self::MAX_IMAGES . '), e.g. {{ file.id }}, a list such as {{ mail.attachment_files }}, or file ids separated by commas',
-		'ui' => [ 'expression' => true ],
+		//CLD: 2026-10-24T12:42:45+03:00: next to the system prompt
+		'ui' => [ 'rows' => 5, 'expression' => true, 'width' => 6 ],
 	    ],
 	    [
 		'key' => 'output',
@@ -190,9 +188,20 @@ abstract class NodeAppAi extends \models\WfNode {
 		'required' => true,
 		'default' => 'text',
 		'choices' => self::OUTPUT,
-		'help' => 'JSON: the answer is parsed (variable .json); a schema makes its shape precise',
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
-		'ui' => [ 'width' => 6 ],
+		//CLD: 2026-10-24T12:42:45+03:00: before the images, 3 wide on a new line (was 6, after them); shorter help (was: JSON: the answer is parsed (variable .json); a schema makes its shape precise)
+		'help' => 'JSON: parsed (variable .json)',
+		'ui' => [ 'width' => 3, 'newRow' => true ],
+	    ],
+	    //CLD: 2026-10-17T21:00:54+03:00: image files sent with the prompt
+	    [
+		'key' => 'images',
+		'type' => 'text',
+		'label' => 'Images',
+		//CLD: 2026-10-24T12:42:45+03:00: next to the answer; shorter help (was: Optional: image files of the project the model looks at with the prompt (PNG, JPEG, GIF, WebP; at most ...), e.g. {{ file.id }},
+		//a list such as {{ mail.attachment_files }}, or file ids separated by commas)
+		'help' => 'Optional: image files for the prompt (PNG, JPEG, GIF, WebP; at most ' . self::MAX_IMAGES . '): {{ file.id }}, a list, or file ids separated by commas',
+		'ui' => [ 'expression' => true, 'width' => 9 ],
 	    ],
 	    [
 		'key' => 'variable',
@@ -221,8 +230,9 @@ abstract class NodeAppAi extends \models\WfNode {
 		'choices' => $tools,
 		'label' => 'Use these tools',
 		'default' => array_values(array_intersect(self::DEFAULT_TOOLS, array_keys($tools))), //CLD: 2026-10-20T23:40:00+03:00: those there are (was DEFAULT_TOOLS)
-		'help' => 'What the model may do in this project (run by the workflow, without the users\' permission checks)',
-		'ui' => [ 'placeholder' => 'None' ],
+		//CLD: 2026-10-24T12:42:45+03:00: the tools in a row (tools 6 wide, MCP servers and tool servers 3); shorter help (was: What the model may do in this project (run by the workflow, without the users' permission checks))
+		'help' => 'What the model may do in this project',
+		'ui' => [ 'placeholder' => 'None', 'width' => 6, 'newRow' => true ],
 	    ],
 	    [
 		'key' => 'mcp',
@@ -232,8 +242,9 @@ abstract class NodeAppAi extends \models\WfNode {
 		'choices' => $mcp,
 		'label' => 'MCP servers',
 		'default' => [],
-		'help' => 'MCP server credentials of the project whose tools the model may use',
-		'ui' => [ 'placeholder' => 'None' ],
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide; shorter help (was: MCP server credentials of the project whose tools the model may use)
+		'help' => 'The project\'s MCP credentials',
+		'ui' => [ 'placeholder' => 'None', 'width' => 3 ],
 	    ],
 	    //CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers (localServers)
 	    [
@@ -243,8 +254,9 @@ abstract class NodeAppAi extends \models\WfNode {
 		'choices' => $servers,
 		'label' => 'Tool servers',
 		'default' => [],
-		'help' => 'Tools this installation runs for the account (e.g. a web browser); each run gets its own session, closed after it',
-		'ui' => [ 'placeholder' => $servers ? 'None' : 'None enabled for this account' ],
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide; shorter help (was: Tools this installation runs for the account (e.g. a web browser); each run gets its own session, closed after it)
+		'help' => 'E.g. a web browser',
+		'ui' => [ 'placeholder' => $servers ? 'None' : 'None enabled', 'width' => 3 ],
 	    ],
 	    [
 		'key' => 'maxRounds',
@@ -255,7 +267,8 @@ abstract class NodeAppAi extends \models\WfNode {
 		'help' => 'Most calls to the model (each tool use is one more)',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_ROUNDS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_ROUNDS ] ],
 		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
-		'ui' => [ 'width' => 4 ],
+		//CLD: 2026-10-24T12:42:45+03:00: a limit: the designer puts it on the last line, before the timeout (was 4 wide)
+		'ui' => [ 'limit' => true ],
 	    ],
 	    [
 		'key' => 'maxTokens',
@@ -266,7 +279,8 @@ abstract class NodeAppAi extends \models\WfNode {
 		'help' => 'Longest answer per call',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_TOKENS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_TOKENS ] ],
 		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
-		'ui' => [ 'width' => 4 ],
+		//CLD: 2026-10-24T12:42:45+03:00: a limit (was 4 wide)
+		'ui' => [ 'limit' => true ],
 	    ],
 	    [
 		'key' => 'timeout',
@@ -286,7 +300,8 @@ abstract class NodeAppAi extends \models\WfNode {
 		'required' => true,
 		'default' => 'fail',
 		'choices' => self::ON_ERROR,
-		'help' => 'The model could not be reached, declined, was cut off, or a JSON answer did not parse',
+		//CLD: 2026-10-24T12:42:45+03:00: shorter (one line in the narrow column; was: The model could not be reached, declined, was cut off, or a JSON answer did not parse)
+		'help' => 'Unreachable, declined, cut off, bad JSON',
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 	    ],
 	]);

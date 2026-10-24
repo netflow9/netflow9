@@ -56,96 +56,106 @@ class NodeAppExcel extends NodeAppMicrosoft {
     protected $firstSheet = null;
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: Empty: your OneDrive; a SharePoint site (https://contoso.sharepoint.com/sites/Team: its documents) or a drive id)
 		'key' => 'drive',
 		'type' => 'text',
 		'label' => 'Drive',
 		'default' => '',
-		'help' => 'Empty: your OneDrive; a SharePoint site (https://contoso.sharepoint.com/sites/Team: its documents) or a drive id',
-		'ui' => [ 'placeholder' => 'https://contoso.sharepoint.com/sites/Team', 'expression' => true ],
+		'help' => 'Empty: your OneDrive; a SharePoint site link or a drive id',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'https://contoso.sharepoint.com/sites/Team', 'expression' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: The .xlsx file: its id, path in the drive (/Reports/2026.xlsx) or a sharing link; {{ ... }} for expressions, e.g. {{ files.id }})
 		'key' => 'workbook',
 		'type' => 'text',
 		'label' => 'Workbook',
 		'required' => true,
 		'default' => '',
-		'help' => 'The .xlsx file: its id, path in the drive (/Reports/2026.xlsx) or a sharing link; {{ ... }} for expressions, e.g. {{ files.id }}',
-		'ui' => [ 'placeholder' => '/Reports/2026.xlsx', 'expression' => true ],
+		'help' => 'The .xlsx file: id, path (/Reports/2026.xlsx) or sharing link',
+		'ui' => [ 'width' => 6, 'placeholder' => '/Reports/2026.xlsx', 'expression' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'sheet',
 		'type' => 'text',
 		'label' => 'Worksheet',
 		'default' => '',
 		'help' => 'The worksheet name; empty: the first one',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'addSheet' ] ],
-		'ui' => [ 'placeholder' => 'Sheet1', 'expression' => true, 'width' => 6, 'showIf' => $op(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'Sheet1', 'expression' => true, 'showIf' => $op(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6); shorter help (was: A1 notation, e.g. A1:D100; update: the first cell written (e.g. A5); empty: the used cells (update: A1))
 		'key' => 'range',
 		'type' => 'text',
 		'label' => 'Cells',
 		'default' => '',
-		'help' => 'A1 notation, e.g. A1:D100; update: the first cell written (e.g. A5); empty: the used cells (update: A1)',
+		'help' => 'A1 notation, e.g. A1:D100; empty: the used cells',
 		'validate' => [ [ 'regex', 'pattern' => '^\s*(\{\{.*\}\}|[A-Za-z]{0,3}[0-9]{0,7}(:[A-Za-z]{0,3}[0-9]{0,7})?)\s*$', 'skipEmpty' => true, 'message' => 'Cells in A1 notation, e.g. A1:D100' ] ],
-		'ui' => [ 'placeholder' => 'A1:D100', 'expression' => true, 'width' => 6, 'showIf' => $op([ 'read', 'update', 'clear' ]) ],
+		'ui' => [ 'width' => 3, 'placeholder' => 'A1:D100', 'expression' => true, 'showIf' => $op([ 'read', 'update', 'clear' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: Optional: the name of a table (Insert > Table) to add the rows to; empty: after the last used row of the worksheet)
 		'key' => 'table',
 		'type' => 'text',
 		'label' => 'Table',
 		'default' => '',
-		'help' => 'Optional: the name of a table (Insert > Table) to add the rows to; empty: after the last used row of the worksheet',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'append' ]) ],
+		'help' => 'Optional: a table to add the rows to; empty: after the last row',
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'append' ]) ],
 	    ],
 
 	    //read
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line; shorter help (was: The rows are also given as objects keyed by the header, e.g. {{ excel.rows[0].Email }})
 		'key' => 'header',
 		'type' => 'switch',
 		'label' => 'First row is the header',
 		'default' => true,
-		'help' => 'The rows are also given as objects keyed by the header, e.g. {{ excel.rows[0].Email }}',
-		'ui' => [ 'showIf' => $op([ 'read' ]) ],
+		'help' => 'Rows also as objects keyed by the header',
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'read' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'render',
 		'type' => 'select',
 		'label' => 'Read values',
 		'required' => true,
 		'default' => 'values',
 		'choices' => self::RENDER,
-		'ui' => [ 'showIf' => $op([ 'read' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'read' ]) ],
 	    ],
 
+	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line; shorter help (was: Rows as objects: keys not in the header become new columns (else they are left out; a table's columns are not added))
+		'key' => 'addColumns',
+		'type' => 'switch',
+		'label' => 'Add the missing columns to the header',
+		'default' => true,
+		'help' => 'New keys become new columns',
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'append', 'update' ]) ],
+	    ],
 	    //append / update
 	    [
 		'key' => 'values',
 		'type' => 'textarea',
 		'label' => 'Rows',
 		'default' => '',
-		'help' => 'A list of rows: lists of cells ([["a", 1], ["b", 2]]) or objects matched to the header ([{"Name": "a", "Qty": 1}]); one object or list is one row; {{ ... }} for expressions',
+		'help' => 'A list of rows: lists of cells ([["a", 1], ["b", 2]]) or objects matched to the header ([{"Name": "a", "Qty": 1}]); one object or list is one row',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'append', 'update' ] ],
 		'ui' => [ 'rows' => 5, 'expression' => true, 'placeholder' => '{{ [ { Name: mail.from_name, Email: mail.from } ] }}', 'showIf' => $op([ 'append', 'update' ]) ],
-	    ],
-	    [
-		'key' => 'addColumns',
-		'type' => 'switch',
-		'label' => 'Add the missing columns to the header',
-		'default' => true,
-		'help' => 'Rows as objects: keys not in the header become new columns (else they are left out; a table\'s columns are not added)',
-		'ui' => [ 'showIf' => $op([ 'append', 'update' ]) ],
 	    ],
 
 	    static::timeoutField(60),
 	    static::variableField(),
-	    static::onErrorField('An error from Excel, e.g. not found, no access, a worksheet or range that does not exist, the workbook locked'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Excel, e.g. not found, no access, a worksheet or range that does not exist, the workbook locked)
+	    static::onErrorField('Excel errors, no such range, locked'),
 	];
     }
 

@@ -56,6 +56,7 @@ class NodeAppLdap extends \models\WfNode {
     const LOGIN_FILTERS = [ 'ad' => '(&(objectClass=user)(|(sAMAccountName={login})(userPrincipalName={login})(mail={login})))', 'openldap' => '(&(objectClass=person)(|(uid={login})(mail={login})))' ];
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 	$choices = [];
 	foreach(self::credentialChoices() as $c)
@@ -82,7 +83,7 @@ class NodeAppLdap extends \models\WfNode {
 		'type' => 'text',
 		'label' => 'Base DN',
 		'default' => '',
-		'help' => 'Empty: the credential\'s Base DN; {{ ... }} for expressions',
+		'help' => 'Empty: the credential\'s Base DN',
 		'ui' => [ 'placeholder' => 'OU=People,DC=example,DC=com', 'expression' => true, 'width' => 8, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
@@ -188,7 +189,7 @@ class NodeAppLdap extends \models\WfNode {
 		'type' => 'text',
 		'label' => 'Member',
 		'default' => '',
-		'help' => 'A DN (member, uniqueMember) or a name (memberUid); {{ ... }} for expressions',
+		'help' => 'A DN (member, uniqueMember) or a name (memberUid)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_GROUP ],
 		'ui' => [ 'expression' => true, 'width' => 8, 'placeholder' => '{{ entry.dn }}', 'showIf' => $op(self::ON_GROUP) ],
 	    ],
@@ -206,7 +207,7 @@ class NodeAppLdap extends \models\WfNode {
 		'type' => 'text',
 		'label' => 'Name',
 		'default' => '',
-		'help' => 'The name the person signs in with; {{ ... }} for expressions',
+		'help' => 'The name the person signs in with',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'checkPassword' ] ],
 		'ui' => [ 'expression' => true, 'width' => 6, 'placeholder' => '{{ form.username }}', 'showIf' => $op([ 'checkPassword' ]) ],
 	    ],
@@ -236,23 +237,25 @@ class NodeAppLdap extends \models\WfNode {
 		'ui' => [ 'expression' => true, 'showIf' => $op([ 'setPassword' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: Search: { entries, count, truncated }; get: the entry or null; checkPassword: { valid, dn }; else { dn })
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Result variable',
 		'required' => true,
 		'default' => 'ldap',
-		'help' => 'Search: { entries, count, truncated }; get: the entry or null; checkPassword: { valid, dn }; else { dn }',
+		'help' => '{ entries, count }, the entry, { valid, dn } or { dn }',
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: An error from the directory (e.g. no such entry, no access, already exists) or no connection)
 		'key' => 'onError',
 		'type' => 'select',
 		'label' => 'On error',
 		'required' => true,
 		'default' => 'fail',
 		'choices' => self::ON_ERROR,
-		'help' => 'An error from the directory (e.g. no such entry, no access, already exists) or no connection',
+		'help' => 'Directory errors, or no connection',
 		'ui' => [ 'width' => 6 ],
 	    ],
 	];

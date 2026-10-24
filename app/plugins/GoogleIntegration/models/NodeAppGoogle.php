@@ -72,7 +72,8 @@ abstract class NodeAppGoogle extends \models\WfNode {
 	    'type' => 'select',
 	    'label' => static::$credentialLabel,
 	    'choices' => $choices,
-	    'help' => $help ?? 'A ' . static::$credentialKinds . ' (OAuth) credential of the project (menu: Credentials)',
+	    //CLD: 2026-10-24T12:59:05+03:00: without "(menu: Credentials)" (one line in the wide dialog's half column)
+	    'help' => $help ?? 'A ' . static::$credentialKinds . ' (OAuth) credential of the project',
 	    'required' => true,
 	];
     }

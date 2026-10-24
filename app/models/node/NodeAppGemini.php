@@ -33,17 +33,20 @@ class NodeAppGemini extends NodeAppAi {
 		'label' => 'Thinking',
 		'default' => '',
 		'choices' => self::THINKING,
-		'help' => 'How much the model thinks (Gemini 3 and later): higher is better for hard tasks, lower is faster and cheaper; Minimal / Medium: Flash models only',
-		'ui' => [ 'width' => 6 ],
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line (was 6); shorter help (was: How much the model thinks (Gemini 3 and later): higher is better for hard tasks, lower is faster and cheaper;
+		//Minimal / Medium: Flash models only)
+		'help' => 'Gemini 3+; Minimal / Medium: Flash only',
+		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
 		'key' => 'temperature',
 		'type' => 'text',
 		'label' => 'Temperature',
 		'default' => '',
-		'help' => 'Optional, 0 - 2; empty: the model default (recommended for Gemini 3)',
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide (was 6); shorter help (was: Optional, 0 - 2; empty: the model default (recommended for Gemini 3))
+		'help' => '0 - 2; empty: the default (best)',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		'ui' => [ 'width' => 6, 'placeholder' => 'default' ],
+		'ui' => [ 'width' => 3, 'placeholder' => 'default' ],
 	    ],
 	];
     }

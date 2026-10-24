@@ -35,17 +35,19 @@ class NodeAppClaude extends NodeAppAi {
 		'required' => true,
 		'default' => 'high',
 		'choices' => self::EFFORT,
-		'help' => 'How thoroughly the model thinks: higher is better for hard tasks, lower is faster and cheaper',
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line (was 6); shorter help (was: How thoroughly the model thinks: higher is better for hard tasks, lower is faster and cheaper)
+		'help' => 'Higher: hard tasks; lower: faster, cheaper',
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
-		'ui' => [ 'width' => 6 ],
+		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
 		'key' => 'fallback',
 		'type' => 'switch',
 		'label' => 'Fallback on refusal',
 		'default' => true,
-		'help' => 'When the model declines, the API retries on the model Anthropic recommends (Claude Opus 5 / 5.5, Sonnet 5.5, Fable 5)',
-		'ui' => [ 'width' => 6 ],
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide (was 6); shorter help (was: When the model declines, the API retries on the model Anthropic recommends (Claude Opus 5 / 5.5, Sonnet 5.5, Fable 5))
+		'help' => 'On a refusal, retry on the model Anthropic recommends',
+		'ui' => [ 'width' => 3 ],
 	    ],
 	];
     }
