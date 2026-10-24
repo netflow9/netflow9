@@ -28,34 +28,38 @@ class NodeAppOllama extends NodeAppAi {
     protected static function providerSchema() {
 	return [
 	    [
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3), not on a new line; shorter help (was: 0 - 2; empty: the model's default)
 		'key' => 'temperature',
 		'type' => 'text',
 		'label' => 'Temperature',
 		'default' => '',
 		//CLD: 2026-10-24T12:42:45+03:00: the four settings 3 wide on one line (were 6); shorter helps
-		'help' => '0 - 2; empty: the model\'s default',
+		'help' => '0 - 2; empty: default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'default' ],
+		'ui' => [ 'width' => 2, 'placeholder' => 'default' ],
 	    ],
 	    [
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3); shorter help (was: Thinking models (qwen3, deepseek-r1))
+		'key' => 'think',
+		'type' => 'select',
+		'label' => 'Thinking',
+		'default' => '',
+		'choices' => self::THINK,
+		'help' => 'qwen3, deepseek-r1',
+		'ui' => [ 'width' => 2 ],
+	    ],
+	    [
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 3 wide, on a new line
 		'key' => 'contextLength',
 		'type' => 'text',
 		'label' => 'Context length (tokens)',
 		'default' => '',
 		'help' => 'num_ctx; empty: the server\'s default',
 		'validate' => [ [ 'regex', 'pattern' => '^[1-9][0-9]{2,6}$', 'skipEmpty' => true, 'message' => 'A number of tokens, e.g. 8192' ] ],
-		'ui' => [ 'width' => 3, 'placeholder' => 'default' ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'default' ],
 	    ],
 	    [
-		'key' => 'think',
-		'type' => 'select',
-		'label' => 'Thinking',
-		'default' => '',
-		'choices' => self::THINK,
-		'help' => 'Thinking models (qwen3, deepseek-r1)',
-		'ui' => [ 'width' => 3 ],
-	    ],
-	    [
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 3 wide
 		'key' => 'keepAlive',
 		'type' => 'text',
 		'label' => 'Keep the model loaded',
