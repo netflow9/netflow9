@@ -757,9 +757,14 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
     designer = new app.Workflow('canvas-wrap', options);
     //CLD: 2026-10-19T20:10:00+03:00: the Assistant is mounted by its plugin (designer_panel.php, after this script)
 
-    $('#canvas-form .btn-zoom-fit').on('click', (e) => {
+    //CLD: 2026-10-24T00:30:00+03:00: the buttons are in the page header, not in #canvas-form (the selector was '#canvas-form .btn-zoom-fit': it found nothing, so Fit did nothing); + zoom in / out
+    $('.btn-zoom-fit').on('click', (e) => {
 	e.preventDefault();
 	designer.fitView();
+    });
+    $('.btn-zoom-in, .btn-zoom-out').on('click', function(e) {
+	e.preventDefault();
+	designer.zoomBy(this.classList.contains('btn-zoom-in') ? 1.2 : 1 / 1.2);
     });
 
     //---------------------debug panel
@@ -914,7 +919,10 @@ $formOptions = [
 	    </div>";
 	}
 	?>
-	<a href="#" class="px-1 btn btn-sm btn-icon btn-zoom-fit d-inline"><i class="bi bi-aspect-ratio"></i></a>
+	<?php //CLD: 2026-10-24T00:30:00+03:00: + zoom out / in, + titles ?>
+	<a href="#" class="px-1 btn btn-sm btn-icon btn-zoom-out d-inline" title="Zoom out"><i class="bi bi-zoom-out"></i></a>
+	<a href="#" class="px-1 btn btn-sm btn-icon btn-zoom-fit d-inline" title="Fit the workflow to the view"><i class="bi bi-aspect-ratio"></i></a>
+	<a href="#" class="px-1 btn btn-sm btn-icon btn-zoom-in d-inline" title="Zoom in"><i class="bi bi-zoom-in"></i></a>
 	<?php if (!$viewVersion): //CLD: 2026-10-11T13:51:42+03:00: the draft's tools only (not when viewing a version) ?>
 	<?php //CLD: 2026-10-10T19:08:46+03:00: Run (from the Manual trigger) and the Executions panel ?>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-run-wf text-success d-inline" title="Run"><i class="bi bi-play-fill"></i></a>
