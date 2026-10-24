@@ -46,72 +46,80 @@ class NodeAppTeams extends NodeAppMicrosoft {
     const MAX_RESULTS = 500;
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'team',
 		'type' => 'text',
 		'label' => 'Team',
 		'default' => '',
-		'help' => 'The team id (List my teams gives them); {{ ... }} for expressions',
+		'help' => 'The team id (List my teams gives them)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'sendChannel', 'reply', 'channels' ] ],
-		'ui' => [ 'expression' => true, 'showIf' => $op([ 'sendChannel', 'reply', 'channels' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'sendChannel', 'reply', 'channels' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: The channel id, e.g. 19:...@thread.tacv2 (List the channels gives them))
 		'key' => 'channel',
 		'type' => 'text',
 		'label' => 'Channel',
 		'default' => '',
-		'help' => 'The channel id, e.g. 19:...@thread.tacv2 (List the channels gives them)',
+		'help' => 'The channel id (List the channels gives them)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::IN_CHANNEL ],
-		'ui' => [ 'expression' => true, 'showIf' => $op(self::IN_CHANNEL) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::IN_CHANNEL) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: The id of the channel message to reply to, e.g. {{ teams.id }} of a Send a channel message)
 		'key' => 'messageId',
 		'type' => 'text',
 		'label' => 'Message',
 		'default' => '',
-		'help' => 'The id of the channel message to reply to, e.g. {{ teams.id }} of a Send a channel message',
+		'help' => 'The channel message replied to, e.g. {{ teams.id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'reply' ] ],
-		'ui' => [ 'expression' => true, 'showIf' => $op([ 'reply' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'reply' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: The chat id, e.g. 19:...@thread.v2 (List my chats gives them))
 		'key' => 'chat',
 		'type' => 'text',
 		'label' => 'Chat',
 		'default' => '',
-		'help' => 'The chat id, e.g. 19:...@thread.v2 (List my chats gives them)',
+		'help' => 'The chat id (List my chats gives them)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'sendChat' ] ],
-		'ui' => [ 'expression' => true, 'showIf' => $op([ 'sendChat' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'sendChat' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'subject',
 		'type' => 'text',
 		'label' => 'Subject',
 		'default' => '',
 		'help' => 'Optional',
-		'ui' => [ 'expression' => true, 'showIf' => $op([ 'sendChannel' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'sendChannel' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Message as',
 		'required' => true,
 		'default' => 'text',
 		'choices' => self::BODY_TYPES,
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::SEND) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op(self::SEND) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
 		'key' => 'importance',
 		'type' => 'select',
 		'label' => 'Importance',
 		'required' => true,
 		'default' => 'normal',
 		'choices' => self::IMPORTANCE,
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::SEND) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op(self::SEND) ],
 	    ],
 	    [
 		'key' => 'message',
@@ -125,7 +133,8 @@ class NodeAppTeams extends NodeAppMicrosoft {
 
 	    static::timeoutField(60),
 	    static::variableField(),
-	    static::onErrorField('An error from Teams, e.g. not found, no access, a permission the admin has not granted'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Teams, e.g. not found, no access, a permission the admin has not granted)
+	    static::onErrorField('Teams errors, a permission not granted'),
 	];
     }
 

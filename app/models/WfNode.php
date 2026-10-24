@@ -27,9 +27,6 @@ class WfNode extends \sys\NestedModel {
     //outputs that follow the step's config (e.g. Switch: one per case): [ 'rows' => <config key of the rows>, 'label' => <row key of the
     //output's label>, 'after' => [ labels of the outputs after the rows ] ]; null = the class's $outputs / $outLabels. The designer applies the same rule (outPortsOf)
     public static $outPorts = null;
-    //CLD: 2026-10-24T12:06:57+03:00: the designer's settings dialog of the step: size (lg, the default; xl: wider, for steps with many settings laid out side by side), titleWidth (the step
-    //name's width, 1-12: the settings after it fill the rest of its row)
-    public static $editor = [];
 
 
     public $exec = null;
@@ -385,8 +382,6 @@ class WfNode extends \sys\NestedModel {
 		'outPorts' => $__class::$outPorts,
 		'isContainer' => $__class::$isContainer ?? false,
 		'isNote' => $__class::$isNote ?? false,
-		//CLD: 2026-10-24T12:06:57+03:00: the settings dialog (WfNode::$editor)
-		'editor' => (object)($__class::$editor ?? []),
 		'hasInitConfig' => (new \ReflectionMethod($__class, 'initConfig'))->getDeclaringClass()->getName() !== self::class,
 		//CLD: 2026-10-12T20:33:47+03:00: the class has its own startNow(): Run in the designer can start the workflow at this trigger
 		'canRun' => (new \ReflectionMethod($__class, 'startNow'))->getDeclaringClass()->getName() !== self::class,

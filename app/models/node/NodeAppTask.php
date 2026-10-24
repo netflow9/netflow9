@@ -137,12 +137,13 @@ class NodeAppTask extends \models\WfNode {
 		'ui' => [ 'width' => 4, 'showIf' => [ 'key' => 'timeoutUnit', 'operator' => 'ne', 'value' => 'none' ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: The answers, by key; who gave them: <variable>_user)
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Answers variable',
 		'required' => true,
 		'default' => 'task',
-		'help' => 'The answers, by key; who gave them: <variable>_user',
+		'help' => 'The answers by key; who gave them: <variable>_user',
 		'validate' => [
 		    [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ]
 		],

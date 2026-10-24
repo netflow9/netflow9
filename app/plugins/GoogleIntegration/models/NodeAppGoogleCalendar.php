@@ -55,92 +55,111 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
     const MAX_DURATION = 60 * 24 * 31;
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: primary (the account's), or a calendar id (e.g. team@group.calendar.google.com; List the calendars gives them); freeBusy: several, separated by commas)
 		'key' => 'calendarId',
 		'type' => 'text',
 		'label' => 'Calendar',
 		'default' => 'primary',
-		'help' => 'primary (the account\'s), or a calendar id (e.g. team@group.calendar.google.com; List the calendars gives them); freeBusy: several, separated by commas',
-		'ui' => [ 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
+		'help' => 'primary, or a calendar id (List the calendars); freeBusy: several',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: The event id, e.g. {{ calendar.id }} of a create, {{ calendar[0].id }} of a list)
 		'key' => 'eventId',
 		'type' => 'text',
 		'label' => 'Event',
 		'default' => '',
-		'help' => 'The event id, e.g. {{ calendar.id }} of a create, {{ calendar[0].id }} of a list; {{ ... }} for expressions',
+		'help' => 'The event id, e.g. {{ calendar.id }}, {{ calendar[0].id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_EVENT ],
-		'ui' => [ 'placeholder' => '{{ event.id }}', 'expression' => true, 'showIf' => $op(self::ON_EVENT) ],
+		'ui' => [ 'width' => 6, 'placeholder' => '{{ event.id }}', 'expression' => true, 'showIf' => $op(self::ON_EVENT) ],
 	    ],
 
 	    //list / freeBusy
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: Empty: now; ISO 8601 or 2026-10-21 14:00)
 		'key' => 'timeMin',
 		'type' => 'text',
 		'label' => 'From',
 		'default' => '',
-		'help' => 'Empty: now; ISO 8601 or 2026-10-21 14:00; {{ ... }} for expressions',
-		'ui' => [ 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'width' => 6, 'showIf' => $op(self::PERIOD) ],
+		'help' => 'Empty: now; ISO 8601 or 2026-10-21 14:00',
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
 		'key' => 'timeMax',
 		'type' => 'text',
 		'label' => 'Until',
 		'default' => '',
 		'help' => 'Empty: 7 days after From',
-		'ui' => [ 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'width' => 6, 'showIf' => $op(self::PERIOD) ],
+		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: Words in the title, description, location or guests; empty: all)
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Search',
 		'default' => '',
-		'help' => 'Words in the title, description, location or guests; empty: all',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'help' => 'Words in the title, description, place or guests; empty: all',
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: a limit (the last line)
 		'key' => 'maxResults',
 		'type' => 'number',
 		'label' => 'Largest number of events',
 		'required' => true,
 		'default' => 50,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_RESULTS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_RESULTS ] ],
-		'ui' => [ 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
 	    ],
 
 	    //create / update
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
 		'key' => 'summary',
 		'type' => 'text',
 		'label' => 'Title',
 		'default' => '',
-		'help' => 'Update: empty leaves it as it is; {{ ... }} for expressions',
+		'help' => 'Update: empty leaves it as it is',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'placeholder' => 'Meeting with {{ mail.from_name }}', 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'Meeting with {{ mail.from_name }}', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		'key' => 'location',
+		'type' => 'text',
+		'label' => 'Location',
+		'default' => '',
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::EDIT) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: ISO 8601 or 2026-10-21 14:00 (all day: 2026-10-21))
 		'key' => 'start',
 		'type' => 'text',
 		'label' => 'Start',
 		'default' => '',
-		'help' => 'ISO 8601 or 2026-10-21 14:00 (all day: 2026-10-21)',
+		'help' => 'ISO 8601 or 2026-10-21 14:00',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6); shorter help (was: Empty: Start + the duration (all day: the same day))
 		'key' => 'end',
 		'type' => 'text',
 		'label' => 'End',
 		'default' => '',
-		'help' => 'Empty: Start + the duration (all day: the same day)',
-		'ui' => [ 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'help' => 'Empty: Start + the duration',
+		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
 		'key' => 'duration',
 		'type' => 'number',
 		'label' => 'Duration (minutes)',
@@ -148,71 +167,70 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'default' => 60,
 		'help' => 'When End is empty',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_DURATION, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_DURATION ] ],
-		'ui' => [ 'step' => 5, 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'step' => 5, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
 		'key' => 'allDay',
 		'type' => 'switch',
 		'label' => 'All day',
 		'default' => false,
 		'help' => 'The end day is included',
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: Of the times without an offset, e.g. Europe/Bucharest; empty: ' . (\V::app()->config('app.timezone') ?: date_default_timezone_get()))
 		'key' => 'timeZone',
 		'type' => 'text',
 		'label' => 'Time zone',
 		'default' => '',
-		'help' => 'Of the times without an offset, e.g. Europe/Bucharest; empty: ' . (\V::app()->config('app.timezone') ?: date_default_timezone_get()),
-		'ui' => [ 'placeholder' => 'Europe/Bucharest', 'expression' => true, 'width' => 6, 'showIf' => $op(array_merge(self::EDIT, self::PERIOD)) ],
+		'help' => 'Of times without an offset',
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'Europe/Bucharest', 'expression' => true, 'showIf' => $op(array_merge(self::EDIT, self::PERIOD)) ],
 	    ],
 	    [
-		'key' => 'location',
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: Optional, e.g. RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10)
+		'key' => 'recurrence',
 		'type' => 'text',
-		'label' => 'Location',
+		'label' => 'Repeat (RRULE)',
 		'default' => '',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op(self::EDIT) ],
+		'help' => 'Optional, e.g. RRULE:FREQ=WEEKLY;BYDAY=MO',
+		'validate' => [ [ 'regex', 'pattern' => '^\s*(\{\{.*\}\}|(RRULE|EXRULE|RDATE|EXDATE)[:;].+)\s*$', 'skipEmpty' => true, 'message' => 'An RRULE, e.g. RRULE:FREQ=WEEKLY;COUNT=10' ] ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10', 'expression' => true, 'showIf' => $op(self::EDIT) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		'key' => 'meet',
+		'type' => 'switch',
+		'label' => 'Add a Google Meet link',
+		'default' => false,
+		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
 		'key' => 'description',
 		'type' => 'textarea',
 		'label' => 'Description',
 		'default' => '',
-		'help' => 'Text or simple HTML; {{ ... }} for expressions',
+		'help' => 'Text or simple HTML',
 		'ui' => [ 'rows' => 4, 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: Addresses separated by commas, or {{ ... }} giving a list; update: added to the event's guests)
 		'key' => 'attendees',
 		'type' => 'text',
 		'label' => 'Guests',
 		'default' => '',
-		'help' => 'Addresses separated by commas, or {{ ... }} giving a list; update: added to the event\'s guests',
-		'ui' => [ 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'help' => 'Addresses separated by commas, or a list; update: added',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		'key' => 'meet',
-		'type' => 'switch',
-		'label' => 'Add a Google Meet link',
-		'default' => false,
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::EDIT) ],
-	    ],
-	    [
-		'key' => 'recurrence',
-		'type' => 'text',
-		'label' => 'Repeat (RRULE)',
-		'default' => '',
-		'help' => 'Optional, e.g. RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10',
-		'validate' => [ [ 'regex', 'pattern' => '^\s*(\{\{.*\}\}|(RRULE|EXRULE|RDATE|EXDATE)[:;].+)\s*$', 'skipEmpty' => true, 'message' => 'An RRULE, e.g. RRULE:FREQ=WEEKLY;COUNT=10' ] ],
-		'ui' => [ 'placeholder' => 'RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10', 'expression' => true, 'width' => 6, 'showIf' => $op(self::EDIT) ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'sendUpdates',
 		'type' => 'select',
 		'label' => 'Notify guests',
 		'required' => true,
 		'default' => 'all',
 		'choices' => self::SEND_UPDATES,
-		'ui' => [ 'showIf' => $op([ 'create', 'update', 'delete', 'quickAdd' ]) ],
+		'ui' => [ 'width' => 6, 'showIf' => $op([ 'create', 'update', 'delete', 'quickAdd' ]) ],
 	    ],
 
 	    //quickAdd
@@ -221,14 +239,16 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'type' => 'text',
 		'label' => 'Sentence',
 		'default' => '',
-		'help' => 'What and when, in English, e.g. Lunch with Ana tomorrow at 1pm; {{ ... }} for expressions',
+		'help' => 'What and when, in English, e.g. Lunch with Ana tomorrow at 1pm',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'quickAdd' ] ],
 		'ui' => [ 'placeholder' => 'Call with {{ name }} on Friday 10am-11am', 'expression' => true, 'showIf' => $op([ 'quickAdd' ]) ],
 	    ],
 
 	    static::timeoutField(60),
-	    static::variableField('List: a list of events; freeBusy: { calendars, busy }; calendars: a list; else the event'),
-	    static::onErrorField('An error from Google Calendar (e.g. not found, no access), a time that cannot be read, an end before the start'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: List: a list of events; freeBusy: { calendars, busy }; calendars: a list; else the event)
+	    static::variableField('Events, free / busy, calendars, or the event'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Google Calendar (e.g. not found, no access), a time that cannot be read, an end before the start)
+	    static::onErrorField('Calendar errors, times not read'),
 	];
     }
 

@@ -61,61 +61,70 @@ class NodeAppGmail extends NodeAppGoogle {
     protected $labelMap = null;
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 
 	return [
-	    static::credentialField('A Google Mail (OAuth) credential of the project (menu: Credentials); the Google app needs the Gmail API enabled'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: A Google Mail (OAuth) credential of the project (menu: Credentials); the Google app needs the Gmail API enabled)
+	    static::credentialField('A Google Mail (OAuth) credential of the project; the Gmail API enabled'),
 	    static::operationField(),
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
 		'key' => 'messageId',
 		'type' => 'text',
 		'label' => 'Message',
 		'default' => '',
-		'help' => 'The Gmail message id, e.g. {{ gmail[0].id }} of a search; {{ ... }} for expressions',
+		'help' => 'The Gmail message id, e.g. {{ gmail[0].id }} of a search',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_MESSAGE ],
-		'ui' => [ 'placeholder' => '{{ msg.id }}', 'expression' => true, 'showIf' => $op(self::ON_MESSAGE) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '{{ msg.id }}', 'expression' => true, 'showIf' => $op(self::ON_MESSAGE) ],
 	    ],
 
 	    //send / draft
 	    [
-		'key' => 'replyTo',
-		'type' => 'text',
-		'label' => 'In reply to',
-		'default' => '',
-		'help' => 'Optional: the Gmail message id answered (same thread, "Re: " subject, to its sender when To is empty); {{ ... }} for expressions',
-		'ui' => [ 'placeholder' => '{{ msg.id }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line; shorter help (was: Addresses separated by commas (Name <a@x.com> too), or {{ ... }} giving a list)
 		'key' => 'to',
 		'type' => 'text',
 		'label' => 'To',
 		'default' => '',
-		'help' => 'Addresses separated by commas (Name <a@x.com> too), or {{ ... }} giving a list',
-		'ui' => [ 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'help' => 'Addresses separated by commas (Name <a@x.com> too), or {{ ... }}',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
 		'key' => 'cc',
 		'type' => 'text',
 		'label' => 'Cc',
 		'default' => '',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
 		'key' => 'bcc',
 		'type' => 'text',
 		'label' => 'Bcc',
 		'default' => '',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
 		'key' => 'subject',
 		'type' => 'text',
 		'label' => 'Subject',
 		'default' => '',
-		'help' => 'Empty in a reply: "Re: " + the subject answered; {{ ... }} for expressions',
-		'ui' => [ 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'help' => 'Empty in a reply: "Re: " + the subject answered',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		'key' => 'fromName',
+		'type' => 'text',
+		'label' => 'Sender name',
+		'default' => '',
+		'help' => 'Empty: the account\'s name in Gmail',
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Body',
@@ -123,51 +132,57 @@ class NodeAppGmail extends NodeAppGoogle {
 		'default' => 'text',
 		'choices' => self::BODY_TYPES,
 		'help' => 'HTML: a text version is made from it too',
-		'ui' => [ 'width' => 6, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		'key' => 'fromName',
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line; shorter help (was: Optional: the Gmail message id answered (same thread, "Re: " subject, to its sender when To is empty); {{ ... }} for expressions)
+		'key' => 'replyTo',
 		'type' => 'text',
-		'label' => 'Sender name',
+		'label' => 'In reply to',
 		'default' => '',
-		'help' => 'Empty: the account\'s name in Gmail',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op(self::COMPOSE) ],
+		'help' => 'Optional: the message id answered (same thread, "Re: " subject)',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '{{ msg.id }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide; shorter help (was: Project file ids separated by commas, or {{ ... }} giving one or a list, e.g. {{ file.id }}, {{ mail.attachment_files }})
+		'key' => 'attachments',
+		'type' => 'text',
+		'label' => 'Attachments',
+		'default' => '',
+		'help' => 'Project file ids separated by commas, or {{ ... }}, e.g. {{ file.id }}',
+		'ui' => [ 'width' => 6, 'placeholder' => '{{ file.id }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 lines
 		'key' => 'body',
 		'type' => 'textarea',
 		'label' => 'Content',
 		'default' => '',
 		'help' => '{{ ... }} for expressions',
-		'ui' => [ 'rows' => 8, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
-	    ],
-	    [
-		'key' => 'attachments',
-		'type' => 'text',
-		'label' => 'Attachments',
-		'default' => '',
-		'help' => 'Project file ids separated by commas, or {{ ... }} giving one or a list, e.g. {{ file.id }}, {{ mail.attachment_files }}',
-		'ui' => [ 'placeholder' => '{{ file.id }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 
 	    //search
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: shorter help (was: Gmail search, as in Gmail's search box: from:ana@x.com subject:invoice has:attachment newer_than:2d; empty: all; {{ ... }} for expressions)
 		'key' => 'query',
 		'type' => 'text',
 		'label' => 'Search',
 		'default' => '',
-		'help' => 'Gmail search, as in Gmail\'s search box: from:ana@x.com subject:invoice has:attachment newer_than:2d; empty: all; {{ ... }} for expressions',
+		'help' => 'Gmail search, e.g. from:ana@x.com has:attachment newer_than:2d; empty: all',
 		'ui' => [ 'placeholder' => 'from:billing@example.com has:attachment', 'expression' => true, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line; shorter help (was: Label names separated by commas (all of them), e.g. INBOX, Invoices; empty: any)
 		'key' => 'labelFilter',
 		'type' => 'text',
 		'label' => 'In labels',
 		'default' => 'INBOX',
-		'help' => 'Label names separated by commas (all of them), e.g. INBOX, Invoices; empty: any',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'search' ]) ],
+		'help' => 'Label names separated by commas (all of them); empty: any',
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: a limit (the last line)
 		'key' => 'maxMessages',
 		'type' => 'number',
 		'label' => 'Messages',
@@ -175,40 +190,10 @@ class NodeAppGmail extends NodeAppGoogle {
 		'default' => 10,
 		'help' => 'The newest first',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_MESSAGES, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_MESSAGES ] ],
-		'ui' => [ 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
-		'key' => 'unreadOnly',
-		'type' => 'switch',
-		'label' => 'Unread only',
-		'default' => false,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'search' ]) ],
-	    ],
-	    [
-		'key' => 'spamTrash',
-		'type' => 'switch',
-		'label' => 'Include spam and trash',
-		'default' => false,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'search' ]) ],
-	    ],
-	    [
-		'key' => 'saveAttachments',
-		'type' => 'switch',
-		'label' => 'Save attachments as project files',
-		'default' => false,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'search', 'get' ]) ],
-	    ],
-	    [
-		'key' => 'maxSize',
-		'type' => 'number',
-		'label' => 'Largest message (MB)',
-		'required' => true,
-		'default' => 25,
-		'help' => 'Larger messages are skipped',
-		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
-		'ui' => [ 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search', 'get' ]) ],
-	    ],
-	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide (was 6)
 		'key' => 'markAfter',
 		'type' => 'select',
 		'label' => 'Then mark them as',
@@ -217,43 +202,84 @@ class NodeAppGmail extends NodeAppGoogle {
 		'choices' => self::MARK,
 		'ui' => [ 'width' => 6, 'showIf' => $op([ 'search' ]) ],
 	    ],
+	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6), on a new line
+		'key' => 'unreadOnly',
+		'type' => 'switch',
+		'label' => 'Unread only',
+		'default' => false,
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'search' ]) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		'key' => 'spamTrash',
+		'type' => 'switch',
+		'label' => 'Include spam and trash',
+		'default' => false,
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'search' ]) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		'key' => 'saveAttachments',
+		'type' => 'switch',
+		'label' => 'Save attachments as project files',
+		'default' => false,
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'search', 'get' ]) ],
+	    ],
+	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: a limit (the last line)
+		'key' => 'maxSize',
+		'type' => 'number',
+		'label' => 'Largest message (MB)',
+		'required' => true,
+		'default' => 25,
+		'help' => 'Larger messages are skipped',
+		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search', 'get' ]) ],
+	    ],
 
 	    //modify
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6), on a new line
 		'key' => 'mark',
 		'type' => 'select',
 		'label' => 'Mark as',
 		'required' => true,
 		'default' => 'none',
 		'choices' => self::MARK,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
 		'key' => 'archive',
 		'type' => 'switch',
 		'label' => 'Archive (out of the inbox)',
 		'default' => false,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide (was 6)
 		'key' => 'addLabels',
 		'type' => 'text',
 		'label' => 'Add labels',
 		'default' => '',
 		'help' => 'Label names separated by commas (created when missing), e.g. Invoices, STARRED',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
 		'key' => 'removeLabels',
 		'type' => 'text',
 		'label' => 'Remove labels',
 		'default' => '',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 
 	    static::timeoutField(60),
-	    static::variableField('Search: a list of messages; get: the message; send / draft / modify: { id, thread_id, labels }; labels: a list'),
-	    static::onErrorField('An error from Gmail (e.g. not found, no access, a refused address), a project file missing, attachments too large'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: Search: a list of messages; get: the message; send / draft / modify: { id, thread_id, labels }; labels: a list)
+	    static::variableField('Messages, a message, or { id, thread_id }'),
+	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Gmail (e.g. not found, no access, a refused address), a project file missing, attachments too large)
+	    static::onErrorField('Gmail errors, a missing file, too large'),
 	];
     }
 

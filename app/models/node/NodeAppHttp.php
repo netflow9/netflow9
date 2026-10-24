@@ -23,8 +23,6 @@ class NodeAppHttp extends \models\WfNode {
     public static $inputs = 1;
     public static $outputs = 1;
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];
-    //CLD: 2026-10-24T12:07:28+03:00: a wide settings dialog, the step name half its width (the response variable and On error next to it)
-    public static $editor = [ 'size' => 'xl', 'titleWidth' => 6 ];
 
     const METHODS = [
 	'GET' => 'GET',
@@ -48,6 +46,7 @@ class NodeAppHttp extends \models\WfNode {
     const HEADER_NAME = '^[!#$%&\'*+.^_`|~0-9A-Za-z-]+$';
 
     public static function configSchema() {
+	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	//no credential: the select's empty choice (ui placeholder)
 	$credentials = [];
 	foreach(static::credentialChoices() as $c)
@@ -65,6 +64,8 @@ class NodeAppHttp extends \models\WfNode {
 	    'ui' => array_merge([ 'addLabel' => $addLabel, 'compact' => true, 'maxRows' => 50 ], $extra),
 	];
 
+	//CLD: 2026-10-24T12:38:06+03:00: the designer places the step name / response variable / on error (row 1), the credential (row 2, here 4 wide: method and URL next to it) and the timeout
+	//(last); method 2 + URL 6 (was 8: the timeout no longer next to it)
 	//CLD: 2026-10-24T12:07:28+03:00: laid out for the wide dialog ($editor: xl, the step name 6 wide), less scrolling: step name / response variable / on error; method / URL /
 	//timeout; query parameters | headers side by side; credential / body / JSON-RPC; the content (or the form fields) full width (was one setting per line, the response
 	//variable and On error last)
@@ -104,8 +105,8 @@ class NodeAppHttp extends \models\WfNode {
 		'type' => 'text',
 		'label' => 'URL',
 		'required' => true,
-		'help' => 'http:// or https://; {{ ... }} for expressions',
-		'ui' => [ 'placeholder' => 'https://api.example.com/items', 'expression' => true, 'width' => 8 ],
+		'help' => 'http:// or https://',
+		'ui' => [ 'placeholder' => 'https://api.example.com/items', 'expression' => true, 'width' => 6 ],
 	    ],
 	    [
 		'key' => 'timeout',
@@ -128,7 +129,7 @@ class NodeAppHttp extends \models\WfNode {
 		'choices' => $credentials,
 		//CLD: 2026-10-24T12:13:10+03:00: shorter (one line; was: API key, Basic, Bearer or OAuth credential of the project (menu: Credentials), added to the request)
 		'help' => 'API key, Basic, Bearer or OAuth credential of the project (menu: Credentials)',
-		'ui' => [ 'placeholder' => 'None', 'width' => 6 ],
+		'ui' => [ 'placeholder' => 'None', 'width' => 4 ],
 	    ],
 	    [
 		'key' => 'bodyType',
