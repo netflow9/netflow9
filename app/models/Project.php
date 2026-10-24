@@ -4,7 +4,6 @@ namespace models;
 
 class Project extends \sys\BaseModel {
     protected static $collection = 'projects';
-    //CLD: 2026-10-12T12:18:11+03:00: projects of an account; a user's personal project (login) (created by `v setup::indexes`)
     public static $indexes = [
 	[ [ 'aid' => 1 ], [] ],
 	[ [ 'owner' => 1, 'personal' => 1 ], [] ],
@@ -22,7 +21,6 @@ class Project extends \sys\BaseModel {
 		'label' => 'Name',
 		'help' => false,
 		'required' => true,
-//		'unique' => true,
 		'perm:read' => 'everybody',
 		'perm:update' => 'permission',
 	    ],
@@ -34,8 +32,6 @@ class Project extends \sys\BaseModel {
 		'label' => 'Icon',
 		'help' => false,
 		'default' => 'layers::black',
-//		'required' => true,
-//		'unique' => true,
 		'perm:read' => 'everybody',
 		'perm:update' => 'permission',
 	    ],
@@ -49,9 +45,7 @@ class Project extends \sys\BaseModel {
 		'help' => false,
 		'required' => true,
 		'perm:read' => 'everybody',
-		//CLD: 2026-10-10T19:00:56+03:00: perm:update (perm:edit is read by nothing)
 		'perm:update' => 'nobody',
-		//CLD: 2026-10-10T18:57:33+03:00: not a form field (assign with permissions ignores it)
 		'showInForms' => false,
 	    ],
 
@@ -63,9 +57,7 @@ class Project extends \sys\BaseModel {
 		'help' => false,
 		'required' => false,
 		'perm:read' => 'everybody',
-		//CLD: 2026-10-10T19:00:56+03:00: perm:update (perm:edit is read by nothing)
 		'perm:update' => 'nobody',
-		//CLD: 2026-10-10T18:57:33+03:00: not a form field (assign with permissions ignores it)
 		'showInForms' => false,
 	    ],
 
@@ -78,9 +70,7 @@ class Project extends \sys\BaseModel {
 		'help' => false,
 		'required' => true,
 		'perm:read' => 'everybody',
-		//CLD: 2026-10-10T19:00:56+03:00: perm:update (perm:edit is read by nothing)
 		'perm:update' => 'nobody',
-		//CLD: 2026-10-10T18:57:33+03:00: not a form field (assign with permissions ignores it)
 		'showInForms' => false,
 	    ],
 
@@ -89,7 +79,7 @@ class Project extends \sys\BaseModel {
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //CLD: 2026-10-06T23:07:56+03:00: true if $userId is a member of the project $projectId of account $aid (used by the project-scoped
+    //true if $userId is a member of the project $projectId of account $aid (used by the project-scoped
     //checkAccess of File, Workflow, Variable)
     public static function isMember($projectId, $aid, $userId) {
 	if (empty($projectId) || empty($aid) || empty($userId))
@@ -102,9 +92,6 @@ class Project extends \sys\BaseModel {
     public function checkAccess($userId, $permName, $params = []) {
 	$role = \V::app()->auth->getUserRole();
 
-	//build full permission name
-	//CLD: 2026-10-06T23:05:30+03:00: only when short: AAA::checkAccess passes the full name (Project::update), which was
-	//turned into Project::Project::update, so project-scoped users were always refused; field checks pass the short one
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
@@ -113,13 +100,11 @@ class Project extends \sys\BaseModel {
 	    return true;
 
 	//try membership role permission
-	//CLD: 2026-10-05T20:44:56+03:00: members are stored as [ userId => [ 'role' => roleId ] ] (see ProjectController::create, _members view);
-	//the whole entry was used as the role id, so the lookup never matched and ->getPermissionScope() was called on null
 	$up_role_id = $this->members[(string)$userId]['role'] ?? null;
 	if (empty($up_role_id))
 	    return false;
 
-	//CLD: 2026-10-05T20:44:56+03:00: the membership role must exist in the project's account
+	//the membership role must exist in the project's account
 	$up_role = \V::app()->om->findOne('Role', [ '_id' => $up_role_id, 'aid' => $this->aid ]);
 	if (empty($up_role))
 	    return false;

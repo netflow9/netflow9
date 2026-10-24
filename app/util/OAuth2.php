@@ -1,8 +1,9 @@
 <?php
 
-//CLD: 2026-10-08T14:34:02+03:00: new utility: OAuth 2.0 authorization code flow with PKCE (RFC 7636), provider independent; used by the
-//OAuth credential types (models\credential\CredentialOAuth2). Replaces plugins\Mail\OAuth (Google / Microsoft only, app from app.env)
-//CLD: 2026-10-09T17:21:14+03:00: the OAuth base is models\credential\CredentialOAuth2 (credential variants; was CredentialTypeOAuth2)
+/*
+    OAuth 2.0 authorization code flow with PKCE (RFC 7636), provider independent;
+    used by the OAuth credential types (models\credential\CredentialOAuth2).
+*/
 
 namespace util;
 
@@ -23,7 +24,7 @@ class OAuth2 {
     }
 
     //POST to the token endpoint; the answer [ access_token, refresh_token, expires_in, id_token, ... ] or an exception
-    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+    //through util\Http
     public static function token($endpoint, array $params) {
 	$r = Http::json('POST', $endpoint, [ 'form' => $params, 'timeout' => 20 ]);
 	$status = $r['status'];

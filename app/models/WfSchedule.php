@@ -1,11 +1,14 @@
 <?php
-//config.mode selects which of the other fields apply:
-//  interval: every + every_unit     every N minutes from midnight (every 15: :00 :15 :30 :45); at :00 of every Nth hour from midnight;
-//                                   at 00:00 of every Nth day (counted from 1970-01-01)
-//  daily:    time                   HH:MM
-//  weekly:   weekdays + time        cron day-of-week numbers (0 = Sunday)
-//  monthly:  day + time             months without the day are skipped
-//  cron:     cron                   minute hour day-of-month month day-of-week (util\Cron)
+/*
+    config.mode selects which of the other fields apply:
+	interval: every + every_unit
+	    every N minutes from midnight (every 15: :00 :15 :30 :45); at :00 of every Nth hour from midnight;
+	    at 00:00 of every Nth day (counted from 1970-01-01)
+	daily:    time                   HH:MM
+	weekly:   weekdays + time        cron day-of-week numbers (0 = Sunday)
+	monthly:  day + time             months without the day are skipped
+	cron:     cron                   minute hour day-of-month month day-of-week (util\Cron)
+*/
 
 namespace models;
 
@@ -188,7 +191,7 @@ class WfSchedule {
 	return false;
     }
 
-    //CLD: 2026-10-09T08:10:30+03:00: only what the schema's rules cannot check (they skip lists): the weekly days; null when valid (was: every check of the
+    //only what the schema's rules cannot check (they skip lists): the weekly days; null when valid (was: every check of the
     //schedule, now rules of schema())
     public static function validate(array $cfg) {
 	if (($cfg['mode'] ?? '') !== 'weekly')

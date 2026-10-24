@@ -7,8 +7,6 @@ class User extends \sys\BaseObject {
     public function __construct($config = []) {
 	$defaults = [
 	    'login.url' => '/site/login',
-	    //CLD: 2026-10-05T20:09:02+03:00: removed `identity.cookie`: no identity cookie anymore and, app being in development, no old cookies to expire
-	    //CLD: 2026-10-05T20:20:12+03:00: removed unused `cookie.domain` (cookies are host-only, set by Session)
 	];
 	$config += $defaults;
 	parent::__construct($config);
@@ -17,7 +15,6 @@ class User extends \sys\BaseObject {
     }
 
     // Initializes the application component.
-    //CLD: 2026-10-05T20:02:30+03:00: removed auto-login from the encrypted `_identity` cookie (unserialize of a cookie forgeable with the default secret);
     //logins now survive browser restarts through persistent sessions (see Session::setPersistent)
     public function initialize() {
 	//init some params
@@ -47,8 +44,7 @@ class User extends \sys\BaseObject {
 
 	$_SESSION = [];
 
-	//CLD: 2026-10-05T20:02:30+03:00: was config('mode'), which is never set, so the cookies below were never removed
-	if (\V::app()->config('app.mode') == 'web') {
+	if (\V::app()->var('app.mode') == 'web') {
 	    $cookie_params = session_get_cookie_params();
 	    $cookie = new \sys\http\Cookie([
 		'name' => session_name(),
@@ -119,12 +115,11 @@ class User extends \sys\BaseObject {
     public function login($identity, $persistent = false) {
 	$saveReturnUrl = $this->return_url;
 
-	//CLD: 2026-10-05T20:02:30+03:00: new session id on login (prevents session fixation)
-	//CLD: 2026-10-05T20:09:02+03:00: removed clearing of old-scheme cookies (app in development)
+	//new session id on login (prevents session fixation)
 	if (session_status() == PHP_SESSION_ACTIVE)
 	    session_regenerate_id(true);
 	\V::app()->session->setPersistent($persistent);
-	//CLD: 2026-10-21T23:00:00+03:00: start of the session, for the account's session limits (before on:after-user-login, which checks them)
+	//start of the session, for the account's session limits (before on:after-user-login, which checks them)
 	\V::app()->session->markLogin();
 
 	foreach($identity->data() as $key => $val) {

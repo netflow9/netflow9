@@ -2,8 +2,11 @@
 
 namespace models;
 
-//past the trigger and beforeSave dropped the edges), node receive()/execute() contract (see WfNode), output ports followed
-//per edge (If takes one branch), Merge joins, re-entrant nodes with a step limit, per-execution variables and log
+/*
+    past the trigger and beforeSave dropped the edges), node receive()/execute() contract (see WfNode),
+    output ports followed per edge (If takes one branch),
+    Merge joins, re-entrant nodes with a step limit, per-execution variables and log
+*/
 
 class WfExecution extends \sys\BaseModel {
     protected static $collection = 'executions';
@@ -15,17 +18,12 @@ class WfExecution extends \sys\BaseModel {
 
 
     //node executions allowed per run() call (protects against endless loops)
-    //CLD: 2026-10-13T13:15:14+03:00: steps inside a loop are not counted here (a loop ends by itself) but per pass of the innermost loop around them, at most MAX_STEPS each (an endless
-    //cycle inside a pass)
-    //CLD: 2026-10-14T21:17:55+03:00: of the loop around them (a loop cannot be inside another loop: Workflow::validateFlow)
     const MAX_STEPS = 10000;
     //CLD: 2026-10-23T00:40:00+03:00: a running execution is saved after a pass at most this often (s), so its progress shows (run())
     const SAVE_EVERY = 2;
 
     //log entries kept per execution
     const MAX_LOG = 500;
-
-    //CLD: 2026-10-18T11:40:00+03:00: removed $nodeDefs (WfNode::nodeClasses() in _init)
 
     //runtime objects, keyed by wfid
     public $__nodes = [];

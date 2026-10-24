@@ -1,8 +1,11 @@
 <?php
 
-//CLD: 2026-10-22T01:36:46+03:00: new credential variant: an Ollama server (local models; its own API: POST <URL>/api/chat, GET <URL>/api/tags), for the Ollama step: its address (default
-//http://localhost:11434) and an optional API key, sent as `Authorization: Bearer` (ollama.com's API, or a server behind a proxy that asks for one).
-//Provides `ollama` (the Ollama step) and `http` (the HTTP Request step). Test: the server's version and models (GET /api/version, /api/tags)
+/*
+    an Ollama server (local models; its own API: POST <URL>/api/chat, GET <URL>/api/tags),
+    for the Ollama step: its address (default http://localhost:11434) and an optional API key, sent as `Authorization: Bearer` (ollama.com's API, or a server behind a proxy that asks for one).
+    Provides `ollama` (the Ollama step) and `http` (the HTTP Request step).
+    Test: the server's version and models (GET /api/version, /api/tags)
+*/
 
 namespace models\credential;
 

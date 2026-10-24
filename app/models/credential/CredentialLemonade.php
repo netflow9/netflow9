@@ -1,8 +1,11 @@
 <?php
 
-//CLD: 2026-10-22T01:36:46+03:00: new credential variant: a Lemonade server (lemonade-server: local models on the CPU / GPU / NPU, an OpenAI-compatible API), for the Lemonade AI step. As an OpenAI API
-//credential (CredentialOpenAI: base URL + optional API key, sent as `Authorization: Bearer`; Test lists the models), with Lemonade's address as the default.
-//Provides `lemonade` (the Lemonade AI step) and `http` (the HTTP Request step)
+/*
+    a Lemonade server (lemonade-server: local models on the CPU / GPU / NPU, an OpenAI-compatible API), for the Lemonade AI step.
+    As an OpenAI API credential (CredentialOpenAI: base URL + optional API key, sent as `Authorization: Bearer`;
+    Test lists the models), with Lemonade's address as the default.
+    Provides `lemonade` (the Lemonade AI step) and `http` (the HTTP Request step)
+*/
 
 namespace models\credential;
 

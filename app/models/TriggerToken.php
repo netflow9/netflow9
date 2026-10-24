@@ -11,8 +11,6 @@
     the steps are a map in the workflow, so they cannot be searched by token.
     A trigger class takes part with tokenData($node):
 	the extra data its entry keeps (e.g. a form's access); its token format: const TOKEN_FORMAT (a key of TriggerToken::FORMATS, default `hex`)
-    //CLD: 2026-10-18T15:00:00+03:00: newToken / isToken / the formats here (isToken was in each trigger, the Email trigger's format in its randomToken)
-    //CLD: 2026-10-18T14:40:00+03:00: the token steps share newToken($class) (a new token, used by no workflow; its format: $class::randomToken() when the class has one) and
     checkToken($node, $what) (its checks when the workflow is saved); were repeated in each trigger's initConfig() / validates()
 */
 

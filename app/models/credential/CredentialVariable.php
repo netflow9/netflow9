@@ -1,8 +1,8 @@
 <?php
-
-//CLD: 2026-10-22T00:30:00+03:00: new credential type: a project variable, a plain name = value that expressions see as {{ vars.<name> }} (was models\Variable, its own
-//collection, menu and permissions: now a credential of the project, listed, edited and permitted with the others; Credential::*). Not for node configs ($provides
-//is empty), not encrypted, no connection test
+/*
+    a project variable, a plain name = value that expressions see as {{ vars.<name> }}
+    Not for node configs ($provides is empty), not encrypted, no connection test
+*/
 
 namespace models\credential;
 

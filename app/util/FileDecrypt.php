@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T16:00:00+03:00: new class: decrypts and decompresses files on disk, for the FTP / SFTP step (models\node\NodeAppFtp) with a Decryption key credential
+    decrypts and decompresses files on disk, for the FTP / SFTP step (models\node\NodeAppFtp) with a Decryption key credential
     (models\credential\CredentialDecryption). The work is done by the system's tools, run without a shell; secrets go to them on a pipe (fd 3), never on the command line
     or in the environment; key files are written 0600 in a private temporary folder, removed afterwards.
 	- pgp:            OpenPGP (gpg, `.gpg` / `.pgp` / `.asc`) with a private key (+ its passphrase): an own, temporary keyring per call

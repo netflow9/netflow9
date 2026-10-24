@@ -1,10 +1,11 @@
 <?php
 
-//what the audit log (models\AuditLog: people) and the execution log (models\ExecutionLog: triggers, workflow runs, daemon, console) share:
-// the common fields, entries that are never changed, access (global: the account, project: member of the entry's project), the
-//changes of an object (values before / after, secrets masked, long values shortened)
-//Using classes define: OBJECT (registry name), ACTIONS (the action choices besides create / update / delete)
-
+/*
+    what the audit log (models\AuditLog: people) and the execution log (models\ExecutionLog: triggers, workflow runs, daemon, console) share:
+    the common fields, entries that are never changed, access (global: the account, project: member of the entry's project), the
+    changes of an object (values before / after, secrets masked, long values shortened)
+    Using classes define: OBJECT (registry name), ACTIONS (the action choices besides create / update / delete)
+*/
 namespace models\log;
 
 trait LogTrait {

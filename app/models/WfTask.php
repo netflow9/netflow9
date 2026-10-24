@@ -18,7 +18,11 @@ class WfTask extends \sys\BaseModel {
 	[ [ 'wf' => 1 ], [] ],
     ];
 
-    const STATES = [ 'open' => 'Open', 'done' => 'Done', 'expired' => 'Expired' ];
+    const STATES = [
+	'open' => 'Open',
+	'done' => 'Done',
+	'expired' => 'Expired'
+    ];
 
     public function getSchema() {
 	$fields = [
@@ -136,7 +140,7 @@ class WfTask extends \sys\BaseModel {
 	return $tasks;
     }
 
-    //CLD: 2026-10-17T13:24:18+03:00: hook workflow:before-delete (sys\Boot): a deleted workflow's tasks go away (was plugins\BaseNodes\Plugin::beforeWorkflowDelete)
+    //hook workflow:before-delete (sys\Boot): a deleted workflow's tasks go away (was plugins\BaseNodes\Plugin::beforeWorkflowDelete)
     public static function beforeWorkflowDelete($wf) {
 	foreach(\V::app()->om->find('WfTask', [ 'wf' => $wf->_id ]) as $task)
 	    $task->delete();

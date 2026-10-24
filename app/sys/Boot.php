@@ -31,9 +31,9 @@ class Boot {
 	//	- a completed Email inbound run deletes its raw message
 	\V::app()->hooks->addHook('workflow:after-save', [ \models\TriggerToken::class, 'syncForWorkflow' ]);
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\TriggerToken::class, 'beforeWorkflowDelete' ]);
-
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\MailPoll::class, 'beforeWorkflowDelete' ]);
-	//CLD: 2026-10-20T16:00:00+03:00: the FTP / SFTP step's state (files taken) goes with its workflow
+
+	//the FTP / SFTP step's state (files taken) goes with its workflow
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\RemoteFileState::class, 'beforeWorkflowDelete' ]);
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\WfTask::class, 'beforeWorkflowDelete' ]);
 
@@ -43,8 +43,6 @@ class Boot {
     	\V::app()->hooks->addHook('on:after-user-login', [ $this, 'after_user_login' ]);
 	//CLD: 2026-10-21T16:30:00+03:00: the account's "Enforce MFA": before the action (the sign-in's own request, still a guest then, completes and writes its audit entry)
 	\V::app()->hooks->addHook('on:before-action', [ $this, 'enforce_mfa' ]);
-
-	//CLD: 2026-10-20T23:40:00+03:00: the project's MCP server (POST /mcp, no session) moved to the SysMCPTools plugin, which adds its rule
 
 	//the Webhook trigger's endpoint: `/hook/<32 hex token>` -> HookController::receive; callers are not users: no session
 	\V::app()->session->noSessionFor('/hook/');
@@ -117,19 +115,19 @@ class Boot {
 
     }
 
-    //CLD: 2026-10-21T16:30:00+03:00: hook on:before-action: when the account enforces MFA (Account `enforce_mfa`, was saved but never checked), a signed-in user without 2FA can
+    //hook on:before-action: when the account enforces MFA (Account `enforce_mfa`, was saved but never checked), a signed-in user without 2FA can
     //only set it up (MFA_SETUP_ROUTES): pages go to the profile, other requests (ajax) are refused
     public function enforce_mfa() {
 	if (\V::app()->user->isGuest || empty($this->user) || !empty($this->user->tfa_secret))
 	    return;
-	//CLD: 2026-10-22T23:00:00+03:00: not while a super-admin views the account (they passed their own 2FA; the account's user may have none)
+	//not while a super-admin views the account (they passed their own 2FA; the account's user may have none)
 	if (!empty($_SESSION['impersonator']))
 	    return;
-	if (empty(\V::app()->config('rt.account')->enforce_mfa ?? null))
+	if (empty(\V::app()->var('rt.account')->enforce_mfa ?? null))
 	    return;
 
-	$route = strtolower(\V::app()->config('rt.controller') . '/' . \V::app()->config('rt.action'));
-	if (\V::app()->config('rt.module') === null && in_array($route, self::MFA_SETUP_ROUTES, true))
+	$route = strtolower(\V::app()->var('rt.controller') . '/' . \V::app()->var('rt.action'));
+	if (\V::app()->var('rt.module') === null && in_array($route, self::MFA_SETUP_ROUTES, true))
 	    return;
 
 	if (\V::app()->request->is('ajax') && !\V::app()->request->is('pjax'))

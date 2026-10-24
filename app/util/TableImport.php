@@ -1,12 +1,22 @@
 <?php
 
-//CLD: 2026-10-11T20:51:55+03:00: new class: reads a CSV or Excel (.xlsx) file for the data table import (DatatableController::import) and guesses its
-//columns: whether the first row is a header (else the columns are named Column 1, 2, ...), each column's type from its values (number, date,
-//datetime, checkbox, email, textarea, else text) and a key made from its name. normalize() turns a file value into what the column's Field
-//casts (numbers with the file's decimal mark, dates in the file's day / month order -> ISO 8601, yes / no -> booleans).
-//  $t = new \util\TableImport($path, 'xlsx'); $rows = $t->rows($sheet); $header = TableImport::hasHeader($rows); $cols = TableImport::guess($rows, $header);
-//No Composer: .xlsx is read with ZipArchive + XMLReader (first sheet unless chosen); the old binary .xls is not supported
+/*
+    reads a CSV or Excel (.xlsx) file for the data table import (DatatableController::import) and guesses its columns:
+	whether the first row is a header (else the columns are named Column 1, 2, ...),
+	each column's type from its values (number, date, datetime, checkbox, email, textarea, else text)
+	and a key made from its name.
 
+    normalize() turns a file value into what the column's Field casts:
+	- numbers with the file's decimal mark,
+	- dates in the file's day / month order -> ISO 8601,
+	- yes / no -> booleans).
+
+    $t = new \util\TableImport($path, 'xlsx');
+    $rows = $t->rows($sheet);
+    $header = TableImport::hasHeader($rows);
+    $cols = TableImport::guess($rows, $header);
+    .xlsx is read with ZipArchive + XMLReader (first sheet unless chosen); the old binary .xls is not supported
+*/
 namespace util;
 
 class TableImport {
