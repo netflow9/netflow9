@@ -41,6 +41,7 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-23T15:00:00+03:00: + http (util\Http against a local server; the HTTP steps' private-address option)
     //CLD: 2026-10-24T09:45:36+03:00: + tiers (util\Tiers: the tier, the account's own changes, the limits of data tables / rows / files refused at the limit, SAML / LDAP off without the
     //feature, the System AI allowance of the tier, the usage)
+    //CLD: 2026-10-24T10:28:12+03:00: + Google / Microsoft by tier
     const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'tiers', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
@@ -3108,6 +3109,28 @@ class CheckCommand extends \sys\BaseController {
 		\plugins\Ldap\util\LdapAuth::reset();
 		$this->check('LDAP: no sign-in, the step and its credential not offered without the feature', [ null, false, false ],
 		    [ \plugins\Ldap\util\LdapAuth::enabledFor($account->_id), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ]);
+	    }
+
+	    //CLD: 2026-10-24T10:28:12+03:00: Google / Microsoft: on team and enterprise, off on free; their credentials and steps follow; a step does not run without it
+	    foreach([ 'google' => [ 'CredentialGoogleMail', 'NodeAppGoogleDrive' ], 'microsoft' => [ 'CredentialMicrosoftMail', 'NodeAppOneDrive' ] ] as $feature => [ $cred, $step ]) {
+		if (!$om->isDefined($step))
+		    continue;
+		$on = [];
+		foreach([ 'free', 'team', 'enterprise' ] as $tier) {
+		    $set($tier);
+		    $on[] = [ $T::has($account, $feature), $T::allows($account, $cred), $T::allows($account, $step) ];
+		}
+		$set('free');
+		$node = $om->create($step, []);
+		$node->exec = (object)[ 'aid' => $account->_id ];
+		try {
+		    $node->receive();
+		    $runs = 'runs';
+		} catch (\ErrorException $e) {
+		    $runs = str_contains($e->getMessage(), 'not included in your plan (Free)') ? 'refused' : $e->getMessage();
+		}
+		$this->check("{$feature}: off on free, on on team and enterprise (its credentials, its steps); a step refused without it",
+		    [ [ false, false, false ], [ true, true, true ], [ true, true, true ], 'refused' ], [ $on[0], $on[1], $on[2], $runs ]);
 	    }
 
 	    //the System AI's allowance: the account's plan, else the tier's, else the installation's

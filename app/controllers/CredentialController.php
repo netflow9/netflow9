@@ -46,6 +46,13 @@ class CredentialController extends \sys\BaseController {
 	return $cred;
     }
 
+    //CLD: 2026-10-24T10:27:54+03:00: a credential of a feature the account's tier does not have (util\Tiers): not changed, tested nor connected (it may be deleted)
+    private function requireFeatureOf($cred) {
+	$account = \V::app()->config('rt.account');
+	if (!\util\Tiers::allows($account, $cred->getObjectName()))
+	    \V::app()->error(403, \util\Tiers::featureMessage($account, \V::app()->om->registry[$cred->getObjectName()]['feature']));
+    }
+
     public function list($req, $resp) {
 	if (!\V::app()->user->can('Credential::list', [ 'object' => $this->projectCredential() ]))
 	    \V::app()->error(403, 'Unauthorized');
@@ -82,6 +89,7 @@ class CredentialController extends \sys\BaseController {
 
     public function update($req, $resp) {
 	$cred = $this->findOrError('Credential::update');
+	$this->requireFeatureOf($cred);
 	//a stored variant that is no longer registered loads as a plain Credential
 	if (\V::app()->om->isVariant($cred->getObjectName()) !== 'Credential')
 	    \V::app()->error(409, 'The type of this credential is not available (plugin disabled?)');
@@ -131,6 +139,7 @@ class CredentialController extends \sys\BaseController {
     //the variant's connection test; the result is kept on the credential
     public function test($req, $resp) {
 	$cred = $this->findOrError('Credential::update');
+	$this->requireFeatureOf($cred);
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 
@@ -154,6 +163,7 @@ class CredentialController extends \sys\BaseController {
     //OAuth: go to the provider's consent page
     public function connect($req, $resp) {
 	$cred = $this->findOrError('Credential::update');
+	$this->requireFeatureOf($cred);
 	if (!$cred::isOAuth())
 	    $this->back('danger', 'Not connected', 'This credential does not sign in at a provider');
 

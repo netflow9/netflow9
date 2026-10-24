@@ -15,47 +15,63 @@ namespace plugins\GoogleIntegration;
 class Plugin {
 
     public function __construct() {
+	//CLD: 2026-10-24T10:27:54+03:00: a feature of the accounts' tiers (util\Tiers: `google`; app/tiers.php: team, enterprise): without it, its credentials are not offered nor used, its steps are not
+	//in the palette and do not run (`feature` of each; the saved credentials and steps are kept)
+	\V::app()->hooks->addHook('tiers:features', function(\ArrayObject $features) {
+	    $features['google'] = 'Google integration (credentials, steps)';
+	});
+
 	\V::app()->om->registerObjects([
 	    'CredentialGoogleMail' => [
 		'class' => __NAMESPACE__ . '\\models\\CredentialGoogleMail',
 		'variant-of' => 'Credential',
+		'feature' => 'google',
 	    ],
 	    'CredentialGoogleDrive' => [
 		'class' => __NAMESPACE__ . '\\models\\CredentialGoogleDrive',
 		'variant-of' => 'Credential',
+		'feature' => 'google',
 	    ],
 	    'CredentialGoogleSheets' => [
 		'class' => __NAMESPACE__ . '\\models\\CredentialGoogleSheets',
 		'variant-of' => 'Credential',
+		'feature' => 'google',
 	    ],
 	    'CredentialGoogleCalendar' => [
 		'class' => __NAMESPACE__ . '\\models\\CredentialGoogleCalendar',
 		'variant-of' => 'Credential',
+		'feature' => 'google',
 	    ],
 	    'CredentialGoogleDocs' => [
 		'class' => __NAMESPACE__ . '\\models\\CredentialGoogleDocs',
 		'variant-of' => 'Credential',
+		'feature' => 'google',
 	    ],
 
 	    'NodeAppGoogleDrive' => [
 		'class' => __NAMESPACE__ . '\\models\\NodeAppGoogleDrive',
 		'wfNode' => true,
+		'feature' => 'google',
 	    ],
 	    'NodeAppGoogleSheets' => [
 		'class' => __NAMESPACE__ . '\\models\\NodeAppGoogleSheets',
 		'wfNode' => true,
+		'feature' => 'google',
 	    ],
 	    'NodeAppGmail' => [
 		'class' => __NAMESPACE__ . '\\models\\NodeAppGmail',
 		'wfNode' => true,
+		'feature' => 'google',
 	    ],
 	    'NodeAppGoogleCalendar' => [
 		'class' => __NAMESPACE__ . '\\models\\NodeAppGoogleCalendar',
 		'wfNode' => true,
+		'feature' => 'google',
 	    ],
 	    'NodeAppGoogleDocs' => [
 		'class' => __NAMESPACE__ . '\\models\\NodeAppGoogleDocs',
 		'wfNode' => true,
+		'feature' => 'google',
 	    ],
 	]);
     }

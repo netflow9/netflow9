@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#CLD: 2026-10-22T23:00:00+03:00: new: the app's background services as systemd units, so that the administration (the Admin plugin: Installation) shows them and starts / stops /
-#restarts them:
+#the app's background services as systemd units,
+#so that the administration (the Admin plugin: Installation) shows them and starts / stops / restarts them:
 #  nfn-daemon.service       the workflow daemon (app/v.php daemon::run), as the app's user (was started as root by scripts/daemon.sh)
 #  nfn-haraka.service       Haraka, inbound mail (as root: port 25; it forks, its PID file as before), only when Haraka is installed
-#  + a polkit rule: the app's user (the web server's PHP) may start / stop / restart these units and playwright-mcp.service (scripts/playwright-mcp.sh), nothing else
-#CLD: 2026-10-22T23:30:00+03:00: + playwright-mcp.service, the AI steps' web browser: installed by scripts/playwright-mcp.sh install (called here) when the shared Chromium of
-#scripts/playwright-install.sh is there; --no-playwright: not
+#  playwright-mcp.service   the AI steps' web browser
+#  + a polkit rule: the app's user (the web server's PHP) may start / stop / restart these units
+
 #The processes started by scripts/daemon.sh and scripts/haraka.sh (their PID files) are stopped first; those scripts are no longer needed after this.
 #Run as root:
 #   sudo scripts/services-install.sh install [--no-playwright]     write the units and the rule, move the running services to them, start at boot
