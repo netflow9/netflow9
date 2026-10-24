@@ -269,6 +269,16 @@ app.formatter = (function() {
         return s > 2 * 365 * 24 * 3600;
     }
 
+    //CLD: 2026-10-24T17:30:00+03:00: d (Date / ISO 8601 text) in a PHP date() format (app.DatePicker.formatDate; without it: ISO 8601)
+    function formatAs(d, fmt) {
+	if (!d)
+	    return '';
+	d = d instanceof Date ? d : new Date(d);
+	if (isNaN(d))
+	    return '';
+	return window.app.DatePicker ? window.app.DatePicker.formatDate(d, fmt) : d.toISOString();
+    }
+
     return {
 	bytes: function(bytes) {
 	    if (!bytes)
@@ -276,6 +286,26 @@ app.formatter = (function() {
 	    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
 	    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
 	    return (bytes / Math.pow(1024, i)).toFixed(i ? 1 : 0) + ' ' + units[i];
+	},
+
+	//CLD: 2026-10-24T17:30:00+03:00: a date / datetime in the account's format (<html> data-date-format / data-datetime-format: util\Format, PHP date() tokens,
+	//app.DatePicker.formatDate), in the browser's time zone; d: a Date or ISO 8601 text; empty or not a date -> ''
+	date: function(d) {
+	    return formatAs(d, document.documentElement.dataset.dateFormat || 'Y-m-d');
+	},
+
+	datetime: function(d) {
+	    return formatAs(d, document.documentElement.dataset.datetimeFormat || 'Y-m-d H:i:s');
+	},
+
+	//CLD: 2026-10-24T17:30:00+03:00: timeAgo as <time datetime="ISO 8601" title="the datetime, in the account's format">words</time> (escaped; as util\Format::timeagoHtml)
+	timeAgoHtml: function(past, short) {
+	    const words = this.timeAgo(past, short);
+	    if (!words)
+		return '';
+	    const d = new Date(past);
+	    const esc = (s) => window.app.utils.escapeHtml(String(s));
+	    return isNaN(d) ? esc(words) : `<time datetime="${esc(d.toISOString())}" title="${esc(this.datetime(d))}">${esc(words)}</time>`;
 	},
 
 	timeAgo: function(past, short) {

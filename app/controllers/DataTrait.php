@@ -110,8 +110,12 @@ trait DataTrait {
 	    $record = [];
 	    //CLD: 2026-10-10T09:14:41+03:00: only the readable fields (were all: e.g. Credential secrets went to the browser)
 	    foreach($o->schema as $key => $field) {
-		if ($field->checkAccess(\V::app()->user->_id, 'read'))
+		if ($field->checkAccess(\V::app()->user->_id, 'read')) {
 		    $record[$key] = $field->display();
+		    //CLD: 2026-10-24T17:30:00+03:00: the dates also as ISO 8601 (_iso.<key>), for the browser to read (app.formatter.timeAgo): the shown text is in the account's format
+		    if ($field instanceof \sys\fields\Field_datetime)
+			$record['_iso'][$key] = \util\Format::datetime($o->$key, DATE_ATOM);
+		}
 	    }
 	    $record['_id'] = (string)$o->_id;
 
