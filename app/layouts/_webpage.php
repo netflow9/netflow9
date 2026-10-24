@@ -3,7 +3,8 @@
 ?>
 
 <!DOCTYPE html>
-<html lang="<?= \V::app()->config('app.language') ?>">
+<?php //CLD: 2026-10-24T17:30:00+03:00: the account's date formats (util\Format::dateFormat / datetimeFormat), for app.formatter.date / datetime / timeAgoHtml ?>
+<html lang="<?= \V::app()->config('app.language') ?>" data-date-format="<?= \V::app()->html->escape(\util\Format::dateFormat()) ?>" data-datetime-format="<?= \V::app()->html->escape(\util\Format::datetimeFormat()) ?>">
     <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
