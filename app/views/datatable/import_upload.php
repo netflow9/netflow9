@@ -1,11 +1,10 @@
 <?php
 //CLD: 2026-10-24T16:30:00+03:00: the limits: util\Format::bytes / plural (were MB inline, number_format)
 //CLD: 2026-10-11T20:51:55+03:00: new view: Import, step 1 (DatatableController::import): choose a CSV or Excel file; $error: why the last file was refused
-$esc = fn($v) => \V::app()->html->escape((string)$v);
 $actionUrl = \V::app()->createUrl('/datatable/import');
 $formId = 'dt-import-' . uniqid();
 
-$body = ($error ? "<div class='alert alert-danger py-2'>" . $esc($error) . "</div>" : '') . "
+$body = ($error ? "<div class='alert alert-danger py-2'>" . \V::app()->html->escape($error) . "</div>" : '') . "
 <form id='{$formId}' method='post' action='{$actionUrl}' enctype='multipart/form-data'>
     <label class='form-label' for='{$formId}-file'>File</label>
     <input type='file' class='form-control' id='{$formId}-file' name='file' accept='.csv,.txt,.tsv,.xlsx' required>

@@ -52,12 +52,8 @@ $issuesJs = \util\JSON::encode($issues);
 $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'id' => (string)$wf->_id, 'version' => $viewVersion ? (string)$viewVersion->_id : null ]));
 
 
-//CLD: 2026-10-25T18:30:00+02:00: the Executions panel rows' CSS moved to the theme (_workflow.scss): page CSS is not applied when the page is loaded via PJAX
-
 \V::app()->cs->addPageScript("
 +function() {
-    //CLD: 2026-10-25T19:10:00+02:00: removed the console.log of nodeDefs (the whole step catalogue a second time in each page, ~84 KB)
-    //CLD: 2026-10-19T22:00:00+03:00: this page's designer (app.Workflow, made below once the handlers exist; was the app.workflow module)
     let designer = null;
 
     //CLD: 2026-10-10T19:08:46+03:00: manual run + Executions panel: Run starts the saved workflow at its Manual trigger step(s) (runs on the server after the answer);
@@ -94,8 +90,6 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
     //CLD: 2026-10-25T20:30:00+02:00: Run and the Executions panel: app.WfExecutions (app.wfexecutions.js; was the `exec` object here), the Debug panel: app.WfDebug (app.wfdebug.js;
     //was `debug`); one bottom panel at a time, the one last open remembered (bottomPanel)
     const exec = new app.WfExecutions(document.querySelector('.exec-panel'), {
-	//CLD: 2026-10-23T23:00:00+03:00: + del (an execution of the draft)
-	//CLD: 2026-10-23T23:30:00+03:00: + delAll (all executions of the draft)
 	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}' },
 	canRun: {$canRun},
 	//CLD: 2026-10-12T20:33:47+03:00: the triggers Run can start
@@ -333,16 +327,11 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
     const canvas_zoom = '{$__canvas_zoom}';
 
     const options = {
-	//CLD: 2026-10-11T13:51:42+03:00: a published version is shown read-only
 	readonly: {$readonly},
 	workflow: JSON.parse($('[name=nodes]').val()),
-	//CLD: 2026-10-25T20:00:00+02:00: set by nodeDefs.get() (were in the page)
 	nodeDefs: null,
-	//CLD: 2026-10-19T17:10:00+03:00: errors in the steps' settings found by the server
-	//CLD: 2026-10-25T19:30:00+02:00: none at first: asked once the designer is shown (stepCheck)
 	stepIssues: [],
 	canvas: {},
-	//CLD: 2026-10-06T23:33:47+03:00: live problem badges in the header (the designer validates while editing)
 	onIssuesChange: (issues) => {
 	    const box = document.getElementById('wf-issues');
 	    if (!box)
@@ -370,14 +359,11 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	    exec.onDataChange(workflow, JSON.stringify(nodes));
 	    //console.log('onDataChange: nodes=', JSON.stringify(nodes, null, 2));
 	},
-	//CLD: 2026-10-19T18:05:00+03:00: autosave of each new state; the Undo / Redo buttons
 	onCommit: (snapshot) => autosave.onCommit(snapshot),
 	onHistoryChange: (h) => {
 	    $('.btn-undo-wf').toggleClass('disabled opacity-50', !h.canUndo).attr('aria-disabled', h.canUndo ? 'false' : 'true');
 	    $('.btn-redo-wf').toggleClass('disabled opacity-50', !h.canRedo).attr('aria-disabled', h.canRedo ? 'false' : 'true');
 	},
-	//CLD: 2026-10-19T18:40:00+03:00: removed onCanvasChange: it kept pan / zoom in the form's action for the reload after the form-post save (gone: autosave)
-	//CLD: 2026-10-19T19:50:00+03:00: onCanvasChange again: pan / zoom remembered for this workflow (canvasView)
 	onCanvasChange: (pan, zoom) => canvasView.store(pan, zoom),
 	nodeEditUrl: '{$nodeEditUrl}',
 	nodeInitUrl: '{$nodeInitUrl}',
@@ -425,7 +411,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	if (!wrap || wrap.dataset.page !== '{$pageToken}')
 	    return;
 	options.nodeDefs = defs;
-	//CLD: 2026-10-19T22:00:00+03:00: new app.Workflow (was app.workflow.mount): `designer` is this page's (it destroys the one of a previous designer page)
+
 	designer = new app.Workflow('canvas-wrap', options);
 
 	//CLD: 2026-10-25T19:30:00+02:00: the errors in the steps' settings, asked once the designer is shown (were computed in the page, delaying it); not used when
@@ -452,9 +438,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	    debug.open();
     };
     nodeDefs.get(mount);
-    //CLD: 2026-10-19T20:10:00+03:00: the Assistant is mounted by its plugin (designer_panel.php, after this script)
 
-    //CLD: 2026-10-24T00:30:00+03:00: the buttons are in the page header, not in #canvas-form (the selector was '#canvas-form .btn-zoom-fit': it found nothing, so Fit did nothing); + zoom in / out
     $('.btn-zoom-fit').on('click', (e) => {
 	e.preventDefault();
 	designer.fitView();
@@ -464,13 +448,6 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	designer.zoomBy(this.classList.contains('btn-zoom-in') ? 1.2 : 1 / 1.2);
     });
 
-    //CLD: 2026-10-25T20:30:00+02:00: the Debug panel's handlers: in app.WfDebug
-
-    //CLD: 2026-10-25T20:00:00+02:00: the bottom panel open last time: moved into mount()
-
-    //CLD: 2026-10-19T18:05:00+03:00: removed the Save button's handler: changes are saved automatically (autosave)
-
-    //CLD: 2026-10-19T22:19:24+03:00: the small-screen note: closed once, not shown again in this browser (localStorage may be blocked: then it shows again)
     const NOTE_KEY = 'netflow9.wf.smallScreenNote';
     const note = document.querySelector('.wf-small-screen-note');
     if (note) {
@@ -529,25 +506,24 @@ $formOptions = [
 	//CLD: 2026-10-11T13:51:42+03:00: versions (was the draft / published switch): viewing a version shows what it is and its actions; else a menu with the
 	//published version (if any), whether the draft differs, Publish, Unpublish and the Versions dialog
 	$id = (string)$wf->_id;
-	$esc = fn($v) => \V::app()->html->escape((string)$v);
 	$versionsUrl = \V::app()->createUrl('/workflow/versions', [ 'id' => $id ]);
 	if ($viewVersion) {
 	    $isActive = $isPublished && (string)$activeVersion->_id === (string)$viewVersion->_id;
-	    echo "<span class='badge text-bg-warning me-2'><i class='bi bi-eye me-1'></i>Viewing " . $esc($viewVersion) . ($isActive ? ' (published)' : '') . ", read-only</span>";
+	    echo "<span class='badge text-bg-warning me-2'><i class='bi bi-eye me-1'></i>Viewing " . \V::app()->html->escape($viewVersion) . ($isActive ? ' (published)' : '') . ", read-only</span>";
 	    echo "<a href='" . \V::app()->createUrl('/workflow/index', [ 'id' => $id ]) . "' class='btn btn-sm btn-outline-secondary py-0 me-1'>Back to the draft</a>";
 	    //CLD: 2026-10-11T19:47:51+03:00: Publish again: $canPublish, Copy into the draft: $canUpdate
 	    if ($canPublish && !$isActive)
 		echo "<a href='" . \V::app()->createUrl('/workflow/publish', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-success py-0 me-1'>Publish again</a>";
 	    if ($canUpdate)
-		echo "<a href='" . \V::app()->createUrl('/workflow/restore', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-primary py-0 me-1' data-method='post' data-confirm='Replace the draft with the steps of " . $esc($viewVersion) . "?'>Copy into the draft</a>";
+		echo "<a href='" . \V::app()->createUrl('/workflow/restore', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-primary py-0 me-1' data-method='post' data-confirm='Replace the draft with the steps of " . \V::app()->html->escape($viewVersion) . "?'>Copy into the draft</a>";
 	    if ($canDuplicate)
-		echo "<a href='" . \V::app()->createUrl('/workflow/duplicate', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-secondary py-0 me-1' data-method='post' data-confirm='Create a new workflow from " . $esc($viewVersion) . "?'>Duplicate</a>";
+		echo "<a href='" . \V::app()->createUrl('/workflow/duplicate', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-secondary py-0 me-1' data-method='post' data-confirm='Create a new workflow from " . \V::app()->html->escape($viewVersion) . "?'>Duplicate</a>";
 	    echo "<a href='{$versionsUrl}' class='btn btn-sm btn-outline-secondary py-0 me-1'>Versions</a>";
 	} else {
 	    if ($isPublished)
-		[ $btnClass, $label, $tip ] = [ 'btn-success', '<i class="bi bi-broadcast me-1"></i>' . $esc($activeVersion) . ' published', 'Its trigger starts runs of ' . $esc($activeVersion) ];
+		[ $btnClass, $label, $tip ] = [ 'btn-success', '<i class="bi bi-broadcast me-1"></i>' . \V::app()->html->escape($activeVersion) . ' published', 'Its trigger starts runs of ' . \V::app()->html->escape($activeVersion) ];
 	    elseif ($activeVersion)
-		[ $btnClass, $label, $tip ] = [ 'btn-outline-secondary', '<i class="bi bi-pause-circle me-1"></i>' . $esc($activeVersion) . ' unpublished', 'Its trigger does not start runs' ];
+		[ $btnClass, $label, $tip ] = [ 'btn-outline-secondary', '<i class="bi bi-pause-circle me-1"></i>' . \V::app()->html->escape($activeVersion) . ' unpublished', 'Its trigger does not start runs' ];
 	    else
 		[ $btnClass, $label, $tip ] = [ 'btn-outline-secondary', '<i class="bi bi-pencil-square me-1"></i>Draft', 'Never published: its trigger does not start runs (Run does)' ];
 	    $baseTip = $tip;
@@ -567,7 +543,7 @@ $formOptions = [
 		    if ($isPublished)
 			$items .= "<li class='wf-if-same" . ($differs ? ' d-none' : '') . "'><span class='dropdown-item-text text-muted small'>The draft is published</span></li>";
 		    else
-			$items .= "<li class='wf-if-same" . ($differs ? ' d-none' : '') . "'><a class='dropdown-item btn-publish-draft' href='{$publishUrl}'><i class='bi bi-broadcast me-2'></i>Publish " . $esc($activeVersion) . " again</a></li>";
+			$items .= "<li class='wf-if-same" . ($differs ? ' d-none' : '') . "'><a class='dropdown-item btn-publish-draft' href='{$publishUrl}'><i class='bi bi-broadcast me-2'></i>Publish " . \V::app()->html->escape($activeVersion) . " again</a></li>";
 		}
 		if ($isPublished)
 		    $items .= "<li><a class='dropdown-item' href='" . \V::app()->createUrl('/workflow/unpublish', [ 'id' => $id ]) . "' data-method='post' data-confirm='Unpublish: its trigger stops starting runs?'><i class='bi bi-pause-circle me-2'></i>Unpublish</a></li>";

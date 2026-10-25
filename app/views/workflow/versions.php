@@ -1,5 +1,4 @@
 <?php
-$esc = fn($v) => \V::app()->html->escape((string)$v);
 $id = (string)$wf->_id;
 $published = $wf->status === \models\Workflow::PUBLISHED;
 
@@ -21,9 +20,9 @@ foreach($versions as $v) {
     if ($canPublish && !($isCurrent && $published))
 	$actions .= " <a class='btn btn-sm btn-outline-success' title='Publish this version again' href='" . \V::app()->createUrl('/workflow/publish', [ 'id' => $id, 'version' => $vid ]) . "'><i class='bi bi-broadcast'></i></a>";
     if ($canUpdate)
-	$actions .= " <a class='btn btn-sm btn-outline-primary' title='Copy into the draft' href='" . \V::app()->createUrl('/workflow/restore', [ 'id' => $id, 'version' => $vid ]) . "' data-method='post' data-confirm='Replace the draft with the steps of " . $esc($v) . "?'><i class='bi bi-arrow-counterclockwise'></i></a>";
+	$actions .= " <a class='btn btn-sm btn-outline-primary' title='Copy into the draft' href='" . \V::app()->createUrl('/workflow/restore', [ 'id' => $id, 'version' => $vid ]) . "' data-method='post' data-confirm='Replace the draft with the steps of " . \V::app()->html->escape($v) . "?'><i class='bi bi-arrow-counterclockwise'></i></a>";
 
-    $rows .= "<tr><td class='text-nowrap'><b>" . \V::app()->html->escape($v) . "</b>{$badge}</td><td class='text-nowrap'>" . $esc($when) . "<br><span class='text-muted small'>" . $esc($by) . "</span></td><td class='small'>{$note}</td><td class='text-end text-nowrap'>{$actions}</td></tr>";
+    $rows .= "<tr><td class='text-nowrap'><b>" . \V::app()->html->escape($v) . "</b>{$badge}</td><td class='text-nowrap'>" . \V::app()->html->escape($when) . "<br><span class='text-muted small'>" . \V::app()->html->escape($by) . "</span></td><td class='small'>{$note}</td><td class='text-end text-nowrap'>{$actions}</td></tr>";
 }
 
 //CLD: 2026-10-19T22:19:24+03:00: in .table-responsive (scrolls sideways on phones)
