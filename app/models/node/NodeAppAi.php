@@ -1,9 +1,11 @@
 <?php
 /*
-//CLD: 2026-10-18T12:30:00+03:00: NodeAppOpenAI (was NodeAppLemonade)
-what the AI steps share (Claude - NodeAppClaude, OpenAI - NodeAppOpenAI; not a step itself: not registered).
-//CLD: 2026-10-22T01:36:46+03:00: + Lemonade AI - NodeAppLemonade (the OpenAI requests), Ollama - NodeAppOllama
-//CLD: 2026-10-22T12:00:00+03:00: + Gemini - NodeAppGemini
+    what the AI steps share:
+	Claude - NodeAppClaude,
+	OpenAI - NodeAppOpenAI; not a step itself: not registered).
+	Lemonade AI - NodeAppLemonade (the OpenAI requests),
+	Ollama - NodeAppOllama
+	Gemini - NodeAppGemini
     Settings:
 	a credential of the project (the step's provider: static::CAPABILITY),
 	the model,
@@ -52,14 +54,10 @@ abstract class NodeAppAi extends \models\WfNode {
     const MAX_RESPONSE = 10 * 1024 * 1024;
 
     const DEFAULT_TOOLS = [ 'list_tables', 'query_table', 'list_workflows', 'get_execution', 'list_files', 'read_file', 'read_image', 'list_variables' ];
-    //CLD: 2026-10-17T21:00:54+03:00: most images sent with the prompt
     const MAX_IMAGES = 20;
-    //CLD: 2026-10-20T23:40:00+03:00: the largest image sent to a model (bytes; was util\McpTools::MAX_IMAGE)
     const MAX_IMAGE = 5242880;
-    //the image types the models read
     const IMAGE_TYPES = [ 'image/png', 'image/jpeg', 'image/gif', 'image/webp' ];
 
-    //CLD: 2026-10-20T23:40:00+03:00: the project's own tools the model may use, given by the plugins (util\MCPTools; the SysMCPTools plugin gives its MCP server's tools)
     public static function projectTools() {
 	return \util\MCPTools::all();
     }

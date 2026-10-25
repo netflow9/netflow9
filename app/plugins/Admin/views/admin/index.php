@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-10-22T23:00:00+03:00: new: the installation (AdminController::index): $services (each with its `status`: util\Services::status), $app (AdminController::appInfo),
+    the installation (AdminController::index): $services (each with its `status`: util\Services::status), $app (AdminController::appInfo),
     the plugins' sections (hook admin:installation-panels)
 */
 $this->pageTitle = 'Administration';

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T20:00:00+03:00: new credential type: what the files' senders sign with, to check their signatures (util\FileVerify), for the FTP / SFTP step.
+    what the files' senders sign with, to check their signatures (util\FileVerify), for the FTP / SFTP step.
     Provides `verify`. Nothing secret (public keys, certificates: shown).
 	method: PGP / GPG public key(s) of the signers, S/MIME / CMS trusted certificate(s) (the signer's own, or the CA that issued it), or a public key for plain signatures
 	(RSA, EC, Ed25519; PEM; + the digest it was made with).

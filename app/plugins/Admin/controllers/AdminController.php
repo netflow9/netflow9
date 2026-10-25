@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T23:00:00+03:00: new: the administration pages, at /Admin/admin/<action> (super-admins with 2FA: Plugin::require; across the accounts on purpose):
+    the administration pages, at /Admin/admin/<action> (super-admins with 2FA: Plugin::require; across the accounts on purpose):
 	index         the installation: its services (status, start / stop / restart), the app, the plugins' sections
 	service       POST: start / stop / restart a service
 	accounts      the accounts (search by name, hostname or a user's email)
@@ -274,7 +274,6 @@ class AdminController extends \sys\BaseController {
 	return new \MongoDB\BSON\ObjectId(sprintf('%08x', (int)$ts) . str_repeat('0', 16));
     }
 
-    //CLD: 2026-10-24T10:06:05+03:00: writes the account's tier and its own limits / features (with the collection: the account's own checks, its form's permissions, are not the super-admin's)
     private function saveTier($account, $tier, array $limits, array $features) {
 	$overrides = [ 'limits' => (object)$limits, 'features' => (object)$features ];
 	\V::app()->om->acrossAccounts(fn() => \V::app()->om->updateOne('Account', [ '_id' => $account->_id ], [ '$set' => [ 'tier' => $tier, 'tier_overrides' => $overrides,

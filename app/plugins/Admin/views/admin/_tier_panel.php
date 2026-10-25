@@ -1,8 +1,7 @@
 <?php
 /*
-    CLD: 2026-10-24T09:45:36+03:00: new: an account's tier in the administration (account.php): $account, $usage (util\Tiers::usage), $csrf; the tier, the account's own limits
+    an account's tier in the administration (account.php): $account, $usage (util\Tiers::usage), $csrf; the tier, the account's own limits
     (empty: the tier's) and features (the tier's / on / off), what it uses (AdminController::account_tier)
-    CLD: 2026-10-24T10:06:05+03:00: the features moved to _features_panel.php (with the tool servers)
 */
 use util\Tiers;
 

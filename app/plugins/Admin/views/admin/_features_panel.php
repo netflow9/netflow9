@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-10-24T10:06:05+03:00: new: an account's features in the administration (account.php; were in _tier_panel.php), as the tool servers after them (hook
+    an account's features in the administration, as the tool servers after them (hook
     admin:account-features): $account, $csrf; each: the tier's, on or off for this account (AdminController::account_feature)
 */
 use util\Tiers;

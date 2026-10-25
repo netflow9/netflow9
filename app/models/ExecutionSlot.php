@@ -19,7 +19,6 @@ namespace models;
 class ExecutionSlot extends \sys\BaseModel {
     protected static $collection = 'execution_slots';
 
-    //CLD: 2026-10-18T16:20:00+03:00: the slots of an account
     public static $indexes = [
 	[ [ 'aid' => 1 ], [] ],
     ];

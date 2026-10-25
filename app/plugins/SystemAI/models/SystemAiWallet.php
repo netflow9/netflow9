@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T15:00:00+03:00: new: the System provider's credits of an account (as a prepaid SIM): one document per account, _id = the account's id.
+    the System provider's credits of an account (as a prepaid SIM): one document per account, _id = the account's id.
     CLD: 2026-10-23T10:00:00+03:00: the System AI's (plugins\SystemAI: the Assistant and the AI steps use them; was plugins\Assistant\models\AssistantWallet, collection assistant_wallets)
 	allowance        the plan's credits of the month: granted on the first request of each calendar month (UTC), no rollover (what is left of the month before is lost).
 			 The plan: `plan` (set per account: CreditsCommand plan), else config ai.system.monthly_credits (util\SystemAi::monthlyCredits)

@@ -53,10 +53,8 @@ class CredentialAnthropic extends \models\Credential {
     public function test() {
 	$data = static::getJson(rtrim((string)$this->baseUrl, '/') . '/v1/models?limit=100', $this->httpAuth()['headers']);
 	$ids = array_values(array_filter(array_map(fn($m) => is_array($m) ? (string)($m['id'] ?? '') : '', (array)($data['data'] ?? []))));
-	//CLD: 2026-10-22T01:58:24+03:00: recorded: the choices of the AI steps' Model
 	$this->recordModels($ids);
 	$shown = array_slice($ids, 0, 10);
-	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was (s))
 	return \util\Format::plural(count($ids), 'model') . ($shown ? ': ' . implode(', ', $shown) . (count($ids) > count($shown) ? ', ...' : '') : '');
     }
 }

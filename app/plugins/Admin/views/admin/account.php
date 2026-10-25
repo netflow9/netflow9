@@ -1,7 +1,6 @@
 <?php
-//CLD: 2026-10-24T16:30:00+03:00: the dates in the account's format (util\Format::date; was Y-m-d, UTC), the numbers util\Format::number (was number_format)
 /*
-    CLD: 2026-10-22T23:00:00+03:00: new: one account (AdminController::account): $account, $users, $projects, $roleNames ([ role id => name ]), $workflows ([ project id => n ]),
+    one account (AdminController::account): $account, $users, $projects, $roleNames ([ role id => name ]), $workflows ([ project id => n ]),
     $owner (whom "view as" signs in as; null: none); suspend / reactivate, view as; the plugins' sections (hook admin:account-panels)
     CLD: 2026-10-24T09:45:36+03:00: + $usage (util\Tiers::usage): the tier, its limits / features and the account's own (_tier_panel.php)
     CLD: 2026-10-24T10:06:05+03:00: the features (_features_panel.php) with the plugins' sections of what the account may use after them (hook admin:account-features: the tool servers)

@@ -1,11 +1,9 @@
 <?php
-//CLD: 2026-10-24T16:30:00+03:00: the dates in the account's format (util\Format::date; was Y-m-d, UTC), the numbers util\Format::number (was number_format)
 /*
-    CLD: 2026-10-22T23:00:00+03:00: new: the accounts (AdminController::accounts): $accounts, $counts (users, projects, workflows, runs of the last 30 days: [ aid => n ]), $q (the search);
+    the accounts (AdminController::accounts): $accounts, $counts (users, projects, workflows, runs of the last 30 days: [ aid => n ]), $q (the search);
     the plugins' short texts per account (hook admin:account-summary)
 */
 $this->pageTitle = 'Administration::Accounts';
-//CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly (was a $e wrapper)
 $tab = 'accounts';
 $crumbs = [ [ 'label' => 'Accounts' ] ];
 require __DIR__ . '/_header.php';
@@ -33,7 +31,6 @@ $states = [ 'active' => 'text-bg-success', 'disabled' => 'text-bg-danger', 'inco
 			<div class="text-muted"><?= \V::app()->html->escape($a->hostname) ?></div>
 		    </td>
 		    <td><span class="badge <?= $states[(string)$a->state] ?? 'text-bg-secondary' ?>"><?= \V::app()->html->escape($a->schema['state']->choices[(string)$a->state] ?? $a->state) ?></span></td>
-		    <?php //CLD: 2026-10-24T09:45:36+03:00: the account's tier (util\Tiers; the default's in grey) ?>
 		    <td class="<?= (string)$a->tier === '' ? 'text-muted' : '' ?>"><?= \V::app()->html->escape(\util\Tiers::labelOf($a)) ?></td>
 		    <td class="text-nowrap"><?= \V::app()->html->escape(\util\Format::date($a->_id)) ?></td>
 		    <td class="text-end"><?= \util\Format::number($counts['users'][$aid] ?? 0) ?></td>

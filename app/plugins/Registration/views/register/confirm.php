@@ -1,8 +1,4 @@
 <?php
-//CLD: 2026-10-16T12:14:57+03:00: new view: the page of a sign-up link (SiteController::register_confirm): the account's and the user's names, the password; an expired / used
-//link says so
-//CLD: 2026-10-19T11:21:19+03:00: moved to the Registration plugin (was views/site/register_confirm.php; RegisterController::confirm)
-//CLD: 2026-10-19T11:46:05+03:00: the plugin's paths (/Registration/register, /Registration/register/confirm)
 $this->pageTitle = \V::t('Create an account');
 ?>
 
@@ -25,7 +21,6 @@ $this->pageTitle = \V::t('Create an account');
 	    <h5 class="mb-1 text-center"><?= \V::t('Create your account') ?></h5>
 	    <p class="text-center text-muted small mb-3"><?= \V::app()->html->escape((string)$signup->email) ?></p>
 	    <?php
-	    //CLD: 2026-10-16T12:18:38+03:00: labels above the inputs (dir v; the form helper puts them beside by default)
 	    echo \V::app()->form->field('account_name', [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('Company or team'), 'input' => [ 'autofocus' => 1, 'autocomplete' => 'organization' ] ]);
 	    echo '<div class="row g-2"><div class="col-sm-6">';
 	    echo \V::app()->form->field('firstname', [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('First name'), 'input' => [ 'autocomplete' => 'given-name' ] ]);

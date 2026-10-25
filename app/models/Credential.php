@@ -25,7 +25,6 @@ class Credential extends \sys\BaseModel {
     }
 
     protected function commonSchema() {
-	//CLD: 2026-10-09T17:21:14+03:00: the kind is the variant (was `type`, a CredentialType name; `config` removed: a variant's values are its own fields)
 	$variants = [];
 	foreach(\V::app()->om->getVariants('Credential') as $name => $class)
 	    $variants[$name] = $class::$label;
@@ -221,7 +220,6 @@ class Credential extends \sys\BaseModel {
 	$this->status = $status;
 	$this->status_message = mb_substr((string)$message, 0, 500);
 	$this->checked_at = new \MongoDB\BSON\UTCDateTime();
-	//CLD: 2026-10-12T14:12:12+03:00: through ObjectManager (om->updateMany on this credential's id; was the MongoDB collection directly)
 	if ($this->exists())
 	    \V::app()->om->updateMany($this->getObjectName(), [ '_id' => $this->_id ],
 		[ '$set' => [ 'status' => $this->status, 'status_message' => $this->status_message, 'checked_at' => $this->checked_at ] ]);
@@ -233,7 +231,6 @@ class Credential extends \sys\BaseModel {
 	if (empty($variants) || empty($projectId))
 	    return [];
 	$choices = [];
-	//CLD: 2026-10-09T17:21:14+03:00: by __variant (was type); each object is its variant's class
 	foreach(\V::app()->om->find(self::FAMILY, [ 'aid' => $aid, 'project' => \V::app()->om->to_oid($projectId), '__variant' => [ '$in' => $variants ] ]) as $c) {
 	    $account = (string)($c->email ?? '');
 	    $choices[] = [ 'value' => (string)$c->_id, 'label' => (string)$c->name . ' (' . $c::$label . ($account !== '' ? ', ' . $account : '') . ')' ];
@@ -246,7 +243,6 @@ class Credential extends \sys\BaseModel {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
 	$c = \V::app()->om->findOne('Credential', [ '_id' => $id, 'aid' => $wf->aid, 'project' => $wf->project ]);
-	//CLD: 2026-10-24T10:27:54+03:00: not one of a feature the account's tier does not have (util\Tiers: the variant's registry `feature`)
 	return ($c && $c->provides($capability) && \util\Tiers::allows($wf->aid, $c->getObjectName())) ? $c : null;
     }
 }

@@ -1,10 +1,11 @@
 <?php
 
 /*
-    CLD: 2026-10-22T15:00:00+03:00: new: every change of an account's System credits (AssistantWallet): the monthly allowance, a top-up, an expiry, a request's debit, a plan change;
-    with the balance after it and, for a request, the workflow, the person, the tokens and the provider's cost. Written by AssistantWallet only; shown on the settings page
-    CLD: 2026-10-23T10:00:00+03:00: the System AI's (plugins\SystemAI; was plugins\Assistant\models\AssistantCreditLedger, collection assistant_credit_ledger), written by
-    SystemAiWallet; + source (who spent: the Assistant, an AI step) and, for a step, its execution (exid)
+    every change of an account's System credits (AssistantWallet):
+	the monthly allowance, a top-up, an expiry, a request's debit, a plan change;
+	with the balance after it and, for a request, the workflow, the person, the tokens and the provider's cost. Written by AssistantWallet only; shown on the settings page
+    the System AI's, written by
+	SystemAiWallet; + source (who spent: the Assistant, an AI step) and, for a step, its execution (exid)
 */
 
 namespace plugins\SystemAI\models;
@@ -15,9 +16,17 @@ class SystemAiLedger extends \sys\BaseModel {
 	[ [ 'aid' => 1, 'created_at' => -1 ], [] ],
     ];
 
-    const TYPES = [ 'allowance' => 'Monthly allowance', 'topup' => 'Top-up', 'expire' => 'Expired', 'debit' => 'Used', 'adjust' => 'Plan changed' ];
-    //CLD: 2026-10-23T10:00:00+03:00: who spent the credits of a debit
-    const SOURCES = [ 'assistant' => 'Assistant request', 'step' => 'AI step' ];
+    const TYPES = [
+	'allowance' => 'Monthly allowance',
+	'topup' => 'Top-up',
+	'expire' => 'Expired',
+	'debit' => 'Used',
+	'adjust' => 'Plan changed'
+    ];
+    const SOURCES = [
+	'assistant' => 'Assistant request',
+	'step' => 'AI step'
+    ];
     const FIELDS = [ 'type', 'credits', 'balance', 'note', 'source', 'wfid', 'exid', 'uid', 'model', 'input_tokens', 'output_tokens', 'cost_usd' ];
 
     public function getSchema() {
@@ -26,7 +35,6 @@ class SystemAiLedger extends \sys\BaseModel {
 	    [ 'key' => 'credits', 'type' => 'number', 'label' => 'Credits' ],
 	    [ 'key' => 'balance', 'type' => 'number', 'label' => 'Balance' ],
 	    [ 'key' => 'note', 'type' => 'text', 'label' => 'Note' ],
-	    //CLD: 2026-10-23T10:00:00+03:00: + source, exid, model
 	    [ 'key' => 'source', 'type' => 'select', 'label' => 'Used by', 'choices' => self::SOURCES ],
 	    [ 'key' => 'wfid', 'type' => 'text', 'label' => 'Workflow' ],
 	    [ 'key' => 'exid', 'type' => 'text', 'label' => 'Execution' ],

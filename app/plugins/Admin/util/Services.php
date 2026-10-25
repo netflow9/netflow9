@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T23:00:00+03:00: new: the installation's services (Plugin::services): their status (systemd: `systemctl show`, which any user may read; a service not yet made a unit:
+    the installation's services (Plugin::services): their status (systemd: `systemctl show`, which any user may read; a service not yet made a unit:
     its script's PID file) and start / stop / restart (`systemctl`, allowed to this app's user for these units only by the polkit rule of scripts/services-install.sh)
 */
 
