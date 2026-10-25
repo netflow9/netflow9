@@ -399,4 +399,19 @@ class WfNode extends \sys\NestedModel {
 	//CLD: 2026-10-18T11:55:00+03:00: cached for the request
 	return self::$nodeDefs = $nodeDefs;
     }
+
+    //CLD: 2026-10-25T20:00:00+02:00: the step definitions of the designer (moved from views/workflow/index.php): getAll(), `unavailable` the steps of a feature $account's tier
+    //does not have (not in the palette; those already in a workflow are still shown) and those this PHP cannot run (available(): e.g. Database without a PDO driver of its types);
+    //[ 'defs' => ..., 'version' => a hash of them ]: the designer page sends the version only, the designer asks the definitions when it does not have them (WorkflowController::node_defs)
+    public static function designerDefs($account) {
+	$defs = self::getAll();
+	foreach($defs as $fq => $def) {
+	    if (!\util\Tiers::allows($account, $def['objectName']))
+		$defs[$fq]['unavailable'] = true;
+	    $class = \V::app()->om->getObjectClass($def['objectName']);
+	    if (!$class::available())
+		$defs[$fq]['unavailable'] = true;
+	}
+	return [ 'defs' => $defs, 'version' => md5(\util\JSON::encode($defs)) ];
+    }
 }
