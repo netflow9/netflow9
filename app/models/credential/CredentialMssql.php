@@ -1,9 +1,11 @@
 <?php
 
+//CLD: 2026-10-25T20:00:00+02:00: moved from the Database plugin to the core (the Database step and its credentials are core, for every account: no plan feature): models\credential (was plugins\Database\models)
+
 //CLD: 2026-10-25T17:40:00+02:00: new: a Microsoft SQL Server (pdo_sqlsrv, Microsoft's driver; else pdo_dblib, FreeTDS), for the Database step. The server may name an instance
 //(sql.example.com\SQLEXPRESS). Encryption: sqlsrv's Encrypt / TrustServerCertificate (dblib: FreeTDS's own settings, freetds.conf). Statement time limit: sqlsrv's query timeout
 
-namespace plugins\Database\models;
+namespace models\credential;
 
 class CredentialMssql extends CredentialDatabase {
     public static $label = 'Microsoft SQL Server';

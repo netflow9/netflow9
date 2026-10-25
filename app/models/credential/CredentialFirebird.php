@@ -1,9 +1,11 @@
 <?php
 
+//CLD: 2026-10-25T20:00:00+02:00: moved from the Database plugin to the core (the Database step and its credentials are core, for every account: no plan feature): models\credential (was plugins\Database\models)
+
 //CLD: 2026-10-25T17:40:00+02:00: new: a Firebird server (pdo_firebird), for the Database step: the database's path or alias on the server, in UTF-8. The server is required: the
 //client library would otherwise open a database file of this machine itself. No statement time limit of its own
 
-namespace plugins\Database\models;
+namespace models\credential;
 
 class CredentialFirebird extends CredentialDatabase {
     public static $label = 'Firebird';
