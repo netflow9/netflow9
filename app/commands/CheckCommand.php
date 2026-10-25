@@ -3209,6 +3209,25 @@ class CheckCommand extends \sys\BaseController {
 		$this->check('LDAP: no sign-in, the step and its credential not offered without the feature', [ null, false, false ],
 		    [ \plugins\Ldap\util\LdapAuth::enabledFor($account->_id), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ]);
 	    }
+	    //CLD: 2026-10-25T18:30:00+02:00: Database: on enterprise only (as LDAP); its credentials and step follow; the step does not run without it
+	    if ($om->isDefined('NodeAppDatabase')) {
+		$on = [];
+		foreach([ 'free', 'team', 'enterprise' ] as $tier) {
+		    $set($tier);
+		    $on[] = [ $T::has($account, 'database'), $T::allows($account, 'CredentialPostgres'), $T::allows($account, 'NodeAppDatabase') ];
+		}
+		$set('team');
+		$node = $om->create('NodeAppDatabase', []);
+		$node->exec = (object)[ 'aid' => $account->_id ];
+		try {
+		    $node->receive();
+		    $runs = 'runs';
+		} catch (\ErrorException $e) {
+		    $runs = str_contains($e->getMessage(), 'not included in your plan (Team)') ? 'refused' : $e->getMessage();
+		}
+		$this->check('database: off on free and team, on on enterprise (its credentials, its step); the step refused without it',
+		    [ [ false, false, false ], [ false, false, false ], [ true, true, true ], 'refused' ], [ $on[0], $on[1], $on[2], $runs ]);
+	    }
 
 	    //CLD: 2026-10-24T10:28:12+03:00: Google / Microsoft: on team and enterprise, off on free; their credentials and steps follow; a step does not run without it
 	    foreach([ 'google' => [ 'CredentialGoogleMail', 'NodeAppGoogleDrive' ], 'microsoft' => [ 'CredentialMicrosoftMail', 'NodeAppOneDrive' ] ] as $feature => [ $cred, $step ]) {
