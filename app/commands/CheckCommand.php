@@ -43,7 +43,7 @@ class CheckCommand extends \sys\BaseController {
     //feature, the System AI allowance of the tier, the usage)
     //CLD: 2026-10-24T10:28:12+03:00: + Google / Microsoft by tier
     //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'tiers', 'format', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -3213,6 +3213,52 @@ class CheckCommand extends \sys\BaseController {
 
     //CLD: 2026-10-24T00:20:00+03:00: new: a 2FA code is accepted once (User::useTfaCode: the same code again, an older window's code, a wrong one refused; the next window's accepted);
     //the "forgot password" limits (LoginThrottle reset_email: 3, reset_ip: 10 in an hour, then locked)
+    //CLD: 2026-10-25T11:20:00+02:00: users made by an administrator: the welcome email's link (models\User::sendPasswordLink: 7 days, it sets the password through /site/reset, not for a
+    //disabled user), and the edit's guard: the account keeps an active Owner (UserController::isActiveOwner / activeOwners)
+    private function suiteUsers() {
+	$om = \V::app()->om;
+	$member = $om->findOne('Role', [ 'aid' => $this->account->_id, 'iname' => 'member' ]);
+	$owner = $om->findOne('Role', [ 'aid' => $this->account->_id, 'iname' => 'owner' ]);
+	$users = [];
+	$jobs = [];
+	try {
+	    foreach([ 'a' => [ $member, 'active' ], 'b' => [ $member, 'disabled' ], 'o' => [ $owner, 'active' ] ] as $k => [ $role, $state ]) {
+		$u = $om->create('User', [ 'aid' => $this->account->_id, 'email' => "zz-users-{$k}@example.com", 'firstname' => 'Zz', 'lastname' => strtoupper($k), 'state' => $state, 'role' => $role->_id ]);
+		$u->save();
+		$users[$k] = $u;
+	    }
+
+	    $before = $om->count('Job', []);
+	    $sent = [ $users['a']->sendPasswordLink($users['o']), $users['b']->sendPasswordLink($users['o']) ];
+	    $job = $om->findOne('Job', [ 'job_data.to' => 'zz-users-a@example.com' ]);
+	    if ($job)
+		$jobs[] = $job;
+	    $html = (string)($job->job_data['html'] ?? '');
+	    preg_match('~/site/reset\?t=([0-9a-f]{48})~', $html, $m);
+	    $reloaded = $om->findById('User', (string)$users['a']->_id);
+	    $days = $reloaded && $reloaded->reset_expires_at ? round(($reloaded->reset_expires_at->toDateTime()->getTimestamp() - time()) / 86400) : null;
+	    $this->check('users: a new active user gets the welcome email (one job), a disabled one none', [ [ true, false ], 1 ], [ $sent, $om->count('Job', []) - $before ]);
+	    $this->check('users: the email names who created the user and has a link that finds the user, for 7 days', [ true, true, 7.0 ],
+		[ str_contains($html, 'Zz O'), !empty($m[1]) && (string)(\models\User::findByResetToken($m[1])->_id ?? '') === (string)$users['a']->_id, $days ]);
+
+	    $ctl = (new \ReflectionClass('\\controllers\\UserController'))->newInstanceWithoutConstructor();
+	    $call = fn($method, ...$args) => (new \ReflectionMethod($ctl, $method))->invoke($ctl, ...$args);
+	    $this->check('users: an active Owner is one; a disabled Owner or a Member is not', [ true, false, false ],
+		[ $call('isActiveOwner', (string)$owner->_id, 'active'), $call('isActiveOwner', (string)$owner->_id, 'disabled'), $call('isActiveOwner', (string)$member->_id, 'active') ]);
+	    $nobody = new \MongoDB\BSON\ObjectId();
+	    $all = $call('activeOwners', $nobody);
+	    $others = $call('activeOwners', $users['o']->_id);
+	    $users['o']->state = 'disabled';
+	    $users['o']->save();
+	    $this->check('users: active Owners: all, all but one, and one fewer once that one is disabled', [ $all - 1, $all - 1 ], [ $others, $call('activeOwners', $nobody) ]);
+	} finally {
+	    foreach($jobs as $j)
+		$j->delete();
+	    foreach($users as $u)
+		$u->delete();
+	}
+    }
+
     private function suiteSignin() {
 	$om = \V::app()->om;
 	$restore = \V::app()->config('rt.account');

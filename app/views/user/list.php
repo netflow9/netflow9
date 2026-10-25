@@ -2,7 +2,8 @@
 $this->pageTitle = 'User list';
 
 $createBtn = '';
-if (\V::app()->user->can('Role::create')) {
+//CLD: 2026-10-25T11:20:00+02:00: User::create (was Role::create)
+if (\V::app()->user->can('User::create')) {
     $createBtn = \V::app()->html->link(
 	'Create',
 	\V::app()->createUrl('/user/create'),
@@ -19,6 +20,7 @@ $schema = \util\JSON::encode($sf['schema']);
 $filter = \util\JSON::encode($sf['filter']);
 
 //CLD: 2026-10-19T12:05:32+03:00: app.formatter.timeAgo (was app.timeAgo.inWords)
+//CLD: 2026-10-25T11:20:00+02:00: the row menu: Edit (UserController::update; were Mark as read / Archive / Delete, which did nothing)
 //CLD: 2026-10-24T17:30:00+03:00: app.formatter.timeAgoHtml: the date and time in the account's format as a tooltip; from _iso (DataTrait: ISO 8601; the shown texts are in the account's format)
 $script = "
 +function(){
@@ -42,9 +44,7 @@ $script = "
 			<i class='bi bi-three-dots-vertical'></i>
 		    </button>
 		    <ul class='dropdown-menu dropdown-menu-end'>
-			<li><a class='dropdown-item' href='#'>Mark as read</a></li>
-			<li><a class='dropdown-item' href='#'>Archive</a></li>
-			<li><a class='dropdown-item text-danger' href='#'>Delete</a></li>
+			<li><a class='dropdown-item' href='/user/update/{{item._id}}'><i class='bi bi-pencil me-2'></i>Edit</a></li>
 		    </ul>
 		</div>
 	    </div>
