@@ -12,7 +12,8 @@ namespace plugins\Ldap\controllers;
 
 use plugins\Ldap\models\LdapSettings;
 use plugins\Ldap\util\LdapAuth;
-use plugins\Ldap\util\LdapClient;
+//CLD: 2026-10-25T19:30:00+02:00: the LDAP client is core (util\LdapClient; was plugins\Ldap\util)
+use util\LdapClient;
 
 class LdapController extends \sys\BaseController {
 

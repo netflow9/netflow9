@@ -11,7 +11,9 @@
 
 namespace plugins\Ldap\models;
 
-use plugins\Ldap\util\LdapClient;
+//CLD: 2026-10-25T19:30:00+02:00: the LDAP client and the server's settings are core (were plugins\Ldap\util, plugins\Ldap\models)
+use util\LdapClient;
+use models\credential\LdapServerTrait;
 
 class LdapSettings extends \sys\BaseModel {
     use LdapServerTrait;
@@ -214,7 +216,7 @@ class LdapSettings extends \sys\BaseModel {
 		continue;
 	    }
 	    try {
-		\plugins\Ldap\util\LdapBer::parseFilter(str_replace([ '{login}', '{dn}' ], 'x', $f));
+		\util\LdapBer::parseFilter(str_replace([ '{login}', '{dn}' ], 'x', $f));
 	    } catch (\InvalidArgumentException $e) {
 		$this->errors($key, $e->getMessage());
 		$valid = false;

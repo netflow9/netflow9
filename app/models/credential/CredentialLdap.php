@@ -1,12 +1,14 @@
 <?php
 
+//CLD: 2026-10-25T19:30:00+02:00: moved from the Ldap plugin to the core (the LDAP step and credential are core, the plugin is the LDAP sign-in): namespace models\credential (was plugins\Ldap\models); registered in data\SysObjects, for every account (no plan feature)
+
 //CLD: 2026-10-21T10:00:00+03:00: new: an LDAP server (Active Directory, OpenLDAP, ...) for the LDAP step (NodeAppLdap). Provides `ldap`. The server's settings are
 //LdapServerTrait's (the same as the account's LDAP sign-in); the bind DN is the account the step works as (its rights in the directory are the step's).
 //test() binds and reads the Base DN
 
-namespace plugins\Ldap\models;
+namespace models\credential;
 
-use plugins\Ldap\util\LdapClient;
+use util\LdapClient;
 
 class CredentialLdap extends \models\Credential {
     use LdapServerTrait;

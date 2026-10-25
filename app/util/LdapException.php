@@ -1,10 +1,12 @@
 <?php
 
+//CLD: 2026-10-25T19:30:00+02:00: moved from the Ldap plugin to the core (the LDAP step and credential are core, the plugin is the LDAP sign-in): namespace util (was plugins\Ldap\util)
+
 //CLD: 2026-10-21T10:00:00+03:00: new: an error of an LDAP server or of the connection to it (a \RuntimeException: the LDAP step's On error applies to it).
 //  $code is the LDAP result code (49 = invalid credentials, 32 = no such object, ...; -1: no answer / the connection failed), $diagnostic the server's own text
 //  (Active Directory: "80090308: LdapErr: ..., data 52e, ..." - adReason() reads its `data` code)
 
-namespace plugins\Ldap\util;
+namespace util;
 
 class LdapException extends \RuntimeException {
 

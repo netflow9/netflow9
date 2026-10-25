@@ -1,10 +1,12 @@
 <?php
 
+//CLD: 2026-10-25T19:30:00+02:00: moved from the Ldap plugin to the core (the LDAP step and credential are core, the plugin is the LDAP sign-in): namespace util (was plugins\Ldap\util)
+
 //CLD: 2026-10-21T10:00:00+03:00: new: the LDAP client through PHP's ldap extension (libldap; LdapClient::open picks it when the extension is loaded). The TLS options are set
 //on the connection (LDAP_OPT_X_TLS_NEWCTX: its own TLS context, so a CA file or "do not check" of one server does not change another's); referrals are not followed
 //(Active Directory answers searches at a domain's root with references to its other partitions: followed, they would bind there anonymously)
 
-namespace plugins\Ldap\util;
+namespace util;
 
 class LdapExtClient extends LdapClient {
     protected $link = null;
