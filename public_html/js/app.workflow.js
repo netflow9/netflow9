@@ -498,7 +498,7 @@ window.app.Workflow = (function() {
 	    document.querySelectorAll('.modal.wf-editor').forEach((m) => m.remove());
 
 	    //CLD: 2026-10-06T23:33:47+03:00: problems are computed live in render() (validateFlow); options.issues (server) is no longer needed here
-	    console.log('nodeDefs=', this.nodeDefs);
+	    //CLD: 2026-10-25T20:00:00+02:00: removed the console.log of nodeDefs
 
 	    //CLD: 2026-10-19T22:00:00+03:00: the element, or the element of id `root` (was: #canvas-wrap whatever the string)
 	    this.wrapEl = typeof root === 'string' ? document.getElementById(root) : root;
