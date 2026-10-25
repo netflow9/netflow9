@@ -3,15 +3,12 @@
 $this->pageTitle = 'Workflow: ' . (string)$wf;
 
 //we need to build a list of available nodes for the builder
-$nodeDefs = \models\WfNode::getAll();
-foreach($nodeDefs as $fq => $def) {
-    if (!\util\Tiers::allows(\V::app()->config('rt.account'), $def['objectName']))
-	$nodeDefs[$fq]['unavailable'] = true;
-    $__class = \V::app()->om->getObjectClass($def['objectName']);
-    if (!$__class::available())
-	$nodeDefs[$fq]['unavailable'] = true;
-}
-$nodeDefs = \util\JSON::encode($nodeDefs);
+//CLD: 2026-10-25T20:00:00+02:00: only their version here (WfNode::designerDefs, which builds them): the designer asks them when this tab does not have that version (nodeDefs below,
+//WorkflowController::node_defs); were in each page (~85 KB, ~250 KB in the pjax answer)
+$nodeDefsVersion = \models\WfNode::designerDefs(\V::app()->config('rt.account'))['version'];
+$nodeDefsUrl = \V::app()->createUrl('/workflow/node_defs');
+//the canvas of this page (mount: not one of a page loaded since, while the definitions were asked); hex only, safe in the script
+$pageToken = bin2hex(random_bytes(6));
 
 //canvas state comes from the query string; accept only numbers, as it is injected in JS
 $__canvas_num = function($key) {
@@ -48,17 +45,18 @@ $canDuplicate = \V::app()->user->can('Workflow::create', [ 'object' => \V::app()
 //CLD: 2026-10-06T23:25:57+03:00: connection problems of the saved workflow (Workflow::validateFlow): marked on the nodes, counted in the header
 //CLD: 2026-10-11T13:51:42+03:00: of the version being viewed, if any
 //CLD: 2026-10-19T17:10:00+03:00: + errors in the steps' settings (a draft is saved with them); the designer marks them until the step is changed (options.stepIssues)
-$stepIssues = $shown->validateSteps();
-$issues = array_merge($stepIssues, $shown->validateFlow());
+//CLD: 2026-10-25T19:30:00+02:00: the errors in the steps' settings are asked once the designer is shown (WorkflowController::step_issues, stepCheck below): validateSteps
+//was the slowest part of this page; the header badges start with the connection problems
+$issues = $shown->validateFlow();
 $issuesJs = \util\JSON::encode($issues);
-$stepIssuesJs = \util\JSON::encode($stepIssues);
+$stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'id' => (string)$wf->_id, 'version' => $viewVersion ? (string)$viewVersion->_id : null ]));
 
 
 //CLD: 2026-10-25T18:30:00+02:00: the Executions panel rows' CSS moved to the theme (_workflow.scss): page CSS is not applied when the page is loaded via PJAX
 
 \V::app()->cs->addPageScript("
 +function() {
-    console.log('WfScript: nodeDefs=', {$nodeDefs});
+    //CLD: 2026-10-25T19:10:00+02:00: removed the console.log of nodeDefs (the whole step catalogue a second time in each page, ~84 KB)
     //CLD: 2026-10-19T22:00:00+03:00: this page's designer (app.Workflow, made below once the handlers exist; was the app.workflow module)
     let designer = null;
 
@@ -89,337 +87,43 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 	},
     };
 
-    const exec = {
+    //CLD: 2026-10-25T20:30:00+02:00: a toast with plain texts (was exec.toast)
+    const toast = (type, title, body) => app.utils.toast({ type: type, title: app.utils.escapeHtml(title), body: app.utils.escapeHtml(body), delay: 5000 });
+    const csrf = () => $('meta[name=csrf-token]').attr('content');
+
+    //CLD: 2026-10-25T20:30:00+02:00: Run and the Executions panel: app.WfExecutions (app.wfexecutions.js; was the `exec` object here), the Debug panel: app.WfDebug (app.wfdebug.js;
+    //was `debug`); one bottom panel at a time, the one last open remembered (bottomPanel)
+    const exec = new app.WfExecutions(document.querySelector('.exec-panel'), {
 	//CLD: 2026-10-23T23:00:00+03:00: + del (an execution of the draft)
 	//CLD: 2026-10-23T23:30:00+03:00: + delAll (all executions of the draft)
 	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}' },
 	canRun: {$canRun},
-	baseline: null,
-	dirty: false,
-	//CLD: 2026-10-12T20:33:47+03:00: hasTrigger (was hasManual): the workflow has a trigger Run can start
+	//CLD: 2026-10-12T20:33:47+03:00: the triggers Run can start
 	runTriggers: {$runTriggers},
-	hasTrigger: false,
-	list: [],
-	selected: null,
-	detail: null,
-	timer: null,
-
-	esc: (v) => app.utils.escapeHtml(v === null || v === undefined ? '' : String(v)),
-	panel: () => document.querySelector('.exec-panel'),
-	csrf: () => $('meta[name=csrf-token]').attr('content'),
-
-	//CLD: 2026-10-19T18:05:00+03:00: + current; baseline is the last saved state (markSaved: autosave), dirty = changes not saved yet
-	current: null,
-	onDataChange(workflow, serialized) {
-	    if (this.baseline === null)
-		this.baseline = serialized;
-	    this.current = serialized;
-	    this.dirty = serialized !== this.baseline;
-	    this.hasTrigger = workflow.some((n) => n.isNode && this.runTriggers.includes(n.fqname));
-	    let tip = 'Run (from the trigger; an Email trigger checks the mailbox now)';
-	    if (!this.canRun)
-		tip = 'You may not run this workflow';
-	    else if (!this.hasTrigger)
-		tip = 'This trigger cannot be run from here (it starts when its event happens)';
-	    else if (this.dirty)
-		tip = 'Run (after the changes are saved)';
-	    $('.btn-run-wf').attr('title', tip).toggleClass('opacity-50', !this.canRun || !this.hasTrigger);
-	},
-
-	//CLD: 2026-10-19T18:05:00+03:00: the state `serialized` is saved
-	markSaved(serialized) {
-	    this.baseline = serialized;
-	    this.dirty = this.current !== null && this.current !== this.baseline;
-	},
-
-	toast(type, title, body) {
-	    app.utils.toast({ type: type, title: this.esc(title), body: this.esc(body), delay: 5000 });
-	},
-
-	run() {
-	    if (!this.canRun || !this.hasTrigger)
-		return;
-	    //CLD: 2026-10-19T18:05:00+03:00: started once the changes are saved (autosave; was refused until saved)
-	    if (this.dirty || designer.hasPendingChange()) {
-		autosave.whenSaved(() => this.run());
-		return;
-	    }
-	    $.ajax({ url: this.urls.run, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': this.csrf() } })
-		.done((resp) => {
-		    //CLD: 2026-10-12T20:33:47+03:00: nothing started (e.g. no new mail) -> the reason; several executions (one per message) -> the first is shown
-		    if (!resp.execution) {
-			this.toast('info', 'Nothing started', resp.message || 'Nothing was started');
-			return;
-		    }
-		    const n = (resp.executions || []).length;
-		    this.toast('success', 'Started', n > 1 ? n + ' executions started (one per message)' : 'Execution started');
-		    this.open();
-		    this.select(resp.execution);
-		})
-		.fail((xhr) => this.toast('error', 'Not started', (xhr.responseJSON && xhr.responseJSON.error) || 'The workflow could not be started'));
-	},
-
-	open() {
-	    const el = this.panel();
-	    if (!el)
-		return;
-	    //CLD: 2026-10-11T19:57:28+03:00: one bottom panel at a time (they share the same place)
+	//CLD: 2026-10-19T18:05:00+03:00: started once the changes are saved (autosave; was refused until saved)
+	whenSaved: (fn) => autosave.whenSaved(fn),
+	onOpen: () => {
 	    debug.close();
-	    if (el.classList.contains('d-none')) {
-		el.classList.remove('d-none');
-		if (el.offsetHeight < 120)
-		    el.style.height = '300px';
-	    }
-	    //CLD: 2026-10-19T19:35:00+03:00: remembered
 	    bottomPanel.set('exec');
-	    this.refresh();
-	    if (!this.timer)
-		this.timer = setInterval(() => this.tick(), 2000);
 	},
-
-	close() {
-	    const el = this.panel();
-	    if (el)
-		el.classList.add('d-none');
-	    clearInterval(this.timer);
-	    this.timer = null;
-	    //CLD: 2026-10-19T19:35:00+03:00: remembered
-	    bottomPanel.closed('exec');
-	},
-
-	active: (state) => state === 'new' || state === 'run',
-
-	tick() {
-	    const el = this.panel();
-	    //the page was left (pjax) or the panel closed
-	    if (!el || !document.body.contains(el) || el.classList.contains('d-none')) {
-		clearInterval(this.timer);
-		this.timer = null;
-		return;
-	    }
-	    if (this.list.some((e) => this.active(e.state)) || (this.detail && this.active(this.detail.state)))
-		this.refresh();
-	},
-
-	refresh() {
-	    $.getJSON(this.urls.list).done((resp) => {
-		this.list = resp.executions || [];
-		this.renderList();
-	    });
-	    if (this.selected)
-		this.loadDetail(this.selected);
-	},
-
-	select(id) {
-	    this.selected = id;
-	    this.renderList();
-	    this.loadDetail(id);
-	},
-
-	loadDetail(id) {
-	    $.getJSON(this.urls.detail, { execution: id }).done((resp) => {
-		if (this.selected !== id)
-		    return;
-		this.detail = resp.execution;
-		this.renderDetail();
-	    });
-	},
-
-	duration(ms) {
-	    if (ms === null || ms === undefined)
-		return '';
-	    if (ms < 1000)
-		return ms + ' ms';
-	    if (ms < 60000)
-		return (ms / 1000).toFixed(1) + ' s';
-	    const sec = Math.round(ms / 1000);
-	    return Math.floor(sec / 60) + 'm ' + String(sec % 60).padStart(2, '0') + 's';
-	},
-
-	//CLD: 2026-10-11T13:51:42+03:00: the published version an execution ran, or the draft
-	versionLabel: (e) => e.version === null || e.version === undefined ? '(draft)' : '(v' + e.version + ')',
-
-	badge(state) {
-	    const colors = { end: 'success', error: 'danger', run: 'primary', new: 'info', sleep: 'warning', cancel: 'secondary' };
-	    const labels = { end: 'completed', run: 'running', sleep: 'sleeping' };
-	    return `<span class='badge text-bg-\${colors[state] || 'secondary'}'>\${this.esc(labels[state] || state)}</span>`;
-	},
-
-	renderList() {
-	    const box = document.querySelector('.exec-list');
-	    if (!box)
-		return;
-	    if (!this.list.length) {
-		box.innerHTML = `<div style='color: var(--netflow9-debug-muted)'>No executions yet\${this.hasTrigger ? ': use Run' : ''}</div>`;
-		return;
-	    }
-	    box.innerHTML = this.list.map((e) => `
-		<div class='exec-row d-flex align-items-center gap-2 px-1 rounded\${e.id === this.selected ? ' exec-selected' : ''}' data-id='\${this.esc(e.id)}' title='\${this.esc(e.error || '')}' style='cursor: pointer'>
-		    \${this.badge(e.state)}
-		    <span class='exec-time'>\${this.esc(e.started || e.created)}</span>
-		    <span class='exec-what' style='color: var(--netflow9-debug-muted)' title='\${this.esc(e.trigger + ' ' + this.versionLabel(e))}'>\${this.esc(e.trigger)} \${this.esc(this.versionLabel(e))}</span>
-		    <span class='exec-duration ms-auto' style='color: var(--netflow9-debug-muted)'>\${this.duration(e.duration)}</span>
-		</div>`).join('');
-	},
-
-	renderDetail() {
-	    const box = document.querySelector('.exec-detail');
-	    const e = this.detail;
-	    if (!box || !e)
-		return;
-	    const vars = JSON.stringify(e.variables || {}, null, 2);
-	    const log = (e.log || []).map((l) => `<div class='debug-log-line'><span style='color: var(--netflow9-debug-muted)'>\${this.esc((l.time || '').slice(11))}</span> \${l.title ? `<span class='tag'>[\${this.esc(l.title)}]</span>` : ''}\${this.esc(l.message)}</div>`).join('');
-	    //CLD: 2026-10-23T23:00:00+03:00: + Delete (an execution of the draft that has finished; asked again in place: Yes / No)
-	    const del = this.deletable(e) ? `<span class='exec-delete ms-auto flex-shrink-0'><button type='button' class='debug-icon-btn btn-exec-delete' title='Delete this execution'><i class='bi bi-trash'></i></button></span>` : '';
-	    box.innerHTML = `
-		<div class='mb-1 d-flex align-items-center gap-1'><span>\${this.badge(e.state)} <span style='color: var(--netflow9-debug-muted)'>\${this.esc(e.trigger)} \${this.esc(this.versionLabel(e))}, started \${this.esc(e.started || e.created || '-')}\${e.duration !== null ? ', ' + this.duration(e.duration) : ''}\${e.wake_at ? ', wakes at ' + this.esc(e.wake_at) : ''}</span></span>\${del}</div>
-		\${e.error ? `<div class='text-danger mb-1'>\${this.esc(e.error)}</div>` : ''}
-		<div class='debug-panel-title mt-2 mb-1'>Log</div>
-		\${log || `<div style='color: var(--netflow9-debug-muted)'>(empty)</div>`}
-		<div class='debug-panel-title mt-2 mb-1'>Variables</div>
-		<pre class='mb-0' style='color: inherit; white-space: pre-wrap'>\${this.esc(vars)}</pre>`;
-	},
-
-	//CLD: 2026-10-23T23:00:00+03:00: an execution of the draft (no version) that is not running or sleeping, by a user who may run the workflow
-	deletable(e) {
-	    return this.canRun && (e.version === null || e.version === undefined) && ![ 'new', 'run', 'sleep' ].includes(e.state);
-	},
-
-	//CLD: 2026-10-23T23:00:00+03:00: the trash button becomes `Delete? Yes / No`
-	confirmDelete() {
-	    const box = document.querySelector('.exec-detail .exec-delete');
-	    if (!box)
-		return;
-	    box.innerHTML = `<span class='me-1'>Delete?</span><button type='button' class='debug-icon-btn btn-exec-delete-yes text-danger' title='Yes, delete it'><i class='bi bi-check-lg'></i></button><button type='button' class='debug-icon-btn btn-exec-delete-no' title='No'><i class='bi bi-x-lg'></i></button>`;
-	    box.querySelector('.btn-exec-delete-yes').focus();
-	},
-
-	//CLD: 2026-10-23T23:00:00+03:00: deletes the selected execution; the list and the details are updated
-	remove() {
-	    const id = this.selected;
-	    if (!id)
-		return;
-	    const url = this.urls.del + (this.urls.del.includes('?') ? '&' : '?') + 'execution=' + encodeURIComponent(id);
-	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': this.csrf() } })
-		.done(() => {
-		    this.list = this.list.filter((e) => e.id !== id);
-		    if (this.selected === id) {
-			this.selected = null;
-			this.detail = null;
-			const box = document.querySelector('.exec-detail');
-			if (box)
-			    box.innerHTML = `<span style='color: var(--netflow9-debug-muted)'>Select an execution</span>`;
-		    }
-		    this.renderList();
-		    this.toast('success', 'Deleted', 'Execution deleted');
-		})
-		.fail((xhr) => {
-		    this.toast('error', 'Not deleted', (xhr.responseJSON && xhr.responseJSON.error) || 'The execution could not be deleted');
-		    this.renderDetail();
-		});
-	},
-
-	//CLD: 2026-10-23T23:30:00+03:00: the header's trash button becomes `Delete all? Yes / No`; restoreDeleteAll() puts it back
-	confirmDeleteAll() {
-	    const box = document.querySelector('.exec-panel .exec-delete-all');
-	    if (!box)
-		return;
-	    box.innerHTML = `<span class='me-1'>Delete all?</span><button type='button' class='debug-icon-btn btn-exec-delete-all-yes text-danger' title='Yes, delete all executions of the draft'><i class='bi bi-check-lg'></i></button><button type='button' class='debug-icon-btn btn-exec-delete-all-no' title='No'><i class='bi bi-x-lg'></i></button>`;
-	    box.querySelector('.btn-exec-delete-all-yes').focus();
-	},
-
-	restoreDeleteAll() {
-	    const box = document.querySelector('.exec-panel .exec-delete-all');
-	    if (box)
-		box.innerHTML = `<button type='button' class='debug-icon-btn btn-exec-delete-all' title='Delete all executions of the draft (running / sleeping ones and those of published versions are kept)'><i class='bi bi-trash'></i></button>`;
-	},
-
-	//CLD: 2026-10-23T23:30:00+03:00: deletes all finished executions of the draft; the list is reloaded, the details cleared when the selected one is gone
-	removeAll() {
-	    $.ajax({ url: this.urls.delAll, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': this.csrf() } })
-		.done((resp) => {
-		    this.restoreDeleteAll();
-		    if (this.detail && this.deletable(this.detail)) {
-			this.selected = null;
-			this.detail = null;
-			const box = document.querySelector('.exec-detail');
-			if (box)
-			    box.innerHTML = `<span style='color: var(--netflow9-debug-muted)'>Select an execution</span>`;
-		    }
-		    this.refresh();
-		    const n = resp.deleted || 0;
-		    this.toast('success', 'Deleted', (n === 1 ? '1 execution deleted' : n + ' executions deleted') + (resp.kept ? ', ' + resp.kept + ' kept (running / sleeping or of a published version)' : ''));
-		})
-		.fail((xhr) => {
-		    this.restoreDeleteAll();
-		    this.toast('error', 'Not deleted', (xhr.responseJSON && xhr.responseJSON.error) || 'The executions could not be deleted');
-		});
-	},
-    };
-
-    //CLD: 2026-10-11T19:57:28+03:00: the debug panel (opened / closed like the Executions panel; one bottom panel at a time): the workflow's errors and warnings, updated
-    //while editing (onIssuesChange); a problem of a step selects that step on the canvas
-    const debug = {
-	issues: [],
-
-	panel: () => document.querySelector('.wf-debug-panel'),
-
-	open() {
-	    const el = this.panel();
-	    if (!el)
-		return;
-	    exec.close();
-	    if (el.classList.contains('d-none')) {
-		el.classList.remove('d-none');
-		if (el.offsetHeight < 120)
-		    el.style.height = '300px';
-	    }
-	    //CLD: 2026-10-19T19:35:00+03:00: remembered
-	    bottomPanel.set('debug');
-	    this.render();
-	},
-
-	close() {
-	    const el = this.panel();
-	    if (el)
-		el.classList.add('d-none');
-	    //CLD: 2026-10-19T19:35:00+03:00: remembered
-	    bottomPanel.closed('debug');
-	},
-
-	setIssues(issues) {
-	    this.issues = issues || [];
-	    this.render();
-	},
-
+	onClose: () => bottomPanel.closed('exec'),
+    });
+    const debug = new app.WfDebug(document.querySelector('.wf-debug-panel'), {
 	//step titles from the current steps (the designer keeps [name=nodes] up to date)
-	titles() {
-	    const titles = {};
+	steps: () => {
 	    try {
-		Object.values(JSON.parse($('[name=nodes]').val() || '{}')).forEach((n) => { if (n && n.wfid) titles[n.wfid] = n.title || n.wfid; });
-	    } catch (err) {}
-	    return titles;
-	},
-
-	render() {
-	    const box = document.querySelector('.wf-debug-panel .debug-issues');
-	    if (!box)
-		return;
-	    if (!this.issues.length) {
-		box.innerHTML = `<div><i class='bi bi-check-circle text-success me-1'></i>No errors or warnings</div>`;
-		return;
+		return Object.values(JSON.parse($('[name=nodes]').val() || '{}'));
+	    } catch (err) {
+		return [];
 	    }
-	    const titles = this.titles();
-	    const order = { error: 0, warning: 1 };
-	    const rows = [ ...this.issues ].sort((a, b) => (order[a.level] ?? 2) - (order[b.level] ?? 2)).map((i) => {
-		const icon = i.level === 'error' ? 'bi-x-circle-fill text-danger' : 'bi-exclamation-triangle-fill text-warning';
-		const node = i.node ? `data-node='\${exec.esc(i.node)}' role='button' title='Show the step'` : '';
-		const step = i.node ? `<span class='tag'>[\${exec.esc(titles[i.node] || i.node)}]</span> ` : '';
-		return `<div class='debug-log-line debug-issue' \${node}><i class='bi \${icon} me-1'></i>\${step}\${exec.esc(i.message)}</div>`;
-	    });
-	    box.innerHTML = rows.join('');
 	},
-    };
+	onShowNode: (id) => designer && designer.showNode(id),
+	onOpen: () => {
+	    exec.close();
+	    bottomPanel.set('debug');
+	},
+	onClose: () => bottomPanel.closed('debug'),
+    });
 
     //CLD: 2026-10-11T13:51:42+03:00: Publish needs the draft saved (it publishes the saved draft); was the `publish` switch object
     //CLD: 2026-10-11T14:01:52+03:00: + Duplicate (copies the saved draft); stopImmediatePropagation: the data-confirm handler is on the document too
@@ -434,56 +138,7 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 	}
     });
 
-    $('.btn-run-wf').on('click', (e) => {
-	e.preventDefault();
-	exec.run();
-    });
-    $('.btn-exec-toggle').on('click', (e) => {
-	e.preventDefault();
-	const el = exec.panel();
-	if (el && el.classList.contains('d-none'))
-	    exec.open();
-	else
-	    exec.close();
-    });
-    $('.btn-exec-refresh').on('click', (e) => {
-	e.preventDefault();
-	exec.refresh();
-    });
-    $('.btn-exec-close').on('click', (e) => {
-	e.preventDefault();
-	exec.close();
-    });
-    $('.exec-panel').on('click', '.exec-row', function() {
-	exec.select(this.dataset.id);
-    });
-    //CLD: 2026-10-23T23:00:00+03:00: delete an execution of the draft (asked again in place)
-    $('.exec-panel').on('click', '.btn-exec-delete', (e) => {
-	e.preventDefault();
-	exec.confirmDelete();
-    });
-    $('.exec-panel').on('click', '.btn-exec-delete-yes', (e) => {
-	e.preventDefault();
-	exec.remove();
-    });
-    $('.exec-panel').on('click', '.btn-exec-delete-no', (e) => {
-	e.preventDefault();
-	exec.renderDetail();
-    });
-    //CLD: 2026-10-23T23:30:00+03:00: delete all executions of the draft (asked again in place)
-    $('.exec-panel').on('click', '.btn-exec-delete-all', (e) => {
-	e.preventDefault();
-	exec.confirmDeleteAll();
-    });
-    $('.exec-panel').on('click', '.btn-exec-delete-all-yes', (e) => {
-	e.preventDefault();
-	exec.removeAll();
-    });
-    $('.exec-panel').on('click', '.btn-exec-delete-all-no', (e) => {
-	e.preventDefault();
-	exec.restoreDeleteAll();
-    });
-
+    //CLD: 2026-10-25T20:30:00+02:00: the Run and Executions handlers: in app.WfExecutions
 
     //CLD: 2026-10-19T18:05:00+03:00: autosave: each new state of the canvas (app.workflow.js onCommit: every change, undo / redo too) is saved (WorkflowController::save), one request at a
     //time, the latest state waiting; the server's configs come back on the canvas (applySaved), its problems in the badges; a failed save is tried again (RETRY ms, or a
@@ -496,6 +151,8 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 	error: null,
 	retryTimer: null,
 	waiting: [],
+	//CLD: 2026-10-25T19:30:00+02:00: saves sent since the page was shown
+	sent: 0,
 
 	nodesOf: (snapshot) => {
 	    const nodes = {};
@@ -520,8 +177,10 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 	    }
 	    const snapshot = this.sending = this.queued;
 	    this.queued = null;
+	    //CLD: 2026-10-25T19:30:00+02:00: a save was sent: its answer has the step errors (stepCheck's are not used then)
+	    this.sent++;
 	    this.status();
-	    $.ajax({ url: this.url, method: 'POST', dataType: 'json', data: { nodes: JSON.stringify(this.nodesOf(snapshot)) }, headers: { 'X-Csrf-Token': exec.csrf() } })
+	    $.ajax({ url: this.url, method: 'POST', dataType: 'json', data: { nodes: JSON.stringify(this.nodesOf(snapshot)) }, headers: { 'X-Csrf-Token': csrf() } })
 		.done((resp) => {
 		    this.sending = null;
 		    this.error = null;
@@ -538,7 +197,7 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 		    const first = this.error === null;
 		    this.error = (xhr.responseJSON && xhr.responseJSON.error) || 'The changes could not be saved (' + (xhr.status || 'no connection') + ')';
 		    if (first)
-			exec.toast('error', 'Not saved', this.error + '. Trying again.');
+			toast('error', 'Not saved', this.error + '. Trying again.');
 		    //the latest state is saved next
 		    if (this.queued === null)
 			this.queued = snapshot;
@@ -677,9 +336,11 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 	//CLD: 2026-10-11T13:51:42+03:00: a published version is shown read-only
 	readonly: {$readonly},
 	workflow: JSON.parse($('[name=nodes]').val()),
-	nodeDefs: {$nodeDefs},
+	//CLD: 2026-10-25T20:00:00+02:00: set by nodeDefs.get() (were in the page)
+	nodeDefs: null,
 	//CLD: 2026-10-19T17:10:00+03:00: errors in the steps' settings found by the server
-	stepIssues: {$stepIssuesJs},
+	//CLD: 2026-10-25T19:30:00+02:00: none at first: asked once the designer is shown (stepCheck)
+	stepIssues: [],
 	canvas: {},
 	//CLD: 2026-10-06T23:33:47+03:00: live problem badges in the header (the designer validates while editing)
 	onIssuesChange: (issues) => {
@@ -736,8 +397,61 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 	}
     }
 
-    //CLD: 2026-10-19T22:00:00+03:00: new app.Workflow (was app.workflow.mount): `designer` is this page's (it destroys the one of a previous designer page)
-    designer = new app.Workflow('canvas-wrap', options);
+    //CLD: 2026-10-25T20:00:00+02:00: the step definitions of version {$nodeDefsVersion}: kept in this tab (app.wfNodeDefs: pages loaded by app.pjax share it), asked when missing or
+    //of another version (a deploy, the account's plan changed); the designer is made once they are here
+    const nodeDefs = {
+	url: '{$nodeDefsUrl}',
+	version: '{$nodeDefsVersion}',
+	get(fn) {
+	    const kept = app.wfNodeDefs;
+	    if (kept && kept.version === this.version) {
+		fn(kept.nodeDefs);
+		return;
+	    }
+	    //the designer of the previous page (still current until this one is made) goes now: its listeners would act on a canvas no longer shown
+	    app.Workflow.current?.destroy();
+	    $.ajax({ url: this.url, method: 'GET', dataType: 'json' })
+		.done((resp) => {
+		    app.wfNodeDefs = { version: resp.version, nodeDefs: resp.nodeDefs || {} };
+		    fn(app.wfNodeDefs.nodeDefs);
+		})
+		.fail((xhr) => toast('error', 'Designer', 'The step types could not be loaded (' + (xhr.status || 'no connection') + '): reload the page'));
+	},
+    };
+
+    const mount = (defs) => {
+	//the page was left while they were asked
+	const wrap = document.getElementById('canvas-wrap');
+	if (!wrap || wrap.dataset.page !== '{$pageToken}')
+	    return;
+	options.nodeDefs = defs;
+	//CLD: 2026-10-19T22:00:00+03:00: new app.Workflow (was app.workflow.mount): `designer` is this page's (it destroys the one of a previous designer page)
+	designer = new app.Workflow('canvas-wrap', options);
+
+	//CLD: 2026-10-25T19:30:00+02:00: the errors in the steps' settings, asked once the designer is shown (were computed in the page, delaying it); not used when
+	//the page was left (another designer is the current one) or the steps were changed since (a save answers with its own; a change not committed yet would
+	//take them as about its new config)
+	const stepCheck = {
+	    url: '{$stepIssuesUrl}',
+	    load() {
+		const shown = designer;
+		$.ajax({ url: this.url, method: 'GET', dataType: 'json' })
+		    .done((resp) => {
+			if (app.Workflow.current !== shown || autosave.sent || shown.hasPendingChange())
+			    return;
+			shown.setStepIssues(resp.stepIssues || []);
+		    });
+	    },
+	};
+	stepCheck.load();
+
+	//CLD: 2026-10-19T19:35:00+03:00: the bottom panel open last time (after mount: the problems are known); Executions only where its button is (the draft)
+	if (bottomPanel.get() === 'exec' && document.querySelector('.btn-exec-toggle'))
+	    exec.open();
+	else if (bottomPanel.get() === 'debug')
+	    debug.open();
+    };
+    nodeDefs.get(mount);
     //CLD: 2026-10-19T20:10:00+03:00: the Assistant is mounted by its plugin (designer_panel.php, after this script)
 
     //CLD: 2026-10-24T00:30:00+03:00: the buttons are in the page header, not in #canvas-form (the selector was '#canvas-form .btn-zoom-fit': it found nothing, so Fit did nothing); + zoom in / out
@@ -750,33 +464,9 @@ $stepIssuesJs = \util\JSON::encode($stepIssues);
 	designer.zoomBy(this.classList.contains('btn-zoom-in') ? 1.2 : 1 / 1.2);
     });
 
-    //---------------------debug panel
-    //CLD: 2026-10-11T19:57:28+03:00: toggles the debug panel only, as the Executions button does (was: every .debug-panel, the Executions panel too); the badges open it
-    $('.btn-debug-toggle').on('click', (e) => {
-	e.preventDefault();
-	const el = debug.panel();
-	if (el && el.classList.contains('d-none'))
-	    debug.open();
-	else
-	    debug.close();
-    });
-    $('.btn-debug-close').on('click', (e) => {
-	e.preventDefault();
-	debug.close();
-    });
-    $('#wf-issues').on('click', '.btn-debug-open', (e) => {
-	e.preventDefault();
-	debug.open();
-    });
-    $('.wf-debug-panel').on('click', '.debug-issue[data-node]', function() {
-	designer.showNode(this.dataset.node);
-    });
+    //CLD: 2026-10-25T20:30:00+02:00: the Debug panel's handlers: in app.WfDebug
 
-    //CLD: 2026-10-19T19:35:00+03:00: the bottom panel open last time (after mount: the problems are known); Executions only where its button is (the draft)
-    if (bottomPanel.get() === 'exec' && document.querySelector('.btn-exec-toggle'))
-	exec.open();
-    else if (bottomPanel.get() === 'debug')
-	debug.open();
+    //CLD: 2026-10-25T20:00:00+02:00: the bottom panel open last time: moved into mount()
 
     //CLD: 2026-10-19T18:05:00+03:00: removed the Save button's handler: changes are saved automatically (autosave)
 
@@ -922,7 +612,8 @@ $formOptions = [
     <?= \V::app()->form->create($wf, $formOptions); ?>
 	<textarea name="nodes" class="d-none"><?= \V::app()->html->escape(\util\JSON::encode(array_values(is_array($shown->nodes) ? $shown->nodes : []))) ?></textarea>
 
-	<div id="canvas-wrap" class="position-relative overflow-hidden flex-grow-1">
+	<?php //CLD: 2026-10-25T20:00:00+02:00: + data-page (mount() in the script) ?>
+	<div id="canvas-wrap" class="position-relative overflow-hidden flex-grow-1" data-page="<?= $pageToken ?>">
 	    <div class="position-absolute top-0 start-0 canvas-main">
 		<svg class="position-absolute top-0 start-0 canvas-edges"></svg>
 	    </div>

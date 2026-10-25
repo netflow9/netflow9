@@ -86,6 +86,21 @@ class WorkflowController extends \sys\BaseController {
 	]);
     }
 
+    //CLD: 2026-10-25T19:30:00+02:00: the errors in the steps' settings (Workflow::validateSteps) of the draft, or of ?version=<id>; asked by the designer once it is shown (were
+    //computed in the page: ~0.15-0.5 s on each open of a workflow with Code steps). Answers { stepIssues }. Workflow::read
+    public function step_issues($req, $resp) {
+	$wf = $this->findWorkflow('Workflow::read');
+	$shown = isset($req->query['version']) ? $wf->forVersion($this->findVersion($wf)) : $wf;
+	$resp->sendJSON([ 'stepIssues' => $shown->validateSteps() ]);
+    }
+
+    //CLD: 2026-10-25T20:00:00+02:00: the step definitions of the designer (WfNode::designerDefs), asked once per browser tab and kept there (were in each designer page,
+    //~85 KB and more): { nodeDefs, version }
+    public function node_defs($req, $resp) {
+	$d = \models\WfNode::designerDefs(\V::app()->config('rt.account'));
+	$resp->sendJSON([ 'nodeDefs' => (object)$d['defs'], 'version' => $d['version'] ]);
+    }
+
     public function update_name($req, $resp) {
 	$oid = $this->getOidOrError();
 	$account = \V::app()->config('rt.account');
