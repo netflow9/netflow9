@@ -144,7 +144,7 @@ JS . "}({$js});");
 		    <input type="password" class="form-control form-control-sm mb-2" id="<?= $containerId ?>-password" placeholder="password" autocomplete="new-password">
 		    <button type="button" class="btn btn-sm btn-outline-primary" id="<?= $containerId ?>-try"><i class="bi bi-person-check me-1"></i>Try a sign-in</button>
 		    <div id="<?= $containerId ?>-result"></div>
-		    <p class="small text-muted mt-3 mb-0">Connection: <?= $esc(\plugins\Ldap\util\LdapClient::autoDriver() === 'ext' ? 'PHP\'s ldap extension' : 'built-in client (PHP\'s ldap extension is not loaded)') ?></p>
+		    <p class="small text-muted mt-3 mb-0">Connection: <?= $esc(\util\LdapClient::autoDriver() === 'ext' ? 'PHP\'s ldap extension' : 'built-in client (PHP\'s ldap extension is not loaded)') ?></p>
 		</div>
 	    </div>
 	</div>

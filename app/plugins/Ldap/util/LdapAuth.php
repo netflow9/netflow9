@@ -17,6 +17,9 @@ namespace plugins\Ldap\util;
 
 use plugins\Ldap\models\LdapSettings;
 use plugins\Ldap\models\LdapLink;
+//CLD: 2026-10-25T19:30:00+02:00: the LDAP client is core (util\LdapClient, util\LdapException; were plugins\Ldap\util)
+use util\LdapClient;
+use util\LdapException;
 
 class LdapAuth {
     const GENERIC = 'User or password is incorrect';
