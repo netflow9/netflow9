@@ -496,22 +496,16 @@ class V {
         return false;
     }
 
-    public static function parse_env($filename, $debug = false) {
+    public static function parse_env($filename) {
 	$content = file_get_contents($filename);
-	if (!$content) {
-	    if ($debug)
-		echo "file is empty or unreadable\n";
+	if (!$content)
 	    return;
-	}
 
 	$lines = explode("\n", $content);
 	foreach($lines as $line) {
 	    $line = trim($line);
 	    if (empty($line) || $line[0] == '#')
 		continue;
-
-	    if ($debug)
-		echo "line=`$line`\n";
 
 	    $parts = explode('=', $line, 2);
 	    if (count($parts) != 2)
@@ -520,7 +514,7 @@ class V {
 	    $val = trim($parts[1]);
 
 	    //is val quoted ?
-	    //CLD: 2026-10-19T12:52:41+03:00: a single-quoted value is literal (as in bash: no $VAR substitution, no true/false), so a written password or address may hold `$`;
+	    //a single-quoted value is literal (as in bash: no $VAR substitution, no true/false), so a written password or address may hold `$`;
 	    //an empty value no longer reads $val[0] of an empty string
 	    $vlen = strlen($val);
 	    $literal = $vlen >= 2 && $val[0] === '\'' && $val[$vlen-1] === '\'';
@@ -528,18 +522,10 @@ class V {
 		$val = substr($val, 1, $vlen-2);
 
 	    if ($literal) {
-		if ($debug)
-		    echo "    var::val=`$var::$val`\n";
 		define($var, $val);
 		continue;
 	    }
 
-
-	    if ($debug)
-		echo "    var::val=`$var::$val`\n";
-
-
-	    //SC: 2021-09-26: identify variables and make substitution
 	    if(preg_match_all('/(\$)([a-zA-Z_][a-zA-Z0-9_]*)/', $val, $m)) {
 		//m[0] holds matched string(s)
 		//m[2] holds constant name(s)
@@ -555,10 +541,6 @@ class V {
 		    $val = false;
 		    break;
 	    }
-
-	    if ($debug)
-		echo "    var::val=`$var::$val`\n";
-
 	    define($var, $val);
 	}
     }

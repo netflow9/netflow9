@@ -2,15 +2,16 @@
 
 namespace sys\http;
 
-// Response
-// This is a simple abstraction over top an HTTP response. This provides methods to set the HTTP status, the HTTP headers, and the HTTP body.
-
+/*
+    This is a simple abstraction over top an HTTP response.
+    This provides methods to set the HTTP status, the HTTP headers, and the HTTP body.
+*/
 class Response extends \sys\BaseObject {
     public $body = '';
     public $status = 200;
     public $headers = [];
 
-    //CLD: 2026-10-21T18:45:00+03:00: browser security headers of every response (SOC2.md gap 14; nginx adds HSTS, nosniff and Referrer-Policy):
+    //browser security headers of every response (SOC2.md gap 14; nginx adds HSTS, nosniff and Referrer-Policy):
     //	- frame-ancestors / X-Frame-Options: pages are framed by this site only (clickjacking);
     //	- scripts, styles, images, fonts, connections, workers and frames from this site only (data: / blob: where the viewers and the QR codes need them); no plugins
     //	  (object-src), no <base> elsewhere, forms post here only;
@@ -100,22 +101,19 @@ class Response extends \sys\BaseObject {
     	echo $this->body;
     }
 
-    //SC: 2026-10-18: added
-    //CLD: 2026-10-18T12:49:28+03:00: + $flags (added to util\JSON::FLAGS, e.g. JSON_UNESCAPED_SLASHES)
     public function sendJSON($data, $terminate = true, $status = 200, $flags = 0) {
 	$this->status = $status;
 	$this->headers['Content-Type'] = 'application/json';
 	$this->headers['Cache-Control'] = 'no-store';
 	$this->body = \util\JSON::encode($data, $flags);
 
-	//CLD: 2026-10-18T12:49:28+03:00: a value that cannot be encoded (NAN / INF, too deep) gave an empty body with the given status: a 500 with { error } instead
+	//a value that cannot be encoded (NAN / INF, too deep): a 500 with { error }
 	if ($this->body === false) {
 	    \V::app()->log->error('Response::sendJSON: ' . json_last_error_msg());
 	    $this->status = 500;
 	    $this->body = \util\JSON::encode([ 'error' => 'Response could not be encoded' ]);
 	}
 
-	//CLD: 2026-10-18T18:34:20+03:00: output buffers are no longer used by the framework (was: ob_clean() before ending)
 	if($terminate)
 	    \V::app()->end();
     }

@@ -95,7 +95,6 @@ class DataProvider implements \Iterator {
     	return $o;
     }
 
-    //SC: 2019-10-20
     public function toArray() {
 	if (empty($this->cursor))
 	    $this->__init_cursor();
