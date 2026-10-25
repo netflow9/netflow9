@@ -22,6 +22,8 @@ class Field_icon extends Field {
 	if (empty($i[1]))
 	    $i[1] = 'black';
 
+	//CLD: 2026-10-25T21:30:00+02:00: the stored icon::color escaped in the class attribute (was as is: a value with a quote left the attribute)
+	$i = \V::app()->html->escape($i);
 	return "<i class='text-{$i[1]} bi bi-{$i[0]}'></i>";
     }
 

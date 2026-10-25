@@ -136,15 +136,16 @@ class Field_select extends Field {
 
 	$choices = $this->choicesToArray();
 
+	//CLD: 2026-10-25T21:30:00+02:00: escaped (display() is HTML, as Field_text's; the label, or a value not in the choices, was as is)
 	if (!$this->multiple)
-	    return $choices[$value] ?? $value;
+	    return \V::app()->html->escape($choices[$value] ?? $value);
 
 	if (!is_array($value))
 	    $value = [ $value ];
 
 	$output = [];
 	foreach($value as $__value)
-	    $output[] = $choices[(string)$__value] ?? $__value;
+	    $output[] = \V::app()->html->escape($choices[(string)$__value] ?? $__value);
 
 	return implode(',', $output);
     }

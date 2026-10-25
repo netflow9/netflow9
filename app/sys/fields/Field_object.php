@@ -171,7 +171,8 @@ class Field_object extends Field {
 	    if (!empty($oid)) {
 		if (!empty($o = \V::app()->om->findbyId($objectName, $oid))) {
 		    //CLD: 2026-10-06T09:12:58+03:00: cast to string (objectLabel removed)
-		    $out[] = (string)$o;
+		    //CLD: 2026-10-25T21:30:00+02:00: escaped (display() is HTML, as Field_text's; a name was as is: e.g. a workflow's in the audit log entry)
+		    $out[] = \V::app()->html->escape((string)$o);
 		} else {
 		    $out[] = '???';
 		}
