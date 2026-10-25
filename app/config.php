@@ -139,9 +139,9 @@ function get_config($mode = 'web') {
 	    'chillerlan\QRCode'		=> BASE . '/app/pkgs/php-qrcode/src/',
 
 	    //ReactPHP and friends
-	    'React\EventLoop'		=> BASE . '/app/pkgs/ReactPHP/event-loop-1.6.0/src',
-	    'React\ChildProcess'	=> BASE . '/app/pkgs/ReactPHP/child-process-0.6.7/src',
-	    'React\Stream'		=> BASE . '/app/pkgs/ReactPHP/stream-1.4.0/src',
+	    'React\EventLoop'		=> BASE . '/app/pkgs/reactphp-event-loop/src',
+	    'React\ChildProcess'	=> BASE . '/app/pkgs/reactphp-child-process/src',
+	    'React\Stream'		=> BASE . '/app/pkgs/reactphp-stream/src',
 	    'Evenement'			=> BASE . '/app/pkgs/evenement/src',
 
 	    //php asn1 library
@@ -151,6 +151,8 @@ function get_config($mode = 'web') {
 
         ],
 	'class_map' => [
+	    //CLD: 2026-10-25T17:10:00+02:00: php-qrcode's settings container (QROptions extends it): util\SettingsContainer, in place of chillerlan/php-settings-container
+	    'chillerlan\Settings\SettingsContainerAbstract' => BASE . '/app/util/SettingsContainer.php',
 	],
 	'requires' => [
 	],
