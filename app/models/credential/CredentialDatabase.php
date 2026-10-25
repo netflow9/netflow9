@@ -1,18 +1,20 @@
 <?php
 
+//CLD: 2026-10-25T20:00:00+02:00: moved from the Database plugin to the core (the Database step and its credentials are core, for every account: no plan feature): models\credential (was plugins\Database\models); CREDENTIALS: the types (were plugins\Database\Plugin::CREDENTIALS)
+
 /*
     CLD: 2026-10-25T17:40:00+02:00: new: what the database credentials share (one per database type: CredentialMysql, CredentialPostgres, CredentialMssql, CredentialOracle,
     CredentialFirebird, CredentialOdbc; group Database, provide `database`): the connection through PDO, the connection test, the server's fields.
-    A type is offered (available()) only when this PHP has its PDO driver (util\Db::TYPES); without it the credential stays, its use says which extension is missing.
+    A type is offered (available()) only when this PHP has its PDO driver (util\SqlDb::TYPES); without it the credential stays, its use says which extension is missing.
     The values of the fields become the DSN: they cannot hold ; { } or line breaks (they would add DSN settings)
 //  $cred->connect($timeout)        a PDO (errors as exceptions, rows as arrays); $timeout: seconds to connect and, where the database has one, of each statement
-//  $cred->driver()                 the PDO driver used (util\Db::driver)
+//  $cred->driver()                 the PDO driver used (util\SqlDb::driver)
 //  $cred->test()                   connects and runs TEST_SQL
 */
 
-namespace plugins\Database\models;
+namespace models\credential;
 
-use plugins\Database\util\Db;
+use util\SqlDb;
 
 abstract class CredentialDatabase extends \models\Credential {
     public static $icon = 'bi-database';
@@ -20,7 +22,10 @@ abstract class CredentialDatabase extends \models\Credential {
     public static $provides = [ 'database' ];
     public static $testable = true;
 
-    //the key of util\Db::TYPES
+    //the database credentials: their object names (data\SysObjects)
+    const CREDENTIALS = [ 'CredentialMysql', 'CredentialPostgres', 'CredentialMssql', 'CredentialOracle', 'CredentialFirebird', 'CredentialOdbc' ];
+
+    //the key of util\SqlDb::TYPES
     const TYPE = '';
     //the port when none is given (null: the driver's own)
     const PORT = null;
@@ -31,7 +36,7 @@ abstract class CredentialDatabase extends \models\Credential {
     const HOST = '^[A-Za-z0-9.\-:\[\]]+$';
 
     public static function available() {
-	return Db::driver(static::TYPE) !== null;
+	return SqlDb::driver(static::TYPE) !== null;
     }
 
     //[ dsn, PDO options ] for $driver
@@ -42,13 +47,13 @@ abstract class CredentialDatabase extends \models\Credential {
     }
 
     public function driver() {
-	return Db::driver(static::TYPE);
+	return SqlDb::driver(static::TYPE);
     }
 
     public function connect($timeout = 30) {
 	$driver = $this->driver();
 	if ($driver === null)
-	    throw new \RuntimeException(Db::missing(static::TYPE));
+	    throw new \RuntimeException(SqlDb::missing(static::TYPE));
 	[ $dsn, $options ] = $this->dsn($driver, max(1, (int)$timeout));
 	$pdo = new \PDO($dsn, (string)$this->username !== '' ? (string)$this->username : null, (string)$this->password !== '' ? (string)$this->password : null, $options + [
 	    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,

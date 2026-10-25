@@ -1,20 +1,22 @@
 <?php
 
+//CLD: 2026-10-25T20:00:00+02:00: moved from the Database plugin to the core (the Database step and its credentials are core, for every account: no plan feature): util\SqlDb (was plugins\Database\util\Db)
+
 /*
-    CLD: 2026-10-25T17:40:00+02:00: new: what the Database plugin's credentials and step share: the database types and their PDO drivers, the SQL of a step ({{ }} values sent
+    CLD: 2026-10-25T17:40:00+02:00: new: what the database credentials and the Database step share: the database types and their PDO drivers, the SQL of a step ({{ }} values sent
     as parameters), the values bound and read back
-//  Db::TYPES                       type => [ label, drivers: [ PDO driver => its PHP extension ] (the first loaded one is used) ]
-//  Db::driver($type)               the PDO driver of $type this PHP has, or null
-//  Db::missing($type)              the message when it has none ("needs the PHP extension pdo_pgsql")
-//  Db::sql($template, $vars)       [ SQL with ? in place of each {{ }} (or '{{ }}'), the values of the {{ }} in order ]
-//  Db::bind($stmt, $values, $driver)   the values bound to the ? (null, integers, booleans, text; lists / objects as JSON)
-//  Db::plain($value)               a value read from the database, as a workflow variable (large objects read, binary as base64)
-//  Db::isIdentifier($name, $parts) a table (schema.table: $parts 3) or column name: letters, digits, _ $ #, not starting with a digit; used in SQL as it is (not quoted)
+//  SqlDb::TYPES                       type => [ label, drivers: [ PDO driver => its PHP extension ] (the first loaded one is used) ]
+//  SqlDb::driver($type)               the PDO driver of $type this PHP has, or null
+//  SqlDb::missing($type)              the message when it has none ("needs the PHP extension pdo_pgsql")
+//  SqlDb::sql($template, $vars)       [ SQL with ? in place of each {{ }} (or '{{ }}'), the values of the {{ }} in order ]
+//  SqlDb::bind($stmt, $values, $driver)   the values bound to the ? (null, integers, booleans, text; lists / objects as JSON)
+//  SqlDb::plain($value)               a value read from the database, as a workflow variable (large objects read, binary as base64)
+//  SqlDb::isIdentifier($name, $parts) a table (schema.table: $parts 3) or column name: letters, digits, _ $ #, not starting with a digit; used in SQL as it is (not quoted)
 */
 
-namespace plugins\Database\util;
+namespace util;
 
-class Db {
+class SqlDb {
 
     const TYPES = [
 	'mysql' => [ 'label' => 'MySQL / MariaDB', 'drivers' => [ 'mysql' => 'pdo_mysql' ] ],
