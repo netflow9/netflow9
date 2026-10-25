@@ -46,9 +46,23 @@ class Expression {
     //J's global names (built-ins) and their members, computed once per process
     private static $globals = null;
 
+    //CLD: 2026-10-25T21:00:00+02:00: the parse results kept in the process (parse()): syntax + "\0" + text => \sys\J\ParseResult (immutable: shared by its users); at most
+    //PARSED_MAX, the oldest dropped first. A request checks each text once (validateSteps parsed a Code step's code 2-3 times), a step in a loop parses its texts once per run
+    //(were parsed at each item: ~60% of render()'s time), a daemon worker keeps them between its jobs
+    const PARSED_MAX = 500;
+    private static $parsed = [];
+
     //CLD: 2026-10-13T12:17:47+03:00: $text parsed with the J parse options of $syntax (a key of SYNTAX; else text)
+    //CLD: 2026-10-25T21:00:00+02:00: kept in the process ($parsed)
     public static function parse($text, $syntax = 'text') {
-	return \sys\J\Parser::parse((string)$text, self::SYNTAX[$syntax] ?? self::SYNTAX['text']);
+	$syntax = isset(self::SYNTAX[$syntax]) ? $syntax : 'text';
+	$key = $syntax . "\0" . (string)$text;
+	if (isset(self::$parsed[$key]))
+	    return self::$parsed[$key];
+
+	if (count(self::$parsed) >= self::PARSED_MAX)
+	    unset(self::$parsed[array_key_first(self::$parsed)]);
+	return self::$parsed[$key] = \sys\J\Parser::parse((string)$text, self::SYNTAX[$syntax]);
     }
 
     //limits of one expression (J interpreter)
