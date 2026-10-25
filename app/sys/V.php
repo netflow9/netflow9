@@ -49,20 +49,7 @@ class V {
 		//CLD: 2026-10-05T20:06:50+03:00: no built-in fallback secret; Security refuses to encrypt/decrypt without one
 		'secret' => $config['app.security.secret'] ?? null,
 	    ],
-	    'mongo' => [
-		'class' => '\sys\Mongo',
-		'preload' => true,
-		'autoload.requires' => [ BASE . '/app/pkgs/mongo-php-library-2.3.0/src/functions.php', ],
-		'autoload.namespaces' => [
-		    'MongoDB' => BASE . '/app/pkgs/mongo-php-library-2.3.0/src',
-		],
-		//CLD: 2026-10-19T12:52:41+03:00: null when app.env is missing (the initial setup: SetupController connects with the address it is given)
-		'uri' => defined('MONGO_URI') ? MONGO_URI : null,
-		'database' => defined('MONGO_DB') ? MONGO_DB : null,
-
-		//see: https://docs.mongodb.com/manual/reference/connection-string/#connections-connection-options
-		'uriOptions' => [],
-	    ],
+	    //CLD: 2026-10-25T09:20:00+02:00: the mongo component moved to the app's config (app/config.php); the framework runs without a database (e.g. docs-site)
 	    'session' => [
 		'preload' => true,
 		'class' => '\sys\Session',
@@ -76,12 +63,7 @@ class V {
 	    ],
 	];
 
-	//CLD: 2026-10-19T12:52:41+03:00: the initial setup (no app.env, see get_setup_config): no database connection at start (the database is the one SetupController
-	//is given), and a plain PHP session (sys\SetupSession) instead of the app's, which is kept in the database
-	if (!empty($config['app.setup'])) {
-	    unset($_components['mongo']['preload']);
-	    $_components['session'] = [ 'preload' => true, 'class' => '\sys\SetupSession' ];
-	}
+	//CLD: 2026-10-25T09:20:00+02:00: the initial setup's session (sys\SessionNoDB) is set by get_setup_config (app/config.php; was here)
 
 	$config['components'] = array_merge($_components, $config['components']);
 	$this->_config = $config;
