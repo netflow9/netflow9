@@ -10,3 +10,16 @@
 	path = app/pkgs/php-asn1
 	url = https://github.com/genkgo/php-asn1.git
 	branch = master
+[submodule "app/pkgs/php-qrcode"]
+	path = app/pkgs/php-qrcode
+	url = https://github.com/chillerlan/php-qrcode.git
+	branch = main
+[submodule "app/pkgs/reactphp-event-loop"]
+	path = app/pkgs/reactphp-event-loop
+	url = https://github.com/reactphp/event-loop.git
+[submodule "app/pkgs/reactphp-stream"]
+	path = app/pkgs/reactphp-stream
+	url = https://github.com/reactphp/stream.git
+[submodule "app/pkgs/reactphp-child-process"]
+	path = app/pkgs/reactphp-child-process
+	url = https://github.com/reactphp/child-process.git
