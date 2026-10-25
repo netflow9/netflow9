@@ -39,6 +39,8 @@
 	<?php //CLD: 2026-10-24T11:51:46+03:00: + its modification time (a new build is loaded at once) ?>
 	<link rel="stylesheet" href="/css/theme.css?<?= @filemtime(BASE . '/public_html/css/theme.css') ?>">
 	<link rel="stylesheet" href="/css/bootstrap-icons.css">
+	<?php //CLD: 2026-10-25T10:35:00+02:00: Summernote (rich text editor; built by frontend/standalone-packages/Summernote/netflow9_build.sh) ?>
+	<link rel="stylesheet" href="/js/vendor/summernote-0.9.1/summernote-bs5.min.css">
 
 	<?= \V::app()->cs->renderPageCssFiles(); ?>
 	<?= \V::app()->cs->renderPageCss(); ?>
@@ -51,6 +53,10 @@
 	<script src="/js/vendor/jquery-4.0.0/jquery-4.0.0.min.js"></script>
 	<?php //CLD: 2026-10-09T12:21:48+03:00: Bootstrap from js/vendor (like popper and jquery); /js/bootstrap-5.3.8.min.js was moved there and returned 404, so dropdowns etc. did not work ?>
 	<script src="/js/vendor/bootstrap-5.3.8/bootstrap-5.3.8.min.js"></script>
+	<?php //CLD: 2026-10-25T10:35:00+02:00: Summernote 0.9.1 -> jQuery.fn.summernote (after jQuery and Bootstrap); it asks for jQuery 3 and calls jQuery.now, removed in jQuery 4: added back
+	//(the only one it uses; its build script warns when an upgrade uses others). Editors start after DOMContentLoaded (Bootstrap adds its jQuery plugins then: Summernote's tooltips, dropdowns) ?>
+	<script>if (window.jQuery && !jQuery.now) jQuery.now = Date.now;</script>
+	<script src="/js/vendor/summernote-0.9.1/summernote-bs5.min.js"></script>
 	<?php //CLD: 2026-10-13T16:48:57+03:00: the previewers' libraries (were added by app.xlsxviewer.js / app.docxviewer.js when first used): SheetJS -> window.XLSX; JSZip -> window.JSZip, before docx-preview -> window.docx (it looks for JSZip) ?>
 	<script src="/js/vendor/sheetjs/xlsx.full.min.js"></script>
 	<script src="/js/vendor/jszip/jszip.min.js"></script>
