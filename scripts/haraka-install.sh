@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#CLD: 2026-10-24T10:55:00+03:00: new: installs Haraka (inbound mail: the Email (inbound) trigger, plugins\InboundMail) into <app>/haraka (app.env HARAKA_DIR, when set), as
+#installs Haraka (inbound mail: the Email (inbound) trigger, plugins\InboundMail) into <app>/haraka (app.env HARAKA_DIR, when set), as
 #scripts/haraka.sh and the InboundMail plugin expect it:
 #  node_modules/haraka      Haraka itself, downloaded from GitHub (github.com/haraka/Haraka: a release, the latest by default), its dependencies by npm
 #  node_modules/mongodb     the MongoDB driver of NetFlow9's plugin (3.x: plugins/nfn.js uses its API)

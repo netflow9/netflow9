@@ -10,8 +10,7 @@ class Field_password extends Field {
 	'set' => [],
     ];
 
-    //SC: 2026-01-09: for password, the cast is kinda shitty: if no value provided, just use the old value
-    //this is because in most forms, password is returned empty
+    //if no value provided, just use the old value
     public function cast($value) {
 	if (empty($value) || !is_string($value))
 	    return $this->binding->data($this->key);

@@ -5,17 +5,7 @@ namespace sys;
 class Hooks {
 
     //hooks
-    protected $hooks = [
-/*
-        'before' => 		[ [] ],
-        'before.router' => 	[ [] ],
-        'before.dispatch' => 	[ [] ],
-        'after.dispatch' => 	[ [] ],
-        'after.router' =>	[ [] ],
-        'after' =>		[ [] ],
-*/
-    ];
-
+    protected $hooks = [];
 
     /**
      * Assign hook
@@ -38,9 +28,6 @@ class Hooks {
      * @param  mixed    $hookArgs   (Optional) Argument for hooked functions
      */
     public function applyHook($name, $hookArgs = []) {
-	if(!defined('DEBUG_HOOKS'))
-	    define('DEBUG_HOOKS', false);
-
         if (empty($this->hooks[$name]))
     	    return;
 
@@ -52,20 +39,6 @@ class Hooks {
             if (empty($priority))
         	continue;
             foreach ($priority as $callable) {
-        	if (DEBUG_HOOKS) {
-        	    switch(true) {
-        		case is_array($callable):
-        		    $callable_name = (is_string($callable[0]) ? $callable[0] : get_class($callable[0]) );
-            		    \V::app()->log->debug("$name, callable=" . $callable_name . "::" . $callable[1]);
-            		    break;
-        		case is_object($callable):
-            		    \V::app()->log->debug("$name, callable_class=" . get_class($callable));
-            		    break;
-			default:
-            		    \V::app()->log->debug("$name, unknown callable");
-            		    break;
-        	    }
-            	}
                 //call_user_func_array($callable, $hookArgs);
 		switch (count($hookArgs)) {
 		    case 0:
@@ -83,10 +56,6 @@ class Hooks {
 		    default:
 			$result = call_user_func_array($callable, $hookArgs);
 		}
-
-		//SC: 2024-05-17: added
-		if (!empty($result['skip-all']))
-		    break 2;
             }
         }
     }

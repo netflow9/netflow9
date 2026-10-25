@@ -128,7 +128,6 @@ class BaseHtml extends \sys\BaseObject {
      * @filter This method can be filtered.
      */
     public function script($path, array $options = array()) {
-	//SC: 2025-04-28: added default
 	$defaults = [ 'type' => 'text/javascript' ];
 	$options += $defaults;
 
