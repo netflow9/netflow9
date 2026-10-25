@@ -326,6 +326,11 @@ class WfNode extends \sys\NestedModel {
 	return [];
     }
 
+    //CLD: 2026-10-25T17:40:00+02:00: whether this PHP can run the step (e.g. Database: some PDO driver of its types is loaded); not available, it is not in the designer's palette
+    public static function available() {
+	return true;
+    }
+
     //utilities
     //CLD: 2026-10-18T11:40:00+03:00: the step classes: [ fqname => object name ] (registry entries with `wfNode`), built once per process; for code that only needs the class of a
     //step (WfExecution builds its steps from it; was getAll(), which also builds every step's config form and its choices: ~30-100 ms, per execution loaded)

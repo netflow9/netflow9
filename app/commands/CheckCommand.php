@@ -43,7 +43,8 @@ class CheckCommand extends \sys\BaseController {
     //feature, the System AI allowance of the tier, the usage)
     //CLD: 2026-10-24T10:28:12+03:00: + Google / Microsoft by tier
     //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'steps' ];
+    //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -4339,6 +4340,169 @@ class CheckCommand extends \sys\BaseController {
 	} finally {
 	    foreach($creds as $c)
 		$c->delete();
+	}
+    }
+
+    //CLD: 2026-10-25T17:40:00+02:00: the Database plugin (skipped without it): the types offered by driver, the DSNs of each type and the values refused in them, the setup's checks,
+    //the SQL's parameters, the step's operations on an SQLite database in memory (the same PDO code as the servers'), a run against a closed port (the `error` output)
+    private function suiteDatabase() {
+	if (!in_array('Database', (array)\V::app()->config('modules'), true)) {
+	    echo "  skipped: the Database plugin is not enabled\n";
+	    return;
+	}
+	$om = \V::app()->om;
+	$D = \plugins\Database\util\Db::class;
+	$S = \plugins\Database\models\NodeAppDatabase::class;
+	$loaded = \PDO::getAvailableDrivers();
+
+	//offered when this PHP has the driver
+	$expected = $actual = [];
+	foreach(\plugins\Database\Plugin::CREDENTIALS as $name) {
+	    $class = $om->getObjectClass($name);
+	    $expected[$name] = (bool)array_intersect(array_keys($D::TYPES[$class::TYPE]['drivers']), $loaded);
+	    $actual[$name] = $class::available();
+	}
+	$this->check('Database: the types offered are those whose PDO driver is loaded; the step when one is; all in the Database group', [ $expected, in_array(true, $expected, true), [ 'Database' ] ],
+	    [ $actual, $S::available(), array_values(array_unique(array_map(fn($n) => $om->getObjectClass($n)::$group, \plugins\Database\Plugin::CREDENTIALS))) ]);
+	$this->check('Database: the step type, its `error` output, its result variables', [ true, [ 'success', 'error' ], [ 'rows', 'count', 'columns', 'truncated', 'error' ], [ 'affected', 'lastInsertId', 'error' ], [ 'affected', 'error' ] ],
+	    [ isset(\models\WfNode::getAll()['app::database']), $S::outLabelsFor([ 'onError' => 'output' ]), array_keys($S::outputVariables([ 'variable' => 'db' ])['db']['fields']),
+		array_keys($S::outputVariables([ 'operation' => 'execute' ])['db']['fields']), array_keys($S::outputVariables([ 'operation' => 'insert', 'variable' => 'x' ])['x']['fields']) ]);
+
+	//the DSNs (no connection)
+	$cred = fn($name, $data) => $om->create($name, $data + [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: ' . $name ]);
+	$dsn = fn($c, $driver) => (new \ReflectionMethod($c, 'dsn'))->invoke($c, $driver, 7)[0];
+	$this->check('Database: the DSNs (default ports, a named SQL Server instance, both SQL Server drivers)', [
+	    'mysql:host=db.example.com;port=3306;charset=utf8mb4;dbname=sales',
+	    'pgsql:host=pg;port=6432;dbname=sales;sslmode=require;connect_timeout=7',
+	    'sqlsrv:Server=sql\\SQLEXPRESS;Database=Sales;Encrypt=yes;TrustServerCertificate=no;LoginTimeout=7',
+	    'sqlsrv:Server=sql,1500;Encrypt=no;TrustServerCertificate=yes;LoginTimeout=7',
+	    'dblib:host=sql:1433;dbname=Sales;charset=UTF-8',
+	    'oci:dbname=//ora:1521/XEPDB1;charset=AL32UTF8',
+	    'firebird:dbname=fb/3050:/data/sales.fdb;charset=UTF8',
+	    'odbc:Sales DB',
+	], [
+	    $dsn($cred('CredentialMysql', [ 'host' => 'db.example.com', 'database' => 'sales' ]), 'mysql'),
+	    $dsn($cred('CredentialPostgres', [ 'host' => 'pg', 'port' => 6432, 'database' => 'sales', 'sslmode' => 'require' ]), 'pgsql'),
+	    $dsn($cred('CredentialMssql', [ 'host' => 'sql\\SQLEXPRESS', 'database' => 'Sales', 'encrypt' => true ]), 'sqlsrv'),
+	    $dsn($cred('CredentialMssql', [ 'host' => 'sql', 'port' => 1500, 'encrypt' => false, 'trustCertificate' => true ]), 'sqlsrv'),
+	    $dsn($cred('CredentialMssql', [ 'host' => 'sql', 'database' => 'Sales' ]), 'dblib'),
+	    $dsn($cred('CredentialOracle', [ 'host' => 'ora', 'database' => 'XEPDB1' ]), 'oci'),
+	    $dsn($cred('CredentialFirebird', [ 'host' => 'fb', 'database' => '/data/sales.fdb' ]), 'firebird'),
+	    $dsn($cred('CredentialOdbc', [ 'dataSource' => 'Sales DB' ]), 'odbc'),
+	]);
+	$mysqlOptions = (new \ReflectionMethod(\plugins\Database\models\CredentialMysql::class, 'dsn'))->invoke($cred('CredentialMysql', [ 'host' => 'h', 'tls' => 'encrypt' ]), 'mysql', 7)[1];
+	$attr = [ \plugins\Database\models\CredentialMysql::class, 'attr' ];
+	$this->check('Database: MySQL: LOAD DATA LOCAL off, native types, TLS without checking the certificate', [ false, false, false, true ],
+	    [ $mysqlOptions[$attr('LOCAL_INFILE')] ?? null, $mysqlOptions[\PDO::ATTR_EMULATE_PREPARES] ?? null, $mysqlOptions[$attr('SSL_VERIFY_SERVER_CERT')] ?? null,
+		\plugins\Database\models\CredentialMysql::caFile() === null || isset($mysqlOptions[$attr('SSL_CA')]) ]);
+	$errorsOf = function($name, $data) use ($cred) {
+	    $c = $cred($name, $data);
+	    $c->validates();
+	    return array_keys((array)$c->errors());
+	};
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\RuntimeException $e) {
+		return $e->getMessage();
+	    }
+	};
+	$this->check('Database: refused in the DSN: a ; in the server or the database, a connection string as ODBC data source (in the form, and when stored before)', [
+	    [ 'host' ], [ 'database' ], [ 'dataSource' ], [], [], true, true ], [
+	    $errorsOf('CredentialMysql', [ 'host' => 'h;unix_socket=/tmp/x', 'username' => 'u' ]),
+	    $errorsOf('CredentialPostgres', [ 'host' => 'h', 'database' => "x;sslmode=disable", 'username' => 'u' ]),
+	    $errorsOf('CredentialOdbc', [ 'dataSource' => 'Driver={SQLite3};Database=/home/app/app.env' ]),
+	    $errorsOf('CredentialMssql', [ 'host' => 'sql\\SQLEXPRESS', 'username' => 'u' ]),
+	    $errorsOf('CredentialOdbc', [ 'dataSource' => 'Sales DB' ]),
+	    str_contains($thrown(fn() => $dsn($cred('CredentialOdbc', [ 'dataSource' => 'Driver={x}' ]), 'odbc')), 'not a connection string'),
+	    str_contains($thrown(fn() => $dsn($cred('CredentialFirebird', [ 'host' => 'fb', 'database' => 'a;b' ]), 'firebird')), 'cannot hold'),
+	]);
+	$missing = array_values(array_filter(\plugins\Database\Plugin::CREDENTIALS, fn($n) => !$om->getObjectClass($n)::available()));
+	if ($missing)
+	    $this->check('Database: a type without its driver says which extension is missing', true,
+		str_contains($thrown(fn() => $cred($missing[0], [ 'host' => 'h', 'database' => 'd', 'dataSource' => 'd' ])->connect(3)), 'needs the PHP extension'));
+
+	//the setup's checks: both PHPs, the web one's only when the console one cannot be run
+	$checks = array_column(\util\Setup::databaseChecks([ 'pdo_mysql' => '8', 'pdo_dblib' => '8' ], [ 'pdo_mysql' => '8', 'pdo_pgsql' => '8' ]), null, 'name');
+	$webOnly = array_column(\util\Setup::databaseChecks([ 'pdo_mysql' => '8' ], null), null, 'name');
+	$this->check('Database: setup checks (in both PHPs, the console only, the web only, none; the console PHP not checked), recommended', [
+	    [ true, 'pdo_mysql' ], [ false, 'pdo_pgsql, console PHP only' ], [ false, 'pdo_dblib, not in the console PHP' ], [ false, 'not installed: pdo_oci' ], [ true, 'pdo_mysql (console PHP not checked)' ], [ false ] ], [
+	    [ $checks['Database: MySQL / MariaDB']['ok'], $checks['Database: MySQL / MariaDB']['value'] ], [ $checks['Database: PostgreSQL']['ok'], $checks['Database: PostgreSQL']['value'] ],
+	    [ $checks['Database: Microsoft SQL Server']['ok'], $checks['Database: Microsoft SQL Server']['value'] ], [ $checks['Database: Oracle']['ok'], $checks['Database: Oracle']['value'] ],
+	    [ $webOnly['Database: MySQL / MariaDB']['ok'], $webOnly['Database: MySQL / MariaDB']['value'] ], array_values(array_unique(array_column($checks, 'required'))) ]);
+
+	//the SQL: {{ }} as parameters (in quotes too), never in the SQL text
+	$vars = [ 'n' => 5, 'name' => "O'Brien'; DROP TABLE t; --" ];
+	$this->check('Database: {{ }} are parameters: ? in the SQL, their values apart (a quoted one too); other text kept', [
+	    [ "SELECT * FROM t WHERE a = ? AND b = ? AND c LIKE '%x%'", [ 5, "O'Brien'; DROP TABLE t; --" ] ], true, false ],
+	    [ $D::sql("  SELECT * FROM t WHERE a = {{ n }} AND b = '{{ name }}' AND c LIKE '%x%' ", $vars), $D::isIdentifier('sales.dbo.orders', 3), $D::isIdentifier('orders; DROP', 3) ]);
+
+	if (!in_array('sqlite', $loaded, true)) {
+	    echo "  skipped: the step's operations (no pdo_sqlite to run them on)\n";
+	} else {
+	    $pdo = new \PDO('sqlite::memory:', null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC, \PDO::ATTR_STRINGIFY_FETCHES => false ]);
+	    $run = fn($op, $cfg, $vars = []) => $S::run($op, $pdo, 'sqlite', $cfg, $vars);
+	    $try = function($op, $cfg, $vars = []) use ($run) {
+		try {
+		    return $run($op, $cfg, $vars)[0];
+		} catch (\RuntimeException $e) {
+		    return 'error: ' . $e->getMessage();
+		}
+	    };
+	    $count = fn() => $run('query', [ 'sql' => 'SELECT COUNT(*) AS n FROM people' ])[0]['rows'][0]['n'];
+	    $created = $run('execute', [ 'sql' => 'CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER, active INTEGER, tags TEXT)' ])[0];
+	    $inserted = $run('execute', [ 'sql' => "INSERT INTO people (name, age, active, tags) VALUES ('{{ name }}', {{ age }}, {{ yes }}, {{ tags }})" ],
+		[ 'name' => "Ana'; DROP TABLE people; --", 'age' => 40, 'yes' => true, 'tags' => [ 'x', 'y' ] ]);
+	    $this->check('Database: execute (a table made, a row inserted with parameters: a text with SQL in it, a number, a boolean, a list as JSON)', [
+		0, [ [ 'affected' => 1, 'lastInsertId' => '1' ], '1 row changed, last id 1' ] ], [ $created['affected'], $inserted ]);
+	    $many = $run('insert', [ 'table' => 'people', 'rows' => '{{ list }}' ], [ 'list' => [ [ 'name' => 'B', 'age' => 30 ], [ 'name' => 'C', 'age' => null, 'active' => false ], [ 'name' => 'D' ] ] ]);
+	    $this->check('Database: insert (rows with different columns, null, false)', [ [ 'affected' => 3 ], '3 rows inserted into people', 4 ], [ $many[0], $many[1], $count() ]);
+	    $this->check('Database: insert refused, nothing inserted: a column name with SQL, a table name with SQL, a row failing midway (all rolled back), not a list; none: 0 rows', [
+		true, true, true, true, [ 'affected' => 0 ], 4 ], [
+		str_contains($try('insert', [ 'table' => 'people', 'rows' => '{{ [ { "name; DROP TABLE people": 1 } ] }}' ]), 'not a column name'),
+		str_contains($try('insert', [ 'table' => 'people; DROP TABLE people', 'rows' => '{{ [ { name: "x" } ] }}' ]), 'not a table name'),
+		str_contains($try('insert', [ 'table' => 'people', 'rows' => '{{ [ { name: "E" }, { name: null }, { name: "F" } ] }}' ]), 'NOT NULL'),
+		str_contains($try('insert', [ 'table' => 'people', 'rows' => '{{ { name: "x" } }}' ]), 'a list of objects'),
+		$try('insert', [ 'table' => 'people', 'rows' => '{{ [] }}' ]), $count() ]);
+	    $q = $run('query', [ 'sql' => 'SELECT id, name, age, active, tags FROM people WHERE age >= {{ min }} OR age IS NULL ORDER BY id', 'maxRows' => 2 ], [ 'min' => 30 ]);
+	    $this->check('Database: query (at most 2 of 3: truncated; the columns; the values as the database gives them)', [
+		[ 'rows' => [ [ 'id' => 1, 'name' => "Ana'; DROP TABLE people; --", 'age' => 40, 'active' => 1, 'tags' => '["x","y"]' ], [ 'id' => 2, 'name' => 'B', 'age' => 30, 'active' => null, 'tags' => null ] ],
+		    'count' => 2, 'columns' => [ 'id', 'name', 'age', 'active', 'tags' ], 'truncated' => true ], '2 rows (more matched: truncated)' ], $q);
+	    $this->check('Database: values read: null, a parameter given null, binary as base64; no rows', [ [ 'n' => null, 'p' => null, 'bin' => 'AP8=' ], [ 'rows' => [], 'count' => 0, 'columns' => [ 'id' ], 'truncated' => false ] ], [
+		$run('query', [ 'sql' => "SELECT NULL AS n, {{ none }} AS p, X'00FF' AS bin" ], [ 'none' => null ])[0]['rows'][0],
+		$run('query', [ 'sql' => 'SELECT id FROM people WHERE name = {{ "nobody" }}' ])[0] ]);
+	    $this->check('Database: errors: the database\'s (a syntax error), empty SQL, a {{ }} inside a quoted text (no parameter there)', [ true, 'error: SQL: empty', true ], [
+		str_contains($try('query', [ 'sql' => 'SELEC 1' ]), 'syntax error'), $try('query', [ 'sql' => '  ' ]),
+		str_starts_with($try('query', [ 'sql' => "SELECT * FROM people WHERE name LIKE '%{{ x }}%'" ], [ 'x' => 'A' ]), 'error: ') ]);
+	}
+
+	//a workflow: the credential of the project, a closed port: the `error` output, the message logged; failing without it
+	if (!\plugins\Database\models\CredentialMysql::available()) {
+	    echo "  skipped: the step in a workflow (no pdo_mysql)\n";
+	    return;
+	}
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$c = $cred('CredentialMysql', [ 'name' => 'Check: MySQL ' . uniqid(), 'host' => '127.0.0.1', 'port' => 1, 'database' => 'x', 'username' => 'u', 'password' => 'p' ]);
+	if (!$c->validates() || !$c->save()) {
+	    $this->fail('Database: the credential was not saved: ' . json_encode($c->errors()));
+	    return;
+	}
+	try {
+	    $this->check('Database: the step refused without a credential; valid with one', [ true, [] ], [
+		str_contains(implode(' ', $this->errorsOf('db nocred', [ $n('m', 'trigger::manual'), $n('d', 'app::database', [ 'sql' => 'SELECT 1' ]), $e('e1', 'm', 'd') ])), 'Database'),
+		$this->errorsOf('db cred', [ $n('m', 'trigger::manual'), $n('d', 'app::database', [ 'sql' => 'SELECT 1', 'credential' => (string)$c->_id ]), $e('e1', 'm', 'd') ]) ]);
+	    $this->check('Database: the credential\'s test fails on a closed port', true, str_contains($thrown(fn() => $c->test()), 'SQLSTATE'));
+	    $step = [ 'sql' => 'SELECT * FROM t WHERE id = {{ id }}', 'credential' => (string)$c->_id, 'timeout' => 3 ];
+	    $exe = $this->runFlow('database error output', [ $n('m', 'trigger::manual'), $n('d', 'app::database', $step + [ 'onError' => 'output' ]),
+		$n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'd'), $e('e2', 'd', 'err', 1) ], [ 'id' => 1 ]);
+	    $failed = $this->runFlow('database fails', [ $n('m', 'trigger::manual'), $n('d', 'app::database', $step), $e('e1', 'm', 'd') ], [ 'id' => 1 ]);
+	    $this->check('Database: a closed port: the `error` output (the message in the variable, and logged); without it the run fails', [ 'end', 'error', true, true, 'error', true ], [
+		$exe?->state, $exe?->getVariable('route'), str_contains((string)($exe?->getVariable('db')['error'] ?? ''), 'SQLSTATE'), str_contains((string)self::logLine($exe, 'Database query: '), 'SQLSTATE'),
+		$failed?->state, str_contains((string)$failed?->error, 'Database: query: SQLSTATE') ]);
+	} finally {
+	    $c->delete();
 	}
     }
 

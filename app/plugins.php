@@ -22,4 +22,7 @@ return [
     'MicrosoftIntegration',
     //CLD: 2026-10-22T22:00:00+03:00: the installation's tool servers for the AI steps (MCP servers run on this machine, e.g. a web browser), for the accounts the administrator enables
     'LocalMCP',
+    //CLD: 2026-10-25T17:40:00+02:00: SQL databases: the database credentials (MySQL / MariaDB, PostgreSQL, SQL Server, Oracle, Firebird, ODBC; each when PHP has its PDO driver)
+    //and the Database step
+    'Database',
 ];

@@ -73,6 +73,10 @@ class CredentialController extends \sys\BaseController {
 	//CLD: 2026-10-24T09:45:36+03:00: a type of a feature the account's tier does not have (util\Tiers)
 	if (!\util\Tiers::allows(\V::app()->config('rt.account'), $type))
 	    \V::app()->error(403, \util\Tiers::featureMessage(\V::app()->config('rt.account'), \V::app()->om->registry[$type]['feature']));
+	//CLD: 2026-10-25T17:40:00+02:00: a type this PHP cannot use (Credential::available(): e.g. a database type without its PDO driver)
+	$class = \models\Credential::classFor($type);
+	if ($class !== null && !$class::available())
+	    \V::app()->error(409, 'This credential type is not available: the server lacks the PHP extension it needs');
 
 	$cred = $this->projectCredential($type);
 	if (!\V::app()->user->can('Credential::create', [ 'object' => $cred ]))

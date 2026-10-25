@@ -9,6 +9,9 @@ if (\V::app()->user->can('Credential::create', [ 'object' => $__new ])) {
 	//CLD: 2026-10-24T09:45:36+03:00: the types of a feature the account's tier does not have are not offered (util\Tiers)
 	if (!\util\Tiers::allows(\V::app()->config('rt.account'), $name))
 	    continue;
+	//CLD: 2026-10-25T17:40:00+02:00: nor the types this PHP cannot use (Credential::available(): e.g. a database type without its PDO driver)
+	if (!$class::available())
+	    continue;
 	$search = \V::app()->html->escape(str_replace("'", ' ', mb_strtolower($class::$label . ' ' . $class::$group)));
 	$groups[$class::$group][$class::$label] = "<li class=\"cred-type\" data-search=\"{$search}\"><a class=\"dropdown-item\" href=\"/credential/create?type=" . rawurlencode($name) . "\"><i class=\"bi " . $class::$icon . " me-2\"></i>" . \V::app()->html->escape($class::$label) . "</a></li>";
     }
