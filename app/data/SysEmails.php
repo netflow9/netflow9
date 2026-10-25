@@ -36,6 +36,24 @@ class SysEmails {
 		],
 	    ],
 	],
+	//CLD: 2026-10-25T11:20:00+02:00: a user created by an administrator (Users: Create; or Send the sign-in link): a link to choose the password (models\User::sendPasswordLink)
+	'user_welcome' => [
+	    'subject' => 'Your {{ app }} user for {{ account }}',
+	    'email' => [
+		'preheader' => 'Choose your password to sign in',
+		'blocks' => [
+		    [
+			'type' => 'html',
+			'html' => '<h1>Welcome to {{ app }}</h1>'
+			. '<p>{{ inviter }} created a user for you in <strong>{{ account }}</strong>. You sign in with <strong>{{ email }}</strong>.</p>'
+			. '<p>Choose your password to sign in. The link works once, for {{ days }} days.</p>'
+			. '<p><a href="{{ link }}"><strong>Choose your password</strong></a></p>'
+			. '<p style="color: #555555">If the link does not open, copy this address into your browser:<br>{{ link }}</p>'
+			. '<p style="color: #555555">Not expecting this? Ignore this email: nothing happens until a password is chosen.</p>'
+		    ],
+		],
+	    ],
+	],
 	'project_invite' => [
 	    'subject' => '{{ inviter }} invited you to {{ project }} on {{ app }}',
 	    'email' => [

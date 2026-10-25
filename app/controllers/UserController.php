@@ -52,7 +52,83 @@ class UserController extends \sys\BaseController {
 	$this->render('profile', compact('user'));
     }
 
-    public function update() {
+    //CLD: 2026-10-25T11:20:00+02:00: edit a user of the account (was empty: the list's links did nothing): name, email, role, state, for who may update users (User::update on it);
+    //one's own user is the profile (no role / state change on oneself); the account keeps an active Owner (checked on the role and the state); a disabled user's sessions end.
+    //A modal (as create), back to the list
+    public function update($req, $resp) {
+	$user = $this->accountUser();
+	if ((string)$user->_id === (string)\V::app()->user->_id)
+	    return $this->redirect('/user/profile');
+
+	if ($req->is('post')) {
+	    $before = [ 'role' => (string)$user->role, 'state' => (string)$user->state ];
+	    $data = is_array($req->data) ? array_intersect_key($req->data, array_flip([ 'firstname', 'lastname', 'email', 'role', 'state' ])) : [];
+	    $user->assign($data, true);
+	    //the state is not a form field (the profile and create forms have none): set here, with its update permission, one of its choices
+	    if (isset($data['state']) && $user->schema['state']->checkAccess(\V::app()->user->_id, 'update') && isset($user->schema['state']->choices[(string)$data['state']]))
+		$user->state = (string)$data['state'];
+
+	    $account = \V::app()->config('rt.account');
+	    if (!empty($user->role) && empty(\V::app()->om->findOne('Role', [ '_id' => $user->role, 'aid' => $account->_id ])))
+		\V::app()->error(400, 'malformed request: unknown role');
+
+	    $valid = $user->validates();
+	    //the last active Owner keeps the role and stays active
+	    if ($valid && $this->isActiveOwner($before['role'], $before['state']) && !$this->isActiveOwner((string)$user->role, (string)$user->state)
+		&& $this->activeOwners($user->_id) === 0) {
+		$user->errors('role', 'The account needs an active Owner: give another user the Owner role first');
+		$valid = false;
+	    }
+
+	    if ($valid) {
+		$user->save();
+		if ($before['state'] === 'active' && $user->state !== 'active')
+		    \V::app()->session->endFor($user->_id);
+		$this->addToast('success', 'OK', 'User saved!');
+		return $this->redirect('/user/list');
+	    }
+	}
+
+	$this->render('update', [ 'user' => $user, 'canSendLink' => $user->state === 'active' && \sys\Identity::passwordSource($user) === null ]);
+    }
+
+    //CLD: 2026-10-25T11:20:00+02:00: email a user of the account a link to choose a password (the welcome email again: e.g. its link expired); POST, User::update on it
+    public function send_link($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$user = $this->accountUser();
+	if ($user->sendPasswordLink(\V::app()->user))
+	    $this->addToast('success', 'Sent', 'An email with a link to choose a password was sent to ' . $user->email);
+	else
+	    $this->addToast('error', 'Not sent', 'This user does not sign in with a password here, or is not active');
+	return $this->redirect('/user/list');
+    }
+
+    //CLD: 2026-10-25T11:20:00+02:00: the user ?id of the current account, if the current user may update it (404 / 403 otherwise)
+    protected function accountUser() {
+	$id = $this->getOidOrError('id');
+	$user = \V::app()->om->findOne('User', [ '_id' => new \MongoDB\BSON\ObjectId($id), 'aid' => \V::app()->config('rt.account')->_id ]);
+	if (empty($user))
+	    \V::app()->error(404, 'Not found');
+	if (!\V::app()->user->can('User::update', [ 'object' => $user ]))
+	    \V::app()->error(403, 'Unauthorized');
+	return $user;
+    }
+
+    //CLD: 2026-10-25T11:20:00+02:00: whether role id $roleId is the account's Owner role and $state is active
+    protected function isActiveOwner($roleId, $state) {
+	if ($state !== 'active' || $roleId === '')
+	    return false;
+	$role = \V::app()->om->findById('Role', $roleId);
+	return ($role->iname ?? null) === 'owner';
+    }
+
+    //CLD: 2026-10-25T11:20:00+02:00: the account's active users with the Owner role, other than $exceptId
+    protected function activeOwners($exceptId) {
+	$owner = \V::app()->om->findOne('Role', [ 'aid' => \V::app()->config('rt.account')->_id, 'iname' => 'owner' ]);
+	if (empty($owner))
+	    return 0;
+	return (int)\V::app()->om->count('User', [ 'aid' => \V::app()->config('rt.account')->_id, 'role' => $owner->_id, 'state' => 'active', '_id' => [ '$ne' => $exceptId ] ]);
     }
 
     public function create($req, $resp) {
@@ -73,7 +149,11 @@ class UserController extends \sys\BaseController {
 
 	    if ($user->validates()) {
 		$user->save();
-		$this->addToast('success', 'OK', 'User saved!');
+		//CLD: 2026-10-25T11:20:00+02:00: the new user gets a link to choose a password (was: no password, no email: they could not sign in)
+		if ($user->sendPasswordLink(\V::app()->user))
+		    $this->addToast('success', 'OK', 'User created. An email with a link to choose a password was sent to ' . $user->email);
+		else
+		    $this->addToast('success', 'OK', 'User saved!');
 		$this->redirect('/user/list');
 	    }
 	}
