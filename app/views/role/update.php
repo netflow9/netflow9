@@ -10,8 +10,7 @@ $this->pageTitle = 'Update role: ' . $role->name;
     $bc = new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	[ 'label' => 'Roles', 'href' => '/role/list' ],
-	//CLD: 2026-10-05T20:42:44+03:00: Breadcrumbs prints labels as HTML; escape the user-editable name
-	[ 'label' => \V::app()->html->escape((string)$role->name) ],
+	[ 'label' => \V::app()->html->escape($role->name) ],
     ]]);
     echo $bc->render();
     ?>
@@ -23,12 +22,10 @@ $this->pageTitle = 'Update role: ' . $role->name;
 	<!-- header -->
 	<div class="d-flex align-items-center w-100 align-items-top">
 	    <div>
-		<?php //CLD: 2026-10-05T20:30:32+03:00: escape user-editable role name ?>
-		<?php //CLD: 2026-10-13T21:12:34+03:00: a custom role's name can be changed (the system roles keep theirs) ?>
 		<?php if (empty($role->iname)): ?>
 		    <input type="text" name="name" class="form-control form-control-sm mb-1" style="max-width: 20rem" required value="<?= \V::app()->html->escape((string)$role->name) ?>" aria-label="Role name">
 		<?php else: ?>
-		<h5><?= \V::app()->html->escape((string)$role->name) ?></h5>
+		<h5><?= \V::app()->html->escape($role->name) ?></h5>
 		<?php endif; ?>
 		<span class="text-muted">All permissions for this role</span>
 	    </div>

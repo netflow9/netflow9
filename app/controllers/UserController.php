@@ -33,10 +33,7 @@ class UserController extends \sys\BaseController {
 	    \V::app()->error(403, 'Unauthorized');
 
 	if ($req->is('post')) {
-	    //CLD: 2026-10-05T20:41:34+03:00: only the fields the profile form shows; assigning the whole POST let a user change own role (Member -> Owner),
-	    //clear tfa_secret (disabling 2FA without a code), state, or store a plain-text password
-	    //CLD: 2026-10-10T18:54:42+03:00: the form fields the user may update (assign with permissions; password, state, tfa_secret, reset_* are not form fields); the role
-	    //is a form field (create) the user may update on itself (User::update scope own): left out here, explicitly
+	    //the role is a form field (create) the user may update on itself (User::update scope own): left out here, explicitly
 	    $data = is_array($req->data) ? $req->data : [];
 	    unset($data['role']);
 	    $user->assign($data, true);
@@ -182,7 +179,6 @@ class UserController extends \sys\BaseController {
 	    if ($form->validates()) {
 		$user->password = \V::app()->security->generatePasswordHash($form->new_password);
 		$user->save();
-		//CLD: 2026-10-21T16:30:00+03:00: the user's other sessions end (as after a password reset; a session opened with the old password no longer counts)
 		\V::app()->session->endFor($user->_id);
 		$this->addToast('success', 'OK', 'Password changed!');
 		$this->redirect('/user/profile');
@@ -216,7 +212,6 @@ class UserController extends \sys\BaseController {
 	if (empty($code))
 	    \V::app()->error(400, 'malformed request: missing code');
 
-	//CLD: 2026-10-24T00:20:00+03:00: User::useTfaCode (was TOTP::verifyCode): the activation code can't then be used to sign in
 	if (!empty($secret) && $user->useTfaCode($code, $secret)) {
 	    $user->tfa_secret = $secret;
 	    $user->save();
@@ -232,7 +227,6 @@ class UserController extends \sys\BaseController {
 	if (empty($user))
 	    \V::app()->error(404, 'Not found');
 
-	//CLD: 2026-10-21T16:30:00+03:00: not while the account enforces MFA (the user would be sent back to set it up)
 	if (!empty(\V::app()->config('rt.account')->enforce_mfa))
 	    \V::app()->error(403, 'Two-factor authentication is required by your account');
 
