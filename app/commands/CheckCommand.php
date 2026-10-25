@@ -43,7 +43,7 @@ class CheckCommand extends \sys\BaseController {
     //feature, the System AI allowance of the tier, the usage)
     //CLD: 2026-10-24T10:28:12+03:00: + Google / Microsoft by tier
     //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -360,6 +360,52 @@ class CheckCommand extends \sys\BaseController {
 	$wf->validates();
 	$this->check('Switch: a case normalized (label trimmed, unknown keys dropped)', [ 'label' => 'a', 'operator' => 'eq', 'value' => 'x' ],
 	    (function($r) { ksort($r); return $r; })((array)($wf->nodes['w']['config']['cases'][0] ?? [])));
+    }
+
+    //CLD: 2026-10-25T11:40:00+02:00: the Merge step's modes: all (the default: waits for every branch) and first (goes on at the first branch, the later ones end there);
+    //a fast branch (a) and a slow one (b, then a 1 s Wait, then c): the run sleeps in between, then is resumed
+    private function suiteMerge() {
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$flow = fn($mode) => [ $n('m', 'trigger::manual'),
+	    $n('a', 'app::set', [ 'variable' => 'x', 'value' => 'fast' ]),
+	    $n('b', 'app::wait', [ 'amount' => 1, 'unit' => 'seconds' ]), $n('c', 'app::set', [ 'variable' => 'y', 'value' => 'slow' ]),
+	    $n('mg', 'core::merge', $mode === null ? [] : [ 'mode' => $mode ]),
+	    $n('z', 'app::code', [ 'code' => 'runs = runs + 1; seen = x + "-" + y;' ]),
+	    $e('e1', 'm', 'a'), $e('e2', 'm', 'b'), $e('e3', 'b', 'c'), $e('e4', 'a', 'mg'), $e('e5', 'c', 'mg'), $e('e6', 'mg', 'z') ];
+	$vars = [ 'runs' => 0, 'y' => 'none' ];
+	$resume = function($exe) {
+	    sleep(2);
+	    $exe->run();
+	    return $exe;
+	};
+
+	foreach([ 'default (all)' => null, 'all' => 'all' ] as $label => $mode) {
+	    $exe = $this->runFlow("merge {$mode}", $flow($mode), $vars);
+	    $before = [ $exe?->state, $exe?->getVariable('runs') ];
+	    $resume($exe);
+	    $this->check("merge {$label}: waits for the slow branch, then continues once with both", [ [ 'sleep', 0 ], 'end', 1, 'fast-slow' ],
+		[ $before, $exe?->state, $exe?->getVariable('runs'), $exe?->getVariable('seen') ]);
+	}
+
+	$exe = $this->runFlow('merge first', $flow('first'), $vars);
+	$before = [ $exe?->state, $exe?->getVariable('runs'), $exe?->getVariable('seen') ];
+	$resume($exe);
+	$this->check('merge first: continues at the fast branch; the slow one ends at the Merge (no second run)', [ [ 'sleep', 1, 'fast-none' ], 'end', 1, 'slow' ],
+	    [ $before, $exe?->state, $exe?->getVariable('runs'), $exe?->getVariable('y') ]);
+
+	//inside a loop: each pass starts a new round (the first branch of every pass continues)
+	$exe = $this->runFlow('merge first in a loop', [ $n('m', 'trigger::manual'), $n('L', 'core::loop', [ 'list' => '{{ [1, 2, 3] }}' ]),
+	    $n('st', 'app::set', [ 'variable' => 'p', 'value' => '{{ item }}' ], 'L'), $e('s1', 'st', 'a'), $e('s2', 'st', 'b'),
+	    $n('a', 'app::set', [ 'variable' => 'x', 'value' => 'a{{ item }}' ], 'L'), $n('b', 'app::set', [ 'variable' => 'w', 'value' => 'b' ], 'L'),
+	    $n('b2', 'app::set', [ 'variable' => 'w', 'value' => 'b2' ], 'L'), $n('mg', 'core::merge', [ 'mode' => 'first' ], 'L'),
+	    $n('z', 'app::code', [ 'code' => 'runs = runs + 1;' ], 'L'),
+	    $e('e2', 'a', 'mg'), $e('e3', 'b', 'b2'), $e('e4', 'b2', 'mg'), $e('e5', 'mg', 'z'), $e('e1', 'm', 'L') ], [ 'runs' => 0 ]);
+	$this->check('merge first in a loop: once per pass', [ 'end', 3 ], [ $exe?->state, $exe?->getVariable('runs') ]);
+
+	$this->check('merge: the mode is one of all / first', [ true, false ], [
+	    empty($this->errorsOf('merge mode ok', [ $n('m', 'trigger::manual'), $n('mg', 'core::merge', [ 'mode' => 'first' ]), $e('e1', 'm', 'mg') ])),
+	    empty($this->errorsOf('merge mode bad', [ $n('m', 'trigger::manual'), $n('mg', 'core::merge', [ 'mode' => 'some' ]), $e('e1', 'm', 'mg') ])) ]);
     }
 
     //the Loop step: passes, nesting, Collect, skip / stop, If + Merge inside, Wait inside, list errors, settings
