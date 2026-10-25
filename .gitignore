@@ -10,19 +10,16 @@
 !/app.env.example
 
 # --- never commit (secrets / runtime) ---
-# CLD: 2026-10-22T18:30:00+03:00: published assets: copies the app writes itself (sys\Assets::publishFile)
 public_html/assets/
 app.env
 *.key
 *.pem
-# CLD: 2026-10-24T11:05:00+03:00: the Haraka install at the root only (was haraka/: also scripts/haraka/, the templates of scripts/haraka-install.sh)
 /haraka/
 node_modules/
 *.log
 *.tgz
 playwright.config.js
 make-archive.sh
-# CLD: 2026-10-23T23:40:00+03:00: compliance documents (SOC2.md, ISO27001.md, TODO.txt, SUMMARY.md; were at the root)
 compliance/
 package.json
 package-lock.json
