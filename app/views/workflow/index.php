@@ -9,6 +9,10 @@ $nodeDefs = \models\WfNode::getAll();
 foreach($nodeDefs as $fq => $def) {
     if (!\util\Tiers::allows(\V::app()->config('rt.account'), $def['objectName']))
 	$nodeDefs[$fq]['unavailable'] = true;
+    //CLD: 2026-10-25T17:40:00+02:00: nor the steps this PHP cannot run (WfNode::available(): e.g. Database without a PDO driver of its types)
+    $__class = \V::app()->om->getObjectClass($def['objectName']);
+    if (!$__class::available())
+	$nodeDefs[$fq]['unavailable'] = true;
 }
 $nodeDefs = \util\JSON::encode($nodeDefs);
 

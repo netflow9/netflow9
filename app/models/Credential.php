@@ -175,6 +175,11 @@ class Credential extends \sys\BaseModel {
 	return in_array($capability, static::$provides, true);
     }
 
+    //CLD: 2026-10-25T17:40:00+02:00: whether this PHP can use the type (e.g. a database type: its PDO driver is loaded); not available, it is not offered for new credentials
+    public static function available() {
+	return true;
+    }
+
     //OAuth variants: consent through /credential/connect (see models\credential\CredentialOAuth2)
     public static function isOAuth() {
 	return false;
