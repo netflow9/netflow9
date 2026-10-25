@@ -14,13 +14,9 @@ if (\V::app()->user->can('Role::create')) {
 
 //schema and filtering
 $sf = \util\WidgetsUtil::getSchema('Role');
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $filter = \util\JSON::encode($sf['filter']);
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $schema = \util\JSON::encode($sf['schema']);
 
-//CLD: 2026-10-19T12:05:32+03:00: app.formatter.timeAgo (was app.timeAgo.inWords)
-//CLD: 2026-10-24T17:30:00+03:00: app.formatter.timeAgoHtml: the date and time in the account's format as a tooltip; from _iso (DataTrait: ISO 8601; the shown texts are in the account's format)
 $script = "
 +function(){
     new app.ListView(document.getElementById('roles-list'), {

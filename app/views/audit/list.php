@@ -1,8 +1,4 @@
 <?php
-//CLD: 2026-10-11T22:01:40+03:00: app.GridView (was the global gridView of data.grid.js, now in app.dataview.js)
-//CLD: 2026-10-11T17:35:22+03:00: new view: the audit log (AuditController::list), newest first; the eye opens an entry's details (AuditController::view)
-//CLD: 2026-10-11T17:45:25+03:00: the audit log or the execution log ($log: AuditLog | ExecutionLog; ?log=execution on its URLs)
-//CLD: 2026-10-11T20:09:30+03:00: the system log ($system: every entry of the account) or the current project's log; $q comes from the controller (log, scope)
 $label = ($system ? 'System ' : '') . ($log == 'ExecutionLog' ? 'execution log' : 'audit log');
 $label = ucfirst($label);
 $this->pageTitle = $label;

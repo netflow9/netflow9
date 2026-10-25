@@ -1,8 +1,4 @@
 <?php
-//CLD: 2026-10-11T13:51:42+03:00: new view: the Publish dialog (WorkflowController::publish): the saved draft as a new version, an older version again (?version), or the
-//unchanged draft's last version made active again; refused (no form) while the steps to publish have connection errors
-//CLD: 2026-10-19T17:10:00+03:00: or errors in their settings (Workflow::issues)
-$esc = fn($v) => \V::app()->html->escape((string)$v);
 $params = [ 'id' => (string)$wf->_id ];
 if ($source)
     $params['version'] = (string)$source->_id;
@@ -16,16 +12,16 @@ $noteInput = '
 
 if ($errors) {
     $title = 'Cannot publish';
-    $items = implode('', array_map(fn($i) => '<li>' . $esc($i['message']) . '</li>', $errors));
-    $body = "<div class='alert alert-danger mb-0'>The " . ($source ? $esc($source) : 'saved draft') . " has errors (steps' settings or connections): fix them and save it first.<ul class='mb-0 mt-2'>{$items}</ul></div>";
+    $items = implode('', array_map(fn($i) => '<li>' . \V::app()->html->escape($i['message']) . '</li>', $errors));
+    $body = "<div class='alert alert-danger mb-0'>The " . ($source ? \V::app()->html->escape($source) : 'saved draft') . " has errors (steps' settings or connections): fix them and save it first.<ul class='mb-0 mt-2'>{$items}</ul></div>";
     $footer = "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Close</button>";
 } elseif ($reuse) {
-    $title = 'Publish ' . $esc($active);
-    $body = "<p class='mb-0'>The draft has not changed since <b>" . $esc($active) . "</b>: it is published again (no new version). Its trigger starts runs of this version.</p>";
+    $title = 'Publish ' . \V::app()->html->escape($active);
+    $body = "<p class='mb-0'>The draft has not changed since <b>" . \V::app()->html->escape($active) . "</b>: it is published again (no new version). Its trigger starts runs of this version.</p>";
     $footer = "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button><button type='submit' class='btn btn-success'>Publish</button>";
 } elseif ($source) {
-    $title = 'Publish ' . $esc($source) . ' again';
-    $body = "<p class='mb-0'>The steps of <b>" . $esc($source) . "</b> are published as <b>v{$next}</b>, and its trigger starts runs of that version. The draft is not changed.</p>" . $noteInput;
+    $title = 'Publish ' . \V::app()->html->escape($source) . ' again';
+    $body = "<p class='mb-0'>The steps of <b>" . \V::app()->html->escape($source) . "</b> are published as <b>v{$next}</b>, and its trigger starts runs of that version. The draft is not changed.</p>" . $noteInput;
     $footer = "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button><button type='submit' class='btn btn-success'>Publish as v{$next}</button>";
 } else {
     $title = "Publish the draft as v{$next}";
