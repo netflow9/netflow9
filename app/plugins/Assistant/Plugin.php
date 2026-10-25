@@ -39,12 +39,7 @@ class Plugin {
 	    return;
 
 	if (!\V::app()->user->isGuest) {
-	    \V::app()->cs->addPageCss("
-		.wf-assistant .wfa-msg { max-width: 92%; overflow-wrap: anywhere; }
-		.wf-assistant .wfa-user { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); }
-		.wf-assistant .wfa-bot { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color-translucent); }
-		.wf-assistant .wfa-input { resize: none; }
-	    ");
+	    //CLD: 2026-10-25T18:45:00+02:00: the panel's CSS moved to the theme (_workflow.scss: .wf-assistant)
 	    \V::app()->cs->addPageScriptFile(
 		    \V::app()->am->publishFile(__DIR__ . '/js/app.wfassistant.js')
 	    );

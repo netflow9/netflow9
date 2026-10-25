@@ -12953,6 +12953,32 @@ body {
   flex-shrink: 0;
 }
 
+/* CLD: 2026-10-25T18:30:00+02:00: the Executions panel rows (were page CSS in views/workflow/index.php: not applied when the designer is loaded via PJAX);
+   the list wider (460px from md), a row on one line: the time and the duration never wrap, the trigger / version is cut */
+@media (min-width: 768px) {
+  .exec-panel .exec-list {
+    width: 460px;
+  }
+}
+.exec-row {
+  line-height: 1.9;
+  white-space: nowrap;
+}
+.exec-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.exec-row.exec-selected {
+  background: rgba(217, 119, 87, 0.25);
+}
+.exec-row .exec-what {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.exec-row .exec-time, .exec-row .exec-duration {
+  flex-shrink: 0;
+}
+
 @media (max-width: 767.98px) {
   .exec-panel .debug-panel-body {
     flex-direction: column;
@@ -12970,6 +12996,23 @@ body {
     padding-left: 1rem;
   }
 }
+/* CLD: 2026-10-25T18:45:00+02:00: the designer's Assistant panel (the Assistant plugin; was page CSS in plugins/Assistant/Plugin.php): the messages and the input */
+.wf-assistant .wfa-msg {
+  max-width: 92%;
+  overflow-wrap: anywhere;
+}
+.wf-assistant .wfa-user {
+  background: var(--bs-primary-bg-subtle);
+  color: var(--bs-primary-text-emphasis);
+}
+.wf-assistant .wfa-bot {
+  background: var(--bs-tertiary-bg);
+  border: var(--bs-border-width) solid var(--bs-border-color-translucent);
+}
+.wf-assistant .wfa-input {
+  resize: none;
+}
+
 /* --- Picker popup --- */
 .dp-popup {
   position: fixed;
