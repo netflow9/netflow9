@@ -15,6 +15,25 @@ class User extends \sys\BaseModel {
 
     //CLD: 2026-10-24T08:20:00+03:00: how long a "forgot password" link works (was PasswordReset::VALID)
     const RESET_VALID = 86400;
+    //CLD: 2026-10-25T11:20:00+02:00: how long the link of a new user's welcome email works (UserController::create / send_link), as a project invitation's
+    const WELCOME_VALID = 7 * 86400;
+
+    //CLD: 2026-10-25T11:20:00+02:00: a link to choose a password, emailed to this user (a new user's first one, or again on request): data\SysEmails `user_welcome`, by $by (who
+    //created the user); false when the user has no password here (e.g. LDAP / SSO) or is not active
+    public function sendPasswordLink($by = null) {
+	if ($this->state !== 'active' || \sys\Identity::passwordSource($this) !== null)
+	    return false;
+	$token = $this->startPasswordReset(\V::app()->request->userIP ?? null, self::WELCOME_VALID);
+	$account = \V::app()->om->findById('Account', (string)$this->aid);
+	\util\EmailSend::system('user_welcome', (string)$this->email, [
+	    'inviter' => trim((string)($by->firstname ?? '') . ' ' . (string)($by->lastname ?? '')) ?: 'An administrator',
+	    'account' => (string)($account->name ?? '') ?: (string)($account->hostname ?? ''),
+	    'email' => (string)$this->email,
+	    'days' => (string)(self::WELCOME_VALID / 86400),
+	    'link' => \V::app()->createAbsoluteUrl('/site/reset', [ 't' => $token ]),
+	]);
+	return true;
+    }
 
 
     // we use these attributes just readonly, usually for display only
@@ -159,11 +178,12 @@ class User extends \sys\BaseModel {
 
     //CLD: 2026-10-24T08:20:00+03:00: new (was PasswordReset::start): a new "forgot password" link for this user, valid RESET_VALID seconds, asked from $ip; replaces the user's earlier one.
     //Returns the token (for the email; only its hash is kept)
-    public function startPasswordReset($ip = null) {
+    //CLD: 2026-10-25T11:20:00+02:00: + $valid: seconds the link works (default RESET_VALID; a new user's first password: WELCOME_VALID)
+    public function startPasswordReset($ip = null, $valid = null) {
 	$token = bin2hex(random_bytes(24));
 	\V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid ], [ '$set' => [
 	    'reset_token_hash' => hash('sha256', $token),
-	    'reset_expires_at' => new \MongoDB\BSON\UTCDateTime((time() + self::RESET_VALID) * 1000),
+	    'reset_expires_at' => new \MongoDB\BSON\UTCDateTime((time() + (int)($valid ?? self::RESET_VALID)) * 1000),
 	    'reset_ip' => $ip,
 	] ]);
 	return $token;
