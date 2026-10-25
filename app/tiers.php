@@ -14,6 +14,7 @@
 				  ai_monthly_credits   the System AI credits of a month (null: the installation's, SYSTEM_AI_MONTHLY_CREDITS)
 		    features    the features of the tier (the plugins name theirs: hook tiers:features), e.g. saml, ldap
 				CLD: 2026-10-24T10:27:54+03:00: + google, microsoft (the GoogleIntegration / MicrosoftIntegration plugins)
+				CLD: 2026-10-25T18:30:00+02:00: + database (the Database plugin), on enterprise as ldap
     A super-admin sets an account's tier and changes its limits / features (Administration, the account's page: Tier & limits; ./v tiers::<show | set>)
 */
 
@@ -48,7 +49,7 @@ return [
 		'files_bytes' => null,
 		'ai_monthly_credits' => null,
 	    ],
-	    'features' => [ 'saml', 'ldap', 'google', 'microsoft' ],
+	    'features' => [ 'saml', 'ldap', 'google', 'microsoft', 'database' ],
 	],
     ],
 ];
