@@ -1,5 +1,7 @@
 <?php
 
+//CLD: 2026-10-25T19:30:00+02:00: moved from the Ldap plugin to the core (the LDAP step and credential are core, the plugin is the LDAP sign-in): namespace models\node (was plugins\Ldap\models); registered in data\SysObjects, for every account (no plan feature)
+
 //CLD: 2026-10-21T10:00:00+03:00: new step: LDAP - reads and changes a directory (Active Directory, OpenLDAP, ...) through an LDAP server credential of the project (CredentialLdap,
 //provides `ldap`). Operations (setting `operation`):
 //	search          the entries of a filter under a base (default: the credential's Base DN): { entries: [ { dn, <attribute>: value or list } ], count, truncated }
@@ -16,10 +18,10 @@
 //  Values: one value as text, several as a list; objectGUID / objectSid as their usual text, other binary values as base64 (util\LdapClient::plain).
 //  On error (the directory's refusals, no connection): fail the step, or continue on the `error` output
 
-namespace plugins\Ldap\models;
+namespace models\node;
 
-use plugins\Ldap\util\LdapClient;
-use plugins\Ldap\util\LdapException;
+use util\LdapClient;
+use util\LdapException;
 
 class NodeAppLdap extends \models\WfNode {
     //static data/structure
@@ -279,7 +281,7 @@ class NodeAppLdap extends \models\WfNode {
 	$operation = (string)$this->cfg('operation', 'search');
 	if ($operation === 'search' && strpos((string)$this->cfg('filter', ''), '{{') === false) {
 	    try {
-		\plugins\Ldap\util\LdapBer::parseFilter((string)$this->cfg('filter', ''));
+		\util\LdapBer::parseFilter((string)$this->cfg('filter', ''));
 	    } catch (\InvalidArgumentException $e) {
 		$this->errors('config', 'Filter: ' . $e->getMessage());
 		$valid = false;

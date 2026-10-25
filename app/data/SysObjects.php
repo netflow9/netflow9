@@ -193,6 +193,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialFtp',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-10-25T19:30:00+02:00: an LDAP server (the LDAP step), core for every account (was registered by the Ldap plugin, plan feature ldap_step)
+	    'CredentialLdap' => [
+		'class' => 'models\credential\CredentialLdap',
+		'variant-of' => 'Credential',
+	    ],
 	    'CredentialDecryption' => [
 		'class' => 'models\credential\CredentialDecryption',
 		'variant-of' => 'Credential',
@@ -288,6 +293,11 @@ class SysObjects {
 	    //CLD: 2026-10-20T18:00:00+03:00: FTP / SFTP Upload (project files or a text; compression, encryption, safe .part upload, if the file exists)
 	    'NodeAppFtpUpload' => [
 		'class' => 'models\node\NodeAppFtpUpload',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-10-25T19:30:00+02:00: LDAP (search and change a directory), core for every account (was registered by the Ldap plugin, plan feature ldap_step)
+	    'NodeAppLdap' => [
+		'class' => 'models\node\NodeAppLdap',
 		'wfNode' => true,
 	    ],
 	    'NodeAppClaude' => [

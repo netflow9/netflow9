@@ -3206,15 +3206,9 @@ class CheckCommand extends \sys\BaseController {
 	    if (class_exists(\plugins\Ldap\util\LdapAuth::class)) {
 		$set('free');
 		\plugins\Ldap\util\LdapAuth::reset();
-		$this->check('LDAP: no sign-in, the step and its credential not offered without the features', [ null, false, false ],
+		//CLD: 2026-10-25T19:30:00+02:00: the step and its credential are core: offered without the feature (were the feature's)
+		$this->check('LDAP: no sign-in without the feature; the step and its credential offered all the same (core, no plan feature)', [ null, true, true ],
 		    [ \plugins\Ldap\util\LdapAuth::enabledFor($account->_id), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ]);
-		//CLD: 2026-10-25T19:00:00+02:00: the step (ldap_step) and the sign-in (ldap) each without the other
-		$set('free', [], [ 'ldap_step' => true ]);
-		$stepOnly = [ $T::has($account, 'ldap'), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ];
-		$set('enterprise', [], [ 'ldap_step' => false ]);
-		$signInOnly = [ $T::has($account, 'ldap'), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ];
-		$this->check('LDAP: the step and its credential without the sign-in (ldap_step only), the sign-in without them (ldap only)', [ [ false, true, true ], [ true, false, false ] ],
-		    [ $stepOnly, $signInOnly ]);
 	    }
 	    //CLD: 2026-10-25T18:30:00+02:00: Database: on enterprise only (as LDAP); its credentials and step follow; the step does not run without it
 	    if ($om->isDefined('NodeAppDatabase')) {
@@ -3783,6 +3777,8 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-21T10:00:00+03:00: the Ldap plugin (skipped without it): BER and filters, the clients (each driver PHP has here: the built-in one, and the ldap extension's
     //when it is loaded) against the plugin's test server (plugins/Ldap/tests/LdapTestServer.php: plain + StartTLS, LDAPS; a certificate made here with openssl), the LDAP
     //sign-in (in an account made for the checks, removed afterwards) and the LDAP step
+    //CLD: 2026-10-25T19:30:00+02:00: the client, the credential and the step are core (always checked; the test server: app/tests/LdapTestServer.php); only the sign-in is the Ldap plugin's
+    //(skipped without it)
     //CLD: 2026-10-21T20:10:00+03:00: the account guard of sys\ObjectManager (web requests: an account's objects only, a query for another account refused, acrossAccounts,
     //global models and the console not limited) and the sign-in of a name used in two accounts (sys\Identity::authenticate: the password picks the user, several fit: choices).
     //Account B and the users are written directly (no model hooks) and removed at the end
@@ -3955,13 +3951,9 @@ class CheckCommand extends \sys\BaseController {
     }
 
     private function suiteLdap() {
-	if (!in_array('Ldap', (array)\V::app()->config('modules'), true)) {
-	    echo "  skipped: the Ldap plugin is not enabled\n";
-	    return;
-	}
-	$B = \plugins\Ldap\util\LdapBer::class;
-	$C = \plugins\Ldap\util\LdapClient::class;
-	$E = \plugins\Ldap\util\LdapException::class;
+	$B = \util\LdapBer::class;
+	$C = \util\LdapClient::class;
+	$E = \util\LdapException::class;
 
 	//BER: integers (two's complement, fewest bytes), long lengths, a simple bind request as RFC 4511 encodes it
 	$this->check('LDAP BER: integers 0, 127, 128, 256, -1, -129', [ '020100', '02017f', '02020080', '02020100', '0201ff', '0202ff7f' ],
@@ -4058,7 +4050,7 @@ class CheckCommand extends \sys\BaseController {
 		    $refused = 'connected';
 		    try {
 			$C::open([ 'hosts' => "127.0.0.1:{$port}", 'encryption' => 'starttls', 'verifyTls' => true, 'driver' => $driver, 'timeout' => 5 ])->close();
-		    } catch (\plugins\Ldap\util\LdapException $e) {
+		    } catch (\util\LdapException $e) {
 			$refused = $e->isConnection() ? 'refused' : $e->getMessage();
 		    }
 		    $this->check("LDAP {$driver}: a certificate of no known authority is refused", 'refused', $refused);
@@ -4068,7 +4060,10 @@ class CheckCommand extends \sys\BaseController {
 		$failover->close();
 	    }
 
-	    $this->ldapSignInChecks($port, $tls ? $ca : null);
+	    if (in_array('Ldap', (array)\V::app()->config('modules'), true))
+		$this->ldapSignInChecks($port, $tls ? $ca : null);
+	    else
+		echo "  (the LDAP sign-in not checked: the Ldap plugin is not enabled)\n";
 	    $this->ldapStepChecks($port);
 	} finally {
 	    foreach($servers as [ $proc ]) {
@@ -4090,7 +4085,7 @@ class CheckCommand extends \sys\BaseController {
 
     //the test server started on dir.json of $dir: [ process, port ]
     private static function ldapServer($dir, array $args) {
-	$cmd = array_merge([ PHP_BINARY, BASE . '/app/plugins/Ldap/tests/LdapTestServer.php', "{$dir}/dir.json" ], $args);
+	$cmd = array_merge([ PHP_BINARY, BASE . '/app/tests/LdapTestServer.php', "{$dir}/dir.json" ], $args);
 	$proc = proc_open($cmd, [ 1 => [ 'pipe', 'w' ], 2 => [ 'file', "{$dir}/server.err", 'a' ] ], $pipes);
 	stream_set_timeout($pipes[1], 10);
 	$line = (string)fgets($pipes[1]);
@@ -4127,8 +4122,8 @@ class CheckCommand extends \sys\BaseController {
 
     //a client of $driver on the test server: binds, searches, limits, pages, writes
     private function ldapClientChecks($driver, $enc, $port, $verify, $caCert, $label = '') {
-	$C = \plugins\Ldap\util\LdapClient::class;
-	$E = \plugins\Ldap\util\LdapException::class;
+	$C = \util\LdapClient::class;
+	$E = \util\LdapException::class;
 	$at = "LDAP {$driver} {$enc}{$label}";
 	$c = $C::open([ 'hosts' => "127.0.0.1:{$port}", 'encryption' => $enc, 'verifyTls' => $verify, 'caCert' => $caCert, 'driver' => $driver, 'timeout' => 5 ]);
 	try {
@@ -4136,7 +4131,7 @@ class CheckCommand extends \sys\BaseController {
 		try {
 		    $c->bind($dn, $pw);
 		    return 'accepted';
-		} catch (\plugins\Ldap\util\LdapException $e) {
+		} catch (\util\LdapException $e) {
 		    return [ $e->ldapCode, $e->adReason() ];
 		}
 	    };
@@ -4167,7 +4162,7 @@ class CheckCommand extends \sys\BaseController {
 		try {
 		    $fn();
 		    return 0;
-		} catch (\plugins\Ldap\util\LdapException $e) {
+		} catch (\util\LdapException $e) {
 		    return $e->ldapCode;
 		}
 	    };
@@ -4300,7 +4295,7 @@ class CheckCommand extends \sys\BaseController {
 	$e = [ self::class, 'edge' ];
 	$om = \V::app()->om;
 	$this->check('LDAP step: a step type, an `error` output when chosen', [ true, [ 'success', 'error' ] ],
-	    [ isset(\models\WfNode::getAll()['app::ldap']), \plugins\Ldap\models\NodeAppLdap::outLabelsFor([ 'onError' => 'output' ]) ]);
+	    [ isset(\models\WfNode::getAll()['app::ldap']), \models\node\NodeAppLdap::outLabelsFor([ 'onError' => 'output' ]) ]);
 	$creds = [];
 	foreach([ 'ad', 'openldap' ] as $dir) {
 	    $c = $om->create('CredentialLdap', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => "Check: LDAP {$dir} " . uniqid(), 'directory' => $dir,

@@ -1,5 +1,7 @@
 <?php
 
+//CLD: 2026-10-25T19:30:00+02:00: moved from the Ldap plugin to the core (the LDAP step and credential are core, the plugin is the LDAP sign-in): namespace models\credential (was plugins\Ldap\models); also the LDAP sign-in's settings (plugins\Ldap\models\LdapSettings)
+
 //CLD: 2026-10-21T10:00:00+03:00: new: the settings of an LDAP server, shared by the account's sign-in settings (LdapSettings) and the LDAP server credential (CredentialLdap):
 //  serverSchema()        the fields: directory (Active Directory / other), servers, encryption, port, certificate check, CA certificate, timeout, bind DN + password, base DN
 //  serverValidates()     the servers given are host names / addresses
@@ -7,9 +9,9 @@
 //  withClient($fn)       $fn($client) on a bound client, closed afterwards
 //  $ldapDriver           auto | ext | php (the check suite runs both drivers)
 
-namespace plugins\Ldap\models;
+namespace models\credential;
 
-use plugins\Ldap\util\LdapClient;
+use util\LdapClient;
 
 trait LdapServerTrait {
     public $ldapDriver = 'auto';

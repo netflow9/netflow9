@@ -5,13 +5,11 @@
       - Sign-in: per account (Settings menu: LDAP sign-in), the people of the account sign in with their directory password; users created on their first sign-in, their
 	role from their directory groups (util/LdapAuth.php through the core's hooks identity:authenticate and identity:password-source: an LDAP user has no password
 	reset / change here; the 2FA of the application still applies)
-      CLD: 2026-10-25T19:00:00+02:00: the sign-in and the workflows are independent: plan features `ldap` (sign-in) and `ldap_step` (the credential and the step)
-      - Workflows: the LDAP server credential (models/CredentialLdap.php) and the LDAP step (models/NodeAppLdap.php: search, get, add, modify, rename, delete, group
-	members, check / set a password)
-      util/LdapClient.php                 the connection: PHP's ldap extension when loaded (LdapExtClient), else the plugin's own client (LdapPhpClient, LdapBer)
+      CLD: 2026-10-25T19:30:00+02:00: the plugin is the sign-in only (plan feature `ldap`); the workflows' part is core, for every account: the LDAP server credential
+	(models\credential\CredentialLdap), the LDAP step (models\node\NodeAppLdap) and the connection (util\LdapClient, LdapExtClient, LdapPhpClient, LdapBer, LdapException;
+	the server's settings: models\credential\LdapServerTrait); the check suite's test server: app/tests/LdapTestServer.php
       models/LdapSettings.php             an account's sign-in settings; models/LdapLink.php: a user who is an LDAP user (removed with the user)
       controllers/LdapController          /Ldap/ldap/<settings|test|unlink> (views/ldap/settings.php), for who may change the account
-      tests/LdapTestServer.php            a directory in memory for the check suite (./v check::run --only=ldap)
 */
 
 namespace plugins\Ldap;
@@ -26,18 +24,8 @@ class Plugin {
 	    'LdapLink' => [
 		'class' => __NAMESPACE__ . '\\models\\LdapLink',
 	    ],
-	    //CLD: 2026-10-24T09:45:36+03:00: `feature`: of the accounts whose tier has it (util\Tiers: new credentials, the designer's palette)
-	    //CLD: 2026-10-25T19:00:00+02:00: `ldap_step` (was `ldap`, the sign-in's): the step and its credential do not depend on the LDAP sign-in
-	    'CredentialLdap' => [
-		'class' => __NAMESPACE__ . '\\models\\CredentialLdap',
-		'variant-of' => 'Credential',
-		'feature' => 'ldap_step',
-	    ],
-	    'NodeAppLdap' => [
-		'class' => __NAMESPACE__ . '\\models\\NodeAppLdap',
-		'wfNode' => true,
-		'feature' => 'ldap_step',
-	    ],
+	    //CLD: 2026-10-25T19:30:00+02:00: the LDAP server credential and the LDAP step are core (models\credential\CredentialLdap, models\node\NodeAppLdap, data\SysObjects), with the LDAP
+	    //client (util\LdapClient ...): no plan feature (were registered here, feature ldap_step)
 	]);
 
 	//a deleted user's link (in every mode)
@@ -49,10 +37,9 @@ class Plugin {
 
 	//CLD: 2026-10-24T09:45:36+03:00: a feature of the accounts' tiers (util\Tiers: `ldap`): without it, no LDAP sign-in, no settings, no new LDAP credentials, the LDAP step does not
 	//run (the settings and credentials are kept)
-	//CLD: 2026-10-25T19:00:00+02:00: two features, each without the other: `ldap` the sign-in (its settings), `ldap_step` the LDAP step and the LDAP server credential (were both `ldap`)
+	//CLD: 2026-10-25T19:30:00+02:00: `ldap` is the sign-in only (its settings); the LDAP step and its credential are core, not a feature (were `ldap_step`)
 	\V::app()->hooks->addHook('tiers:features', function(\ArrayObject $features) {
 	    $features['ldap'] = 'LDAP sign-in';
-	    $features['ldap_step'] = 'LDAP step (directories)';
 	});
 
 	if (\V::app()->config('app.mode') != 'web')

@@ -1,5 +1,7 @@
 <?php
 
+//CLD: 2026-10-25T19:30:00+02:00: moved from the Ldap plugin to the core (the LDAP step and credential are core, the plugin is the LDAP sign-in): namespace util (was plugins\Ldap\util)
+
 //CLD: 2026-10-21T10:00:00+03:00: new: a connection to an LDAP server (v3, simple bind), through PHP's ldap extension when it is loaded (LdapExtClient), else the
 //plugin's own client (LdapPhpClient: BER over a socket). Both give the same answers and throw LdapException.
 //  $client = LdapClient::open([
@@ -19,7 +21,7 @@
 //  $client->close();
 //  helpers: escapeFilter(), escapeDn(), normalizeDn(), dnEquals(), rdnValue(), values() (an attribute of an entry, its name in any case), plain() (an entry for workflows)
 
-namespace plugins\Ldap\util;
+namespace util;
 
 abstract class LdapClient {
     const ENCRYPTION = [ 'starttls' => 'StartTLS (port 389, then encrypted)', 'ldaps' => 'LDAPS (TLS, port 636)', 'none' => 'None (port 389, unencrypted)' ];
