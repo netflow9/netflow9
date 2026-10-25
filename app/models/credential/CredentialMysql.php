@@ -1,9 +1,11 @@
 <?php
 
+//CLD: 2026-10-25T20:00:00+02:00: moved from the Database plugin to the core (the Database step and its credentials are core, for every account: no plan feature): models\credential (was plugins\Database\models)
+
 //CLD: 2026-10-25T17:40:00+02:00: new: a MySQL or MariaDB server (pdo_mysql), for the Database step. TLS: none, encrypted (the certificate not checked) or checked against the
 //system's CAs. LOAD DATA LOCAL is off (it would read this server's files). Statement time limit: max_execution_time (MySQL, SELECT only) / max_statement_time (MariaDB)
 
-namespace plugins\Database\models;
+namespace models\credential;
 
 class CredentialMysql extends CredentialDatabase {
     public static $label = 'MySQL / MariaDB';

@@ -1,17 +1,19 @@
 <?php
 
+//CLD: 2026-10-25T20:00:00+02:00: moved from the Database plugin to the core (the Database step and its credentials are core, for every account: no plan feature): models\node (was plugins\Database\models)
+
 //CLD: 2026-10-25T17:40:00+02:00: new step: Database - runs SQL on a database through a database credential of the project (CredentialMysql, CredentialPostgres, CredentialMssql,
 //CredentialOracle, CredentialFirebird, CredentialOdbc; provide `database`). Operations (setting `operation`):
 //	query       a SELECT (or anything giving rows): { rows: [ { column: value } ], count, columns, truncated }, at most `maxRows` rows
 //	execute     an INSERT / UPDATE / DELETE / DDL / procedure call: { affected, lastInsertId } (lastInsertId: null where the database has none)
 //	insert      the rows of a list of objects (keys: the columns) into `table`, in one transaction: { affected }
-//  A {{ }} in the SQL is sent as a parameter of the statement (WHERE id = {{ order.id }}), never as SQL text: it cannot be a table or column name (util\Db::sql).
+//  A {{ }} in the SQL is sent as a parameter of the statement (WHERE id = {{ order.id }}), never as SQL text: it cannot be a table or column name (util\SqlDb::sql).
 //  Values read: large objects as their content, binary as base64. One statement per step.
 //  On error (the database's, no connection, the driver missing in this PHP): fail the step, or continue on the `error` output ({ error: the message } in the variable)
 
-namespace plugins\Database\models;
+namespace models\node;
 
-use plugins\Database\util\Db;
+use util\SqlDb;
 
 class NodeAppDatabase extends \models\WfNode {
     //static data/structure
@@ -36,8 +38,8 @@ class NodeAppDatabase extends \models\WfNode {
 
     //some database type of the plugin has its PDO driver in this PHP
     public static function available() {
-	foreach(array_keys(Db::TYPES) as $type) {
-	    if (Db::driver($type) !== null)
+	foreach(array_keys(SqlDb::TYPES) as $type) {
+	    if (SqlDb::driver($type) !== null)
 		return true;
 	}
 	return false;
@@ -210,7 +212,7 @@ class NodeAppDatabase extends \models\WfNode {
 	    case 'query':
 		[ $sql, $values ] = self::statement($cfg, $vars);
 		$stmt = $pdo->prepare($sql);
-		Db::bind($stmt, $values, $driver);
+		SqlDb::bind($stmt, $values, $driver);
 		$stmt->execute();
 		$max = max(1, min(self::MAX_ROWS, (int)($cfg['maxRows'] ?? 1000)));
 		$rows = [];
@@ -220,7 +222,7 @@ class NodeAppDatabase extends \models\WfNode {
 			$truncated = true;
 			break;
 		    }
-		    $rows[] = array_map([ Db::class, 'plain' ], $row);
+		    $rows[] = array_map([ SqlDb::class, 'plain' ], $row);
 		}
 		$columns = [];
 		for($i = 0; $i < $stmt->columnCount(); $i++) {
@@ -241,7 +243,7 @@ class NodeAppDatabase extends \models\WfNode {
 	    case 'execute':
 		[ $sql, $values ] = self::statement($cfg, $vars);
 		$stmt = $pdo->prepare($sql);
-		Db::bind($stmt, $values, $driver);
+		SqlDb::bind($stmt, $values, $driver);
 		$stmt->execute();
 		$affected = $stmt->rowCount();
 		$stmt->closeCursor();
@@ -255,7 +257,7 @@ class NodeAppDatabase extends \models\WfNode {
 		return [ [ 'affected' => $affected, 'lastInsertId' => $id ], \util\Format::plural(max(0, $affected), 'row') . ' changed' . ($id !== null ? ", last id {$id}" : '') ];
 	    case 'insert':
 		$table = trim((string)($cfg['table'] ?? ''));
-		if (!Db::isIdentifier($table, 3))
+		if (!SqlDb::isIdentifier($table, 3))
 		    throw new \RuntimeException("not a table name: `{$table}`");
 		$list = \util\Expression::render((string)($cfg['rows'] ?? ''), $vars);
 		if ($list === null || $list === '' || $list === [])
@@ -272,12 +274,12 @@ class NodeAppDatabase extends \models\WfNode {
 			if (!is_array($row) || array_is_list($row) || !$row)
 			    throw new \RuntimeException('Rows: row ' . ($i + 1) . ' is not an object of columns');
 			foreach(array_keys($row) as $column) {
-			    if (!Db::isIdentifier($column))
+			    if (!SqlDb::isIdentifier($column))
 				throw new \RuntimeException('Rows: row ' . ($i + 1) . ": not a column name: `{$column}`");
 			}
 			$key = implode(',', array_keys($row));
 			$statements[$key] ??= $pdo->prepare("INSERT INTO {$table} ({$key}) VALUES (" . implode(', ', array_fill(0, count($row), '?')) . ')');
-			Db::bind($statements[$key], array_values($row), $driver);
+			SqlDb::bind($statements[$key], array_values($row), $driver);
 			$statements[$key]->execute();
 		    }
 		    $pdo->commit();
@@ -293,7 +295,7 @@ class NodeAppDatabase extends \models\WfNode {
 
     //the SQL setting: [ SQL with ?, the values of its {{ }} ]
     protected static function statement(array $cfg, array $vars) {
-	[ $sql, $values ] = Db::sql((string)($cfg['sql'] ?? ''), $vars);
+	[ $sql, $values ] = SqlDb::sql((string)($cfg['sql'] ?? ''), $vars);
 	if ($sql === '')
 	    throw new \RuntimeException('SQL: empty');
 	return [ $sql, $values ];

@@ -5,6 +5,7 @@
     the needs of the steps added since (FTP / SFTP: zlib, bz2, curl FTP/FTPS/SFTP, proc_open, gpg, openssl - recommended; Google: curl HTTPS)
     and the zip extension (XLSX table import)
     //CLD: 2026-10-25T17:40:00+02:00: the PDO drivers of the Database plugin's types, when it is enabled (databaseChecks: recommended, web and console PHP)
+    //CLD: 2026-10-25T20:00:00+02:00: always: the Database step is core
     //CLD: 2026-10-20T23:05:00+03:00: J's needs (sys\J: expressions, Code step) in the web PHP and in the console PHP (the daemon runs them): J_EXTENSIONS, PCRE with Unicode
 //  Setup::checks()                 [ [ 'name', 'ok' => bool, 'value' => what was found, 'need' => what is needed, 'required' => bool ], ... ]
 //  Setup::ready($checks)           true when every required check passes
@@ -123,8 +124,8 @@ class Setup {
 	}
 
 	//CLD: 2026-10-25T17:40:00+02:00: the database types of the Database plugin (when enabled): each needs its PDO driver in both PHPs (the designer, the daemon); recommended
-	if (in_array('Database', (array)\V::app()->config('modules'), true))
-	    array_push($checks, ...self::databaseChecks($loaded, $cli['ext'] ?? null));
+	//CLD: 2026-10-25T20:00:00+02:00: always (the Database step is core; was only with the plugin enabled)
+	array_push($checks, ...self::databaseChecks($loaded, $cli['ext'] ?? null));
 
 	$checks[] = [ 'name' => 'HTTPS', 'ok' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'value' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'yes' : 'no',
 	    'need' => 'the links the app sends are https://', 'required' => false ];
@@ -145,7 +146,8 @@ class Setup {
     //in the console PHP ($cli: the same, null when it cannot be run: the web PHP's only)
     public static function databaseChecks(array $web, ?array $cli) {
 	$checks = [];
-	foreach(\plugins\Database\util\Db::TYPES as $def) {
+	//CLD: 2026-10-25T20:00:00+02:00: util\SqlDb (was plugins\Database\util\Db)
+	foreach(\util\SqlDb::TYPES as $def) {
 	    $extensions = array_values($def['drivers']);
 	    $inWeb = array_values(array_filter($extensions, fn($x) => isset($web[$x])));
 	    $inCli = $cli === null ? null : array_values(array_filter($extensions, fn($x) => isset($cli[$x])));

@@ -193,6 +193,32 @@ class SysObjects {
 		'class' => 'models\credential\CredentialFtp',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-10-25T20:00:00+02:00: the databases (the Database step), core for every account (were registered by the Database plugin, plan feature database); each offered when PHP
+	    //has its PDO driver (Credential::available())
+	    'CredentialMysql' => [
+		'class' => 'models\credential\CredentialMysql',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialPostgres' => [
+		'class' => 'models\credential\CredentialPostgres',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialMssql' => [
+		'class' => 'models\credential\CredentialMssql',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialOracle' => [
+		'class' => 'models\credential\CredentialOracle',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialFirebird' => [
+		'class' => 'models\credential\CredentialFirebird',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialOdbc' => [
+		'class' => 'models\credential\CredentialOdbc',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-10-25T19:30:00+02:00: an LDAP server (the LDAP step), core for every account (was registered by the Ldap plugin, plan feature ldap_step)
 	    'CredentialLdap' => [
 		'class' => 'models\credential\CredentialLdap',
@@ -293,6 +319,12 @@ class SysObjects {
 	    //CLD: 2026-10-20T18:00:00+03:00: FTP / SFTP Upload (project files or a text; compression, encryption, safe .part upload, if the file exists)
 	    'NodeAppFtpUpload' => [
 		'class' => 'models\node\NodeAppFtpUpload',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-10-25T20:00:00+02:00: Database (query and change SQL databases), core for every account (was registered by the Database plugin, plan feature database); not in the
+	    //palette when PHP has no PDO driver of its types (WfNode::available())
+	    'NodeAppDatabase' => [
+		'class' => 'models\node\NodeAppDatabase',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-10-25T19:30:00+02:00: LDAP (search and change a directory), core for every account (was registered by the Ldap plugin, plan feature ldap_step)

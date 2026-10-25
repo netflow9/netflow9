@@ -3211,24 +3211,13 @@ class CheckCommand extends \sys\BaseController {
 		    [ \plugins\Ldap\util\LdapAuth::enabledFor($account->_id), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ]);
 	    }
 	    //CLD: 2026-10-25T18:30:00+02:00: Database: on enterprise only (as LDAP); its credentials and step follow; the step does not run without it
-	    if ($om->isDefined('NodeAppDatabase')) {
-		$on = [];
-		foreach([ 'free', 'team', 'enterprise' ] as $tier) {
-		    $set($tier);
-		    $on[] = [ $T::has($account, 'database'), $T::allows($account, 'CredentialPostgres'), $T::allows($account, 'NodeAppDatabase') ];
-		}
-		$set('team');
-		$node = $om->create('NodeAppDatabase', []);
-		$node->exec = (object)[ 'aid' => $account->_id ];
-		try {
-		    $node->receive();
-		    $runs = 'runs';
-		} catch (\ErrorException $e) {
-		    $runs = str_contains($e->getMessage(), 'not included in your plan (Team)') ? 'refused' : $e->getMessage();
-		}
-		$this->check('database: off on free and team, on on enterprise (its credentials, its step); the step refused without it',
-		    [ [ false, false, false ], [ false, false, false ], [ true, true, true ], 'refused' ], [ $on[0], $on[1], $on[2], $runs ]);
+	    //CLD: 2026-10-25T20:00:00+02:00: core: its credentials and step on every tier (were the feature `database`'s)
+	    $on = [];
+	    foreach([ 'free', 'team', 'enterprise' ] as $tier) {
+		$set($tier);
+		$on[] = [ $T::allows($account, 'CredentialPostgres'), $T::allows($account, 'NodeAppDatabase') ];
 	    }
+	    $this->check('database: its credentials and its step on every tier (core, no plan feature)', [ [ true, true ], [ true, true ], [ true, true ] ], $on);
 
 	    //CLD: 2026-10-24T10:28:12+03:00: Google / Microsoft: on team and enterprise, off on free; their credentials and steps follow; a step does not run without it
 	    foreach([ 'google' => [ 'CredentialGoogleMail', 'NodeAppGoogleDrive' ], 'microsoft' => [ 'CredentialMicrosoftMail', 'NodeAppOneDrive' ] ] as $feature => [ $cred, $step ]) {
@@ -4367,24 +4356,21 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-25T17:40:00+02:00: the Database plugin (skipped without it): the types offered by driver, the DSNs of each type and the values refused in them, the setup's checks,
     //the SQL's parameters, the step's operations on an SQLite database in memory (the same PDO code as the servers'), a run against a closed port (the `error` output)
     private function suiteDatabase() {
-	if (!in_array('Database', (array)\V::app()->config('modules'), true)) {
-	    echo "  skipped: the Database plugin is not enabled\n";
-	    return;
-	}
+	//CLD: 2026-10-25T20:00:00+02:00: core (was the Database plugin's: skipped without it)
 	$om = \V::app()->om;
-	$D = \plugins\Database\util\Db::class;
-	$S = \plugins\Database\models\NodeAppDatabase::class;
+	$D = \util\SqlDb::class;
+	$S = \models\node\NodeAppDatabase::class;
 	$loaded = \PDO::getAvailableDrivers();
 
 	//offered when this PHP has the driver
 	$expected = $actual = [];
-	foreach(\plugins\Database\Plugin::CREDENTIALS as $name) {
+	foreach(\models\credential\CredentialDatabase::CREDENTIALS as $name) {
 	    $class = $om->getObjectClass($name);
 	    $expected[$name] = (bool)array_intersect(array_keys($D::TYPES[$class::TYPE]['drivers']), $loaded);
 	    $actual[$name] = $class::available();
 	}
 	$this->check('Database: the types offered are those whose PDO driver is loaded; the step when one is; all in the Database group', [ $expected, in_array(true, $expected, true), [ 'Database' ] ],
-	    [ $actual, $S::available(), array_values(array_unique(array_map(fn($n) => $om->getObjectClass($n)::$group, \plugins\Database\Plugin::CREDENTIALS))) ]);
+	    [ $actual, $S::available(), array_values(array_unique(array_map(fn($n) => $om->getObjectClass($n)::$group, \models\credential\CredentialDatabase::CREDENTIALS))) ]);
 	$this->check('Database: the step type, its `error` output, its result variables', [ true, [ 'success', 'error' ], [ 'rows', 'count', 'columns', 'truncated', 'error' ], [ 'affected', 'lastInsertId', 'error' ], [ 'affected', 'error' ] ],
 	    [ isset(\models\WfNode::getAll()['app::database']), $S::outLabelsFor([ 'onError' => 'output' ]), array_keys($S::outputVariables([ 'variable' => 'db' ])['db']['fields']),
 		array_keys($S::outputVariables([ 'operation' => 'execute' ])['db']['fields']), array_keys($S::outputVariables([ 'operation' => 'insert', 'variable' => 'x' ])['x']['fields']) ]);
@@ -4411,11 +4397,11 @@ class CheckCommand extends \sys\BaseController {
 	    $dsn($cred('CredentialFirebird', [ 'host' => 'fb', 'database' => '/data/sales.fdb' ]), 'firebird'),
 	    $dsn($cred('CredentialOdbc', [ 'dataSource' => 'Sales DB' ]), 'odbc'),
 	]);
-	$mysqlOptions = (new \ReflectionMethod(\plugins\Database\models\CredentialMysql::class, 'dsn'))->invoke($cred('CredentialMysql', [ 'host' => 'h', 'tls' => 'encrypt' ]), 'mysql', 7)[1];
-	$attr = [ \plugins\Database\models\CredentialMysql::class, 'attr' ];
+	$mysqlOptions = (new \ReflectionMethod(\models\credential\CredentialMysql::class, 'dsn'))->invoke($cred('CredentialMysql', [ 'host' => 'h', 'tls' => 'encrypt' ]), 'mysql', 7)[1];
+	$attr = [ \models\credential\CredentialMysql::class, 'attr' ];
 	$this->check('Database: MySQL: LOAD DATA LOCAL off, native types, TLS without checking the certificate', [ false, false, false, true ],
 	    [ $mysqlOptions[$attr('LOCAL_INFILE')] ?? null, $mysqlOptions[\PDO::ATTR_EMULATE_PREPARES] ?? null, $mysqlOptions[$attr('SSL_VERIFY_SERVER_CERT')] ?? null,
-		\plugins\Database\models\CredentialMysql::caFile() === null || isset($mysqlOptions[$attr('SSL_CA')]) ]);
+		\models\credential\CredentialMysql::caFile() === null || isset($mysqlOptions[$attr('SSL_CA')]) ]);
 	$errorsOf = function($name, $data) use ($cred) {
 	    $c = $cred($name, $data);
 	    $c->validates();
@@ -4439,7 +4425,7 @@ class CheckCommand extends \sys\BaseController {
 	    str_contains($thrown(fn() => $dsn($cred('CredentialOdbc', [ 'dataSource' => 'Driver={x}' ]), 'odbc')), 'not a connection string'),
 	    str_contains($thrown(fn() => $dsn($cred('CredentialFirebird', [ 'host' => 'fb', 'database' => 'a;b' ]), 'firebird')), 'cannot hold'),
 	]);
-	$missing = array_values(array_filter(\plugins\Database\Plugin::CREDENTIALS, fn($n) => !$om->getObjectClass($n)::available()));
+	$missing = array_values(array_filter(\models\credential\CredentialDatabase::CREDENTIALS, fn($n) => !$om->getObjectClass($n)::available()));
 	if ($missing)
 	    $this->check('Database: a type without its driver says which extension is missing', true,
 		str_contains($thrown(fn() => $cred($missing[0], [ 'host' => 'h', 'database' => 'd', 'dataSource' => 'd' ])->connect(3)), 'needs the PHP extension'));
@@ -4499,7 +4485,7 @@ class CheckCommand extends \sys\BaseController {
 	}
 
 	//a workflow: the credential of the project, a closed port: the `error` output, the message logged; failing without it
-	if (!\plugins\Database\models\CredentialMysql::available()) {
+	if (!\models\credential\CredentialMysql::available()) {
 	    echo "  skipped: the step in a workflow (no pdo_mysql)\n";
 	    return;
 	}

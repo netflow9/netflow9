@@ -1,9 +1,11 @@
 <?php
 
+//CLD: 2026-10-25T20:00:00+02:00: moved from the Database plugin to the core (the Database step and its credentials are core, for every account: no plan feature): models\credential (was plugins\Database\models)
+
 //CLD: 2026-10-25T17:40:00+02:00: new: an ODBC data source (pdo_odbc), for the Database step: a data source the server's administrator configured (odbc.ini / the system DSNs),
 //by its name only: a connection string could name a driver that opens this machine's files. The username / password: when the data source does not hold them
 
-namespace plugins\Database\models;
+namespace models\credential;
 
 class CredentialOdbc extends CredentialDatabase {
     public static $label = 'ODBC data source';
