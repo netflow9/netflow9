@@ -137,7 +137,6 @@ class BaseForm extends BaseHtml {
 		    $first = array_shift($name);
 
 
-		    //SC: 2025-08-19: remove [] from $last name and add it back at return
 		    $__len = count($name);
 		    $is_multiple = (strpos($name[$__len - 1], '[]') !== false);
 		    if ($is_multiple)
@@ -674,14 +673,12 @@ class BaseForm extends BaseHtml {
 	list($scope, $options) = $this->_options($defaults, $options);
 
 	if (!isset($options['checked']) && ($bound = $this->binding($key)->data)) {
-	    //SC: 2019.02.10: added option for checkbox array
 	    if (is_array($bound))
 		$options['checked'] = in_array($default, $bound);
 	    else
 		$options['checked'] = ($bound == $default);
 	}
 	if ($scope['hidden']) {
-	    //SC: 2022-12-22: if is disabled/readonly, copy the value of checkbox
 	    $hidden_value = '';
 	    if (isset($options['disabled'])) {
 		$hidden_value = (empty($options['checked']) ? '' : '1');
@@ -779,11 +776,9 @@ class BaseForm extends BaseHtml {
     public function hidden($name, array $options = array()) {
 	list($name, $options, $template) = $this->_defaults(__FUNCTION__, $name, $options);
 
-	//SC: 2022-07-06: just if name does not already ends in [] && multiple
 	$multiple = $options['multiple'] ?? false;
 	if ($multiple && substr($name, -2) != '[]')
 		$name .= '[]';
-	//\V::app()->log->debug('last: name=' . $name);
 	return $this->_render($template, compact('name', 'options'));
     }
 

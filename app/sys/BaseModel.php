@@ -259,7 +259,6 @@ class BaseModel {
 		$first = array_shift($data);
 		$rv = $this->__get($first);
 		$cur = & $rv;
-		//SC: 2022-03-15; if cur is not array, make it
 		if (!is_array($cur))
 		    $cur = [ $cur ];
 		foreach ($data as $seg) {

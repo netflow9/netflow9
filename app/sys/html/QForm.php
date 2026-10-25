@@ -76,8 +76,6 @@ class QForm extends BaseForm {
 	    ],
 
 	    'tpl-outer-h-default' => [
-		//SC: 2025-12-16: replaced col-sm-2, col-sm-10 with col-sm-x as marker to replace later
-//		'label_options' => [ 'class' => 'col-sm-2 col-form-label text-right', 'escape' => false, ],
 		'label_options' => [ 'class' => 'col-sm-x col-form-label', 'escape' => false, ],
 		'iwrap_options' => [ 'class' => 'col-sm-x' ],
 		 'wrap_options' => [ 'class' => 'form-group row mb-2', ],
@@ -88,8 +86,6 @@ class QForm extends BaseForm {
 
 	    'tpl-outer-h-checkbox' => [
 		 'wrap_options' => [ 'class' => 'form-group row', ],
-		//SC: 2025-12-16: replaced col-sm-10 with col-sm-x as marker to replace later
-		//also replaced ml-auto with offset-sm-y
 		'iwrap_options' => [ 'class' => 'col-sm-x offset-sm-y' ],
 	    ],
 
@@ -182,7 +178,6 @@ class QForm extends BaseForm {
 
 	$type = $options['type'] ?? 'text';
 
-	//SC: 2025-12-16: added to set a default
 	$cols = $options['cols'] ?? [2, 10];
 
 	$dir = $options['dir'] ?? 'h';
