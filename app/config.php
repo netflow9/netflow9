@@ -101,9 +101,9 @@ function get_config($mode = 'web') {
 	    //preload would make a second client); none in the initial setup (sys\SessionNoDB, see get_setup_config)
 	    'mongo' => [
 		'class' => '\sys\Mongo',
-		'autoload.requires' => [ BASE . '/app/pkgs/mongo-php-library-2.3.0/src/functions.php', ],
+		'autoload.requires' => [ BASE . '/app/pkgs/mongo-php-library/src/functions.php', ],
 		'autoload.namespaces' => [
-		    'MongoDB' => BASE . '/app/pkgs/mongo-php-library-2.3.0/src',
+		    'MongoDB' => BASE . '/app/pkgs/mongo-php-library/src',
 		],
 		//CLD: 2026-10-19T12:52:41+03:00: null when app.env is missing (the initial setup: SetupController connects with the address it is given)
 		'uri' => defined('MONGO_URI') ? MONGO_URI : null,
