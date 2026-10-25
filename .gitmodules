@@ -2,3 +2,11 @@
 	path = app/pkgs/mongo-php-library
 	url = https://github.com/mongodb/mongo-php-library.git
 	branch = v2.x
+[submodule "app/pkgs/evenement"]
+	path = app/pkgs/evenement
+	url = https://github.com/igorw/evenement.git
+	branch = master
+[submodule "app/pkgs/php-asn1"]
+	path = app/pkgs/php-asn1
+	url = https://github.com/genkgo/php-asn1.git
+	branch = master
