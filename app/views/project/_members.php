@@ -8,16 +8,15 @@ if ($project->personal) {
     return;
 }
 
-$esc = fn($s) => \V::app()->html->escape((string)$s);
 $canManage = \V::app()->user->can('Project::update', [ 'object' => $project ]);
 $roles = [];
 foreach(\V::app()->om->find('Role', [ 'aid' => $project->aid ], [ 'sort' => [ 'name' => 1 ] ]) as $r)
     $roles[(string)$r->_id] = (string)$r;
 $members = (array)$project->members;
-$roleSelect = function($name, $selected, $attrs = '') use ($roles, $esc) {
+$roleSelect = function($name, $selected, $attrs = '') use ($roles) {
     $html = "<select name='{$name}' class='form-select form-select-sm' {$attrs}>";
     foreach($roles as $id => $label)
-	$html .= "<option value='" . $esc($id) . "'" . ($id === (string)$selected ? ' selected' : '') . ">" . $esc($label) . "</option>";
+	$html .= "<option value='" . \V::app()->html->escape($id) . "'" . ($id === (string)$selected ? ' selected' : '') . ">" . \V::app()->html->escape($label) . "</option>";
     return $html . '</select>';
 };
 
@@ -34,7 +33,7 @@ if ($canManage) {
 	. "<div><label class='form-label small mb-1'>Add a member</label><select name='user' class='form-select form-select-sm' required style='min-width: 16rem'" . ($candidates ? '' : ' disabled') . ">"
 	. ($candidates ? "<option value=''>Choose a user...</option>" : "<option>All the account's users are members</option>");
     foreach($candidates as $id => $label)
-	echo "<option value='" . $esc($id) . "'>" . $esc($label) . "</option>";
+	echo "<option value='" . \V::app()->html->escape($id) . "'>" . \V::app()->html->escape($label) . "</option>";
     echo "</select></div><div><label class='form-label small mb-1'>Role</label>" . $roleSelect('role', $memberRole) . "</div>"
 	. "<button type='submit' class='btn btn-sm btn-primary'" . ($candidates ? '' : ' disabled') . "><i class='bi bi-person-plus me-1'></i>Add</button></form>";
 
@@ -48,50 +47,20 @@ if ($canManage) {
 	    : 'Users of the account are added now; only who may add users can invite new people.') . "</div>";
 }
 
-$wDef = [
-	'objectName' => 'User',
-	'dataProvider' => new \sys\DataProviderArray($members),
-
-	'layout' => "
-	    {items}
-	",
-
-	'columns' => [
-	    [
-		'header' => 'User',
-		'content' => function($key, $item, $widget) use ($esc) {
-		    return $esc(\V::app()->om->findById('User', $key));
-		},
-	    ],
-	    [
-		'header' => 'Role',
-		'content' => function($key, $item, $widget) use ($canManage, $roles, $roleSelect, $project, $esc) {
-		    if (!$canManage)
-			return $esc($roles[(string)($item['role'] ?? '')] ?? '');
-		    return "<form method='post' action='" . \V::app()->createUrl('/project/member_role', [ 'id' => (string)$project->_id, 'user' => (string)$key ]) . "' class='m-0' style='max-width: 14rem'>"
-			. $roleSelect('role', $item['role'] ?? '', "onchange='this.form.requestSubmit()' aria-label='Role'") . "</form>";
-		},
-		'cellOptions' => [
-		    'style' => 'width: 16rem',
-		],
-	    ],
-	    [
-		'header' => '&nbsp;',
-		'content' => function($key, $item, $widget) use ($canManage, $project, $esc) {
-		    if (!$canManage)
-			return '';
-		    $name = (string)\V::app()->om->findById('User', $key);
-		    return "<a class='btn btn-sm btn-outline-danger' href='" . \V::app()->createUrl('/project/member_remove', [ 'id' => (string)$project->_id, 'user' => (string)$key ]) . "'"
-			. " data-method='post' data-confirm='" . $esc('Remove ' . $name . ' from the project?') . "'><i class='bi bi-person-dash me-1'></i>Remove</a>";
-		},
-		'cellOptions' => [
-		    'style' => 'width: 8rem',
-		],
-	    ]
-	],
-];
-
-echo (new \sys\widgets\GridView($wDef))->render();
+//CLD: 2026-10-25T21:30:00+02:00: the members as a table (was \sys\widgets\GridView, which no longer exists: the tab failed with "class not found"), as the invitations below
+echo "<div class='table-responsive'><table class='table table-sm align-middle'><thead><tr><th>User</th><th style='width: 16rem'>Role</th><th style='width: 8rem'></th></tr></thead><tbody>";
+foreach($members as $key => $item) {
+    $name = (string)\V::app()->om->findById('User', $key);
+    if ($canManage)
+	$role = "<form method='post' action='" . \V::app()->createUrl('/project/member_role', [ 'id' => (string)$project->_id, 'user' => (string)$key ]) . "' class='m-0' style='max-width: 14rem'>"
+	    . $roleSelect('role', $item['role'] ?? '', "onchange='this.form.requestSubmit()' aria-label='Role'") . "</form>";
+    else
+	$role = \V::app()->html->escape($roles[(string)($item['role'] ?? '')] ?? '');
+    $remove = $canManage ? "<a class='btn btn-sm btn-outline-danger' href='" . \V::app()->createUrl('/project/member_remove', [ 'id' => (string)$project->_id, 'user' => (string)$key ]) . "'"
+	. " data-method='post' data-confirm='" . \V::app()->html->escape('Remove ' . $name . ' from the project?') . "'><i class='bi bi-person-dash me-1'></i>Remove</a>" : '';
+    echo "<tr><td>" . \V::app()->html->escape($name) . "</td><td>{$role}</td><td class='text-end'>{$remove}</td></tr>";
+}
+echo '</tbody></table></div>';
 
 //CLD: 2026-10-17T22:00:00+03:00: the pending invitations (not joined yet): send again / cancel
 $invites = $canManage ? iterator_to_array(\models\user\ProjectInvite::pending($project), false) : [];
@@ -102,13 +71,13 @@ if ($invites) {
 	$by = $inv->invited_by ? \V::app()->om->findById('User', $inv->invited_by) : null;
 	$q = [ 'id' => (string)$project->_id, 'invite' => (string)$inv->_id ];
 	//CLD: 2026-10-24T16:30:00+03:00: the invitation's end in the account's datetime format (util\Format; was Y-m-d H:i)
-	echo "<tr><td><i class='bi bi-envelope me-2 text-body-secondary'></i>" . $esc($inv->email) . "</td>"
-	    . "<td style='width: 16rem'>" . $esc($roles[(string)$inv->role] ?? '') . "</td>"
-	    . "<td class='small text-body-secondary'>" . ($by ? 'by ' . $esc($by) . ', ' : '') . 'until ' . $esc(\util\Format::datetime($inv->expires_at)) . "</td>"
+	echo "<tr><td><i class='bi bi-envelope me-2 text-body-secondary'></i>" . \V::app()->html->escape($inv->email) . "</td>"
+	    . "<td style='width: 16rem'>" . \V::app()->html->escape($roles[(string)$inv->role] ?? '') . "</td>"
+	    . "<td class='small text-body-secondary'>" . ($by ? 'by ' . \V::app()->html->escape($by) . ', ' : '') . 'until ' . \V::app()->html->escape(\util\Format::datetime($inv->expires_at)) . "</td>"
 	    . "<td class='text-end text-nowrap' style='width: 14rem'>"
 	    . "<a class='btn btn-sm btn-outline-secondary me-1' href='" . \V::app()->createUrl('/project/member_invite_resend', $q) . "' data-method='post'><i class='bi bi-arrow-repeat me-1'></i>Resend</a>"
 	    . "<a class='btn btn-sm btn-outline-danger' href='" . \V::app()->createUrl('/project/member_invite_cancel', $q) . "' data-method='post' data-confirm='"
-	    . $esc('Cancel the invitation of ' . $inv->email . '?') . "'><i class='bi bi-x-lg me-1'></i>Cancel</a></td></tr>";
+	    . \V::app()->html->escape('Cancel the invitation of ' . $inv->email . '?') . "'><i class='bi bi-x-lg me-1'></i>Cancel</a></td></tr>";
     }
     echo '</tbody></table></div>';
 }

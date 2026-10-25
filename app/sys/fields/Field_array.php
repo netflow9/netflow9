@@ -26,7 +26,8 @@ class Field_array extends Field {
     public function __display(&$options = []) {
 	if (!$this->checkAccess(\V::app()->user->_id, 'read'))
 	    return '';
-	return print_r($this->binding->data($this->key), true);
+	//CLD: 2026-10-25T21:30:00+02:00: escaped (display() is HTML, as Field_text's; was print_r as is)
+	return \V::app()->html->escape(print_r($this->binding->data($this->key), true));
     }
 
     public function __input(&$options = []) {
