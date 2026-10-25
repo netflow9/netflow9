@@ -5,12 +5,13 @@
 
 namespace sys;
 
-class SetupSession extends BaseObject {
+class SessionNoDB extends BaseObject {
 
     public function __construct($config = []) {
 	parent::__construct($config);
 	if (session_status() == PHP_SESSION_NONE) {
-	    session_name('NETFLOW9SETUP');
+	    //CLD: 2026-10-25T09:25:00+02:00: the cookie's name from the component's config ('name'; e.g. the docs site's), NETFLOW9SETUP by default
+	    session_name($this->_config['name'] ?? 'NETFLOW9SETUP');
 	    if (is_dir(BASE . '/tmp') && is_writable(BASE . '/tmp'))
 		session_save_path(BASE . '/tmp');
 	    session_start([ 'cookie_httponly' => true, 'cookie_samesite' => 'Lax', 'cookie_secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ]);
