@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-23T10:00:00+03:00: new: the account's System AI credits (Settings menu: AI credits), for who may change the account:
+    the account's System AI credits (Settings menu: AI credits), for who may change the account:
 	/SystemAI/credits/index    the System AI (provider, model, its credits per 1M tokens), the credits (this month's allowance, the top-ups), the last changes
     (were on the Assistant's settings page)
 */

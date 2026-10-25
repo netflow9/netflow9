@@ -3,8 +3,6 @@
 //CLD: 2026-10-16T12:14:57+03:00: new form model: the page of a confirmed sign-up - the account's name, the user's name, the password (twice). The password fields
 //and their rules (complex, the two match) are ChangePasswordForm's (create it with [ 'validateCurrentPassword' => false ]: no current password)
 
-//CLD: 2026-10-19T11:21:19+03:00: moved to the Registration plugin (was models\user\RegisterForm)
-
 namespace plugins\Registration\models;
 
 class RegisterForm extends \models\user\ChangePasswordForm {

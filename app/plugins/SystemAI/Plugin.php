@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-23T10:00:00+03:00: new: the System AI provider: the model server this installation offers to every account (app.env SYSTEM_AI_*: config ai.system), paid in
+    the System AI provider: the model server this installation offers to every account (app.env SYSTEM_AI_*: config ai.system), paid in
     credits (as a prepaid SIM: a monthly allowance without rollover, top-ups that last 12 months). Was the Assistant's System provider; now used by
 	the Assistant (plugins\Assistant: provider System) and
 	the AI steps of the same provider (Claude, OpenAI, Gemini, Ollama, Lemonade: Credential System AI; models\node\NodeAppAi, hook ai:system-provider).

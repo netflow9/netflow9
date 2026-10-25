@@ -3,7 +3,6 @@
 namespace models;
 
 class File extends \sys\BaseModel {
-    //CLD: 2026-10-12T12:18:11+03:00: files of a project / an account (stored in metadata; GridFS files collection) (created by `v setup::indexes`)
     public static $indexes = [
 	[ [ 'metadata.project' => 1 ], [] ],
 	[ [ 'metadata.aid' => 1 ], [] ],
@@ -17,7 +16,7 @@ class File extends \sys\BaseModel {
 	return static::$bucketName . '.files';
     }
 
-    //CLD: 2026-10-06T21:33:37+03:00: also the allow-list of uploadable files (isAllowedName / acceptAttribute): images, documents, presentations,
+    //the allow-list of uploadable files (isAllowedName / acceptAttribute): images, documents, presentations,
     //spreadsheets, text files and PDFs; anything else (archives, executables, scripts, unknown types) is refused
     //extension => type shown in the list
     public static $extensions = [
@@ -69,12 +68,21 @@ class File extends \sys\BaseModel {
     ];
 
 
-    //CLD: 2026-10-22T00:35:40+03:00: the content type of a file, by extension (else application/octet-stream): uploads, attachments, files saved by steps (was
-    //models\node\NodeAppGoogle::UPLOAD_TYPES, now in the GoogleIntegration plugin)
+    //the content type of a file, by extension (else application/octet-stream): uploads, attachments, files saved by steps
     const CONTENT_TYPES = [
-	'pdf' => 'application/pdf', 'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'gif' => 'image/gif', 'webp' => 'image/webp', 'bmp' => 'image/bmp',
-	'tif' => 'image/tiff', 'tiff' => 'image/tiff', 'svg' => 'image/svg+xml', 'heic' => 'image/heic',
-	'doc' => 'application/msword', 'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'odt' => 'application/vnd.oasis.opendocument.text',
+	'pdf' => 'application/pdf',
+	'png' => 'image/png',
+	'jpg' => 'image/jpeg',
+	'jpeg' => 'image/jpeg',
+	'gif' => 'image/gif',
+	'webp' => 'image/webp',
+	'bmp' => 'image/bmp',
+	'tif' => 'image/tiff',
+	'tiff' => 'image/tiff',
+	'svg' => 'image/svg+xml',
+	'heic' => 'image/heic',
+	'doc' => 'application/msword',
+	'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'odt' => 'application/vnd.oasis.opendocument.text',
 	'rtf' => 'application/rtf', 'ppt' => 'application/vnd.ms-powerpoint', 'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 	'odp' => 'application/vnd.oasis.opendocument.presentation', 'xls' => 'application/vnd.ms-excel', 'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 	'ods' => 'application/vnd.oasis.opendocument.spreadsheet', 'csv' => 'text/csv', 'tsv' => 'text/tab-separated-values', 'txt' => 'text/plain', 'log' => 'text/plain',

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    //CLD: 2026-10-25T17:10:00+02:00: a minimal stand-in for chillerlan/php-settings-container, which app/pkgs/php-qrcode (upstream) extends (QROptions);
+    a minimal stand-in for chillerlan/php-settings-container, which app/pkgs/php-qrcode (upstream) extends (QROptions);
     //only what QROptions needs: the options given to the constructor, and reading / writing its protected properties (versionMin, versionMax) from outside;
     //the properties' own hooks validate the values; an unknown option is ignored
     //chillerlan\Settings\SettingsContainerAbstract is this class (class_alias below, class_map in config.php)

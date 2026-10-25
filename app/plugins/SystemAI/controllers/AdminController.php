@@ -1,8 +1,8 @@
 <?php
 
 /*
-    CLD: 2026-10-22T23:00:00+03:00: new: an account's System credits in the administration (the Admin plugin's account page; super-admins only):
-    CLD: 2026-10-23T10:00:00+03:00: the System AI's (were /Assistant/admin/<action>)
+    an account's System credits in the administration (the Admin plugin's account page; super-admins only):
+    the System AI's
 	/SystemAI/admin/plan    POST: id = account, credits (empty: the installation's monthly allowance)
 	/SystemAI/admin/grant   POST: id = account, credits, note: a top-up (models\SystemAiWallet::grant)
 */
@@ -38,7 +38,6 @@ class AdminController extends \sys\BaseController {
 	$note = trim(mb_substr((string)($req->data['note'] ?? ''), 0, 200));
 	$t = \V::app()->om->acrossAccounts(fn() => SystemAiWallet::grant($account->_id, (int)$credits, $note));
 	\plugins\Admin\Plugin::audit('credits_topup', $account, "System AI top-up: +{$credits} credits until " . gmdate('Y-m-d', $t['expires']) . ($note !== '' ? " ({$note})" : ''));
-	//CLD: 2026-10-24T16:30:00+03:00: the account's date format (util\Format; was Y-m-d, UTC)
 	$this->back($account, 'success', "+{$credits} credits, until " . \util\Format::date($t['expires']));
     }
 

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T23:00:00+03:00: new: the installation's administration, for super-admins (users with the `superadmin` flag, set only from the console: ./v Admin::admins::grant).
+    the installation's administration, for super-admins (users with the `superadmin` flag, set only from the console: ./v Admin::admins::grant).
     Enabled in app/plugins.php.
       controllers/AdminController.php    /Admin/admin/...: the installation (its services: status, start / stop / restart), the accounts, an account (suspend / reactivate,
                                          "view as"), the plugins' sections

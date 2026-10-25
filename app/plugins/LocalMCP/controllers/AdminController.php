@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T23:00:00+03:00: new: the tool servers in the administration (the Admin plugin's account page): /LocalMCP/admin/toggle (POST: id = account, server, on = 1 | 0)
+    the tool servers in the administration (the Admin plugin's account page): /LocalMCP/admin/toggle (POST: id = account, server, on = 1 | 0)
 */
 
 namespace plugins\LocalMCP\controllers;

@@ -4,7 +4,6 @@ namespace models;
 
 class DataTableDef extends \sys\BaseModel {
     protected static $collection = 'data-tables-defs';
-    //CLD: 2026-10-12T12:18:11+03:00: tables of a project; a table by internal name (created by `v setup::indexes`)
     public static $indexes = [
 	[ [ 'aid' => 1, 'project' => 1 ], [] ],
 	[ [ 'iname' => 1 ], [] ],
@@ -20,7 +19,6 @@ class DataTableDef extends \sys\BaseModel {
 		'label' => 'Internal Name',
 		'help' => false,
 		'required' => true,
-		//CLD: 2026-10-10T18:57:33+03:00: not a form field (assign with permissions ignores it)
 		'showInForms' => false,
 	    ],
 	    
@@ -54,7 +52,6 @@ class DataTableDef extends \sys\BaseModel {
 		'required' => true,
 		'perm:read' => 'everybody',
 		'perm:update' => 'permission',
-		//CLD: 2026-10-10T18:57:33+03:00: not a form field (assign with permissions ignores it)
 		'showInForms' => false,
 	    ],
 	];

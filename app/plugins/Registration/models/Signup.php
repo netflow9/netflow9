@@ -1,12 +1,13 @@
 <?php
 
-//a sign-up waiting for its email to be confirmed (user's choices: the page asks the email only; the link, valid 24 hours and
-//used once, opens the page that creates the account). Only a hash of the link's token is kept (the token is in the email); MongoDB removes it when it expires
+/*
+    a sign-up waiting for its email to be confirmed (user's choices: the page asks the email only; the link, valid 24 hours and
+    used once, opens the page that creates the account). Only a hash of the link's token is kept (the token is in the email); MongoDB removes it when it expires
 //(expires_at, a TTL index). Not an object of an account (the account is made when the link is used)
 //  [ $signup, $token ] = Signup::start($email, $ip);      a new one (the address's earlier one replaced)
 //  $signup = Signup::findByToken($token);                 the valid one of a link, or null
 
-//CLD: 2026-10-19T11:21:19+03:00: moved to the Registration plugin (was models\Signup)
+*/
 
 namespace plugins\Registration\models;
 
