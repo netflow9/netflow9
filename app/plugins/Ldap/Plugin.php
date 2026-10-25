@@ -5,6 +5,7 @@
       - Sign-in: per account (Settings menu: LDAP sign-in), the people of the account sign in with their directory password; users created on their first sign-in, their
 	role from their directory groups (util/LdapAuth.php through the core's hooks identity:authenticate and identity:password-source: an LDAP user has no password
 	reset / change here; the 2FA of the application still applies)
+      CLD: 2026-10-25T19:00:00+02:00: the sign-in and the workflows are independent: plan features `ldap` (sign-in) and `ldap_step` (the credential and the step)
       - Workflows: the LDAP server credential (models/CredentialLdap.php) and the LDAP step (models/NodeAppLdap.php: search, get, add, modify, rename, delete, group
 	members, check / set a password)
       util/LdapClient.php                 the connection: PHP's ldap extension when loaded (LdapExtClient), else the plugin's own client (LdapPhpClient, LdapBer)
@@ -26,15 +27,16 @@ class Plugin {
 		'class' => __NAMESPACE__ . '\\models\\LdapLink',
 	    ],
 	    //CLD: 2026-10-24T09:45:36+03:00: `feature`: of the accounts whose tier has it (util\Tiers: new credentials, the designer's palette)
+	    //CLD: 2026-10-25T19:00:00+02:00: `ldap_step` (was `ldap`, the sign-in's): the step and its credential do not depend on the LDAP sign-in
 	    'CredentialLdap' => [
 		'class' => __NAMESPACE__ . '\\models\\CredentialLdap',
 		'variant-of' => 'Credential',
-		'feature' => 'ldap',
+		'feature' => 'ldap_step',
 	    ],
 	    'NodeAppLdap' => [
 		'class' => __NAMESPACE__ . '\\models\\NodeAppLdap',
 		'wfNode' => true,
-		'feature' => 'ldap',
+		'feature' => 'ldap_step',
 	    ],
 	]);
 
@@ -47,8 +49,10 @@ class Plugin {
 
 	//CLD: 2026-10-24T09:45:36+03:00: a feature of the accounts' tiers (util\Tiers: `ldap`): without it, no LDAP sign-in, no settings, no new LDAP credentials, the LDAP step does not
 	//run (the settings and credentials are kept)
+	//CLD: 2026-10-25T19:00:00+02:00: two features, each without the other: `ldap` the sign-in (its settings), `ldap_step` the LDAP step and the LDAP server credential (were both `ldap`)
 	\V::app()->hooks->addHook('tiers:features', function(\ArrayObject $features) {
-	    $features['ldap'] = 'LDAP (sign-in, step)';
+	    $features['ldap'] = 'LDAP sign-in';
+	    $features['ldap_step'] = 'LDAP step (directories)';
 	});
 
 	if (\V::app()->config('app.mode') != 'web')

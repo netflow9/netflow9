@@ -3206,8 +3206,15 @@ class CheckCommand extends \sys\BaseController {
 	    if (class_exists(\plugins\Ldap\util\LdapAuth::class)) {
 		$set('free');
 		\plugins\Ldap\util\LdapAuth::reset();
-		$this->check('LDAP: no sign-in, the step and its credential not offered without the feature', [ null, false, false ],
+		$this->check('LDAP: no sign-in, the step and its credential not offered without the features', [ null, false, false ],
 		    [ \plugins\Ldap\util\LdapAuth::enabledFor($account->_id), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ]);
+		//CLD: 2026-10-25T19:00:00+02:00: the step (ldap_step) and the sign-in (ldap) each without the other
+		$set('free', [], [ 'ldap_step' => true ]);
+		$stepOnly = [ $T::has($account, 'ldap'), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ];
+		$set('enterprise', [], [ 'ldap_step' => false ]);
+		$signInOnly = [ $T::has($account, 'ldap'), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ];
+		$this->check('LDAP: the step and its credential without the sign-in (ldap_step only), the sign-in without them (ldap only)', [ [ false, true, true ], [ true, false, false ] ],
+		    [ $stepOnly, $signInOnly ]);
 	    }
 	    //CLD: 2026-10-25T18:30:00+02:00: Database: on enterprise only (as LDAP); its credentials and step follow; the step does not run without it
 	    if ($om->isDefined('NodeAppDatabase')) {
