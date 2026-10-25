@@ -54,17 +54,7 @@ $issuesJs = \util\JSON::encode($issues);
 $stepIssuesJs = \util\JSON::encode($stepIssues);
 
 
-//CLD: 2026-10-10T19:08:46+03:00: Executions panel rows
-\V::app()->cs->addPageCss("
-.exec-row { line-height: 1.9; }
-.exec-row:hover { background: rgba(255, 255, 255, 0.06); }
-.exec-row.exec-selected { background: rgba(217, 119, 87, 0.25); }
-/* CLD: 2026-10-23T02:00:00+03:00: the list wider (theme: 380px; on phones the theme's layout), a row on one line: the time and the duration never wrap, the trigger / version is cut */
-@media (min-width: 768px) { .exec-panel .exec-list { width: 460px; } }
-.exec-row { white-space: nowrap; }
-.exec-row .exec-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.exec-row .exec-time, .exec-row .exec-duration { flex-shrink: 0; }
-");
+//CLD: 2026-10-25T18:30:00+02:00: the Executions panel rows' CSS moved to the theme (_workflow.scss): page CSS is not applied when the page is loaded via PJAX
 
 \V::app()->cs->addPageScript("
 +function() {
