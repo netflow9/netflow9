@@ -2,25 +2,24 @@
 //CLD: 2026-10-19T14:09:20+03:00: new view: the initial setup, step 3 (SetupController::account): the first account and its owner (models\setup\AccountForm; were on
 //views/setup/index.php); $error: why the setup failed (e.g. the database of step 2), shown above the form
 $this->pageTitle = \V::t('Setup');
-$e = fn($s) => \V::app()->html->escape((string)$s);
 //the field's options first: they override the defaults (`type` => password / select)
 $v = fn($name, $label, $opts = []) => \V::app()->form->field($name, $opts + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t($label) ]);
 ?>
 
 <main class="position-relative d-flex flex-column align-items-center h-100 pb-5 overflow-auto">
     <header class="pt-3">
-        <h1><img src="/img/app-logo.svg" height="48" class="pe-2"><?= $e(\V::app()->config('app.name')) ?></h1>
+        <h1><img src="/img/app-logo.svg" height="48" class="pe-2"><?= \V::app()->html->escape(\V::app()->config('app.name')) ?></h1>
     </header>
 
     <div class="card w-100" style="max-width:720px">
 	<div class="card-body p-4">
 	    <?= $this->renderFile('setup/_steps', [ 'crt' => 'account' ]) ?>
 	    <?php if ($error): ?>
-		<div class="alert alert-danger"><?= $e($error) ?> <a href="/setup/server" class="alert-link"><?= \V::t('Check the server settings') ?></a></div>
+		<div class="alert alert-danger"><?= \V::app()->html->escape($error) ?> <a href="/setup/server" class="alert-link"><?= \V::t('Check the server settings') ?></a></div>
 	    <?php endif; ?>
 	    <?=\V::app()->form->create($form, [ 'action' => '/setup/account' ])?>
 	    <h5 class="mb-1"><?= \V::t('First account') ?></h5>
-	    <p class="text-muted small mb-3"><?= \V::t('Its owner can invite the others. Database:') ?> <?= $e($server['mongo_db']) ?></p>
+	    <p class="text-muted small mb-3"><?= \V::t('Its owner can invite the others. Database:') ?> <?= \V::app()->html->escape($server['mongo_db']) ?></p>
 	    <?= $v('account_name', 'Company or team', [ 'input' => [ 'autocomplete' => 'organization', 'autofocus' => 1 ] ]) ?>
 	    <div class="row g-2">
 		<div class="col-sm-6"><?= $v('username', 'Username', [ 'input' => [ 'autocomplete' => 'username' ] ]) ?></div>

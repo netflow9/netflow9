@@ -7,7 +7,6 @@
 use plugins\Ldap\models\LdapSettings;
 
 $this->pageTitle = 'LDAP sign-in';
-$esc = fn($v) => \V::app()->html->escape((string)$v);
 
 $containerId = 'ldap-settings-' . uniqid();
 $formId = $containerId . '-form';
@@ -144,7 +143,7 @@ JS . "}({$js});");
 		    <input type="password" class="form-control form-control-sm mb-2" id="<?= $containerId ?>-password" placeholder="password" autocomplete="new-password">
 		    <button type="button" class="btn btn-sm btn-outline-primary" id="<?= $containerId ?>-try"><i class="bi bi-person-check me-1"></i>Try a sign-in</button>
 		    <div id="<?= $containerId ?>-result"></div>
-		    <p class="small text-muted mt-3 mb-0">Connection: <?= $esc(\util\LdapClient::autoDriver() === 'ext' ? 'PHP\'s ldap extension' : 'built-in client (PHP\'s ldap extension is not loaded)') ?></p>
+		    <p class="small text-muted mt-3 mb-0">Connection: <?= \V::app()->html->escape(\util\LdapClient::autoDriver() === 'ext' ? 'PHP\'s ldap extension' : 'built-in client (PHP\'s ldap extension is not loaded)') ?></p>
 		</div>
 	    </div>
 	</div>
@@ -161,14 +160,14 @@ JS . "}({$js});");
 		<tbody>
 		<?php foreach($links as $row): $u = $row['user']; $l = $row['link']; ?>
 		    <tr>
-			<td><?= $esc($u) ?><?= $u->state !== 'active' ? ' <span class="badge text-bg-secondary">' . $esc($u->state) . '</span>' : '' ?></td>
-			<td><?= $esc($u->email) ?></td>
-			<td><?= $esc($l->login) ?></td>
-			<td class="text-break"><?= $esc($l->dn) ?></td>
-			<td><?= $l->synced_at ? $esc($l->schema['synced_at']->display()) : '' ?></td>
+			<td><?= \V::app()->html->escape($u) ?><?= $u->state !== 'active' ? ' <span class="badge text-bg-secondary">' . \V::app()->html->escape($u->state) . '</span>' : '' ?></td>
+			<td><?= \V::app()->html->escape($u->email) ?></td>
+			<td><?= \V::app()->html->escape($l->login) ?></td>
+			<td class="text-break"><?= \V::app()->html->escape($l->dn) ?></td>
+			<td><?= $l->synced_at ? \V::app()->html->escape($l->schema['synced_at']->display()) : '' ?></td>
 			<td class="text-end">
 			    <a class="btn btn-sm btn-outline-danger" href="<?= \V::app()->createUrl('/Ldap/ldap/unlink', [ 'id' => (string)$u->_id ]) ?>" data-method="post"
-				data-confirm="<?= $esc('Unlink ' . $u . '? The user then signs in with a password of this application (set with "Forgot username or password?")') ?>"><i class="bi bi-link-45deg me-1"></i>Unlink</a>
+				data-confirm="<?= \V::app()->html->escape('Unlink ' . $u . '? The user then signs in with a password of this application (set with "Forgot username or password?")') ?>"><i class="bi bi-link-45deg me-1"></i>Unlink</a>
 			</td>
 		    </tr>
 		<?php endforeach; ?>

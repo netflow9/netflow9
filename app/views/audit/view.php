@@ -1,32 +1,31 @@
 <?php
 //CLD: 2026-10-11T17:35:22+03:00: new view: an audit log entry (AuditController::view, dialog): who, when, what, and its changes (before -> after)
-$esc = fn($v) => \V::app()->html->escape((string)$v);
 //CLD: 2026-10-24T16:30:00+03:00: the account's datetime format (util\Format; was Y-m-d H:i:s)
 $when = \util\Format::datetime($entry->created_at);
 
 //a logged value: text as is, other values as JSON
-$show = function($v) use ($esc) {
+$show = function($v) {
     if ($v === null)
 	return "<span class='text-muted'>empty</span>";
     if (is_bool($v))
 	return $v ? 'yes' : 'no';
     if (is_array($v) || is_object($v))
 	$v = json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_INVALID_UTF8_IGNORE);
-    return "<span style='white-space: pre-wrap; word-break: break-word'>" . $esc($v) . "</span>";
+    return "<span style='white-space: pre-wrap; word-break: break-word'>" . \V::app()->html->escape($v) . "</span>";
 };
 
 //CLD: 2026-10-11T17:45:25+03:00: an execution log entry shows what acted (source, workflow, execution, step, who clicked Run) instead of the user / IP / browser
 $isExec = $entry instanceof \models\ExecutionLog;
-$facts = [ 'When' => $esc($when) ];
+$facts = [ 'When' => \V::app()->html->escape($when) ];
 if ($isExec) {
     $facts['Source'] = $entry->schema['source']->display();
-    $facts['Started by'] = $esc($entry->started_by);
+    $facts['Started by'] = \V::app()->html->escape($entry->started_by);
 } else {
-    $facts['User'] = $esc($entry->user_name);
+    $facts['User'] = \V::app()->html->escape($entry->user_name);
 }
 $facts += [
     'Action' => $entry->schema['action']->display(),
-    'Object' => $esc(trim($entry->type . ': ' . $entry->name, ': ')),
+    'Object' => \V::app()->html->escape(trim($entry->type . ': ' . $entry->name, ': ')),
     'Project' => $entry->project ? $entry->schema['project']->display() : '',
 ];
 if ($isExec) {
@@ -34,15 +33,15 @@ if ($isExec) {
     if ($entry->workflow) {
 	$wfLink = "<a href='" . \V::app()->createUrl('/workflow/index', [ 'id' => (string)$entry->workflow ]) . "'>" . $entry->schema['workflow']->display() . '</a>';
 	if ($entry->execution)
-	    $wfLink .= " <span class='small text-muted'>execution " . $esc($entry->execution) . '</span>';
+	    $wfLink .= " <span class='small text-muted'>execution " . \V::app()->html->escape($entry->execution) . '</span>';
     }
     $facts['Workflow'] = $wfLink;
-    $facts['Step'] = $esc($entry->step);
+    $facts['Step'] = \V::app()->html->escape($entry->step);
 }
-$facts['Details'] = $esc($entry->details);
+$facts['Details'] = \V::app()->html->escape($entry->details);
 if (!$isExec) {
-    $facts['IP'] = $esc($entry->ip);
-    $facts['Browser'] = "<span class='small text-muted'>" . $esc($entry->user_agent) . "</span>";
+    $facts['IP'] = \V::app()->html->escape($entry->ip);
+    $facts['Browser'] = "<span class='small text-muted'>" . \V::app()->html->escape($entry->user_agent) . "</span>";
 }
 $dl = '';
 foreach($facts as $label => $value) {
@@ -59,7 +58,7 @@ foreach($changes as $c) {
 
 $rows = '';
 foreach($changes as $c) {
-    $label = $esc($c['label'] ?? $c['key'] ?? '');
+    $label = \V::app()->html->escape($c['label'] ?? $c['key'] ?? '');
     if (!empty($c['masked'])) {
 	$rows .= "<tr><td class='text-nowrap'>{$label}</td><td colspan='" . ((int)$hasBefore + (int)$hasAfter) . "' class='text-muted'><i class='bi bi-lock me-1'></i>changed (not shown)</td></tr>";
 	continue;

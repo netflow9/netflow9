@@ -2,7 +2,6 @@
 //CLD: 2026-10-17T22:00:00+03:00: new view: the page of a project invitation link (SiteController::invite): the user's name and password; an expired / used link says so; an address
 //that is already a user of the account was added to the project and signs in as usual
 $this->pageTitle = \V::t('Join a project');
-$esc = fn($s) => \V::app()->html->escape((string)$s);
 ?>
 
 <main class="position-relative d-flex flex-column align-items-center h-100">
@@ -19,16 +18,16 @@ $esc = fn($s) => \V::app()->html->escape((string)$s);
 		<a class="btn btn-primary" href="<?= \V::app()->user->getLoginUrl() ?>"><?= \V::t('Sign in') ?></a>
 	    </div>
 	<?php elseif ($existing): ?>
-	    <h5 class="mb-3 text-center"><?= \V::t('You joined') ?> <?= $esc($project->name) ?></h5>
-	    <p class="mb-3"><?= $esc($invite->email) ?> <?= \V::t('already has a user in') ?> <b><?= $esc($account->name ?: $account->hostname) ?></b>: <?= \V::t('sign in with it and choose the project in the sidebar.') ?></p>
+	    <h5 class="mb-3 text-center"><?= \V::t('You joined') ?> <?= \V::app()->html->escape($project->name) ?></h5>
+	    <p class="mb-3"><?= \V::app()->html->escape($invite->email) ?> <?= \V::t('already has a user in') ?> <b><?= \V::app()->html->escape($account->name ?: $account->hostname) ?></b>: <?= \V::t('sign in with it and choose the project in the sidebar.') ?></p>
 	    <div class="d-flex gap-2 justify-content-center">
 		<a class="btn btn-primary" href="<?= \V::app()->user->getLoginUrl() ?>"><?= \V::t('Sign in') ?></a>
 		<a class="btn btn-outline-secondary" href="/site/forgot"><?= \V::t('Forgot the password?') ?></a>
 	    </div>
 	<?php else: ?>
 	    <?=\V::app()->form->create($form, [ 'action' => '/site/invite?t=' . rawurlencode($token) ])?>
-	    <h5 class="mb-1 text-center"><?= \V::t('Join') ?> <?= $esc($project->name) ?></h5>
-	    <p class="text-center text-muted small mb-3"><?= $esc($account->name ?: $account->hostname) ?> &middot; <?= $esc($invite->email) ?></p>
+	    <h5 class="mb-1 text-center"><?= \V::t('Join') ?> <?= \V::app()->html->escape($project->name) ?></h5>
+	    <p class="text-center text-muted small mb-3"><?= \V::app()->html->escape($account->name ?: $account->hostname) ?> &middot; <?= \V::app()->html->escape($invite->email) ?></p>
 	    <?php
 	    echo '<div class="row g-2"><div class="col-sm-6">';
 	    echo \V::app()->form->field('firstname', [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('First name'), 'input' => [ 'autofocus' => 1, 'autocomplete' => 'given-name' ] ]);

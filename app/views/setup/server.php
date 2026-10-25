@@ -1,14 +1,13 @@
 <?php
 //CLD: 2026-10-19T14:09:20+03:00: new view: the initial setup, step 2 (SetupController::server): the server's settings (models\setup\ServerForm; were on views/setup/index.php)
 $this->pageTitle = \V::t('Setup');
-$e = fn($s) => \V::app()->html->escape((string)$s);
 //the field's options first: they override the defaults (`type` => password / select)
 $v = fn($name, $label, $opts = []) => \V::app()->form->field($name, $opts + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t($label) ]);
 ?>
 
 <main class="position-relative d-flex flex-column align-items-center h-100 pb-5 overflow-auto">
     <header class="pt-3">
-        <h1><img src="/img/app-logo.svg" height="48" class="pe-2"><?= $e(\V::app()->config('app.name')) ?></h1>
+        <h1><img src="/img/app-logo.svg" height="48" class="pe-2"><?= \V::app()->html->escape(\V::app()->config('app.name')) ?></h1>
     </header>
 
     <div class="card w-100" style="max-width:720px">
