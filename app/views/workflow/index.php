@@ -3,13 +3,10 @@
 $this->pageTitle = 'Workflow: ' . (string)$wf;
 
 //we need to build a list of available nodes for the builder
-//CLD: 2026-10-05T21:46:57+03:00: util\JSON::encode (same flags, shared)
-//CLD: 2026-10-24T09:45:36+03:00: the steps of a feature the account's tier does not have: `unavailable` (not in the palette; those already in the workflow are still shown)
 $nodeDefs = \models\WfNode::getAll();
 foreach($nodeDefs as $fq => $def) {
     if (!\util\Tiers::allows(\V::app()->config('rt.account'), $def['objectName']))
 	$nodeDefs[$fq]['unavailable'] = true;
-    //CLD: 2026-10-25T17:40:00+02:00: nor the steps this PHP cannot run (WfNode::available(): e.g. Database without a PDO driver of its types)
     $__class = \V::app()->om->getObjectClass($def['objectName']);
     if (!$__class::available())
 	$nodeDefs[$fq]['unavailable'] = true;
@@ -26,26 +23,17 @@ $__canvas_pan_y = $__canvas_num('__canvas_pan_y');
 $__canvas_zoom = $__canvas_num('__canvas_zoom');
 
 $nodeEditUrl = \V::app()->createUrl('/workflow/node_edit');
-//CLD: 2026-10-08T08:10:24+03:00: starting config of new steps (WorkflowController::node_init)
 $nodeInitUrl = \V::app()->createUrl('/workflow/node_init', [ 'id' => (string)$wf->_id ]);
-//CLD: 2026-10-11T22:38:36+03:00: live help of expression fields in the inspector (WorkflowController::expression)
 $exprUrl = \V::app()->createUrl('/workflow/expression', [ 'id' => (string)$wf->_id ]);
-//CLD: 2026-10-10T19:08:46+03:00: manual run + Executions panel (WorkflowController::start / executions / execution)
 $runUrl = \V::app()->createUrl('/workflow/start', [ 'id' => (string)$wf->_id ]);
-//CLD: 2026-10-12T20:33:47+03:00: the triggers Run can start (WfNode::startNow; was the Manual trigger only)
 $runTriggers = \util\JSON::encode(array_keys(array_filter(\models\WfNode::getAll(), fn($d) => $d['type'] === 'trigger' && !empty($d['canRun']))));
 $executionsUrl = \V::app()->createUrl('/workflow/executions', [ 'id' => (string)$wf->_id ]);
-//CLD: 2026-10-19T18:05:00+03:00: autosave (WorkflowController::save)
 $saveUrl = \V::app()->createUrl('/workflow/save', [ 'id' => (string)$wf->_id ]);
-//CLD: 2026-10-19T19:50:00+03:00: the key of the remembered canvas pan / zoom (canvasView); an ObjectId: hex only, safe in the script
 $wfIdJs = (string)$wf->_id;
 $executionUrl = \V::app()->createUrl('/workflow/execution', [ 'id' => (string)$wf->_id ]);
-//CLD: 2026-10-23T23:00:00+03:00: delete an execution of the draft (WorkflowController::execution_delete)
 $executionDeleteUrl = \V::app()->createUrl('/workflow/execution_delete', [ 'id' => (string)$wf->_id ]);
-//CLD: 2026-10-23T23:30:00+03:00: delete all executions of the draft (WorkflowController::executions_delete)
 $executionsDeleteUrl = \V::app()->createUrl('/workflow/executions_delete', [ 'id' => (string)$wf->_id ]);
 $canRun = \V::app()->user->can('Workflow::update', [ 'object' => $wf ]) ? 'true' : 'false';
-//CLD: 2026-10-11T13:51:42+03:00: versions (was a draft / published switch, 2026-10-11T13:29:36+03:00): the active version, whether the draft differs from it,
 //the version being viewed (?version, read-only: its steps on the canvas)
 $activeVersion = $wf->publishedVersion();
 $isPublished = $wf->status === \models\Workflow::PUBLISHED && $activeVersion !== null;
@@ -53,11 +41,8 @@ $draftChanged = $activeVersion !== null && !$wf->draftMatches($activeVersion);
 $shown = $viewVersion ? $wf->forVersion($viewVersion) : $wf;
 $readonly = $viewVersion ? 'true' : 'false';
 $canUpdate = \V::app()->user->can('Workflow::update', [ 'object' => $wf ]);
-//CLD: 2026-10-11T19:47:51+03:00: Publish / Unpublish / Publish again (was $canUpdate)
 $canPublish = \V::app()->user->can('Workflow::publish', [ 'object' => $wf ]);
-//CLD: 2026-10-11T14:05:19+03:00: Delete
 $canDelete = \V::app()->user->can('Workflow::delete', [ 'object' => $wf ]);
-//CLD: 2026-10-11T14:01:52+03:00: Duplicate: creating a workflow in this one's project
 $canDuplicate = \V::app()->user->can('Workflow::create', [ 'object' => \V::app()->om->create('Workflow', [ 'aid' => $wf->aid, 'project' => $wf->project ]) ]);
 
 //CLD: 2026-10-06T23:25:57+03:00: connection problems of the saved workflow (Workflow::validateFlow): marked on the nodes, counted in the header
@@ -67,8 +52,6 @@ $stepIssues = $shown->validateSteps();
 $issues = array_merge($stepIssues, $shown->validateFlow());
 $issuesJs = \util\JSON::encode($issues);
 $stepIssuesJs = \util\JSON::encode($stepIssues);
-
-//CLD: 2026-10-19T20:10:00+03:00: the Assistant's variables moved into the Assistant plugin (plugins/Assistant/views/designer_panel.php)
 
 
 //CLD: 2026-10-10T19:08:46+03:00: Executions panel rows
@@ -877,7 +860,6 @@ $formOptions = [
 		echo "<a href='" . \V::app()->createUrl('/workflow/publish', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-success py-0 me-1'>Publish again</a>";
 	    if ($canUpdate)
 		echo "<a href='" . \V::app()->createUrl('/workflow/restore', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-primary py-0 me-1' data-method='post' data-confirm='Replace the draft with the steps of " . $esc($viewVersion) . "?'>Copy into the draft</a>";
-	    //CLD: 2026-10-11T14:01:52+03:00: + Duplicate this version (a new draft workflow)
 	    if ($canDuplicate)
 		echo "<a href='" . \V::app()->createUrl('/workflow/duplicate', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-secondary py-0 me-1' data-method='post' data-confirm='Create a new workflow from " . $esc($viewVersion) . "?'>Duplicate</a>";
 	    echo "<a href='{$versionsUrl}' class='btn btn-sm btn-outline-secondary py-0 me-1'>Versions</a>";
@@ -888,17 +870,14 @@ $formOptions = [
 		[ $btnClass, $label, $tip ] = [ 'btn-outline-secondary', '<i class="bi bi-pause-circle me-1"></i>' . $esc($activeVersion) . ' unpublished', 'Its trigger does not start runs' ];
 	    else
 		[ $btnClass, $label, $tip ] = [ 'btn-outline-secondary', '<i class="bi bi-pencil-square me-1"></i>Draft', 'Never published: its trigger does not start runs (Run does)' ];
-	    //CLD: 2026-10-19T18:05:00+03:00: `draft changed` is always there when there is a version, hidden when not changed: the autosave updates it (versions.update); the button's own tip in data-tip
 	    $baseTip = $tip;
 	    if ($activeVersion)
-		//CLD: 2026-10-19T22:19:24+03:00: the text in .btn-label (only the dot on phones; the button's title says it)
 		$label .= ' <span class="wf-draft-changed' . ($draftChanged ? '' : ' d-none') . '"><i class="bi bi-dot"></i><span class="btn-label">draft changed</span></span>';
 	    if ($draftChanged) {
 		$tip .= '; the draft has changes that are not published';
 	    }
 
 	    $items = '';
-	    //CLD: 2026-10-11T19:47:51+03:00: $canPublish (was $canUpdate)
 	    if ($canPublish) {
 		//CLD: 2026-10-19T18:05:00+03:00: both items: the draft differs from the version (wf-if-changed) or not (wf-if-same); the one not shown is hidden, the autosave switches them (versions.update)
 		$publishUrl = \V::app()->createUrl('/workflow/publish', [ 'id' => $id ]);
@@ -915,10 +894,8 @@ $formOptions = [
 		$items .= "<li><hr class='dropdown-divider'></li>";
 	    }
 	    $items .= "<li><a class='dropdown-item' href='{$versionsUrl}'><i class='bi bi-clock me-2'></i>Versions</a></li>";
-	    //CLD: 2026-10-11T14:01:52+03:00: + Duplicate (the saved draft, as a new draft workflow)
 	    if ($canDuplicate)
 		$items .= "<li><a class='dropdown-item btn-duplicate-wf' href='" . \V::app()->createUrl('/workflow/duplicate', [ 'id' => $id ]) . "' data-method='post' data-confirm='Create a new workflow from the saved draft?'><i class='bi bi-copy me-2'></i>Duplicate</a></li>";
-	    //CLD: 2026-10-11T14:05:19+03:00: + Delete (the workflow, its executions and versions)
 	    if ($canDelete)
 		$items .= "<li><hr class='dropdown-divider'></li><li><a class='dropdown-item text-danger' href='" . \V::app()->createUrl('/workflow/delete', [ 'id' => $id ]) . "' data-method='post' data-confirm='Delete this workflow with all its versions and executions? This cannot be undone.'><i class='bi bi-trash me-2'></i>Delete</a></li>";
 
@@ -929,26 +906,19 @@ $formOptions = [
 	    </div>";
 	}
 	?>
-	<?php //CLD: 2026-10-24T00:30:00+03:00: + zoom out / in, + titles ?>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-zoom-out d-inline" title="Zoom out"><i class="bi bi-zoom-out"></i></a>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-zoom-fit d-inline" title="Fit the workflow to the view"><i class="bi bi-aspect-ratio"></i></a>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-zoom-in d-inline" title="Zoom in"><i class="bi bi-zoom-in"></i></a>
-	<?php if (!$viewVersion): //CLD: 2026-10-11T13:51:42+03:00: the draft's tools only (not when viewing a version) ?>
-	<?php //CLD: 2026-10-10T19:08:46+03:00: Run (from the Manual trigger) and the Executions panel ?>
+	<?php if (!$viewVersion):  ?>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-run-wf text-success d-inline" title="Run"><i class="bi bi-play-fill"></i></a>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-exec-toggle d-inline" title="Executions"><i class="bi bi-clock-history"></i></a>
-	<?php //CLD: 2026-10-11T19:57:28+03:00: + title ?>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-debug-toggle d-inline" title="Debug: errors and warnings"><i class="bi bi-bug"></i></a>
-	<?php //CLD: 2026-10-19T18:55:00+03:00: the Variables button hidden for now (WorkflowController::variables is kept); put back: ?>
 	<?php /* <a href="<?= \V::app()->createUrl('/workflow/variables', [ 'id' => $wf->_id ]) ?>" class="px-1 btn btn-sm btn-icon d-inline"><i class="bi bi-code-slash"></i></a> */ ?>
 	<a href="<?= \V::app()->createUrl('/workflow/update_name', [ 'id' => $wf->_id ]) ?>" class="px-1 btn btn-sm btn-icon d-inline"><i class="bi bi-gear"></i></a>
-	<?php //CLD: 2026-10-19T18:05:00+03:00: Undo / Redo and the autosave status (was the Save button: each change is saved) ?>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-undo-wf d-inline disabled opacity-50" title="Undo (Ctrl+Z)" aria-disabled="true"><i class="bi bi-arrow-counterclockwise"></i></a>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-redo-wf d-inline disabled opacity-50" title="Redo (Ctrl+Shift+Z)" aria-disabled="true"><i class="bi bi-arrow-clockwise"></i></a>
-	<?php //CLD: 2026-10-19T22:19:24+03:00: the text in .btn-label (only the icon on phones) ?>
 	<a href="#" class="wf-save-status small px-1 text-nowrap text-muted text-decoration-none" title="All changes are saved"><i class="bi bi-cloud-check me-1"></i><span class="btn-label">Saved</span></a>
 	<?php endif; ?>
-	<?php //CLD: 2026-10-19T20:10:00+03:00: the plugins' buttons (e.g. the Assistant's, which opens its panel); also when viewing a version ?>
 	<?php \V::app()->hooks->applyHook('workflow:designer-toolbar', [ $wf, $viewVersion ]); ?>
     </div>
 </div>
@@ -960,8 +930,6 @@ $formOptions = [
 <div class="main-body">
     <!-- ---------- Canvas ---------- -->
     <?= \V::app()->form->create($wf, $formOptions); ?>
-	<?php //CLD: 2026-10-11T13:51:42+03:00: the steps shown: the draft, or the version being viewed ?>
-	<?php //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing) ?>
 	<textarea name="nodes" class="d-none"><?= \V::app()->html->escape(\util\JSON::encode(array_values(is_array($shown->nodes) ? $shown->nodes : []))) ?></textarea>
 
 	<div id="canvas-wrap" class="position-relative overflow-hidden flex-grow-1">
@@ -970,14 +938,11 @@ $formOptions = [
 	    </div>
 	</div>
 
-	<?php //CLD: 2026-10-19T20:10:00+03:00: the panels on the right of the canvas come from the plugins (e.g. the Assistant: plugins/Assistant/views/designer_panel.php; was the inspector
-	//holding the Assistant here); inside the canvas form, so their inputs have no `name` ?>
 	<?php \V::app()->hooks->applyHook('workflow:designer-panels', [ $wf, $viewVersion ]); ?>
     <?= \V::app()->form->end(); ?>
 
 </div>
 <!-- DEBUG PANEL: drag the handle above it to resize vertically -->
-<?php //CLD: 2026-10-11T19:57:28+03:00: wf-debug-panel (its own toggle, as the Executions panel), the workflow's errors and warnings (debug.render); removed the Clear button (nothing to clear) ?>
 <div class="debug-panel wf-debug-panel d-none" style="background: var(--netflow9-debug-bg)">
     <div class="debug-resize-handle"></div>
     <div class="debug-panel-header">
@@ -991,14 +956,11 @@ $formOptions = [
 	<div class="debug-issues"></div>
     </div>
 </div>
-<?php //CLD: 2026-10-10T19:08:46+03:00: Executions panel (same look as the debug panel): the list on the left, the selected execution on the right ?>
 <div class="debug-panel exec-panel d-none" style="background: var(--netflow9-debug-bg)">
     <div class="debug-resize-handle"></div>
     <div class="debug-panel-header">
 	<div class="debug-panel-title"><i class="bi bi-clock-history"></i> Executions</div>
 	<div class="debug-panel-actions">
-	    <?php //CLD: 2026-10-23T23:30:00+03:00: delete all executions of the draft (users who may run the workflow; exec.confirmDeleteAll / removeAll) ?>
-	    <?php //CLD: 2026-10-24T00:04:00+03:00: not while a published version is viewed (only the draft's executions are deleted) ?>
 	    <?php if (!$viewVersion && \V::app()->user->can('Workflow::update', [ 'object' => $wf ])): ?>
 	    <span class="exec-delete-all d-inline-flex align-items-center"><button type="button" class="debug-icon-btn btn-exec-delete-all" title="Delete all executions of the draft (running / sleeping ones and those of published versions are kept)"><i class="bi bi-trash"></i></button></span>
 	    <?php endif; ?>

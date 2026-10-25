@@ -1,5 +1,4 @@
 <?php
-//CLD: 2026-10-11T22:01:40+03:00: app.GridView (was the global gridView of data.grid.js, now in app.dataview.js)
 
 $this->pageTitle = 'Files';
 

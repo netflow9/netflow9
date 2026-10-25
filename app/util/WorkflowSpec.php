@@ -359,25 +359,61 @@ class WorkflowSpec {
 	}
     }
 
-    //CLD: 2026-10-13T15:17:12+03:00: the steps / connections arguments of create_workflow, update_workflow (util\WorkflowSpec)
-    //CLD: 2026-10-19T15:26:28+03:00: public: also the arguments of the designer Assistant's set_workflow (util\WorkflowAssistant)
-    //CLD: 2026-10-19T20:10:00+03:00: now plugins\Assistant\util\WorkflowAssistant
-    //CLD: 2026-10-20T23:40:00+03:00: here (was util\McpTools::specSchema: the Assistant uses it without the SysMCPTools plugin)
     public static function schema() {
 	return [
-	    'steps' => [ 'type' => 'array', 'maxItems' => self::MAX_STEPS, 'items' => [ 'type' => 'object', 'properties' => [
-		'id' => [ 'type' => 'string', 'description' => '1-40 letters, digits, _ or -' ],
-		'type' => [ 'type' => 'string', 'description' => 'A step type (list_step_types), e.g. trigger::manual, app::set, core::if, core::loop' ],
-		'title' => [ 'type' => 'string' ],
-		'config' => [ 'type' => 'object', 'description' => '{ setting key: value }; missing settings get their defaults' ],
-		'parent' => [ 'type' => 'string', 'description' => 'The id of the loop this step is inside' ],
-	    ], 'required' => [ 'id', 'type' ] ] ],
-	    'connections' => [ 'type' => 'array', 'maxItems' => self::MAX_CONNECTIONS, 'items' => [ 'type' => 'object', 'properties' => [
-		'from' => [ 'type' => 'string' ],
-		'to' => [ 'type' => 'string' ],
-		'output' => [ 'type' => [ 'string', 'integer' ], 'description' => 'The output of `from`: its label (e.g. true, false, otherwise, error, a case name) or number; default 0' ],
-		'input' => [ 'type' => 'integer', 'description' => 'The input of `to` (Merge has 2); default 0' ],
-	    ], 'required' => [ 'from', 'to' ] ] ],
+	    'steps' => [
+		'type' => 'array',
+		'maxItems' => self::MAX_STEPS,
+		'items' => [
+		    'type' => 'object',
+		    'properties' => [
+			'id' => [
+			    'type' => 'string',
+			    'description' => '1-40 letters, digits, _ or -'
+			],
+			'type' => [
+			    'type' => 'string',
+			    'description' => 'A step type (list_step_types), e.g. trigger::manual, app::set, core::if, core::loop'
+			],
+			'title' => [
+			    'type' => 'string'
+			],
+			'config' => [
+			    'type' => 'object',
+			    'description' => '{ setting key: value }; missing settings get their defaults'
+			],
+			'parent' => [
+			    'type' => 'string',
+			    'description' => 'The id of the loop this step is inside'
+			],
+		    ],
+		    'required' => [ 'id', 'type' ]
+		]
+	    ],
+	    'connections' => [
+		'type' => 'array',
+		'maxItems' => self::MAX_CONNECTIONS,
+		'items' => [
+		    'type' => 'object',
+		    'properties' => [
+			'from' => [
+			    'type' => 'string'
+			],
+			'to' => [
+			    'type' => 'string'
+			],
+			'output' => [
+			    'type' => [ 'string', 'integer' ],
+			    'description' => 'The output of `from`: its label (e.g. true, false, otherwise, error, a case name) or number; default 0'
+			],
+			'input' => [
+			    'type' => 'integer',
+			    'description' => 'The input of `to` (Merge has 2); default 0'
+			],
+		    ],
+		    'required' => [ 'from', 'to' ]
+		]
+	    ],
 	];
     }
 }
