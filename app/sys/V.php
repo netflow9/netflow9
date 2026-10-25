@@ -25,7 +25,6 @@ class V {
 	    'request' => [
 		'class' => $config['app.mode'] == 'web' ? 'sys\http\Request' : 'sys\console\Request',
 		'preload' => true,
-		//CLD: 2026-10-22T00:00:00+03:00: whose X-Forwarded-For gives the client's address (web)
 		'trusted_proxies' => $config['app.trusted_proxies'] ?? [],
 	    ],
 	    'response' => [
@@ -46,10 +45,8 @@ class V {
 	    ],
 	    'security' => [
 		'class' => '\sys\Security',
-		//CLD: 2026-10-05T20:06:50+03:00: no built-in fallback secret; Security refuses to encrypt/decrypt without one
 		'secret' => $config['app.security.secret'] ?? null,
 	    ],
-	    //CLD: 2026-10-25T09:20:00+02:00: the mongo component moved to the app's config (app/config.php); the framework runs without a database (e.g. docs-site)
 	    'session' => [
 		'preload' => true,
 		'class' => '\sys\Session',
@@ -62,8 +59,6 @@ class V {
 		'class' => '\sys\User',
 	    ],
 	];
-
-	//CLD: 2026-10-25T09:20:00+02:00: the initial setup's session (sys\SessionNoDB) is set by get_setup_config (app/config.php; was here)
 
 	$config['components'] = array_merge($_components, $config['components']);
 	$this->_config = $config;
@@ -133,8 +128,6 @@ class V {
 		return;
 	    }
 
-	    //CLD: 2026-10-21T19:40:00+03:00: the details go to the log (logs/app.log) under a reference shown on the page; the page shows them only with app.debug (SOC2.md
-	    //gap 9: class, file, line and trace were shown to everybody)
 	    $ref = bin2hex(random_bytes(4));
 	    try {
 		$this->log->error("V: unhandled exception, reference {$ref}, " . ($_SERVER['REQUEST_METHOD'] ?? '') . ' ' . ($_SERVER['REQUEST_URI'] ?? '') . "\n" . $text);
@@ -143,7 +136,6 @@ class V {
 	    }
 
 	    if (!empty($this->_config['app.debug'])) {
-		//CLD: 2026-10-21T19:40:00+03:00: every value escaped (were the message only: a path or a trace holding request input was written as HTML)
     		$message = \util\VString::insert("
 		    <p>Application error (reference {:ref}):</p>
 		    <div><strong>Type:</strong>{:class}</div>
@@ -180,7 +172,6 @@ class V {
 
     //this will stop the application
     public function end() {
-	//CLD: 2026-10-18T18:44:33+03:00: removed the commented-out output buffer lines (the framework no longer uses output buffers)
     	$this->response->output();
 	exit(0);
     }
@@ -201,7 +192,6 @@ class V {
 
     // Stop the application and immediately send the response with a specific status and body to the HTTP client.
     public function error($status, $message = '') {
-	//CLD: 2026-10-18T18:44:33+03:00: removed the commented-out output buffer lines (the framework no longer uses output buffers)
 	$this->response->status = $status;
 	$this->response->write('', true); //clear the output
 
@@ -366,7 +356,6 @@ class V {
     	restore_error_handler();
     	restore_exception_handler();
 
-	//CLD: 2026-10-18T18:44:33+03:00: removed the commented-out output buffer lines (the framework no longer uses output buffers)
     	$this->response->output();
 
 	$this->hooks->applyHook('on:end');
@@ -392,8 +381,6 @@ class V {
     }
 
     // -------------------------------------------------------------------------------------------------------------
-    //CLD: 2026-10-18T23:02:43+03:00: re-enabled; the base is app.env BASE_URL (config app.base_url), else the request host (Request has no hostInfo);
-    //all absolute urls are https:// - $schema is kept for the signature only
     public function createAbsoluteUrl($route, $params = [], $schema = '', $ampersand = '&') {
 	$url = $this->createUrl($route, $params, $ampersand);
 	if (preg_match('#^https?://#i', $url))

@@ -1,5 +1,4 @@
 <?php
-//CLD: 2026-10-21T00:05:00+03:00: renamed ProjectTools -> MCPTools (util/ProjectTools.php -> util/MCPTools.php)
 
 /*
     the project's own tools a model may use, given by the plugins (the SysMCPTools plugin gives its MCP server's tools; none without it).
@@ -16,7 +15,6 @@ class MCPTools {
 
     public static function all() {
 	$tools = new \ArrayObject();
-	//CLD: 2026-10-21T00:15:00+03:00: hook mcp:tools (was ai:project-tools)
 	\V::app()->hooks->applyHook('mcp:tools', [ $tools ]);
 	return $tools->getArrayCopy();
     }

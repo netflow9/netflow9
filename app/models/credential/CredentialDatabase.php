@@ -1,15 +1,14 @@
 <?php
 
-//CLD: 2026-10-25T20:00:00+02:00: moved from the Database plugin to the core (the Database step and its credentials are core, for every account: no plan feature): models\credential (was plugins\Database\models); CREDENTIALS: the types (were plugins\Database\Plugin::CREDENTIALS)
-
 /*
-    CLD: 2026-10-25T17:40:00+02:00: new: what the database credentials share (one per database type: CredentialMysql, CredentialPostgres, CredentialMssql, CredentialOracle,
+    what the database credentials share (one per database type: CredentialMysql, CredentialPostgres, CredentialMssql, CredentialOracle,
     CredentialFirebird, CredentialOdbc; group Database, provide `database`): the connection through PDO, the connection test, the server's fields.
     A type is offered (available()) only when this PHP has its PDO driver (util\SqlDb::TYPES); without it the credential stays, its use says which extension is missing.
     The values of the fields become the DSN: they cannot hold ; { } or line breaks (they would add DSN settings)
-//  $cred->connect($timeout)        a PDO (errors as exceptions, rows as arrays); $timeout: seconds to connect and, where the database has one, of each statement
-//  $cred->driver()                 the PDO driver used (util\SqlDb::driver)
-//  $cred->test()                   connects and runs TEST_SQL
+
+    $cred->connect($timeout)        a PDO (errors as exceptions, rows as arrays); $timeout: seconds to connect and, where the database has one, of each statement
+    $cred->driver()                 the PDO driver used (util\SqlDb::driver)
+    $cred->test()                   connects and runs TEST_SQL
 */
 
 namespace models\credential;

@@ -1,5 +1,4 @@
 <?php
-//CLD: 2026-10-19T11:21:19+03:00: moved to the Registration plugin (was views/site/register.php)
 $this->pageTitle = \V::t('Create an account');
 ?>
 

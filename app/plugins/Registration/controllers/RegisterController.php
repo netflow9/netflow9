@@ -1,8 +1,8 @@
 <?php
 
-//CLD: 2026-10-19T11:21:19+03:00: the sign-up pages of the Registration plugin (were SiteController::register / register_confirm); served at /Registration/register and
-//  /Registration/register/confirm
-//CLD: 2026-10-19T11:46:05+03:00: only the plugin's paths (the /site/register* router rules removed)
+/*
+    the sign-up pages of the Registration plugin; served at /Registration/register and /Registration/register/confirm
+*/
 
 namespace plugins\Registration\controllers;
 
@@ -21,7 +21,6 @@ class RegisterController extends \sys\BaseController {
 	    $form->assign($req->data);
 	    if ($form->validates()) {
 		$email = (string)$form->email;
-		//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://); was built from the request host
 		if (\V::app()->om->count('User', [ 'email' => $email ]) > 0) {
 		    \util\EmailSend::system('signup_exists', $email, [ 'email' => $email, 'login' => \V::app()->createAbsoluteUrl('/site/login') ]);
 		} else {

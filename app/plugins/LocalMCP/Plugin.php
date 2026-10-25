@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers for the AI steps: MCP servers run on this machine (the first: a web browser, Playwright MCP), offered to the
+    the installation's tool servers for the AI steps: MCP servers run on this machine (the first: a web browser, Playwright MCP), offered to the
     AI steps (Tool servers) of the accounts the administrator enables.
     Enabled in app/plugins.php.
       servers.php                        the servers (servers.local.php: the installation's own)

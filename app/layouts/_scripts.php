@@ -12,7 +12,6 @@ $js_assets = [
     'app.overview.js',
     'app.smartform.js',
     'app.workflow.js',
-    //CLD: 2026-10-25T20:30:00+02:00: the designer's Executions and Debug panels (were in views/workflow/index.php)
     'app.wfexecutions.js',
     'app.wfdebug.js',
     'app.dataview.js',

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers an account may use (Plugin::servers ids), one document per account (_id: the account's id).
+    the installation's tool servers an account may use (Plugin::servers ids), one document per account (_id: the account's id).
     Set by the administrator: ./v LocalMCP::servers::enable / disable
 */
 

@@ -7,7 +7,6 @@ function get_config($mode = 'web') {
 
     $_config = [
 	//development switch; also enables development-only endpoints (DataController / data/get) - set false outside development
-	//CLD: 2026-10-23T23:20:00+03:00: APP_DEBUG in app.env (true / false; was true here): off when it is missing
 	'app.debug' => defined('APP_DEBUG') && filter_var(APP_DEBUG, FILTER_VALIDATE_BOOLEAN),
 	'app.name' => 'NetFlow9',
 	'app.author' => 'None',
@@ -18,7 +17,6 @@ function get_config($mode = 'web') {
 	'app.timezone' => 'Europe/Bucharest',
 
 	'app.language' => 'en_US',
-	//CLD: 2026-10-24T11:51:46+03:00: the theme of a browser that has not chosen one (light, dark, auto: the system's); each browser chooses its own (app.theme, the sidebar's switcher)
 	'app.color-scheme' => 'auto',
 
 	//proxies in front of nginx whose X-Forwarded-For is believed (addresses or CIDR ranges; sys\http\Request::userIP); none: the
@@ -38,7 +36,6 @@ function get_config($mode = 'web') {
 	//plugins(modules) configuration
 	'modules' => is_readable($plugins_fn) ? require($plugins_fn) : [],
 
-	//SC: 2022-10-26: added here
 	'module.namespace' => $mode == 'web' ? 'controllers' : 'commands',
 	'module.classSuffix' => $mode == 'web' ? 'Controller' : 'Command',
 
@@ -97,15 +94,12 @@ function get_config($mode = 'web') {
 		//CLD: 2026-10-23T23:30:00+03:00: LOG_LEVEL in app.env (ERROR, WARN, INFO or DEBUG; was DEBUG here): INFO when it is missing or not one of them
 		'level' => defined('LOG_LEVEL') && in_array(strtoupper(trim((string)LOG_LEVEL)), [ 'ERROR', 'WARN', 'INFO', 'DEBUG' ], true) ? strtoupper(trim((string)LOG_LEVEL)) : 'INFO',
 	    ],
-	    //CLD: 2026-10-25T09:20:00+02:00: the database (was a system component in sys/V.php); not preloaded here: sys\Session loads it when it starts (a second
-	    //preload would make a second client); none in the initial setup (sys\SessionNoDB, see get_setup_config)
 	    'mongo' => [
 		'class' => '\sys\Mongo',
 		'autoload.requires' => [ BASE . '/app/pkgs/mongo-php-library/src/functions.php', ],
 		'autoload.namespaces' => [
 		    'MongoDB' => BASE . '/app/pkgs/mongo-php-library/src',
 		],
-		//CLD: 2026-10-19T12:52:41+03:00: null when app.env is missing (the initial setup: SetupController connects with the address it is given)
 		'uri' => defined('MONGO_URI') ? MONGO_URI : null,
 		'database' => defined('MONGO_DB') ? MONGO_DB : null,
 
@@ -151,7 +145,6 @@ function get_config($mode = 'web') {
 
         ],
 	'class_map' => [
-	    //CLD: 2026-10-25T17:10:00+02:00: php-qrcode's settings container (QROptions extends it): util\SettingsContainer, in place of chillerlan/php-settings-container
 	    'chillerlan\Settings\SettingsContainerAbstract' => BASE . '/app/util/SettingsContainer.php',
 	],
 	'requires' => [
@@ -190,15 +183,13 @@ function get_config($mode = 'web') {
 function get_setup_config() {
     $_config = get_config('web');
     $_config['app.setup'] = true;
-    //CLD: 2026-10-19T14:09:20+03:00: the steps' pages (SetupController::server, ::account); any other address is step 1
     $_config['app.router.rules'] = [
 	'setup/server' => 'setup/server',
 	'setup/account' => 'setup/account',
 	'<path:.*>' => 'setup/index'
     ];
     unset($_config['components']['boot']);
-    //CLD: 2026-10-25T09:20:00+02:00: a plain PHP session instead of the app's, which is kept in the database (no database connection at start: the database is the one
-    //SetupController is given); was set in sys/V.php
+    //a plain PHP session instead of the app's, which is kept in the database
     $_config['components']['session'] = [ 'preload' => true, 'class' => '\sys\SessionNoDB' ];
     return $_config;
 }
