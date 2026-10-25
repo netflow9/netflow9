@@ -3,37 +3,36 @@
 //CLD: 2026-10-11T20:51:55+03:00: new view: Import, step 2 (DatatableController::import): the table's name, the sheet (Excel), whether the first row is a header, the
 //columns found (import or not, name, key, type; sample values) and the first rows; changing the sheet or the header choice posts step=preview (the
 //columns are guessed again); Import posts step=import. $errors: [ 'name' | column index => [ messages ] ]
-$esc = fn($v) => \V::app()->html->escape((string)$v);
 $actionUrl = \V::app()->createUrl('/datatable/import');
 $formId = 'dt-import-' . uniqid();
 $refresh = "this.form.elements.step.value='preview'; this.form.requestSubmit()";
-$errorList = fn($list) => $list ? "<div class='invalid-feedback d-block'>" . implode('<br>', array_map($esc, (array)$list)) . "</div>" : '';
+$errorList = fn($list) => $list ? "<div class='invalid-feedback d-block'>" . implode('<br>', \V::app()->html->escape((array)$list)) . "</div>" : '';
 
 $sheetSelect = '';
 if (count($sheets) > 1) {
     $options = '';
     foreach($sheets as $s)
-	$options .= "<option value='" . $esc($s) . "'" . ($s === $sheet ? ' selected' : '') . ">" . $esc($s) . "</option>";
+	$options .= "<option value='" . \V::app()->html->escape($s) . "'" . ($s === $sheet ? ' selected' : '') . ">" . \V::app()->html->escape($s) . "</option>";
     $sheetSelect = "<div class='col-md-4'><label class='form-label'>Sheet</label><select name='sheet' class='form-select form-select-sm' onchange=\"{$refresh}\">{$options}</select></div>";
 } elseif ($sheet !== null) {
-    $sheetSelect = "<input type='hidden' name='sheet' value='" . $esc($sheet) . "'>";
+    $sheetSelect = "<input type='hidden' name='sheet' value='" . \V::app()->html->escape($sheet) . "'>";
 }
 
-$typeOptions = function($selected) use ($types, $esc) {
+$typeOptions = function($selected) use ($types) {
     $html = '';
     foreach($types as $value => $label)
-	$html .= "<option value='" . $esc($value) . "'" . ($value === $selected ? ' selected' : '') . ">" . $esc($label) . "</option>";
+	$html .= "<option value='" . \V::app()->html->escape($value) . "'" . ($value === $selected ? ' selected' : '') . ">" . \V::app()->html->escape($label) . "</option>";
     return $html;
 };
 
 $colRows = '';
 foreach($columns as $i => $c) {
-    $samples = implode(', ', array_map($esc, $c['samples']));
+    $samples = implode(', ', \V::app()->html->escape($c['samples']));
     $colRows .= "
     <tr>
 	<td><input type='checkbox' class='form-check-input' name='cols[{$i}][on]' value='1'" . (!empty($c['on']) ? ' checked' : '') . "></td>
-	<td><input type='text' class='form-control form-control-sm' name='cols[{$i}][label]' value='" . $esc($c['label']) . "' maxlength='100'></td>
-	<td><input type='text' class='form-control form-control-sm font-monospace' name='cols[{$i}][key]' value='" . $esc($c['key']) . "' maxlength='50'></td>
+	<td><input type='text' class='form-control form-control-sm' name='cols[{$i}][label]' value='" . \V::app()->html->escape($c['label']) . "' maxlength='100'></td>
+	<td><input type='text' class='form-control form-control-sm font-monospace' name='cols[{$i}][key]' value='" . \V::app()->html->escape($c['key']) . "' maxlength='50'></td>
 	<td><select class='form-select form-select-sm' name='cols[{$i}][type]'>" . $typeOptions($c['type']) . "</select></td>
 	<td class='small text-muted text-truncate' style='max-width: 14rem' title='{$samples}'>{$samples}</td>
     </tr>" . (!empty($errors[$i]) ? "<tr><td></td><td colspan='4' class='pt-0'>" . $errorList($errors[$i]) . "</td></tr>" : '');
@@ -42,12 +41,12 @@ foreach($columns as $i => $c) {
 //the first rows as read
 $head = '';
 foreach($columns as $c)
-    $head .= '<th class="text-nowrap">' . $esc($c['label']) . '</th>';
+    $head .= '<th class="text-nowrap">' . \V::app()->html->escape($c['label']) . '</th>';
 $body = '';
 foreach(array_slice($dataRows, 0, 5) as $row) {
     $body .= '<tr>';
     foreach($row as $v)
-	$body .= '<td class="text-nowrap text-truncate" style="max-width: 12rem">' . $esc(mb_substr(\util\TableImport::text($v), 0, 60)) . '</td>';
+	$body .= '<td class="text-nowrap text-truncate" style="max-width: 12rem">' . \V::app()->html->escape(mb_substr(\util\TableImport::text($v), 0, 60)) . '</td>';
     $body .= '</tr>';
 }
 
@@ -56,12 +55,12 @@ $content = "
     <input type='hidden' name='token' value='{$token}'>
     <input type='hidden' name='step' value='import'>
     <input type='hidden' name='header_set' value='1'>
-    <input type='hidden' name='sheet_shown' value='" . $esc($sheet) . "'>
-    <p class='small text-muted mb-3'>" . $esc($meta['name']) . ': ' . \util\Format::plural(count($dataRows), 'row') . ', ' . \util\Format::plural(count($columns), 'column') . ". Types were guessed from the values: check them before importing.</p>
+    <input type='hidden' name='sheet_shown' value='" . \V::app()->html->escape($sheet) . "'>
+    <p class='small text-muted mb-3'>" . \V::app()->html->escape($meta['name']) . ': ' . \util\Format::plural(count($dataRows), 'row') . ', ' . \util\Format::plural(count($columns), 'column') . ". Types were guessed from the values: check them before importing.</p>
     <div class='row g-3 mb-3 align-items-end'>
 	<div class='col-md-5'>
 	    <label class='form-label'>Table name</label>
-	    <input type='text' name='name' class='form-control form-control-sm" . (!empty($errors['name']) ? ' is-invalid' : '') . "' value='" . $esc($name) . "' maxlength='100' required>
+	    <input type='text' name='name' class='form-control form-control-sm" . (!empty($errors['name']) ? ' is-invalid' : '') . "' value='" . \V::app()->html->escape($name) . "' maxlength='100' required>
 	    " . $errorList($errors['name'] ?? []) . "
 	    <div class='form-text'>Letters, digits and underscore</div>
 	</div>

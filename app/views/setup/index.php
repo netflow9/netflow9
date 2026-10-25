@@ -2,12 +2,11 @@
 //the initial setup, step 1 (SetupController::index): the prerequisites; when the required ones pass, a link to step 2
 //CLD: 2026-10-19T14:09:20+03:00: step 1 only (the server's settings and the first user are views/setup/server.php and account.php; "done" is done.php)
 $this->pageTitle = \V::t('Setup');
-$e = fn($s) => \V::app()->html->escape((string)$s);
 ?>
 
 <main class="position-relative d-flex flex-column align-items-center h-100 pb-5 overflow-auto">
     <header class="pt-3">
-        <h1><img src="/img/app-logo.svg" height="48" class="pe-2"><?= $e(\V::app()->config('app.name')) ?></h1>
+        <h1><img src="/img/app-logo.svg" height="48" class="pe-2"><?= \V::app()->html->escape(\V::app()->config('app.name')) ?></h1>
     </header>
 
     <div class="card w-100" style="max-width:720px">
@@ -21,9 +20,9 @@ $e = fn($s) => \V::app()->html->escape((string)$s);
 		<?php foreach($checks as $c): ?>
 		    <tr>
 			<td style="width:1.5rem"><?php if ($c['ok']): ?><i class="bi bi-check-circle-fill text-success"></i><?php elseif ($c['required']): ?><i class="bi bi-x-circle-fill text-danger"></i><?php else: ?><i class="bi bi-exclamation-triangle-fill text-warning"></i><?php endif; ?></td>
-			<td><?= $e($c['name']) ?><?php if (!$c['required']): ?> <span class="text-muted">(<?= \V::t('recommended') ?>)</span><?php endif; ?></td>
-			<td class="text-nowrap"><?= $e($c['value']) ?></td>
-			<td class="text-muted"><?= $e($c['need']) ?></td>
+			<td><?= \V::app()->html->escape($c['name']) ?><?php if (!$c['required']): ?> <span class="text-muted">(<?= \V::t('recommended') ?>)</span><?php endif; ?></td>
+			<td class="text-nowrap"><?= \V::app()->html->escape($c['value']) ?></td>
+			<td class="text-muted"><?= \V::app()->html->escape($c['need']) ?></td>
 		    </tr>
 		<?php endforeach; ?>
 		</tbody>
