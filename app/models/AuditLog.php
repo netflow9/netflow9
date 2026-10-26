@@ -50,6 +50,8 @@ class AuditLog extends \sys\BaseModel {
 	//CLD: 2026-10-24T00:04:00+03:00: executions of the draft deleted from the Executions panel (WorkflowController::execution_delete, executions_delete; executions themselves are not recorded)
 	'workflow.execution.delete' => 'Delete execution',
 	'workflow.executions.delete' => 'Delete executions',
+	//CLD: 2026-10-26T10:06:24+02:00: a running execution killed (WorkflowController::execution_kill, the Overview)
+	'workflow.execution.kill' => 'Kill execution',
     ];
 
     public function getSchema() {

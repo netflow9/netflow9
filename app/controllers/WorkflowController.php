@@ -462,6 +462,24 @@ class WorkflowController extends \sys\BaseController {
 	$resp->sendJSON([ 'deleted' => $eid ]);
     }
 
+    //CLD: 2026-10-26T10:06:24+02:00: kill a running (or waiting) execution (POST ?execution=<id>; the Overview's Needs attention): WfExecution::kill. Answers { killed };
+    //409 when it no longer runs. Workflow::update (as Run)
+    public function execution_kill($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$wf = $this->findWorkflow('Workflow::update');
+	$eid = (string)($req->query['execution'] ?? '');
+	if (!\util\Validator::rule('oid', $eid))
+	    \V::app()->error(400, 'malformed request: not oid');
+	$exe = \V::app()->om->findOne('WfExecution', [ '_id' => $eid, 'wf' => $wf->_id, 'aid' => $wf->aid ], [ 'projection' => [ '_id' => 1, 'aid' => 1, 'state' => 1 ] ]);
+	if (empty($exe))
+	    \V::app()->error(404, 'Not found');
+	if (!$exe->kill((string)\V::app()->user->name))
+	    $resp->sendJSON([ 'error' => 'The execution is no longer running' ], true, 409);
+	\models\AuditLog::record('workflow.execution.kill', $wf, 'execution ' . $eid);
+	$resp->sendJSON([ 'killed' => $eid ]);
+    }
+
     //CLD: 2026-10-23T23:30:00+03:00: delete all executions of the draft (POST; the Executions panel's trash button): as execution_delete, those of a published
     //version and those still running or sleeping are kept. Answers { deleted: <count>, kept: <count> }. Workflow::update (as Run)
     public function executions_delete($req, $resp) {

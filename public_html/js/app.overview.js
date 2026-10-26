@@ -29,6 +29,9 @@ window.app.Overview = (function() {
 
     const esc = (s) => window.app.utils.escapeHtml(String(s === undefined || s === null ? '' : s));
     const nf = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 });
+    //CLD: 2026-10-26T10:06:24+02:00: for the Kill button (POST)
+    const csrf = () => document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+    const toast = (type, title, body) => window.app.utils.toast({ type: type, title: esc(title), body: esc(body), delay: 5000 });
 
     //a duration in ms, short
     function duration(ms) {
@@ -342,8 +345,11 @@ window.app.Overview = (function() {
 		const since = s.since ? window.app.formatter.timeAgoHtml(s.since, false) : '';
 		if (s.kind === 'task')
 		    return `<a href="/task/${esc(s.task)}" class="text-reset"><i class="bi bi-person-check me-1 text-warning"></i>Task "${esc(s.title)}" overdue</a> <span class="text-muted">· ${esc(s.workflow)} · due ${since}</span>`;
+		//CLD: 2026-10-26T10:06:24+02:00: + Kill (when the user may change the workflow; asks Yes / No first, see kill())
 		if (s.kind === 'running')
-		    return `<i class="bi bi-play-circle me-1 text-warning"></i>Still running, started ${since} <span class="text-muted">· ${esc(s.workflow)}</span>`;
+		    return `<div class="d-flex align-items-center gap-2"><span><i class="bi bi-play-circle me-1 text-warning"></i>Still running, started ${since} <span class="text-muted">· ${esc(s.workflow)}</span></span>`
+			+ (s.canKill ? `<span class="ms-auto text-nowrap ov-kill" data-wf="${esc(s.wf)}" data-id="${esc(s.id)}"><button type="button" class="btn btn-sm btn-outline-danger py-0 ov-kill-ask" title="Stop this execution"><i class="bi bi-stop-circle me-1"></i>Kill</button></span>` : '')
+			+ `</div>`;
 		return `<i class="bi bi-alarm me-1 text-warning"></i>Should have resumed ${since} <span class="text-muted">· ${esc(s.workflow)}</span>`;
 	    };
 	    el.innerHTML = `<div class="row g-3 mb-3">
@@ -360,6 +366,33 @@ window.app.Overview = (function() {
 		    <ul class="list-unstyled mb-0 small">${d.stuck.map((s) => `<li class="py-1 border-bottom">${stuck(s)}</li>`).join('')}</ul>
 		</div></div></div>` : ''}
 	    </div>`;
+	    el.querySelectorAll('.ov-kill').forEach((box) => this.killButton(box));
+	}
+
+	//CLD: 2026-10-26T10:06:24+02:00: Kill becomes `Kill? Yes / No`; Yes kills the execution (WorkflowController::execution_kill) and reloads the figures
+	killButton(box) {
+	    const ask = () => {
+		box.innerHTML = `<span class="me-1">Kill it?</span><button type="button" class="btn btn-sm btn-danger py-0 ov-kill-yes">Yes</button> <button type="button" class="btn btn-sm btn-outline-secondary py-0 ov-kill-no">No</button>`;
+		box.querySelector('.ov-kill-yes').addEventListener('click', () => this.kill(box));
+		box.querySelector('.ov-kill-no').addEventListener('click', () => this.problems());
+		box.querySelector('.ov-kill-yes').focus();
+	    };
+	    box.querySelector('.ov-kill-ask').addEventListener('click', ask);
+	}
+
+	async kill(box) {
+	    box.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+	    try {
+		const url = '/workflow/execution_kill?id=' + encodeURIComponent(box.dataset.wf) + '&execution=' + encodeURIComponent(box.dataset.id);
+		const res = await fetch(url, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-Csrf-Token': csrf(), Accept: 'application/json' } });
+		const body = await res.json().catch(() => ({}));
+		if (!res.ok)
+		    throw new Error(body.error || 'the server answered ' + res.status);
+		toast('success', 'Killed', 'The execution was stopped');
+	    } catch (err) {
+		toast('error', 'Not killed', err.message);
+	    }
+	    this.load();
 	}
 
 	recent() {
