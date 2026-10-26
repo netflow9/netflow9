@@ -30,6 +30,8 @@ $wfIdJs = (string)$wf->_id;
 $executionUrl = \V::app()->createUrl('/workflow/execution', [ 'id' => (string)$wf->_id ]);
 $executionDeleteUrl = \V::app()->createUrl('/workflow/execution_delete', [ 'id' => (string)$wf->_id ]);
 $executionsDeleteUrl = \V::app()->createUrl('/workflow/executions_delete', [ 'id' => (string)$wf->_id ]);
+//CLD: 2026-10-26T10:14:16+02:00: Kill in the Executions panel
+$executionKillUrl = \V::app()->createUrl('/workflow/execution_kill', [ 'id' => (string)$wf->_id ]);
 $canRun = \V::app()->user->can('Workflow::update', [ 'object' => $wf ]) ? 'true' : 'false';
 //the version being viewed (?version, read-only: its steps on the canvas)
 $activeVersion = $wf->publishedVersion();
@@ -90,7 +92,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
     //CLD: 2026-10-25T20:30:00+02:00: Run and the Executions panel: app.WfExecutions (app.wfexecutions.js; was the `exec` object here), the Debug panel: app.WfDebug (app.wfdebug.js;
     //was `debug`); one bottom panel at a time, the one last open remembered (bottomPanel)
     const exec = new app.WfExecutions(document.querySelector('.exec-panel'), {
-	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}' },
+	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}', kill: '{$executionKillUrl}' },
 	canRun: {$canRun},
 	//CLD: 2026-10-12T20:33:47+03:00: the triggers Run can start
 	runTriggers: {$runTriggers},
