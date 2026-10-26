@@ -311,14 +311,23 @@ class WfExecution extends \sys\BaseModel {
 		    break;
 		//CLD: 2026-10-26T09:58:28+02:00: the rest runs in a daemon worker
 		if ($handover > 0 && $this->state == 'run' && microtime(true) - $started >= $handover) {
+		    //CLD: 2026-10-26T10:06:24+02:00: not when it was killed meanwhile
+		    if ($this->killed())
+			return $this->state;
 		    $this->handOver($handover);
 		    return 'queued';
 		}
 		if ($this->state == 'run' && microtime(true) - $saved >= self::SAVE_EVERY) {
+		    //CLD: 2026-10-26T10:06:24+02:00: killed meanwhile (kill(), another process): stops here, not saved (would undo the kill)
+		    if ($this->killed())
+			return $this->state;
 		    $this->save();
 		    $saved = microtime(true);
 		}
 	    }
+	    //CLD: 2026-10-26T10:06:24+02:00: as above
+	    if ($this->killed())
+		return $this->state;
 	    $this->save();
 
 	    \models\ExecutionLog::$step = null;
@@ -342,6 +351,42 @@ class WfExecution extends \sys\BaseModel {
 	    [ \models\ExecutionLog::$execution, \models\ExecutionLog::$step ] = $outer;
 	}
 	return $this->state;
+    }
+
+    //CLD: 2026-10-26T10:06:24+02:00: kill a running (or waiting) execution: `cancel` in the database (a targeted update: the process running it may save meanwhile; it stops at its next
+    //pass, see killed()), its daemon jobs removed (not run / queued again) and the worker running one stopped (Job::kill). $by: who killed it (the log). False when it no longer runs
+    public function kill($by = null) {
+	$now = new \MongoDB\BSON\UTCDateTime();
+	$message = 'killed' . ($by ? ' by ' . $by : '');
+	$n = \V::app()->om->updateOne('WfExecution', [ '_id' => $this->_id, 'aid' => $this->aid, 'state' => [ '$in' => [ 'new', 'run', 'sleep' ] ] ],
+	    [ '$set' => [ 'state' => 'cancel', 'error' => $message, 'end_at' => $now, 'wake_at' => null ],
+		'$push' => [ 'log' => [ 'ts' => $now, 'node' => null, 'message' => $message ] ] ]);
+	if (!$n)
+	    return false;
+	$this->state = 'cancel';
+
+	$jobs = \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection());
+	$query = [ 'job_data.exe' => (string)$this->_id, 'job_spec' => [ '$in' => [ '\\util\\Scheduler::start', '\\util\\Scheduler::resume' ] ], 'state' => [ '$in' => [ 'new', 'run' ] ] ];
+	foreach($jobs->find($query, [ 'projection' => [ '_id' => 1, 'state' => 1 ] ]) as $job) {
+	    //removed first: the daemon does not queue it again when its worker is stopped
+	    $jobs->deleteOne([ '_id' => $job['_id'] ]);
+	    if ($job['state'] === 'run')
+		\models\Job::kill((string)$job['_id']);
+	}
+
+	$outer = \models\ExecutionLog::$execution;
+	\models\ExecutionLog::$execution = $this;
+	\models\ExecutionLog::record('execution.cancel', null, $message);
+	\models\ExecutionLog::$execution = $outer;
+	return true;
+    }
+
+    //CLD: 2026-10-26T10:06:24+02:00: whether it was killed meanwhile (state `cancel` in the database; then also here)
+    private function killed() {
+	if (empty($this->_id) || !\V::app()->om->count('WfExecution', [ '_id' => $this->_id, 'aid' => $this->aid, 'state' => 'cancel' ]))
+	    return false;
+	$this->state = 'cancel';
+	return true;
     }
 
     //CLD: 2026-10-26T09:58:28+02:00: hand a running execution to the daemon after $seconds in a web request (its progress saved; the daemon continues from the current tokens)

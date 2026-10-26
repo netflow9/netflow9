@@ -470,8 +470,10 @@ class SiteController extends \sys\BaseController {
 	    [ 'state' => 'run', 'start_at' => [ '$lt' => new \MongoDB\BSON\UTCDateTime(($now - self::OVERVIEW_LONG_RUN) * 1000) ] ],
 	    [ 'state' => 'sleep', 'wake_at' => [ '$lt' => new \MongoDB\BSON\UTCDateTime($now * 1000) ] ],
 	] ], [ 'projection' => $fields, 'sort' => [ '_id' => 1 ], 'limit' => 10 ]) as $e)
-	    $stuck[] = [ 'kind' => $e->state === 'run' ? 'running' : 'late', 'wf' => (string)$e->wf, 'workflow' => (string)($workflows[(string)$e->wf]->name ?? ''),
-		'since' => $e->state === 'run' ? $iso($e->start_at) : $iso($e->wake_at) ];
+	    //CLD: 2026-10-26T10:06:24+02:00: + id and canKill (a long run: the Kill button, WorkflowController::execution_kill; Workflow::update)
+	    $stuck[] = [ 'kind' => $e->state === 'run' ? 'running' : 'late', 'id' => (string)$e->_id, 'wf' => (string)$e->wf, 'workflow' => (string)($workflows[(string)$e->wf]->name ?? ''),
+		'since' => $e->state === 'run' ? $iso($e->start_at) : $iso($e->wake_at),
+		'canKill' => $e->state === 'run' && isset($workflows[(string)$e->wf]) && $user->can('Workflow::update', [ 'object' => $workflows[(string)$e->wf] ]) ];
 	foreach(array_slice($overdueTasks, 0, 10) as $t)
 	    $stuck[] = [ 'kind' => 'task', 'wf' => (string)$t->wf, 'workflow' => (string)($workflows[(string)$t->wf]->name ?? ''), 'title' => (string)$t->title,
 		'since' => $iso($t->due_at), 'task' => (string)$t->_id ];

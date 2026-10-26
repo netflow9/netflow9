@@ -152,6 +152,19 @@ class Job extends \sys\BaseModel {
 	return true;
     }
 
+    //CLD: 2026-10-26T10:06:24+02:00: stop the worker running job $jid (KILLJOB on the daemon's socket); nothing happens when the daemon does not run
+    public static function kill($jid) {
+	$path = \V::app()->config('app.job_socket_path');
+	if (empty($path) || !file_exists($path))
+	    return false;
+	$conn = @stream_socket_client('unix://' . $path, $errno, $errstr, 1);
+	if (!$conn)
+	    return false;
+	fwrite($conn, "KILLJOB:{$jid}\n");
+	fclose($conn);
+	return true;
+    }
+
     //log an error and mail it to ERRORS_EMAIL (app.env) when set; $error: a message or a Throwable
     public static function reportError($subject, $error) {
 	$text = $error instanceof \Throwable
