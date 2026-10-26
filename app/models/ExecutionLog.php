@@ -4,7 +4,7 @@
     the execution log:
 	what happens without a person acting.
 	Create / update / delete of objects (the hooks of models\AuditLog) made while a workflow execution runs (also when a user clicked Run: `started_by`), by the daemon, the console or a webhook call; and
-//named events: execution.start / end / error / sleep (WfExecution::run), webhook.refused (HookController, when the workflow is known), job.failed
+//named events: execution.start / end / error / sleep / queued (WfExecution::run), webhook.refused (HookController, when the workflow is known), job.failed
 //(daemon). `source` says what acted: the execution's trigger (manual, webhook, schedule, imap), else daemon / console / webhook / web.
 //The running execution and step are set by WfExecution (ExecutionLog::$execution / $step), the daemon worker sets $source. Entries are never changed and
 //expire after the account's `execution_log_retention`. Read with ExecutionLog::read (global: the account, project: the entries of the current project)
@@ -30,6 +30,8 @@ class ExecutionLog extends \sys\BaseModel {
 	'execution.end' => 'Execution completed',
 	'execution.error' => 'Execution failed',
 	'execution.sleep' => 'Execution waiting',
+	//CLD: 2026-10-26T09:58:28+02:00: a run inside a web request handed to the daemon (WfExecution::run, app.executions.sync_timeout)
+	'execution.queued' => 'Execution moved to the daemon',
 	'webhook.refused' => 'Webhook refused',
 	'job.failed' => 'Job failed',
     ];
