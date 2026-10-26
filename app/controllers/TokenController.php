@@ -7,7 +7,8 @@
 */
 
 //CLD: 2026-10-20T23:40:00+03:00: moved to the SysMCPTools plugin (was controllers\TokenController): /SysMCPTools/token/<action>
-namespace plugins\SysMCPTools\controllers;
+//CLD: 2026-10-26T23:56:07+02:00: moved back to the core (was the SysMCPTools plugin's)
+namespace controllers;
 
 class TokenController extends \sys\BaseController {
 

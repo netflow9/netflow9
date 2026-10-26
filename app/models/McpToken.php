@@ -5,7 +5,8 @@
 //as the user who made it (`user`), within that user's permissions, on this project's data only. last_used_at is written directly (om->updateMany: not an audit entry)
 
 //CLD: 2026-10-20T23:40:00+03:00: moved to the SysMCPTools plugin (was models\McpToken; the object name McpToken and the collection stay)
-namespace plugins\SysMCPTools\models;
+//CLD: 2026-10-26T23:56:07+02:00: moved back to the core (was the SysMCPTools plugin's)
+namespace models;
 
 class McpToken extends \sys\BaseModel {
     protected static $collection = 'mcp_tokens';
