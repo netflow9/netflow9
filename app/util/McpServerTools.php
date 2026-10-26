@@ -15,9 +15,10 @@
     + building workflows (user's choice: create and update drafts, people publish): list_step_types, get_workflow, create_workflow, update_workflow (util\WorkflowSpec)
 */
 
-namespace plugins\SysMCPTools\util;
+//CLD: 2026-10-26T23:56:07+02:00: moved to the core (was plugins\SysMCPTools\util\McpTools; util\McpTools would clash with util\MCPTools: PHP class names ignore case)
+namespace util;
 
-class McpTools {
+class McpServerTools {
     const MAX_DEPTH = 3;
     private static $depth = 0;
 

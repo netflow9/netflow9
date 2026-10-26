@@ -15,6 +15,7 @@ namespace commands;
 class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-13T15:17:12+03:00: + mcp (the MCP tools that build workflows: util\McpTools, util\WorkflowSpec)
     //CLD: 2026-10-20T23:40:00+03:00: the MCP tools are the SysMCPTools plugin's (plugins\SysMCPTools\util\McpTools): mcp is skipped without it
+    //CLD: 2026-10-26T23:56:07+02:00: core again (util\McpServerTools): mcp always run
     //CLD: 2026-10-13T15:24:28+03:00: + vars (the project variables in expressions)
     //CLD: 2026-10-13T15:34:38+03:00: + code (the Code step)
     //CLD: 2026-10-13T18:34:40+03:00: + forms (form designer schemas, Form trigger, Human task)
@@ -104,8 +105,9 @@ class CheckCommand extends \sys\BaseController {
     //helpers
 
     //CLD: 2026-10-20T23:40:00+03:00: the class of the MCP tools when the SysMCPTools plugin is enabled (app/plugins.php), else null
+    //CLD: 2026-10-26T23:56:07+02:00: core again: always util\McpServerTools
     private static function mcpTools() {
-	return in_array('SysMCPTools', (array)\V::app()->config('modules'), true) ? \plugins\SysMCPTools\util\McpTools::class : null;
+	return \util\McpServerTools::class;
     }
 
     private function check($name, $expected, $actual) {
@@ -478,10 +480,8 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-13T15:17:12+03:00: the MCP tools that build workflows (called as an AI step does: no user permissions; util\McpTools::call): step types, create / get / update, layout, refusals
     private function suiteMcp() {
 	//CLD: 2026-10-20T23:40:00+03:00: the tools are the SysMCPTools plugin's (was util\McpTools): nothing to check without it
-	if (!($tools = self::mcpTools())) {
-	    echo "  skipped: the SysMCPTools plugin is not enabled\n";
-	    return;
-	}
+	//CLD: 2026-10-26T23:56:07+02:00: core again (util\McpServerTools): always checked
+	$tools = self::mcpTools();
 	$call = fn($name, $args) => $tools::call($name, $args, $this->project, false);
 	$refused = function($name, $args) use ($call) {
 	    try {

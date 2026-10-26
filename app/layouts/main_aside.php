@@ -149,6 +149,15 @@ $dd_items = implode('', $dd_items);
 		    );
 		}
 
+		//CLD: 2026-10-26T23:56:07+02:00: the MCP server link (its tokens; was the SysMCPTools plugin's), hidden for the moment (McpController::SHOW_MENU); /mcp and /token/list still work
+		if (\controllers\McpController::SHOW_MENU && \V::app()->user->can('McpToken::list', [ 'object' => \V::app()->om->create('McpToken', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
+		    echo \V::app()->html->link(
+			'<i class="bi bi-plug"></i> MCP server',
+			\V::app()->createUrl('/token/list'),
+			[ 'class' => 'nav-link py-1 w-100', 'escape' => false ]
+		    );
+		}
+
 		\V::app()->hooks->applyHook('layout:aside-project-menu', [ $crtProject ]);
 
 		$wfCreateUrl = '';

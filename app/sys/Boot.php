@@ -51,6 +51,9 @@ class Boot {
 	\V::app()->router->add_rule('hook/<id:[a-f0-9]{32}>', 'hook/receive', true);
 	\V::app()->router->add_rule('form/<id:[a-f0-9]{32}>', 'form/open', true);
 	\V::app()->router->add_rule('task/<id:[a-f0-9]{24}>', 'task/open', true);
+	//CLD: 2026-10-26T23:56:07+02:00: POST /mcp -> McpController::serve (was the SysMCPTools plugin's); its callers are tokens, not browser users: no session
+	\V::app()->router->add_rule('mcp', 'mcp/serve', true);
+	\V::app()->session->noSessionFor('/mcp');
 
 	//CLD: 2026-10-26T23:49:50+02:00: the account's Assistant in the administration (the Admin plugin's account page; was the Assistant plugin's): its provider, its spending on its own key
 	\V::app()->hooks->addHook('admin:account-panels', function($account) {

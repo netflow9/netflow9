@@ -292,6 +292,41 @@ class SysPermissions {
 	];
 
 	//CLD: 2026-10-20T23:40:00+03:00: McpToken's permissions are registered by the SysMCPTools plugin (register)
+	//CLD: 2026-10-26T23:56:07+02:00: core again (were the SysMCPTools plugin's): access tokens of the project's MCP server (a token acts as the user who made it, within that user's permissions);
+	//defaults: also for the roles already stored
+	$data['McpToken'] = [
+	    [
+		'name' => 'McpToken::create',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'Create MCP server tokens',
+		'defaults' => [
+		    'owner' => [ 'enabled' => true, 'scope' => 'global' ],
+		    'member' => [ 'enabled' => true, 'scope' => 'project' ]
+		]
+	    ],
+	    [
+		'name' => 'McpToken::read',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'View MCP server tokens (also grants: list); the tokens themselves are shown only once',
+		'defaults' => [
+		    'owner' => [ 'enabled' => true, 'scope' => 'global' ],
+		    'member' => [ 'enabled' => true, 'scope' => 'project' ]
+		]
+	    ],
+	    [
+		'name' => 'McpToken::list',
+		'alias-of' => 'McpToken::read'
+	    ],
+	    [
+		'name' => 'McpToken::delete',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'Delete (revoke) MCP server tokens',
+		'defaults' => [
+		    'owner' => [ 'enabled' => true, 'scope' => 'global' ],
+		    'member' => [ 'enabled' => true, 'scope' => 'project' ]
+		]
+	    ],
+	];
 
 	//CLD: 2026-10-20T23:40:00+03:00: + the plugins' (register)
 	$data += self::$registered;

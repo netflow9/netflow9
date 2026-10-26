@@ -4,14 +4,18 @@
     the project's MCP server (Model Context Protocol, Streamable HTTP transport, JSON answers - no SSE streams):
     POST /mcp (router rule + no session: the plugin's Plugin.php).
     Authorization: Bearer <token> (models\McpToken, made in the project): the call acts as the token's user on the token's project.
-    JSON-RPC 2.0 (a message or a batch): initialize, ping, tools/list, tools/call (util\McpTools), notifications (answered 202, nothing to do).
+    JSON-RPC 2.0 (a message or a batch): initialize, ping, tools/list, tools/call (util\McpServerTools), notifications (answered 202, nothing to do).
     Stateless: no Mcp-Session-Id.
     A request from a browser page of another site (Origin header of another host) is refused (DNS rebinding)
 */
 //CLD: 2026-10-20T23:40:00+03:00: moved to the SysMCPTools plugin (was controllers\McpController); POST /mcp is routed here by the plugin (Plugin: router rule, no session)
-namespace plugins\SysMCPTools\controllers;
+//CLD: 2026-10-26T23:56:07+02:00: moved back to the core (was the SysMCPTools plugin's)
+namespace controllers;
 
 class McpController extends \sys\BaseController {
+
+    //CLD: 2026-10-26T23:56:07+02:00: whether the project menu shows the MCP server link (layouts/main_aside.php; hidden for the moment, as in the SysMCPTools plugin: true shows it again)
+    const SHOW_MENU = false;
 
     //supported protocol versions, newest first (initialize answers the client's when supported, else the newest)
     const PROTOCOL_VERSIONS = [ '2025-06-18', '2025-03-26', '2024-11-05' ];
@@ -41,7 +45,7 @@ class McpController extends \sys\BaseController {
 	    $resp->sendJSON($this->fail(null, -32000, 'Origin not allowed'), true, 403, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 	//the token: its user signs in for this request only (no session), its project is the one the tools work on
-	$token = preg_match('/^Bearer\s+(\S+)$/i', trim((string)($_SERVER['HTTP_AUTHORIZATION'] ?? '')), $m) ? \plugins\SysMCPTools\models\McpToken::findByToken($m[1]) : null;
+	$token = preg_match('/^Bearer\s+(\S+)$/i', trim((string)($_SERVER['HTTP_AUTHORIZATION'] ?? '')), $m) ? \models\McpToken::findByToken($m[1]) : null;
 	$project = $token ? \V::app()->om->findOne('Project', [ '_id' => $token->project, 'aid' => $token->aid ]) : null;
 	$identity = new \sys\Identity();
 	if (!$token || !$project || !$identity->authenticateById($token->user)) {
@@ -106,18 +110,18 @@ class McpController extends \sys\BaseController {
 		return $this->ok($id, (object)[]);
 
 	    case 'tools/list':
-		return $this->ok($id, [ 'tools' => \plugins\SysMCPTools\util\McpTools::definitions() ]);
+		return $this->ok($id, [ 'tools' => \util\McpServerTools::definitions() ]);
 
 	    case 'tools/call':
 		$name = (string)($params['name'] ?? '');
-		if (!in_array($name, array_column(\plugins\SysMCPTools\util\McpTools::definitions(), 'name'), true))
+		if (!in_array($name, array_column(\util\McpServerTools::definitions(), 'name'), true))
 		    return $this->fail($id, -32602, "Unknown tool: {$name}");
 		$args = $params['arguments'] ?? [];
 		if (!is_array($args) || ($args && array_is_list($args)))
 		    return $this->fail($id, -32602, 'arguments: an object is expected');
 		try {
-		    $result = \plugins\SysMCPTools\util\McpTools::call($name, $args, $project);
-		    [ $result, $images ] = \plugins\SysMCPTools\util\McpTools::images($result);
+		    $result = \util\McpServerTools::call($name, $args, $project);
+		    [ $result, $images ] = \util\McpServerTools::images($result);
 		    $content = [ [ 'type' => 'text', 'text' => json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ] ];
 		    foreach($images as [ $mime, $data ])
 			$content[] = [ 'type' => 'image', 'data' => $data, 'mimeType' => $mime ];
