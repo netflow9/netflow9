@@ -7,13 +7,13 @@ $__newToken = \V::app()->om->create('McpToken', [ 'aid' => \V::app()->config('rt
 if (\V::app()->user->can('McpToken::create', [ 'object' => $__newToken ])) {
     $createBtn = \V::app()->html->link(
 	'Create token',
-	\V::app()->createUrl('/SysMCPTools/token/create'),
+	\V::app()->createUrl('/token/create'),
 	[ 'class' => 'btn btn-primary btn-sm', 'escape' => false ]
     );
 }
 $deleteAction = '';
 if (\V::app()->user->can('McpToken::delete', [ 'object' => $__newToken ]))
-    $deleteAction = "<a href='/SysMCPTools/token/delete/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' data-confirm='Revoke this token? Clients using it stop working.' data-method='post' title='Revoke'><i class='bi bi-trash'></i></a>";
+    $deleteAction = "<a href='/token/delete/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' data-confirm='Revoke this token? Clients using it stop working.' data-method='post' title='Revoke'><i class='bi bi-trash'></i></a>";
 
 //schema and filtering
 $sf = \util\WidgetsUtil::getSchema('McpToken');
@@ -29,7 +29,7 @@ $script = "
     new app.GridView(container, {
 	create: `{$createBtn}`,
 	title: `<h5 class='h5 mb-0'>MCP server tokens</h5>`,
-	dataUrl: '/SysMCPTools/token/list?data=1', /* CLD: 2026-10-21T00:45:00+03:00: (was /SysMCPTools/token/data) */
+	dataUrl: '/token/list?data=1', /* CLD: 2026-10-21T00:45:00+03:00: (was /token/data) */
 
 	schema: {
 	    readonly: true,

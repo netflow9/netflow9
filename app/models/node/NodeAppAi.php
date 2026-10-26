@@ -386,7 +386,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	$known = array_keys(static::projectTools());
 	foreach((array)$this->cfg('tools', []) as $name) {
 	    if (!in_array($name, $known, true)) {
-		$this->errors('config', "Use these tools: unknown tool `{$name}`" . ($known ? '' : ' (no plugin gives tools: is SysMCPTools enabled?)'));
+		//CLD: 2026-10-26T23:56:07+02:00: the tools are core (util\McpServerTools): no longer "is SysMCPTools enabled?" when there are none
+		$this->errors('config', "Use these tools: unknown tool `{$name}`");
 		$valid = false;
 	    }
 	}
