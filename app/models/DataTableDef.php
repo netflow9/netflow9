@@ -63,11 +63,19 @@ class DataTableDef extends \sys\BaseModel {
 	    $this->schema['name']->{'perm:edit'} = false;
     }
 
+    //CLD: 2026-10-26T07:17:30+02:00: a table saved: the ObjectManager's cached data tables are forgotten (ensureDataTables loads them again)
+    public function afterSave() {
+	parent::afterSave();
+	\V::app()->om->resetCache();
+    }
+
     //CLD: 2026-10-11T21:28:07+03:00: a deleted table takes its columns (Field records with objectName = iname) and its rows (the collection named iname, see
     //ObjectManager::registerDataTables) with it (were left behind). Removed directly: the audit log keeps the table's own delete entry, not one per column.
     //The columns are matched by iname only (it holds the project id, so it is unique)
     public function beforeDelete() {
 	parent::beforeDelete();
+	//CLD: 2026-10-26T07:17:30+02:00: the cached data tables / columns forgotten
+	\V::app()->om->resetCache();
 	if (empty($this->iname))
 	    return;
 	//CLD: 2026-10-12T12:21:36+03:00: through ObjectManager (was the MongoDB collections directly): the columns deleted one by one, the rows with om->drop()

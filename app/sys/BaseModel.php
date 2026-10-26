@@ -183,8 +183,10 @@ class BaseModel {
 
     //by default it will search for schema in DB
     public function getSchema() {
-	$schema = \V::app()->om->find('Field', [ 'objectName' => $this->getObjectName() ])->toArray();
-	$sys_fields = $this->getSystemSchema();
+	//CLD: 2026-10-26T07:17:30+02:00: the stored fields' definitions cached by the ObjectManager (fieldDefs; were queried for each object made), a new Field each (they are bound to this object)
+	$schema = [];
+	foreach(\V::app()->om->fieldDefs($this->getObjectName()) as $fDef)
+	    $schema[] = \sys\fields\Field::create($fDef, [ 'exists' => true, 'objectName' => 'Field' ]);
 	foreach($this->getSystemSchema() as $fDef)
 	    $schema[] = \sys\fields\Field::create($fDef);
 

@@ -70,6 +70,16 @@ class Field extends \sys\BaseModel {
 	$this->_data['translate'] = $this->_data['translate'] ?? true;
     }
 
+    //CLD: 2026-10-26T07:17:30+02:00: a stored field changed: the ObjectManager's cached fields / data tables are forgotten (ObjectManager::fieldDefs)
+    public function afterSave() {
+	parent::afterSave();
+	\V::app()->om->resetCache();
+    }
+    public function beforeDelete() {
+	parent::beforeDelete();
+	\V::app()->om->resetCache();
+    }
+
     //after fields are attached to a field (yes!), we set some things on special fields
     public function afterAttachSchema() {
 	if (empty($this->schema))

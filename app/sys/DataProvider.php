@@ -41,7 +41,8 @@ class DataProvider implements \Iterator {
 		$this->modelOptions['database'],
 		$this->modelOptions['collection']
 	    );
-	    $this->cached_count = $coll->count($this->query, $options);
+	    //CLD: 2026-10-26T07:17:30+02:00: countDocuments (count() is deprecated, and slower)
+	    $this->cached_count = $coll->countDocuments($this->query, $options);
 	}
 	return $this->cached_count;
     }
