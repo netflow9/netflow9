@@ -4,7 +4,7 @@
     CLD: 2026-10-22T23:00:00+03:00: new: the account's Assistant in the administration (hook admin:account-panels): $account, $settings (AssistantSettings|null), $wallet (AssistantWallet::current),
     $ledger (the last entries), $usage (AssistantUsage::current), $system (AssistantSettings::system); the plan and a top-up (controllers/AdminController)
     CLD: 2026-10-23T10:00:00+03:00: the account's System AI credits (plugins\SystemAI; was the Assistant's panel): $account, $wallet (SystemAiWallet::current), $ledger, $system
-    (SystemAi::config); the Assistant's provider and spending: its own panel (plugins/Assistant/views/admin/account_panel)
+    (SystemAi::config); the Assistant's provider and spending: its own panel (views/assistant/_admin_account_panel)
 */
 use plugins\SystemAI\util\SystemAi;
 use plugins\SystemAI\models\SystemAiWallet;

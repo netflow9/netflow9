@@ -64,7 +64,7 @@ function get_config($mode = 'web') {
 	'http.steps.allow_private' => defined('HTTP_STEPS_ALLOW_PRIVATE') && filter_var(HTTP_STEPS_ALLOW_PRIVATE, FILTER_VALIDATE_BOOLEAN),
 	'app.base_url' => defined('BASE_URL') ? BASE_URL : null,
 	/*
-	    the Assistant's System provider (plugins\Assistant: the server this installation offers to every account;
+	    the Assistant's System provider (the core's Assistant, util\WorkflowAssistant: the server this installation offers to every account;
 		off without ASSISTANT_PROVIDER / ASSISTANT_MODEL):
 		    its provider (anthropic, openai, gemini, ollama, lemonade),
 		    Server URL (empty: the provider's own), key, model, effort (Claude),

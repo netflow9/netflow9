@@ -3,9 +3,9 @@
 /*
     the System AI provider: the model server this installation offers to every account (app.env SYSTEM_AI_*: config ai.system), paid in
     credits (as a prepaid SIM: a monthly allowance without rollover, top-ups that last 12 months). Was the Assistant's System provider; now used by
-	the Assistant (plugins\Assistant: provider System) and
+	the Assistant (core: models\AssistantSettings, provider System) and
 	the AI steps of the same provider (Claude, OpenAI, Gemini, Ollama, Lemonade: Credential System AI; models\node\NodeAppAi, hook ai:system-provider).
-    Enabled in app/plugins.php, before the Assistant (it uses these classes).
+    Enabled in app/plugins.php; without it the Assistant (core) offers no System provider.
       util/SystemAi.php                  the System AI (config), the known prices, a step's credential
       util/StepSession.php               an AI step's run: credits reserved, counted, settled
       models/SystemAiWallet.php          an account's credits (was plugins\Assistant\models\AssistantWallet)

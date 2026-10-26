@@ -1,0 +1,592 @@
+<?php
+
+/*
+    the Assistant of the workflow designer (right-side inspector):
+	the person describes a workflow or a change in their own words, Claude builds it on the canvas.
+
+    An agent loop on the Anthropic Messages API (raw HTTP, as models\node\NodeAppClaude; an Anthropic credential of the workflow's project):
+//  the system prompt holds the rules and the step types (util\WorkflowSpec::stepTypes; cached: it is the same for every request of the project),
+//  the last user turn holds the designer's current steps (unsaved changes included) as a spec (util\WorkflowSpec::toSpec), then the request;
+//  tools: set_workflow (the whole new canvas: steps + connections, built by util\WorkflowSpec::nodesFrom and checked by Workflow::validates, as when saving in the designer;
+//  refused settings go back to the model with the reasons, it fixes them) and some read-only project tools (util\McpTools, as the user: their permissions apply).
+//CLD: 2026-10-20T23:40:00+03:00: the project tools come from the plugins (util\MCPTools; the SysMCPTools plugin's MCP tools): without them, set_workflow only
+//CLD: 2026-10-23T23:30:00+03:00: all of them (was a read-only few, PROJECT_TOOLS): tables and rows, files and images, workflows (but not update_workflow of this one: set_workflow), runs;
+//images in their results go to the model as images (as models\node\NodeAppClaude / NodeAppOpenAI)
+//Nothing is saved here: the designer shows the new steps, the person reviews and saves them (and publishes) as always.
+//The conversation is kept by the designer and sent back as text turns ([ { role, text } ]); thinking blocks are kept only within one request's loop.
+//ask() = { reply, nodes (the designer's data; null when the canvas was not changed), problems (Workflow::validateFlow of the new steps), rounds, usage }; \ErrorException on failure
+//CLD: 2026-10-19T16:05:12+03:00: + an OpenAI-compatible model (OpenAI, or a local server: Lemonade, Ollama, vLLM, ...), with an OpenAI API credential of the project
+//(models\credential\CredentialOpenAI): POST <base URL>/chat/completions, tools as functions, results as `tool` messages (as models\node\NodeAppOpenAI); the model from the
+//account settings (assistant_openai_model), else the first one the server lists. The provider follows the credential; the loop is the same (turnAnthropic / turnOpenAI)
+//CLD: 2026-10-20T10:00:00+03:00: only the Assistant's settings (models\AssistantSettings: provider, url, api_key, model, effort; credentialOf) are used, no longer a credential
+//of the workflow's project; models(): the models of the settings' server (the settings page's Connect)
+//CLD: 2026-10-22T14:00:00+03:00: bring your own key: the settings' provider (System: the installation's server, AssistantSettings::system; Claude, OpenAI, Gemini, Ollama, Lemonade) is
+//resolved to its server (resolve) and spoken to with its protocol (AssistantSettings::PROTOCOLS: anthropic | openai). The cost of each turn is counted (AssistantSettings::pricesOf);
+//with $budget (USD left this month) the loop stops once it is spent: what was built so far is returned, `stopped` says why
+*/
+
+//CLD: 2026-10-26T23:49:50+02:00: moved to the core (was the Assistant plugin's); its System provider only while the SystemAI plugin is enabled
+namespace util;
+
+use models\AssistantSettings;
+
+class WorkflowAssistant {
+    const MAX_TOKENS = 32000;
+    //most calls to the model per request (each tool use is one more)
+    const MAX_ROUNDS = 12;
+    //CLD: 2026-10-19T17:14:20+03:00: how many times a model that stops with connection errors on the canvas is asked to fix them
+    const MAX_REMINDERS = 2;
+    //per call to the model (s)
+    const TIMEOUT = 600;
+    //CLD: 2026-10-20T10:00:00+03:00: for listing the server's models (Connect, s)
+    const MODELS_TIMEOUT = 20;
+    //the largest answer read (bytes)
+    const MAX_RESPONSE = 10 * 1024 * 1024;
+    //earlier turns sent back, and their length (characters)
+    const MAX_HISTORY = 20;
+    const MAX_TURN = 10000;
+    //a tool result longer than this is cut (characters)
+    const MAX_TOOL_RESULT = 30000;
+    //the models server-side fallback is offered for (as NodeAppClaude::FALLBACK_MODELS)
+    const FALLBACK_MODELS = '/^claude-(opus-5|sonnet-5-5|fable-5)/';
+
+    //CLD: 2026-10-23T23:30:00+03:00: removed PROJECT_TOOLS (the read-only project tools): every tool of util\MCPTools is offered, as the user
+
+    private $wf;
+    private $cred;
+    private $project;
+    //the designer's steps while the model works: [ element ] (a list, as the designer sends them)
+    private $nodes = [];
+    private $changed = false;
+    //CLD: 2026-10-19T17:02:48+03:00: the settings of the current steps that are still wrong (set_workflow applies the steps anyway; the person fills them in), and why the last
+    //set_workflow was refused (told to the person when the canvas was not changed: models may say they built it anyway)
+    private $toFix = [];
+    private $lastError = null;
+
+    private $model;
+    private $effort;
+    private $provider;
+    //CLD: 2026-10-22T14:00:00+03:00: the API the provider speaks: anthropic | openai (was $provider itself); the prices [ input, output, cache read ] USD per 1M tokens (null: not known)
+    private $protocol;
+    private $prices;
+
+    //CLD: 2026-10-22T14:00:00+03:00: USD that may still be spent by this request (null: no limit); what the last ask() spent: cost (USD), usage (tokens). Set also when ask() fails
+    //CLD: 2026-10-22T15:00:00+03:00: + $rates (System: the credits per 1M tokens, AssistantWallet::ratesOf): then $budget is in credits, and $credits what the last ask() used
+    public $budget = null;
+    public $cost = 0.0;
+    public $usage = [];
+    public $rates = null;
+    public $credits = 0.0;
+
+    //the call to the API: fn(array $headers, ?array $body (null: GET), string $path) => object (the decoded answer); null = HTTP (the checks give their own)
+    //CLD: 2026-10-19T16:05:12+03:00: + $path (/v1/messages, /chat/completions, /models), GET
+    public $transport = null;
+
+    //CLD: 2026-10-19T20:40:00+03:00: + $settings: the Assistant's settings (models\AssistantSettings, or an object with the same fields); default: those of the workflow's account (were
+    //the account's assistant_* fields)
+    //CLD: 2026-10-20T10:00:00+03:00: no $cred: the server and its key are the settings' (credentialOf); the provider is the settings' (was the credential's)
+    public function __construct($wf, $project, $settings = null) {
+	$this->wf = $wf;
+	$this->project = $project;
+	$settings = $settings ?? \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
+	//CLD: 2026-10-22T14:00:00+03:00: System: the installation's server
+	$settings = self::resolve($settings);
+
+	$this->provider = self::providerOf($settings);
+	$this->protocol = AssistantSettings::PROTOCOLS[$this->provider];
+	$this->cred = self::credentialOf($settings);
+	$this->prices = AssistantSettings::pricesOf($settings);
+	//CLD: 2026-10-19T16:05:12+03:00: OpenAI-compatible: the model ('' = the server's first, see turnOpenAI); effort is Claude's only
+	if ($this->protocol === 'openai') {
+	    $this->model = trim((string)($settings->model ?? ''));
+	    return;
+	}
+	$model = trim((string)($settings->model ?? ''));
+	$this->model = $model !== '' ? $model : AssistantSettings::DEFAULT_MODEL;
+	//CLD: 2026-10-22T14:00:00+03:00: an unknown effort is the default (was sent as it was: the API refuses it)
+	$effort = (string)($settings->effort ?? '');
+	$this->effort = array_key_exists($effort, \models\node\NodeAppClaude::EFFORT) ? $effort : AssistantSettings::DEFAULT_EFFORT;
+    }
+
+    //CLD: 2026-10-20T10:00:00+03:00: the server of the Assistant's settings $settings (provider, url, api_key) as a credential: baseUrl, httpAuth (Anthropic: x-api-key and
+    //anthropic-version, as models\credential\CredentialAnthropic; OpenAI-compatible: Bearer, when there is a key), provides (the provider). Was accountServer (OpenAI-compatible only)
+    //CLD: 2026-10-22T14:00:00+03:00: System: the installation's server (resolve); the headers by the provider's protocol (Gemini, Ollama, Lemonade: Bearer, as OpenAI)
+    public static function credentialOf($settings) {
+	$settings = self::resolve($settings);
+	$provider = self::providerOf($settings);
+	$url = trim((string)($settings->url ?? ''));
+	//CLD: 2026-10-20T10:45:00+03:00: AssistantSettings::DEFAULT_URLS (was self::)
+	return new class($provider, $url !== '' ? $url : AssistantSettings::DEFAULT_URLS[$provider], (string)($settings->api_key ?? '')) {
+	    public function __construct(private $provider, public $baseUrl, private $apiKey) {}
+	    public function httpAuth() {
+		if (AssistantSettings::PROTOCOLS[$this->provider] === 'anthropic')
+		    return [ 'headers' => [ 'x-api-key' => $this->apiKey, 'anthropic-version' => \models\credential\CredentialAnthropic::API_VERSION ], 'query' => [] ];
+		return [ 'headers' => $this->apiKey !== '' ? [ 'Authorization' => 'Bearer ' . $this->apiKey ] : [], 'query' => [] ];
+	    }
+	    public function provides($capability) { return $capability === $this->provider; }
+	};
+    }
+
+    //CLD: 2026-10-20T10:00:00+03:00: whether the Assistant can work with $settings: a model was chosen (after a Connect, on the settings page)
+    //CLD: 2026-10-22T14:00:00+03:00: System: when the installation provides a server
+    public static function isReady($settings) {
+	if (self::providerOf($settings) === 'system')
+	    return AssistantSettings::systemAvailable();
+	return trim((string)($settings->model ?? '')) !== '';
+    }
+
+    //CLD: 2026-10-22T14:00:00+03:00: new: $settings with the System provider replaced by the installation's server (AssistantSettings::system: its provider, URL, key, model, effort,
+    //prices; the account's own fields are not used); others as they are. Fails when the installation provides none
+    public static function resolve($settings) {
+	if (self::providerOf($settings) !== 'system')
+	    return $settings;
+	$system = AssistantSettings::system();
+	if ($system === null)
+	    throw new \ErrorException('this installation provides no System AI: choose a provider and set your key in Assistant settings (Settings menu)'); //CLD: 2026-10-23T10:00:00+03:00: (was no Assistant server)
+	return $system;
+    }
+
+    //CLD: 2026-10-20T10:00:00+03:00: the models the server of $settings lists (Anthropic: GET /v1/models, OpenAI-compatible: GET /models): [ { id, label } ], in the server's
+    //order; \ErrorException when it cannot be reached or refuses the key. $transport: as the instances' (the checks)
+    //CLD: 2026-10-22T14:00:00+03:00: by the provider's protocol; Gemini's ids come as models/<id>: listed without the prefix (its chat completions take both)
+    public static function models($settings, $transport = null) {
+	$settings = self::resolve($settings);
+	$provider = self::providerOf($settings);
+	$protocol = AssistantSettings::PROTOCOLS[$provider];
+	$cred = self::credentialOf($settings);
+	$path = $protocol === 'anthropic' ? '/v1/models?limit=1000' : '/models';
+	$headers = $cred->httpAuth()['headers'];
+	$r = $transport !== null ? $transport($headers, null, $path)
+	    : self::http(rtrim((string)$cred->baseUrl, '/') . $path, $headers, null, self::nameOf($provider), self::MODELS_TIMEOUT);
+	$r = json_decode(\util\JSON::encode($r), true);
+	$models = [];
+	foreach((array)($r['data'] ?? []) as $m) {
+	    $id = is_array($m) ? trim((string)($m['id'] ?? '')) : '';
+	    if ($provider === 'gemini')
+		$id = preg_replace('~^models/~', '', $id);
+	    if ($id === '' || isset($models[$id]))
+		continue;
+	    $name = trim((string)($m['display_name'] ?? ''));
+	    $models[$id] = [ 'id' => $id, 'label' => $name !== '' && $name !== $id ? "{$name} ({$id})" : $id ];
+	}
+	return array_values($models);
+    }
+
+    //CLD: 2026-10-19T16:24:37+03:00: the provider account $account chose (a missing or unknown value: the default)
+    //CLD: 2026-10-19T20:40:00+03:00: of the Assistant's settings $settings (models\AssistantSettings: provider; was the account's field)
+    public static function providerOf($settings) {
+	$p = (string)($settings->provider ?? '');
+	//CLD: 2026-10-20T10:30:00+03:00: AssistantSettings' providers (were self::)
+	return array_key_exists($p, AssistantSettings::PROVIDERS) ? $p : AssistantSettings::DEFAULT_PROVIDER;
+    }
+
+    //CLD: 2026-10-22T14:00:00+03:00: who answers, in messages
+    private static function nameOf($provider) {
+	return [ 'anthropic' => 'Anthropic', 'openai' => 'OpenAI', 'gemini' => 'Gemini', 'ollama' => 'Ollama', 'lemonade' => 'Lemonade' ][$provider] ?? 'The server';
+    }
+
+    //CLD: 2026-10-22T14:00:00+03:00: the cost (USD) of $usage (tokens) at the prices; 0 when they are not known (the settings ask for them when there is a budget)
+    private function costOf(array $usage) {
+	if ($this->prices === null)
+	    return 0.0;
+	[ $in, $out, $cacheRead ] = $this->prices;
+	return ((int)($usage['input_tokens'] ?? 0) * $in + (int)($usage['output_tokens'] ?? 0) * $out
+	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * \plugins\SystemAI\util\SystemAi::CACHE_WRITE) / 1000000; //CLD: 2026-10-23T10:00:00+03:00: (was AssistantSettings::)
+    }
+
+    //one request of the person: $message, after the earlier turns $history ([ { role: user | assistant, text } ]), on the designer's current $nodes (a list or a map)
+    public function ask(array $history, $message, array $nodes) {
+	$message = trim((string)$message);
+	if ($message === '')
+	    throw new \ErrorException('write what the workflow should do');
+	$this->nodes = array_values(array_filter($nodes, 'is_array'));
+	$this->changed = false;
+	$this->toFix = [];
+	$this->lastError = null;
+
+	$this->wf->nodes = $this->nodes;
+	$spec = \util\WorkflowSpec::toSpec($this->wf);
+	unset($spec['id'], $spec['status']);
+	$messages = self::historyMessages($history);
+	$messages[] = [ 'role' => 'user', 'content' => "The workflow on the canvas now (unsaved changes included):\n```json\n"
+	    . \util\JSON::encode($spec, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n```\n\n" . mb_substr($message, 0, self::MAX_TURN) ];
+
+	$tools = $this->tools();
+	//CLD: 2026-10-19T16:05:12+03:00: the provider's turns (turnAnthropic / turnOpenAI: the model's turn added to $messages, as the provider wants them) and tool results
+	//(addResults); was the Anthropic API only, here
+	if ($this->protocol === 'openai')
+	    array_unshift($messages, [ 'role' => 'system', 'content' => self::systemPrompt() . "\n\n" . self::stepTypesText() ]);
+	//CLD: 2026-10-22T14:00:00+03:00: $this->usage, $this->cost (were $usage only: also known when the request fails)
+	$this->usage = [ 'input_tokens' => 0, 'output_tokens' => 0, 'cache_read_input_tokens' => 0, 'cache_creation_input_tokens' => 0 ];
+	$this->cost = 0.0;
+	$this->credits = 0.0;
+	$stopped = null;
+	$reply = '';
+	$reminders = 0;
+	for($round = 1; ; $round++) {
+	    //CLD: 2026-10-22T14:00:00+03:00: the budget is spent: no more turns (the last turn's tools ran: the canvas keeps what it built)
+	    //CLD: 2026-10-22T15:00:00+03:00: with credits: the credits reserved for it
+	    if ($round > 1 && $this->budget !== null && ($this->rates !== null ? $this->credits : $this->cost) >= $this->budget) {
+		$stopped = $this->rates !== null ? 'the credits reserved for this request are used up' : 'the monthly budget of the Assistant is spent';
+		$round--;
+		break;
+	    }
+	    if ($round > self::MAX_ROUNDS)
+		throw new \ErrorException('the assistant did not finish in ' . self::MAX_ROUNDS . ' rounds: ask for a smaller change');
+	    $turn = $this->protocol === 'openai' ? $this->turnOpenAI($messages, $tools) : $this->turnAnthropic($messages, $tools);
+	    foreach($turn['usage'] as $k => $n)
+		$this->usage[$k] += $n;
+	    $this->cost += $this->costOf($turn['usage']);
+	    if ($this->rates !== null)
+		$this->credits += \plugins\SystemAI\models\SystemAiWallet::creditsOf($this->rates, $turn['usage']); //CLD: 2026-10-23T10:00:00+03:00: (was AssistantWallet)
+	    if ($turn['text'] !== '')
+		$reply = $turn['text'];
+	    $results = [];
+	    foreach($turn['calls'] as [ $id, $name, $args ])
+		$results[] = $this->runTool($id, $name, $args);
+	    if ($turn['stop'] === 'cut' && !$results)
+		throw new \ErrorException('the answer was cut off: ask for a smaller change');
+	    if ($turn['stop'] === 'pause')
+		continue;
+	    //CLD: 2026-10-19T17:14:20+03:00: the model stops while the canvas it built has connection errors (small models do, and say they fixed them): reminded, with the errors
+	    if (!$results && $this->changed && $reminders < self::MAX_REMINDERS && $round < self::MAX_ROUNDS) {
+		$this->wf->nodes = $this->nodes;
+		$errors = array_values(array_filter(\util\WorkflowSpec::problems($this->wf), fn($p) => $p['level'] === 'error'));
+		if ($errors) {
+		    $reminders++;
+		    $messages[] = [ 'role' => 'user', 'content' => "The canvas still has these connection errors:\n" . implode("\n", array_map(fn($p) => '- ' . (isset($p['step']) ? "step `{$p['step']}`: " : '') . $p['message'], $errors))
+			. "\nFix them now: call set_workflow with every step and every connection (each step except the trigger needs an incoming connection), then answer." ];
+		    continue;
+		}
+	    }
+	    if (!$results)
+		break;
+	    $this->addResults($messages, $results);
+	}
+
+	$problems = [];
+	if ($this->changed) {
+	    $this->wf->nodes = $this->nodes;
+	    $problems = $this->wf->validateFlow();
+	}
+	//CLD: 2026-10-19T17:02:48+03:00: set_workflow refused every time: said, whatever the model's answer claims
+	if (!$this->changed && $this->lastError !== null)
+	    $reply = trim($reply . "\n\n(The canvas was not changed: " . $this->lastError . ')');
+	//CLD: 2026-10-22T14:00:00+03:00: stopped by the budget
+	if ($stopped !== null)
+	    $reply = trim($reply . "\n\n(Stopped before finishing: {$stopped}" . ($this->changed ? '; the canvas has what was built so far' : '') . '.)');
+	return [
+	    'reply' => $reply !== '' ? $reply : ($this->changed ? 'Done: the canvas is updated.' : ''),
+	    'nodes' => $this->changed ? $this->nodes : null,
+	    'problems' => $problems,
+	    //CLD: 2026-10-19T17:02:48+03:00: the settings the person still has to fill in or correct (step title: message)
+	    'to_fix' => $this->changed ? $this->toFix : [],
+	    'rounds' => $round,
+	    'usage' => $this->usage,
+	    //CLD: 2026-10-22T14:00:00+03:00: the cost of this request (USD), and why it stopped early (null: it finished)
+	    'cost' => round($this->cost, 6),
+	    'stopped' => $stopped,
+	];
+    }
+
+    // ------------------------------------------------------------------------------------
+    //the conversation
+
+    //the earlier turns as messages: text only, starting with the person, the roles alternating (turns of the same role joined), the last ones
+    private static function historyMessages(array $history) {
+	$messages = [];
+	foreach(array_slice($history, -self::MAX_HISTORY) as $t) {
+	    $role = is_array($t) ? (string)($t['role'] ?? '') : '';
+	    $text = is_array($t) ? trim((string)($t['text'] ?? '')) : '';
+	    if (!in_array($role, [ 'user', 'assistant' ], true) || $text === '')
+		continue;
+	    $text = mb_substr($text, 0, self::MAX_TURN);
+	    if (!$messages && $role !== 'user')
+		continue;
+	    $last = count($messages) - 1;
+	    if ($last >= 0 && $messages[$last]['role'] === $role)
+		$messages[$last]['content'] .= "\n\n" . $text;
+	    else
+		$messages[] = [ 'role' => $role, 'content' => $text ];
+	}
+	//the request follows as a user turn
+	if ($messages && end($messages)['role'] === 'user')
+	    array_pop($messages);
+	return $messages;
+    }
+
+    //the rules and the step types (the same for every request of the project: cached)
+    //CLD: 2026-10-23T23:30:00+03:00: + the project tools that change things at once (all tools are offered), and set_workflow for the canvas
+    private static function systemPrompt() {
+	return <<<'TXT'
+You are the Assistant of NetFlow9's workflow designer. You sit in a panel next to the person's canvas. They describe a workflow, or a change to the one on the canvas, in their own words; you build it on the canvas with the set_workflow tool.
+
+How workflows work:
+- A workflow is steps joined by connections, from one output of a step to an input of the next. Exactly one trigger (kind `trigger`) starts it; every other step must be reachable from the trigger.
+- Steps with several outputs (If: true / false; Switch: one per case, then otherwise; steps with an error output) take the connection's `output` as the output's label. Merge has 2 inputs (`input` 0 and 1).
+- A loop (container) runs the steps inside it (their `parent` is the loop's id) once per item of its list. Inside a loop, exactly one step has no incoming connection: each pass starts there. Connections never cross a loop's border: the loop itself is connected to the steps around it. A trigger or another loop cannot be inside a loop.
+- Settings are given in `config` with the keys of the step type's settings; missing settings get their defaults. Syntax of settings: `text` = text with {{ expression }} parts; `reference` = only {{ variable }} or {{ variable.field }}; `value` = one {{ expression }}; `script` = J code (the Code step: no {{ }}; assigning a name sets that workflow variable); `variable name` = a plain name (letters, digits, _).
+- Expressions see the variables the steps before have set (each step type lists the variables it provides; the names often follow a setting such as `variable`), and the project variables as {{ vars.<name> }}. No step may set a variable named vars.
+- Settings whose choices are listed (e.g. credentials) take one of the listed keys. Values a step gets from the server (e.g. a webhook's token and URL) are filled in for you: leave them out.
+
+How to work:
+- The current workflow is in the person's last message. set_workflow replaces the whole canvas, so always send every step and connection that should remain. Keep the ids of steps you keep: they keep their place and their server-set values. New steps are laid out automatically; relayout = true lays out every step again (use it when you restructure the workflow).
+- Give steps short, clear titles. Use the project tools (data tables, project variables, workflows, files) when the request refers to them, so the settings use real names.
+- The project tools also change things at once, unlike the canvas: they add, change and delete data tables, columns and rows, create and change other workflows, and run workflows. Use them only when the person asks for that; never delete anything they did not ask you to. The workflow on the canvas is changed with set_workflow only.
+- set_workflow refuses only steps it cannot build (an unknown type, a connection to a missing step, ...): fix what it reports and call it again. Steps with wrong or missing settings are applied, and those settings are returned as to_fix: correct the ones you can, the person fills in the others. It also returns connection problems: fix the errors.
+- When the request is unclear in a way that changes what you would build, ask a short question instead of guessing. When something only the person can provide is missing (a credential that does not exist yet, an address, a URL), build the rest and say what to fill in.
+- Nothing is saved by you: the person reviews the canvas, then saves it (the floppy icon) and publishes it themselves.
+- Answer in the person's language, briefly, in plain text: what you built or changed, and what they still need to set. Do not repeat the steps as JSON.
+TXT;
+    }
+
+    // ------------------------------------------------------------------------------------
+    //tools
+
+    //the tools as the API takes them: [ { name, description, input_schema } ]
+    private function tools() {
+	$tools = [ [
+	    'name' => 'set_workflow',
+	    'description' => 'Replaces the steps and connections on the canvas with these (the whole new workflow: every step and connection that should remain). '
+		. 'Steps: { id (yours; keep the ids of existing steps), type (a step type), title, config { setting: value }, parent (a loop\'s id) }; '
+		. 'connections: { from, to, output (an output label such as true / false / otherwise / error, or a number; default 0), input (default 0) }. '
+		. 'Wrong settings are refused with the reasons (nothing changes); otherwise the canvas is updated and its connection problems are returned.',
+	    'input_schema' => [ 'type' => 'object', 'properties' => \util\WorkflowSpec::schema() + [ //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::specSchema)
+		'relayout' => [ 'type' => 'boolean', 'default' => false, 'description' => 'Lay out every step again (else only the new ones)' ],
+	    ], 'required' => [ 'steps', 'connections' ] ],
+	] ];
+	foreach(\util\MCPTools::all() as $t) { //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::definitions)
+	    //CLD: 2026-10-23T23:30:00+03:00: every tool (was PROJECT_TOOLS only); a plugin's set_workflow would clash with the Assistant's own
+	    if ($t['name'] !== 'set_workflow')
+		$tools[] = [ 'name' => $t['name'], 'description' => mb_substr($t['description'], 0, 1000), 'input_schema' => $t['inputSchema'] ];
+	}
+	return $tools;
+    }
+
+    //call $id of tool $name: [ id, text, isError ]
+    //CLD: 2026-10-19T16:05:12+03:00: the result as [ id, text, isError ] (addResults makes the provider's message; was an Anthropic tool_result block); $args null: not JSON
+    //CLD: 2026-10-23T23:30:00+03:00: + images: [ id, text, isError, images: [ [ mimeType, data (base64) ] ] ] (a tool such as read_image)
+    private function runTool($id, $name, $args) {
+	$images = [];
+	try {
+	    if (!is_array($args))
+		throw new \ErrorException('the arguments are not a JSON object: send them again');
+	    if ($name === 'set_workflow')
+		$result = $this->setWorkflow($args);
+	    //CLD: 2026-10-23T23:30:00+03:00: the workflow on the canvas is changed with set_workflow (update_workflow would save its draft behind the designer's back)
+	    elseif ($name === 'update_workflow' && in_array(trim((string)($args['workflow'] ?? '')), [ (string)$this->wf->_id, (string)$this->wf->name ], true))
+		throw new \ErrorException('this is the workflow on the canvas: change it with set_workflow');
+	    //CLD: 2026-10-20T23:40:00+03:00: a project tool, as the user (util\MCPTools; was util\McpTools::call); none when no plugin gives it
+	    //CLD: 2026-10-23T23:30:00+03:00: any of them (was PROJECT_TOOLS only), with the images of its result
+	    elseif ($tool = \util\MCPTools::all()[$name] ?? null) {
+		$answer = ($tool['run'])($args, $this->project, true);
+		$result = $answer[0];
+		$images = (array)($answer[1] ?? []);
+	    }
+	    else
+		throw new \ErrorException("unknown tool `{$name}`");
+	    $text = \util\JSON::encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+	    $isError = false;
+	} catch (\ErrorException $e) {
+	    $text = $e->getMessage();
+	    $isError = true;
+	    //CLD: 2026-10-19T17:02:48+03:00: kept for the answer when nothing gets applied
+	    if ($name === 'set_workflow')
+		$this->lastError = $text;
+	}
+	if (mb_strlen($text) > self::MAX_TOOL_RESULT)
+	    $text = mb_substr($text, 0, self::MAX_TOOL_RESULT) . ' ... (cut)';
+	return [ $id, $text === '' ? '(empty)' : $text, $isError, $images ];
+    }
+
+    //CLD: 2026-10-19T16:05:12+03:00: the results of the calls of one turn added to $messages: Anthropic, one user turn of tool_result blocks; OpenAI, one `tool` message per call
+    //CLD: 2026-10-23T23:30:00+03:00: + the images of the results: OpenAI, in one user message after the tool messages; Anthropic, image blocks in the tool_result
+    private function addResults(array &$messages, array $results) {
+	if ($this->protocol === 'openai') {
+	    $images = [];
+	    foreach($results as [ $id, $text, $isError, $resultImages ]) {
+		$messages[] = [ 'role' => 'tool', 'tool_call_id' => $id, 'content' => ($isError ? 'ERROR: ' : '') . $text . ($resultImages ? ' [' . count($resultImages) . ' image(s): in the next message]' : '') ];
+		foreach($resultImages as $image)
+		    $images[] = $image;
+	    }
+	    if ($images) {
+		$content = [ [ 'type' => 'text', 'text' => 'The images returned by the tools:' ] ];
+		foreach($images as $image)
+		    $content[] = [ 'type' => 'image_url', 'image_url' => [ 'url' => 'data:' . $image[0] . ';base64,' . $image[1] ] ];
+		$messages[] = [ 'role' => 'user', 'content' => $content ];
+	    }
+	    return;
+	}
+	$messages[] = [ 'role' => 'user', 'content' => array_map(function($r) {
+	    $body = $r[1];
+	    if ($r[3]) {
+		$body = [ [ 'type' => 'text', 'text' => $r[1] ] ];
+		foreach($r[3] as $image)
+		    $body[] = [ 'type' => 'image', 'source' => [ 'type' => 'base64', 'media_type' => $image[0], 'data' => $image[1] ] ];
+	    }
+	    return [ 'type' => 'tool_result', 'tool_use_id' => $r[0], 'content' => $body, 'is_error' => $r[2] ];
+	}, $results) ];
+    }
+
+    //set_workflow: the new steps, checked as when saving; kept for the designer when valid
+    //CLD: 2026-10-19T17:02:48+03:00: kept also when settings are wrong (was refused: a setting only the person can give, e.g. a data table that does not exist yet, refused the
+    //whole canvas, and models then said they had built it): the wrong settings are returned (to_fix) for the model to correct, else for the person; only steps that cannot be
+    //built at all (WorkflowSpec::nodesFrom: unknown type, missing step, ...) are refused
+    public function setWorkflow(array $args) {
+	foreach([ 'steps', 'connections' ] as $key) {
+	    if (!is_array($args[$key] ?? null) || ($args[$key] && !array_is_list($args[$key])))
+		throw new \ErrorException("{$key}: a list (the whole new workflow)");
+	}
+	$nodes = \util\WorkflowSpec::nodesFrom($args['steps'], $args['connections'], $this->nodes, !empty($args['relayout']));
+	$this->wf->nodes = $nodes;
+	$toFix = [];
+	if (!$this->wf->validates()) {
+	    foreach((array)$this->wf->errors() as $list)
+		foreach((array)$list as $m)
+		    $toFix[] = (string)$m;
+	}
+	//as normalized by the steps' config forms (cast values, defaults; also for the steps with wrong settings)
+	$this->nodes = array_values($this->wf->nodes);
+	$this->changed = true;
+	$this->toFix = $toFix;
+	$result = [ 'applied' => true, 'steps' => count(array_filter($this->nodes, fn($n) => !empty($n['isNode']))), 'problems' => \util\WorkflowSpec::problems($this->wf) ];
+	if ($toFix) {
+	    $result['to_fix'] = $toFix;
+	    $result['note'] = 'Applied, but these settings are wrong: the workflow cannot be saved until they are fixed. Fix the ones you can with set_workflow; tell the person which ones they must fill in.';
+	}
+	return $result;
+    }
+
+    // ------------------------------------------------------------------------------------
+    //the API
+
+    //CLD: 2026-10-19T16:05:12+03:00: the step types for the system prompt (were written in call())
+    private static function stepTypesText() {
+	return "The step types (type, settings, outputs, variables):\n" . \util\JSON::encode(\util\WorkflowSpec::stepTypes(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    //one turn of Claude, added to $messages: { text, calls: [ [ id, name, args ] ], stop: tool_use | end | pause | cut, usage }
+    //CLD: 2026-10-19T16:05:12+03:00: was call() (the answer itself) and the reading of it in ask()
+    private function turnAnthropic(array &$messages, array $tools) {
+	$body = [
+	    //CLD: 2026-10-19T15:48:10+03:00: the account's model and effort (were constants)
+	    'model' => $this->model,
+	    'max_tokens' => self::MAX_TOKENS,
+	    'system' => [
+		[ 'type' => 'text', 'text' => self::systemPrompt() ],
+		[ 'type' => 'text', 'text' => self::stepTypesText(), 'cache_control' => [ 'type' => 'ephemeral' ] ],
+	    ],
+	    'messages' => $messages,
+	    'tools' => $tools,
+	    'output_config' => [ 'effort' => $this->effort ],
+	    //the conversation so far (rounds of this request) is cached too
+	    'cache_control' => [ 'type' => 'ephemeral' ],
+	];
+	$headers = $this->cred->httpAuth()['headers'];
+	//a declined request is retried on the model Anthropic recommends (as NodeAppClaude)
+	if (preg_match(self::FALLBACK_MODELS, $this->model)) {
+	    $body['fallbacks'] = 'default';
+	    $headers['anthropic-beta'] = 'server-side-fallback-2026-07-01';
+	}
+	$r = $this->request('/v1/messages', $headers, $body);
+
+	$stop = (string)($r->stop_reason ?? '');
+	if ($stop === 'refusal') {
+	    $d = $r->stop_details ?? null;
+	    throw new \ErrorException('Claude declined the request' . (!empty($d->explanation) ? ': ' . $d->explanation : ''));
+	}
+	$content = is_array($r->content ?? null) ? $r->content : [];
+	//the whole turn goes back as it came (thinking blocks included)
+	$messages[] = [ 'role' => 'assistant', 'content' => $content ];
+	$text = [];
+	$calls = [];
+	foreach($content as $block) {
+	    $type = (string)($block->type ?? '');
+	    if ($type === 'text')
+		$text[] = (string)$block->text;
+	    elseif ($type === 'tool_use')
+		$calls[] = [ (string)$block->id, (string)$block->name, is_object($block->input ?? null) ? json_decode(\util\JSON::encode($block->input), true) ?: [] : [] ];
+	}
+	$usage = [];
+	foreach([ 'input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens' ] as $k)
+	    $usage[$k] = (int)($r->usage->{$k} ?? 0);
+	return [ 'text' => trim(implode("\n", $text)), 'calls' => $calls, 'usage' => $usage,
+	    'stop' => [ 'max_tokens' => 'cut', 'pause_turn' => 'pause', 'tool_use' => 'tool_use' ][$stop] ?? 'end' ];
+    }
+
+    //CLD: 2026-10-19T16:05:12+03:00: one turn of an OpenAI-compatible model (as turnAnthropic). No max_tokens: the server's own limit (local models have small contexts); reasoning
+    //between <think> tags is left out of the answer (as NodeAppOpenAI)
+    private function turnOpenAI(array &$messages, array $tools) {
+	if ($this->model === '')
+	    $this->model = $this->serverModel();
+	$body = [ 'model' => $this->model, 'messages' => $messages, 'tools' => [] ];
+	foreach($tools as $t)
+	    $body['tools'][] = [ 'type' => 'function', 'function' => [ 'name' => $t['name'], 'description' => $t['description'], 'parameters' => $t['input_schema'] ] ];
+	$r = json_decode(\util\JSON::encode($this->request('/chat/completions', $this->cred->httpAuth()['headers'], $body)), true);
+
+	$choice = is_array($r['choices'][0] ?? null) ? $r['choices'][0] : null;
+	if (!$choice || !is_array($choice['message'] ?? null))
+	    throw new \ErrorException('the server answered without a message');
+	$msg = $choice['message'];
+	//the assistant turn back into the conversation, its tool calls with it
+	$turn = [ 'role' => 'assistant', 'content' => isset($msg['content']) ? (string)$msg['content'] : null ];
+	$calls = [];
+	if (!empty($msg['tool_calls']) && is_array($msg['tool_calls'])) {
+	    $turn['tool_calls'] = $msg['tool_calls'];
+	    foreach($msg['tool_calls'] as $i => $tc) {
+		$args = $tc['function']['arguments'] ?? '';
+		$args = is_array($args) ? $args : (trim((string)$args) === '' ? [] : json_decode((string)$args, true));
+		$calls[] = [ (string)($tc['id'] ?? 'call_' . $i), (string)($tc['function']['name'] ?? ''), is_array($args) ? $args : null ];
+	    }
+	}
+	$messages[] = $turn;
+	$finish = (string)($choice['finish_reason'] ?? '');
+	return [ 'text' => trim(preg_replace('~<think>.*?</think>~s', '', (string)($msg['content'] ?? ''))), 'calls' => $calls,
+	    'usage' => [ 'input_tokens' => (int)($r['usage']['prompt_tokens'] ?? 0), 'output_tokens' => (int)($r['usage']['completion_tokens'] ?? 0) ],
+	    'stop' => $calls ? 'tool_use' : ($finish === 'length' ? 'cut' : 'end') ];
+    }
+
+    //CLD: 2026-10-19T16:05:12+03:00: no model in the account settings: the first one the server lists (GET <base URL>/models)
+    private function serverModel() {
+	$r = json_decode(\util\JSON::encode($this->request('/models', $this->cred->httpAuth()['headers'], null)), true);
+	$id = is_array($r['data'][0] ?? null) ? trim((string)($r['data'][0]['id'] ?? '')) : '';
+	if ($id === '')
+	    //CLD: 2026-10-19T20:40:00+03:00: Assistant settings (was Account settings: the plugin's own page)
+	    throw new \ErrorException('the server lists no model: choose one in Assistant settings (Settings menu)');
+	return $id;
+    }
+
+    //CLD: 2026-10-19T16:05:12+03:00: a call to the credential's API ($body null: GET): the decoded answer (objects)
+    private function request($path, array $headers, $body) {
+	if ($this->transport !== null)
+	    return ($this->transport)($headers, $body, $path);
+	//CLD: 2026-10-20T10:00:00+03:00: http() (static: also for models(); was post())
+	//CLD: 2026-10-22T14:00:00+03:00: the provider's name (nameOf)
+	return self::http(rtrim((string)$this->cred->baseUrl, '/') . $path, $headers, $body, self::nameOf($this->provider));
+    }
+
+    //CLD: 2026-10-19T16:52:30+03:00: ?array $body (null: GET, the server's models; was array: the GET of serverModel() failed with a TypeError)
+    //CLD: 2026-10-20T10:00:00+03:00: static, + $name: who answers, in messages (was post(), the instance's provider), + $timeout (s)
+    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here); $body null: GET (the server's models)
+    private static function http($url, array $headers, ?array $body, $name, $timeout = self::TIMEOUT) {
+	$o = [ 'headers' => $headers + [ 'Content-Type' => 'application/json', 'Accept' => 'application/json' ], 'timeout' => $timeout, 'maxBytes' => self::MAX_RESPONSE ];
+	if ($body !== null)
+	    $o['json'] = $body;
+	$r = \util\Http::request($body !== null ? 'POST' : 'GET', $url, $o);
+	if ($r['tooLarge'])
+	    throw new \ErrorException('the answer is too large');
+	//CLD: 2026-10-19T16:05:12+03:00: the provider's name in messages; the OpenAI-compatible servers' error shapes ({ error: { message } }, { error: text }, { message })
+	if ($r['error'] !== null)
+	    throw new \ErrorException("no answer from " . \util\Http::shown($url) . ": {$r['error']}");
+	$status = $r['status'];
+	$data = json_decode($r['body']);
+	if ($status >= 400) {
+	    $m = is_object($data) ? ($data->error->message ?? (is_string($data->error ?? null) ? $data->error : ($data->message ?? null))) : null;
+	    throw new \ErrorException("{$name} answered HTTP status {$status}" . (is_string($m) && $m !== '' ? ': ' . mb_substr($m, 0, 500) : ''));
+	}
+	if (!is_object($data))
+	    //CLD: 2026-10-20T10:00:00+03:00: the Server URL of the settings (was the credential's base URL)
+	    throw new \ErrorException("{$name} did not answer JSON (is the Server URL in Assistant settings right?)");
+	return $data;
+    }
+}

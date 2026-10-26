@@ -36,6 +36,8 @@ class Boot {
 	//the FTP / SFTP step's state (files taken) goes with its workflow
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\RemoteFileState::class, 'beforeWorkflowDelete' ]);
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\WfTask::class, 'beforeWorkflowDelete' ]);
+	//CLD: 2026-10-26T23:49:50+02:00: the Assistant's conversation goes with its workflow (was the Assistant plugin's)
+	\V::app()->hooks->addHook('workflow:before-delete', [ \models\AssistantChat::class, 'beforeWorkflowDelete' ]);
 
 	if (\V::app()->config('app.mode') != 'web')
 	    return;
@@ -49,6 +51,16 @@ class Boot {
 	\V::app()->router->add_rule('hook/<id:[a-f0-9]{32}>', 'hook/receive', true);
 	\V::app()->router->add_rule('form/<id:[a-f0-9]{32}>', 'form/open', true);
 	\V::app()->router->add_rule('task/<id:[a-f0-9]{24}>', 'task/open', true);
+
+	//CLD: 2026-10-26T23:49:50+02:00: the account's Assistant in the administration (the Admin plugin's account page; was the Assistant plugin's): its provider, its spending on its own key
+	\V::app()->hooks->addHook('admin:account-panels', function($account) {
+	    $om = \V::app()->om;
+	    $data = $om->acrossAccounts(fn() => [
+		'settings' => $om->findOne('AssistantSettings', [ 'aid' => $account->_id ]),
+		'usage' => \models\AssistantUsage::current($account->_id),
+	    ]);
+	    echo \V::app()->view->renderFile('/views/assistant/_admin_account_panel', $data);
+	});
     }
 
     public function after_user_login() {

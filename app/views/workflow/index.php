@@ -577,6 +577,8 @@ $formOptions = [
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-redo-wf d-inline disabled opacity-50" title="Redo (Ctrl+Shift+Z)" aria-disabled="true"><i class="bi bi-arrow-clockwise"></i></a>
 	<a href="#" class="wf-save-status small px-1 text-nowrap text-muted text-decoration-none" title="All changes are saved"><i class="bi bi-cloud-check me-1"></i><span class="btn-label">Saved</span></a>
 	<?php endif; ?>
+	<?php //CLD: 2026-10-26T23:49:50+02:00: the Assistant's button: opens / closes its panel (app.WfAssistant; was the Assistant plugin's, hook workflow:designer-toolbar) ?>
+	<a href="#" class="px-1 btn btn-sm btn-icon btn-assistant-toggle d-inline" title="Assistant: describe the workflow or a change" aria-pressed="false"><i class="bi bi-stars"></i></a>
 	<?php \V::app()->hooks->applyHook('workflow:designer-toolbar', [ $wf, $viewVersion ]); ?>
     </div>
 </div>
@@ -597,6 +599,8 @@ $formOptions = [
 	    </div>
 	</div>
 
+	<?php //CLD: 2026-10-26T23:49:50+02:00: the Assistant's panel (was the Assistant plugin's, hook workflow:designer-panels) ?>
+	<?= $this->renderFile('/views/assistant/_designer_panel', [ 'wf' => $wf, 'viewVersion' => $viewVersion ]) ?>
 	<?php \V::app()->hooks->applyHook('workflow:designer-panels', [ $wf, $viewVersion ]); ?>
     <?= \V::app()->form->end(); ?>
 

@@ -256,6 +256,12 @@ $dd_items = implode('', $dd_items);
 		<i class="bi bi-speedometer2"></i> Usage
 	    </a>
 	    <?php endif; ?>
+	    <?php //CLD: 2026-10-26T23:49:50+02:00: Assistant settings (was the Assistant plugin's, hook layout:settings-menu) ?>
+	    <?php if (\V::app()->user->can('Account::update')): ?>
+	    <a href="<?= \V::app()->createUrl('/assistant/settings') ?>" class="nav-link">
+		<i class="bi bi-stars"></i> Assistant
+	    </a>
+	    <?php endif; ?>
 	    <?php \V::app()->hooks->applyHook('layout:settings-menu'); ?>
 	    <?php
 	    $aid = \V::app()->config('rt.account')->_id ?? null;
