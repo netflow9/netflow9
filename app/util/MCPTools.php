@@ -2,7 +2,7 @@
 
 /*
     the project's own tools a model may use, given by the plugins (the SysMCPTools plugin gives its MCP server's tools; none without it).
-    Used by the AI steps (models\node\NodeAppAi: without permission checks, the workflow's own step) and the designer's Assistant (plugins\Assistant: as the user).
+    Used by the AI steps (models\node\NodeAppAi: without permission checks, the workflow's own step) and the designer's Assistant (util\WorkflowAssistant: as the user).
     MCPTools::all()
 	[
 	    name => [ name, title, description, inputSchema, annotations?, run: fn(array $args, $project, bool $asUser = false) => [ result (an array),

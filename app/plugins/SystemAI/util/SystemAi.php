@@ -3,7 +3,7 @@
 /*
     CLD: 2026-10-23T10:00:00+03:00: new: the System AI provider: the model server this installation offers to every account (config ai.system: app.env SYSTEM_AI_*), paid in
     credits (models\SystemAiWallet). Was the Assistant's own (plugins\Assistant\models\AssistantSettings::system, PRICES, pricesOf); now used by
-	the Assistant                      its provider System (plugins\Assistant)
+	the Assistant                      its provider System (util\WorkflowAssistant, models\AssistantSettings: core)
 	the AI steps of the same provider  Credential: System AI (models\node\NodeAppAi: hook ai:system-provider, Plugin; a run: util\StepSession)
 */
 
