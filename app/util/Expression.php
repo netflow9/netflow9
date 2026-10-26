@@ -52,6 +52,9 @@ class Expression {
     const PARSED_MAX = 500;
     private static $parsed = [];
 
+    //CLD: 2026-10-26T22:34:16+02:00: the names each parse result uses (usedNames()): \WeakMap \sys\J\ParseResult => [ name => true ]; dropped with the parse result
+    private static $used = null;
+
     //CLD: 2026-10-13T12:17:47+03:00: $text parsed with the J parse options of $syntax (a key of SYNTAX; else text)
     //CLD: 2026-10-25T21:00:00+02:00: kept in the process ($parsed)
     public static function parse($text, $syntax = 'text') {
@@ -89,9 +92,12 @@ class Expression {
 	}
 
 	//CLD: 2026-10-23T01:00:00+03:00: the app's functions first (a variable of the same name wins)
+	//CLD: 2026-10-26T22:34:16+02:00: only the variables the expression names (usedNames) are converted and given to J (was all of them, at each render: ~60 ms with 1 MB of
+	//variables; a Data Table upsert of 10 values in a loop of 800 items spent ~8 min on it). J reaches a variable only by its name (no globalThis / eval)
 	$context = self::functions();
+	$used = self::usedNames($parsed);
 	foreach($vars as $name => $value) {
-	    if (\util\Validator::isIdentifier((string)$name))
+	    if (isset($used[$name]) && \util\Validator::isIdentifier((string)$name))
 		$context[(string)$name] = self::hostValue($value, true);
 	}
 	$vm = new \sys\J\Interpreter(self::LIMITS);
@@ -243,6 +249,21 @@ class Expression {
 		$names[$target['name']] = true;
 	});
 	return array_keys($names);
+    }
+
+    //CLD: 2026-10-26T22:34:16+02:00: [ name => true ] of the names $parsed refers to (property names are not; names it declares itself may be: a superset is enough for render()),
+    //computed once per parse result
+    private static function usedNames(\sys\J\ParseResult $parsed) {
+	self::$used ??= new \WeakMap();
+	if (!isset(self::$used[$parsed])) {
+	    $names = [];
+	    self::walk($parsed->ast, function($node) use (&$names) {
+		if (($node['type'] ?? '') === 'Identifier' && empty($node['__skip']))
+		    $names[(string)$node['name']] = true;
+	    });
+	    self::$used[$parsed] = $names;
+	}
+	return self::$used[$parsed];
     }
 
     private static function collectPattern($node, array &$declared) {
