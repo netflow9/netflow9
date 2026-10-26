@@ -58,10 +58,12 @@ class ObjectManager {
 	return $this->fieldDefs[$key];
     }
 
-    //forget the cached data tables and fields (a DataTableDef or Field changed; the daemon before each job: another process may have changed them)
+    //forget the cached data tables, fields and schemas (a DataTableDef or Field changed; the daemon before each job: another process may have changed them)
     public function resetCache() {
 	$this->dataTablesFor = null;
 	$this->fieldDefs = [];
+	//CLD: 2026-10-26T07:23:58+02:00: and the models' schema prototypes (a data table's row model is made of its fields)
+	\sys\BaseModel::resetSchemaCache();
     }
 
     //get a list of fields in the form name => class for all available fields

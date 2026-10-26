@@ -15,6 +15,9 @@ namespace plugins\Saml\models;
 use plugins\Saml\util\SamlXml;
 
 class SamlSettings extends \sys\BaseModel {
+    //CLD: 2026-10-26T07:23:58+02:00: the role choices are read from the database: not cached (BaseModel::attachSchema)
+    protected static $cacheSchema = false;
+
     protected static $collection = 'saml_settings';
     public static $indexes = [
 	[ [ 'aid' => 1 ], [ 'unique' => true ] ],

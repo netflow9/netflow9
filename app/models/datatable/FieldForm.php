@@ -8,6 +8,9 @@
 namespace models\datatable;
 
 class FieldForm extends \sys\BaseModel {
+    //CLD: 2026-10-26T07:23:58+02:00: the choices are the registry's types and objects (a table created in the request is added): not cached (BaseModel::attachSchema)
+    protected static $cacheSchema = false;
+
 
     //CLD: 2026-10-06T09:23:42+03:00: like Field::afterAttachSchema: once the field exists, key, type and target are readonly
     //(assign(..., true) skips them, the form shows them disabled)
