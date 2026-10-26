@@ -21,6 +21,8 @@ class ObjectManager {
 	    return;
 	}
 
+	//CLD: 2026-10-26T07:17:30+02:00: the account whose tables are registered (ensureDataTables loads them once, was at each unknown object name)
+	$this->dataTablesFor = (string)$account->_id;
 	$dts = $this->find('DataTableDef', [ 'aid' => $account->_id ], [ 'modelOptions' => [ 'attachSchema' => false ] ]);
 	foreach ($dts as $dt) {
 	    $this->registry[$dt->iname] = [
@@ -31,6 +33,35 @@ class ObjectManager {
 		'name' => 'Data table: ' . $dt->name,
 	    ];
 	}
+    }
+
+    //CLD: 2026-10-26T07:17:30+02:00: the data tables loaded once per account (registerDataTables reloads them; a DataTableDef or Field saved / deleted forgets them: resetCache).
+    //Was: each unknown object name queried them again (e.g. 278 identical queries in a check run)
+    protected $dataTablesFor = null;
+
+    public function ensureDataTables() {
+	$account = \V::app()->var('rt.account');
+	if (empty($account->_id) || $this->dataTablesFor === (string)$account->_id)
+	    return;
+	$this->registerDataTables();
+    }
+
+    //CLD: 2026-10-26T07:17:30+02:00: the stored fields (columns) of $objectName, as data: [ [ key, type, ... ], ... ] (BaseModel::getSchema, e.g. a data table's row model); loaded once
+    //per object and account (were queried for each object made: a list of n rows = n queries)
+    protected $fieldDefs = [];
+
+    public function fieldDefs($objectName) {
+	$query = $this->accountQuery('Field', '\sys\fields\Field', [ 'objectName' => $objectName ], __METHOD__);
+	$key = json_encode($query);
+	if (!isset($this->fieldDefs[$key]))
+	    $this->fieldDefs[$key] = array_map(fn($f) => $f->data(), $this->find('Field', $query)->toArray());
+	return $this->fieldDefs[$key];
+    }
+
+    //forget the cached data tables and fields (a DataTableDef or Field changed; the daemon before each job: another process may have changed them)
+    public function resetCache() {
+	$this->dataTablesFor = null;
+	$this->fieldDefs = [];
     }
 
     //get a list of fields in the form name => class for all available fields
@@ -47,7 +78,8 @@ class ObjectManager {
 
     //get a list of user-selectable objects; for use in Field_object field
     public function getSelectableObjects() {
-	$this->registerDataTables();
+	//CLD: 2026-10-26T07:17:30+02:00: once per account (was a query at each call)
+	$this->ensureDataTables();
 
 	$objects = [];
 	foreach($this->registry as $objectName => $objDef) {
@@ -65,7 +97,8 @@ class ObjectManager {
 	    return $this->registry[$objectName];
 
 	//if not found, load definitions from db and try again
-	$this->registerDataTables();
+	//CLD: 2026-10-26T07:17:30+02:00: once per account (ensureDataTables; was a query at each unknown name)
+	$this->ensureDataTables();
 
 	return $this->registry[$objectName] ?? false;
     }
@@ -580,7 +613,8 @@ class ObjectManager {
 	if (empty($database))
 	    $database = $objectClass::_database();
 
-	return \V::app()->mongo->selectCollection($database, $collection)->count($query, $options);
+	//CLD: 2026-10-26T07:17:30+02:00: countDocuments (count() is deprecated, and slower: 34 -> 22 ms on 38k log lines)
+	return \V::app()->mongo->selectCollection($database, $collection)->countDocuments($query, $options);
     }
 
     //creates the indexes every model declares (static $indexes of its class, plugins' models included);

@@ -745,6 +745,8 @@ class DaemonCommand extends \sys\BaseController {
 	//ok, run it
 	//each job starts without the step definitions cached by an earlier one (models\WfNode::getAll: per request)
 	\models\WfNode::resetCache();
+	//CLD: 2026-10-26T07:17:30+02:00: and without the data tables / columns cached by an earlier one (another process may have changed them)
+	\V::app()->om->resetCache();
 	$job_class::$job_method($job_data);
     }
 
