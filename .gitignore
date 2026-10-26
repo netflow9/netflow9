@@ -1,4 +1,4 @@
-# CLD: 2026-10-22T18:00:00+03:00: repo root is $HOME - ignore everything by default, then whitelist the project files
+# repo root is $HOME - ignore everything by default, then whitelist the project files
 /*
 /.*
 
@@ -15,14 +15,9 @@ app.env
 *.key
 *.pem
 /haraka/
-node_modules/
 *.log
 *.tgz
-playwright.config.js
-make-archive.sh
 compliance/
-package.json
-package-lock.json
 frontend/
 etc/
 tests/
