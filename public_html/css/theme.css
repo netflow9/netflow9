@@ -11998,6 +11998,16 @@ textarea.form-control-lg {
   background: rgba(255, 255, 255, 0.15);
 }
 
+/* CLD: 2026-10-26T12:00:00+02:00: the scrollbars of the panels' inner boxes (the Executions list and details) visible on the dark background too (they had the
+   global thumb, 15% of the emphasis color: invisible in the light theme); Firefox: scrollbar-color */
+.debug-panel {
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.debug-panel ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 :root {
   --nf-surface: var(--bs-white);
 }
@@ -12960,6 +12970,18 @@ body {
     width: 460px;
   }
 }
+/* CLD: 2026-10-26T12:00:00+02:00: the details scroll vertically within the panel (scrollbar always shown, so the end of a long log / output is reachable);
+   min-width 0: a long unbroken text wraps instead of widening the box past the panel */
+.exec-panel .exec-detail {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden !important;
+  overflow-y: scroll !important;
+}
+.exec-panel .exec-detail .debug-log-line, .exec-panel .exec-detail pre {
+  overflow-wrap: anywhere;
+}
+
 .exec-row {
   line-height: 1.9;
   white-space: nowrap;
