@@ -144,7 +144,8 @@ class McpTools {
 		'description' => 'The workflows of the project: id, name, status (draft / published), trigger, and whether run_workflow can start them (Manual trigger).',
 		'inputSchema' => [ 'type' => 'object', 'properties' => (object)[] ], 'annotations' => $ro ],
 	    [ 'name' => 'run_workflow', 'title' => 'Run a workflow',
-		'description' => 'Runs a workflow whose trigger is a Manual trigger and waits for it: its published version, else its draft. The variables given are its first variables. Returns the execution id, its state (end, error, sleep), error and variables.',
+		//CLD: 2026-10-26T09:58:28+02:00: + the `queued` state
+		'description' => 'Runs a workflow whose trigger is a Manual trigger and waits for it: its published version, else its draft. The variables given are its first variables. Returns the execution id, its state (end, error, sleep; queued: it ran longer than the request allows, the daemon finishes it: see get_execution), error and variables.',
 		'inputSchema' => [ 'type' => 'object', 'properties' => [
 		    'workflow' => [ 'type' => 'string', 'description' => 'The workflow: its name or id (list_workflows)' ],
 		    'variables' => [ 'type' => 'object', 'description' => '{ name: value }: variables the run starts with' ],
@@ -435,7 +436,7 @@ class McpTools {
 			\models\AuditLog::record('workflow.run', $wf, 'execution ' . (string)$exe->_id . ' (MCP)');
 		    self::$depth++;
 		    try {
-			$exe->run();
+			$state = $exe->run();
 		    } finally {
 			self::$depth--;
 		    }
@@ -443,7 +444,8 @@ class McpTools {
 		    //CLD: 2026-10-18T16:05:00+03:00: ExecutionSlot (was WfExecution::acquireSlot / releaseSlot)
 		    \models\ExecutionSlot::release();
 		}
-		return [ 'execution' => (string)$exe->_id, 'state' => (string)$exe->state, 'error' => $exe->error ?: null,
+		//CLD: 2026-10-26T09:58:28+02:00: `queued`: ran too long for the request (app.executions.sync_timeout), the daemon finishes it
+		return [ 'execution' => (string)$exe->_id, 'state' => $state === 'queued' ? 'queued' : (string)$exe->state, 'error' => $exe->error ?: null,
 		    'version' => $exe->version, 'variables' => \util\Expression::hostValue($exe->variables ?: []) ];
 
 	    //CLD: 2026-10-13T15:17:12+03:00: building workflows (drafts)

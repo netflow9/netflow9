@@ -259,6 +259,10 @@ class Setup {
 	    '#executions run inside a web request at the same time, per account; 0 = no limit',
 	    'MAX_SYNC_EXECUTIONS=0',
 	    '',
+	    //CLD: 2026-10-26T09:58:28+02:00: + SYNC_EXECUTION_TIMEOUT
+	    '#seconds an execution runs inside a web request before the daemon continues it; 0 = never',
+	    'SYNC_EXECUTION_TIMEOUT=30',
+	    '',
 	    //CLD: 2026-10-23T15:00:00+03:00: + HTTP_STEPS_ALLOW_PRIVATE (written false: the HTTP steps call public addresses only)
 	    '#the HTTP Request and Download File steps may call this machine and its network (localhost, 10.x, 192.168.x, ...): true / false',
 	    'HTTP_STEPS_ALLOW_PRIVATE=false',
