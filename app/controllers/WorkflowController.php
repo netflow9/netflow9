@@ -462,7 +462,8 @@ class WorkflowController extends \sys\BaseController {
 	$resp->sendJSON([ 'deleted' => $eid ]);
     }
 
-    //CLD: 2026-10-26T10:06:24+02:00: kill a running (or waiting) execution (POST ?execution=<id>; the Overview's Needs attention): WfExecution::kill. Answers { killed };
+    //CLD: 2026-10-26T10:06:24+02:00: kill a running (or waiting) execution (POST ?execution=<id>; the Overview's Needs attention)
+    //CLD: 2026-10-26T10:14:16+02:00: and the designer's Executions panel: WfExecution::kill. Answers { killed };
     //409 when it no longer runs. Workflow::update (as Run)
     public function execution_kill($req, $resp) {
 	if (!$req->is('post'))

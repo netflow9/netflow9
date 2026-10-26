@@ -7,7 +7,8 @@ if (!window.app)
 //
 //Run starts the saved workflow at its trigger (WfNode::startNow; runs on the server after the answer); the panel lists the latest executions and shows one (summary, log,
 //variables), refreshed every 2 s while one is new / running; an execution of the draft that has finished can be deleted, or all of them (asked again in place).
-//options: urls { run, list, detail, del, delAll }, canRun (the user may run the workflow), runTriggers (the triggers Run can start: fqnames), whenSaved(fn) (fn once the
+//CLD: 2026-10-26T10:14:16+02:00: one that is new / running / waiting can be killed (asked again in place; urls.kill: WorkflowController::execution_kill)
+//options: urls { run, list, detail, del, delAll, kill }, canRun (the user may run the workflow), runTriggers (the triggers Run can start: fqnames), whenSaved(fn) (fn once the
 //changes are saved: Run starts the saved draft), onOpen() / onClose() (the page: one bottom panel at a time, the one last open remembered).
 //The page tells it of the steps: onDataChange(workflow, serialized) (the Run button's state; the first call is the saved state), markSaved(serialized) (autosave); `dirty`:
 //changes not saved yet. Methods: run(), open(), close(), toggle(), refresh(), destroy(). One per designer page: a new one destroys the previous one (its timer stopped, its
@@ -108,6 +109,24 @@ window.app.WfExecutions = (function() {
 		e.preventDefault();
 		this.restoreDeleteAll();
 	    }, '.btn-exec-delete-all-no');
+	    //CLD: 2026-10-26T10:14:16+02:00: kill a new / running / waiting execution (asked again in place)
+	    this.on($panel, 'click', (e) => {
+		e.preventDefault();
+		this.askKill = this.selected;
+		this.renderDetail();
+		const yes = this.find('.btn-exec-kill-yes');
+		if (yes)
+		    yes.focus();
+	    }, '.btn-exec-kill');
+	    this.on($panel, 'click', (e) => {
+		e.preventDefault();
+		this.kill();
+	    }, '.btn-exec-kill-yes');
+	    this.on($panel, 'click', (e) => {
+		e.preventDefault();
+		this.askKill = null;
+		this.renderDetail();
+	    }, '.btn-exec-kill-no');
 	}
 
 	//a listener removed by destroy() (selector: delegated)
@@ -274,8 +293,12 @@ window.app.WfExecutions = (function() {
 	    const log = (e.log || []).map((l) => `<div class='debug-log-line'><span style='color: var(--netflow9-debug-muted)'>${esc((l.time || '').slice(11))}</span> ${l.title ? `<span class='tag'>[${esc(l.title)}]</span>` : ''}${esc(l.message)}</div>`).join('');
 	    //Delete: an execution of the draft that has finished (asked again in place: Yes / No)
 	    const del = this.deletable(e) ? `<span class='exec-delete ms-auto flex-shrink-0'><button type='button' class='debug-icon-btn btn-exec-delete' title='Delete this execution'><i class='bi bi-trash'></i></button></span>` : '';
+	    //CLD: 2026-10-26T10:14:16+02:00: Kill: one that is new / running / waiting (Kill? Yes / No; kept over the 2 s refresh while asked: askKill)
+	    const kill = !this.killable(e) ? '' : `<span class='exec-kill ms-auto flex-shrink-0'>` + (this.askKill === e.id
+		? `<span class='me-1'>Kill?</span><button type='button' class='debug-icon-btn btn-exec-kill-yes text-danger' title='Yes, stop it'><i class='bi bi-check-lg'></i></button><button type='button' class='debug-icon-btn btn-exec-kill-no' title='No'><i class='bi bi-x-lg'></i></button>`
+		: `<button type='button' class='debug-icon-btn btn-exec-kill text-danger' title='Kill this execution'><i class='bi bi-stop-circle'></i></button>`) + `</span>`;
 	    box.innerHTML = `
-		<div class='mb-1 d-flex align-items-center gap-1'><span>${badge(e.state)} <span style='color: var(--netflow9-debug-muted)'>${esc(e.trigger)} ${esc(versionLabel(e))}, started ${esc(e.started || e.created || '-')}${e.duration !== null ? ', ' + duration(e.duration) : ''}${e.wake_at ? ', wakes at ' + esc(e.wake_at) : ''}</span></span>${del}</div>
+		<div class='mb-1 d-flex align-items-center gap-1'><span>${badge(e.state)} <span style='color: var(--netflow9-debug-muted)'>${esc(e.trigger)} ${esc(versionLabel(e))}, started ${esc(e.started || e.created || '-')}${e.duration !== null ? ', ' + duration(e.duration) : ''}${e.wake_at ? ', wakes at ' + esc(e.wake_at) : ''}</span></span>${del}${kill}</div>
 		${e.error ? `<div class='text-danger mb-1'>${esc(e.error)}</div>` : ''}
 		<div class='debug-panel-title mt-2 mb-1'>Log</div>
 		${log || `<div style='color: var(--netflow9-debug-muted)'>(empty)</div>`}
@@ -289,6 +312,25 @@ window.app.WfExecutions = (function() {
 	    const box = this.find('.exec-detail');
 	    if (box)
 		box.innerHTML = `<span style='color: var(--netflow9-debug-muted)'>Select an execution</span>`;
+	}
+
+	/* ---------------- kill ---------------- */
+	//CLD: 2026-10-26T10:14:16+02:00: an execution that is new / running / waiting, by a user who may run the workflow
+	killable(e) {
+	    return this.o.canRun && !!this.o.urls.kill && [ 'new', 'run', 'sleep' ].includes(e.state);
+	}
+
+	//kills the selected execution; the list and the details are reloaded
+	kill() {
+	    const id = this.selected;
+	    this.askKill = null;
+	    if (!id)
+		return;
+	    const url = this.o.urls.kill + (this.o.urls.kill.includes('?') ? '&' : '?') + 'execution=' + encodeURIComponent(id);
+	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': csrf() } })
+		.done(() => toast('success', 'Killed', 'The execution was stopped'))
+		.fail((xhr) => toast('error', 'Not killed', (xhr.responseJSON && xhr.responseJSON.error) || 'The execution could not be killed'))
+		.always(() => this.refresh());
 	}
 
 	/* ---------------- delete ---------------- */
