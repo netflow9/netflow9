@@ -9,7 +9,7 @@
 	topups           the credits granted on top (CreditsCommand add): [ { id, granted, left, at, expires (unix s: at + TOPUP_MONTHS), note } ]; used after the allowance,
 			 the one that expires first first; what is left at its expiry is lost
 	holds            the credits reserved by running requests (reserve): [ { id, credits, until (unix s) } ]; settled by settle(), else freed after HOLD_LEASE
-	month_used       the credits spent this month (the Assistant's cap: plugins\Assistant\models\AssistantSettings credit_cap)
+	month_used       the credits spent this month (the Assistant's cap: models\AssistantSettings credit_cap)
     A model's credits per 1M tokens: credit_rates.php (ratesOf: its own, or the provider's price + a margin); a request costs at least 1 (charge).
     Every change is a new version of the document (`v`): written only when nobody changed it meanwhile, else done again (change()); each change is also written to
     the ledger (SystemAiLedger)

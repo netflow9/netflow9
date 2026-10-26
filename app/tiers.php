@@ -18,6 +18,7 @@
 				CLD: 2026-10-25T19:00:00+02:00: + ldap_step (the LDAP step and its credential; ldap is the LDAP sign-in only), on enterprise
 				CLD: 2026-10-25T19:30:00+02:00: - ldap_step (the LDAP step and its credential are core, for every tier)
 				CLD: 2026-10-25T20:00:00+02:00: - database (the Database step and its credentials are core, for every tier)
+				CLD: 2026-10-26T23:39:49+02:00: - google, microsoft (the Google and Microsoft credentials and steps are core again, for every tier)
     A super-admin sets an account's tier and changes its limits / features (Administration, the account's page: Tier & limits; ./v tiers::<show | set>)
 */
 
@@ -42,7 +43,7 @@ return [
 		'files_bytes' => 10 * 1024 * 1024 * 1024,
 		'ai_monthly_credits' => 2000,
 	    ],
-	    'features' => [ 'google', 'microsoft' ],
+	    'features' => [],
 	],
 	'enterprise' => [
 	    'label' => 'Enterprise',
@@ -52,7 +53,7 @@ return [
 		'files_bytes' => null,
 		'ai_monthly_credits' => null,
 	    ],
-	    'features' => [ 'saml', 'ldap', 'google', 'microsoft' ],
+	    'features' => [ 'saml', 'ldap' ],
 	],
     ],
 ];

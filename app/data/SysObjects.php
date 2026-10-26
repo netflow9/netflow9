@@ -186,8 +186,49 @@ class SysObjects {
 		'class' => 'models\credential\CredentialImap',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-22T00:35:40+03:00: the Google credentials (Mail, Drive, Sheets, Calendar, Docs) are registered by the GoogleIntegration plugin
-	    //CLD: 2026-10-22T00:41:28+03:00: the Microsoft credentials (Microsoft 365 Mail over IMAP, and the Microsoft Graph ones) are registered by the MicrosoftIntegration plugin
+	    //CLD: 2026-10-26T23:39:49+02:00: the Google credentials (OAuth: Mail, Drive, Sheets, Calendar, Docs), core for every account again (were registered by the GoogleIntegration plugin, plan feature google)
+	    'CredentialGoogleMail' => [
+		'class' => 'models\credential\CredentialGoogleMail',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialGoogleDrive' => [
+		'class' => 'models\credential\CredentialGoogleDrive',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialGoogleSheets' => [
+		'class' => 'models\credential\CredentialGoogleSheets',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialGoogleCalendar' => [
+		'class' => 'models\credential\CredentialGoogleCalendar',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialGoogleDocs' => [
+		'class' => 'models\credential\CredentialGoogleDocs',
+		'variant-of' => 'Credential',
+	    ],
+	    //CLD: 2026-10-26T23:39:49+02:00: the Microsoft credentials (Microsoft 365 Mail over IMAP, and the Microsoft Graph ones: Outlook Mail, Outlook Calendar, OneDrive & SharePoint, Teams), core for every
+	    //account again (were registered by the MicrosoftIntegration plugin, plan feature microsoft)
+	    'CredentialMicrosoftMail' => [
+		'class' => 'models\credential\CredentialMicrosoftMail',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialMicrosoftOutlook' => [
+		'class' => 'models\credential\CredentialMicrosoftOutlook',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialMicrosoftCalendar' => [
+		'class' => 'models\credential\CredentialMicrosoftCalendar',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialMicrosoftFiles' => [
+		'class' => 'models\credential\CredentialMicrosoftFiles',
+		'variant-of' => 'Credential',
+	    ],
+	    'CredentialMicrosoftTeams' => [
+		'class' => 'models\credential\CredentialMicrosoftTeams',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-10-20T16:00:00+03:00: an FTP / FTPS / SFTP server and a key to decrypt files with (the FTP / SFTP step)
 	    'CredentialFtp' => [
 		'class' => 'models\credential\CredentialFtp',
@@ -374,7 +415,49 @@ class SysObjects {
 		'class' => 'models\node\NodeAppReadEmail',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-22T00:35:40+03:00: the Google steps (Drive, Sheets, Gmail, Calendar, Docs) are registered by the GoogleIntegration plugin
+	    //CLD: 2026-10-26T23:39:49+02:00: the Google steps (Drive, Sheets, Gmail, Calendar, Docs), core for every account again (were registered by the GoogleIntegration plugin, plan feature google)
+	    'NodeAppGoogleDrive' => [
+		'class' => 'models\node\NodeAppGoogleDrive',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGoogleSheets' => [
+		'class' => 'models\node\NodeAppGoogleSheets',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGmail' => [
+		'class' => 'models\node\NodeAppGmail',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGoogleCalendar' => [
+		'class' => 'models\node\NodeAppGoogleCalendar',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGoogleDocs' => [
+		'class' => 'models\node\NodeAppGoogleDocs',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-10-26T23:39:49+02:00: the Microsoft steps (Outlook Mail, Outlook Calendar, OneDrive / SharePoint, Excel, Teams), core for every account again (were registered by the MicrosoftIntegration
+	    //plugin, plan feature microsoft)
+	    'NodeAppOutlookMail' => [
+		'class' => 'models\node\NodeAppOutlookMail',
+		'wfNode' => true,
+	    ],
+	    'NodeAppOutlookCalendar' => [
+		'class' => 'models\node\NodeAppOutlookCalendar',
+		'wfNode' => true,
+	    ],
+	    'NodeAppOneDrive' => [
+		'class' => 'models\node\NodeAppOneDrive',
+		'wfNode' => true,
+	    ],
+	    'NodeAppExcel' => [
+		'class' => 'models\node\NodeAppExcel',
+		'wfNode' => true,
+	    ],
+	    'NodeAppTeams' => [
+		'class' => 'models\node\NodeAppTeams',
+		'wfNode' => true,
+	    ],
     'NodeTriggerForm' => [
 		'class' => 'models\node\NodeTriggerForm',
 		'wfNode' => true,
@@ -382,6 +465,18 @@ class SysObjects {
 	    'NodeAppTask' => [
 		'class' => 'models\node\NodeAppTask',
 		'wfNode' => true,
+	    ],
+	    //CLD: 2026-10-26T23:49:50+02:00: the designer's Assistant, core (were registered by the Assistant plugin): the account's settings, its spending per month, the conversation of each workflow
+	    'AssistantSettings' => [
+		'class' => 'models\AssistantSettings',
+	    ],
+	    'AssistantUsage' => [
+		'class' => 'models\AssistantUsage',
+	    ],
+	    //not in the audit log: deleting a workflow would copy its conversation there (SOC2.md gap 11); the workflow's deletion is recorded
+	    'AssistantChat' => [
+		'class' => 'models\AssistantChat',
+		'auditLog' => false,
 	    ],
 	    //CLD: 2026-10-17T13:24:18+03:00: the IMAP trigger's check state and the Human task's tasks (were registered by the BaseNodes plugin); the check state is not in the audit log
 	    'MailPoll' => [

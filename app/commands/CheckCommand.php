@@ -44,6 +44,7 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-24T10:28:12+03:00: + Google / Microsoft by tier
     //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
     //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
+    //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
@@ -1114,14 +1115,10 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-20T10:00:00+03:00: the Google Drive step: outputs, ids from links, settings refused, variable types, file objects; a run with a credential Google refuses
     //(a made-up token: the `error` output, whether Drive answers 401 or cannot be reached)
     private function suiteGdrive() {
-	//CLD: 2026-10-22T00:35:40+03:00: the GoogleIntegration plugin's (skipped without it)
-	if (!in_array('GoogleIntegration', (array)\V::app()->config('modules'), true)) {
-	    echo "  skipped: the GoogleIntegration plugin is not enabled\n";
-	    return;
-	}
+	//CLD: 2026-10-26T23:39:49+02:00: core again (was the GoogleIntegration plugin's: skipped without it)
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
-	$D = \plugins\GoogleIntegration\models\NodeAppGoogleDrive::class;
+	$D = \models\node\NodeAppGoogleDrive::class;
 	$this->check('Google Drive: a step type, an `error` output when chosen', [ true, [ 'success', 'error' ], 1 ],
 	    [ isset(\models\WfNode::getAll()['app::google-drive']), $D::outLabelsFor([ 'onError' => 'output' ]), $D::outputCountFor([]) ]);
 	$this->check('Google Drive: ids from links', [ '1AbCdEfGhIjK_lm-no', '0BxFolder123456789', '1AbCdEfGhIjK_lm-no', '1DocId_abcdefghij', 'root' ], [
@@ -1180,14 +1177,10 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-20T11:00:00+03:00: the Google Sheets step: rows to write (lists, objects, one row), objects matched to the header, rows read as objects, cells, ranges,
     //settings refused, variable types; a run with a credential Google refuses (the `error` output); a Drive credential is accepted
     private function suiteGsheets() {
-	//CLD: 2026-10-22T00:35:40+03:00: the GoogleIntegration plugin's (skipped without it)
-	if (!in_array('GoogleIntegration', (array)\V::app()->config('modules'), true)) {
-	    echo "  skipped: the GoogleIntegration plugin is not enabled\n";
-	    return;
-	}
+	//CLD: 2026-10-26T23:39:49+02:00: core again (was the GoogleIntegration plugin's: skipped without it)
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
-	$S = \plugins\GoogleIntegration\models\NodeAppGoogleSheets::class;
+	$S = \models\node\NodeAppGoogleSheets::class;
 	$this->check('Google Sheets: a step type, an `error` output when chosen', [ true, [ 'success', 'error' ] ],
 	    [ isset(\models\WfNode::getAll()['app::google-sheets']), $S::outLabelsFor([ 'onError' => 'output' ]) ]);
 	$this->check('Google Sheets: column names', [ 'A', 'Z', 'AA', 'AZ', 'BA', 'ZZ', 'AAA' ], array_map([ $S, 'columnName' ], [ 0, 25, 26, 51, 52, 701, 702 ]));
@@ -1260,17 +1253,13 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-20T12:00:00+03:00: the Gmail step: the message composed (read back by util\MailParser: headers, reply headers, Bcc, text + HTML, an attachment), addresses, file
     //ids, labels, the query string, settings refused, variable types; a run with a credential Google refuses (the `error` output)
     private function suiteGmail() {
-	//CLD: 2026-10-22T00:35:40+03:00: the GoogleIntegration plugin's (skipped without it)
-	if (!in_array('GoogleIntegration', (array)\V::app()->config('modules'), true)) {
-	    echo "  skipped: the GoogleIntegration plugin is not enabled\n";
-	    return;
-	}
+	//CLD: 2026-10-26T23:39:49+02:00: core again (was the GoogleIntegration plugin's: skipped without it)
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
-	$G = \plugins\GoogleIntegration\models\NodeAppGmail::class;
+	$G = \models\node\NodeAppGmail::class;
 	$om = \V::app()->om;
 	$this->check('Gmail: a step type, an `error` output when chosen; the Google Mail credential provides it (and still IMAP)', [ true, [ 'success', 'error' ], [ 'imap', 'gmail' ] ],
-	    [ isset(\models\WfNode::getAll()['app::gmail']), $G::outLabelsFor([ 'onError' => 'output' ]), \plugins\GoogleIntegration\models\CredentialGoogleMail::$provides ]);
+	    [ isset(\models\WfNode::getAll()['app::gmail']), $G::outLabelsFor([ 'onError' => 'output' ]), \models\credential\CredentialGoogleMail::$provides ]);
 	$this->check('Gmail: addresses (text, names, semicolons, a list, objects; doubles once)', [ 'a@x.ro', 'b@y.com', 'c@z.org' ],
 	    $G::addresses('a@x.ro; "B, Jr." <b@y.com>, a@x.ro;c@z.org')) && $this->check('Gmail: addresses from a list', [ 'a@x.ro', 'c@z.org' ], $G::addresses([ 'a@x.ro', [ 'email' => 'c@z.org' ] ]));
 	$bad = function($value) use ($G) {
@@ -1341,14 +1330,10 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-20T13:00:00+03:00: the Google Calendar step: times read (offsets, the time zone, dates), event start / end (duration, all day), periods, event objects, settings
     //refused, variable types; a run with a credential Google refuses (the `error` output)
     private function suiteGcalendar() {
-	//CLD: 2026-10-22T00:35:40+03:00: the GoogleIntegration plugin's (skipped without it)
-	if (!in_array('GoogleIntegration', (array)\V::app()->config('modules'), true)) {
-	    echo "  skipped: the GoogleIntegration plugin is not enabled\n";
-	    return;
-	}
+	//CLD: 2026-10-26T23:39:49+02:00: core again (was the GoogleIntegration plugin's: skipped without it)
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
-	$C = \plugins\GoogleIntegration\models\NodeAppGoogleCalendar::class;
+	$C = \models\node\NodeAppGoogleCalendar::class;
 	$tz = new \DateTimeZone('Europe/Bucharest');
 	$this->check('Google Calendar: a step type, an `error` output when chosen', [ true, [ 'success', 'error' ] ],
 	    [ isset(\models\WfNode::getAll()['app::google-calendar']), $C::outLabelsFor([ 'onError' => 'output' ]) ]);
@@ -1423,17 +1408,13 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-20T15:00:00+03:00: the Google Docs step: Markdown -> text, paragraphs and spans (UTF-16 indexes), the batchUpdate requests (append / an empty document),
     //a document read as text and Markdown, settings refused, variable types; a run with a credential Google refuses (the `error` output); the Google steps share NodeAppGoogle
     private function suiteGdocs() {
-	//CLD: 2026-10-22T00:35:40+03:00: the GoogleIntegration plugin's (skipped without it)
-	if (!in_array('GoogleIntegration', (array)\V::app()->config('modules'), true)) {
-	    echo "  skipped: the GoogleIntegration plugin is not enabled\n";
-	    return;
-	}
+	//CLD: 2026-10-26T23:39:49+02:00: core again (was the GoogleIntegration plugin's: skipped without it)
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
-	$D = \plugins\GoogleIntegration\models\NodeAppGoogleDocs::class;
+	$D = \models\node\NodeAppGoogleDocs::class;
 	$this->check('Google Docs: a step type, an `error` output when chosen; every Google step is a NodeAppGoogle', [ true, [ 'success', 'error' ], [ true, true, true, true, true ] ],
-	    [ isset(\models\WfNode::getAll()['app::google-docs']), $D::outLabelsFor([ 'onError' => 'output' ]), array_map(fn($c) => is_subclass_of($c, \plugins\GoogleIntegration\models\NodeAppGoogle::class),
-		[ $D, \plugins\GoogleIntegration\models\NodeAppGoogleDrive::class, \plugins\GoogleIntegration\models\NodeAppGoogleSheets::class, \plugins\GoogleIntegration\models\NodeAppGmail::class, \plugins\GoogleIntegration\models\NodeAppGoogleCalendar::class ]) ]);
+	    [ isset(\models\WfNode::getAll()['app::google-docs']), $D::outLabelsFor([ 'onError' => 'output' ]), array_map(fn($c) => is_subclass_of($c, \models\node\NodeAppGoogle::class),
+		[ $D, \models\node\NodeAppGoogleDrive::class, \models\node\NodeAppGoogleSheets::class, \models\node\NodeAppGmail::class, \models\node\NodeAppGoogleCalendar::class ]) ]);
 	$this->check('Google Docs: lengths in UTF-16 (ă: 1, an emoji: 2)', [ 1, 2, 5 ], [ $D::len('ă'), $D::len('😀'), $D::len('a😀bc') ]);
 	$this->check('Google Docs: inline Markdown (bold, italic, code, a link; snake_case left alone)', [ 'Hi Ana, see site and x a_b_c', [ [ 3, 6, [ 'bold' => true ] ], [ 8, 11, [ 'italic' => true ] ],
 	    [ 12, 16, [ 'link' => [ 'url' => 'https://x.ro' ] ] ], [ 21, 22, [ 'weightedFontFamily' => [ 'fontFamily' => 'Courier New' ] ] ] ] ],
@@ -1503,14 +1484,12 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-22T00:41:28+03:00: the MicrosoftIntegration plugin (skipped without it): the steps and credentials registered, the helpers (Graph queries and errors, addresses, ids, drives
     //and items, times, cells), the settings refused, and a call of each step with a made-up token (Graph refuses it: the `error` output, the variable null, the error logged)
     private function suiteMicrosoft() {
-	if (!in_array('MicrosoftIntegration', (array)\V::app()->config('modules'), true)) {
-	    echo "  skipped: the MicrosoftIntegration plugin is not enabled\n";
-	    return;
-	}
+	//CLD: 2026-10-26T23:39:49+02:00: core again (was the MicrosoftIntegration plugin's: skipped without it)
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
 	$om = \V::app()->om;
-	$ns = '\\plugins\\MicrosoftIntegration\\models\\';
+	//CLD: 2026-10-26T23:39:49+02:00: models\node / models\credential (was plugins\MicrosoftIntegration\models)
+	$ns = '\\models\\node\\';
 	$M = $ns . 'NodeAppMicrosoft';
 	$mail = $ns . 'NodeAppOutlookMail';
 	$cal = $ns . 'NodeAppOutlookCalendar';
@@ -1525,7 +1504,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ 'msfiles', 'msexcel', 'http' ], [ 'msteams', 'http' ] ], array_map(fn($c) => \models\Credential::classFor($c)::$provides ?? null,
 	    [ 'CredentialMicrosoftMail', 'CredentialMicrosoftOutlook', 'CredentialMicrosoftCalendar', 'CredentialMicrosoftFiles', 'CredentialMicrosoftTeams' ]));
 	$this->check('Microsoft: the Graph scopes (User.Read + the permissions, on graph.microsoft.com)', 'https://graph.microsoft.com/User.Read https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Send',
-	    ($ns . 'CredentialMicrosoftOutlook')::serviceScope());
+	    \models\credential\CredentialMicrosoftOutlook::serviceScope());
 	$this->check('Microsoft: every step has its settings and a variable for each operation', [ true, true, true, true, true ], array_map(function($c) {
 	    $keys = array_column($c::configSchema(), 'key');
 	    foreach(array_keys($c::OPERATIONS) as $op) {
@@ -3220,25 +3199,14 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('database: its credentials and its step on every tier (core, no plan feature)', [ [ true, true ], [ true, true ], [ true, true ] ], $on);
 
 	    //CLD: 2026-10-24T10:28:12+03:00: Google / Microsoft: on team and enterprise, off on free; their credentials and steps follow; a step does not run without it
+	    //CLD: 2026-10-26T23:39:49+02:00: core again: their credentials and steps on every tier (were the features `google` / `microsoft`'s)
 	    foreach([ 'google' => [ 'CredentialGoogleMail', 'NodeAppGoogleDrive' ], 'microsoft' => [ 'CredentialMicrosoftMail', 'NodeAppOneDrive' ] ] as $feature => [ $cred, $step ]) {
-		if (!$om->isDefined($step))
-		    continue;
 		$on = [];
 		foreach([ 'free', 'team', 'enterprise' ] as $tier) {
 		    $set($tier);
-		    $on[] = [ $T::has($account, $feature), $T::allows($account, $cred), $T::allows($account, $step) ];
+		    $on[] = [ $T::allows($account, $cred), $T::allows($account, $step) ];
 		}
-		$set('free');
-		$node = $om->create($step, []);
-		$node->exec = (object)[ 'aid' => $account->_id ];
-		try {
-		    $node->receive();
-		    $runs = 'runs';
-		} catch (\ErrorException $e) {
-		    $runs = str_contains($e->getMessage(), 'not included in your plan (Free)') ? 'refused' : $e->getMessage();
-		}
-		$this->check("{$feature}: off on free, on on team and enterprise (its credentials, its steps); a step refused without it",
-		    [ [ false, false, false ], [ true, true, true ], [ true, true, true ], 'refused' ], [ $on[0], $on[1], $on[2], $runs ]);
+		$this->check("{$feature}: its credentials and its steps on every tier (core, no plan feature)", [ [ true, true ], [ true, true ], [ true, true ] ], $on);
 	    }
 
 	    //the System AI's allowance: the account's plan, else the tier's, else the installation's
@@ -3496,10 +3464,7 @@ class CheckCommand extends \sys\BaseController {
     //the steps that keep their place, the conversation sent back, failures
     //CLD: 2026-10-19T20:10:00+03:00: plugins\Assistant\util\WorkflowAssistant (was util\WorkflowAssistant); skipped when the Assistant plugin is not enabled (app/plugins.php)
     private function suiteAssistant() {
-	if (!isset(\V::app()->Assistant)) {
-	    echo "  (skipped: the Assistant plugin is not enabled)\n";
-	    return;
-	}
+	//CLD: 2026-10-26T23:49:50+02:00: core again: util\WorkflowAssistant, models\AssistantSettings (were the Assistant plugin's: skipped without it)
 	//CLD: 2026-10-20T10:00:00+03:00: the Assistant's settings (its server, key and model; was a credential)
 	$cred = (object)[ 'provider' => 'anthropic', 'url' => 'https://api.invalid', 'api_key' => 'test', 'model' => 'claude-opus-5-5' ];
 	//a model answering $turns in order (each: [ stop_reason, content blocks ]); the requests are kept in $sent
@@ -3522,7 +3487,7 @@ class CheckCommand extends \sys\BaseController {
 	$conn = [ [ 'from' => 'start', 'to' => 'check' ], [ 'from' => 'check', 'to' => 'big', 'output' => 'true' ] ];
 	$fixed = $steps;
 	$fixed[1]['config']['conditions'][0]['left'] = '{{ amount }}';
-	$a = new \plugins\Assistant\util\WorkflowAssistant($wf, $this->project, $cred);
+	$a = new \util\WorkflowAssistant($wf, $this->project, $cred);
 	$a->transport = $scripted([
 	    [ 'tool_use', [ [ 'type' => 'text', 'text' => 'Building.' ], $tool('t1', [ 'steps' => $steps, 'connections' => $conn ]) ] ],
 	    [ 'tool_use', [ $tool('t2', [ 'steps' => $fixed, 'connections' => $conn ]) ] ],
@@ -3553,8 +3518,8 @@ class CheckCommand extends \sys\BaseController {
 
 	//CLD: 2026-10-19T15:48:10+03:00: the model and effort of the account settings; an unknown effort: the default
 	//CLD: 2026-10-19T20:40:00+03:00: the Assistant's settings given (models\AssistantSettings fields; were the account's assistant_* fields, changed here in memory)
-	$b = new \plugins\Assistant\util\WorkflowAssistant($wf, $this->project, (object)[ 'model' => 'claude-sonnet-5-5', 'effort' => 'low' ]);
-	$c = new \plugins\Assistant\util\WorkflowAssistant($wf, $this->project, (object)[ 'model' => 'claude-sonnet-5-5', 'effort' => 'extreme' ]);
+	$b = new \util\WorkflowAssistant($wf, $this->project, (object)[ 'model' => 'claude-sonnet-5-5', 'effort' => 'low' ]);
+	$c = new \util\WorkflowAssistant($wf, $this->project, (object)[ 'model' => 'claude-sonnet-5-5', 'effort' => 'extreme' ]);
 	$b->transport = $scripted([ [ 'end_turn', [ [ 'type' => 'text', 'text' => 'ok' ] ] ] ], $sentB);
 	$b->ask([], 'x', $existing);
 	$c->transport = $scripted([ [ 'end_turn', [ [ 'type' => 'text', 'text' => 'ok' ] ] ] ], $sentC);
@@ -3571,7 +3536,7 @@ class CheckCommand extends \sys\BaseController {
 	//JSON refused, results as `tool` messages, <think> left out
 	//CLD: 2026-10-19T20:40:00+03:00: settings without a model (were the account's, changed here in memory)
 	//CLD: 2026-10-20T10:00:00+03:00: the server in the settings (was a credential)
-	$o = new \plugins\Assistant\util\WorkflowAssistant($wf, $this->project, (object)[ 'provider' => 'openai', 'url' => 'http://localhost:8000/api/v1', 'model' => '' ]);
+	$o = new \util\WorkflowAssistant($wf, $this->project, (object)[ 'provider' => 'openai', 'url' => 'http://localhost:8000/api/v1', 'model' => '' ]);
 	$call = fn($id, $args) => [ 'id' => $id, 'type' => 'function', 'function' => [ 'name' => 'set_workflow', 'arguments' => $args ] ];
 	$oaSent = [];
 	$oaTurns = [
@@ -3598,13 +3563,13 @@ class CheckCommand extends \sys\BaseController {
 
 	//CLD: 2026-10-19T16:24:37+03:00: the provider of the account settings (the designer offers its credentials only); missing or unknown: Anthropic
 	//CLD: 2026-10-22T14:00:00+03:00: gemini is a provider now (was the unknown one)
-	$this->check('account provider: openai, gemini; unknown and missing are anthropic', [ 'openai', 'gemini', 'anthropic', 'anthropic' ], [ \plugins\Assistant\util\WorkflowAssistant::providerOf((object)[ 'provider' => 'openai' ]),
-	    \plugins\Assistant\util\WorkflowAssistant::providerOf((object)[ 'provider' => 'gemini' ]), \plugins\Assistant\util\WorkflowAssistant::providerOf((object)[ 'provider' => 'nope' ]),
-	    \plugins\Assistant\util\WorkflowAssistant::providerOf(null) ]);
+	$this->check('account provider: openai, gemini; unknown and missing are anthropic', [ 'openai', 'gemini', 'anthropic', 'anthropic' ], [ \util\WorkflowAssistant::providerOf((object)[ 'provider' => 'openai' ]),
+	    \util\WorkflowAssistant::providerOf((object)[ 'provider' => 'gemini' ]), \util\WorkflowAssistant::providerOf((object)[ 'provider' => 'nope' ]),
+	    \util\WorkflowAssistant::providerOf(null) ]);
 
 	//CLD: 2026-10-20T10:00:00+03:00: the server of the settings (credentialOf; was accountServer, OpenAI-compatible only): its URL or the provider's, the key as the provider
 	//wants it; ready with a model; the models it lists (Connect)
-	$WA = \plugins\Assistant\util\WorkflowAssistant::class;
+	$WA = \util\WorkflowAssistant::class;
 	$srv = $WA::credentialOf((object)[ 'provider' => 'openai', 'url' => ' http://localhost:8000/api/v1 ', 'api_key' => 'k1' ]);
 	$this->check('settings server: URL, Bearer key, provides openai', [ 'http://localhost:8000/api/v1', [ 'Authorization' => 'Bearer k1' ], true, false ],
 	    [ $srv->baseUrl, $srv->httpAuth()['headers'], $srv->provides('openai'), $srv->provides('anthropic') ]);
@@ -3626,7 +3591,7 @@ class CheckCommand extends \sys\BaseController {
 	//CLD: 2026-10-22T14:00:00+03:00: bring your own key: Gemini, Ollama, Lemonade speak OpenAI chat completions at their own URLs (Bearer key); Gemini's model ids without models/;
 	//System is the installation's server (config assistant.system), refused when there is none; the prices, the budget (the loop stops once it is spent)
 	//CLD: 2026-10-23T10:00:00+03:00: the System AI (config ai.system, plugins\SystemAI; was assistant.system)
-	$AS = \plugins\Assistant\models\AssistantSettings::class;
+	$AS = \models\AssistantSettings::class;
 	$gem = $WA::credentialOf((object)[ 'provider' => 'gemini', 'api_key' => 'g1' ]);
 	$this->check('gemini, ollama, lemonade: their own URLs, Bearer key', [ 'https://generativelanguage.googleapis.com/v1beta/openai', [ 'Authorization' => 'Bearer g1' ], 'http://localhost:11434/v1', 'http://localhost:8000/api/v1', [] ],
 	    [ $gem->baseUrl, $gem->httpAuth()['headers'], $WA::credentialOf((object)[ 'provider' => 'ollama' ])->baseUrl, $WA::credentialOf((object)[ 'provider' => 'lemonade' ])->baseUrl,
@@ -3653,10 +3618,16 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('budget: the account\'s; none with system (credits); 0 none', [ 10.0, null, null ],
 	    [ $AS::budgetOf((object)[ 'provider' => 'anthropic', 'budget' => 10 ]), $AS::budgetOf((object)[ 'provider' => 'system', 'budget' => 10 ]),
 	    $AS::budgetOf((object)[ 'provider' => 'anthropic', 'budget' => 0 ]) ]);
-	$s = new \plugins\Assistant\util\WorkflowAssistant($wf, $this->project, (object)[ 'provider' => 'system', 'model' => 'ignored' ]);
+	$s = new \util\WorkflowAssistant($wf, $this->project, (object)[ 'provider' => 'system', 'model' => 'ignored' ]);
 	$s->transport = $scripted([ [ 'end_turn', [ [ 'type' => 'text', 'text' => 'ok' ] ] ] ], $sentS);
 	$s->ask([], 'x', $existing);
 	$this->check('system: the installation\'s model and effort', [ 'claude-sonnet-5-5', 'low', 'sys-key' ], [ $sentS[0][1]['model'], $sentS[0][1]['output_config']['effort'], $sentS[0][0]['x-api-key'] ?? null ]);
+	//CLD: 2026-10-26T23:49:50+02:00: the System provider is the SystemAI plugin's: none while it is not enabled (the Assistant itself is core)
+	$modules = \V::app()->config('modules');
+	\V::app()->config('modules', array_values(array_diff((array)$modules, [ 'SystemAI' ])));
+	$withoutPlugin = [ $AS::system(), $AS::systemAvailable(), $WA::isReady((object)[ 'provider' => 'system' ]) ];
+	\V::app()->config('modules', $modules);
+	$this->check('system: none without the SystemAI plugin (not offered, not ready)', [ null, false, false ], $withoutPlugin);
 	\V::app()->config('ai.system', $savedSystem);
 	$this->check('prices: known Claude models, set ones, local free, else unknown', [ [ 4.0, 20.0, 0.2 ], [ 1.0, 2.0, 0.1 ], [ 0, 0, 0 ], null ],
 	    [ $AS::pricesOf((object)[ 'model' => 'claude-opus-5-5' ]), $AS::pricesOf((object)[ 'model' => 'gpt-x', 'price_input' => 1, 'price_output' => 2 ]),
