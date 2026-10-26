@@ -3,6 +3,9 @@
 namespace sys\fields;
 
 class Field extends \sys\BaseModel {
+    //CLD: 2026-10-26T07:23:58+02:00: a field's own schema (attached explicitly) has the registry's objects as choices (Field_object): not cached (BaseModel::attachSchema)
+    protected static $cacheSchema = false;
+
     protected static $collection = 'fields';
 
     //the fields (columns) of an object / data table (created by `v setup::indexes`)

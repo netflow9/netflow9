@@ -12,6 +12,9 @@
 namespace sys;
 
 class NestedModel extends BaseModel {
+    //CLD: 2026-10-26T07:23:58+02:00: the schema is the nested field's (the nestedSchema option): not cached per class (BaseModel::attachSchema)
+    protected static $cacheSchema = false;
+
     //not an object of an account (no aid check)
     public function _init() {
 	$this->_config['global'] = true;

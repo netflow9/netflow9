@@ -196,6 +196,17 @@ class BaseModel {
     public function afterAttachSchema() {
     }
 
+    //CLD: 2026-10-26T07:23:58+02:00: the schema's fields are made once per model class, object name and account (prototypes, unbound) and cloned for each object; making them
+    //(Field::create for each field of each object) was most of the cost of loading an object (e.g. a Workflow 0.21 ms, of which ~0.14 the fields). A model whose
+    //getSchema() differs between its objects, or within a request (e.g. choices read from the registry or the database), sets $cacheSchema = false.
+    //Forgotten by resetSchemaCache (ObjectManager::resetCache: a Field / DataTableDef changed, the daemon before each job)
+    protected static $cacheSchema = true;
+    private static $schemaPrototypes = [];
+
+    public static function resetSchemaCache() {
+	self::$schemaPrototypes = [];
+    }
+
     // executed in object context, attaches a schema
     public function attachSchema($schema = []) {
 	//\V::app()->log->debug('BaseModel::attachSchema: enter. current objectName=' . $this->getObjectName());
@@ -203,8 +214,16 @@ class BaseModel {
 	if (!empty($this->schema))
 	    return;
 
-	//if no provided schema, get model schema
-	$schema = (empty($schema) ? $this->getSchema() : []);
+	if (empty($schema) && static::$cacheSchema) {
+	    //CLD: 2026-10-26T07:23:58+02:00: clones of the cached prototypes
+	    $key = static::class . '|' . $this->getObjectName() . '|' . (\V::app()->config('rt.account')->_id ?? '');
+	    if (!isset(self::$schemaPrototypes[$key]))
+		self::$schemaPrototypes[$key] = array_map(fn($fDef) => is_object($fDef) ? $fDef : \sys\fields\Field::create($fDef), $this->getSchema());
+	    $schema = array_map(fn($p) => clone $p, self::$schemaPrototypes[$key]);
+	} else {
+	    //if no provided schema, get model schema
+	    $schema = (empty($schema) ? $this->getSchema() : []);
+	}
 
 	foreach ($schema as $fDef) {
 	    $f = (!is_object($fDef) ? \sys\fields\Field::create($fDef) : $fDef);
