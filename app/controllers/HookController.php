@@ -126,11 +126,14 @@ class HookController extends \sys\BaseController {
 
 	if ($respWhenFinished) {
 	    try {
-		$exe->run();
+		$state = $exe->run();
 	    } finally {
 		//CLD: 2026-10-18T16:05:00+03:00: ExecutionSlot (was WfExecution::acquireSlot / releaseSlot)
 		\models\ExecutionSlot::release();
 	    }
+	    //CLD: 2026-10-26T09:58:28+02:00: ran too long for the request (app.executions.sync_timeout): the daemon finishes it, no result to answer with
+	    if ($state === 'queued')
+		$resp->sendJSON([ 'execution' => (string)$exe->_id, 'state' => 'queued' ], true, 202);
 	    $answer = [ 'execution' => (string)$exe->_id, 'state' => $exe->state ];
 	    if ($exe->state == 'error')
 		$answer['error'] = $exe->error;
