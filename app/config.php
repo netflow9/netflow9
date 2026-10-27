@@ -145,6 +145,8 @@ function get_config($mode = 'web') {
 	    'FG\Utility'		=> BASE . '/app/pkgs/php-asn1/lib/Utility',
 	    'FG\X509'			=> BASE . '/app/pkgs/php-asn1/lib/X509',
 
+	    // github.com/dealfonso/sapp modified sapp library
+	    'ddn\sapp'			=> BASE . '/app/pkgs/sapp-custom',
         ],
 	'class_map' => [
 	    'chillerlan\Settings\SettingsContainerAbstract' => BASE . '/app/util/SettingsContainer.php',
