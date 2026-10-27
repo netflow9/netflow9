@@ -76,10 +76,17 @@ class PDFSignatureObject extends PDFObject {
 	    return;
 	$fields = [ 'Name', 'Reason', 'Location', 'ContactInfo' ];
 	foreach($fields as $f) {
-	    $fval = $details[$f] ?? null;
+	    //CLD: 2026-10-27T23:55:00+02:00: $meta (was $details, not defined here: the metadata was never set)
+	    $fval = $meta[$f] ?? null;
+	    //CLD: 2026-10-28T00:05:00+02:00: the text as UTF-16BE hex with its BOM (as upstream's PDFDoc::toUTF16Hex; was the text itself in <...>: not a valid hex string)
 	    if (!is_null($fval))
-		$this->_value[$f] = new PDFValueHexString($fval);
+		$this->_value[$f] = new PDFValueHexString(self::utf16_hex((string)$fval));
 	}
+    }
+
+    //CLD: 2026-10-28T00:05:00+02:00: text (UTF-8) -> FEFF + its UTF-16BE bytes in hex: a PDF text string
+    protected static function utf16_hex($text) {
+        return 'FEFF' . strtoupper(bin2hex(mb_convert_encoding($text, 'UTF-16BE', 'UTF-8')));
     }
 
     /**
