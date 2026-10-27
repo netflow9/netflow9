@@ -11,9 +11,5 @@
 	<li class="nav-item"><a class="nav-link <?= $tab === 'installation' ? 'active' : '' ?>" href="<?= \V::app()->createUrl('/Admin/admin/index') ?>"><i class="bi bi-hdd-rack me-1"></i>Installation</a></li>
 	<li class="nav-item"><a class="nav-link <?= $tab === 'accounts' ? 'active' : '' ?>" href="<?= \V::app()->createUrl('/Admin/admin/accounts') ?>"><i class="bi bi-buildings me-1"></i>Accounts</a></li>
     </ul>
-    <?php if (!empty($_SESSION['admin_flash'])):
-	$f = $_SESSION['admin_flash'];
-	unset($_SESSION['admin_flash']); ?>
-    <div class="alert alert-<?= \V::app()->html->escape($f['type']) ?> mt-3 mb-0 py-2 small" role="alert"><?= \V::app()->html->escape($f['message']) ?></div>
-    <?php endif; ?>
+    <?php //CLD: 2026-10-27T21:47:05+02:00: no flash alert here: the controllers' messages are toasts (addToast) ?>
 </div>

@@ -18,6 +18,7 @@ namespace plugins\Admin\controllers;
 use plugins\Admin\Plugin;
 use plugins\Admin\util\Services;
 
+//CLD: 2026-10-27T21:47:05+02:00: the messages are toasts (addToast + $this->redirect: kept for the next page, as in the other controllers); was its own session flash (admin_flash), shown in _header.php
 class AdminController extends \sys\BaseController {
 
     public function _init() {
@@ -49,8 +50,8 @@ class AdminController extends \sys\BaseController {
 	[ $ok, $message ] = Services::control($s, $verb);
 	\V::app()->log->info("Admin: {$verb} {$id} by " . \V::app()->user->name . ': ' . ($ok ? 'ok' : $message));
 	\models\AuditLog::record('service_' . $verb, null, "super-admin: {$verb} {$s['label']} (" . ($ok ? 'done' : 'failed: ' . mb_substr($message, 0, 200)) . ')');
-	$this->flash($ok ? 'success' : 'danger', $message);
-	$resp->redirect('/Admin/admin/index');
+	$this->addToast($ok ? 'success' : 'error', $ok ? 'Done' : 'Failed', $message);
+	$this->redirect('/Admin/admin/index');
     }
 
     //the app's version and its server
@@ -132,16 +133,16 @@ class AdminController extends \sys\BaseController {
 	    \V::app()->error(400, 'Unknown state');
 	$reason = trim(mb_substr((string)($req->data['reason'] ?? ''), 0, 300));
 	if ($state === 'disabled' && $reason === '') {
-	    $this->flash('danger', 'Say why the account is suspended (the reason is kept in the audit log)');
-	    $resp->redirect('/Admin/admin/account?id=' . $account->_id);
+	    $this->addToast('error', 'Not suspended', 'Say why the account is suspended (the reason is kept in the audit log)');
+	    $this->redirect('/Admin/admin/account', [ 'id' => (string)$account->_id ]);
 	}
 	if ((string)$account->state !== $state) {
 	    //written with the collection: the account's own checks (its form's permissions) are not the super-admin's
 	    \V::app()->om->acrossAccounts(fn() => \V::app()->om->updateOne('Account', [ '_id' => $account->_id ], [ '$set' => [ 'state' => $state, 'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]));
 	    Plugin::audit($state === 'disabled' ? 'account_suspend' : 'account_reactivate', $account, ($state === 'disabled' ? 'suspended' : 'reactivated') . ($reason !== '' ? ": {$reason}" : ''));
 	}
-	$this->flash('success', $state === 'disabled' ? 'Suspended: its users are signed out, nothing new runs, its queued jobs wait' : 'Reactivated');
-	$resp->redirect('/Admin/admin/account?id=' . $account->_id);
+	$this->addToast('success', $state === 'disabled' ? 'Suspended' : 'Reactivated', $state === 'disabled' ? 'Its users are signed out, nothing new runs, its queued jobs wait' : 'The account is active again');
+	$this->redirect('/Admin/admin/account', [ 'id' => (string)$account->_id ]);
     }
 
     //CLD: 2026-10-24T09:45:36+03:00: the account's tier (empty: the default) and its own changes: limits[key] (empty: the tier's, `unlimited`, or a whole number; files_bytes in MB),
@@ -166,8 +167,8 @@ class AdminController extends \sys\BaseController {
 	    elseif (preg_match('/^\d{1,12}$/', $v))
 		$limits[$key] = $unit === 'bytes' ? (int)$v * 1024 * 1024 : (int)$v;
 	    else {
-		$this->flash('danger', "{$label}: empty (the tier's), `unlimited`, or a whole number" . ($unit === 'bytes' ? ' (MB)' : ''));
-		$resp->redirect('/Admin/admin/account?id=' . $account->_id);
+		$this->addToast('error', 'Not saved', "{$label}: empty (the tier's), `unlimited`, or a whole number" . ($unit === 'bytes' ? ' (MB)' : ''));
+		$this->redirect('/Admin/admin/account', [ 'id' => (string)$account->_id ]);
 	    }
 	}
 	$features = \util\Tiers::overridesOf($account)['features'];
@@ -178,8 +179,8 @@ class AdminController extends \sys\BaseController {
 	    $changes[] = "{$key} " . ($n === null ? 'unlimited' : $n);
 	Plugin::audit('account_tier', $account, 'tier: ' . \util\Tiers::labelOf($account) . ($tier === '' ? ' (the default)' : '') . ($changes ? '; ' . implode(', ', $changes) : ''));
 	\V::app()->hooks->applyHook('tiers:changed', [ $account ]);
-	$this->flash('success', 'Tier: ' . \util\Tiers::labelOf($account));
-	$resp->redirect('/Admin/admin/account?id=' . $account->_id);
+	$this->addToast('success', 'Saved', 'Tier: ' . \util\Tiers::labelOf($account));
+	$this->redirect('/Admin/admin/account', [ 'id' => (string)$account->_id ]);
     }
 
     //CLD: 2026-10-24T10:06:05+03:00: the account's own value of feature `feature`: `value` empty (the tier's), 1 (on) or 0 (off)
@@ -201,8 +202,8 @@ class AdminController extends \sys\BaseController {
 	$state = \util\Tiers::has($account, $feature) ? 'on' : 'off';
 	Plugin::audit('account_feature', $account, "{$label}: " . ($value === '' ? "the tier's ({$state})" : $state));
 	\V::app()->hooks->applyHook('tiers:changed', [ $account ]);
-	$this->flash('success', "{$label}: {$state}" . ($value === '' ? " (the tier's)" : ''));
-	$resp->redirect('/Admin/admin/account?id=' . $account->_id);
+	$this->addToast('success', 'Saved', "{$label}: {$state}" . ($value === '' ? " (the tier's)" : ''));
+	$this->redirect('/Admin/admin/account', [ 'id' => (string)$account->_id ]);
     }
 
     // ------------------------------------------------------------------------------------
@@ -213,19 +214,19 @@ class AdminController extends \sys\BaseController {
 	    \V::app()->error(405, 'Method not allowed');
 	$account = $this->findAccount($req->data['id'] ?? null);
 	if ((string)$account->_id === (string)\V::app()->user->aid) {
-	    $this->flash('danger', 'This is your own account');
-	    $resp->redirect('/Admin/admin/account?id=' . $account->_id);
+	    $this->addToast('error', 'Not viewing as', 'This is your own account');
+	    $this->redirect('/Admin/admin/account', [ 'id' => (string)$account->_id ]);
 	}
 	$owner = $this->ownerOf($account);
 	if (!$owner) {
-	    $this->flash('danger', 'The account has no active owner to view it as');
-	    $resp->redirect('/Admin/admin/account?id=' . $account->_id);
+	    $this->addToast('error', 'Not viewing as', 'The account has no active owner to view it as');
+	    $this->redirect('/Admin/admin/account', [ 'id' => (string)$account->_id ]);
 	}
 	try {
 	    Plugin::startView($account, $owner, '/Admin/admin/account?id=' . $account->_id);
 	} catch (\ErrorException $e) {
-	    $this->flash('danger', $e->getMessage());
-	    $resp->redirect('/Admin/admin/account?id=' . $account->_id);
+	    $this->addToast('error', 'Not viewing as', $e->getMessage());
+	    $this->redirect('/Admin/admin/account', [ 'id' => (string)$account->_id ]);
 	}
 	$resp->redirect('/site/index');
     }
@@ -281,10 +282,5 @@ class AdminController extends \sys\BaseController {
 	$account->tier = $tier;
 	$account->tier_overrides = $overrides;
 	\util\Tiers::reset();
-    }
-
-    //a message for the next page
-    private function flash($type, $message) {
-	$_SESSION['admin_flash'] = [ 'type' => $type, 'message' => (string)$message ];
     }
 }

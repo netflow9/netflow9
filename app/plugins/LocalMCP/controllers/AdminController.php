@@ -29,7 +29,8 @@ class AdminController extends \sys\BaseController {
 	$on = !empty($req->data['on']);
 	\V::app()->om->acrossAccounts(fn() => LocalMcpAccess::set($account->_id, $server, $on));
 	\plugins\Admin\Plugin::audit($on ? 'tool_server_enable' : 'tool_server_disable', $account, ($on ? 'enabled' : 'disabled') . ' the tool server ' . Plugin::servers()[$server]['label']);
-	$_SESSION['admin_flash'] = [ 'type' => 'success', 'message' => Plugin::servers()[$server]['label'] . ($on ? ' enabled' : ' disabled') . ' for this account' ];
-	$resp->redirect('/Admin/admin/account?id=' . $account->_id);
+	//CLD: 2026-10-27T21:47:05+02:00: a toast (addToast + $this->redirect), as in the other controllers; was the Admin plugin's session flash (admin_flash)
+	$this->addToast('success', 'Saved', Plugin::servers()[$server]['label'] . ($on ? ' enabled' : ' disabled') . ' for this account');
+	$this->redirect('/Admin/admin/account', [ 'id' => (string)$account->_id ]);
     }
 }
