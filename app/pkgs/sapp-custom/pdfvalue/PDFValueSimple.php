@@ -25,9 +25,8 @@ class PDFValueSimple extends PDFValue {
     public function __construct($v) {
         parent::__construct($v);
     }
+    //CLD: 2026-10-27T23:55:00+02:00: removed the debug lines (print_r of both values at each call)
     public function push($v) {
-	\V::app()->log->debug('   v:' . print_r($v, true));
-	\V::app()->log->debug('this:' . print_r($this, true));
         if (get_class($v) === get_class($this)) {
             // Can push
             $this->value = $this->value . ' ' . $v->val();
