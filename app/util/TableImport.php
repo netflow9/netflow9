@@ -64,7 +64,8 @@ class TableImport {
 
     //the rows of the file (sheet $sheet of an xlsx, default the first): lists of scalar values, empty rows removed, trailing empty columns removed,
     //every row as long as the longest; \RuntimeException with a message for the user when the file cannot be read
-    public function rows($sheet = null) {
+    //CLD: 2026-10-27T23:10:00+02:00: + $limits: false: no error over MAX_ROWS / MAX_COLS (util\OfficeText: the rows read, at most MAX_ROWS + 1, are given)
+    public function rows($sheet = null, $limits = true) {
 	$rows = $this->ext === 'xlsx' ? $this->xlsxRows($sheet) : $this->csvRows();
 
 	$width = 0;
@@ -76,10 +77,10 @@ class TableImport {
 		continue;
 	    $kept[] = $row;
 	    $width = max($width, count($row));
-	    if (count($kept) > self::MAX_ROWS + 1)
+	    if ($limits && count($kept) > self::MAX_ROWS + 1)
 		throw new \RuntimeException('The file has more than ' . self::MAX_ROWS . ' rows');
 	}
-	if ($width > self::MAX_COLS)
+	if ($limits && $width > self::MAX_COLS)
 	    throw new \RuntimeException('The file has more than ' . self::MAX_COLS . ' columns');
 	foreach($kept as &$row)
 	    $row = array_pad($row, $width, '');
