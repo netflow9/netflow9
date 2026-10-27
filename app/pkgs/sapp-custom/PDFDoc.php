@@ -347,7 +347,8 @@ class PDFDoc extends Buffer {
      * @param date a DateTime object that contains the date to be set; null to set "now"
      * @return ok true if the date could be set; false otherwise
      */
-    protected function update_mod_date(\DateTime $date = null) {
+    //CLD: 2026-10-27T23:40:00+02:00: ?\DateTime (an implicitly nullable parameter is deprecated since PHP 8.4)
+    protected function update_mod_date(?\DateTime $date = null) {
         // First of all, we are searching for the root object (which should be in the trailer)
         $root = $this->_pdf_trailer_object["Root"];
 
