@@ -130,6 +130,24 @@ class CheckCommand extends \sys\BaseController {
 	return [ 'wfid' => $id, 'isNode' => true, 'parentId' => $parent, 'fqname' => $fq, 'title' => $id, 'geometry' => [ 'x' => 0, 'y' => 0, 'w' => 120, 'h' => 120 ], 'config' => $config ];
     }
 
+    //CLD: 2026-10-27T23:11:38+02:00: a one-page PDF drawing $content (Helvetica as /F1); $encrypted: an /Encrypt in its trailer (its text cannot be read)
+    private static function miniPdf($content, $encrypted = false) {
+	$objs = [ '<</Type/Catalog/Pages 2 0 R>>', '<</Type/Pages/Kids[3 0 R]/Count 1>>',
+	    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>', '<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>',
+	    '<</Length ' . strlen($content) . ">>\nstream\n{$content}\nendstream", '<</Filter/Standard/V 1/R 2/O(x)/U(y)/P -4>>' ];
+	$out = "%PDF-1.4\n";
+	$offsets = [];
+	foreach($objs as $i => $body) {
+	    $offsets[] = strlen($out);
+	    $out .= ($i + 1) . " 0 obj\n{$body}\nendobj\n";
+	}
+	$xref = strlen($out);
+	$out .= "xref\n0 " . (count($objs) + 1) . "\n0000000000 65535 f \n";
+	foreach($offsets as $o)
+	    $out .= sprintf("%010d 00000 n \n", $o);
+	return $out . 'trailer<</Size ' . (count($objs) + 1) . '/Root 1 0 R' . ($encrypted ? '/Encrypt 6 0 R' : '') . ">>\nstartxref\n{$xref}\n%%EOF\n";
+    }
+
     private static function edge($id, $from, $to, $port = 0) {
 	return [ 'wfid' => $id, 'isEdge' => true, 'fromNode' => $from, 'fromPort' => $port, 'toNode' => $to, 'toPort' => 0, 'branch' => null ];
     }
@@ -962,6 +980,20 @@ class CheckCommand extends \sys\BaseController {
 	$png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
 	$files = [ \models\File::createFromString('check-a.png', $png, $meta), \models\File::createFromString('check-b.png', $png, $meta), \models\File::createFromString('check.txt', 'hi', $meta) ];
 	[ $a, $b, $txt ] = array_map('strval', $files);
+	//CLD: 2026-10-27T23:11:38+02:00: files for the AI steps' Files: a PDF with text, an encrypted one, one without text, a Word document, a CSV, a zip
+	$docx = tempnam(sys_get_temp_dir(), 'netflow9-check-');
+	$zip = new \ZipArchive();
+	$zip->open($docx, \ZipArchive::OVERWRITE);
+	$zip->addFromString('word/document.xml', '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Contract nr. 7</w:t></w:r></w:p></w:body></w:document>');
+	$zip->close();
+	$more = [ \models\File::createFromString('check.pdf', self::miniPdf('BT /F1 12 Tf 72 700 Td (Invoice 42) Tj ET'), $meta),
+	    \models\File::createFromString('check-locked.pdf', self::miniPdf('BT /F1 12 Tf 72 700 Td (secret) Tj ET', true), $meta),
+	    \models\File::createFromString('check-scan.pdf', self::miniPdf('0 0 1 rg 10 10 50 50 re f'), $meta),
+	    \models\File::createFromString('check.docx', file_get_contents($docx), $meta), \models\File::createFromString('check.csv', "a,b\n1,2", $meta),
+	    \models\File::createFromString('check.zip', 'PK', $meta) ];
+	@unlink($docx);
+	array_push($files, ...$more);
+	[ $pdf, $locked, $scan, $word, $csv, $zipped ] = array_map('strval', $more);
 	try {
 	    //CLD: 2026-10-20T23:40:00+03:00: read_image: with the SysMCPTools plugin, through util\MCPTools as the AI steps call it (was util\McpTools)
 	    if ($readImage = \util\MCPTools::all()['read_image'] ?? null) {
@@ -978,25 +1010,60 @@ class CheckCommand extends \sys\BaseController {
 	    }
 
 	    //the Images setting: a list with an id and an attachment object, ids in text
-	    $prompt = function($value, $vars) use ($n) {
-		$wf = $this->workflow('images', [ $n('m', 'trigger::manual'), $n('c', 'app::claude', [ 'images' => $value ]) ]);
+	    //CLD: 2026-10-27T23:11:38+02:00: the Files setting (promptFiles; was Images, promptImages): the parts made of each file, by step and PDFs as ($cred: the OpenAI step's base URL)
+	    $parts = function($value, $vars, $step = 'app::claude', $config = [], $cred = null) use ($n) {
+		$wf = $this->workflow('files', [ $n('m', 'trigger::manual'), $n('c', $step, $config + [ 'files' => $value ]) ]);
 		$exe = \models\WfExecution::startFor($wf, 'console', [ 'vars' => $vars ]);
 		$exe->__nodes['c']->exec = $exe;
-		$m = new \ReflectionMethod($exe->__nodes['c'], 'promptImages');
+		$m = new \ReflectionMethod($exe->__nodes['c'], 'promptFiles');
 		$m->setAccessible(true);
 		try {
-		    return count($m->invoke($exe->__nodes['c'], $this->project));
+		    return $m->invoke($exe->__nodes['c'], $this->project, $cred);
 		} catch (\ErrorException $e) {
 		    return $e->getMessage();
 		}
 	    };
-	    $this->check('Images: a list of ids / attachments', 2, $prompt('{{ pics }}', [ 'pics' => [ $a, [ 'filename' => 'x', 'file' => $b ] ] ]));
-	    $this->check('Images: ids in text', 2, $prompt("{$a}, {$b}", []));
-	    $this->check('Images: empty', 0, $prompt('', []));
-	    $this->check('Images: a text file is refused', true, str_contains((string)$prompt($txt, []), 'not an image'));
+	    $prompt = fn($value, $vars) => is_array($r = $parts($value, $vars)) ? count($r) : $r;
+	    $types = fn($r) => is_array($r) ? array_column($r, 'type') : $r;
+	    $this->check('Files: a list of ids / attachments', 2, $prompt('{{ pics }}', [ 'pics' => [ $a, [ 'filename' => 'x', 'file' => $b ] ] ]));
+	    $this->check('Files: ids in text', 2, $prompt("{$a}, {$b}", []));
+	    $this->check('Files: empty', 0, $prompt('', []));
+	    $this->check('Files: a step saved with Images (key images) still sends them', [ 'image' ], $types($parts('', [], 'app::claude', [ 'images' => $a ])));
+	    $r = $parts("{$txt}, {$csv}, {$word}", []);
+	    $this->check('Files: text, CSV and Word files as text parts', [ [ 'text', 'text', 'text' ], 'hi', "a,b\n1,2", 'Contract nr. 7' ],
+		[ $types($r), $r[0]['text'] ?? null, $r[1]['text'] ?? null, $r[2]['text'] ?? null ]);
+	    $this->check('Files: a zip is refused', true, str_contains((string)$parts($zipped, []), 'not a file the model can read'));
+	    $r = $parts($pdf, []);
+	    $this->check('Files: Claude, PDFs as Auto: the PDF itself', [ [ 'pdf' ], 'check.pdf', true ], [ $types($r), $r[0]['name'] ?? null, str_starts_with(base64_decode($r[0]['data'] ?? ''), '%PDF') ]);
+	    $r = $parts($pdf, [], 'app::claude', [ 'pdfs' => 'text' ]);
+	    $this->check('Files: PDFs as Text: its pages\' text', [ [ 'text' ], "--- page 1 ---\nInvoice 42" ], [ $types($r), $r[0]['text'] ?? null ]);
+	    $this->check('Files: Gemini, Auto: the PDF itself', [ 'pdf' ], $types($parts($pdf, [], 'app::gemini')));
+	    $this->check('Files: OpenAI on api.openai.com, Auto: the PDF itself', [ 'pdf' ], $types($parts($pdf, [], 'app::openai', [], (object)[ 'baseUrl' => 'https://api.openai.com/v1' ])));
+	    $this->check('Files: OpenAI on another server, Auto: its text', [ 'text' ], $types($parts($pdf, [], 'app::openai', [], (object)[ 'baseUrl' => 'http://localhost:8000/v1' ])));
+	    $this->check('Files: Lemonade and Ollama, Auto: its text', [ [ 'text' ], [ 'text' ] ],
+		[ $types($parts($pdf, [], 'app::lemonade', [], (object)[ 'baseUrl' => 'http://localhost:8000/api/v1' ])), $types($parts($pdf, [], 'app::ollama')) ]);
+	    $this->check('Files: Ollama offers no Documents', [ 'auto', 'text' ], array_keys(array_column(\models\node\NodeAppOllama::configSchema(), 'choices', 'key')['pdfs']));
+	    $this->check('Files: an encrypted PDF as text is refused (send it as a document)', true, str_contains((string)$parts($locked, [], 'app::claude', [ 'pdfs' => 'text' ]), 'is encrypted'));
+	    $this->check('Files: a PDF without text, as text, is refused (scanned?)', true, str_contains((string)$parts($scan, [], 'app::claude', [ 'pdfs' => 'text' ]), 'no text to read'));
+	    //a step saved with Images: its value moves to Files on save
+	    $wf = $this->workflow('files migrate', [ $n('m', 'trigger::manual'), $n('c', 'app::claude', [ 'images' => "{$a}" ]) ]);
+	    $wf->validates();
+	    $c = $wf->nodes['c']['config'] ?? [];
+	    $this->check('Files: a step saved with Images: moved to Files on save', [ $a, false ], [ $c['files'] ?? null, array_key_exists('images', $c) ]);
+	    //read_file: a PDF and an Office document as their text
+	    if ($readFile = \util\MCPTools::all()['read_file'] ?? null) {
+		$this->check('read_file: a PDF and a Word document as their text', [ "--- page 1 ---\nInvoice 42", 'Contract nr. 7' ],
+		    [ ($readFile['run'])([ 'id' => $pdf ], $this->project)[0]['content'] ?? null, ($readFile['run'])([ 'id' => $word ], $this->project)[0]['content'] ?? null ]);
+	    }
 
 	    //the requests
-	    $img = [ 'image/png', 'QUJD' ];
+	    //CLD: 2026-10-27T23:11:38+02:00: the files as parts (was [ mimeType, data ]); + a PDF and a text file for each provider
+	    $img = [ 'type' => 'image', 'mime' => 'image/png', 'data' => 'QUJD', 'name' => 'a.png' ];
+	    $pdfPart = [ 'type' => 'pdf', 'data' => 'JVBE', 'name' => 'a.pdf' ];
+	    $textPart = [ 'type' => 'text', 'text' => 'a,b', 'name' => 'a.csv' ];
+	    $fileText = "<file name=\"a.csv\">\na,b\n</file>";
+	    //the images of tool results: [ mimeType, data ] (unchanged)
+	    $toolImg = [ 'image/png', 'QUJD' ];
 	    $call = function($class, $method, ...$args) {
 		$o = (new \ReflectionClass($class))->newInstanceWithoutConstructor();
 		$m = new \ReflectionMethod($o, $method);
@@ -1007,22 +1074,28 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('Claude: the prompt with its image', [ [ 'type' => 'image', 'source' => [ 'type' => 'base64', 'media_type' => 'image/png', 'data' => 'QUJD' ] ], [ 'type' => 'text', 'text' => 'what is it?' ] ],
 		$state['messages'][0]['content']);
 	    $this->check('Claude: no images, the prompt as text', 'hi', $call(\models\node\NodeAppClaude::class, 'startConversation', null, '', 'hi', null)['messages'][0]['content']);
+	    $state = $call(\models\node\NodeAppClaude::class, 'startConversation', null, '', 'sum?', null, [ $pdfPart, $textPart ]);
+	    $this->check('Claude: a PDF as a document block (its name the title), a text file as text', [ [ 'type' => 'document', 'source' => [ 'type' => 'base64', 'media_type' => 'application/pdf', 'data' => 'JVBE' ],
+		'title' => 'a.pdf' ], [ 'type' => 'text', 'text' => $fileText ], [ 'type' => 'text', 'text' => 'sum?' ] ], $state['messages'][0]['content']);
 	    $o = (new \ReflectionClass(\models\node\NodeAppClaude::class))->newInstanceWithoutConstructor();
 	    $m = new \ReflectionMethod($o, 'addToolResults');
 	    $m->setAccessible(true);
 	    $state = [ 'messages' => [] ];
-	    $m->invokeArgs($o, [ &$state, [ [ 't1', '{"id":1}', false, [ $img ] ], [ 't2', 'x', false, [] ] ] ]);
+	    $m->invokeArgs($o, [ &$state, [ [ 't1', '{"id":1}', false, [ $toolImg ] ], [ 't2', 'x', false, [] ] ] ]);
 	    $this->check('Claude: a tool result with its image', [ [ [ 'type' => 'text', 'text' => '{"id":1}' ], [ 'type' => 'image', 'source' => [ 'type' => 'base64', 'media_type' => 'image/png', 'data' => 'QUJD' ] ] ], 'x' ],
 		array_column($state['messages'][0]['content'], 'content'));
 
 	    $state = $call(\models\node\NodeAppOpenAI::class, 'startConversation', null, 'sys', 'what is it?', null, [ $img ]);
 	    $this->check('OpenAI: the prompt with its image', [ [ 'type' => 'image_url', 'image_url' => [ 'url' => 'data:image/png;base64,QUJD' ] ], [ 'type' => 'text', 'text' => 'what is it?' ] ],
 		$state['messages'][1]['content']);
+	    $state = $call(\models\node\NodeAppOpenAI::class, 'startConversation', null, '', 'sum?', null, [ $pdfPart, $textPart ]);
+	    $this->check('OpenAI: a PDF as a file part (a data: URL), a text file as text', [ [ 'type' => 'file', 'file' => [ 'filename' => 'a.pdf', 'file_data' => 'data:application/pdf;base64,JVBE' ] ],
+		[ 'type' => 'text', 'text' => $fileText ], [ 'type' => 'text', 'text' => 'sum?' ] ], $state['messages'][0]['content']);
 	    $o = (new \ReflectionClass(\models\node\NodeAppOpenAI::class))->newInstanceWithoutConstructor();
 	    $m = new \ReflectionMethod($o, 'addToolResults');
 	    $m->setAccessible(true);
 	    $state = [ 'messages' => [] ];
-	    $m->invokeArgs($o, [ &$state, [ [ 't1', '{"id":1}', false, [ $img ] ] ] ]);
+	    $m->invokeArgs($o, [ &$state, [ [ 't1', '{"id":1}', false, [ $toolImg ] ] ] ]);
 	    $this->check('OpenAI: the tool result, then its image in a user message', [ [ 'tool', 'user' ], 'data:image/png;base64,QUJD' ],
 		[ array_column($state['messages'], 'role'), $state['messages'][1]['content'][1]['image_url']['url'] ?? null ]);
 
@@ -1031,6 +1104,9 @@ class CheckCommand extends \sys\BaseController {
 	    $state = $call(\models\node\NodeAppGemini::class, 'startConversation', null, 'sys', 'what is it?', null, [ $img ]);
 	    $this->check('Gemini: the prompt with its image, the system prompt apart', [ [ [ 'inlineData' => [ 'mimeType' => 'image/png', 'data' => 'QUJD' ] ], [ 'text' => 'what is it?' ] ], 'sys' ],
 		[ $state['contents'][0]['parts'], $state['system'] ]);
+	    $state = $call(\models\node\NodeAppGemini::class, 'startConversation', null, '', 'sum?', null, [ $pdfPart, $textPart ]);
+	    $this->check('Gemini: a PDF as inlineData, a text file as text', [ [ 'inlineData' => [ 'mimeType' => 'application/pdf', 'data' => 'JVBE' ] ], [ 'text' => $fileText ], [ 'text' => 'sum?' ] ],
+		$state['contents'][0]['parts']);
 	    $gem = new class extends \models\node\NodeAppGemini {
 		public $sent = [];
 		public $answers = [];
@@ -1069,7 +1145,7 @@ class CheckCommand extends \sys\BaseController {
 		'low', 100, false, true ], [ $url, $headers['x-goog-api-key'] ?? null, $body['tools'][0]['functionDeclarations'][0]['name'] ?? null, $body['generationConfig']['thinkingConfig']['thinkingLevel'] ?? null,
 		$body['generationConfig']['maxOutputTokens'] ?? null, isset($body['generationConfig']['responseMimeType']), str_contains($body['systemInstruction']['parts'][0]['text'] ?? '', 'JSON only') ]);
 	    $this->check('Gemini: the call (our id, its arguments), the usage with the thoughts, the model', [ [ [ 'call_0', 'list_tables', [] ] ], [ 5, 5 ], 'gemini-test-001' ], [ $a['calls'], $a['usage'], $a['model'] ]);
-	    $gem->results($state, [ [ 'call_0', '["t"]', false, [ $img ] ] ]);
+	    $gem->results($state, [ [ 'call_0', '["t"]', false, [ $toolImg ] ] ]);
 	    $a = $gem->turn($gcred, $state, [], (object)[ 'type' => 'object' ]);
 	    $body = $gem->sent[1][2];
 	    $this->check('Gemini: the model\'s turn sent back with its signature, the result by name, the image after it', [ [ 'user', 'model', 'user' ], 'SIG', [ 'name' => 'list_tables', 'response' => [ 'result' => '["t"] [1 image(s): after the results]' ] ],
@@ -1697,6 +1773,19 @@ class CheckCommand extends \sys\BaseController {
 	    }
 	    $this->check('Lemonade AI: the request (the model, the prompt, the temperature)', [ 'Qwen3-8B-GGUF', 'Hi Ana', 0.3 ],
 		[ $sent[0]['model'] ?? null, $sent[0]['messages'][0]['content'] ?? null, $sent[0]['temperature'] ?? null ]);
+	    //CLD: 2026-10-27T23:11:38+02:00: a run with a PDF in Files: Lemonade (PDFs as Auto) gets its text, before the prompt
+	    $pdf = \models\File::createFromString('check-run.pdf', self::miniPdf('BT /F1 12 Tf 72 700 Td (Invoice 42) Tj ET'),
+		[ 'metadata' => [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'owner' => null, 'source' => 'check' ] ]);
+	    try {
+		@unlink($log);
+		$exe = $flow('lemonade files', 'app::lemonade', [ 'model' => 'Qwen3-8B-GGUF', 'files' => (string)$pdf ], $lem);
+		$content = $requests('/api/v1/chat/completions')[0]['messages'][0]['content'] ?? null;
+		$this->check('Lemonade AI: a run with a PDF in Files: its text sent before the prompt', [ 'success', [ 'text', 'text' ], "<file name=\"check-run.pdf\">\n--- page 1 ---\nInvoice 42\n</file>", 'Hi Ana',
+		    true ], [ $exe?->getVariable('route'), array_column((array)$content, 'type'), $content[0]['text'] ?? null, $content[1]['text'] ?? null,
+		    (bool)self::logLine($exe, 'Lemonade AI: 1 file(s) with the prompt (1 PDF as text)') ]);
+	    } finally {
+		$om->findOne('File', [ '_id' => $pdf ])?->delete();
+	    }
 
 	    //Ollama: its own API
 	    @unlink($log);
@@ -1730,8 +1819,11 @@ class CheckCommand extends \sys\BaseController {
 		$m->setAccessible(true);
 		return $m->invokeArgs($obj, $args);
 	    };
-	    $state = $call(\models\node\NodeAppOllama::class, 'startConversation', null, '', 'what is it?', null, [ [ 'image/png', 'QUJD' ] ]);
-	    $this->check('Ollama: the prompt\'s images (base64, in the message)', [ 'what is it?', [ 'QUJD' ] ], [ $state['messages'][0]['content'] ?? null, $state['messages'][0]['images'] ?? null ]);
+	    //CLD: 2026-10-27T23:11:38+02:00: the files as parts (was [ mimeType, data ]); + a text file, before the prompt
+	    $state = $call(\models\node\NodeAppOllama::class, 'startConversation', null, '', 'what is it?', null, [ [ 'type' => 'image', 'mime' => 'image/png', 'data' => 'QUJD', 'name' => 'a.png' ],
+		[ 'type' => 'text', 'text' => 'a,b', 'name' => 'a.csv' ] ]);
+	    $this->check('Ollama: the prompt\'s images (base64, in the message), a text file before the prompt', [ "<file name=\"a.csv\">\na,b\n</file>\n\nwhat is it?", [ 'QUJD' ] ],
+		[ $state['messages'][0]['content'] ?? null, $state['messages'][0]['images'] ?? null ]);
 	} catch (\ErrorException $ex) {
 	    $this->fail('local AI: ' . $ex->getMessage());
 	} finally {

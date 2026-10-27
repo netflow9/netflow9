@@ -6,6 +6,7 @@
 //blocks included). JSON answers use structured outputs when a schema is given (output_config.format json_schema), else a system prompt instruction. A declined request
 //(stop_reason refusal) is an error; Fallback on refusal (default on) lets the API retry it on the model Anthropic recommends (fallbacks: "default",
 //beta server-side-fallback-2026-07-01; for the models that support it)
+//CLD: 2026-10-27T23:11:38+02:00: files: images as image blocks, PDFs as document blocks (PDFs as Auto: documents), text files as text blocks
 
 //CLD: 2026-10-17T13:24:18+03:00: moved from the BaseNodes plugin into the core (was plugins\BaseNodes\app)
 namespace models\node;
@@ -55,15 +56,30 @@ class NodeAppClaude extends NodeAppAi {
     }
 
     //CLD: 2026-10-17T21:00:54+03:00: + $images: image blocks before the prompt's text
-    protected function startConversation($cred, $system, $prompt, $schema, array $images = []) {
+    //CLD: 2026-10-27T23:11:38+02:00: $files (was $images): their blocks before the prompt's text (fileBlock)
+    protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	if ($schema === true)
 	    $system = trim($system . "\n\n" . self::jsonInstruction(true));
 	$content = $prompt;
-	if ($images) {
-	    $content = array_map([ self::class, 'imageBlock' ], $images);
+	if ($files) {
+	    $content = array_map([ self::class, 'fileBlock' ], $files);
 	    $content[] = [ 'type' => 'text', 'text' => $prompt ];
 	}
 	return [ 'system' => $system, 'messages' => [ [ 'role' => 'user', 'content' => $content ] ] ];
+    }
+
+    //CLD: 2026-10-27T23:11:38+02:00: new: Claude reads PDFs (document blocks)
+    protected function pdfAsDocuments($cred) {
+	return true;
+    }
+
+    //CLD: 2026-10-27T23:11:38+02:00: new: a file part as a content block: an image, a PDF (a document block, its name as the title), text
+    protected static function fileBlock(array $part) {
+	return match($part['type']) {
+	    'image' => self::imageBlock([ $part['mime'], $part['data'] ]),
+	    'pdf' => [ 'type' => 'document', 'source' => [ 'type' => 'base64', 'media_type' => 'application/pdf', 'data' => $part['data'] ], 'title' => mb_substr((string)$part['name'], 0, 500) ],
+	    default => [ 'type' => 'text', 'text' => self::fileAsText($part) ],
+	};
     }
 
     //CLD: 2026-10-17T21:00:54+03:00: an image as a content block

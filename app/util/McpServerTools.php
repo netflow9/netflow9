@@ -163,7 +163,9 @@ class McpServerTools {
 		    'limit' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 200, 'default' => 50 ],
 		] ], 'annotations' => $ro ],
 	    [ 'name' => 'read_file', 'title' => 'Read a file',
-		'description' => 'The content of a text file of the project (UTF-8, at most ' . (self::MAX_FILE / 1024) . ' KB).',
+		//CLD: 2026-10-27T23:11:38+02:00: + PDF and Office documents, as their text
+		'description' => 'The content of a text file of the project (UTF-8, at most ' . (self::MAX_FILE / 1024) . ' KB); of a PDF or an Office document (docx, xlsx, pptx, odt, ods, odp; at most '
+		    . (\models\node\NodeAppAi::MAX_PDF / 1048576) . ' MB) its text.',
 		'inputSchema' => [ 'type' => 'object', 'properties' => [
 		    'id' => [ 'type' => 'string', 'description' => 'The file id (list_files)' ],
 		], 'required' => [ 'id' ] ], 'annotations' => $ro ],
@@ -516,6 +518,9 @@ class McpServerTools {
 		$f = \util\Validator::rule('oid', $id) ? $om->findOne('File', [ '_id' => $id, 'metadata.project' => $project->_id ]) : null;
 		if (!$f || ($f->metadata['aid'] ?? $f->aid) != $aid || !$can('File::read', $f))
 		    throw new \ErrorException("no file `{$id}` in this project");
+		//CLD: 2026-10-27T23:11:38+02:00: a PDF or an Office document: its text (models\node\NodeAppAi::fileText: its own size limit)
+		if ($f->extension() === 'pdf' || \util\OfficeText::isSupported($f->extension()))
+		    return [ 'id' => (string)$f->_id, 'filename' => (string)$f->filename, 'content' => \models\node\NodeAppAi::fileText($f) ];
 		if ((int)$f->length > self::MAX_FILE)
 		    throw new \ErrorException("`{$f->filename}` is too large to read here (" . (int)$f->length . ' bytes, at most ' . self::MAX_FILE . ')');
 		$content = $f->getContents();
