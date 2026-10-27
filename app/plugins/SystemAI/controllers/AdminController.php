@@ -24,7 +24,7 @@ class AdminController extends \sys\BaseController {
 	$account = $this->account($req);
 	$credits = trim((string)($req->data['credits'] ?? ''));
 	if ($credits !== '' && (!ctype_digit($credits) || (int)$credits > 100000000))
-	    $this->back($account, 'danger', 'The allowance: a whole number of credits, or empty');
+	    $this->back($account, 'error', 'The allowance: a whole number of credits, or empty');
 	$plan = \V::app()->om->acrossAccounts(fn() => SystemAiWallet::setPlan($account->_id, $credits === '' ? null : (int)$credits));
 	\plugins\Admin\Plugin::audit('credits_plan', $account, "System AI monthly allowance: {$plan} credits" . ($credits === '' ? ' (the installation\'s)' : ''));
 	$this->back($account, 'success', "Monthly allowance: {$plan} credits");
@@ -34,7 +34,7 @@ class AdminController extends \sys\BaseController {
 	$account = $this->account($req);
 	$credits = trim((string)($req->data['credits'] ?? ''));
 	if (!ctype_digit($credits) || (int)$credits < 1 || (int)$credits > 100000000)
-	    $this->back($account, 'danger', 'The top-up: a whole number of credits, at least 1');
+	    $this->back($account, 'error', 'The top-up: a whole number of credits, at least 1');
 	$note = trim(mb_substr((string)($req->data['note'] ?? ''), 0, 200));
 	$t = \V::app()->om->acrossAccounts(fn() => SystemAiWallet::grant($account->_id, (int)$credits, $note));
 	\plugins\Admin\Plugin::audit('credits_topup', $account, "System AI top-up: +{$credits} credits until " . gmdate('Y-m-d', $t['expires']) . ($note !== '' ? " ({$note})" : ''));
@@ -52,8 +52,9 @@ class AdminController extends \sys\BaseController {
 	return $account;
     }
 
+    //CLD: 2026-10-27T21:47:05+02:00: a toast (addToast + $this->redirect), as in the other controllers; was the Admin plugin's session flash (admin_flash)
     private function back($account, $type, $message) {
-	$_SESSION['admin_flash'] = [ 'type' => $type, 'message' => $message ];
-	\V::app()->response->redirect('/Admin/admin/account?id=' . $account->_id);
+	$this->addToast($type, $type === 'success' ? 'Saved' : 'Not saved', $message);
+	$this->redirect('/Admin/admin/account', [ 'id' => (string)$account->_id ]);
     }
 }
