@@ -6,6 +6,7 @@
 //Gemini 3 requires them with function calls). Tools are function declarations (parametersJsonSchema); the results go back as functionResponse parts in one user turn, the images
 //of tool results after them as inlineData parts. JSON answers: structured output (responseMimeType, responseJsonSchema with a schema) when no tools are offered, else a system
 //prompt instruction. A blocked prompt (promptFeedback.blockReason) or answer (finishReason SAFETY, PROHIBITED_CONTENT, ...) is an error
+//CLD: 2026-10-27T23:11:38+02:00: files: images and PDFs as inlineData parts (PDFs as Auto: documents), text files as text parts
 
 namespace models\node;
 
@@ -54,10 +55,25 @@ class NodeAppGemini extends NodeAppAi {
     }
 
     //the system prompt apart (systemInstruction); the images before the prompt's text
-    protected function startConversation($cred, $system, $prompt, $schema, array $images = []) {
-	$parts = array_map([ self::class, 'imagePart' ], $images);
+    //CLD: 2026-10-27T23:11:38+02:00: $files (was $images): their parts before the prompt's text (filePart)
+    protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
+	$parts = array_map([ self::class, 'filePart' ], $files);
 	$parts[] = [ 'text' => $prompt ];
 	return [ 'system' => $system, 'contents' => [ [ 'role' => 'user', 'parts' => $parts ] ], 'calls' => [] ];
+    }
+
+    //CLD: 2026-10-27T23:11:38+02:00: new: Gemini reads PDFs (inlineData)
+    protected function pdfAsDocuments($cred) {
+	return true;
+    }
+
+    //CLD: 2026-10-27T23:11:38+02:00: new: a file part as a part: an image or a PDF as inlineData, text
+    protected static function filePart(array $part) {
+	return match($part['type']) {
+	    'image' => self::imagePart([ $part['mime'], $part['data'] ]),
+	    'pdf' => self::imagePart([ 'application/pdf', $part['data'] ]),
+	    default => [ 'text' => self::fileAsText($part) ],
+	};
     }
 
     //an image as an inlineData part

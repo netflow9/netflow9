@@ -17,6 +17,9 @@
 	//administrator enabled for the account (hook ai:mcp-servers, localServers()); one session each per run, closed after it
 	rounds, max tokens, timeout, the variable, on error (fail | the `error` output).
 	//CLD: 2026-10-17T21:00:54+03:00: + images: project image files sent with the prompt; images in tool results (read_image, MCP servers' image content) go to the model as images too
+	//CLD: 2026-10-27T23:11:38+02:00: images -> files (`files`; a saved step's `images` is still read, moved on save): images, PDF, text and Office files sent with the prompt
+	//(promptFiles: parts image / pdf / text, mapped by each provider's startConversation). PDFs as (`pdfs`): auto (documents where the provider reads them: pdfAsDocuments),
+	//documents (the PDF itself), text (its text and images: ddn\sapp\PDFContentExtractor); Office files as their text (util\OfficeText)
 	The agent loop: the model is called, the tools it asks for are run and their results sent back, until it answers (at most `maxRounds` calls).
 	    The provider classes build the requests: startConversation(), callModel(), addToolResults().
 	The variable (default `ai`): { text, json, model, stop_reason, rounds, tool_calls: [ { tool, arguments, error } ], usage: { input_tokens, output_tokens } }; on error { error }
@@ -54,9 +57,22 @@ abstract class NodeAppAi extends \models\WfNode {
     const MAX_RESPONSE = 10 * 1024 * 1024;
 
     const DEFAULT_TOOLS = [ 'list_tables', 'query_table', 'list_workflows', 'get_execution', 'list_files', 'read_file', 'read_image', 'list_variables' ];
-    const MAX_IMAGES = 20;
+    //CLD: 2026-10-27T23:11:38+02:00: MAX_FILES (was MAX_IMAGES): the files sent with the prompt
+    const MAX_FILES = 20;
     const MAX_IMAGE = 5242880;
     const IMAGE_TYPES = [ 'image/png', 'image/jpeg', 'image/gif', 'image/webp' ];
+    //CLD: 2026-10-27T23:11:38+02:00: the files' limits: a PDF (bytes), a text file read (bytes), the text of a file (characters: cut after), all the files of a request (bytes sent),
+    //the images taken from a PDF read as text
+    const MAX_PDF = 20971520;
+    const MAX_TEXT_FILE = 10485760;
+    const MAX_TEXT = 200000;
+    const MAX_SEND = 31457280;
+    const MAX_PDF_IMAGES = 10;
+    //CLD: 2026-10-27T23:11:38+02:00: the text files sent as text (by extension)
+    const TEXT_TYPES = [ 'txt', 'csv', 'tsv', 'md', 'json', 'xml', 'yaml', 'yml', 'html', 'htm', 'log' ];
+    //CLD: 2026-10-27T23:11:38+02:00: setting PDFs as; PDF_PARTS: the provider can be sent a PDF itself (false: as text only, `document` not offered)
+    const PDFS = [ 'auto' => 'Auto', 'document' => 'Documents', 'text' => 'Text and images' ];
+    const PDF_PARTS = true;
 
     public static function projectTools() {
 	return \util\MCPTools::all();
@@ -102,6 +118,79 @@ abstract class NodeAppAi extends \models\WfNode {
 	if ((int)$f->length > self::MAX_IMAGE)
 	    throw new \ErrorException("`{$f->filename}` is too large to send (" . (int)$f->length . ' bytes, at most ' . self::MAX_IMAGE . ')');
 	return [ $mime, base64_encode($f->getContents()) ];
+    }
+
+    //CLD: 2026-10-27T23:11:38+02:00: new: the text of file $f, at most $maxChars (cut, with a marker): a PDF (its pages' text: pdfRead), an Office document (util\OfficeText), a text
+    //file (TEXT_TYPES: UTF-8); null when it is none of them; \ErrorException when it cannot be read (also used by the read_file tool)
+    public static function fileText($f, $maxChars = self::MAX_TEXT) {
+	$ext = $f->extension();
+	if ($ext === 'pdf') {
+	    if ((int)$f->length > self::MAX_PDF)
+		throw new \ErrorException("`{$f->filename}` is too large (" . \util\Format::bytes($f->length) . ', at most ' . \util\Format::bytes(self::MAX_PDF) . ')');
+	    return self::pdfRead($f->getContents(), (string)$f->filename, $maxChars, 0)['text'];
+	}
+	if (\util\OfficeText::isSupported($ext)) {
+	    if ((int)$f->length > self::MAX_PDF)
+		throw new \ErrorException("`{$f->filename}` is too large (" . \util\Format::bytes($f->length) . ', at most ' . \util\Format::bytes(self::MAX_PDF) . ')');
+	    try {
+		return \util\OfficeText::textOf($f, [ 'max_chars' => $maxChars ]);
+	    } catch (\RuntimeException $e) {
+		throw new \ErrorException("`{$f->filename}`: " . $e->getMessage());
+	    }
+	}
+	if (!in_array($ext, self::TEXT_TYPES, true))
+	    return null;
+	if ((int)$f->length > self::MAX_TEXT_FILE)
+	    throw new \ErrorException("`{$f->filename}` is too large (" . \util\Format::bytes($f->length) . ', at most ' . \util\Format::bytes(self::MAX_TEXT_FILE) . ')');
+	$text = $f->getContents();
+	if (str_starts_with($text, "\xEF\xBB\xBF"))
+	    $text = substr($text, 3);
+	if (!mb_check_encoding($text, 'UTF-8') || preg_match('/[\x00-\x08\x0E-\x1F]/', $text))
+	    throw new \ErrorException("`{$f->filename}` is not a UTF-8 text file");
+	return mb_strlen($text) > $maxChars ? mb_substr($text, 0, $maxChars) . "\n[... cut at {$maxChars} characters]" : $text;
+    }
+
+    //CLD: 2026-10-27T23:11:38+02:00: new: PDF $bytes read: [ text (its pages', "--- page N ---" before each), images (at most $maxImages, those the models read: [ [ mimeType, data
+    //(base64) ] ]), pages ]; \ErrorException when it is not a PDF, is encrypted, or has neither text nor images (scanned: send it as a document)
+    public static function pdfRead($bytes, $name, $maxChars = self::MAX_TEXT, $maxImages = self::MAX_PDF_IMAGES) {
+	try {
+	    $doc = \ddn\sapp\PDFDoc::from_string($bytes);
+	} catch (\Throwable $e) {
+	    $doc = false;
+	}
+	if ($doc === false)
+	    throw new \ErrorException("`{$name}` is not a PDF that can be read");
+	if ($doc->is_encrypted())
+	    throw new \ErrorException("`{$name}` is encrypted: its text cannot be read (send it as a document: PDFs as Documents, with Claude or Gemini)");
+	$x = new \ddn\sapp\PDFContentExtractor($doc);
+	try {
+	    $r = $x->extract([ 'text' => true, 'images' => $maxImages > 0, 'max_chars' => $maxChars, 'max_images' => $maxImages, 'min_width' => 64, 'min_height' => 64 ]);
+	} catch (\Throwable $e) {
+	    $r = false;
+	}
+	if ($r === false)
+	    throw new \ErrorException("`{$name}`: its content cannot be read");
+	$pages = [];
+	foreach($r['pages'] as $n => $text)
+	    if ($text !== '')
+		$pages[] = "--- page {$n} ---\n{$text}";
+	$images = [];
+	foreach($r['images'] ?? [] as $im)
+	    if (in_array($im['mime'], self::IMAGE_TYPES, true) && strlen($im['data']) <= self::MAX_IMAGE)
+		$images[] = [ $im['mime'], base64_encode($im['data']) ];
+	if (!$pages && !$images)
+	    throw new \ErrorException("`{$name}` has no text to read (scanned?): send it as a document (PDFs as Documents, with Claude or Gemini)");
+	return [ 'text' => implode("\n\n", $pages), 'images' => $images, 'pages' => $doc->get_page_count() ];
+    }
+
+    //CLD: 2026-10-27T23:11:38+02:00: new: whether PDFs as Auto sends the PDF itself with credential $cred (override: the providers that read PDFs); false: its text and images
+    protected function pdfAsDocuments($cred) {
+	return false;
+    }
+
+    //CLD: 2026-10-27T23:11:38+02:00: new: a text file part as the text sent: <file name="...">...</file>
+    protected static function fileAsText(array $part) {
+	return '<file name="' . str_replace('"', "'", (string)$part['name']) . "\">\n" . $part['text'] . "\n</file>";
     }
 
     //the provider's own settings, placed after the model (override)
@@ -199,14 +288,26 @@ abstract class NodeAppAi extends \models\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    //CLD: 2026-10-17T21:00:54+03:00: image files sent with the prompt
+	    //CLD: 2026-10-27T23:11:38+02:00: Files (was Images, key images): images, PDF, text and Office files; 6 wide (was 9), PDFs as next to it
 	    [
-		'key' => 'images',
+		'key' => 'files',
 		'type' => 'text',
-		'label' => 'Images',
+		'label' => 'Files',
 		//CLD: 2026-10-24T12:42:45+03:00: next to the answer; shorter help (was: Optional: image files of the project the model looks at with the prompt (PNG, JPEG, GIF, WebP; at most ...), e.g. {{ file.id }},
 		//a list such as {{ mail.attachment_files }}, or file ids separated by commas)
-		'help' => 'Optional: image files for the prompt (PNG, JPEG, GIF, WebP; at most ' . self::MAX_IMAGES . '): {{ file.id }}, a list, or file ids separated by commas',
-		'ui' => [ 'expression' => true, 'width' => 9 ],
+		'help' => 'Optional: images, PDF, text or Office files (at most ' . self::MAX_FILES . '): {{ file.id }}, a list, or file ids',
+		'ui' => [ 'expression' => true, 'width' => 6 ],
+	    ],
+	    //CLD: 2026-10-27T23:11:38+02:00: new: how the PDFs are sent (no Documents for a provider that cannot be sent a PDF: PDF_PARTS)
+	    [
+		'key' => 'pdfs',
+		'type' => 'select',
+		'label' => 'PDFs as',
+		'required' => true,
+		'default' => 'auto',
+		'choices' => static::PDF_PARTS ? self::PDFS : array_diff_key(self::PDFS, [ 'document' => 1 ]),
+		'help' => static::PDF_PARTS ? 'Auto: documents if the model reads them' : 'Their text and images',
+		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
 		'key' => 'variable',
@@ -354,6 +455,14 @@ abstract class NodeAppAi extends \models\WfNode {
 
     //the credential and the MCP servers: of the workflow's project; the tools: known; the schema: a JSON object
     public function validates($options = []) {
+	//CLD: 2026-10-27T23:11:38+02:00: a step saved with Images (key images): its value moves to Files
+	$config = is_array($this->config) ? $this->config : [];
+	if (array_key_exists('images', $config)) {
+	    if (trim(\util\Expression::toText($config['files'] ?? '')) === '')
+		$config['files'] = $config['images'];
+	    unset($config['images']);
+	    $this->config = $config;
+	}
 	$valid = parent::validates($options);
 	$cred = (string)$this->cfg('credential', '');
 	//CLD: 2026-10-14T14:18:23+03:00: an empty one is reported by the field's `required` (was reported here too)
@@ -404,7 +513,9 @@ abstract class NodeAppAi extends \models\WfNode {
 
     //a new conversation: the provider's state (messages, ...)
     //CLD: 2026-10-17T21:00:54+03:00: + $images: sent with the prompt, [ [ mimeType, data (base64) ] ]
-    abstract protected function startConversation($cred, $system, $prompt, $schema, array $images = []);
+    //CLD: 2026-10-27T23:11:38+02:00: $files (was $images): the parts sent before the prompt (promptFiles): [ type: image, mime, data (base64), name ], [ type: pdf, data (base64), name ],
+    //[ type: text, text, name ] (fileAsText)
+    abstract protected function startConversation($cred, $system, $prompt, $schema, array $files = []);
 
     //one call: [ text, calls: [ [ id, name, arguments (array) ] ], stop_reason, model, usage: [ input, output ], continue: bool (call again without tool results) ];
     //the model's turn is added to $state; \ErrorException when it fails
@@ -464,12 +575,13 @@ abstract class NodeAppAi extends \models\WfNode {
 	$json = $this->cfg('output', 'text') === 'json';
 	$schema = $json && trim((string)$this->cfg('jsonSchema', '')) !== '' ? json_decode((string)$this->cfg('jsonSchema')) : null;
 	//CLD: 2026-10-17T21:00:54+03:00: the images sent with the prompt
-	$images = $this->promptImages($project);
+	//CLD: 2026-10-27T23:11:38+02:00: the files (promptFiles; was promptImages)
+	$files = $this->promptFiles($project, $cred);
 
 	//CLD: 2026-10-22T22:00:00+03:00: collectTools() (was here)
 	$tools = $this->collectTools($clients, $project);
 
-	$state = $this->startConversation($cred, $systemPrompt, $prompt, $json ? ($schema ?: true) : null, $images);
+	$state = $this->startConversation($cred, $systemPrompt, $prompt, $json ? ($schema ?: true) : null, $files);
 	//CLD: 2026-10-23T10:00:00+03:00: System AI: the credits reserved for the run (refused: not priced, none left); charged what it used when it ends, also on failure
 	$session = $system ? ($system['start'])(trim((string)$this->cfg('model', '')), [ 'wfid' => (string)($this->exec->wf ?? ''), 'exid' => (string)($this->exec->_id ?? '') ]) : null;
 	try {
@@ -638,8 +750,13 @@ abstract class NodeAppAi extends \models\WfNode {
 
     //CLD: 2026-10-17T21:00:54+03:00: the image files of setting Images (file ids: one, a list, objects with `id` / `file` - e.g. an attachment -, or text with ids) of project $project:
     //[ [ mimeType, data (base64) ] ]; \ErrorException for a file that is not there or not an image
-    protected function promptImages($project) {
-	$value = $this->expr('images', '');
+    //CLD: 2026-10-27T23:11:38+02:00: promptFiles (was promptImages): the files of setting Files (else of a saved step's Images), as the parts startConversation sends: images
+    //(fileImage), PDFs (the PDF itself, or its text and images: setting PDFs as, pdfAsDocuments($cred)), Office and text files (fileText); \ErrorException for a file that is not
+    //there, not of these types, too large, or more than MAX_SEND bytes in all
+    protected function promptFiles($project, $cred) {
+	$value = $this->expr('files', '');
+	if ($value === '' || $value === null || $value === [])
+	    $value = $this->expr('images', '');
 	$ids = [];
 	$collect = function($v) use (&$collect, &$ids) {
 	    if (is_object($v))
@@ -660,18 +777,57 @@ abstract class NodeAppAi extends \models\WfNode {
 		    $ids[strtolower($id)] = true;
 	};
 	$collect($value);
-	if (count($ids) > self::MAX_IMAGES)
-	    throw new \ErrorException('Images: ' . count($ids) . ' files, at most ' . self::MAX_IMAGES);
-	$images = [];
+	if (count($ids) > self::MAX_FILES)
+	    throw new \ErrorException('Files: ' . count($ids) . ' files, at most ' . self::MAX_FILES);
+	$mode = (string)$this->cfg('pdfs', 'auto');
+	if ($mode === 'auto')
+	    $mode = $this->pdfAsDocuments($cred) ? 'document' : 'text';
+	$parts = [];
+	$kinds = [];
+	$size = 0;
 	foreach(array_keys($ids) as $id) {
 	    $f = \V::app()->om->findOne('File', [ '_id' => $id, 'metadata.aid' => $project->aid, 'metadata.project' => $project->_id ]);
 	    if (!$f)
-		throw new \ErrorException("Images: no file `{$id}` in this project");
-	    $images[] = self::fileImage($f); //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::fileImage)
+		throw new \ErrorException("Files: no file `{$id}` in this project");
+	    $name = (string)$f->filename;
+	    $before = count($parts);
+	    if ($f->imageMimeType() !== null) {
+		[ $mime, $data ] = self::fileImage($f); //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::fileImage)
+		$parts[] = [ 'type' => 'image', 'mime' => $mime, 'data' => $data, 'name' => $name ];
+		$kinds[] = 'image';
+	    } elseif ($f->extension() === 'pdf' && $mode === 'document') {
+		if (!static::PDF_PARTS)
+		    throw new \ErrorException("Files: `{$name}`: " . static::PROVIDER . ' reads PDFs as text only (PDFs as: Text and images)');
+		if ((int)$f->length > self::MAX_PDF)
+		    throw new \ErrorException("Files: `{$name}` is too large (" . \util\Format::bytes($f->length) . ', at most ' . \util\Format::bytes(self::MAX_PDF) . ')');
+		$parts[] = [ 'type' => 'pdf', 'data' => base64_encode($f->getContents()), 'name' => $name ];
+		$kinds[] = 'PDF';
+	    } elseif ($f->extension() === 'pdf') {
+		if ((int)$f->length > self::MAX_PDF)
+		    throw new \ErrorException("Files: `{$name}` is too large (" . \util\Format::bytes($f->length) . ', at most ' . \util\Format::bytes(self::MAX_PDF) . ')');
+		$pdf = self::pdfRead($f->getContents(), $name);
+		if ($pdf['text'] !== '')
+		    $parts[] = [ 'type' => 'text', 'text' => $pdf['text'], 'name' => $name ];
+		foreach($pdf['images'] as $i => [ $mime, $data ])
+		    $parts[] = [ 'type' => 'image', 'mime' => $mime, 'data' => $data, 'name' => "{$name}, image " . ($i + 1) ];
+		$kinds[] = 'PDF as text' . ($pdf['images'] ? ' + ' . count($pdf['images']) . ' image(s)' : '');
+	    } else {
+		$text = self::fileText($f);
+		if ($text === null)
+		    throw new \ErrorException("Files: `{$name}` is not a file the model can read (images, PDF, text or Office documents)");
+		$parts[] = [ 'type' => 'text', 'text' => $text, 'name' => $name ];
+		$kinds[] = 'text';
+	    }
+	    foreach(array_slice($parts, $before) as $p)
+		$size += strlen($p['data'] ?? $p['text']);
+	    if ($size > self::MAX_SEND)
+		throw new \ErrorException('Files: more than ' . \util\Format::bytes(self::MAX_SEND) . ' to send');
 	}
-	if ($images)
-	    $this->exec->log($this->wfid, static::$label . ': ' . count($images) . ' image(s) with the prompt');
-	return $images;
+	if ($parts) {
+	    $counts = array_count_values($kinds);
+	    $this->exec->log($this->wfid, static::$label . ': ' . count($kinds) . ' file(s) with the prompt (' . implode(', ', array_map(fn($k, $n) => "{$n} {$k}", array_keys($counts), $counts)) . ')');
+	}
+	return $parts;
     }
 
     protected function closeClient($client) {

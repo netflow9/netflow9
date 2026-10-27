@@ -10,6 +10,7 @@ OpenAI - an AI step (NodeAppAi: prompt, tools, agent loop) on the OpenAI API or 
     Reasoning written by local models between <think> tags is left out of the answer
     //CLD: 2026-10-17T21:00:54+03:00: images (prompt, tool results) as image_url parts with data: URLs (the model must read images, e.g. a vision model); `tool` messages are text only, so
     the images of tool results follow them in a user message
+    //CLD: 2026-10-27T23:11:38+02:00: files: images as image_url parts, PDFs as file parts (PDFs as Auto: documents on api.openai.com only), text files as text parts
 */
 
 namespace models\node;
@@ -42,19 +43,34 @@ class NodeAppOpenAI extends NodeAppAi {
     //CLD: 2026-10-22T01:58:24+03:00: configSchema() removed: the Model field (a select of the credential's recorded models) is NodeAppAi's
 
     //CLD: 2026-10-17T21:00:54+03:00: + $images: image parts before the prompt's text
-    protected function startConversation($cred, $system, $prompt, $schema, array $images = []) {
+    //CLD: 2026-10-27T23:11:38+02:00: $files (was $images): their parts before the prompt's text (filePart)
+    protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	if ($schema !== null)
 	    $system = trim($system . "\n\n" . self::jsonInstruction($schema));
 	$messages = [];
 	if ($system !== '')
 	    $messages[] = [ 'role' => 'system', 'content' => $system ];
 	$content = $prompt;
-	if ($images) {
-	    $content = array_map([ self::class, 'imagePart' ], $images);
+	if ($files) {
+	    $content = array_map([ self::class, 'filePart' ], $files);
 	    $content[] = [ 'type' => 'text', 'text' => $prompt ];
 	}
 	$messages[] = [ 'role' => 'user', 'content' => $content ];
 	return [ 'messages' => $messages ];
+    }
+
+    //CLD: 2026-10-27T23:11:38+02:00: new: PDFs as Auto: the PDF itself on OpenAI's API (api.openai.com); a compatible server (Lemonade, vLLM, ...) gets their text and images
+    protected function pdfAsDocuments($cred) {
+	return strtolower((string)parse_url((string)($cred->baseUrl ?? ''), PHP_URL_HOST)) === 'api.openai.com';
+    }
+
+    //CLD: 2026-10-27T23:11:38+02:00: new: a file part as a content part: an image (image_url), a PDF (file: its name and a data: URL), text
+    protected static function filePart(array $part) {
+	return match($part['type']) {
+	    'image' => self::imagePart([ $part['mime'], $part['data'] ]),
+	    'pdf' => [ 'type' => 'file', 'file' => [ 'filename' => (string)$part['name'], 'file_data' => 'data:application/pdf;base64,' . $part['data'] ] ],
+	    default => [ 'type' => 'text', 'text' => self::fileAsText($part) ],
+	};
     }
 
     //CLD: 2026-10-17T21:00:54+03:00: an image as a content part (data: URL)
