@@ -6,6 +6,7 @@
     them, e.g. qwen3:8b).
 	- tools: offered as functions; the model's tool_calls (arguments as an object) are answered by `tool` messages named after the tool (tool_name)
 	- images: base64 in the message's `images` (a vision model reads them); the images of tool results in a user message after them
+	  //CLD: 2026-10-27T23:11:38+02:00: files: images in `images`, text files (PDFs as their text and images, Office files) before the prompt
 	- JSON answers: Ollama's structured outputs (format: the schema, or "json"), with the system prompt instruction too
 	- settings of the step: temperature, context length (options.num_ctx), thinking (think: the server's default, on, off; the reasoning is not part of the answer), how long
 	  the model stays loaded (keep_alive); Max tokens is options.num_predict
@@ -22,6 +23,8 @@ class NodeAppOllama extends NodeAppAi {
     const PROVIDER = 'Ollama';
 
     const THINK = [ '' => 'The model\'s default', 'on' => 'On', 'off' => 'Off' ];
+    //CLD: 2026-10-27T23:11:38+02:00: Ollama's API takes no PDFs: their text and images (PDFs as: no Documents)
+    const PDF_PARTS = false;
     //the largest context length asked for (tokens)
     const MAX_CONTEXT = 1048576;
 
@@ -73,15 +76,21 @@ class NodeAppOllama extends NodeAppAi {
 
     //CLD: 2026-10-22T01:58:24+03:00: configSchema() removed: the Model field (a select of the credential's recorded models) is NodeAppAi's
 
-    protected function startConversation($cred, $system, $prompt, $schema, array $images = []) {
+    //CLD: 2026-10-27T23:11:38+02:00: $files (was $images): the images in `images`, the text files before the prompt (no PDF parts: PDF_PARTS)
+    protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	if ($schema !== null)
 	    $system = trim($system . "\n\n" . self::jsonInstruction($schema));
 	$messages = [];
 	if ($system !== '')
 	    $messages[] = [ 'role' => 'system', 'content' => $system ];
-	$user = [ 'role' => 'user', 'content' => $prompt ];
+	$texts = [];
+	foreach($files as $f)
+	    if ($f['type'] === 'text')
+		$texts[] = self::fileAsText($f);
+	$user = [ 'role' => 'user', 'content' => $texts ? implode("\n\n", $texts) . "\n\n" . $prompt : $prompt ];
+	$images = array_values(array_filter($files, fn($f) => $f['type'] === 'image'));
 	if ($images)
-	    $user['images'] = array_map(fn($i) => $i[1], $images);
+	    $user['images'] = array_map(fn($i) => $i['data'], $images);
 	$messages[] = $user;
 	//the names of the tools asked for, by call id (Ollama's tool messages name the tool)
 	return [ 'messages' => $messages, 'names' => [] ];
