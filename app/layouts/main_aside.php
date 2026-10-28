@@ -227,9 +227,9 @@ $dd_items = implode('', $dd_items);
 		</div>
 	    </div>
 	    <nav class="nav flex-column">
-		<a href="https://www.netflow9.io" class="nav-link px-2" target="_blank">
-		    <i class="bi bi-question-circle"></i> Help &amp; FAQ
-		    <i class="bi bi-box-arrow-up-right float-end"></i>
+		<?php //CLD: 2026-10-28T23:55:00+02:00: the documentation inside the app (DocsController; was https://www.netflow9.io, in a new tab) ?>
+		<a href="<?= \V::app()->createUrl('/docs/index') ?>" class="nav-link px-2">
+		    <i class="bi bi-book"></i> Documentation
 		</a>
 	    </nav>
 	</div>
