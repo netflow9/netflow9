@@ -20,7 +20,8 @@ PHPV="85"
 PHP_ETC="/etc/opt/remi/php$PHPV"
 PHP_FPM="php$PHPV-php-fpm"
 #the PHP packages (Remi): the app's extensions (opcache is built in)
-PHP_PACKAGES="php$PHPV php$PHPV-runtime php$PHPV-syspaths php$PHPV-php-cli php$PHPV-php-common php$PHPV-php-fpm php$PHPV-php-gd php$PHPV-php-gmp php$PHPV-php-mbstring
+#CLD: 2026-10-29T05:00:00+02:00: without php$PHPV-syspaths (/usr/bin/php): installed on its own, it may replace the distribution's PHP (asked)
+PHP_PACKAGES="php$PHPV php$PHPV-runtime php$PHPV-php-cli php$PHPV-php-common php$PHPV-php-fpm php$PHPV-php-gd php$PHPV-php-gmp php$PHPV-php-mbstring
     php$PHPV-php-mysqlnd php$PHPV-php-pdo php$PHPV-php-process php$PHPV-php-sodium php$PHPV-php-tidy php$PHPV-php-xml php$PHPV-php-pecl-event php$PHPV-php-pecl-igbinary
     php$PHPV-php-pecl-imap php$PHPV-php-pecl-mailparse php$PHPV-php-pecl-mongodb2 php$PHPV-php-pecl-msgpack php$PHPV-php-pecl-redis6 php$PHPV-php-pecl-zip"
 MONGODB_VERSION="8.3"
@@ -172,6 +173,13 @@ if ! command -v dnf >/dev/null 2>&1 || [ "${VERSION_ID%%.*}" != "9" ] || ! [[ " 
 fi
 echo "NetFlow9 installer (${PRETTY_NAME})"
 
+#CLD: 2026-10-29T05:15:00+02:00: an installed MongoDB server is kept (MongoDB's packages, Percona Server for MongoDB, ...: the package of /usr/bin/mongod); mongosh to match it
+MONGOD_PKG=""
+if [ -x /usr/bin/mongod ]; then
+    MONGOD_PKG=$(rpm -qf --qf '%{NAME}' /usr/bin/mongod 2>/dev/null || true)
+    [[ $MONGOD_PKG == *" "* ]] && MONGOD_PKG="mongod"
+fi
+
 #an app next to this script (the installer of an installed app): its user and address are the defaults
 SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 DOMAIN_DEFAULT=$(hostname -f 2>/dev/null || hostname)
@@ -221,7 +229,11 @@ OPT_LOCAL_MONGO=1
 if [ "$SET_UP" -eq 1 ]; then
     case $(env_value MONGO_URI) in *127.0.0.1*|*localhost*) ;; *) OPT_LOCAL_MONGO=0 ;; esac
 else
-    ask_yes OPT_LOCAL_MONGO "MongoDB on this server (installed when missing; else you give the connection string of yours)" y
+    if [ -n "$MONGOD_PKG" ]; then
+        ask_yes OPT_LOCAL_MONGO "MongoDB on this server (installed: $MONGOD_PKG; else you give the connection string of yours)" y
+    else
+        ask_yes OPT_LOCAL_MONGO "MongoDB on this server (MongoDB $MONGODB_VERSION is installed; else you give the connection string of yours)" y
+    fi
 fi
 
 OPT_LE=0
@@ -257,6 +269,23 @@ if [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
     fi
 fi
 
+#CLD: 2026-10-29T05:00:00+02:00: the distribution's PHP (php-common, ...) conflicts with php$PHPV-syspaths (both are /usr/bin/php, which the app's console and daemon run): replaced
+#only when allowed (dnf --allowerasing removes those packages and what needs them)
+OPT_REPLACE_PHP=0
+DISTRO_PHP=""
+if ! rpm -q --quiet "php$PHPV-syspaths"; then
+    DISTRO_PHP=$(rpm -qa 'php-*' --qf '%{NAME} ' 2>/dev/null | xargs -n1 2>/dev/null | sort -u | tr '\n' ' ' || true)
+    DISTRO_PHP="${DISTRO_PHP% }"
+    if [ -n "$DISTRO_PHP" ]; then
+        echo "  The distribution's PHP is installed: $DISTRO_PHP"
+        ask_yes OPT_REPLACE_PHP "Replace it with PHP ${PHPV:0:1}.${PHPV:1} as /usr/bin/php (those packages, and what needs them, are removed)" n
+        if [ "$OPT_REPLACE_PHP" -eq 0 ]; then
+            echo "Nothing was changed: NetFlow9 needs PHP ${PHPV:0:1}.${PHPV:1} as /usr/bin/php (php$PHPV-syspaths). Remove the distribution's PHP, or allow it here."
+            exit 1
+        fi
+    fi
+fi
+
 OPT_SELINUX=0
 if [ "$(getenforce 2>/dev/null || echo Disabled)" = "Enforcing" ]; then
     ask_yes OPT_SELINUX "SELinux is enforcing: nginx and PHP-FPM cannot serve the app from $BASE. Set it to permissive" y
@@ -264,7 +293,8 @@ fi
 
 echo
 echo "It will:"
-echo "  - install what is missing: PHP $PHPV (Remi), nginx, $([ "$OPT_LOCAL_MONGO" -eq 1 ] && echo "MongoDB $MONGODB_VERSION, ")Redis$([ "$OPT_LE" -eq 1 ] && echo ", certbot")$([ "$OPT_BROWSER" -eq 1 ] || [ "$OPT_MAIL" -eq 1 ] && echo ", Node.js")"
+echo "  - install what is missing: PHP $PHPV (Remi), nginx, $([ "$OPT_LOCAL_MONGO" -eq 1 ] && [ -z "$MONGOD_PKG" ] && echo "MongoDB $MONGODB_VERSION, ")Redis$([ "$OPT_LE" -eq 1 ] && echo ", certbot")$([ "$OPT_BROWSER" -eq 1 ] || [ "$OPT_MAIL" -eq 1 ] && echo ", Node.js")"
+[ "$OPT_REPLACE_PHP" -eq 1 ] && echo "  - remove the distribution's PHP ($DISTRO_PHP): /usr/bin/php becomes PHP ${PHPV:0:1}.${PHPV:1}"
 [ "$OPT_SELINUX" -eq 1 ] && echo "  - set SELinux to permissive"
 id "$APP_USER" >/dev/null 2>&1 || echo "  - create the user $APP_USER (home $BASE)"
 [ "$CLONE" -eq 1 ] && echo "  - clone $REPO ($BRANCH) into $BASE"
@@ -293,10 +323,20 @@ fi
 dnf config-manager --set-enabled remi >/dev/null
 # shellcheck disable=SC2086
 install_packages $PHP_PACKAGES nginx redis
-if [ "$OPT_LOCAL_MONGO" -eq 1 ] || [ "$OPT_MONGO" -eq 1 ]; then
-    repo="/etc/yum.repos.d/mongodb-org-$MONGODB_VERSION.repo"
-    if [ ! -f "$repo" ]; then
-        cat > "$repo" <<EOF
+#/usr/bin/php: PHP $PHPV's (in place of the distribution's, when allowed above)
+if ! rpm -q --quiet "php$PHPV-syspaths"; then
+    if [ "$OPT_REPLACE_PHP" -eq 1 ]; then
+        echo "+ dnf install --allowerasing php$PHPV-syspaths (removes: $DISTRO_PHP)"
+        dnf -y install --allowerasing "php$PHPV-syspaths"
+    else
+        install_packages "php$PHPV-syspaths"
+    fi
+fi
+#CLD: 2026-10-29T05:15:00+02:00: MongoDB's own server only when none is installed (Percona Server for MongoDB conflicts with mongodb-org: kept, with Percona's mongosh)
+mongodb_repo() {
+    local repo="/etc/yum.repos.d/mongodb-org-$MONGODB_VERSION.repo"
+    [ -f "$repo" ] && return 0
+    cat > "$repo" <<EOF
 [mongodb-org-$MONGODB_VERSION]
 name=MongoDB Repository
 baseurl=https://repo.mongodb.org/yum/redhat/9/mongodb-org/$MONGODB_VERSION/x86_64/
@@ -304,13 +344,23 @@ gpgcheck=1
 enabled=1
 gpgkey=https://pgp.mongodb.com/server-8.0.asc
 EOF
-        echo "+ $repo"
-    fi
+    echo "+ $repo"
+}
+if [ "$OPT_LOCAL_MONGO" -eq 1 ] && [ -z "$MONGOD_PKG" ]; then
+    mongodb_repo
     install_packages mongodb-org
-    systemctl enable --now mongod
-else
-    #mongosh only: the app's checks and MongoDB's users
-    [ -f "/etc/yum.repos.d/mongodb-org-$MONGODB_VERSION.repo" ] && install_packages mongodb-mongosh
+elif [ -n "$MONGOD_PKG" ]; then
+    echo "MongoDB: $MONGOD_PKG is installed: kept"
+fi
+[ "$OPT_LOCAL_MONGO" -eq 0 ] || systemctl enable --now mongod
+#mongosh (the app's checks, MongoDB's users): Percona's with Percona's server, else MongoDB's
+if ! command -v mongosh >/dev/null 2>&1; then
+    if [[ $MONGOD_PKG == percona-* ]]; then
+        install_packages percona-mongodb-mongosh
+    else
+        mongodb_repo
+        install_packages mongodb-mongosh
+    fi
 fi
 [ "$OPT_LE" -eq 0 ] || install_packages certbot
 if [ "$OPT_BROWSER" -eq 1 ] || [ "$OPT_MAIL" -eq 1 ]; then
@@ -431,8 +481,13 @@ if [ "$SET_UP" -eq 0 ]; then
     #asked until the app's own checks accept the answers (Enter keeps the answer given before)
     while true; do
         echo
-        if [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
+        #CLD: 2026-10-29T05:15:00+02:00: MongoDB here that requires sign-in already (e.g. Percona's, set up before): its connection string with a user (was: always without one)
+        if [ "$OPT_LOCAL_MONGO" -eq 1 ] && mongo_auth_off; then
             echo "The database: MongoDB on this server, $MONGO_URI"
+        elif [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
+            echo "MongoDB on this server requires sign-in: a user that may create the app's database (readWrite on it, or more)"
+            [ "$MONGO_URI" != "$LOCAL_MONGO/" ] || MONGO_URI="mongodb://<user>:<password>@127.0.0.1:27017/?authSource=admin"
+            ask MONGO_URI "MongoDB connection string" "$MONGO_URI"
         else
             ask MONGO_URI "MongoDB connection string" "mongodb://"
         fi
