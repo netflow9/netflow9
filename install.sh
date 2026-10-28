@@ -5,22 +5,32 @@
 #  the nginx site (0_nginx-install.sh; a self-signed certificate when there is none), the app's setup (app/v setup::install as the app's user: the account, its owner,
 #  app.env), Playwright (1_), Haraka (2_), MongoDB's users (3_) and authorization (/etc/mongod.conf, mongod restarted), the background services (4_)
 #Run again: an app already set up keeps its settings and account (only the options are asked); what is already done is left as it is
-#CLD: 2026-10-29T03:30:00+02:00: in the app's folder (was scripts/install.sh): the parts are in scripts/
-#   cd <app> && sudo ./install.sh
+#CLD: 2026-10-29T04:00:00+02:00: it sets up the server too (was qsm_scripts: nfn_install_alma9.sh, nfn_create_vhost.v1.sh, nfn_install_node.sh), from anywhere (was: from the
+#app's folder): on AlmaLinux / RHEL 9 it installs the packages that are missing (EPEL; Remi's PHP 8.5 with the app's extensions; nginx; MongoDB 8.3; Redis; certbot; Node.js:
+#the newest stream of the distribution), creates the app's user and its home, clones the app (the repository, with its submodules) there, writes the PHP-FPM pool, php.ini
+#and logrotate (scripts/system/), the certificate (Let's Encrypt, else self-signed), then the steps above. The firewall is not touched; SELinux enforcing: set to permissive
+#when allowed (nginx and PHP-FPM serve the home folder)
+#   sudo bash install.sh        (e.g. curl -fsSLO https://raw.githubusercontent.com/netflow9/netflow9/main/install.sh)
 
 set -euo pipefail
 
-BASE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-SCRIPTS="$BASE/scripts"
-ENV_FILE="$BASE/app.env"
+REPO_DEFAULT="https://github.com/netflow9/netflow9.git"
+BRANCH_DEFAULT="main"
+PHPV="85"
+PHP_ETC="/etc/opt/remi/php$PHPV"
+PHP_FPM="php$PHPV-php-fpm"
+#the PHP packages (Remi): the app's extensions (opcache is built in)
+PHP_PACKAGES="php$PHPV php$PHPV-runtime php$PHPV-syspaths php$PHPV-php-cli php$PHPV-php-common php$PHPV-php-fpm php$PHPV-php-gd php$PHPV-php-gmp php$PHPV-php-mbstring
+    php$PHPV-php-mysqlnd php$PHPV-php-pdo php$PHPV-php-process php$PHPV-php-sodium php$PHPV-php-tidy php$PHPV-php-xml php$PHPV-php-pecl-event php$PHPV-php-pecl-igbinary
+    php$PHPV-php-pecl-imap php$PHPV-php-pecl-mailparse php$PHPV-php-pecl-mongodb2 php$PHPV-php-pecl-msgpack php$PHPV-php-pecl-redis6 php$PHPV-php-pecl-zip"
+MONGODB_VERSION="8.3"
 MONGOD_CONF=/etc/mongod.conf
 LOCAL_MONGO="mongodb://127.0.0.1:27017"
 SYSTEM_PATH="/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+export PATH="$SYSTEM_PATH"
 
-[ "$(id -u)" -eq 0 ] || { echo "run it as root: sudo $0"; exit 1; }
+[ "$(id -u)" -eq 0 ] || { echo "run it as root: sudo bash $0"; exit 1; }
 [ -t 0 ] || { echo "it asks questions: run it in a terminal"; exit 1; }
-APP_USER=$(stat -c %U "$BASE/app")
-[ "$APP_USER" != "root" ] || { echo "$BASE/app is owned by root: the app's files must be its user's (chown -R <user>: $BASE)"; exit 1; }
 trap 'echo; echo "stopped"; exit 130' INT
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -80,9 +90,14 @@ set_env() {
     printf '%s' "$out" > "$ENV_FILE"
 }
 
-#the app's console (app/v) as the app's user, with the system's PHP; stdin passes through
+#a command as the app's user, in its home, with the system's PATH; stdin passes through
+as_user() {
+    (cd "$BASE" && runuser -u "$APP_USER" -- env -i PATH="$SYSTEM_PATH" HOME="$BASE" "$@")
+}
+
+#the app's console (app/v) as the app's user
 as_app() {
-    (cd "$BASE/app" && runuser -u "$APP_USER" -- env -i PATH="$SYSTEM_PATH" HOME="$(getent passwd "$APP_USER" | cut -d: -f6)" "$BASE/app/v" "$@")
+    as_user "$BASE/app/v" "$@"
 }
 
 #the answers of the setup as JSON (setup::validate / setup::install read it on stdin); the secrets only in this process' environment
@@ -116,50 +131,309 @@ chromium_installed() {
     ls -d /opt/playwright/browsers/chromium-[0-9]*/chrome-linux64/chrome >/dev/null 2>&1
 }
 
+#the packages of $@ that are not installed
+missing_packages() {
+    local p
+    for p in "$@"; do
+        rpm -q --quiet "$p" || echo "$p"
+    done
+}
+
+#installs the packages of $@ that are missing
+install_packages() {
+    local missing
+    missing=$(missing_packages "$@" | tr '\n' ' ')
+    if [ -n "${missing// /}" ]; then
+        echo "+ dnf install $missing"
+        # shellcheck disable=SC2086
+        dnf -y install $missing
+    fi
+}
+
+#the domain's addresses include one of this server's
+domain_points_here() {
+    local a
+    for a in $(getent ahosts "$1" 2>/dev/null | awk '{ print $1 }' | sort -u); do
+        hostname -I 2>/dev/null | tr ' ' '\n' | grep -qxF "$a" && return 0
+    done
+    return 1
+}
+
 step() {
     echo
     echo "=== $*"
 }
 
 # ---------------------------------------------------------------------------------------------------------------
-echo "NetFlow9 installer: the app in $BASE, its user $APP_USER"
+. /etc/os-release
+if ! command -v dnf >/dev/null 2>&1 || [ "${VERSION_ID%%.*}" != "9" ] || ! [[ " ${ID:-} ${ID_LIKE:-} " == *" rhel "* || " ${ID:-} ${ID_LIKE:-} " == *" centos "* ]]; then
+    echo "This installer is for AlmaLinux / Rocky / RHEL 9 (this is ${PRETTY_NAME:-unknown})."
+    exit 1
+fi
+echo "NetFlow9 installer (${PRETTY_NAME})"
 
-#the folders the app writes to
-for d in logs tmp run var; do
-    [ -d "$BASE/$d" ] || install -d -o "$APP_USER" -g "$APP_USER" -m 750 "$BASE/$d"
+#an app next to this script (the installer of an installed app): its user and address are the defaults
+SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+DOMAIN_DEFAULT=$(hostname -f 2>/dev/null || hostname)
+USER_DEFAULT=""
+if [ -d "$SELF_DIR/app" ] && [ -f "$SELF_DIR/app/v.php" ]; then
+    USER_DEFAULT=$(stat -c %U "$SELF_DIR")
+    if [ -f "$SELF_DIR/app.env" ]; then
+        ENV_FILE="$SELF_DIR/app.env"
+        DOMAIN_DEFAULT=$(url_host "$(env_value BASE_URL)")
+    fi
+fi
+
+echo
+echo "The server (Enter keeps the answer in brackets)"
+ask DOMAIN "The site's domain (its DNS record points to this server)" "$DOMAIN_DEFAULT"
+DOMAIN="${DOMAIN#*://}"
+DOMAIN="${DOMAIN%%/*}"
+[[ $DOMAIN =~ ^[A-Za-z0-9.-]+$ ]] || { echo "not a domain: $DOMAIN"; exit 1; }
+if [ -z "$USER_DEFAULT" ]; then
+    USER_DEFAULT=$(echo "${DOMAIN%%.*}" | tr -cd 'a-z0-9_-')
+fi
+while true; do
+    ask APP_USER "The system user NetFlow9 runs as (its home holds the app)" "$USER_DEFAULT"
+    [[ $APP_USER =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && [ "$APP_USER" != "root" ] && break
+    echo "  lowercase letters, digits, - and _ (not root)"
 done
+BASE=$(getent passwd "$APP_USER" | cut -d: -f6)
+BASE="${BASE:-/home/$APP_USER}"
+ENV_FILE="$BASE/app.env"
+SCRIPTS="$BASE/scripts"
 
 SET_UP=0
 [ -f "$ENV_FILE" ] && SET_UP=1
+CLONE=0
+REPO="$REPO_DEFAULT"
+BRANCH="$BRANCH_DEFAULT"
+if [ ! -d "$BASE/.git" ]; then
+    CLONE=1
+    ask REPO "The NetFlow9 repository" "$REPO"
+    ask BRANCH "Its branch" "$BRANCH"
+fi
 
+echo
+echo "Options"
+OPT_LOCAL_MONGO=1
 if [ "$SET_UP" -eq 1 ]; then
-    URL=$(env_value BASE_URL)
-    MONGO_URI=$(env_value MONGO_URI)
-    echo "The app is already set up (app.env): its settings and account are kept; only the options are asked."
+    case $(env_value MONGO_URI) in *127.0.0.1*|*localhost*) ;; *) OPT_LOCAL_MONGO=0 ;; esac
 else
-    command -v php >/dev/null || { echo "PHP is not installed (see the requirements: PHP 8.1 or later, with the mongodb extension)"; exit 1; }
-    host_default=$(hostname -f 2>/dev/null || hostname)
-    URL="https://$host_default"
+    ask_yes OPT_LOCAL_MONGO "MongoDB on this server (installed when missing; else you give the connection string of yours)" y
+fi
+
+OPT_LE=0
+LE_EMAIL=""
+if [ ! -e "$BASE/ssl/ssl.crt" ] || [ "$(readlink "$BASE/ssl/ssl.crt" 2>/dev/null)" = "selfsigned.crt" ] || [ "$(readlink "$BASE/ssl/ssl.crt" 2>/dev/null)" = "$BASE/ssl/snakeoil.crt" ]; then
+    if domain_points_here "$DOMAIN"; then
+        ask_yes OPT_LE "A Let's Encrypt certificate for $DOMAIN (port 80 must be reachable; else a self-signed one)" y
+    else
+        echo "  $DOMAIN does not point to this server yet: a self-signed certificate (run this again later for Let's Encrypt)"
+    fi
+    [ "$OPT_LE" -eq 0 ] || ask LE_EMAIL "Email for Let's Encrypt's notices" ""
+fi
+
+if chromium_installed; then
+    ask_yes OPT_BROWSER "The web browser for the AI steps (installed: its service)" y
+else
+    ask_yes OPT_BROWSER "The web browser for the AI steps (Playwright and Chromium, about 500 MB)" y
+fi
+
+MAIL_DOMAIN=""
+[ "$SET_UP" -eq 1 ] && MAIL_DOMAIN=$(env_value MAIL_INBOUND_DOMAIN)
+ask_yes OPT_MAIL "Inbound email: workflows started by emails (Haraka on port 25)" "$([ -n "$MAIL_DOMAIN" ] || [ -d "$BASE/haraka/node_modules/haraka" ] && echo y || echo n)"
+[ "$OPT_MAIL" -eq 0 ] || ask MAIL_DOMAIN "The domain of its addresses (its MX record points to this server)" "${MAIL_DOMAIN:-$DOMAIN}"
+
+OPT_MONGO=0
+if [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
+    if [ "$SET_UP" -eq 1 ] && [[ $(env_value MONGO_URI) == *@* ]]; then
+        echo "  MongoDB: the app signs in with its own user already"
+    elif command -v mongosh >/dev/null 2>&1 && systemctl is-active --quiet mongod && ! mongo_auth_off; then
+        echo "  MongoDB: it requires sign-in already"
+    else
+        ask_yes OPT_MONGO "Secure MongoDB: its own users with random passwords, sign-in required" y
+    fi
+fi
+
+OPT_SELINUX=0
+if [ "$(getenforce 2>/dev/null || echo Disabled)" = "Enforcing" ]; then
+    ask_yes OPT_SELINUX "SELinux is enforcing: nginx and PHP-FPM cannot serve the app from $BASE. Set it to permissive" y
+fi
+
+echo
+echo "It will:"
+echo "  - install what is missing: PHP $PHPV (Remi), nginx, $([ "$OPT_LOCAL_MONGO" -eq 1 ] && echo "MongoDB $MONGODB_VERSION, ")Redis$([ "$OPT_LE" -eq 1 ] && echo ", certbot")$([ "$OPT_BROWSER" -eq 1 ] || [ "$OPT_MAIL" -eq 1 ] && echo ", Node.js")"
+[ "$OPT_SELINUX" -eq 1 ] && echo "  - set SELinux to permissive"
+id "$APP_USER" >/dev/null 2>&1 || echo "  - create the user $APP_USER (home $BASE)"
+[ "$CLONE" -eq 1 ] && echo "  - clone $REPO ($BRANCH) into $BASE"
+echo "  - set up PHP-FPM, nginx and the certificate for $DOMAIN$([ "$OPT_LE" -eq 1 ] && echo " (Let's Encrypt)")"
+[ "$SET_UP" -eq 0 ] && echo "  - set up the app (it asks the database, the outgoing email and the first account)"
+[ "$OPT_BROWSER" -eq 1 ] && echo "  - install the web browser for the AI steps"
+[ "$OPT_MAIL" -eq 1 ] && echo "  - install inbound email for @$MAIL_DOMAIN"
+[ "$OPT_MONGO" -eq 1 ] && echo "  - give MongoDB its users and turn on sign-in"
+echo "  - install and start the background services"
+echo "  The firewall is not changed: open 80 and 443$([ "$OPT_MAIL" -eq 1 ] && echo ", 25") yourself."
+ask_yes GO "Go on?" y
+[ "$GO" -eq 1 ] || { echo "Nothing was changed."; exit 0; }
+
+# ---------------------------------------------------------------------------------------------------------------
+step "System packages"
+if [ "$OPT_SELINUX" -eq 1 ]; then
+    setenforce 0
+    sed -i 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
+    echo "+ SELinux permissive"
+fi
+install_packages epel-release dnf-plugins-core
+install_packages git curl wget tar openssl polkit
+if ! rpm -q --quiet remi-release; then
+    dnf -y install https://rpms.remirepo.net/enterprise/remi-release-9.rpm
+fi
+dnf config-manager --set-enabled remi >/dev/null
+# shellcheck disable=SC2086
+install_packages $PHP_PACKAGES nginx redis
+if [ "$OPT_LOCAL_MONGO" -eq 1 ] || [ "$OPT_MONGO" -eq 1 ]; then
+    repo="/etc/yum.repos.d/mongodb-org-$MONGODB_VERSION.repo"
+    if [ ! -f "$repo" ]; then
+        cat > "$repo" <<EOF
+[mongodb-org-$MONGODB_VERSION]
+name=MongoDB Repository
+baseurl=https://repo.mongodb.org/yum/redhat/9/mongodb-org/$MONGODB_VERSION/x86_64/
+gpgcheck=1
+enabled=1
+gpgkey=https://pgp.mongodb.com/server-8.0.asc
+EOF
+        echo "+ $repo"
+    fi
+    install_packages mongodb-org
+    systemctl enable --now mongod
+else
+    #mongosh only: the app's checks and MongoDB's users
+    [ -f "/etc/yum.repos.d/mongodb-org-$MONGODB_VERSION.repo" ] && install_packages mongodb-mongosh
+fi
+[ "$OPT_LE" -eq 0 ] || install_packages certbot
+if [ "$OPT_BROWSER" -eq 1 ] || [ "$OPT_MAIL" -eq 1 ]; then
+    if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+        #the newest Node.js stream of the distribution
+        stream=$(dnf -q module list nodejs 2>/dev/null | awk '$1 == "nodejs" && $2 ~ /^[0-9]+$/ { print $2 }' | sort -n | tail -1)
+        if [ -n "$stream" ]; then
+            dnf -y module reset nodejs
+            dnf -y module enable "nodejs:$stream"
+        fi
+        dnf -y install nodejs npm
+    fi
+    echo "Node.js $(node -v)"
+fi
+systemctl enable --now redis
+#the default pool is off: each app has its own (below)
+[ ! -f "$PHP_ETC/php-fpm.d/www.conf" ] || mv "$PHP_ETC/php-fpm.d/www.conf" "$PHP_ETC/php-fpm.d/www.conf.disabled"
+[ -e /etc/php-fpm.d ] || ln -s "$PHP_ETC/php-fpm.d" /etc/php-fpm.d
+
+# ---------------------------------------------------------------------------------------------------------------
+step "The user $APP_USER and the app's files"
+if ! id "$APP_USER" >/dev/null 2>&1; then
+    useradd -U -m -d "$BASE" "$APP_USER"
+    echo "+ user $APP_USER, home $BASE"
+fi
+#nginx reads the web root (the group); the home is not world-readable
+usermod -a -G "$APP_USER" nginx
+chmod 750 "$BASE"
+if [ "$CLONE" -eq 1 ]; then
+    #into the home as it is (its dotfiles stay: the repository tracks only the app's files)
+    as_user git init -q
+    as_user git remote add origin "$REPO" 2>/dev/null || as_user git remote set-url origin "$REPO"
+    as_user git fetch -q origin "$BRANCH"
+    as_user git checkout -q -f -B "$BRANCH" "origin/$BRANCH"
+    as_user git submodule update -q --init --recursive
+    echo "+ $REPO ($BRANCH) in $BASE"
+else
+    echo "the app's files are there already ($BASE/.git): not changed (update them with git pull)"
+fi
+for d in logs tmp run var var/php/session var/php/wsdlcache var/php/opcache etc ssl; do
+    [ -d "$BASE/$d" ] || install -d -o "$APP_USER" -g "$APP_USER" -m 750 "$BASE/$d"
+done
+
+step "PHP-FPM"
+#php.ini: NetFlow9's (the package's kept as php.ini.installer_save), with the server's time zone
+if [ ! -f "$PHP_ETC/php.ini.installer_save" ]; then
+    mv "$PHP_ETC/php.ini" "$PHP_ETC/php.ini.installer_save"
+    tz=$(timedatectl show -p Timezone --value 2>/dev/null || echo UTC)
+    sed -e "s|^date.timezone = .*|date.timezone = ${tz:-UTC}|" "$SCRIPTS/system/php.ini" > "$PHP_ETC/php.ini"
+    echo "+ $PHP_ETC/php.ini (time zone ${tz:-UTC})"
+fi
+#the app's pool (when no pool listens on its socket yet)
+socket="$BASE/run/php-fpm.sock"
+if ! grep -qsF "listen = $socket" "$PHP_ETC"/php-fpm.d/*.conf; then
+    pool="$PHP_ETC/php-fpm.d/$APP_USER.conf"
+    sed -e "s#Q_POOL_SOCK#$socket#g" -e "s#Q_POOL_HOME#$BASE#g" -e "s/Q_POOL_NAME/$APP_USER/g" -e "s/Q_POOL_MAX_CHILDREN/25/g" \
+        -e "s/Q_POOL_START_SERVERS/5/g" -e "s/Q_POOL_MIN_SPARE/2/g" -e "s/Q_POOL_MAX_SPARE/10/g" "$SCRIPTS/system/fpm-pool.conf" > "$pool"
+    ln -sfn "$pool" "$BASE/etc/fpm-pool.conf"
+    chown -h "$APP_USER:$APP_USER" "$BASE/etc/fpm-pool.conf"
+    echo "+ $pool"
+fi
+systemctl enable "$PHP_FPM" >/dev/null 2>&1
+systemctl restart "$PHP_FPM"
+#logrotate (when none rotates its logs yet)
+if ! grep -qsF "$BASE/logs/" /etc/logrotate.d/*; then
+    sed -e "s#Q_HOME#$BASE#g" "$SCRIPTS/system/logrotate.conf" > "/etc/logrotate.d/nfn-$APP_USER"
+    echo "+ /etc/logrotate.d/nfn-$APP_USER"
+fi
+
+step "nginx and the certificate"
+#a self-signed certificate first (nginx needs one to start; Let's Encrypt replaces it)
+if [ ! -e "$BASE/ssl/ssl.crt" ]; then
+    openssl req -x509 -newkey rsa:2048 -nodes -days 825 -subj "/CN=$DOMAIN" -addext "subjectAltName=DNS:$DOMAIN" \
+        -keyout "$BASE/ssl/selfsigned.key" -out "$BASE/ssl/selfsigned.crt" 2>/dev/null
+    chmod 600 "$BASE/ssl/selfsigned.key"
+    ln -sfn selfsigned.crt "$BASE/ssl/ssl.crt"
+    ln -sfn selfsigned.key "$BASE/ssl/ssl.key"
+    chown -h "$APP_USER:$APP_USER" "$BASE/ssl/selfsigned.key" "$BASE/ssl/selfsigned.crt" "$BASE/ssl/ssl.crt" "$BASE/ssl/ssl.key"
+    echo "+ a self-signed certificate for $DOMAIN"
+fi
+"$SCRIPTS/0_nginx-install.sh" --server-name="$DOMAIN"
+systemctl enable nginx >/dev/null 2>&1
+systemctl is-active --quiet nginx || systemctl start nginx
+if [ "$OPT_LE" -eq 1 ]; then
+    #http-01 through the site (port 80 redirects to https, which serves .well-known/acme-challenge from the web root)
+    if certbot certonly --webroot -w "$BASE/public_html" -d "$DOMAIN" --non-interactive --agree-tos \
+            $([ -n "$LE_EMAIL" ] && echo "-m $LE_EMAIL" || echo "--register-unsafely-without-email") --deploy-hook "systemctl reload nginx"; then
+        ln -sfn "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" "$BASE/ssl/ssl.crt"
+        ln -sfn "/etc/letsencrypt/live/$DOMAIN/privkey.pem" "$BASE/ssl/ssl.key"
+        chown -h "$APP_USER:$APP_USER" "$BASE/ssl/ssl.crt" "$BASE/ssl/ssl.key"
+        systemctl enable --now certbot-renew.timer >/dev/null 2>&1 || true
+        systemctl reload nginx
+        echo "+ Let's Encrypt certificate for $DOMAIN (renewed by certbot-renew.timer)"
+    else
+        OPT_LE=0
+        echo "! Let's Encrypt failed (above): the self-signed certificate stays; run this again once $DOMAIN points here and port 80 is open"
+    fi
+fi
+
+# ---------------------------------------------------------------------------------------------------------------
+if [ "$SET_UP" -eq 0 ]; then
+    step "The app"
+    as_app setup::checks || { echo "a required prerequisite is missing (above, marked !): fix it, then run this again"; exit 1; }
+    URL="https://$DOMAIN"
     MONGO_URI="$LOCAL_MONGO/"
     MONGO_DB="netflow9-db"
     SMTP_HOST="127.0.0.1"
     SMTP_PORT="25"
     SMTP_SECURE_ANSWER="none"
     SMTP_USER=""
-    MAIL_FROM=""
+    MAIL_FROM="noreply@$DOMAIN"
     ACCOUNT_NAME=""
     OWNER_USER="admin"
-    OWNER_EMAIL=""
+    OWNER_EMAIL="$LE_EMAIL"
     OWNER_FIRST=""
     OWNER_LAST=""
     #asked until the app's own checks accept the answers (Enter keeps the answer given before)
     while true; do
         echo
-        echo "The app (Enter keeps the answer in brackets)"
-        ask URL "Public address of the site" "$URL"
-        case $URL in http://*|https://*) ;; *) URL="https://$URL" ;; esac
-        URL="${URL%/}"
-        ask MONGO_URI "MongoDB connection string" "$MONGO_URI"
+        if [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
+            echo "The database: MongoDB on this server, $MONGO_URI"
+        else
+            ask MONGO_URI "MongoDB connection string" "mongodb://"
+        fi
         ask MONGO_DB "Database name (a new or empty one)" "$MONGO_DB"
         echo
         echo "Outgoing email (sign-in links, invitations, the Send email step)"
@@ -175,7 +449,7 @@ else
         ask SMTP_USER "SMTP username (empty: none)" "$SMTP_USER"
         SMTP_PASSWORD=""
         [ -z "$SMTP_USER" ] || ask_secret SMTP_PASSWORD "SMTP password"
-        ask MAIL_FROM "Emails come from" "${MAIL_FROM:-noreply@$(url_host "$URL")}"
+        ask MAIL_FROM "Emails come from" "$MAIL_FROM"
         echo
         echo "The first account (its owner signs in with these)"
         ask ACCOUNT_NAME "Company or team" "$ACCOUNT_NAME"
@@ -191,108 +465,9 @@ else
         fi
         echo "Once more: Enter keeps an answer."
     done
-fi
-HOST=$(url_host "$URL")
-
-# ---------------------------------------------------------------------------------------------------------------
-echo
-echo "Options"
-ask_yes OPT_NGINX "Set up nginx for $HOST (the site, HTTPS)" y
-OPT_SELFSIGNED=0
-if [ "$OPT_NGINX" -eq 1 ] && [ ! -e "$BASE/ssl/ssl.crt" ]; then
-    ask_yes OPT_SELFSIGNED "There is no certificate (ssl/ssl.crt): make a self-signed one for now (browsers warn; replace it with a real one later)" y
-fi
-
-if chromium_installed; then
-    ask_yes OPT_BROWSER "The web browser for the AI steps (installed: its service)" y
-else
-    ask_yes OPT_BROWSER "The web browser for the AI steps (Playwright and Chromium, about 500 MB)" y
-fi
-
-MAIL_DOMAIN=""
-[ "$SET_UP" -eq 1 ] && MAIL_DOMAIN=$(env_value MAIL_INBOUND_DOMAIN)
-ask_yes OPT_MAIL "Inbound email: workflows started by emails (Haraka on port 25)" "$([ -n "$MAIL_DOMAIN" ] || [ -d "$BASE/haraka/node_modules/haraka" ] && echo y || echo n)"
-if [ "$OPT_MAIL" -eq 1 ]; then
-    ask MAIL_DOMAIN "The domain of its addresses (its MX record points to this server)" "${MAIL_DOMAIN:-$HOST}"
-fi
-
-OPT_MONGO=0
-case $MONGO_URI in
-    *@*) echo "  MongoDB: the app signs in with its own user already" ;;
-    mongodb://127.0.0.1:27017*|mongodb://localhost:27017*)
-        if mongo_auth_off; then
-            ask_yes OPT_MONGO "Secure MongoDB: its own users with random passwords, sign-in required" y
-        else
-            echo "  MongoDB: it requires sign-in already"
-        fi ;;
-    *) echo "  MongoDB is not on this machine: secure it there (its users and sign-in)" ;;
-esac
-echo "  The background services (the workflow daemon$([ "$OPT_MAIL" -eq 1 ] && echo ", Haraka")$([ "$OPT_BROWSER" -eq 1 ] && echo ", the web browser")) are installed as systemd services."
-
-# ---------------------------------------------------------------------------------------------------------------
-#everything needed, before anything changes
-step "Checking what is needed"
-problems=()
-for cmd in php mongosh openssl systemctl runuser; do
-    command -v "$cmd" >/dev/null 2>&1 || problems+=("$cmd is not installed")
-done
-if ! command -v pkaction >/dev/null 2>&1 || [ ! -d /etc/polkit-1/rules.d ]; then
-    problems+=("polkit is not installed (the administration manages the services through it): dnf install polkit")
-fi
-if [ "$OPT_NGINX" -eq 1 ]; then
-    command -v nginx >/dev/null 2>&1 || problems+=("nginx is not installed: dnf install nginx")
-fi
-if [ "$OPT_BROWSER" -eq 1 ] || [ "$OPT_MAIL" -eq 1 ]; then
-    PATH="$SYSTEM_PATH" command -v node >/dev/null 2>&1 && PATH="$SYSTEM_PATH" command -v npm >/dev/null 2>&1 \
-        || problems+=("Node.js and npm (system-wide) are needed for the web browser and inbound email: dnf install nodejs npm")
-fi
-if [ "$OPT_MONGO" -eq 1 ] && [ ! -f "$MONGOD_CONF" ]; then
-    problems+=("$MONGOD_CONF not found: MongoDB's sign-in cannot be turned on")
-fi
-if [ "$SET_UP" -eq 0 ] && ! as_app setup::checks; then
-    problems+=("the app's prerequisites (above, marked !)")
-fi
-if [ "${#problems[@]}" -gt 0 ]; then
-    echo
-    echo "Missing:"
-    for p in "${problems[@]}"; do echo "  - $p"; done
-    echo "Nothing was changed. Install them, then run this again."
-    exit 1
-fi
-echo "OK"
-
-echo
-echo "It will:"
-[ "$OPT_NGINX" -eq 1 ] && echo "  - set up nginx for $HOST$([ "$OPT_SELFSIGNED" -eq 1 ] && echo ", with a self-signed certificate")"
-[ "$SET_UP" -eq 0 ] && echo "  - set up the app: the account \"$ACCOUNT_NAME\", its owner $OWNER_USER, app.env"
-[ "$OPT_BROWSER" -eq 1 ] && echo "  - install the web browser for the AI steps"
-[ "$OPT_MAIL" -eq 1 ] && echo "  - install inbound email for @$MAIL_DOMAIN"
-[ "$OPT_MONGO" -eq 1 ] && echo "  - give MongoDB its users and turn on sign-in (mongod is restarted)"
-echo "  - install and start the background services"
-ask_yes GO "Go on?" y
-[ "$GO" -eq 1 ] || { echo "Nothing was changed."; exit 0; }
-
-# ---------------------------------------------------------------------------------------------------------------
-if [ "$OPT_NGINX" -eq 1 ]; then
-    step "nginx"
-    if [ "$OPT_SELFSIGNED" -eq 1 ]; then
-        install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$BASE/ssl"
-        openssl req -x509 -newkey rsa:2048 -nodes -days 825 -subj "/CN=$HOST" -addext "subjectAltName=DNS:$HOST" \
-            -keyout "$BASE/ssl/selfsigned.key" -out "$BASE/ssl/selfsigned.crt" 2>/dev/null
-        chmod 600 "$BASE/ssl/selfsigned.key"
-        ln -sfn selfsigned.crt "$BASE/ssl/ssl.crt"
-        ln -sfn selfsigned.key "$BASE/ssl/ssl.key"
-        chown -h "$APP_USER:$APP_USER" "$BASE/ssl/selfsigned.key" "$BASE/ssl/selfsigned.crt" "$BASE/ssl/ssl.crt" "$BASE/ssl/ssl.key"
-        echo "+ a self-signed certificate for $HOST in ssl/ (ssl.crt, ssl.key point to it)"
-    fi
-    "$SCRIPTS/0_nginx-install.sh" --server-name="$HOST"
-fi
-
-if [ "$SET_UP" -eq 0 ]; then
-    step "The app"
     answers_json | as_app setup::install
-    MONGO_DB=$(env_value MONGO_DB)
 fi
+URL=$(env_value BASE_URL)
 
 if [ "$OPT_MAIL" -eq 1 ]; then
     set_env MAIL_INBOUND_DOMAIN "$MAIL_DOMAIN"
@@ -313,7 +488,7 @@ if [ "$OPT_MAIL" -eq 1 ]; then
 fi
 
 MONGO_CHANGED=0
-if [ "$OPT_MONGO" -eq 1 ]; then
+if [ "$OPT_MONGO" -eq 1 ] && mongo_auth_off; then
     step "MongoDB: users and sign-in"
     "$SCRIPTS/3_mongo-auth-setup.sh" --no-next-steps
     MONGO_CHANGED=1
@@ -354,9 +529,12 @@ step "The background services"
 # ---------------------------------------------------------------------------------------------------------------
 step "Done"
 echo "Open $URL$([ "$SET_UP" -eq 0 ] && echo " and sign in as $OWNER_USER")."
-[ "$OPT_SELFSIGNED" -eq 1 ] && echo "The certificate is self-signed: browsers warn. Put a real one in $BASE/ssl/ (ssl.crt, ssl.key), then: systemctl reload nginx"
-[ "$OPT_MONGO" -eq 1 ] && echo "MongoDB's operators' account (nfn_admin) is in $BASE/.mongodb-admin (root's): move it to a password manager, then delete the file."
-if [ "$OPT_MAIL" -eq 1 ]; then
-    echo "Inbound email: point the MX record of $MAIL_DOMAIN to this server, open port 25; DKIM keys: cd $BASE/haraka/dkim && ./dkim_key_gen.sh $MAIL_DOMAIN"
+if [ "$(readlink "$BASE/ssl/ssl.crt")" = "selfsigned.crt" ]; then
+    echo "The certificate is self-signed: browsers warn. Run this again once $DOMAIN points here for Let's Encrypt, or put yours in $BASE/ssl/ (ssl.crt, ssl.key)."
 fi
-echo "Run this again to add an option later."
+[ "$MONGO_CHANGED" -eq 1 ] && echo "MongoDB's operators' account (nfn_admin) is in $BASE/.mongodb-admin (root's): move it to a password manager, then delete the file."
+if [ "$OPT_MAIL" -eq 1 ]; then
+    echo "Inbound email: point the MX record of $MAIL_DOMAIN to this server; DKIM keys: cd $BASE/haraka/dkim && ./dkim_key_gen.sh $MAIL_DOMAIN"
+fi
+echo "The firewall was not changed: open 80 and 443$([ "$OPT_MAIL" -eq 1 ] && echo ", and 25 for inbound email") if it is on."
+echo "The installer is also in $BASE/install.sh: run it again to add an option later."
