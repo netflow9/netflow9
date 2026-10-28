@@ -91,6 +91,8 @@ fi
 ENV_HARAKA_DIR=$(set +u; . "$BASE/app.env" >/dev/null 2>&1; echo "${HARAKA_DIR:-}")
 ENV_DOMAIN=$(set +u; . "$BASE/app.env" >/dev/null 2>&1; echo "${MAIL_INBOUND_DOMAIN:-}")
 ENV_MONGO_DB=$(set +u; . "$BASE/app.env" >/dev/null 2>&1; echo "${MONGO_DB:-}")
+#CLD: 2026-10-29T02:30:00+02:00: Haraka's MongoDB user, when 3_mongo-auth-setup.sh has made it (HARAKA_MONGO_URI): written into a new config/nfn.ini
+ENV_HARAKA_URI=$(set +u; . "$BASE/app.env" >/dev/null 2>&1; echo "${HARAKA_MONGO_URI:-}")
 DIR="${DIR:-${ENV_HARAKA_DIR:-$BASE/haraka}}"
 DIR="${DIR%/}"
 DOMAIN="${DOMAIN:-$ENV_DOMAIN}"
@@ -223,6 +225,19 @@ fi
 #nfn.ini holds the database password: its owner only
 if [[ " ${CREATED[*]} " == *" config/nfn.ini "* ]]; then
     run chmod 600 "$DIR/config/nfn.ini"
+    #CLD: 2026-10-29T02:30:00+02:00: + Haraka's MongoDB user of app.env (HARAKA_MONGO_URI), instead of the template's CHANGE_ME
+    if [ -n "$ENV_HARAKA_URI" ]; then
+        echo "+ $DIR/config/nfn.ini: uri from HARAKA_MONGO_URI (app.env)"
+        if [ "$DRY_RUN" -eq 0 ]; then
+            uri_line="uri=$ENV_HARAKA_URI"
+            out=""
+            while IFS= read -r line || [ -n "$line" ]; do
+                [[ $line == uri=* ]] && line=$uri_line
+                out+="$line"$'\n'
+            done < "$DIR/config/nfn.ini"
+            printf '%s' "$out" > "$DIR/config/nfn.ini"
+        fi
+    fi
 fi
 
 echo
