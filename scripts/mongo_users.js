@@ -1,5 +1,6 @@
 // creates the NetFlow9 MongoDB users; passwords come from the environment (NFN_ADMIN_PW, NFN_APP_PW, NFN_HARAKA_PW)
-const DB = 'netflow9-db';
+//CLD: 2026-10-29T02:30:00+02:00: the app's database (NFN_DB: MONGO_DB of app.env; was always netflow9-db)
+const DB = process.env.NFN_DB || 'netflow9-db';
 const app = db.getSiblingDB(DB);
 const admin = db.getSiblingDB('admin');
 

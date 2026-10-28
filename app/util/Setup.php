@@ -11,6 +11,9 @@
 //  Setup::ready($checks)           true when every required check passes
 //  Setup::envContent($values)      the text of app.env (values single-quoted: literal, see V::parse_env)
 //  Setup::writeEnv($content)       writes BASE/app.env (a temporary file renamed into place); false when it cannot
+//CLD: 2026-10-29T02:00:00+02:00: + the install itself (was controllers\SetupController's), shared by the browser setup and the command-line one (commands\SetupCommand):
+//  Setup::database($server)        connects to the database of $server and makes it the app's: null, or [ field, message ] (it has accounts, cannot connect)
+//  Setup::install($server, $owner, &$error)   the indexes, the first account and its owner, app.env: the owner (a User), or null
 */
 namespace util;
 
@@ -277,6 +280,96 @@ class Setup {
 	    '',
 	);
 	return implode("\n", $lines);
+    }
+
+    //CLD: 2026-10-29T02:00:00+02:00: moved here from controllers\SetupController (the browser setup), shared with the command-line setup (commands\SetupCommand)
+    //connects to the server's database ($server: ServerForm::values()) and makes it the app's; it must have no account yet. Returns null, or [ field, message ]
+    public static function database(array $server) {
+	try {
+	    $mongo = new \sys\Mongo([ 'uri' => (string)$server['mongo_uri'], 'database' => (string)$server['mongo_db'], 'uriOptions' => [ 'serverSelectionTimeoutMS' => 5000 ] ]);
+	    $mongo->selectDatabase((string)$server['mongo_db'])->command([ 'ping' => 1 ]);
+	} catch (\Throwable $e) {
+	    return [ 'mongo_uri', 'Cannot connect: ' . $e->getMessage() ];
+	}
+	\V::app()->mongo = $mongo;
+	if (\V::app()->om->count('Account', []) > 0)
+	    return [ 'mongo_db', 'This database already has accounts: choose another one, or empty it' ];
+	return null;
+    }
+
+    //CLD: 2026-10-29T02:00:00+02:00: moved here from controllers\SetupController; $owner: account_name, username, email, firstname, lastname, password (was the AccountForm)
+    //creates the first account and writes app.env; returns the owner (a User), or null with the reason in $error
+    public static function install(array $server, array $owner, &$error) {
+	//one setup at a time
+	$lock = fopen(BASE . '/tmp/setup.lock', 'c');
+	if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+	    $error = 'Another setup is running';
+	    return null;
+	}
+	try {
+	    if (is_file(BASE . '/app.env')) {
+		$error = 'The app is already set up (app.env exists): reload the page';
+		return null;
+	    }
+
+	    //the database of step 2, checked again
+	    $problem = self::database($server);
+	    if ($problem) {
+		$error = $problem[1];
+		return null;
+	    }
+	    $om = \V::app()->om;
+
+	    $failed = array_filter($om->createIndexes(), fn($r) => $r['error'] !== null);
+	    if ($failed) {
+		$error = 'Indexes not created: ' . implode('; ', array_map(fn($r) => $r['label'] . ': ' . $r['error'], $failed));
+		return null;
+	    }
+
+	    $account = \models\Account::create([ 'state' => 'active', 'name' => trim((string)$owner['account_name']) ]);
+	    if (!$account->validates() || !$account->save())
+		throw new \ErrorException('setup: the account was not saved: ' . json_encode($account->errors()));
+	    \V::app()->var('rt.account', $account);
+	    try {
+		$roles = $account->setupRoles();
+		$user = \models\User::create([ 'aid' => $account->_id, 'username' => trim((string)$owner['username']), 'email' => (string)$owner['email'],
+		    'firstname' => trim((string)$owner['firstname']), 'lastname' => trim((string)$owner['lastname']),
+		    'password' => \V::app()->security->generatePasswordHash((string)$owner['password']), 'state' => 'active', 'role' => $roles['owner']->_id ]);
+		if (!$user->validates() || !$user->save())
+		    throw new \ErrorException('setup: the user was not saved: ' . json_encode($user->errors()));
+
+		$url = rtrim(trim((string)$server['base_url']), '/');
+		$content = \util\Setup::envContent([
+		    'BASE_URL' => $url,
+		    'MONGO_URI' => trim((string)$server['mongo_uri']),
+		    'MONGO_DB' => (string)$server['mongo_db'],
+		    'SMTP_HOST' => trim((string)$server['smtp_host']),
+		    'SMTP_PORT' => (int)$server['smtp_port'],
+		    'SMTP_USERNAME' => trim((string)$server['smtp_username']),
+		    'SMTP_PASSWORD' => (string)$server['smtp_password'],
+		    'SMTP_SECURE' => in_array((string)$server['smtp_secure'], [ 'tls', 'ssl' ], true) ? (string)$server['smtp_secure'] : '',
+		    'SMTP_DOMAIN' => (string)parse_url($url, PHP_URL_HOST),
+		    'MAIL_FROM' => trim((string)$server['mail_from']),
+		    'ERRORS_EMAIL' => (string)$owner['email'],
+		]);
+		if (!\util\Setup::writeEnv($content))
+		    throw new \ErrorException('app.env could not be written in ' . BASE);
+	    } catch (\Throwable $e) {
+		//no half-made account
+		foreach($om->find('User', [ 'aid' => $account->_id ]) as $u)
+		    $u->delete();
+		foreach($om->find('Role', [ 'aid' => $account->_id ]) as $r)
+		    $r->delete();
+		$account->delete();
+		$error = 'Setup failed: ' . $e->getMessage();
+		return null;
+	    }
+	    \V::app()->log->info('setup: account ' . $account->name . ' created, owner ' . $user->username . ', app.env written');
+	    return $user;
+	} finally {
+	    flock($lock, LOCK_UN);
+	    fclose($lock);
+	}
     }
 
     public static function writeEnv($content) {
