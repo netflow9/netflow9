@@ -198,7 +198,8 @@ while true; do
     [[ $APP_USER =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && [ "$APP_USER" != "root" ] && break
     echo "  lowercase letters, digits, - and _ (not root)"
 done
-BASE=$(getent passwd "$APP_USER" | cut -d: -f6)
+#CLD: 2026-10-29T04:30:00+02:00: || true: a new user is not found by getent (exit 2: with pipefail it stopped the script, silently)
+BASE=$(getent passwd "$APP_USER" | cut -d: -f6 || true)
 BASE="${BASE:-/home/$APP_USER}"
 ENV_FILE="$BASE/app.env"
 SCRIPTS="$BASE/scripts"
@@ -315,7 +316,8 @@ fi
 if [ "$OPT_BROWSER" -eq 1 ] || [ "$OPT_MAIL" -eq 1 ]; then
     if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
         #the newest Node.js stream of the distribution
-        stream=$(dnf -q module list nodejs 2>/dev/null | awk '$1 == "nodejs" && $2 ~ /^[0-9]+$/ { print $2 }' | sort -n | tail -1)
+        #CLD: 2026-10-29T04:30:00+02:00: || true: no module streams (dnf fails) is not an error: the distribution's own nodejs then
+        stream=$(dnf -q module list nodejs 2>/dev/null | awk '$1 == "nodejs" && $2 ~ /^[0-9]+$/ { print $2 }' | sort -n | tail -1 || true)
         if [ -n "$stream" ]; then
             dnf -y module reset nodejs
             dnf -y module enable "nodejs:$stream"
