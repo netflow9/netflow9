@@ -10,7 +10,7 @@ require("$__base/app/config.php");
 if (!is_file("$__base/app.env")) {
     //only the setup's commands: the others need the app's settings
     if (strpos((string)($argv[1] ?? ''), 'setup::') !== 0) {
-	fwrite(STDERR, "the app is not set up yet (no app.env): sudo scripts/install.sh, or open the site in a browser\n");
+	fwrite(STDERR, "the app is not set up yet (no app.env): sudo $__base/install.sh, or open the site in a browser\n");
 	exit(1);
     }
     define('BASE', $__base);
