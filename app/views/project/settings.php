@@ -22,7 +22,11 @@ $this->pageTitle = 'Project: ' . $project->name;
     <?php
     //CLD: 2026-10-05T20:42:44+03:00: only known tabs (the value is used to build a require() path)
     $tab = \V::app()->request->query['__tab'] ?? 'general';
-    if (!in_array($tab, [ 'general', 'members' ], true))
+    //CLD: 2026-10-28T10:00:00+02:00: + transfer (Export / import), with Project::transfer
+    $tabs = [ 'general', 'members' ];
+    if (\V::app()->user->can('Project::transfer', [ 'object' => $project ]))
+	$tabs[] = 'transfer';
+    if (!in_array($tab, $tabs, true))
 	$tab = 'general';
     require(dirname(__FILE__) . '/_header.php');
     require(dirname(__FILE__) . '/_' . $tab . '.php');

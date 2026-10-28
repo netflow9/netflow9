@@ -95,6 +95,17 @@ class SysPermissions {
 		'scopes' => [ 'global' ],
 		'desc' => 'Delete projects'
 	    ],
+	    //CLD: 2026-10-28T10:00:00+02:00: export / import of the project's workflows, credentials (with their secrets, in a file sealed by a passphrase) and data tables
+	    //(ProjectController::export / import, util\Transfer); owners (also the roles already stored)
+	    [
+		'name' => 'Project::transfer',
+		'scopes' => [ 'global' ],
+		'desc' => 'Export and import workflows, credentials (with their secrets) and data tables',
+		'defaults' => [
+		    'owner' => [ 'enabled' => true, 'scope' => 'global' ],
+		    'member' => [ 'enabled' => false ]
+		]
+	    ],
 	];
 
 	//roles

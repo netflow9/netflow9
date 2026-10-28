@@ -46,7 +46,8 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
     //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'steps' ];
+    //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -3139,6 +3140,113 @@ class CheckCommand extends \sys\BaseController {
 		}
 		\V::app()->mongo->selectCollection(\models\Account::_database(), \models\Account::_collection())->deleteOne([ '_id' => $account->_id ]);
 	    });
+	}
+    }
+
+    //CLD: 2026-10-28T10:00:00+02:00: new: util\Transfer: a project's table (with rows), credential and workflow exported (plain: no secrets; sealed: by the passphrase only) and
+    //imported in another project (new ids in the steps, the secret, the rows, a taken webhook token replaced, its URL); again: matched by name, replaced, no duplicates; a copy
+    private function suiteTransfer() {
+	$om = \V::app()->om;
+	$T = \util\Transfer::class;
+	$aid = $this->account->_id;
+	$projects = [];
+	foreach([ 'src', 'dst' ] as $k) {
+	    $p = $om->create('Project', [ 'aid' => $aid, 'name' => "Check transfer {$k}", 'owner' => $this->project->owner, 'members' => [] ]);
+	    $p->save();
+	    $projects[$k] = $p;
+	}
+	[ $src, $dst ] = [ $projects['src'], $projects['dst'] ];
+	$refused = function(callable $fn) {
+	    try {
+		$fn();
+		return 'ok';
+	    } catch (\RuntimeException $e) {
+		return $e->getMessage();
+	    }
+	};
+	try {
+	    $dt = $om->create('DataTableDef', [ 'aid' => $aid, 'name' => 'chk_items', 'iname' => 'data-table-chk-transfer-' . uniqid(), 'project' => $src->_id ]);
+	    $dt->save();
+	    \sys\fields\Field::create([ 'type' => 'text', 'aid' => $aid, 'key' => 'name', 'label' => 'Name', 'objectName' => $dt->iname ])->save();
+	    \sys\fields\Field::create([ 'type' => 'number', 'aid' => $aid, 'key' => 'qty', 'label' => 'Qty', 'objectName' => $dt->iname ])->save();
+	    $om->resetCache();
+	    $om->registerDataTables();
+	    foreach([ [ 'a', 1 ], [ 'b', 2 ] ] as [ $name, $qty ]) {
+		$row = $om->create($dt->iname, [ 'aid' => $aid ]);
+		$row->assign([ 'name' => $name, 'qty' => $qty ]);
+		$row->save();
+	    }
+	    $cred = $om->create('CredentialBasicAuth', [ 'aid' => $aid, 'project' => $src->_id, 'name' => 'Check API', 'username' => 'u', 'password' => 's3cret' ]);
+	    $cred->save();
+	    $token = \models\TriggerToken::newToken('hex');
+	    $wf = $om->create('Workflow', [ 'aid' => $aid, 'project' => $src->_id, 'name' => 'Check: transfer', 'nodes' => [
+		'h' => self::node('h', 'trigger::webhook', [ 'token' => $token, 'url' => 'https://dev.example/hook/' . $token ]),
+		'x' => self::node('x', 'app::http', [ 'method' => 'GET', 'url' => 'https://example.com', 'credential' => (string)$cred->_id ]),
+		't' => self::node('t', 'app::table', [ 'table' => (string)$dt->_id, 'operation' => 'query' ]),
+		'e1' => self::edge('e1', 'h', 'x'), 'e2' => self::edge('e2', 'x', 't') ] ]);
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+
+	    [ $usedC, $usedT ] = $T::usedBy($src, [ $wf ]);
+	    $this->check('used: the credential and table of the steps', [ [ (string)$cred->_id ], [ (string)$dt->_id ] ],
+		[ array_map(fn($o) => (string)$o->_id, $usedC), array_map(fn($o) => (string)$o->_id, $usedT) ]);
+
+	    $plain = $T::export($src, [ $wf ], [ $cred ], [ $dt ], [ (string)$dt->_id ]);
+	    $b = $T::open($plain);
+	    $this->check('plain: no secrets (not in the file), the fields, the rows', [ false, 'u', false, false, 2 ],
+		[ $b['secrets'], $b['credentials'][0]['fields']['username'] ?? null, isset($b['credentials'][0]['secrets']), str_contains($plain, 's3cret'), count($b['datatables'][0]['rows'] ?? []) ]);
+	    $sealed = $T::export($src, [ $wf ], [ $cred ], [ $dt ], [ (string)$dt->_id ], 'correct horse');
+	    $this->check('sealed: nothing readable, refused without / with a wrong passphrase', [ false, false, true, 'The file is protected by a passphrase: enter it', 'Wrong passphrase, or the file was changed' ],
+		[ str_contains($sealed, 's3cret'), str_contains($sealed, 'Check API'), $T::isSealed($sealed), $refused(fn() => $T::open($sealed)), $refused(fn() => $T::open($sealed, 'wrong horse')) ]);
+	    $b = $T::open($sealed, 'correct horse');
+	    $this->check('sealed: the secret inside', 's3cret', $b['credentials'][0]['secrets']['password'] ?? null);
+	    $this->check('not an export file: refused', 'This is not an export file of NetFlow9 (Project settings: Export / import)', $refused(fn() => $T::open('{"a":1}')));
+
+	    //into the other project: all new
+	    $plan = $T::plan($b, $dst);
+	    $this->check('plan: all new', [ 'create', 'create', 'create', [] ], [ $plan['datatables'][0]['default'], $plan['credentials'][0]['default'], $plan['workflows'][0]['default'], $plan['warnings'] ]);
+	    $r = $T::apply($b, $dst, []);
+	    $this->check('import: no warnings', [], $r['warnings']);
+	    $inDst = fn($objectName, $name) => $om->findOne($objectName, [ 'aid' => $aid, 'project' => $dst->_id, 'name' => $name ]);
+	    $dt2 = $inDst('DataTableDef', 'chk_items');
+	    $cred2 = $inDst('Credential', 'Check API');
+	    $wf2 = $inDst('Workflow', 'Check: transfer');
+	    if ($wf2)
+		$this->created[] = $wf2->_id;
+	    $rows = $dt2 ? array_map(fn($r) => [ $r->name, $r->qty ], iterator_to_array($om->find($dt2->iname, [ 'aid' => $aid ], [ 'sort' => [ 'name' => 1 ] ]), false)) : null;
+	    $this->check('import: a new table with its columns and rows, a new credential with the secret', [ true, [ 'name', 'qty' ], [ [ 'a', 1 ], [ 'b', 2 ] ], true, 's3cret' ],
+		[ $dt2 && $dt2->iname !== $dt->iname, $dt2 ? array_keys($dt2->columns()) : null, $rows, $cred2 && (string)$cred2->_id !== (string)$cred->_id, $cred2?->password ]);
+	    $newToken = $wf2->nodes['h']['config']['token'] ?? null;
+	    $this->check('import: a draft, its steps on the new table / credential, the taken webhook token replaced (this server\'s URL)',
+		[ 'draft', (string)$cred2?->_id, (string)$dt2?->_id, true, \V::app()->createAbsoluteUrl('/hook/' . $newToken) ],
+		[ $wf2?->status, $wf2->nodes['x']['config']['credential'] ?? null, $wf2->nodes['t']['config']['table'] ?? null, $newToken !== $token && \models\TriggerToken::isToken($newToken, 'hex'),
+		$wf2->nodes['h']['config']['url'] ?? null ]);
+
+	    //again: matched by name; the table's rows replaced, the credential replaced, the workflow replaced (its own token kept)
+	    $plan = $T::plan($b, $dst);
+	    $this->check('plan again: the existing ones', [ 'update', 'skip', 'replace' ], [ $plan['datatables'][0]['default'], $plan['credentials'][0]['default'], $plan['workflows'][0]['default'] ]);
+	    $r = $T::apply($b, $dst, [ 'datatables' => [ 'update_rows' ], 'credentials' => [ 'replace' ] ]);
+	    $count = fn($objectName) => $om->count($objectName, [ 'aid' => $aid, 'project' => $dst->_id ]);
+	    $wf2 = $om->findById('Workflow', (string)$wf2->_id);
+	    $this->check('again: no duplicates, the rows replaced, the token kept', [ [], 1, 1, 1, 2, $newToken ],
+		[ $r['warnings'], $count('DataTableDef'), $count('Credential'), $count('Workflow'), $om->count($dt2->iname, [ 'aid' => $aid ]), $wf2->nodes['h']['config']['token'] ?? null ]);
+
+	    //a copy of the workflow, on the table and credential already there
+	    $T::apply($b, $dst, [ 'workflows' => [ 'copy' ], 'datatables' => [ 'skip' ], 'credentials' => [ 'skip' ] ]);
+	    $copy = $inDst('Workflow', 'Check: transfer (2)');
+	    if ($copy)
+		$this->created[] = $copy->_id;
+	    $this->check('copy: a new name, on the table and credential already there, a token of its own', [ true, (string)$cred2->_id, (string)$dt2->_id, true ],
+		[ (bool)$copy, $copy->nodes['x']['config']['credential'] ?? null, $copy->nodes['t']['config']['table'] ?? null, ($copy->nodes['h']['config']['token'] ?? $newToken) !== $newToken ]);
+	} finally {
+	    foreach($projects as $p) {
+		foreach([ 'DataTableDef', 'Credential' ] as $objectName) {
+		    foreach($om->find($objectName, [ 'aid' => $aid, 'project' => $p->_id ]) as $o)
+			$o->delete();
+		}
+		$p->delete();
+	    }
+	    $om->resetCache();
 	}
     }
 
