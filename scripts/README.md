@@ -1,7 +1,7 @@
 # Install scripts
 
 Run them **as root**, in the order of their numbers, from anywhere (each finds the app's folder from its own place).
-Skip the ones you don't need. Steps 1, 2 and 4 can be run again (nothing already installed is overwritten); step 3 runs once (it stops when MongoDB already has users).
+Skip the ones you don't need. Steps 1, 2 and 4 can be run again (nothing already installed is overwritten). Step 3 too, while MongoDB does not require sign-in: it creates its users again with new passwords; once authorization is on, it stops.
 
 | # | Script | Installs | Needs |
 |---|--------|----------|-------|
