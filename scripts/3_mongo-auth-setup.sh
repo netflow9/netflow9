@@ -8,7 +8,7 @@
 # - makes app.env and nfn.ini readable by their owner only (600)
 # Passwords are never printed. Nothing changes for the running services until MongoDB requires sign-in (root steps at the end).
 #CLD: 2026-10-29T02:30:00+02:00: Haraka's URI also in app.env (HARAKA_MONGO_URI: 2_haraka-install.sh writes it into a new nfn.ini), nfn.ini only when Haraka is installed (was required);
-#the database of app.env (MONGO_DB; was netflow9-db); --no-next-steps: the closing steps not printed (scripts/install.sh does them)
+#the database of app.env (MONGO_DB; was netflow9-db); --no-next-steps: the closing steps not printed (install.sh in the app's folder does them)
 #   sudo scripts/3_mongo-auth-setup.sh [--no-next-steps]
 #CLD: 2026-10-21T23:30:00+03:00: moved here from a session scratchpad; mm (public_html/mm) signs in with nfn_admin (its config.php needs no change); restarts from the scripts folder
 set -euo pipefail
@@ -21,7 +21,7 @@ cd "$BASE"
 echo "app: $BASE"
 NEXT_STEPS=1
 [ "${1:-}" = "--no-next-steps" ] && NEXT_STEPS=0
-[ -f app.env ] || { echo "no app.env: set the app up first (sudo scripts/install.sh, or the setup in the browser)"; exit 1; }
+[ -f app.env ] || { echo "no app.env: set the app up first (sudo $BASE/install.sh, or the setup in the browser)"; exit 1; }
 #the app's database (app.env)
 export NFN_DB=$(set +u; . ./app.env >/dev/null 2>&1; echo "${MONGO_DB:-netflow9-db}")
 HARAKA_INI=haraka/config/nfn.ini

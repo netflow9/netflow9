@@ -1,10 +1,10 @@
 # Installing
 
 ```sh
-sudo scripts/install.sh
+cd <app> && sudo ./install.sh
 ```
 
-Run it as root, in a terminal. It asks:
+`install.sh` is in the app's folder (next to `app/`, `scripts/`). Run it as root, in a terminal. It asks:
 
 - **the app**: the public address of the site, the MongoDB connection string and database name (a new or empty one)
 - **outgoing email**: SMTP server, port, encryption, username and password, the sender address

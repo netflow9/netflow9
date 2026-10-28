@@ -2,7 +2,7 @@
 
 namespace commands;
 
-//CLD: 2026-10-29T02:00:00+02:00: new: the initial setup from the command line (scripts/install.sh runs it as the app's user), the same as the browser's (controllers\SetupController):
+//CLD: 2026-10-29T02:00:00+02:00: new: the initial setup from the command line (install.sh in the app's folder runs it as the app's user), the same as the browser's (controllers\SetupController):
 //only while app.env is missing (app/v.php: get_setup_console_config)
 //  ../v setup::checks      the prerequisites (util\Setup::checks); exits with 1 when a required one fails
 //  ../v setup::validate    checks the answers (JSON on stdin, as setup::install) and the database, installs nothing; exits with 1 when one is not valid
