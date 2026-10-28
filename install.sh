@@ -24,6 +24,9 @@ PHP_FPM="php$PHPV-php-fpm"
 PHP_PACKAGES="php$PHPV php$PHPV-runtime php$PHPV-php-cli php$PHPV-php-common php$PHPV-php-fpm php$PHPV-php-gd php$PHPV-php-gmp php$PHPV-php-mbstring
     php$PHPV-php-mysqlnd php$PHPV-php-pdo php$PHPV-php-process php$PHPV-php-sodium php$PHPV-php-tidy php$PHPV-php-xml php$PHPV-php-pecl-event php$PHPV-php-pecl-igbinary
     php$PHPV-php-pecl-imap php$PHPV-php-pecl-mailparse php$PHPV-php-pecl-mongodb2 php$PHPV-php-pecl-msgpack php$PHPV-php-pecl-redis6 php$PHPV-php-pecl-zip"
+#CLD: 2026-10-29T06:00:00+02:00: the Database step's drivers (recommended; installed when missing, an unavailable one skipped): PostgreSQL, SQL Server (pdo_dblib: FreeTDS;
+#sqlsrv would need Microsoft's ODBC driver), Firebird, ODBC. Oracle's pdo_oci needs Oracle's Instant Client: not in these repositories
+PHP_DB_PACKAGES="php$PHPV-php-pgsql php$PHPV-php-pdo-dblib php$PHPV-php-pdo-firebird php$PHPV-php-odbc"
 MONGODB_VERSION="8.3"
 MONGOD_CONF=/etc/mongod.conf
 LOCAL_MONGO="mongodb://127.0.0.1:27017"
@@ -356,6 +359,14 @@ fi
 dnf config-manager --set-enabled remi >/dev/null
 # shellcheck disable=SC2086
 install_packages $PHP_PACKAGES nginx redis
+#the Database step's drivers: each one that can be installed (strict=0, --skip-broken: one missing from the repositories does not stop the others)
+# shellcheck disable=SC2086
+db_missing=$(missing_packages $PHP_DB_PACKAGES | tr '\n' ' ')
+if [ -n "${db_missing// /}" ]; then
+    echo "+ dnf install $db_missing(the Database step's drivers)"
+    # shellcheck disable=SC2086
+    dnf -y install --setopt=strict=0 --skip-broken $db_missing || echo "! some of the Database step's drivers were not installed (above)"
+fi
 #/usr/bin/php: PHP $PHPV's (in place of the distribution's, when allowed above)
 if ! rpm -q --quiet "php$PHPV-syspaths"; then
     if [ "$OPT_REPLACE_PHP" -eq 1 ]; then
