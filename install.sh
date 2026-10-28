@@ -180,6 +180,35 @@ if [ -x /usr/bin/mongod ]; then
     [[ $MONGOD_PKG == *" "* ]] && MONGOD_PKG="mongod"
 fi
 
+#CLD: 2026-10-29T05:30:00+02:00: what is installed, detected before the questions and shown in one line
+PHP_LABEL="${PHPV:0:1}.${PHPV:1}"
+#the distribution's PHP (php-common, ...): it conflicts with php$PHPV-syspaths (both are /usr/bin/php, which the app's console and daemon run)
+DISTRO_PHP=""
+DISTRO_PHP_VERSION=""
+if ! rpm -q --quiet "php$PHPV-syspaths"; then
+    DISTRO_PHP=$(rpm -qa 'php-*' --qf '%{NAME}\n' 2>/dev/null | sort -u | tr '\n' ' ' || true)
+    DISTRO_PHP="${DISTRO_PHP% }"
+    [ -z "$DISTRO_PHP" ] || DISTRO_PHP_VERSION=$(rpm -q --qf '%{VERSION}' php-common 2>/dev/null || true)
+fi
+found=()
+missing=()
+# shellcheck disable=SC2086
+if [ -z "$(missing_packages $PHP_PACKAGES "php$PHPV-syspaths")" ]; then found+=("PHP $PHP_LABEL"); else missing+=("PHP $PHP_LABEL"); fi
+[ -z "$DISTRO_PHP" ] || found+=("the distribution's PHP $DISTRO_PHP_VERSION")
+rpm -q --quiet nginx && found+=("nginx") || missing+=("nginx")
+if [[ $MONGOD_PKG == percona-* ]]; then
+    found+=("MongoDB (Percona)")
+elif [ -n "$MONGOD_PKG" ]; then
+    found+=("MongoDB")
+else
+    missing+=("MongoDB")
+fi
+rpm -q --quiet redis && found+=("Redis") || missing+=("Redis")
+command -v node >/dev/null 2>&1 && found+=("Node.js $(node -v 2>/dev/null)") || missing+=("Node.js")
+rpm -q --quiet certbot && found+=("certbot") || missing+=("certbot")
+echo "Found: $( [ "${#found[@]}" -gt 0 ] && (IFS=,; echo "${found[*]}" | sed 's/,/, /g') || echo nothing)."
+[ "${#missing[@]}" -eq 0 ] || echo "Missing (installed when needed): $(IFS=,; echo "${missing[*]}" | sed 's/,/, /g')."
+
 #an app next to this script (the installer of an installed app): its user and address are the defaults
 SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 DOMAIN_DEFAULT=$(hostname -f 2>/dev/null || hostname)
@@ -272,17 +301,11 @@ fi
 #CLD: 2026-10-29T05:00:00+02:00: the distribution's PHP (php-common, ...) conflicts with php$PHPV-syspaths (both are /usr/bin/php, which the app's console and daemon run): replaced
 #only when allowed (dnf --allowerasing removes those packages and what needs them)
 OPT_REPLACE_PHP=0
-DISTRO_PHP=""
-if ! rpm -q --quiet "php$PHPV-syspaths"; then
-    DISTRO_PHP=$(rpm -qa 'php-*' --qf '%{NAME} ' 2>/dev/null | xargs -n1 2>/dev/null | sort -u | tr '\n' ' ' || true)
-    DISTRO_PHP="${DISTRO_PHP% }"
-    if [ -n "$DISTRO_PHP" ]; then
-        echo "  The distribution's PHP is installed: $DISTRO_PHP"
-        ask_yes OPT_REPLACE_PHP "Replace it with PHP ${PHPV:0:1}.${PHPV:1} as /usr/bin/php (those packages, and what needs them, are removed)" n
-        if [ "$OPT_REPLACE_PHP" -eq 0 ]; then
-            echo "Nothing was changed: NetFlow9 needs PHP ${PHPV:0:1}.${PHPV:1} as /usr/bin/php (php$PHPV-syspaths). Remove the distribution's PHP, or allow it here."
-            exit 1
-        fi
+if [ -n "$DISTRO_PHP" ]; then
+    ask_yes OPT_REPLACE_PHP "The distribution's PHP $DISTRO_PHP_VERSION is installed and must make way for PHP $PHP_LABEL: remove it" n
+    if [ "$OPT_REPLACE_PHP" -eq 0 ]; then
+        echo "Nothing was changed: NetFlow9 needs PHP $PHP_LABEL. Remove the distribution's PHP ($DISTRO_PHP), or allow it here."
+        exit 1
     fi
 fi
 
@@ -293,8 +316,18 @@ fi
 
 echo
 echo "It will:"
-echo "  - install what is missing: PHP $PHPV (Remi), nginx, $([ "$OPT_LOCAL_MONGO" -eq 1 ] && [ -z "$MONGOD_PKG" ] && echo "MongoDB $MONGODB_VERSION, ")Redis$([ "$OPT_LE" -eq 1 ] && echo ", certbot")$([ "$OPT_BROWSER" -eq 1 ] || [ "$OPT_MAIL" -eq 1 ] && echo ", Node.js")"
-[ "$OPT_REPLACE_PHP" -eq 1 ] && echo "  - remove the distribution's PHP ($DISTRO_PHP): /usr/bin/php becomes PHP ${PHPV:0:1}.${PHPV:1}"
+#CLD: 2026-10-29T05:30:00+02:00: only what is missing and needed by the answers (was: every package named, installed or not)
+to_install=()
+for m in "${missing[@]}"; do
+    case $m in
+        certbot) [ "$OPT_LE" -eq 1 ] && to_install+=("$m") ;;
+        Node.js) { [ "$OPT_BROWSER" -eq 1 ] || [ "$OPT_MAIL" -eq 1 ]; } && to_install+=("$m") ;;
+        MongoDB) [ "$OPT_LOCAL_MONGO" -eq 1 ] && to_install+=("$m") ;;
+        *) to_install+=("$m") ;;
+    esac
+done
+[ "${#to_install[@]}" -eq 0 ] || echo "  - install $(IFS=,; echo "${to_install[*]}" | sed 's/,/, /g')"
+[ "$OPT_REPLACE_PHP" -eq 1 ] && echo "  - remove the distribution's PHP $DISTRO_PHP_VERSION ($DISTRO_PHP)"
 [ "$OPT_SELINUX" -eq 1 ] && echo "  - set SELinux to permissive"
 id "$APP_USER" >/dev/null 2>&1 || echo "  - create the user $APP_USER (home $BASE)"
 [ "$CLONE" -eq 1 ] && echo "  - clone $REPO ($BRANCH) into $BASE"
