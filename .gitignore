@@ -9,6 +9,7 @@
 !/scripts/
 !/app.env.example
 !/install.sh
+!/README.md
 
 # --- never commit (secrets / runtime) ---
 public_html/assets/

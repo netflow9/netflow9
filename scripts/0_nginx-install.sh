@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #CLD: 2026-10-29T01:30:00+02:00: new: writes the app's nginx site from scripts/nginx/app.conf (@BASE@: the app's folder, @SERVER_NAME@: the host of BASE_URL in app.env), over
-#<app>/etc/nginx.conf (a link to /etc/nginx/conf.d/app.conf; made when missing), then checks it (nginx -t) and reloads nginx.
+#<app>/etc/nginx.conf (a link to /etc/nginx/conf.d/<user>.conf; made when missing), then checks it (nginx -t) and reloads nginx.
 #The file there is kept as <file>.bak-<time> (not loaded by nginx: conf.d/*.conf only) and put back when the check fails; the changes are shown first.
 #Run as root:
 #   sudo scripts/0_nginx-install.sh [--server-name=<host>] [--dry-run]
@@ -14,7 +14,9 @@ SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 BASE=$(dirname "$SELF_DIR")
 TEMPLATE="$SELF_DIR/nginx/app.conf"
 LINK="$BASE/etc/nginx.conf"
-DEFAULT_TARGET=/etc/nginx/conf.d/app.conf
+#CLD: 2026-10-29T04:00:00+02:00: named after the app's user (was app.conf for every app: a second app on the server overwrote it; the user app: app.conf as before)
+APP_USER=$(stat -c %U "$BASE/app")
+DEFAULT_TARGET="/etc/nginx/conf.d/$APP_USER.conf"
 
 SERVER_NAME=""
 DRY_RUN=0
@@ -54,7 +56,7 @@ if ! [[ $SERVER_NAME =~ ^[A-Za-z0-9.-]+$ ]]; then
     exit 1
 fi
 
-#the file: where <app>/etc/nginx.conf points, else conf.d/app.conf
+#the file: where <app>/etc/nginx.conf points, else conf.d/<the app's user>.conf
 TARGET="$DEFAULT_TARGET"
 if [ -L "$LINK" ] || [ -e "$LINK" ]; then
     TARGET=$(readlink -f "$LINK")
@@ -105,7 +107,6 @@ echo "+ nginx reloaded"
 
 #the app's link to it, when missing
 if [ ! -e "$LINK" ] && [ ! -L "$LINK" ]; then
-    APP_USER=$(stat -c %U "$BASE/app")
     install -d -o "$APP_USER" -g "$APP_USER" "$BASE/etc"
     ln -s "$TARGET" "$LINK"
     chown -h "$APP_USER:$APP_USER" "$LINK"
