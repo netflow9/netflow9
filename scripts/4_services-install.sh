@@ -9,7 +9,7 @@
 
 #The processes started by scripts/daemon.sh and scripts/haraka.sh (their PID files) are stopped first; those scripts are no longer needed after this.
 #Run as root:
-#   sudo scripts/4_services-install.sh install [--no-playwright]     write the units and the rule, move the running services to them, start at boot
+#   sudo scripts/4_services-install.sh [install] [--no-playwright]   write the units and the rule, move the running services to them, start at boot
 #   sudo scripts/4_services-install.sh uninstall [--no-playwright]   stop and remove the units and the rule (start the old scripts again by hand if needed)
 #   scripts/4_services-install.sh status
 
@@ -24,8 +24,12 @@ DAEMON_UNIT=nfn-daemon.service
 HARAKA_UNIT=nfn-haraka.service
 MANAGED="$DAEMON_UNIT $HARAKA_UNIT playwright-mcp.service"
 
-command="${1:-}"
-[ -n "$command" ] && shift || true
+#CLD: 2026-10-28T23:30:00+02:00: install when no command is given (as the other install scripts: sudo scripts/4_services-install.sh [--no-playwright]); was: the usage
+command="install"
+case "${1:-}" in
+    ""|--*) ;;
+    *) command="$1"; shift ;;
+esac
 #CLD: 2026-10-22T23:30:00+03:00: the browser service too (scripts/playwright-mcp.sh), unless --no-playwright
 PLAYWRIGHT=1
 while [ "$#" -gt 0 ]; do
@@ -196,7 +200,7 @@ case "$command" in
         fi
         ;;
     *)
-        echo "usage: sudo $0 {install | uninstall | status} [--no-playwright]"
+        echo "usage: sudo $0 [install | uninstall | status] [--no-playwright]   (install when none is given)"
         exit 1
         ;;
 esac
