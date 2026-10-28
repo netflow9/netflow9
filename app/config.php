@@ -197,3 +197,14 @@ function get_setup_config() {
     $_config['components']['session'] = [ 'preload' => true, 'class' => '\sys\SessionNoDB' ];
     return $_config;
 }
+
+//CLD: 2026-10-29T02:00:00+02:00: the console's, while app.env is missing (app/v.php): the commands (only setup::install works: commands\SetupCommand), without the Boot component
+//and without a database until the setup connects one (util\Setup::database)
+function get_setup_console_config() {
+    $_config = get_config('console');
+    $_config['app.setup'] = true;
+    unset($_config['components']['boot']);
+    //as the browser's setup: a plain PHP session (the app's is kept in the database)
+    $_config['components']['session'] = [ 'preload' => true, 'class' => '\sys\SessionNoDB' ];
+    return $_config;
+}
