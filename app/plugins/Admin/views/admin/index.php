@@ -48,7 +48,7 @@ require __DIR__ . '/_header.php';
 			</form>
 			<?php endforeach; ?>
 			<?php else: ?>
-			<span class="text-muted" title="Run scripts/services-install.sh as root to manage it here">scripts/services-install.sh</span>
+			<span class="text-muted" title="Run scripts/4_services-install.sh as root to manage it here">scripts/4_services-install.sh</span>
 			<?php endif; ?>
 		    </td>
 		</tr>

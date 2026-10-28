@@ -7,15 +7,19 @@
 #  plugins/nfn.js, config/  NetFlow9's plugin and configuration (scripts/haraka/: @BASE@, @DOMAIN@, @MONGO_DB@ filled from app.env), then Haraka's default configuration
 #  queue/, dkim/            empty folders
 #Nothing that is there is overwritten: a file / package already installed is kept (and listed as such); package.json / package-lock.json are not changed when they exist.
-#Run as the app's user (not root):
-#   scripts/haraka-install.sh [--version=<vX.Y.Z>] [--domain=<inbound domain>] [--dir=<folder>] [--dry-run]
-#After: the MongoDB user's password (sudo scripts/mongo-auth-setup.sh, or set it in config/nfn.ini), DKIM keys (haraka -h dkim), then start it
-#(sudo scripts/services-install.sh install, or scripts/haraka.sh start)
+#CLD: 2026-10-28T21:30:00+02:00: run as root (was: as the app's user); it runs itself again as the app's user (the owner of <app>/app), with the system's Node.js: Haraka's files are that user's
+#Run as root:
+#   sudo scripts/2_haraka-install.sh [--version=<vX.Y.Z>] [--domain=<inbound domain>] [--dir=<folder>] [--dry-run]
+#After: the MongoDB user's password (sudo scripts/3_mongo-auth-setup.sh, or set it in config/nfn.ini), DKIM keys (haraka -h dkim), then start it
+#(sudo scripts/4_services-install.sh install, or scripts/haraka.sh start)
 
 set -euo pipefail
 
 SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+SELF="$SELF_DIR/$(basename "${BASH_SOURCE[0]}")"
 BASE=$(dirname "$SELF_DIR")
+#CLD: 2026-10-28T21:30:00+02:00: the arguments, for running again as the app's user
+ARGS=("$@")
 TEMPLATES="$SELF_DIR/haraka"
 REPO="haraka/Haraka"
 MONGODB_DRIVER="mongodb@^3.5.5"
@@ -55,9 +59,22 @@ run() {
     fi
 }
 
-if [ "$(id -u)" -eq 0 ]; then
-    echo "run it as the app's user (the owner of $BASE), not root: Haraka's files are that user's"
-    exit 1
+#CLD: 2026-10-28T21:30:00+02:00: as root (was: refused); root runs this script again as the app's user, with the system's Node.js (not root's own nvm)
+if [ -z "${NFN_HARAKA_INSTALL_AS_APP_USER:-}" ]; then
+    if [ "$(id -u)" -eq 0 ]; then
+        APP_USER=$(stat -c %U "$BASE/app")
+        if [ "$APP_USER" = "root" ]; then
+            echo "$BASE/app is owned by root: Haraka's files must be the app's user's"
+            exit 1
+        fi
+        echo "+ as $APP_USER"
+        cd "$BASE"
+        exec runuser -u "$APP_USER" -- env -u NVM_DIR -u NVM_BIN -u NVM_INC -u NPM_CONFIG_PREFIX -u npm_config_prefix \
+            NFN_HARAKA_INSTALL_AS_APP_USER=1 PATH="/usr/local/bin:/usr/bin:/bin" "$SELF" "${ARGS[@]}"
+    elif [ "$DRY_RUN" -eq 0 ]; then
+        echo "run it as root: sudo $0 ${ARGS[*]}"
+        exit 1
+    fi
 fi
 for cmd in node npm curl tar sed; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -146,7 +163,7 @@ if [ ! -e "$DIR/package.json" ]; then
         cat > "$DIR/package.json" <<EOF
 {
   "name": "haraka_local",
-  "description": "NetFlow9's inbound mail (Haraka; scripts/haraka-install.sh)",
+  "description": "NetFlow9's inbound mail (Haraka; scripts/2_haraka-install.sh)",
   "version": "0.0.1",
   "private": true,
   "dependencies": {
@@ -214,7 +231,7 @@ for f in "${KEPT[@]}"; do echo "  $f"; done
 echo
 echo "next:"
 if grep -q 'CHANGE_ME' "$DIR/config/nfn.ini" 2>/dev/null; then
-    echo "  - the MongoDB user nfn_haraka: sudo scripts/mongo-auth-setup.sh (writes its password into config/nfn.ini), or set uri there"
+    echo "  - the MongoDB user nfn_haraka: sudo scripts/3_mongo-auth-setup.sh (writes its password into config/nfn.ini), or set uri there"
 fi
 echo "  - DKIM keys for $DOMAIN (config/dkim.ini, selector app): $DIR/node_modules/haraka/bin/haraka -h dkim"
-echo "  - start it: sudo scripts/services-install.sh install (systemd), or scripts/haraka.sh start; Haraka listens on port 25"
+echo "  - start it: sudo scripts/4_services-install.sh install (systemd), or scripts/haraka.sh start; Haraka listens on port 25"
