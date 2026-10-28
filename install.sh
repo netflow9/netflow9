@@ -359,8 +359,19 @@ install_packages $PHP_PACKAGES nginx redis
 #/usr/bin/php: PHP $PHPV's (in place of the distribution's, when allowed above)
 if ! rpm -q --quiet "php$PHPV-syspaths"; then
     if [ "$OPT_REPLACE_PHP" -eq 1 ]; then
-        echo "+ dnf install --allowerasing php$PHPV-syspaths (removes: $DISTRO_PHP)"
-        dnf -y install --allowerasing "php$PHPV-syspaths"
+        #CLD: 2026-10-29T05:45:00+02:00: the distribution's PHP removed first (was dnf install --allowerasing: one transaction cannot turn its /etc/php.d folder into
+        #php$PHPV-syspaths' link, "file /etc/php.d ... conflicts"); what it leaves there (edited files kept by rpm) is moved aside, then php$PHPV-syspaths
+        echo "+ dnf remove $DISTRO_PHP"
+        # shellcheck disable=SC2086
+        dnf -y remove $DISTRO_PHP
+        ts=$(date +%Y%m%dT%H%M%S)
+        for f in /etc/php.d /etc/php.ini; do
+            if [ -e "$f" ] && [ ! -L "$f" ]; then
+                mv "$f" "$f.distro-$ts"
+                echo "+ left by the distribution's PHP: $f, kept as $f.distro-$ts"
+            fi
+        done
+        install_packages "php$PHPV-syspaths"
     else
         install_packages "php$PHPV-syspaths"
     fi
