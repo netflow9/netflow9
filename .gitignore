@@ -8,6 +8,7 @@
 !/public_html/
 !/scripts/
 !/app.env.example
+!/install.sh
 
 # --- never commit (secrets / runtime) ---
 public_html/assets/

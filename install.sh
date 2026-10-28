@@ -5,12 +5,13 @@
 #  the nginx site (0_nginx-install.sh; a self-signed certificate when there is none), the app's setup (app/v setup::install as the app's user: the account, its owner,
 #  app.env), Playwright (1_), Haraka (2_), MongoDB's users (3_) and authorization (/etc/mongod.conf, mongod restarted), the background services (4_)
 #Run again: an app already set up keeps its settings and account (only the options are asked); what is already done is left as it is
-#   sudo scripts/install.sh
+#CLD: 2026-10-29T03:30:00+02:00: in the app's folder (was scripts/install.sh): the parts are in scripts/
+#   cd <app> && sudo ./install.sh
 
 set -euo pipefail
 
-SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-BASE=$(dirname "$SELF_DIR")
+BASE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+SCRIPTS="$BASE/scripts"
 ENV_FILE="$BASE/app.env"
 MONGOD_CONF=/etc/mongod.conf
 LOCAL_MONGO="mongodb://127.0.0.1:27017"
@@ -284,7 +285,7 @@ if [ "$OPT_NGINX" -eq 1 ]; then
         chown -h "$APP_USER:$APP_USER" "$BASE/ssl/selfsigned.key" "$BASE/ssl/selfsigned.crt" "$BASE/ssl/ssl.crt" "$BASE/ssl/ssl.key"
         echo "+ a self-signed certificate for $HOST in ssl/ (ssl.crt, ssl.key point to it)"
     fi
-    "$SELF_DIR/0_nginx-install.sh" --server-name="$HOST"
+    "$SCRIPTS/0_nginx-install.sh" --server-name="$HOST"
 fi
 
 if [ "$SET_UP" -eq 0 ]; then
@@ -302,19 +303,19 @@ if [ "$OPT_BROWSER" -eq 1 ]; then
     if chromium_installed; then
         echo "Playwright and Chromium are installed already"
     else
-        "$SELF_DIR/1_playwright-install.sh"
+        "$SCRIPTS/1_playwright-install.sh"
     fi
 fi
 
 if [ "$OPT_MAIL" -eq 1 ]; then
     step "Inbound email (Haraka)"
-    "$SELF_DIR/2_haraka-install.sh" --domain="$MAIL_DOMAIN"
+    "$SCRIPTS/2_haraka-install.sh" --domain="$MAIL_DOMAIN"
 fi
 
 MONGO_CHANGED=0
 if [ "$OPT_MONGO" -eq 1 ]; then
     step "MongoDB: users and sign-in"
-    "$SELF_DIR/3_mongo-auth-setup.sh" --no-next-steps
+    "$SCRIPTS/3_mongo-auth-setup.sh" --no-next-steps
     MONGO_CHANGED=1
     if grep -qE '^[[:space:]]*authorization:[[:space:]]*enabled' "$MONGOD_CONF"; then
         echo "$MONGOD_CONF: authorization is enabled already"
@@ -346,7 +347,7 @@ if [ "$OPT_MONGO" -eq 1 ]; then
 fi
 
 step "The background services"
-"$SELF_DIR/4_services-install.sh" install $([ "$OPT_BROWSER" -eq 1 ] || echo --no-playwright)
+"$SCRIPTS/4_services-install.sh" install $([ "$OPT_BROWSER" -eq 1 ] || echo --no-playwright)
 #the services running before reconnect with the new MongoDB users
 [ "$MONGO_CHANGED" -eq 0 ] || systemctl try-restart nfn-daemon.service nfn-haraka.service || true
 
