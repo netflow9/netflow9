@@ -31,7 +31,7 @@ class Plugin {
 	//a completed Email inbound run deletes its raw message (in every mode: the daemon runs them)
 	\V::app()->hooks->addHook('execution:end', [ models\NodeTriggerEmail::class, 'afterExecutionEnd' ]);
 
-	//CLD: 2026-10-22T23:00:00+03:00: Haraka, a service of the administration (the Admin plugin): its unit (scripts/services-install.sh), its PID file before, SMTP answering on port 25
+	//CLD: 2026-10-22T23:00:00+03:00: Haraka, a service of the administration (the Admin plugin): its unit (scripts/4_services-install.sh), its PID file before, SMTP answering on port 25
 	\V::app()->hooks->addHook('admin:services', function(\ArrayObject $services) {
 	    $services['haraka'] = [
 		'label' => 'Inbound mail (Haraka)',

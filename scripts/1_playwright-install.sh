@@ -3,7 +3,7 @@
 #installs Playwright globally (for every user of the machine): the CLI (npm -g @playwright/test), the browsers in one shared folder,
 #their system libraries (dnf on AlmaLinux / RHEL: Playwright's --with-deps knows only apt), and PLAYWRIGHT_BROWSERS_PATH for every login (/etc/profile.d/playwright.sh).
 # as root:
-#   sudo scripts/playwright-install.sh [--version=<x.y.z>] [--browsers="chromium firefox"] [--path=<dir>] [--no-deps] [--dry-run]
+#   sudo scripts/1_playwright-install.sh [--version=<x.y.z>] [--browsers="chromium firefox"] [--path=<dir>] [--no-deps] [--dry-run]
 
 set -euo pipefail
 

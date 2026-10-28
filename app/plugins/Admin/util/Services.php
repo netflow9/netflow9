@@ -2,7 +2,7 @@
 
 /*
     the installation's services (Plugin::services): their status (systemd: `systemctl show`, which any user may read; a service not yet made a unit:
-    its script's PID file) and start / stop / restart (`systemctl`, allowed to this app's user for these units only by the polkit rule of scripts/services-install.sh)
+    its script's PID file) and start / stop / restart (`systemctl`, allowed to this app's user for these units only by the polkit rule of scripts/4_services-install.sh)
 */
 
 namespace plugins\Admin\util;
@@ -56,7 +56,7 @@ class Services {
 	    return [ false, 'unknown action' ];
 	$unit = (string)($s['unit'] ?? '');
 	if ($unit === '' || !self::status([ 'unit' => $unit ])['unit'])
-	    return [ false, 'not a system service yet: run scripts/services-install.sh (as root) first' ];
+	    return [ false, 'not a system service yet: run scripts/4_services-install.sh (as root) first' ];
 	[ $code, $out ] = self::run([ 'systemctl', '--no-ask-password', $verb, $unit ], 60);
 	if ($code !== 0)
 	    return [ false, trim($out) ?: "systemctl {$verb} failed ({$code})" ];
