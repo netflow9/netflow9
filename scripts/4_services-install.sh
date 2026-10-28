@@ -113,6 +113,15 @@ WantedBy=multi-user.target
 EOF
 }
 
+#CLD: 2026-10-29T00:30:00+02:00: polkit must be installed (its rules' folder there): the administration controls the units through it; checked before anything is written
+#(a minimal system has no polkit: the rule could not be written, after the daemon's unit)
+need_polkit() {
+    if ! command -v pkaction >/dev/null 2>&1 || [ ! -d "$(dirname "$POLKIT_RULE")" ]; then
+        echo "polkit is not installed ($(dirname "$POLKIT_RULE") missing): install it (dnf install polkit), then run this again"
+        exit 1
+    fi
+}
+
 write_polkit_rule() {
     local units=""
     for u in $MANAGED; do units="$units${units:+, }\"$u\""; done
@@ -134,6 +143,7 @@ EOF
 case "$command" in
     install)
         need_root
+        need_polkit
         echo "+ app $BASE, user $APP_USER"
         write_daemon_unit
         haraka=0
