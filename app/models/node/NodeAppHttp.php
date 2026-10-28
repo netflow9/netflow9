@@ -2,7 +2,7 @@
 
 /*
     HTTP Request - calls an HTTP endpoint (an API).
-    Settings: method, URL, query parameters, headers, body (none / JSON / form / text; JSON checked on save, also as a JSON-RPC 2.0 request when `jsonRpc`),
+    Settings: method, URL, query parameters (a repeated name sends each one), headers, body (none / JSON / form / text; JSON checked on save, also as a JSON-RPC 2.0 request when `jsonRpc`),
 	an optional credential of the project providing `http` (API key, Basic, Bearer, OAuth: httpAuth()),
 	timeout; URL, values and body may hold {{ }} expressions.
 	The response goes into one variable (default `response`): { ok, status, headers, body, error, time_ms } - body parsed when it is JSON,
@@ -240,10 +240,11 @@ class NodeAppHttp extends \models\WfNode {
 	$shownUrl = preg_replace('/[?#].*$/', '', $url);
 
 	//query parameters, headers (the credential's added after them: it wins)
+	//CLD: 2026-10-28T08:30:00+02:00: query parameters as [ name, value ] pairs (was by name): a repeated name sends each row (e.g. CheckMK's columns=a&columns=b)
 	$query = [];
 	foreach((array)$this->cfg('query', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
-		$query[$row['name']] = $text($row['value'] ?? '');
+		$query[] = [ (string)$row['name'], $text($row['value'] ?? '') ];
 	}
 	$headers = [];
 	foreach((array)$this->cfg('headers', []) as $row) {
@@ -258,11 +259,9 @@ class NodeAppHttp extends \models\WfNode {
 	    $auth = $cred->httpAuth();
 	    foreach((array)($auth['headers'] ?? []) as $name => $value)
 		$headers[strtolower($name)] = [ $name, (string)$value ];
-	    foreach((array)($auth['query'] ?? []) as $name => $value)
-		$query[$name] = (string)$value;
 	}
-	if ($query)
-	    $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+	//CLD: 2026-10-28T08:30:00+02:00: self::withQuery (was http_build_query: one value per name)
+	$url = self::withQuery($url, $query, (array)($auth['query'] ?? []));
 
 	//body
 	$body = null;
@@ -310,6 +309,18 @@ class NodeAppHttp extends \models\WfNode {
 
     //one request (redirects followed, http / https only): [ ok, status, headers, body, error, time_ms ]
     //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here); + $opts: more util\Http options (the step: `public` unless app.env HTTP_STEPS_ALLOW_PRIVATE)
+    //CLD: 2026-10-28T08:30:00+02:00: new: $url with the query parameters added - $pairs: [ name, value ] (a repeated name sent once per pair), $override: name => value
+    //(the credential's: replaces the pairs of its name); also used by Download File
+    public static function withQuery($url, array $pairs, array $override = []) {
+	foreach($override as $name => $value) {
+	    $pairs = array_values(array_filter($pairs, fn($pair) => $pair[0] !== (string)$name));
+	    $pairs[] = [ (string)$name, (string)$value ];
+	}
+	if (!$pairs)
+	    return $url;
+	return $url . (str_contains($url, '?') ? '&' : '?') . implode('&', array_map(fn($pair) => rawurlencode($pair[0]) . '=' . rawurlencode($pair[1]), $pairs));
+    }
+
     public static function request($method, $url, array $headers, $body, $timeout, array $opts = []) {
 	$timeout = max(1, min(self::MAX_TIMEOUT, (int)$timeout));
 	$r = \util\Http::request($method, $url, $opts + [

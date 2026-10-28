@@ -2000,8 +2000,9 @@ class CheckCommand extends \sys\BaseController {
 	    //the HTTP steps: a private address only when allowed
 	    $n = [ self::class, 'node' ];
 	    $e = [ self::class, 'edge' ];
-	    $step = function($type, $url, $variable) use ($n, $e, $om, &$files) {
-		$exe = $this->runFlow("http {$type}", [ $n('m', 'trigger::manual'), $n('h', "app::{$type}", [ 'method' => 'GET', 'url' => $url, 'variable' => $variable, 'onError' => 'output', 'timeout' => 10 ]),
+	    //CLD: 2026-10-28T08:30:00+02:00: + $cfg (more settings of the step)
+	    $step = function($type, $url, $variable, $cfg = []) use ($n, $e, $om, &$files) {
+		$exe = $this->runFlow("http {$type}", [ $n('m', 'trigger::manual'), $n('h', "app::{$type}", $cfg + [ 'method' => 'GET', 'url' => $url, 'variable' => $variable, 'onError' => 'output', 'timeout' => 10 ]),
 		    $n('ok', 'app::set', [ 'variable' => 'route', 'value' => 'success' ]), $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]),
 		    $e('e1', 'm', 'h'), $e('e2', 'h', 'ok', 0), $e('e3', 'h', 'err', 1) ]);
 		$v = $exe?->getVariable($variable);
@@ -2018,6 +2019,13 @@ class CheckCommand extends \sys\BaseController {
 	    [ $route, $v ] = $step('http', "{$base}/redirect", 'response');
 	    $this->check('HTTP Request: allowed: redirects followed, the headers (a list when repeated), the JSON body', [ 'success', 200, [ 'one', 'two' ], 'GET', true ],
 		[ $route, $v['status'] ?? null, $v['headers']['x-check'] ?? null, $v['body']['method'] ?? null, is_int($v['time_ms'] ?? null) ]);
+	    //CLD: 2026-10-28T08:30:00+02:00: a repeated query parameter sent once per row, after the URL's own
+	    [ $route, $v ] = $step('http', "{$base}/echo?a=1", 'response', [ 'query' => [ [ 'name' => 'columns', 'value' => 'state' ], [ 'name' => 'columns', 'value' => 'plugin output' ],
+		[ 'name' => 'q', 'value' => '{"op":"!="}' ] ] ]);
+	    $this->check('HTTP Request: a repeated query parameter (each row sent, encoded)', [ 'success', 'a=1&columns=state&columns=plugin%20output&q=%7B%22op%22%3A%22%21%3D%22%7D' ],
+		[ $route, $v['body']['raw_query'] ?? null ]);
+	    $this->check('HTTP Request: the credential\'s query parameter replaces the rows of its name', 'https://x.io/a?b=1&b=2&key=k',
+		\models\node\NodeAppHttp::withQuery('https://x.io/a', [ [ 'key', 'mine' ], [ 'b', '1' ], [ 'key', 'two' ], [ 'b', '2' ] ], [ 'key' => 'k' ]));
 	    [ $route, $v ] = $step('download', "{$base}/file", 'file');
 	    $this->check('Download File: allowed: the name from Content-Disposition, the size', [ 'success', 'report.csv', 8 ], [ $route, $v['filename'] ?? null, $v['size'] ?? null ]);
 	} finally {
