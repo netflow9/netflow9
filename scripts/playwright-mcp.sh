@@ -4,7 +4,7 @@
 #  - its own user (pwmcp), no login, writing only in /var/lib/playwright-mcp
 #  - on 127.0.0.1:8931 only (Streamable HTTP: http://localhost:8931/mcp), headless, a fresh in-memory browser profile per session
 #    CLD: 2026-10-23T00:20:00+03:00: + --allowed-hosts: the Host headers localhost:<port> and 127.0.0.1:<port> (it accepted only localhost: 403 for http://127.0.0.1:...)
-#  - the shared Chromium of scripts/playwright-install.sh (run that first)
+#  - the shared Chromium of scripts/1_playwright-install.sh (run that first)
 #  - a firewall table (nftables) refusing the user's new connections to private, loopback and link-local addresses (the cloud metadata 169.254.169.254 too): the browser reaches
 #    only the public internet (Playwright's own --blocked-origins is not a security boundary: kept as a second layer only)
 #Run as root:
@@ -16,7 +16,7 @@ set -euo pipefail
 
 SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")
 
-#the @playwright/mcp version: tested with the shared Chromium (scripts/playwright-install.sh: Playwright 1.64)
+#the @playwright/mcp version: tested with the shared Chromium (scripts/1_playwright-install.sh: Playwright 1.64)
 VERSION="0.0.83"
 PORT=8931
 SERVICE=playwright-mcp
@@ -136,7 +136,7 @@ case "$command" in
         need_root
         system_node
         chrome=$(chromium_path)
-        [ -n "$chrome" ] || { echo "no shared Chromium in $BROWSERS_PATH: run scripts/playwright-install.sh first"; exit 1; }
+        [ -n "$chrome" ] || { echo "no shared Chromium in $BROWSERS_PATH: run scripts/1_playwright-install.sh first"; exit 1; }
         echo "+ @playwright/mcp $VERSION, Chromium $chrome, port $PORT"
         command -v nft >/dev/null || dnf install -y nftables
         id "$SVC_USER" >/dev/null 2>&1 || useradd --system --home-dir "$HOME_DIR" --shell /sbin/nologin --comment "Playwright MCP server" "$SVC_USER"

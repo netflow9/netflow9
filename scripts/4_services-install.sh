@@ -9,9 +9,9 @@
 
 #The processes started by scripts/daemon.sh and scripts/haraka.sh (their PID files) are stopped first; those scripts are no longer needed after this.
 #Run as root:
-#   sudo scripts/services-install.sh install [--no-playwright]     write the units and the rule, move the running services to them, start at boot
-#   sudo scripts/services-install.sh uninstall [--no-playwright]   stop and remove the units and the rule (start the old scripts again by hand if needed)
-#   scripts/services-install.sh status
+#   sudo scripts/4_services-install.sh install [--no-playwright]     write the units and the rule, move the running services to them, start at boot
+#   sudo scripts/4_services-install.sh uninstall [--no-playwright]   stop and remove the units and the rule (start the old scripts again by hand if needed)
+#   scripts/4_services-install.sh status
 
 set -euo pipefail
 
@@ -160,7 +160,7 @@ case "$command" in
             if ls -d /opt/playwright/browsers/chromium-[0-9]*/chrome-linux64/chrome >/dev/null 2>&1; then
                 "$BASE/scripts/playwright-mcp.sh" install
             else
-                echo "! the web browser for the AI steps is not installed: no shared Chromium; run scripts/playwright-install.sh first, then this again (or scripts/playwright-mcp.sh install)"
+                echo "! the web browser for the AI steps is not installed: no shared Chromium; run scripts/1_playwright-install.sh first, then this again (or scripts/playwright-mcp.sh install)"
             fi
         fi
         sleep 2
