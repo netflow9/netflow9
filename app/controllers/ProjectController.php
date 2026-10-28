@@ -70,6 +70,166 @@ class ProjectController extends \sys\BaseController {
 
 
 
+    //CLD: 2026-10-28T10:00:00+02:00: Export / import (settings tab `transfer`, util\Transfer; Project::transfer): moves workflows, credentials and data tables to another server.
+    //export (POST): the chosen items (each also needs its read permission; `used`: + the credentials / tables the chosen workflows use), the tables in `rows` with their rows;
+    //a passphrase seals the file and puts the credentials' secrets in it. Sent as a download (the form is not pjax)
+    public function export($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$project = $this->transferProject();
+	$data = is_array($req->data) ? $req->data : [];
+	$back = function($message) use ($project) {
+	    $this->addToast('error', 'Not exported', $message);
+	    $this->redirect('/project/settings', [ 'id' => (string)$project->_id, '__tab' => 'transfer' ]);
+	};
+
+	$passphrase = (string)($data['passphrase'] ?? '');
+	if ($passphrase !== '' && $passphrase !== (string)($data['passphrase2'] ?? ''))
+	    $back('The passphrases do not match');
+	if ($passphrase !== '' && mb_strlen($passphrase) < 8)
+	    $back('The passphrase needs at least 8 characters');
+
+	$om = \V::app()->om;
+	$readable = fn($o, $perm) => \V::app()->user->can($perm, [ 'object' => $o ]);
+	$pick = function($objectName, $key, $perm) use ($om, $project, $data, $readable) {
+	    $ids = array_values(array_filter(array_map('strval', (array)($data[$key] ?? [])), fn($id) => \util\Validator::rule('oid', $id)));
+	    $list = [];
+	    if ($ids) {
+		foreach($om->find($objectName, [ '_id' => [ '$in' => array_map(fn($id) => $om->to_oid($id), $ids) ], 'aid' => $project->aid, 'project' => $project->_id ]) as $o) {
+		    if ($readable($o, $perm))
+			$list[(string)$o->_id] = $o;
+		}
+	    }
+	    return $list;
+	};
+	$workflows = $pick('Workflow', 'workflows', 'Workflow::read');
+	$credentials = $pick('Credential', 'credentials', 'Credential::read');
+	$tables = $pick('DataTableDef', 'datatables', 'DataTable::readData');
+	if (!empty($data['used'])) {
+	    [ $usedCredentials, $usedTables ] = \util\Transfer::usedBy($project, array_values($workflows));
+	    foreach($usedCredentials as $c) {
+		if ($readable($c, 'Credential::read'))
+		    $credentials[(string)$c->_id] = $c;
+	    }
+	    foreach($usedTables as $t) {
+		if ($readable($t, 'DataTable::readData'))
+		    $tables[(string)$t->_id] = $t;
+	    }
+	}
+	if (!$workflows && !$credentials && !$tables)
+	    $back('Choose what to export');
+	$rows = array_values(array_intersect(array_map('strval', (array)($data['rows'] ?? [])), array_keys($tables)));
+
+	$text = \util\Transfer::export($project, array_values($workflows), array_values($credentials), array_values($tables), $rows, $passphrase);
+	\models\AuditLog::record('project.export', $project, \util\Format::plural(count($workflows), 'workflow') . ', ' . \util\Format::plural(count($credentials), 'credential')
+	    . ', ' . \util\Format::plural(count($tables), 'data table') . ($rows ? ' (' . count($rows) . ' with rows)' : '') . ($passphrase !== '' ? '; with the secrets, sealed by a passphrase' : '; without secrets'));
+
+	$slug = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower((string)$project->name)), '-') ?: 'project';
+	$resp->addHeader('Content-Type', 'application/json');
+	$resp->addHeader('Content-Disposition', "attachment; filename=\"netflow9-{$slug}-" . date('Ymd-His') . '.json"');
+	$resp->addHeader('Cache-Control', 'no-store');
+	$resp->addHeader('X-Content-Type-Options', 'nosniff');
+	$resp->write($text, true);
+	\V::app()->end();
+    }
+
+    //import: upload (POST `file`, `passphrase` when sealed) -> the preview (views/project/import_preview.php: each item with what to do) -> apply (POST `step=apply`, `token`,
+    //`do[<list>][<index>]`) -> the result (views/project/import_done.php). The opened file waits in tmp/transfer/<token> (encrypted with this server's key: it may hold
+    //secrets) until imported; files older than a day are removed. Each action also needs its permission (create / update of its type)
+    public function import($req, $resp) {
+	$project = $this->transferProject();
+	$tab = fn() => $this->redirect('/project/settings', [ 'id' => (string)$project->_id, '__tab' => 'transfer' ]);
+	if (!$req->is('post'))
+	    $tab();
+	$back = function($message) use ($tab) {
+	    $this->addToast('error', 'Not imported', $message);
+	    $tab();
+	};
+
+	$dir = BASE . '/tmp/transfer';
+	if (!is_dir($dir))
+	    mkdir($dir, 0700, true);
+	foreach(glob($dir . '/*') ?: [] as $old) {
+	    if (filemtime($old) < time() - 86400)
+		@unlink($old);
+	}
+
+	$data = is_array($req->data) ? $req->data : [];
+	$step = (string)($data['step'] ?? '');
+	$owner = [ 'aid' => (string)$project->aid, 'user' => (string)\V::app()->user->_id, 'project' => (string)$project->_id ];
+
+	if ($step === '') {
+	    $file = $req->files['file'] ?? null;
+	    if (empty($file) || ($file['error'] ?? 1) == UPLOAD_ERR_NO_FILE)
+		$back('Choose an export file');
+	    if ($file['error'] > 0)
+		$back('The file could not be uploaded');
+	    if ($file['size'] > \util\Transfer::MAX_BYTES)
+		$back('The file is larger than ' . \util\Format::bytes(\util\Transfer::MAX_BYTES));
+	    try {
+		$bundle = \util\Transfer::open((string)file_get_contents($file['tmp_name']), (string)($data['passphrase'] ?? ''));
+	    } catch (\RuntimeException $e) {
+		$back($e->getMessage());
+	    }
+	    $token = bin2hex(random_bytes(16));
+	    $meta = $owner + [ 'name' => (string)$file['name'] ];
+	    file_put_contents("{$dir}/{$token}", \V::app()->security->encrypt(\util\JSON::encode($meta + [ 'bundle' => $bundle ])));
+	    chmod("{$dir}/{$token}", 0600);
+	} else {
+	    $token = (string)($data['token'] ?? '');
+	    $saved = preg_match('/^[0-9a-f]{32}$/', $token) && is_file("{$dir}/{$token}") ? json_decode((string)\V::app()->security->decrypt((string)file_get_contents("{$dir}/{$token}")), true) : null;
+	    if (!is_array($saved) || array_intersect_key($saved, $owner) !== $owner)
+		$back('The uploaded file is no longer available: upload it again');
+	    $bundle = $saved['bundle'];
+	    $meta = array_diff_key($saved, [ 'bundle' => 1 ]);
+	}
+
+	$can = $this->transferCan($project);
+	if ($step === 'apply') {
+	    //in the project imported to: the steps' choices (its tables, its credentials) are the current project's
+	    $current = \V::app()->user->crtProject;
+	    \V::app()->user->crtProject = (string)$project->_id;
+	    try {
+		$result = \util\Transfer::apply($bundle, $project, is_array($data['do'] ?? null) ? $data['do'] : [], $can);
+	    } finally {
+		\V::app()->user->crtProject = $current;
+	    }
+	    @unlink("{$dir}/{$token}");
+	    \models\AuditLog::record('project.import', $project, 'from ' . $meta['name'] . ': ' . (count($result['done']) ? implode('; ', $result['done']) : 'nothing imported')
+		. ($result['warnings'] ? ' (' . \util\Format::plural(count($result['warnings']), 'warning') . ')' : ''));
+	    $this->addEvent('sidebar::refresh');
+	    $this->render('import_done', compact('project', 'result', 'meta'));
+	    return;
+	}
+
+	$plan = \util\Transfer::plan($bundle, $project, $can);
+	$this->render('import_preview', compact('project', 'bundle', 'plan', 'token', 'meta'));
+    }
+
+    //the project of ?id (default: the current one) of this account, with Project::transfer
+    private function transferProject() {
+	$id = $this->getOidParam('id', (string)\V::app()->user->crtProject);
+	$project = empty($id) ? null : \V::app()->om->findOne('Project', [ '_id' => $id, 'aid' => \V::app()->config('rt.account')->_id ]);
+	if (empty($project))
+	    \V::app()->error(404, 'Not found');
+	if (!\V::app()->user->can('Project::transfer', [ 'object' => $project ]))
+	    \V::app()->error(403, 'Unauthorized');
+	return $project;
+    }
+
+    //util\Transfer's $can: an import action needs the create permission of its type in the project (new items, copies), update on the existing item (replace / update)
+    private function transferCan($project) {
+	$objects = [ 'workflows' => [ 'Workflow', 'Workflow' ], 'credentials' => [ 'Credential', 'Credential' ], 'datatables' => [ 'DataTableDef', 'DataTable' ] ];
+	return function($list, $action, $existing) use ($project, $objects) {
+	    [ $objectName, $perm ] = $objects[$list];
+	    if (in_array($action, [ 'create', 'copy' ], true))
+		return \V::app()->user->can($perm . '::create', [ 'object' => \V::app()->om->create($objectName, [ 'aid' => $project->aid, 'project' => $project->_id ]) ]);
+	    if ($action === 'update_rows' && !\V::app()->user->can('DataTable::writeData', [ 'object' => $existing ]))
+		return false;
+	    return $existing !== null && \V::app()->user->can($perm . '::update', [ 'object' => $existing ]);
+	};
+    }
+
     //CLD: 2026-10-13T20:55:25+03:00: the members of a project (user's choice: managed by who has Project::update): add one (a user of the account, with a role), change a member's role,
     //remove one. POST only, back to the Members tab. A personal project has one member; a change cannot take away the last member with the owner role. Each change is
     //saved through the model (members is not a form field) and written to the audit log
