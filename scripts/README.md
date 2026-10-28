@@ -8,7 +8,7 @@ Skip the ones you don't need. Steps 1, 2 and 4 can be run again (nothing already
 | 1 | `sudo scripts/1_playwright-install.sh` | Playwright and a shared Chromium (`/opt/playwright/browsers`), for the AI steps' web browser | system-wide Node.js and npm |
 | 2 | `sudo scripts/2_haraka-install.sh` | Haraka, for inbound mail, into `<app>/haraka` (its files stay the app's user's) | `MAIL_INBOUND_DOMAIN` in `app.env` (or `--domain=`); system-wide Node.js |
 | 3 | `sudo scripts/3_mongo-auth-setup.sh` | MongoDB users `nfn_admin`, `nfn_app`, `nfn_haraka`; their passwords into `app.env` and `haraka/config/nfn.ini` | MongoDB with authorization still off; step 2 done (it writes Haraka's `nfn.ini`) |
-| 4 | `sudo scripts/4_services-install.sh` | systemd units: `nfn-daemon`, `nfn-haraka` (when step 2 is done), `playwright-mcp` (when step 1 is done), and the polkit rule that lets the administration start / stop them | — |
+| 4 | `sudo scripts/4_services-install.sh` | systemd units: `nfn-daemon`, `nfn-haraka` (when step 2 is done), `playwright-mcp` (when step 1 is done), and the polkit rule that lets the administration start / stop them | polkit installed |
 
 After step 3, turn on authorization in `/etc/mongod.conf`, restart `mongod`, then the services; the script prints the steps.
 The operators' MongoDB password is left in `<app>/.mongodb-admin` (root's): move it to a password manager and delete the file.
