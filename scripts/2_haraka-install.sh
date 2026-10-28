@@ -5,7 +5,7 @@
 #  node_modules/haraka      Haraka itself, downloaded from GitHub (github.com/haraka/Haraka: a release, the latest by default), its dependencies by npm
 #  node_modules/mongodb     the MongoDB driver of NetFlow9's plugin (3.x: plugins/nfn.js uses its API)
 #  plugins/nfn.js, config/  NetFlow9's plugin and configuration (scripts/haraka/: @BASE@, @DOMAIN@, @MONGO_DB@ filled from app.env), then Haraka's default configuration
-#  queue/, dkim/            empty folders
+#  queue/, dkim/            empty folders (dkim/: + dkim_key_gen.sh, from scripts/haraka/dkim/)
 #Nothing that is there is overwritten: a file / package already installed is kept (and listed as such); package.json / package-lock.json are not changed when they exist.
 #CLD: 2026-10-28T21:30:00+02:00: run as root (was: as the app's user); it runs itself again as the app's user (the owner of <app>/app), with the system's Node.js: Haraka's files are that user's
 #Run as root:
@@ -213,6 +213,8 @@ fi
 #NetFlow9's plugin and configuration first (they win over Haraka's defaults of the same name), then Haraka's defaults (those already there not listed)
 put_tree "$TEMPLATES/plugins" "$DIR/plugins" 1
 put_tree "$TEMPLATES/config" "$DIR/config" 1
+#CLD: 2026-10-29T01:00:00+02:00: + the DKIM keys generator (dkim/dkim_key_gen.sh), as it is
+put_tree "$TEMPLATES/dkim" "$DIR/dkim" 0
 if [ -d "$DIR/node_modules/haraka/config" ]; then
     put_tree "$DIR/node_modules/haraka/config" "$DIR/config" 0 1
 elif [ "$DRY_RUN" -eq 0 ]; then
@@ -233,5 +235,6 @@ echo "next:"
 if grep -q 'CHANGE_ME' "$DIR/config/nfn.ini" 2>/dev/null; then
     echo "  - the MongoDB user nfn_haraka: sudo scripts/3_mongo-auth-setup.sh (writes its password into config/nfn.ini), or set uri there"
 fi
-echo "  - DKIM keys for $DOMAIN (config/dkim.ini, selector app): $DIR/node_modules/haraka/bin/haraka -h dkim"
+#CLD: 2026-10-29T01:00:00+02:00: the keys by dkim/dkim_key_gen.sh (was: Haraka's help only)
+echo "  - DKIM keys for $DOMAIN (config/dkim.ini): cd $DIR/dkim && ./dkim_key_gen.sh $DOMAIN (then publish the record of $DOMAIN/dns; help: $DIR/node_modules/haraka/bin/haraka -h dkim)"
 echo "  - start it: sudo scripts/4_services-install.sh install (systemd), or scripts/haraka.sh start; Haraka listens on port 25"
