@@ -2,6 +2,7 @@
 # NetFlow9: Run as root (sudo scripts/3_mongo-auth-setup.sh), while MongoDB still has authorization off.
 #CLD: 2026-10-28T21:30:00+02:00: run as root (was: as the app user); the app's folder from the script's place; app.env, nfn.ini and their backups keep their owner (the app's user)
 # - creates nfn_admin (root), nfn_app (readWrite on netflow9-db), nfn_haraka (role nfnHaraka) with random passwords
+#   (run again while authorization is off: they are created again, with new passwords; when MongoDB requires sign-in, nothing changes)
 # - writes the app's credentials into app.env (MONGO_URI) and Haraka's into haraka/config/nfn.ini (uri); backups next to them
 # - writes the operators' URI to <app>/.mongodb-admin (600, root's: the web server's PHP cannot read it): move it to a password manager, then delete the file
 # - makes app.env and nfn.ini readable by their owner only (600)
@@ -17,8 +18,17 @@ cd "$BASE"
 echo "app: $BASE"
 
 
-if [ -n "$(mongosh --quiet admin --eval 'print(db.getUsers().users.length || "")')" ]; then
-    echo "MongoDB already has users: stopping (nothing changed)"; exit 1
+#CLD: 2026-10-28T23:00:00+02:00: MongoDB without authorization: the users are created again (were: any user stopped it); with authorization (the users cannot be listed without signing in): stop
+if ! users=$(mongosh --quiet "mongodb://127.0.0.1:27017/admin" --eval 'print(db.getUsers().users.map(u => u.user).join(", "))' 2>&1); then
+    if grep -qiE 'auth|unauthorized' <<< "$users"; then
+        echo "MongoDB requires sign-in (authorization is on): stopping (nothing changed)"
+    else
+        echo "MongoDB does not answer: $users"
+    fi
+    exit 1
+fi
+if [ -n "$users" ]; then
+    echo "MongoDB does not require sign-in: NetFlow9's users are created again, with new passwords (admin users now: $users)"
 fi
 
 TS=$(date +%Y%m%dT%H%M%S)
@@ -37,11 +47,14 @@ chmod 600 .mongodb-admin
 
 #CLD: 2026-10-28T22:00:00+02:00: in the shell (was Python): the first line of file $1 matching the regex $2 is replaced by the lines $3...;
 #the file is rewritten in place (it keeps its owner and mode), nothing written when no line matches
+#CLD: 2026-10-28T23:00:00+02:00: a line equal to $3 (the comment, from a previous run) is dropped: not repeated at each run
 put() {
     local file=$1 pattern=$2 line out="" found=0
     shift 2
     while IFS= read -r line || [ -n "$line" ]; do
-        if [ "$found" -eq 0 ] && [[ $line =~ $pattern ]]; then
+        if [ "$line" = "$1" ]; then
+            continue
+        elif [ "$found" -eq 0 ] && [[ $line =~ $pattern ]]; then
             out+=$(printf '%s\n' "$@")$'\n'
             found=1
         else

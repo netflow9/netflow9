@@ -3,6 +3,12 @@ const DB = 'netflow9-db';
 const app = db.getSiblingDB(DB);
 const admin = db.getSiblingDB('admin');
 
+//CLD: 2026-10-28T23:00:00+02:00: run again (authorization still off): NetFlow9's users and role are dropped first, then created with the new passwords; other users are left alone
+if (admin.getUser('nfn_admin')) admin.dropUser('nfn_admin');
+if (app.getUser('nfn_app')) app.dropUser('nfn_app');
+if (app.getUser('nfn_haraka')) app.dropUser('nfn_haraka');
+if (app.getRole('nfnHaraka')) app.dropRole('nfnHaraka');
+
 // operators: everything
 admin.createUser({ user: 'nfn_admin', pwd: process.env.NFN_ADMIN_PW, roles: [ { role: 'root', db: 'admin' } ] });
 
