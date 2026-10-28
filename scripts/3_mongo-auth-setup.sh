@@ -1,6 +1,6 @@
 #!/bin/bash
 # NetFlow9: Run as root (sudo scripts/3_mongo-auth-setup.sh), while MongoDB still has authorization off.
-#CLD: 2026-10-28T21:30:00+02:00: run as root (was: as the app user); the app's folder from the script's place (was /home/app); app.env, nfn.ini and their backups keep their owner (the app's user)
+#CLD: 2026-10-28T21:30:00+02:00: run as root (was: as the app user); the app's folder from the script's place; app.env, nfn.ini and their backups keep their owner (the app's user)
 # - creates nfn_admin (root), nfn_app (readWrite on netflow9-db), nfn_haraka (role nfnHaraka) with random passwords
 # - writes the app's credentials into app.env (MONGO_URI) and Haraka's into haraka/config/nfn.ini (uri); backups next to them
 # - writes the operators' URI to <app>/.mongodb-admin (600, root's: the web server's PHP cannot read it): move it to a password manager, then delete the file
@@ -35,30 +35,53 @@ NFN_ADMIN_URI='mongodb://nfn_admin:${NFN_ADMIN_PW}@127.0.0.1:27017/?authSource=a
 EOF
 chmod 600 .mongodb-admin
 
-NFN_BASE="$BASE" python3 -I - <<'PY'
-import os, re
-base = os.environ['NFN_BASE']
-app_pw, haraka_pw = os.environ['NFN_APP_PW'], os.environ['NFN_HARAKA_PW']
-def put(path, pattern, text):
-    s = open(path).read()
-    s, n = re.subn(pattern, lambda m: text, s, count=1, flags=re.M)
-    assert n == 1, path
-    #rewritten in place: the file keeps its owner
-    open(path, 'w').write(s)
-put(base + '/app.env', r'^MONGO_URI=.*$',
-    "#CLD: 2026-10-21T17:30:00+03:00: MongoDB user nfn_app (readWrite on netflow9-db only; the database requires sign-in, see SOC2.md)\n"
-    f"MONGO_URI='mongodb://nfn_app:{app_pw}@127.0.0.1:27017/?authSource=netflow9-db'")
-put(base + '/haraka/config/nfn.ini', r'^uri=.*$',
-    "; CLD: 2026-10-21T17:30:00+03:00: MongoDB user nfn_haraka (role nfnHaraka: reads the address lookups, writes the message file and its job)\n"
-    f"uri=mongodb://nfn_haraka:{haraka_pw}@127.0.0.1:27017/?authSource=netflow9-db")
-PY
+#CLD: 2026-10-28T22:00:00+02:00: in the shell (was Python): the first line of file $1 matching the regex $2 is replaced by the lines $3...;
+#the file is rewritten in place (it keeps its owner and mode), nothing written when no line matches
+put() {
+    local file=$1 pattern=$2 line out="" found=0
+    shift 2
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [ "$found" -eq 0 ] && [[ $line =~ $pattern ]]; then
+            out+=$(printf '%s\n' "$@")$'\n'
+            found=1
+        else
+            out+="$line"$'\n'
+        fi
+    done < "$file"
+    [ "$found" -eq 1 ] || { echo "$file: no line matches $pattern: not written"; exit 1; }
+    printf '%s' "$out" > "$file"
+}
+put app.env '^MONGO_URI=' \
+    "#CLD: 2026-10-21T17:30:00+03:00: MongoDB user nfn_app (readWrite on netflow9-db only; the database requires sign-in, see SOC2.md)" \
+    "MONGO_URI='mongodb://nfn_app:${NFN_APP_PW}@127.0.0.1:27017/?authSource=netflow9-db'"
+put haraka/config/nfn.ini '^uri=' \
+    "; CLD: 2026-10-21T17:30:00+03:00: MongoDB user nfn_haraka (role nfnHaraka: reads the address lookups, writes the message file and its job)" \
+    "uri=mongodb://nfn_haraka:${NFN_HARAKA_PW}@127.0.0.1:27017/?authSource=netflow9-db"
 chmod 600 app.env haraka/config/nfn.ini
 
 # the credentials are checked now (MongoDB checks a given password even while authorization is off)
 . ./app.env >/dev/null 2>&1 || true
 mongosh --quiet "$MONGO_URI" --eval 'db.getSiblingDB("netflow9-db").accounts.findOne() ? print("nfn_app: signs in, reads accounts") : print("nfn_app: signs in")'
-code=$(curl -sk -o /dev/null -w '%{http_code}' --resolve app.netflow9.io:443:127.0.0.1 https://app.netflow9.io/site/login)
-echo "web /site/login with the new URI: $code (expect 200)"
+#CLD: 2026-10-28T22:15:00+02:00: the site's address from app.env (BASE_URL; was app.netflow9.io), asked of this server
+url="${BASE_URL:-}"
+url="${url%/}"
+if [ -n "$url" ]; then
+    scheme="${url%%://*}"
+    hostport="${url#*://}"
+    hostport="${hostport%%/*}"
+    host="${hostport%:*}"
+    if [ "$host" != "$hostport" ]; then
+        port="${hostport##*:}"
+    elif [ "$scheme" = "http" ]; then
+        port=80
+    else
+        port=443
+    fi
+    code=$(curl -sk -o /dev/null -w '%{http_code}' --resolve "$host:$port:127.0.0.1" "$url/site/login" || true)
+    echo "web $url/site/login with the new URI: $code (expect 200)"
+else
+    echo "no BASE_URL in app.env: the web check is skipped"
+fi
 
 #CLD: 2026-10-28T21:30:00+02:00: the next steps for root (this script runs as root now); the services restarted by systemd (scripts/4_services-install.sh), else by the old scripts
 cat <<EOF
