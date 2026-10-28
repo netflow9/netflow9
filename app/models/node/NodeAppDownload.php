@@ -110,10 +110,11 @@ class NodeAppDownload extends NodeAppHttp {
 	    throw new \ErrorException('Download File: the URL must start with http:// or https:// or be a data: URL (got `' . mb_substr($url, 0, 100) . '`)');
 	$shownUrl = preg_replace('/[?#].*$/', '', $url);
 
+	//CLD: 2026-10-28T08:30:00+02:00: query parameters as [ name, value ] pairs (was by name): a repeated name sends each row
 	$query = [];
 	foreach((array)$this->cfg('query', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
-		$query[$row['name']] = $text($row['value'] ?? '');
+		$query[] = [ (string)$row['name'], $text($row['value'] ?? '') ];
 	}
 	$headers = [];
 	foreach((array)$this->cfg('headers', []) as $row) {
@@ -128,11 +129,9 @@ class NodeAppDownload extends NodeAppHttp {
 	    $auth = $cred->httpAuth();
 	    foreach((array)($auth['headers'] ?? []) as $name => $value)
 		$headers[strtolower($name)] = $name . ': ' . $value;
-	    foreach((array)($auth['query'] ?? []) as $name => $value)
-		$query[$name] = (string)$value;
 	}
-	if ($query)
-	    $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+	//CLD: 2026-10-28T08:30:00+02:00: NodeAppHttp::withQuery (was http_build_query: one value per name)
+	$url = NodeAppHttp::withQuery($url, $query, (array)($auth['query'] ?? []));
 
 	$maxBytes = max(1, min(self::MAX_SIZE_MB, (int)$this->cfg('maxSize', 25))) * 1024 * 1024;
 	$timeout = max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120)));
