@@ -5,6 +5,7 @@
 	    every N minutes from midnight (every 15: :00 :15 :30 :45); at :00 of every Nth hour from midnight;
 	    at 00:00 of every Nth day (counted from 1970-01-01)
 	daily:    time                   HH:MM
+	          //CLD: 2026-10-29T22:12:26+02:00: time: one or more times, comma-separated (HH:MM, HH:MM: e.g. 09:00, 18:00), for daily / weekly / monthly
 	weekly:   weekdays + time        cron day-of-week numbers (0 = Sunday)
 	monthly:  day + time             months without the day are skipped
 	cron:     cron                   minute hour day-of-month month day-of-week (util\Cron)
@@ -13,6 +14,9 @@
 namespace models;
 
 class WfSchedule {
+
+    //CLD: 2026-10-29T22:12:26+02:00: one time of `time` (HH:MM, 24 h; H:MM too)
+    const TIME = '([01]?\d|2[0-3]):[0-5]\d';
 
     public static function schema(array $defaults = []) {
 	$fields = [
@@ -89,17 +93,19 @@ class WfSchedule {
 	    ],
 
 	    //daily, weekly, monthly; placed before `day` so it stays left-aligned when `day` is hidden
+	    //CLD: 2026-10-29T22:12:26+02:00: one or more times, comma-separated (e.g. 09:00, 18:00: runs at each); a text input (was inputType time: one time only)
 	    [
 		'key' => 'time',
 		'type' => 'text',
 		'label' => 'At',
 		'default' => '09:00',
+		'help' => 'HH:MM; several times separated by commas, e.g. 09:00, 18:00',
 		'requiredIf' => [ 'if' => 'mode', 'in' => [ 'daily', 'weekly', 'monthly' ] ],
 		'validate' => [
-		    [ 'regex', 'pattern' => '^([01]?\d|2[0-3]):[0-5]\d$', 'skipEmpty' => true, 'message' => 'the time must be HH:MM' ],
+		    [ 'regex', 'pattern' => '^\s*(' . self::TIME . ')(\s*,\s*(' . self::TIME . '))*\s*$', 'skipEmpty' => true, 'message' => 'Use HH:MM, several separated by commas (e.g. 09:00, 18:00)' ],
 		],
 		'ui' => [
-		    'inputType' => 'time',
+		    'placeholder' => '09:00, 18:00',
 		    'width' => 6,
 		    'showIf' => [ 'key' => 'mode', 'operator' => 'in', 'value' => [ 'daily', 'weekly', 'monthly' ] ]
 		],
@@ -154,9 +160,13 @@ class WfSchedule {
     //does the schedule $cfg match the minute of $t (local time; seconds ignored)?
     public static function matches(array $cfg, \DateTimeInterface $t) {
 	$minute = (int)$t->format('G') * 60 + (int)$t->format('i');
+	//CLD: 2026-10-29T22:12:26+02:00: any of the times (comma-separated; was one)
 	$atTime = function() use ($cfg, $t) {
-	    return preg_match('/^(\d{1,2}):(\d{2})$/', trim((string)($cfg['time'] ?? '')), $m) === 1
-		&& (int)$m[1] === (int)$t->format('G') && (int)$m[2] === (int)$t->format('i');
+	    foreach(explode(',', (string)($cfg['time'] ?? '')) as $time) {
+		if (preg_match('/^(\d{1,2}):(\d{2})$/', trim($time), $m) === 1 && (int)$m[1] === (int)$t->format('G') && (int)$m[2] === (int)$t->format('i'))
+		    return true;
+	    }
+	    return false;
 	};
 
 	switch($cfg['mode'] ?? 'daily') {
