@@ -114,8 +114,9 @@ class NodeAppLdap extends \models\WfNode {
 		'type' => 'text',
 		'label' => 'Attributes',
 		'default' => '',
-		'help' => 'The attributes to read, separated by commas; empty: all',
-		'ui' => [ 'advanced' => true, 'placeholder' => 'cn, mail, memberOf', 'width' => 8, 'showIf' => $op([ 'search', 'get' ]) ],
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (was the example, now in the help)
+		'help' => 'The attributes to read, separated by commas, e.g. cn, mail, memberOf',
+		'ui' => [ 'advanced' => true, 'placeholder' => 'All', 'width' => 8, 'showIf' => $op([ 'search', 'get' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-29T10:30:00+02:00: a limit: under "Advanced…", in its last row (was 4 wide next to the attributes)

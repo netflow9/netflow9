@@ -220,8 +220,9 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'type' => 'text',
 		'label' => 'Time zone',
 		'default' => '',
-		'help' => 'e.g. Europe/Bucharest; empty: the app\'s',
-		'ui' => [ 'advanced' => true, 'width' => 3, 'placeholder' => 'Europe/Bucharest', 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (was the example, kept in the help)
+		'help' => 'e.g. Europe/Bucharest',
+		'ui' => [ 'advanced' => true, 'width' => 3, 'placeholder' => 'App\'s time zone', 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
 	    ],
 	    [
 		'key' => 'description',

@@ -186,8 +186,9 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'type' => 'text',
 		'label' => 'Time zone',
 		'default' => '',
-		'help' => 'Of times without an offset',
-		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'Europe/Bucharest', 'expression' => true, 'showIf' => $op(array_merge(self::EDIT, self::PERIOD)) ],
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (util timeZone(): the app's, config app.timezone; was the example, now in the help)
+		'help' => 'Of times without an offset, e.g. Europe/Bucharest',
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'App\'s time zone', 'expression' => true, 'showIf' => $op(array_merge(self::EDIT, self::PERIOD)) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: Optional, e.g. RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10)

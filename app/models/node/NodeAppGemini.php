@@ -51,7 +51,8 @@ class NodeAppGemini extends NodeAppAi {
 		//CLD: 2026-10-24T12:42:45+03:00: 3 wide (was 6); shorter help (was: Optional, 0 - 2; empty: the model default (recommended for Gemini 3))
 		'help' => '0 - 2; empty: default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		'ui' => [ 'advanced' => true, 'width' => 2, 'placeholder' => 'default' ],
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means, as the Thinking choice (was: default)
+		'ui' => [ 'advanced' => true, 'width' => 2, 'placeholder' => 'Model default' ],
 	    ],
 	];
     }
