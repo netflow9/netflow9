@@ -40,7 +40,8 @@ class NodeAppOllama extends NodeAppAi {
 		//CLD: 2026-10-24T12:42:45+03:00: the four settings 3 wide on one line (were 6); shorter helps
 		'help' => '0 - 2; empty: default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		'ui' => [ 'advanced' => true, 'width' => 2, 'placeholder' => 'default' ],
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (was: default)
+		'ui' => [ 'advanced' => true, 'width' => 2, 'placeholder' => 'Model default' ],
 	    ],
 	    [
 		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3); shorter help (was: Thinking models (qwen3, deepseek-r1))
@@ -62,7 +63,8 @@ class NodeAppOllama extends NodeAppAi {
 		'default' => '',
 		'help' => 'num_ctx; empty: the server\'s default',
 		'validate' => [ [ 'regex', 'pattern' => '^[1-9][0-9]{2,6}$', 'skipEmpty' => true, 'message' => 'A number of tokens, e.g. 8192' ] ],
-		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'default' ],
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (was: default)
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'Server default' ],
 	    ],
 	    [
 		//CLD: 2026-10-24T13:05:14+03:00: layout: 3 wide

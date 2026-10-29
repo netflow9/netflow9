@@ -36,7 +36,8 @@ class NodeAppOpenAI extends NodeAppAi {
 		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line (was 6); shorter help (was: Optional, 0 - 2: lower is more predictable; empty: the server default)
 		'help' => '0 - 2; empty: the default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		'ui' => [ 'advanced' => true, 'width' => 4, 'placeholder' => 'default' ],
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (was: default)
+		'ui' => [ 'advanced' => true, 'width' => 4, 'placeholder' => 'Provider default' ],
 	    ],
 	];
     }
