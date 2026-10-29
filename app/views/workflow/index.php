@@ -103,6 +103,8 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	    bottomPanel.set('exec');
 	},
 	onClose: () => bottomPanel.closed('exec'),
+	//CLD: 2026-10-29T21:30:00+02:00: the selected execution's steps and connections on the canvas (done, running, waiting, failed; null: none)
+	onShow: (run) => designer && designer.setRun(run),
     });
     const debug = new app.WfDebug(document.querySelector('.wf-debug-panel'), {
 	//step titles from the current steps (the designer keeps [name=nodes] up to date)

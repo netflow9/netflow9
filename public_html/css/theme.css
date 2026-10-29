@@ -12441,6 +12441,11 @@ body {
   --wf-note-border:rgba(0,0,0,.08);
   --wf-note-border-selected:rgba(0,0,0,.15);
   --wf-note-ring:rgba(30,24,4,.22);
+  --wf-run-done:#2f9e5e;
+  --wf-run-current:#3568c9;
+  --wf-run-wait:#c98a12;
+  --wf-run-fail:#d0393e;
+  --wf-run-stopped:#6c757d;
 }
 
 [data-bs-theme=dark] {
@@ -12459,6 +12464,11 @@ body {
   --wf-note-border:rgba(255,255,255,.08);
   --wf-note-border-selected:rgba(255,255,255,.2);
   --wf-note-ring:rgba(241,230,178,.3);
+  --wf-run-done:#3fb872;
+  --wf-run-current:#5b8ee6;
+  --wf-run-wait:#e0a53a;
+  --wf-run-fail:#e5595d;
+  --wf-run-stopped:#8b939b;
 }
 
 /* ----------------------- edges -------------------------- */
@@ -12504,6 +12514,48 @@ body {
   fill: #c23434;
 }
 
+.edge-path.run-passed {
+  stroke: var(--wf-run-done);
+}
+
+.edge-path.run-active {
+  stroke: var(--wf-run-current);
+  stroke-dasharray: 6 5;
+  animation: wf-run-flow 0.6s linear infinite;
+}
+
+.edge-run-tick {
+  pointer-events: none;
+}
+.edge-run-tick circle {
+  fill: var(--wf-run-done);
+  stroke: var(--wf-surface);
+  stroke-width: 1.5;
+}
+.edge-run-tick path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes wf-run-flow {
+  to {
+    stroke-dashoffset: -11;
+  }
+}
+@keyframes wf-run-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--wf-run-current) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--wf-run-current) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--wf-run-current) 0%, transparent);
+  }
+}
 .node {
   position: absolute;
   display: flex;
@@ -12514,6 +12566,55 @@ body {
 .node.selected .node-box {
   border-color: var(--type-color);
   box-shadow: 0 0 0 3px var(--type-color-soft, var(--accent-soft));
+}
+.node.run-done .node-box {
+  border-color: var(--wf-run-done);
+}
+.node.run-current .node-box {
+  border-color: var(--wf-run-current);
+}
+.node.run-sleep .node-box, .node.run-wait .node-box {
+  border-color: var(--wf-run-wait);
+}
+.node.run-fail .node-box {
+  border-color: var(--wf-run-fail);
+}
+.node.run-stopped .node-box {
+  border-color: var(--wf-run-stopped);
+}
+.node .run-badge {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 3;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  color: #fff;
+  border: 2px solid var(--wf-surface);
+  pointer-events: auto;
+  cursor: default;
+}
+.node .run-badge-done {
+  background: var(--wf-run-done);
+}
+.node .run-badge-current {
+  background: var(--wf-run-current);
+  animation: wf-run-pulse 1.4s ease-out infinite;
+}
+.node .run-badge-sleep, .node .run-badge-wait {
+  background: var(--wf-run-wait);
+}
+.node .run-badge-fail {
+  background: var(--wf-run-fail);
+}
+.node .run-badge-stopped {
+  background: var(--wf-run-stopped);
 }
 .node .node-box {
   border-radius: 1.25rem;

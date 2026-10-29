@@ -436,7 +436,76 @@ class WorkflowController extends \sys\BaseController {
 	    ];
 	}
 	//CLD: 2026-10-18T12:49:28+03:00: $resp->sendJSON (was $this->json, removed)
-	$resp->sendJSON([ 'execution' => $this->executionSummary($exe) + [ 'variables' => (object)(is_array($exe->variables) ? $exe->variables : []), 'log' => $log ] ]);
+	//CLD: 2026-10-29T21:30:00+02:00: + run: where each step and connection is (the designer shows it on the canvas: runStatus)
+	$resp->sendJSON([ 'execution' => $this->executionSummary($exe) + [ 'variables' => (object)(is_array($exe->variables) ? $exe->variables : []), 'log' => $log, 'run' => $this->runStatus($exe) ] ]);
+    }
+
+    //CLD: 2026-10-29T21:30:00+02:00: the steps and connections of an execution as the designer shows them: { nodes: { wfid: { status, runs } }, edges: { wfid: status } }, only those
+    //reached. A step's status: current (a token is at it, or a loop doing its passes, while the execution runs), sleep (a Wait), wait (a Merge waiting for its other inputs),
+    //done, fail, stopped (a token was at it when the execution was killed). A connection: passed (a token went through it; executions before it was recorded: both ends reached),
+    //active (a token on it now, to a current step)
+    private function runStatus($exe) {
+	$state = (string)$exe->state;
+	$running = in_array($state, [ 'new', 'run' ], true);
+	$data = is_array($exe->nodes) ? $exe->nodes : [];
+	$steps = [];
+	$edges = [];
+	foreach($data as $wfid => $n) {
+	    $id = (string)($n['wfid'] ?? $wfid);
+	    if (!empty($n['isNode']))
+		$steps[$id] = $n;
+	    elseif (!empty($n['isEdge']))
+		$edges[$id] = $n;
+	}
+
+	$tokens = is_array($exe->tokens) ? $exe->tokens : [];
+	$atNode = [];
+	$onEdge = [];
+	foreach($tokens as $t) {
+	    $atNode[(string)($t['node'] ?? '')] = true;
+	    if (!empty($t['edge']))
+		$onEdge[(string)$t['edge']] = true;
+	}
+	//a failed run stops at the step that failed; one stopped by the web request running it (no step marked failed) at the steps it was running
+	$failed = false;
+	foreach($steps as $n)
+	    $failed = $failed || ($n['state'] ?? '') === 'fail';
+
+	$nodes = [];
+	foreach($steps as $id => $n) {
+	    $nodeState = (string)($n['state'] ?? 'ready');
+	    $runs = (int)($n['runs'] ?? 0);
+	    $here = isset($atNode[$id]) || !empty($n['active']);
+	    $status = null;
+	    if ($here && $running)
+		$status = $nodeState === 'sleep' ? 'sleep' : 'current';
+	    elseif ($here && $state === 'cancel')
+		$status = 'stopped';
+	    elseif ($here && $state === 'error' && !$failed && $nodeState !== 'done')
+		$status = 'fail';
+	    elseif (in_array($nodeState, [ 'done', 'fail', 'wait', 'sleep' ], true))
+		$status = $nodeState;
+	    elseif ($nodeState === 'run')
+		$status = $running ? 'current' : ($state === 'cancel' ? 'stopped' : 'fail');
+	    elseif ($runs > 0)
+		$status = 'done';
+	    if ($status !== null)
+		$nodes[$id] = [ 'status' => $status, 'runs' => $runs ];
+	}
+
+	$recorded = false;
+	foreach($edges as $e)
+	    $recorded = $recorded || ($e['state'] ?? '') === 'passed';
+	$list = [];
+	foreach($edges as $id => $e) {
+	    $from = $nodes[(string)($e['fromNode'] ?? '')]['status'] ?? null;
+	    $to = $nodes[(string)($e['toNode'] ?? '')]['status'] ?? null;
+	    if (isset($onEdge[$id]) && $running && $to === 'current')
+		$list[$id] = 'active';
+	    elseif ($recorded ? ($e['state'] ?? '') === 'passed' : ($from === 'done' && $to !== null))
+		$list[$id] = 'passed';
+	}
+	return [ 'nodes' => (object)$nodes, 'edges' => (object)$list ];
     }
 
     //CLD: 2026-10-23T23:00:00+03:00: delete an execution of the draft (POST ?execution=<id>; the Executions panel): a designer Run / console run, not one of a
