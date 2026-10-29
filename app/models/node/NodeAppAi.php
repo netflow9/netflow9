@@ -51,6 +51,8 @@ abstract class NodeAppAi extends \models\WfNode {
     const MAX_ROUNDS = 25;
     const MAX_TOKENS = 64000;
     const MAX_TIMEOUT = 600;
+    //CLD: 2026-10-29T22:44:26+02:00: the Timeout's default (s); a step on a local server (Lemonade, Ollama) sets its own, and its MAX_TIMEOUT (static:: below)
+    const DEFAULT_TIMEOUT = 300;
     //a tool result longer than this is cut before it is sent to the model (characters)
     const MAX_TOOL_RESULT = 50000;
     //the largest model answer read (bytes)
@@ -395,9 +397,10 @@ abstract class NodeAppAi extends \models\WfNode {
 		'type' => 'number',
 		'label' => 'Timeout (s)',
 		'required' => true,
-		'default' => 300,
+		//CLD: 2026-10-29T22:44:26+02:00: the step's DEFAULT_TIMEOUT / MAX_TIMEOUT (static::; was 300 / self::)
+		'default' => static::DEFAULT_TIMEOUT,
 		'help' => 'Per call to the model',
-		'validate' => [ [ 'inRange', 'lower' => 5, 'upper' => self::MAX_TIMEOUT, 'skipEmpty' => true, 'message' => 'from 5 to ' . self::MAX_TIMEOUT ] ],
+		'validate' => [ [ 'inRange', 'lower' => 5, 'upper' => static::MAX_TIMEOUT, 'skipEmpty' => true, 'message' => 'from 5 to ' . static::MAX_TIMEOUT ] ],
 		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
 		'ui' => [ 'width' => 4 ],
 	    ],
@@ -681,7 +684,8 @@ abstract class NodeAppAi extends \models\WfNode {
 		    }
 		} ];
 	}
-	$timeout = (int)$this->cfg('timeout', 300);
+	//CLD: 2026-10-29T22:44:26+02:00: the step's default (was 300)
+	$timeout = (int)$this->cfg('timeout', static::DEFAULT_TIMEOUT);
 	foreach((array)$this->cfg('mcp', []) as $i => $id) {
 	    $mcp = \models\Credential::findFor($this->exec, (string)$id, 'mcp');
 	    if (empty($mcp))
@@ -850,7 +854,8 @@ abstract class NodeAppAi extends \models\WfNode {
     //error (with the provider's message) or no JSON
     //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here; the body still util\JSON::encode)
     protected function postJson($url, array $headers, array $body, $assoc = true) {
-	$timeout = max(5, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 300)));
+	//CLD: 2026-10-29T22:44:26+02:00: the step's limits (static::; were self::MAX_TIMEOUT, 300)
+	$timeout = max(5, min(static::MAX_TIMEOUT, (int)$this->cfg('timeout', static::DEFAULT_TIMEOUT)));
 	$r = \util\Http::json('POST', $url, [ 'headers' => $headers, 'json' => $body, 'timeout' => $timeout, 'maxBytes' => self::MAX_RESPONSE ]);
 	if ($r['tooLarge'])
 	    throw new \ErrorException('the answer is larger than ' . (self::MAX_RESPONSE / 1048576) . ' MB');
