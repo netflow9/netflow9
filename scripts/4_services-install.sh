@@ -4,7 +4,7 @@
 #so that the administration (the Admin plugin: Installation) shows them and starts / stops / restarts them:
 #  nfn-daemon.service       the workflow daemon (app/v.php daemon::run), as the app's user (was started as root by scripts/daemon.sh)
 #  nfn-haraka.service       Haraka, inbound mail (as root: port 25; it forks, its PID file as before), only when Haraka is installed
-#  playwright-mcp.service   the AI steps' web browser
+#  nfn-playwright.service   the AI steps' web browser (was playwright-mcp.service: scripts/playwright-mcp.sh renames it)
 #  + a polkit rule: the app's user (the web server's PHP) may start / stop / restart these units
 
 #The processes started by scripts/daemon.sh and scripts/haraka.sh (their PID files) are stopped first; those scripts are no longer needed after this.
@@ -22,7 +22,9 @@ UNIT_DIR=/etc/systemd/system
 POLKIT_RULE=/etc/polkit-1/rules.d/49-netflow9-services.rules
 DAEMON_UNIT=nfn-daemon.service
 HARAKA_UNIT=nfn-haraka.service
-MANAGED="$DAEMON_UNIT $HARAKA_UNIT playwright-mcp.service"
+#CLD: 2026-10-29T13:00:00+02:00: nfn-playwright (was playwright-mcp), as the other units
+PLAYWRIGHT_UNIT=nfn-playwright.service
+MANAGED="$DAEMON_UNIT $HARAKA_UNIT $PLAYWRIGHT_UNIT"
 
 #CLD: 2026-10-28T23:30:00+02:00: install when no command is given (as the other install scripts: sudo scripts/4_services-install.sh [--no-playwright]); was: the usage
 command="install"
@@ -189,14 +191,15 @@ case "$command" in
         done
         rm -f "$POLKIT_RULE"
         systemctl daemon-reload
-        if [ "$PLAYWRIGHT" -eq 1 ] && [ -f "$UNIT_DIR/playwright-mcp.service" ]; then
+        #CLD: 2026-10-29T13:00:00+02:00: the unit of either name (playwright-mcp.service before the rename)
+        if [ "$PLAYWRIGHT" -eq 1 ] && { [ -f "$UNIT_DIR/$PLAYWRIGHT_UNIT" ] || [ -f "$UNIT_DIR/playwright-mcp.service" ]; }; then
             "$BASE/scripts/playwright-mcp.sh" uninstall
         fi
         echo "Removed; start the services with scripts/daemon.sh and scripts/haraka.sh if needed"
         ;;
     status)
         #CLD: 2026-10-22T23:30:00+03:00: a unit not installed says so (was: inactive); the polkit rule: unknown when its folder cannot be read (only root may)
-        for u in $DAEMON_UNIT $HARAKA_UNIT playwright-mcp.service; do
+        for u in $DAEMON_UNIT $HARAKA_UNIT $PLAYWRIGHT_UNIT; do
             if [ "$(systemctl show "$u" -p LoadState --value 2>/dev/null)" = "loaded" ]; then
                 printf '%-26s %s\n' "$u" "$(systemctl is-active "$u" 2>/dev/null || true)"
             else
