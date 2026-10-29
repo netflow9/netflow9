@@ -19,7 +19,9 @@ SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}
 #the @playwright/mcp version: tested with the shared Chromium (scripts/1_playwright-install.sh: Playwright 1.64)
 VERSION="0.0.83"
 PORT=8931
-SERVICE=playwright-mcp
+#CLD: 2026-10-29T13:00:00+02:00: the unit nfn-playwright, as the app's other units (nfn-daemon, nfn-haraka; was playwright-mcp: removed by install / uninstall when there)
+SERVICE=nfn-playwright
+OLD_SERVICE=playwright-mcp
 SVC_USER=pwmcp
 HOME_DIR=/var/lib/playwright-mcp
 CONF_DIR=/etc/playwright-mcp
@@ -89,6 +91,16 @@ write_nft() {
     chmod 644 "$CONF_DIR/egress.nft"
 }
 
+#CLD: 2026-10-29T13:00:00+02:00: the unit of its former name (playwright-mcp.service) stopped and removed: it holds the same port
+remove_old_unit() {
+    local old=/etc/systemd/system/$OLD_SERVICE.service
+    [ -f "$old" ] || return 0
+    echo "- the unit's former name: $OLD_SERVICE.service removed"
+    systemctl disable --now "$OLD_SERVICE" 2>/dev/null || true
+    rm -f "$old"
+    systemctl daemon-reload
+}
+
 write_unit() {
     local chrome="$1"
     cat > "$UNIT" <<EOF
@@ -145,6 +157,7 @@ case "$command" in
         npm install -g "@playwright/mcp@$VERSION"
         write_nft
         /usr/sbin/nft -c -f "$CONF_DIR/egress.nft"
+        remove_old_unit
         write_unit "$chrome"
         systemctl daemon-reload
         systemctl enable "$SERVICE"
@@ -168,6 +181,7 @@ case "$command" in
         systemctl disable --now "$SERVICE" 2>/dev/null || true
         rm -f "$UNIT"
         systemctl daemon-reload
+        remove_old_unit
         /usr/sbin/nft delete table inet "$NFT_TABLE" 2>/dev/null || true
         npm uninstall -g @playwright/mcp || true
         echo "Removed the service and the package; kept: user $SVC_USER, $HOME_DIR, $CONF_DIR (remove them by hand when no longer needed)"
