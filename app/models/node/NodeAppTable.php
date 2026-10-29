@@ -141,6 +141,7 @@ class NodeAppTable extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'sortDir',
 		'type' => 'select',
 		'label' => 'Direction',
@@ -149,7 +150,7 @@ class NodeAppTable extends \models\WfNode {
 		'choices' => [ 'asc' => 'Ascending', 'desc' => 'Descending' ],
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
-		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'query' ] ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'query' ] ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide (was 6)
@@ -165,6 +166,7 @@ class NodeAppTable extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'offset',
 		'type' => 'number',
 		'label' => 'Skip',
@@ -173,7 +175,7 @@ class NodeAppTable extends \models\WfNode {
 		'validate' => [ [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => '0 or more' ] ],
 		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
 		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
-		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'query' ] ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'query' ] ],
 	    ],
 	    //CLD: 2026-10-18T10:45:00+03:00: a nested list, as `filter` (dataSchema(); errors as "Value <n>: <field>: <message>")
 	    [

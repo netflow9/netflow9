@@ -31,6 +31,7 @@ class NodeAppClaude extends NodeAppAi {
 	return [
 	    [
 		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3), not on a new line; shorter help (was: Higher: hard tasks; lower: faster, cheaper)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'effort',
 		'type' => 'select',
 		'label' => 'Effort',
@@ -40,17 +41,18 @@ class NodeAppClaude extends NodeAppAi {
 		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line (was 6); shorter help (was: How thoroughly the model thinks: higher is better for hard tasks, lower is faster and cheaper)
 		'help' => 'Higher: harder tasks',
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
-		'ui' => [ 'width' => 2 ],
+		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
 	    [
 		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3); no help text (was: On a refusal, retry on the model Anthropic recommends)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'fallback',
 		'type' => 'switch',
 		'label' => 'Fallback on refusal',
 		'default' => true,
 		//CLD: 2026-10-24T12:42:45+03:00: 3 wide (was 6); shorter help (was: When the model declines, the API retries on the model Anthropic recommends (Claude Opus 5 / 5.5, Sonnet 5.5, Fable 5))
 		'help' => false,
-		'ui' => [ 'width' => 2 ],
+		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
 	];
     }
