@@ -21,6 +21,9 @@ class WfExecution extends \sys\BaseModel {
     const MAX_STEPS = 10000;
     //CLD: 2026-10-23T00:40:00+03:00: a running execution is saved after a pass at most this often (s), so its progress shows (run())
     const SAVE_EVERY = 2;
+    //CLD: 2026-10-29T22:05:00+02:00: and before a pass whose steps are not the ones saved (the designer shows the step running, not the one before it during a long step), at most this many
+    //times a second (a loop of quick steps)
+    const SAVE_RATE = 5;
 
     //log entries kept per execution
     const MAX_LOG = 500;
@@ -300,12 +303,28 @@ class WfExecution extends \sys\BaseModel {
 		$this->save();
 	    }
 	    $saved = microtime(true);
+	    //CLD: 2026-10-29T22:05:00+02:00: the steps the tokens were at when last saved, the times of the latest saves (SAVE_RATE)
+	    $savedTokens = json_encode($this->tokens);
+	    $recent = [ $saved ];
 
 	    $this->steps = 0;
 	    while ($this->canRun()) {
 		//CLD: 2026-10-17T19:29:50+03:00: keep the sync slot while running
 		//CLD: 2026-10-18T16:05:00+03:00: ExecutionSlot::renew (was self::renewSlot)
 		\models\ExecutionSlot::renew();
+		//CLD: 2026-10-29T22:05:00+02:00: the steps about to run saved first (e.g. the trigger done in a few ms, then a long download: was shown at the trigger until the download ended)
+		if ($this->state == 'run' && json_encode($this->tokens) !== $savedTokens) {
+		    $now = microtime(true);
+		    $recent = array_values(array_filter($recent, fn($t) => $now - $t < 1));
+		    if (count($recent) < self::SAVE_RATE) {
+			//killed meanwhile: as below
+			if ($this->killed())
+			    return $this->state;
+			$this->save();
+			$saved = $recent[] = microtime(true);
+			$savedTokens = json_encode($this->tokens);
+		    }
+		}
 		$progress = $this->advance();
 		if (!$progress)
 		    break;
@@ -322,7 +341,9 @@ class WfExecution extends \sys\BaseModel {
 		    if ($this->killed())
 			return $this->state;
 		    $this->save();
-		    $saved = microtime(true);
+		    //CLD: 2026-10-29T22:05:00+02:00: + $recent, $savedTokens
+		    $saved = $recent[] = microtime(true);
+		    $savedTokens = json_encode($this->tokens);
 		}
 	    }
 	    //CLD: 2026-10-26T10:06:24+02:00: as above
