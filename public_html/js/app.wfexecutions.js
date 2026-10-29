@@ -13,6 +13,8 @@ if (!window.app)
 //The page tells it of the steps: onDataChange(workflow, serialized) (the Run button's state; the first call is the saved state), markSaved(serialized) (autosave); `dirty`:
 //changes not saved yet. Methods: run(), open(), close(), toggle(), refresh(), destroy(). One per designer page: a new one destroys the previous one (its timer stopped, its
 //listeners removed).
+//CLD: 2026-10-29T21:30:00+02:00: + onShow(run): the selected execution's steps and connections (detail.run, WorkflowController::runStatus) for the canvas, refreshed with it; null when
+//none is shown (the panel closed, the execution deleted). Opened with none selected: the latest one still running / waiting is selected (the live one on the canvas)
 window.app.WfExecutions = (function() {
     //the one of the current designer page
     let current = null;
@@ -50,7 +52,8 @@ window.app.WfExecutions = (function() {
 	    current = this;
 
 	    this.el = typeof panel === 'string' ? document.querySelector(panel) : panel;
-	    this.o = Object.assign({ urls: {}, canRun: false, runTriggers: [], whenSaved: (fn) => fn(), onOpen: () => {}, onClose: () => {} }, options || {});
+	    //CLD: 2026-10-29T21:30:00+02:00: + onShow
+	    this.o = Object.assign({ urls: {}, canRun: false, runTriggers: [], whenSaved: (fn) => fn(), onOpen: () => {}, onClose: () => {}, onShow: () => {} }, options || {});
 	    //baseline: the last saved state (markSaved), current: the latest, dirty: changes not saved yet
 	    this.baseline = null;
 	    this.current = null;
@@ -225,6 +228,8 @@ window.app.WfExecutions = (function() {
 		this.el.classList.add('d-none');
 	    clearInterval(this.timer);
 	    this.timer = null;
+	    //CLD: 2026-10-29T21:30:00+02:00: no execution on the canvas while the panel is closed
+	    this.o.onShow(null);
 	    this.o.onClose();
 	}
 
@@ -243,6 +248,10 @@ window.app.WfExecutions = (function() {
 	    $.getJSON(this.o.urls.list).done((resp) => {
 		this.list = resp.executions || [];
 		this.renderList();
+		//CLD: 2026-10-29T21:30:00+02:00: none selected: the latest one running / waiting (shown on the canvas)
+		const live = !this.selected && this.list.find((e) => active(e.state) || e.state === 'sleep');
+		if (live && this.isOpen())
+		    this.select(live.id);
 	    });
 	    if (this.selected)
 		this.loadDetail(this.selected);
@@ -256,10 +265,13 @@ window.app.WfExecutions = (function() {
 
 	loadDetail(id) {
 	    $.getJSON(this.o.urls.detail, { execution: id }).done((resp) => {
-		if (this.selected !== id)
+		//CLD: 2026-10-29T21:30:00+02:00: + the panel still open (an answer after close() does not show it on the canvas again)
+		if (this.selected !== id || !this.isOpen())
 		    return;
 		this.detail = resp.execution;
 		this.renderDetail();
+		//CLD: 2026-10-29T21:30:00+02:00: its steps on the canvas
+		this.o.onShow(this.detail.run || null);
 	    });
 	}
 
@@ -309,6 +321,8 @@ window.app.WfExecutions = (function() {
 	clearDetail() {
 	    this.selected = null;
 	    this.detail = null;
+	    //CLD: 2026-10-29T21:30:00+02:00: none on the canvas
+	    this.o.onShow(null);
 	    const box = this.find('.exec-detail');
 	    if (box)
 		box.innerHTML = `<span style='color: var(--netflow9-debug-muted)'>Select an execution</span>`;

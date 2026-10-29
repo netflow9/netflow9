@@ -7,6 +7,7 @@ if (!window.app)
 //
 //CLD: 2026-10-24T00:30:00+03:00: + zoomBy(factor)
 //methods: fitView(), zoomBy(factor), showNode(id), getNodes(), setNodes(nodes), undo(), redo(), commitNow(), hasPendingChange(), applySaved(sent, nodes), setStepIssues(issues), destroy();
+//CLD: 2026-10-29T21:30:00+02:00: + setRun(run): an execution shown on the canvas (WorkflowController::runStatus; null: none)
 //app.Workflow.current: the designer of the page (e.g. for the Assistant plugin). A new one destroys the previous one: its listeners on the document removed, its editor / picker closed
 //CLD: 2026-10-19T22:30:00+03:00: the designer's state and functions are the class's fields and methods (were the variables and functions of a closure run once per designer,
 //designer()); the steps / connections (WfNode, WfEdge) reach their designer through `d` (not enumerable: not in their JSON, the saved steps); the helpers without state
@@ -24,6 +25,16 @@ window.app.Workflow = (function() {
 
     //the designer of the page
     let current = null;
+
+    //CLD: 2026-10-29T21:30:00+02:00: the badges of the steps in the execution shown (setRun), by status (WorkflowController::runStatus); not reached: none
+    const RUN_STATUS = {
+	done: { icon: 'bi-check-lg', title: 'Done' },
+	current: { icon: 'bi-play-fill', title: 'Running' },
+	sleep: { icon: 'bi-pause-fill', title: 'Waiting (until its time comes)' },
+	wait: { icon: 'bi-hourglass-split', title: 'Waiting for its other inputs' },
+	fail: { icon: 'bi-x-lg', title: 'Failed' },
+	stopped: { icon: 'bi-stop-fill', title: 'Stopped (the execution was killed here)' },
+    };
 
     class Geometry {
 	constructor(x, y, w, h) {
@@ -218,6 +229,18 @@ window.app.Workflow = (function() {
 		(el.querySelector('.node-box') || el).appendChild(marker);
 	    }
 
+	    //CLD: 2026-10-29T21:30:00+02:00: the execution shown (setRun): a badge at the top-right corner of the step (RUN_STATUS), its box outlined (.run-<status>)
+	    const run = d.run && d.run.nodes[this.wfid];
+	    const runDef = run && RUN_STATUS[run.status];
+	    if (runDef) {
+		el.classList.add('run-' + run.status);
+		const badge = document.createElement('span');
+		badge.className = 'run-badge run-badge-' + run.status;
+		badge.innerHTML = `<i class="bi ${runDef.icon}"></i>`;
+		badge.title = runDef.title + (run.runs > 1 ? ` (${run.runs} runs)` : '');
+		(el.querySelector('.node-box') || el).appendChild(badge);
+	    }
+
     	    if(isSelected && !d.options.readonly) {
     		const toolbar = document.createElement('div');
     		toolbar.className='node-toolbar';
@@ -363,8 +386,15 @@ window.app.Workflow = (function() {
     	    const d = bezier(p1.x,p1.y,p2.x,p2.y);
     	    const isSelected = this.wfid === this.d.selectedId;
     	    const sel = isSelected ? ' selected' : '';
+	    //CLD: 2026-10-29T21:30:00+02:00: the execution shown (setRun): a connection passed (green, a tick in the middle) or carrying a token now (moving dashes)
+	    const run = this.d.run ? this.d.run.edges[this.wfid] : null;
+	    const runCls = run ? ' run-' + run : '';
     	    svg += `<path class="edge-hit" data-edge="${this.wfid}" d="${d}"></path>`;
-    	    svg += `<path class="edge-path ${sel}" data-edge="${this.wfid}" d="${d}" marker-end="url(#arrowhead)"></path>`;
+    	    svg += `<path class="edge-path ${sel}${runCls}" data-edge="${this.wfid}" d="${d}" marker-end="url(#${run === 'passed' ? 'arrowhead-passed' : 'arrowhead'})"></path>`;
+	    if (run === 'passed' && !(isSelected && !this.d.options.readonly)) {
+		const mid = bezierPoint(p1.x,p1.y,p2.x,p2.y,0.5);
+		svg += `<g class="edge-run-tick" transform="translate(${mid.x},${mid.y})"><title>Passed</title><circle r="7"></circle><path d="M-3.2,0.2 L-0.9,2.5 L3.4,-2.3"></path></g>`;
+	    }
 
     	    if(isSelected && !this.d.options.readonly) {
     		const mid = bezierPoint(p1.x,p1.y,p2.x,p2.y,0.5);
@@ -477,6 +507,9 @@ window.app.Workflow = (function() {
 	    //CLD: 2026-10-19T17:10:00+03:00: errors in the steps' settings from the server (options.stepIssues; the draft is saved with them): { wfid: { config: JSON of the
 	    //step's config when loaded, issues: [...] } }; shown while the step's config is unchanged (the server checks it again on save)
 	    this.serverStepIssues = {};
+	    //CLD: 2026-10-29T21:30:00+02:00: the execution shown on the canvas (setRun): { nodes: { wfid: { status, runs } }, edges: { wfid: status } }, null: none
+	    this.run = null;
+	    this.runJson = 'null';
 
 	    //undo / redo (HISTORY_DELAY above)
 	    this.history = [];
@@ -662,6 +695,22 @@ window.app.Workflow = (function() {
 		this.serverStepIssues[n.wfid].issues.push(i);
 	    });
 	    //not a change of the data: a commit is not started here (one already waiting is kept)
+	    const pending = this.historyTimer !== null;
+	    this.render();
+	    if (!pending) {
+		clearTimeout(this.historyTimer);
+		this.historyTimer = null;
+	    }
+	}
+
+	//CLD: 2026-10-29T21:30:00+02:00: show an execution on the canvas (the Executions panel's selected one, refreshed while it runs): `run` as WorkflowController::runStatus,
+	//null: none. Steps / connections not on the canvas (e.g. a published version's) are left out. Drawn again only when it changed; not a change of the data (as setStepIssues)
+	setRun(run) {
+	    const json = JSON.stringify(run || null);
+	    if (json === this.runJson)
+		return;
+	    this.runJson = json;
+	    this.run = run ? { nodes: run.nodes || {}, edges: run.edges || {} } : null;
 	    const pending = this.historyTimer !== null;
 	    this.render();
 	    if (!pending) {
@@ -1555,7 +1604,8 @@ window.app.Workflow = (function() {
 	    });
 
 	    //CLD: 2026-10-24T11:20:00+03:00: the edges' color of the theme (--wf-edge: the dark mode; was fill="#b8bdc4")
-	    svg += `<defs><marker id="arrowhead" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" style="fill:var(--wf-edge)"></path></marker></defs>`;
+	    //CLD: 2026-10-29T21:30:00+02:00: + arrowhead-passed: of a connection passed in the execution shown (setRun)
+	    svg += `<defs><marker id="arrowhead" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" style="fill:var(--wf-edge)"></path></marker><marker id="arrowhead-passed" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" style="fill:var(--wf-run-done)"></path></marker></defs>`;
 	    this.svgEl.innerHTML = svg;
 
 
