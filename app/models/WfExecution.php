@@ -661,11 +661,15 @@ class WfExecution extends \sys\BaseModel {
     }
 
     //tokens for the edges leaving $nodeId on the given output ports
+    //CLD: 2026-10-29T21:30:00+02:00: each edge taken is marked passed (state, passed_at: the latest time): the designer shows the connections the execution went through
     private function tokensFrom($nodeId, array $ports) {
 	$tokens = [];
 	foreach($this->__edges as $edgeId => $edge) {
-	    if ($edge->fromNode == $nodeId && in_array((int)$edge->fromPort, $ports, true))
+	    if ($edge->fromNode == $nodeId && in_array((int)$edge->fromPort, $ports, true)) {
 		$tokens[] = [ 'node' => $edge->toNode, 'edge' => $edgeId ];
+		$edge->state = 'passed';
+		$edge->passed_at = new \MongoDB\BSON\UTCDateTime();
+	    }
 	}
 	return $tokens;
     }
