@@ -105,6 +105,8 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	onClose: () => bottomPanel.closed('exec'),
 	//CLD: 2026-10-29T21:30:00+02:00: the selected execution's steps and connections on the canvas (done, running, waiting, failed; null: none)
 	onShow: (run) => designer && designer.setRun(run),
+	//CLD: 2026-10-29T21:38:25+02:00: the chip of the execution shown, at the top of the canvas
+	chip: () => document.getElementById('canvas-wrap'),
     });
     const debug = new app.WfDebug(document.querySelector('.wf-debug-panel'), {
 	//step titles from the current steps (the designer keeps [name=nodes] up to date)
@@ -440,6 +442,9 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	    exec.open();
 	else if (bottomPanel.get() === 'debug')
 	    debug.open();
+	//CLD: 2026-10-29T21:38:25+02:00: the Executions panel closed: a run still running / waiting is shown on the canvas all the same (the draft, where the panel is)
+	if (!exec.isOpen() && document.querySelector('.btn-exec-toggle'))
+	    exec.showLive();
     };
     nodeDefs.get(mount);
 

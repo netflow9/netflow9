@@ -15,6 +15,9 @@ if (!window.app)
 //listeners removed).
 //CLD: 2026-10-29T21:30:00+02:00: + onShow(run): the selected execution's steps and connections (detail.run, WorkflowController::runStatus) for the canvas, refreshed with it; null when
 //none is shown (the panel closed, the execution deleted). Opened with none selected: the latest one still running / waiting is selected (the live one on the canvas)
+//CLD: 2026-10-29T21:38:25+02:00: the execution on the canvas (`shown`) stays when the panel is closed, refreshed every 2 s while it runs; showLive(): the latest one running / waiting is shown
+//without opening the panel (the page, when the designer opens). A chip at the top of the canvas (options.chip(): the canvas element) says which one: a click opens it in the panel,
+//its x takes the marks off (hide())
 window.app.WfExecutions = (function() {
     //the one of the current designer page
     let current = null;
@@ -53,7 +56,8 @@ window.app.WfExecutions = (function() {
 
 	    this.el = typeof panel === 'string' ? document.querySelector(panel) : panel;
 	    //CLD: 2026-10-29T21:30:00+02:00: + onShow
-	    this.o = Object.assign({ urls: {}, canRun: false, runTriggers: [], whenSaved: (fn) => fn(), onOpen: () => {}, onClose: () => {}, onShow: () => {} }, options || {});
+	    //CLD: 2026-10-29T21:38:25+02:00: + chip
+	    this.o = Object.assign({ urls: {}, canRun: false, runTriggers: [], whenSaved: (fn) => fn(), onOpen: () => {}, onClose: () => {}, onShow: () => {}, chip: () => null }, options || {});
 	    //baseline: the last saved state (markSaved), current: the latest, dirty: changes not saved yet
 	    this.baseline = null;
 	    this.current = null;
@@ -63,6 +67,10 @@ window.app.WfExecutions = (function() {
 	    this.selected = null;
 	    this.detail = null;
 	    this.timer = null;
+	    //CLD: 2026-10-29T21:38:25+02:00: the execution on the canvas (its id, its details), whether the panel is open or not; the chip saying which
+	    this.shown = null;
+	    this.shownDetail = null;
+	    this.chipEl = null;
 	    //the elements its listeners are on (removed by destroy)
 	    this.bound = [];
 
@@ -145,6 +153,10 @@ window.app.WfExecutions = (function() {
 	    clearInterval(this.timer);
 	    this.timer = null;
 	    this.bound.splice(0).forEach(($el) => $el.off(NS));
+	    //CLD: 2026-10-29T21:38:25+02:00: the chip goes with it
+	    if (this.chipEl)
+		this.chipEl.remove();
+	    this.chipEl = null;
 	    if (current === this)
 		current = null;
 	}
@@ -223,25 +235,34 @@ window.app.WfExecutions = (function() {
 		this.timer = setInterval(() => this.tick(), 2000);
 	}
 
+	//CLD: 2026-10-29T21:38:25+02:00: the execution on the canvas stays (its timer too, while it runs: tick)
 	close() {
 	    if (this.el)
 		this.el.classList.add('d-none');
-	    clearInterval(this.timer);
-	    this.timer = null;
-	    //CLD: 2026-10-29T21:30:00+02:00: no execution on the canvas while the panel is closed
-	    this.o.onShow(null);
 	    this.o.onClose();
 	}
 
+	//CLD: 2026-10-29T21:38:25+02:00: + the execution on the canvas while it runs, the panel open or not
 	tick() {
-	    //the page was left (pjax) or the panel closed
-	    if (!this.el || !document.body.contains(this.el) || this.el.classList.contains('d-none')) {
+	    //the page was left (pjax)
+	    const here = !this.el || document.body.contains(this.el);
+	    const open = !!this.el && here && this.isOpen();
+	    const shownLive = here && !!this.shownDetail && active(this.shownDetail.state);
+	    if (!open && !shownLive) {
 		clearInterval(this.timer);
 		this.timer = null;
 		return;
 	    }
-	    if (this.list.some((e) => active(e.state)) || (this.detail && active(this.detail.state)))
+	    if (open && (this.list.some((e) => active(e.state)) || (this.detail && active(this.detail.state))))
 		this.refresh();
+	    //refresh() loads it when it is the one selected
+	    if (shownLive && !(open && this.shown === this.selected))
+		this.loadDetail(this.shown);
+	}
+
+	ensureTimer() {
+	    if (!this.timer)
+		this.timer = setInterval(() => this.tick(), 2000);
 	}
 
 	refresh() {
@@ -249,30 +270,102 @@ window.app.WfExecutions = (function() {
 		this.list = resp.executions || [];
 		this.renderList();
 		//CLD: 2026-10-29T21:30:00+02:00: none selected: the latest one running / waiting (shown on the canvas)
-		const live = !this.selected && this.list.find((e) => active(e.state) || e.state === 'sleep');
-		if (live && this.isOpen())
-		    this.select(live.id);
+		//CLD: 2026-10-29T21:38:25+02:00: or the one on the canvas
+		const live = this.list.find((e) => active(e.state) || e.state === 'sleep');
+		const pick = this.selected ? null : (this.shown || (live && live.id));
+		if (pick && this.isOpen())
+		    this.select(pick);
 	    });
 	    if (this.selected)
 		this.loadDetail(this.selected);
 	}
 
+	//CLD: 2026-10-29T21:38:25+02:00: + shown on the canvas
 	select(id) {
 	    this.selected = id;
+	    this.shown = id;
 	    this.renderList();
 	    this.loadDetail(id);
 	}
 
+	//CLD: 2026-10-29T21:38:25+02:00: the details of the one selected (the panel) and / or of the one on the canvas (its marks, the chip)
 	loadDetail(id) {
 	    $.getJSON(this.o.urls.detail, { execution: id }).done((resp) => {
-		//CLD: 2026-10-29T21:30:00+02:00: + the panel still open (an answer after close() does not show it on the canvas again)
-		if (this.selected !== id || !this.isOpen())
-		    return;
-		this.detail = resp.execution;
-		this.renderDetail();
-		//CLD: 2026-10-29T21:30:00+02:00: its steps on the canvas
-		this.o.onShow(this.detail.run || null);
+		const e = resp.execution;
+		if (this.selected === id) {
+		    this.detail = e;
+		    this.renderDetail();
+		}
+		if (this.shown === id) {
+		    this.shownDetail = e;
+		    this.o.onShow(e.run || null);
+		    this.renderChip();
+		    if (active(e.state))
+			this.ensureTimer();
+		}
 	    });
+	}
+
+	/* ---------------- the execution on the canvas ---------------- */
+	//CLD: 2026-10-29T21:38:25+02:00: show execution `id` on the canvas (the panel not opened)
+	show(id) {
+	    this.shown = id;
+	    this.loadDetail(id);
+	}
+
+	//CLD: 2026-10-29T21:38:25+02:00: the marks taken off the canvas (the chip's x; the execution deleted); selecting one in the panel shows it again
+	hide() {
+	    this.shown = null;
+	    this.shownDetail = null;
+	    this.o.onShow(null);
+	    this.renderChip();
+	}
+
+	//CLD: 2026-10-29T21:38:25+02:00: the latest execution running / waiting, if any, on the canvas (the designer opened with the panel closed)
+	showLive() {
+	    $.getJSON(this.o.urls.list).done((resp) => {
+		if (this.shown || this.isOpen() || current !== this)
+		    return;
+		const live = (resp.executions || []).find((e) => active(e.state) || e.state === 'sleep');
+		if (live)
+		    this.show(live.id);
+	    });
+	}
+
+	//CLD: 2026-10-29T21:38:25+02:00: the chip at the top of the canvas: the state and start of the execution shown, x to hide it; none when none is shown
+	renderChip() {
+	    const e = this.shown ? this.shownDetail : null;
+	    if (!e) {
+		if (this.chipEl)
+		    this.chipEl.remove();
+		this.chipEl = null;
+		return;
+	    }
+	    if (!this.chipEl || !document.body.contains(this.chipEl)) {
+		const wrap = this.o.chip();
+		if (!wrap)
+		    return;
+		const el = this.chipEl = document.createElement('div');
+		el.className = 'wf-run-chip position-absolute top-0 start-50 translate-middle-x mt-3 d-flex align-items-center gap-2 px-2 py-1 small bg-body border rounded-pill shadow-sm text-nowrap';
+		el.style.zIndex = 20;
+		//not a pan of the canvas
+		el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+		el.addEventListener('click', (ev) => {
+		    ev.preventDefault();
+		    ev.stopPropagation();
+		    if (ev.target.closest('.btn-run-chip-hide')) {
+			this.hide();
+			return;
+		    }
+		    const id = this.shown;
+		    this.open();
+		    if (id)
+			this.select(id);
+		});
+		wrap.appendChild(el);
+	    }
+	    this.chipEl.innerHTML = `${badge(e.state)}<span role='button' title='Show it in the Executions panel'>Run of ${esc(e.started || e.created || '-')} <span class='text-body-secondary'>${esc(versionLabel(e))}</span></span>`
+		+ `<button type='button' class='btn btn-sm btn-link text-body-secondary p-0 lh-1 btn-run-chip-hide' title='Hide the marks of this run' aria-label='Hide'><i class='bi bi-x-lg'></i></button>`;
 	}
 
 	find(selector) {
@@ -318,11 +411,10 @@ window.app.WfExecutions = (function() {
 		<pre class='mb-0' style='color: inherit; white-space: pre-wrap'>${esc(vars)}</pre>`;
 	}
 
+	//CLD: 2026-10-29T21:38:25+02:00: the canvas: hide() (was here)
 	clearDetail() {
 	    this.selected = null;
 	    this.detail = null;
-	    //CLD: 2026-10-29T21:30:00+02:00: none on the canvas
-	    this.o.onShow(null);
 	    const box = this.find('.exec-detail');
 	    if (box)
 		box.innerHTML = `<span style='color: var(--netflow9-debug-muted)'>Select an execution</span>`;
@@ -371,6 +463,9 @@ window.app.WfExecutions = (function() {
 	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': csrf() } })
 		.done(() => {
 		    this.list = this.list.filter((e) => e.id !== id);
+		    //CLD: 2026-10-29T21:38:25+02:00: off the canvas
+		    if (this.shown === id)
+			this.hide();
 		    if (this.selected === id)
 			this.clearDetail();
 		    this.renderList();
@@ -404,6 +499,9 @@ window.app.WfExecutions = (function() {
 		    this.restoreDeleteAll();
 		    if (this.detail && this.deletable(this.detail))
 			this.clearDetail();
+		    //CLD: 2026-10-29T21:38:25+02:00: off the canvas
+		    if (this.shownDetail && this.deletable(this.shownDetail))
+			this.hide();
 		    this.refresh();
 		    const n = resp.deleted || 0;
 		    toast('success', 'Deleted', (n === 1 ? '1 execution deleted' : n + ' executions deleted') + (resp.kept ? ', ' + resp.kept + ' kept (running / sleeping or of a published version)' : ''));
