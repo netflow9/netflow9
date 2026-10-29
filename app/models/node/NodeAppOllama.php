@@ -21,6 +21,9 @@ class NodeAppOllama extends NodeAppAi {
 
     const CAPABILITY = 'ollama';
     const PROVIDER = 'Ollama';
+    //CLD: 2026-10-29T22:44:26+02:00: a local server: a long prompt on a local model can take minutes (was 300 s, at most 600)
+    const DEFAULT_TIMEOUT = 900;
+    const MAX_TIMEOUT = 900;
 
     const THINK = [ '' => 'The model\'s default', 'on' => 'On', 'off' => 'Off' ];
     //CLD: 2026-10-27T23:11:38+02:00: Ollama's API takes no PDFs: their text and images (PDFs as: no Documents)
