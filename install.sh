@@ -135,6 +135,21 @@ chromium_installed() {
     ls -d /opt/playwright/browsers/chromium-[0-9]*/chrome-linux64/chrome >/dev/null 2>&1
 }
 
+#CLD: 2026-10-29T07:00:00+02:00: the lines of $@ under security: in $MONGOD_CONF (as indented as its other keys), or a new security: section; $1: the copy it is made from
+#(was in the authorization step only; Percona's encryption at rest adds its keys there too)
+mongod_conf_security() {
+    local from="$1"
+    shift
+    if grep -q '^security:' "$from"; then
+        ADD="$(printf '%s\n' "$@")" awk '{ print } /^security:/ { getline nxt; match(nxt, /^[ ]+/); ind = RSTART == 1 ? substr(nxt, 1, RLENGTH) : "  ";
+               n = split(ENVIRON["ADD"], a, "\n"); for (i = 1; i <= n; i++) if (a[i] != "") print ind a[i]; print nxt }' "$from" > "$MONGOD_CONF"
+    else
+        cp -p "$from" "$MONGOD_CONF"
+        printf '\nsecurity:\n' >> "$MONGOD_CONF"
+        printf '  %s\n' "$@" >> "$MONGOD_CONF"
+    fi
+}
+
 #the packages of $@ that are not installed
 missing_packages() {
     local p
@@ -301,6 +316,26 @@ if [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
     fi
 fi
 
+#CLD: 2026-10-29T07:00:00+02:00: Percona Server for MongoDB on this server: its data encrypted at rest (WiredTiger's encryption, a key file), not asked. Only while its data
+#folder is empty: mongod does not start with encryption on files written without it (existing data: mongodump, an empty dbPath, encryption on, mongorestore)
+OPT_MONGO_ENCRYPT=0
+MONGO_ENCRYPT_NOTE=""
+MONGO_KEY_FILE=/etc/mongod-encryption.key
+if [ "$OPT_LOCAL_MONGO" -eq 1 ] && [[ $MONGOD_PKG == percona-* ]]; then
+    if grep -qE '^[[:space:]]*enableEncryption:[[:space:]]*true' "$MONGOD_CONF" 2>/dev/null; then
+        echo "  MongoDB: its data is encrypted already"
+    else
+        MONGO_DBPATH=$(awk '/^[[:space:]]*dbPath:/ { gsub(/["\047]/, "", $2); print $2; exit }' "$MONGOD_CONF" 2>/dev/null || true)
+        MONGO_DBPATH="${MONGO_DBPATH:-/var/lib/mongo}"
+        if [ -e "$MONGO_DBPATH/WiredTiger" ]; then
+            MONGO_ENCRYPT_NOTE="MongoDB's data ($MONGO_DBPATH) is not encrypted: it has data already, which cannot be encrypted in place (mongodump, an empty $MONGO_DBPATH, run this again, mongorestore)."
+            echo "  $MONGO_ENCRYPT_NOTE"
+        else
+            OPT_MONGO_ENCRYPT=1
+        fi
+    fi
+fi
+
 #CLD: 2026-10-29T05:00:00+02:00: the distribution's PHP (php-common, ...) conflicts with php$PHPV-syspaths (both are /usr/bin/php, which the app's console and daemon run): replaced
 #only when allowed (dnf --allowerasing removes those packages and what needs them)
 OPT_REPLACE_PHP=0
@@ -339,6 +374,7 @@ echo "  - set up PHP-FPM, nginx and the certificate for $DOMAIN$([ "$OPT_LE" -eq
 [ "$OPT_BROWSER" -eq 1 ] && echo "  - install the web browser for the AI steps"
 [ "$OPT_MAIL" -eq 1 ] && echo "  - install inbound email for @$MAIL_DOMAIN"
 [ "$OPT_MONGO" -eq 1 ] && echo "  - give MongoDB its users and turn on sign-in"
+[ "$OPT_MONGO_ENCRYPT" -eq 1 ] && echo "  - encrypt MongoDB's data at rest (Percona; its key: $MONGO_KEY_FILE)"
 echo "  - install and start the background services"
 echo "  The firewall is not changed: open 80 and 443$([ "$OPT_MAIL" -eq 1 ] && echo ", 25") yourself."
 ask_yes GO "Go on?" y
@@ -407,7 +443,27 @@ if [ "$OPT_LOCAL_MONGO" -eq 1 ] && [ -z "$MONGOD_PKG" ]; then
 elif [ -n "$MONGOD_PKG" ]; then
     echo "MongoDB: $MONGOD_PKG is installed: kept"
 fi
-[ "$OPT_LOCAL_MONGO" -eq 0 ] || systemctl enable --now mongod
+#CLD: 2026-10-29T07:00:00+02:00: Percona's encryption at rest, before mongod's first start (it then writes its files encrypted): a key file (32 random bytes, base64), made
+#once per server, read by mongod only
+#SECURITY TODO: a static key, kept on the same server as the data: it protects the data files, backups of them and old disks taken away, not the data from root here,
+#and it is never rotated. Make it more secure: keep the key in a key manager (Percona: HashiCorp Vault, security.vault, or a KMIP server, security.kmip) instead of a file,
+#and rotate it regularly (Vault / KMIP: mongod --rotateMasterKey; a key file: each replica set member resynced with a new key). Keep a copy of the key away from this
+#server: without it the data cannot be read
+if [ "$OPT_MONGO_ENCRYPT" -eq 1 ]; then
+    if [ ! -s "$MONGO_KEY_FILE" ]; then
+        (umask 077; openssl rand -base64 32 > "$MONGO_KEY_FILE")
+        echo "+ $MONGO_KEY_FILE (MongoDB's encryption key)"
+    fi
+    chown mongod:mongod "$MONGO_KEY_FILE"
+    chmod 600 "$MONGO_KEY_FILE"
+    backup="$MONGOD_CONF.bak-$(date +%Y%m%dT%H%M%S)"
+    cp -p "$MONGOD_CONF" "$backup"
+    mongod_conf_security "$backup" "enableEncryption: true" "encryptionKeyFile: $MONGO_KEY_FILE" "encryptionCipherMode: AES256-CBC"
+    echo "+ $MONGOD_CONF: encryption at rest (the old one: $backup)"
+fi
+if [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
+    systemctl enable --now mongod || { echo "! mongod did not start: journalctl -u mongod, $MONGOD_CONF"; exit 1; }
+fi
 #mongosh (the app's checks, MongoDB's users): Percona's with Percona's server, else MongoDB's
 if ! command -v mongosh >/dev/null 2>&1; then
     if [[ $MONGOD_PKG == percona-* ]]; then
@@ -609,13 +665,7 @@ if [ "$OPT_MONGO" -eq 1 ] && mongo_auth_off; then
     else
         backup="$MONGOD_CONF.bak-$(date +%Y%m%dT%H%M%S)"
         cp -p "$MONGOD_CONF" "$backup"
-        #authorization under security: (as indented as its other keys), or a new security: section
-        if grep -q '^security:' "$MONGOD_CONF"; then
-            awk '{ print } /^security:/ { getline nxt; match(nxt, /^[ ]+/); ind = RSTART == 1 ? substr(nxt, 1, RLENGTH) : "  ";
-                   print ind "authorization: enabled"; print nxt }' "$backup" > "$MONGOD_CONF"
-        else
-            printf '\nsecurity:\n  authorization: enabled\n' >> "$MONGOD_CONF"
-        fi
+        mongod_conf_security "$backup" "authorization: enabled"
         echo "+ $MONGOD_CONF: authorization enabled (the old one: $backup)"
     fi
     systemctl restart mongod
@@ -644,6 +694,10 @@ echo "Open $URL$([ "$SET_UP" -eq 0 ] && echo " and sign in as $OWNER_USER")."
 if [ "$(readlink "$BASE/ssl/ssl.crt")" = "selfsigned.crt" ]; then
     echo "The certificate is self-signed: browsers warn. Run this again once $DOMAIN points here for Let's Encrypt, or put yours in $BASE/ssl/ (ssl.crt, ssl.key)."
 fi
+if [ "$OPT_MONGO_ENCRYPT" -eq 1 ]; then
+    echo "MongoDB's data is encrypted with the key in $MONGO_KEY_FILE: keep a copy of it away from this server (without it the data cannot be read); a static key: move it to a key manager (Vault / KMIP) and rotate it."
+fi
+[ -z "$MONGO_ENCRYPT_NOTE" ] || echo "$MONGO_ENCRYPT_NOTE"
 [ "$MONGO_CHANGED" -eq 1 ] && echo "MongoDB's operators' account (nfn_admin) is in $BASE/.mongodb-admin (root's): move it to a password manager, then delete the file."
 if [ "$OPT_MAIL" -eq 1 ]; then
     echo "Inbound email: point the MX record of $MAIL_DOMAIN to this server; DKIM keys: cd $BASE/haraka/dkim && ./dkim_key_gen.sh $MAIL_DOMAIN"
