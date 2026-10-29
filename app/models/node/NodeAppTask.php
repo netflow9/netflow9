@@ -129,12 +129,13 @@ class NodeAppTask extends \models\WfNode {
 		'ui' => [ 'width' => 4 ],
 	    ],
 	    [
+		//CLD: 2026-10-29T10:30:00+02:00: not under "Advanced…" (the designer's section of the technical settings, where a step's timeout goes): the task's deadline, next to its unit
 		'key' => 'timeout',
 		'type' => 'number',
 		'label' => 'After',
 		'default' => 1,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => 100000, 'skipEmpty' => true, 'message' => 'At least 1' ] ],
-		'ui' => [ 'width' => 4, 'showIf' => [ 'key' => 'timeoutUnit', 'operator' => 'ne', 'value' => 'none' ] ],
+		'ui' => [ 'advanced' => false, 'width' => 4, 'showIf' => [ 'key' => 'timeoutUnit', 'operator' => 'ne', 'value' => 'none' ] ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: The answers, by key; who gave them: <variable>_user)

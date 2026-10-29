@@ -114,13 +114,14 @@ class NodeAppTeams extends NodeAppMicrosoft {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'importance',
 		'type' => 'select',
 		'label' => 'Importance',
 		'required' => true,
 		'default' => 'normal',
 		'choices' => self::IMPORTANCE,
-		'ui' => [ 'width' => 3, 'showIf' => $op(self::SEND) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op(self::SEND) ],
 	    ],
 	    [
 		'key' => 'message',

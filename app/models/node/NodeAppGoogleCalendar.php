@@ -181,12 +181,13 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: Of the times without an offset, e.g. Europe/Bucharest; empty: ' . (\V::app()->config('app.timezone') ?: date_default_timezone_get()))
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'timeZone',
 		'type' => 'text',
 		'label' => 'Time zone',
 		'default' => '',
 		'help' => 'Of times without an offset',
-		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'Europe/Bucharest', 'expression' => true, 'showIf' => $op(array_merge(self::EDIT, self::PERIOD)) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'Europe/Bucharest', 'expression' => true, 'showIf' => $op(array_merge(self::EDIT, self::PERIOD)) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: Optional, e.g. RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10)
@@ -225,13 +226,14 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'sendUpdates',
 		'type' => 'select',
 		'label' => 'Notify guests',
 		'required' => true,
 		'default' => 'all',
 		'choices' => self::SEND_UPDATES,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'create', 'update', 'delete', 'quickAdd' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 6, 'showIf' => $op([ 'create', 'update', 'delete', 'quickAdd' ]) ],
 	    ],
 
 	    //quickAdd

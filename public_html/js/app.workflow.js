@@ -1656,25 +1656,28 @@ window.app.Workflow = (function() {
 	    const onError = take((f) => f.key === 'onError');
 	    const credential = take((f) => f.key === 'credential' || f.resource);
 	    const operation = take((f) => f.key === 'operation');
-	    const timeout = take((f) => f.key === 'timeout' && f.type === 'number');
+	    //CLD: 2026-10-29T10:00:00+02:00: not a timeout marked advanced: false (the Human task's deadline: stays in its place, next to its unit)
+	    const timeout = take((f) => f.key === 'timeout' && f.type === 'number' && f.advanced !== false);
+	    //CLD: 2026-10-29T10:00:00+02:00: the technical settings in a section "Advanced…" at the end, closed (opened when one of them is not at its default, or is invalid):
+	    //the step's `advanced` fields (in their order and widths), then a last row of On error, the limits and Timeout (3 wide each); row 1 is the step name and the output
+	    //variable (On error was there)
 	    const fields = [];
 	    if (!def.isNote)
-		fields.push({ type: 'text', key: '__title', label: 'Step name', required: true, width: 12 - (output ? 3 : 0) - (onError ? 3 : 0) });
+		fields.push({ type: 'text', key: '__title', label: 'Step name', required: true, width: 12 - (output ? 3 : 0) });
 	    if (output)
 		fields.push(Object.assign(output, { width: 3 }));
-	    if (onError)
-		fields.push(Object.assign(onError, { width: 3 }));
 	    if (credential)
 		fields.push(Object.assign(credential, { width: operation ? 6 : (credential.width || 6) }));
 	    if (operation)
 		fields.push(Object.assign(operation, { width: 6 }));
-	    const limits = own.filter((f) => f.limit).map((f) => Object.assign(f, { width: 3 }));
-	    own.filter((f) => !f.limit).forEach((f) => fields.push(f));
-	    if (timeout)
-		limits.push(Object.assign(timeout, { width: 3 }));
-	    limits.forEach((f, i) => fields.push(Object.assign(f, { newRow: i === 0 })));
+	    own.filter((f) => !f.limit && !f.advanced).forEach((f) => fields.push(f));
+	    const advanced = own.filter((f) => f.advanced && !f.limit);
+	    const last = [ onError, ...own.filter((f) => f.limit), timeout ].filter((f) => f).map((f) => Object.assign(f, { width: 3 }));
+	    last.forEach((f, i) => advanced.push(Object.assign(f, { newRow: i === 0 })));
+	    if (advanced.length)
+		fields.push({ type: 'section', label: 'Advanced…', collapsed: true, openIfChanged: true, fields: advanced });
 	    if (readonly)
-		fields.forEach(f => f.editable = false);
+		advanced.concat(fields).forEach(f => f.editable = false);
 
 	    const el = document.createElement('div');
 	    el.className = 'modal fade wf-editor';

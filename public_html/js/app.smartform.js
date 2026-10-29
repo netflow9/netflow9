@@ -73,6 +73,9 @@ if (!window.app)
  *
  * Layout helper node:
  *   { "type": "columns", "columns": [ { "width": 6, "fields": [...] }, { "width": 6, "fields": [...] } ] }
+ * CLD: 2026-10-29T10:00:00+02:00: a collapsible section (closed unless collapsed: false; hidden when none of its fields is shown; opened when one of them is invalid,
+ * and with openIfChanged when one of them is not at its default):
+ *   { "type": "section", "label": "Advanced…", "collapsed": true, "openIfChanged": true, "fields": [...] }
  *
  * CLD: 2026-10-13T18:20:23+03:00: design nodes (no data; showIf / hideIf apply): { "type": "paragraph", "text": "..." } (line breaks kept), { "type": "divider" }; and the field
  * type "formdesigner": its value is a form schema ({ direction, fields }) edited with app.FormDesigner (forms of the Form trigger / Human task steps)
@@ -983,6 +986,90 @@ window.app.smartform = (function() {
 	}
     }
 
+    //CLD: 2026-10-29T10:00:00+02:00: a collapsible group of fields (a step's "Advanced…" settings): { type: 'section', label, collapsed, openIfChanged, fields }; its fields are
+    //the form's own (data, conditions and validation as the others); hidden when none of them is shown; opened when one of them is invalid (validate()) and, with
+    //openIfChanged, when one of them holds another value than its default (setData())
+    class SectionLayout {
+	constructor(schema, formRenderer) {
+	    this.schema = schema;
+	    this.formRenderer = formRenderer;
+	    this.fields = [];
+	    this.el = null;
+	    this.bodyEl = null;
+	}
+
+	render() {
+	    const collapsed = this.schema.collapsed !== false;
+	    const wrapper = document.createElement('div');
+	    wrapper.className = 'form-section mb-3';
+	    wrapper.dataset.type = 'section';
+	    this.el = wrapper;
+
+	    const id = app.utils.uid('section');
+	    const toggle = document.createElement('button');
+	    toggle.type = 'button';
+	    toggle.className = 'btn btn-link p-0 text-decoration-none d-inline-flex align-items-center gap-1';
+	    toggle.setAttribute('aria-controls', id);
+	    toggle.innerHTML = '<i class="bi bi-chevron-right small"></i><span></span>';
+	    toggle.querySelector('span').textContent = this.schema.label || 'Advanced…';
+	    const icon = toggle.querySelector('i');
+	    const expanded = (open) => {
+		toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+		icon.style.transition = 'transform .2s';
+		icon.style.transform = open ? 'rotate(90deg)' : '';
+	    };
+	    wrapper.appendChild(toggle);
+
+	    const body = document.createElement('div');
+	    body.className = 'collapse' + (collapsed ? '' : ' show');
+	    body.id = id;
+	    const inner = document.createElement('div');
+	    inner.className = 'pt-3';
+	    body.appendChild(inner);
+	    wrapper.appendChild(body);
+	    this.bodyEl = body;
+	    expanded(!collapsed);
+
+	    //the fields built here are the form's; the section remembers which are its own
+	    const first = this.formRenderer.fields.length;
+	    this.formRenderer._buildNodes(this.schema.fields || [], inner);
+	    this.fields = this.formRenderer.fields.slice(first);
+
+	    toggle.addEventListener('click', () => bootstrap.Collapse.getOrCreateInstance(body, { toggle: false }).toggle());
+	    body.addEventListener('show.bs.collapse', (e) => { if (e.target === body) expanded(true); });
+	    body.addEventListener('hide.bs.collapse', (e) => { if (e.target === body) expanded(false); });
+	    this._expanded = expanded;
+	    return wrapper;
+	}
+
+	//shown at once while the form is not on screen (no animation), else animated
+	open() {
+	    if (!this.bodyEl || this.bodyEl.classList.contains('show'))
+		return;
+	    if (this.bodyEl.offsetParent === null) {
+		this.bodyEl.classList.add('show');
+		this._expanded(true);
+	    } else {
+		bootstrap.Collapse.getOrCreateInstance(this.bodyEl, { toggle: false }).show();
+	    }
+	}
+
+	updateVisibility() {
+	    if (this.el)
+		this.el.classList.toggle('d-none', !this.fields.some((f) => f.isVisible()));
+	}
+
+	//a shown field of it holds another value than its default (no default: its empty value)
+	isChanged() {
+	    const norm = (v) => {
+		if (v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0) || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0))
+		    return '';
+		return typeof v === 'object' ? JSON.stringify(v) : String(v);
+	    };
+	    return this.fields.some((f) => f.key && f.isVisible() && norm(f.getValue()) !== norm(f.schema.default !== undefined ? f.schema.default : f.getEmptyValue()));
+	}
+    }
+
     /*!
      * field-editgrid.js
      * EditGridField renders a repeatable set of rows, each row built from the
@@ -1800,6 +1887,7 @@ window.app.smartform = (function() {
     	    this.direction = this.schema.direction === 'horizontal' ? 'horizontal' : 'vertical';
     	    this.data = {};
     	    this.fields = []; // flat list of every top-level field instance (for recompute/validate)
+	    this.sections = []; //CLD: 2026-10-29T10:00:00+02:00: the collapsible sections (SectionLayout)
     	    this.formEl = null;
 
 	    container._smartForm = this;
@@ -1809,6 +1897,7 @@ window.app.smartform = (function() {
 	render() {
     	    this.container.innerHTML = '';
     	    this.fields = [];
+	    this.sections = [];
     	    this.data = {};
 
     	    const form = document.createElement('form');
@@ -1856,6 +1945,13 @@ window.app.smartform = (function() {
         	    targetEl.appendChild(layout.render());
         	    return;
     		}
+		//CLD: 2026-10-29T10:00:00+02:00: a collapsible section (SectionLayout)
+		if (node.type === 'section') {
+		    const section = new SectionLayout(node, this);
+		    this.sections.push(section);
+		    targetEl.appendChild(section.render());
+		    return;
+		}
 
     		const api = {
         	    direction: node.direction || this.direction,
@@ -1930,15 +2026,23 @@ window.app.smartform = (function() {
 		if (f.key && f._visible === false)
 		    data[f.key] = undefined;
 	    });
+	    //CLD: 2026-10-29T10:00:00+02:00: a section without a shown field is hidden
+	    this.sections.forEach((s) => s.updateVisibility());
         }
 
 	/** Validate every visible field; returns true only if all pass. */
 	validate() {
     	    const context = { data: this.data, row: null, index: null };
     	    let valid = true;
+	    //CLD: 2026-10-29T10:00:00+02:00: a section holding an invalid field opens
+	    const invalid = [];
     	    this.fields.forEach((f) => {
-    		if (!f.validate(context)) valid = false;
+    		if (!f.validate(context)) {
+		    valid = false;
+		    invalid.push(f);
+		}
     	    });
+	    this.sections.forEach((s) => { if (s.fields.some((f) => invalid.includes(f))) s.open(); });
     	    return valid;
 	}
 
@@ -1955,6 +2059,8 @@ window.app.smartform = (function() {
     		    this.data[key] = values[key];
     	    });
     	    this.recomputeVisibility();
+	    //CLD: 2026-10-29T10:00:00+02:00: a section `openIfChanged` opens when one of its fields holds another value than its default
+	    this.sections.forEach((s) => { if (s.schema.openIfChanged && s.isChanged()) s.open(); });
 	}
     }
 

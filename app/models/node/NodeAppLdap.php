@@ -86,16 +86,18 @@ class NodeAppLdap extends \models\WfNode {
 		'label' => 'Base DN',
 		'default' => '',
 		'help' => 'Empty: the credential\'s Base DN',
-		'ui' => [ 'placeholder' => 'OU=People,DC=example,DC=com', 'expression' => true, 'width' => 8, 'showIf' => $op([ 'search' ]) ],
+		//CLD: 2026-10-29T10:30:00+02:00: full width (was 8: the scope next to it is under "Advanced…")
+		'ui' => [ 'placeholder' => 'OU=People,DC=example,DC=com', 'expression' => true, 'width' => 12, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'scope',
 		'type' => 'select',
 		'label' => 'Scope',
 		'required' => true,
 		'default' => 'sub',
 		'choices' => LdapClient::SCOPES,
-		'ui' => [ 'width' => 4, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 4, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
 		'key' => 'filter',
@@ -107,14 +109,16 @@ class NodeAppLdap extends \models\WfNode {
 		'ui' => [ 'expression' => true, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'attributes',
 		'type' => 'text',
 		'label' => 'Attributes',
 		'default' => '',
 		'help' => 'The attributes to read, separated by commas; empty: all',
-		'ui' => [ 'placeholder' => 'cn, mail, memberOf', 'width' => 8, 'showIf' => $op([ 'search', 'get' ]) ],
+		'ui' => [ 'advanced' => true, 'placeholder' => 'cn, mail, memberOf', 'width' => 8, 'showIf' => $op([ 'search', 'get' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-29T10:30:00+02:00: a limit: under "Advanced…", in its last row (was 4 wide next to the attributes)
 		'key' => 'sizeLimit',
 		'type' => 'number',
 		'label' => 'At most',
@@ -122,7 +126,7 @@ class NodeAppLdap extends \models\WfNode {
 		'default' => 100,
 		'help' => 'Entries; more are left out (truncated)',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_ENTRIES, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_ENTRIES ] ],
-		'ui' => [ 'width' => 4, 'step' => 1, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'limit' => true, 'width' => 4, 'step' => 1, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
 		'key' => 'dn',
@@ -193,16 +197,18 @@ class NodeAppLdap extends \models\WfNode {
 		'default' => '',
 		'help' => 'A DN (member, uniqueMember) or a name (memberUid)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_GROUP ],
-		'ui' => [ 'expression' => true, 'width' => 8, 'placeholder' => '{{ entry.dn }}', 'showIf' => $op(self::ON_GROUP) ],
+		//CLD: 2026-10-29T10:30:00+02:00: full width (was 8: the member attribute next to it is under "Advanced…")
+		'ui' => [ 'expression' => true, 'width' => 12, 'placeholder' => '{{ entry.dn }}', 'showIf' => $op(self::ON_GROUP) ],
 	    ],
 	    [
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'memberAttribute',
 		'type' => 'select',
 		'label' => 'Member attribute',
 		'required' => true,
 		'default' => 'member',
 		'choices' => self::MEMBER_ATTRIBUTES,
-		'ui' => [ 'width' => 4, 'showIf' => $op(self::ON_GROUP) ],
+		'ui' => [ 'advanced' => true, 'width' => 4, 'showIf' => $op(self::ON_GROUP) ],
 	    ],
 	    [
 		'key' => 'login',
@@ -223,12 +229,13 @@ class NodeAppLdap extends \models\WfNode {
 		'ui' => [ 'expression' => true, 'width' => 6, 'placeholder' => '{{ form.password }}', 'showIf' => $op([ 'checkPassword' ]) ],
 	    ],
 	    [
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'userFilter',
 		'type' => 'text',
 		'label' => 'User filter',
 		'default' => '',
 		'help' => 'Finds the person: {login} = the name. Empty: sAMAccountName / userPrincipalName / mail (Active Directory), uid / mail (others)',
-		'ui' => [ 'showIf' => $op([ 'checkPassword' ]) ],
+		'ui' => [ 'advanced' => true, 'showIf' => $op([ 'checkPassword' ]) ],
 	    ],
 	    [
 		'key' => 'newPassword',

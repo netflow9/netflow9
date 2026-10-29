@@ -117,13 +117,14 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'render',
 		'type' => 'select',
 		'label' => 'Read values',
 		'required' => true,
 		'default' => 'FORMATTED_VALUE',
 		'choices' => self::RENDER,
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'read' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'read' ]) ],
 	    ],
 
 	    [

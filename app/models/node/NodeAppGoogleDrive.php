@@ -174,13 +174,14 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'orderBy',
 		'type' => 'select',
 		'label' => 'Order',
 		'required' => true,
 		'default' => 'modifiedTime desc',
 		'choices' => self::ORDER,
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: shorter help (was: More conditions in the Drive search syntax (q), e.g. modifiedTime > '2026-01-01T00:00:00' and starred = true)
@@ -203,11 +204,12 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'includeTrashed',
 		'type' => 'switch',
 		'label' => 'Include files in the trash',
 		'default' => false,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'list' ]) ],
 	    ],
 
 	    //download
@@ -245,12 +247,13 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6); shorter help (was: Word, text, HTML -> Docs; Excel, CSV -> Sheets; PowerPoint -> Slides)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'convert',
 		'type' => 'switch',
 		'label' => 'Convert to a Google file',
 		'default' => false,
 		'help' => 'To Docs / Sheets / Slides',
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'upload' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'upload' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: Upload: the name in Drive (empty: the project file's name); create folder: the folder's name)

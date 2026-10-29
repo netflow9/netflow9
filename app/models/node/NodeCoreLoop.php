@@ -54,6 +54,7 @@ class NodeCoreLoop extends \models\WfNode {
 		'ui' => $nameUi,
 	    ],
 	    [
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'indexVariable',
 		'type' => 'text',
 		'label' => 'Position variable',
@@ -62,13 +63,15 @@ class NodeCoreLoop extends \models\WfNode {
 		'help' => 'The current item\'s position (0, 1, ...)',
 		'validate' => $identifier,
 		'ui' => $nameUi,
+		'ui' => [ 'advanced' => true ],
 	    ],
 	    [
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'collect',
 		'type' => 'text',
 		'label' => 'Collect',
 		'help' => 'Optional: evaluated at the end of each pass, the values listed in the result\'s `results`, e.g. {{ ai.json }}',
-		'ui' => [ 'expression' => true, 'placeholder' => 'e.g. {{ item.filename }}' ],
+		'ui' => [ 'advanced' => true, 'expression' => true, 'placeholder' => 'e.g. {{ item.filename }}' ],
 	    ],
 	    [
 		'key' => 'variable',

@@ -118,20 +118,22 @@ class NodeAppFtpUpload extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'createFolders',
 		'type' => 'switch',
 		'label' => 'Make missing folders',
 		'default' => true,
-		'ui' => [ 'width' => 3, 'newRow' => true ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: The receiver never sees half a file; off for servers that refuse renames)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'safeUpload',
 		'type' => 'switch',
 		'label' => 'Send as .part, rename when complete',
 		'default' => true,
 		'help' => 'No half files seen; off: servers refusing renames',
-		'ui' => [ 'width' => 3 ],
+		'ui' => [ 'advanced' => true, 'width' => 3 ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
@@ -143,11 +145,12 @@ class NodeAppFtpUpload extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'verify',
 		'type' => 'switch',
 		'label' => 'Check the size on the server',
 		'default' => true,
-		'ui' => [ 'width' => 3 ],
+		'ui' => [ 'advanced' => true, 'width' => 3 ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: After compressing; the ending is added: .gpg, .asc, .enc, .p7m)
@@ -192,6 +195,7 @@ class NodeAppFtpUpload extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: A plain private key signature is always a separate file)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'signMode',
 		'type' => 'select',
 		'label' => 'Signature',
@@ -199,7 +203,7 @@ class NodeAppFtpUpload extends \models\WfNode {
 		'default' => 'attached',
 		'choices' => self::SIGN_MODES,
 		'help' => 'A plain private key: always a separate file',
-		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'sign', 'operator' => 'eq', 'value' => true ] ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => [ 'key' => 'sign', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 	    [
 		'key' => 'timeout',

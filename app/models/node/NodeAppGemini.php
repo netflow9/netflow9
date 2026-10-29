@@ -30,6 +30,7 @@ class NodeAppGemini extends NodeAppAi {
 	return [
 	    [
 		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3), not on a new line; shorter help (was: Gemini 3+; Minimal / Medium: Flash only)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'thinking',
 		'type' => 'select',
 		'label' => 'Thinking',
@@ -38,10 +39,11 @@ class NodeAppGemini extends NodeAppAi {
 		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line (was 6); shorter help (was: How much the model thinks (Gemini 3 and later): higher is better for hard tasks, lower is faster and cheaper;
 		//Minimal / Medium: Flash models only)
 		'help' => 'Gemini 3+',
-		'ui' => [ 'width' => 2 ],
+		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
 	    [
 		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3); shorter help (was: 0 - 2; empty: the default (best))
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'temperature',
 		'type' => 'text',
 		'label' => 'Temperature',
@@ -49,7 +51,7 @@ class NodeAppGemini extends NodeAppAi {
 		//CLD: 2026-10-24T12:42:45+03:00: 3 wide (was 6); shorter help (was: Optional, 0 - 2; empty: the model default (recommended for Gemini 3))
 		'help' => '0 - 2; empty: default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		'ui' => [ 'width' => 2, 'placeholder' => 'default' ],
+		'ui' => [ 'advanced' => true, 'width' => 2, 'placeholder' => 'default' ],
 	    ],
 	];
     }

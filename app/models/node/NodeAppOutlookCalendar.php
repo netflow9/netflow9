@@ -186,12 +186,13 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'showAs',
 		'type' => 'select',
 		'label' => 'Show as',
 		'default' => '',
 		'choices' => self::SHOW_AS,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
@@ -214,12 +215,13 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'timeZone',
 		'type' => 'text',
 		'label' => 'Time zone',
 		'default' => '',
 		'help' => 'e.g. Europe/Bucharest; empty: the app\'s',
-		'ui' => [ 'width' => 3, 'placeholder' => 'Europe/Bucharest', 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'placeholder' => 'Europe/Bucharest', 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
 	    ],
 	    [
 		'key' => 'description',

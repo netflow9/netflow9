@@ -32,6 +32,7 @@ class NodeAppOllama extends NodeAppAi {
 	return [
 	    [
 		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3), not on a new line; shorter help (was: 0 - 2; empty: the model's default)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'temperature',
 		'type' => 'text',
 		'label' => 'Temperature',
@@ -39,37 +40,40 @@ class NodeAppOllama extends NodeAppAi {
 		//CLD: 2026-10-24T12:42:45+03:00: the four settings 3 wide on one line (were 6); shorter helps
 		'help' => '0 - 2; empty: default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		'ui' => [ 'width' => 2, 'placeholder' => 'default' ],
+		'ui' => [ 'advanced' => true, 'width' => 2, 'placeholder' => 'default' ],
 	    ],
 	    [
 		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3); shorter help (was: Thinking models (qwen3, deepseek-r1))
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'think',
 		'type' => 'select',
 		'label' => 'Thinking',
 		'default' => '',
 		'choices' => self::THINK,
 		'help' => 'qwen3, deepseek-r1',
-		'ui' => [ 'width' => 2 ],
+		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
 	    [
 		//CLD: 2026-10-24T13:05:14+03:00: layout: 3 wide, on a new line
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'contextLength',
 		'type' => 'text',
 		'label' => 'Context length (tokens)',
 		'default' => '',
 		'help' => 'num_ctx; empty: the server\'s default',
 		'validate' => [ [ 'regex', 'pattern' => '^[1-9][0-9]{2,6}$', 'skipEmpty' => true, 'message' => 'A number of tokens, e.g. 8192' ] ],
-		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'default' ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'default' ],
 	    ],
 	    [
 		//CLD: 2026-10-24T13:05:14+03:00: layout: 3 wide
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'keepAlive',
 		'type' => 'text',
 		'label' => 'Keep the model loaded',
 		'default' => '',
 		'help' => 'e.g. 10m, 1h, 0; empty: 5 minutes',
 		'validate' => [ [ 'regex', 'pattern' => '^(0|-1|[0-9]+(\.[0-9]+)?(ms|s|m|h))$', 'skipEmpty' => true, 'message' => 'A duration, e.g. 10m, 1h, or 0' ] ],
-		'ui' => [ 'width' => 3, 'placeholder' => '5m' ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'placeholder' => '5m' ],
 	    ],
 	];
     }

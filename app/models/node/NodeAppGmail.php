@@ -213,11 +213,12 @@ class NodeAppGmail extends NodeAppGoogle {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'spamTrash',
 		'type' => 'switch',
 		'label' => 'Include spam and trash',
 		'default' => false,
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)

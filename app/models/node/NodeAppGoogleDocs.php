@@ -115,11 +115,12 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'matchCase',
 		'type' => 'switch',
 		'label' => 'Match case',
 		'default' => true,
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'replace' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'replace' ]) ],
 	    ],
 	    static::timeoutField(60),
 	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: Read: { id, title, url, text, markdown }; replace: { id, url, replaced, counts }; else { id, title, url })
