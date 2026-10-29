@@ -120,7 +120,8 @@ class NodeAppHttp extends \models\WfNode {
 	    ],
 	    //CLD: 2026-10-24T12:19:00+03:00: query parameters | headers before the credential / body row (was after it): the body type and JSON-RPC stay next to the content
 	    $pairs('query', 'Query parameters', 'Query parameter', 'Add parameter', [ 'width' => 6 ]),
-	    $pairs('headers', 'Headers', 'Header', 'Add header', [ 'width' => 6 ]),
+	    //CLD: 2026-10-29T10:30:00+02:00: the headers under "Advanced…" (the designer's closed section of the technical settings; the Download step's too)
+	    $pairs('headers', 'Headers', 'Header', 'Add header', [ 'width' => 6, 'advanced' => true ]),
 	    [
 		'key' => 'credential',
 		'type' => 'select',
@@ -145,6 +146,7 @@ class NodeAppHttp extends \models\WfNode {
 	    ],
 	    //CLD: 2026-10-23T12:30:00+03:00: JSON-RPC 2.0: the content is checked as a request; switching it on proposes one (ui propose: when the content is empty, else asked)
 	    [
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'jsonRpc',
 		'type' => 'switch',
 		'label' => 'JSON-RPC 2.0',
@@ -152,6 +154,7 @@ class NodeAppHttp extends \models\WfNode {
 		//CLD: 2026-10-24T12:20:52+03:00: no help text (was: The content is checked as a JSON-RPC request: { "jsonrpc": "2.0", "method": ..., "params": ..., "id": ... }, or a list of them (a batch))
 		'help' => false,
 		'ui' => [
+		    'advanced' => true,
 		    'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ],
 		    'showIf' => [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'json' ],
 		    'propose' => [ 'key' => 'body', 'value' => self::JSON_RPC_TEMPLATE, 'confirm' => 'Replace the content with a JSON-RPC request?' ],

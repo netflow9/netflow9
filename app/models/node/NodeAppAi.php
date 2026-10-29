@@ -250,7 +250,8 @@ abstract class NodeAppAi extends \models\WfNode {
 		//CLD: 2026-10-24T12:44:00+03:00: shorter (one line; was: The models of the credential (Test on the credential records them); or type a model name)
 		'help' => 'Or type a name',
 		//CLD: 2026-10-24T12:42:45+03:00: next to the credential (the designer: 6 wide)
-		'ui' => [ 'width' => 4, 'type' => 'select', 'allowCustom' => true, 'placeholder' => 'Choose a model...', 'choicesBy' => [ 'key' => 'credential', 'choices' => (object)static::modelChoices(),
+		//CLD: 2026-10-29T10:30:00+02:00: 8 wide (was 4): the provider's settings next to it (providerSchema) are under "Advanced…"
+		'ui' => [ 'width' => 8, 'type' => 'select', 'allowCustom' => true, 'placeholder' => 'Choose a model...', 'choicesBy' => [ 'key' => 'credential', 'choices' => (object)static::modelChoices(),
 		    'empty' => 'No models recorded: Test the credential, or type a name' ] ],
 	    ],
 	], static::providerSchema(), [

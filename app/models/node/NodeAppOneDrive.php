@@ -152,13 +152,14 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'conflict',
 		'type' => 'select',
 		'label' => 'When the name exists',
 		'required' => true,
 		'default' => 'rename',
 		'choices' => self::CONFLICT,
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'upload', 'createFolder' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'upload', 'createFolder' ]) ],
 	    ],
 	    [
 		'key' => 'sourceFile',

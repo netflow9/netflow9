@@ -103,6 +103,7 @@ class NodeTriggerWebhook extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'contentType',
 		'type' => 'select',
 		'label' => 'Content type',
@@ -110,17 +111,18 @@ class NodeTriggerWebhook extends \models\WfNode {
 		'default' => 'json',
 		'choices' => self::CONTENT_TYPES,
 		'help' => 'Of the request body (not checked for GET)',
-		'ui' => [ 'width' => 3 ],
+		'ui' => [ 'advanced' => true, 'width' => 3 ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:55:48+03:00: layout: 6 wide
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'respond',
 		'type' => 'select',
 		'label' => 'Respond',
 		'required' => true,
 		'default' => 'received',
 		'choices' => self::RESPONDS,
-		'ui' => [ 'width' => 6 ],
+		'ui' => [ 'advanced' => true, 'width' => 6 ],
 	    ],
 	    //CLD: 2026-10-07T11:36:11+03:00: request authentication
 	    [

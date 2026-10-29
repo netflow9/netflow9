@@ -95,12 +95,13 @@ class NodeAppFtp extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line; shorter help (was: Names not taken, as File names (e.g. files still being uploaded, hidden files))
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'exclude',
 		'type' => 'text',
 		'label' => 'Leave out',
 		'default' => '*.part, *.tmp, *.filepart, .*',
 		'help' => 'Names not taken (e.g. files still being uploaded)',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true ],
+		'ui' => [ 'advanced' => true, 'width' => 6, 'newRow' => true, 'expression' => true ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
@@ -112,12 +113,13 @@ class NodeAppFtp extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'depth',
 		'type' => 'number',
 		'label' => 'Levels of subfolders',
 		'default' => 3,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_DEPTH, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_DEPTH ] ],
-		'ui' => [ 'width' => 3, 'step' => 1, 'showIf' => [ 'key' => 'subfolders', 'operator' => 'eq', 'value' => true ] ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'step' => 1, 'showIf' => [ 'key' => 'subfolders', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: A date (2026-10-01, 2026-10-01T08:00:00Z) or relative (-24 hours, yesterday, -7 days); {{ ... }}; empty: any)
@@ -139,13 +141,14 @@ class NodeAppFtp extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: Leaves files modified in the last minutes (still being written); 0: none left)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'minAge',
 		'type' => 'number',
 		'label' => 'Unchanged for at least (minutes)',
 		'default' => 0,
 		'help' => 'Leaves files changed in the last minutes',
 		'validate' => [ [ 'inRange', 'lower' => 0, 'upper' => 100000, 'skipEmpty' => true, 'message' => 'from 0 to 100000' ] ],
-		'ui' => [ 'width' => 3, 'step' => 1 ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'step' => 1 ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: Files this step has not taken in an earlier run (or changed since); a file that failed is tried again)
@@ -158,23 +161,25 @@ class NodeAppFtp extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'order',
 		'type' => 'select',
 		'label' => 'Order',
 		'required' => true,
 		'default' => 'oldest',
 		'choices' => self::ORDER,
-		'ui' => [ 'width' => 3, 'newRow' => true ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'minSizeKb',
 		'type' => 'number',
 		'label' => 'Smallest size (KB)',
 		'default' => 0,
 		'help' => 'Smaller files are left; 0: also empty files',
 		'validate' => [ [ 'inRange', 'lower' => 0, 'upper' => self::MAX_SIZE_MB * 1024, 'skipEmpty' => true, 'message' => 'from 0 to ' . self::MAX_SIZE_MB * 1024 ] ],
-		'ui' => [ 'width' => 3 ],
+		'ui' => [ 'advanced' => true, 'width' => 3 ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: a limit (the last line)
@@ -254,13 +259,14 @@ class NodeAppFtp extends \models\WfNode {
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'missingSignature',
 		'type' => 'select',
 		'label' => 'No signature file',
 		'required' => true,
 		'default' => 'skip',
 		'choices' => self::MISSING_SIGNATURE,
-		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'verifySignature', 'operator' => 'eq', 'value' => 'detached' ] ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => [ 'key' => 'verifySignature', 'operator' => 'eq', 'value' => 'detached' ] ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line
