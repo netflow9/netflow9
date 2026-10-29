@@ -305,9 +305,39 @@ MAIL_DOMAIN=""
 ask_yes OPT_MAIL "Inbound email: workflows started by emails (Haraka on port 25)" "$([ -n "$MAIL_DOMAIN" ] || [ -d "$BASE/haraka/node_modules/haraka" ] && echo y || echo n)"
 [ "$OPT_MAIL" -eq 0 ] || ask MAIL_DOMAIN "The domain of its addresses (its MX record points to this server)" "${MAIL_DOMAIN:-$DOMAIN}"
 
+#CLD: 2026-10-29T08:00:00+02:00: an app set up before whose database is empty now (MongoDB's data folder emptied, e.g. to encrypt it; or no account in its database): set up
+#again (asked; its app.env kept as app.env.bak-<time>), was: app.env alone meant set up. With the data folder, MongoDB's users went too: its sign-in is turned off
+#(authorization: disabled) until they are made again
+RESETUP=0
+MONGO_REAUTH=0
+MONGO_DBPATH=""
+if [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
+    MONGO_DBPATH=$(awk '/^[[:space:]]*dbPath:/ { gsub(/["\047]/, "", $2); print $2; exit }' "$MONGOD_CONF" 2>/dev/null || true)
+    MONGO_DBPATH="${MONGO_DBPATH:-/var/lib/mongo}"
+fi
+if [ "$SET_UP" -eq 1 ] && [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
+    if [ ! -e "$MONGO_DBPATH/WiredTiger" ]; then
+        echo "  MongoDB's data folder ($MONGO_DBPATH) is empty: the app's database and account are gone"
+        ask_yes RESETUP "Set the app up again: a new account (else restore your dump into MongoDB after; app.env is kept)" y
+        if [ "$RESETUP" -eq 1 ] && grep -qE '^[[:space:]]*authorization:[[:space:]]*enabled' "$MONGOD_CONF" 2>/dev/null; then
+            MONGO_REAUTH=1
+        fi
+    elif command -v mongosh >/dev/null 2>&1 && systemctl is-active --quiet mongod; then
+        accounts=$(mongosh --quiet "$(env_value MONGO_URI)" --eval "print(db.getSiblingDB('$(env_value MONGO_DB)').accounts.countDocuments({}))" 2>/dev/null || true)
+        if [ "$accounts" = "0" ]; then
+            echo "  The app's database ($(env_value MONGO_DB)) has no account"
+            ask_yes RESETUP "Set the app up again: a new account" y
+        fi
+    fi
+    [ "$RESETUP" -eq 0 ] || SET_UP=0
+fi
+
 OPT_MONGO=0
 if [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
-    if [ "$SET_UP" -eq 1 ] && [[ $(env_value MONGO_URI) == *@* ]]; then
+    if [ "$MONGO_REAUTH" -eq 1 ]; then
+        echo "  MongoDB: its users are made again, sign-in required"
+        OPT_MONGO=1
+    elif [ "$SET_UP" -eq 1 ] && [[ $(env_value MONGO_URI) == *@* ]]; then
         echo "  MongoDB: the app signs in with its own user already"
     elif command -v mongosh >/dev/null 2>&1 && systemctl is-active --quiet mongod && ! mongo_auth_off; then
         echo "  MongoDB: it requires sign-in already"
@@ -325,10 +355,8 @@ if [ "$OPT_LOCAL_MONGO" -eq 1 ] && [[ $MONGOD_PKG == percona-* ]]; then
     if grep -qE '^[[:space:]]*enableEncryption:[[:space:]]*true' "$MONGOD_CONF" 2>/dev/null; then
         echo "  MongoDB: its data is encrypted already"
     else
-        MONGO_DBPATH=$(awk '/^[[:space:]]*dbPath:/ { gsub(/["\047]/, "", $2); print $2; exit }' "$MONGOD_CONF" 2>/dev/null || true)
-        MONGO_DBPATH="${MONGO_DBPATH:-/var/lib/mongo}"
         if [ -e "$MONGO_DBPATH/WiredTiger" ]; then
-            MONGO_ENCRYPT_NOTE="MongoDB's data ($MONGO_DBPATH) is not encrypted: it has data already, which cannot be encrypted in place (mongodump, an empty $MONGO_DBPATH, run this again, mongorestore)."
+            MONGO_ENCRYPT_NOTE="MongoDB's data ($MONGO_DBPATH) is not encrypted: it has data already, which cannot be encrypted in place (mongodump, stop mongod, empty $MONGO_DBPATH, run this again without setting the app up again, mongorestore)."
             echo "  $MONGO_ENCRYPT_NOTE"
         else
             OPT_MONGO_ENCRYPT=1
@@ -370,7 +398,8 @@ done
 id "$APP_USER" >/dev/null 2>&1 || echo "  - create the user $APP_USER (home $BASE)"
 [ "$CLONE" -eq 1 ] && echo "  - clone $REPO ($BRANCH) into $BASE"
 echo "  - set up PHP-FPM, nginx and the certificate for $DOMAIN$([ "$OPT_LE" -eq 1 ] && echo " (Let's Encrypt)")"
-[ "$SET_UP" -eq 0 ] && echo "  - set up the app (it asks the database, the outgoing email and the first account)"
+[ "$SET_UP" -eq 0 ] && echo "  - set up the app (it asks the database, the outgoing email and the first account)$([ "$RESETUP" -eq 1 ] && echo "; app.env kept as app.env.bak-<time>")"
+[ "$MONGO_REAUTH" -eq 1 ] && echo "  - turn MongoDB's sign-in off until its users are made again"
 [ "$OPT_BROWSER" -eq 1 ] && echo "  - install the web browser for the AI steps"
 [ "$OPT_MAIL" -eq 1 ] && echo "  - install inbound email for @$MAIL_DOMAIN"
 [ "$OPT_MONGO" -eq 1 ] && echo "  - give MongoDB its users and turn on sign-in"
@@ -449,6 +478,13 @@ fi
 #and it is never rotated. Make it more secure: keep the key in a key manager (Percona: HashiCorp Vault, security.vault, or a KMIP server, security.kmip) instead of a file,
 #and rotate it regularly (Vault / KMIP: mongod --rotateMasterKey; a key file: each replica set member resynced with a new key). Keep a copy of the key away from this
 #server: without it the data cannot be read
+#CLD: 2026-10-29T08:00:00+02:00: an emptied data folder: no users to sign in with, so sign-in off until the step "MongoDB: users and sign-in" makes them again
+if [ "$MONGO_REAUTH" -eq 1 ]; then
+    backup="$MONGOD_CONF.bak-$(date +%Y%m%dT%H%M%S)-auth"
+    cp -p "$MONGOD_CONF" "$backup"
+    sed -i -E 's/^([[:space:]]*authorization:[[:space:]]*)enabled/\1disabled/' "$MONGOD_CONF"
+    echo "+ $MONGOD_CONF: authorization disabled until MongoDB's users are made again (the old one: $backup)"
+fi
 if [ "$OPT_MONGO_ENCRYPT" -eq 1 ]; then
     if [ ! -s "$MONGO_KEY_FILE" ]; then
         (umask 077; openssl rand -base64 32 > "$MONGO_KEY_FILE")
@@ -575,6 +611,12 @@ fi
 # ---------------------------------------------------------------------------------------------------------------
 if [ "$SET_UP" -eq 0 ]; then
     step "The app"
+    #CLD: 2026-10-29T08:00:00+02:00: set up again: the old app.env aside (its APP_SECRET reads the credentials of a restored dump); the setup runs only without one
+    if [ "$RESETUP" -eq 1 ]; then
+        RESETUP_BACKUP="$ENV_FILE.bak-$(date +%Y%m%dT%H%M%S)"
+        mv "$ENV_FILE" "$RESETUP_BACKUP"
+        echo "+ $ENV_FILE moved to $RESETUP_BACKUP"
+    fi
     as_app setup::checks || { echo "a required prerequisite is missing (above, marked !): fix it, then run this again"; exit 1; }
     URL="https://$DOMAIN"
     MONGO_URI="$LOCAL_MONGO/"
@@ -589,6 +631,25 @@ if [ "$SET_UP" -eq 0 ]; then
     OWNER_EMAIL="$LE_EMAIL"
     OWNER_FIRST=""
     OWNER_LAST=""
+    #set up again: the old app.env's answers are the defaults (its MongoDB user only while it still exists)
+    if [ "$RESETUP" -eq 1 ]; then
+        old_env="$ENV_FILE"
+        ENV_FILE="$RESETUP_BACKUP"
+        [ "$MONGO_REAUTH" -eq 1 ] || MONGO_URI=$(env_value MONGO_URI)
+        MONGO_DB=$(env_value MONGO_DB)
+        SMTP_HOST=$(env_value SMTP_HOST)
+        SMTP_PORT=$(env_value SMTP_PORT)
+        SMTP_USER=$(env_value SMTP_USERNAME)
+        SMTP_SECURE_ANSWER=$(env_value SMTP_SECURE)
+        [[ $SMTP_SECURE_ANSWER == tls || $SMTP_SECURE_ANSWER == ssl ]] || SMTP_SECURE_ANSWER="none"
+        MAIL_FROM=$(env_value MAIL_FROM)
+        ENV_FILE="$old_env"
+        MONGO_URI="${MONGO_URI:-$LOCAL_MONGO/}"
+        MONGO_DB="${MONGO_DB:-netflow9-db}"
+        SMTP_HOST="${SMTP_HOST:-127.0.0.1}"
+        SMTP_PORT="${SMTP_PORT:-25}"
+        MAIL_FROM="${MAIL_FROM:-noreply@$DOMAIN}"
+    fi
     #asked until the app's own checks accept the answers (Enter keeps the answer given before)
     while true; do
         echo
@@ -662,6 +723,10 @@ if [ "$OPT_MONGO" -eq 1 ] && mongo_auth_off; then
     MONGO_CHANGED=1
     if grep -qE '^[[:space:]]*authorization:[[:space:]]*enabled' "$MONGOD_CONF"; then
         echo "$MONGOD_CONF: authorization is enabled already"
+    elif grep -qE '^[[:space:]]*authorization:[[:space:]]*disabled' "$MONGOD_CONF"; then
+        #CLD: 2026-10-29T08:00:00+02:00: turned off above (an emptied data folder) or by hand: enabled in its place (was: a second authorization: key)
+        sed -i -E 's/^([[:space:]]*authorization:[[:space:]]*)disabled/\1enabled/' "$MONGOD_CONF"
+        echo "+ $MONGOD_CONF: authorization enabled"
     else
         backup="$MONGOD_CONF.bak-$(date +%Y%m%dT%H%M%S)"
         cp -p "$MONGOD_CONF" "$backup"
@@ -698,6 +763,8 @@ if [ "$OPT_MONGO_ENCRYPT" -eq 1 ]; then
     echo "MongoDB's data is encrypted with the key in $MONGO_KEY_FILE: keep a copy of it away from this server (without it the data cannot be read); a static key: move it to a key manager (Vault / KMIP) and rotate it."
 fi
 [ -z "$MONGO_ENCRYPT_NOTE" ] || echo "$MONGO_ENCRYPT_NOTE"
+#CLD: 2026-10-29T08:00:00+02:00: set up again: the settings the setup does not ask are in the old app.env
+[ "$RESETUP" -eq 0 ] || echo "The app was set up again; the old app.env is $RESETUP_BACKUP: copy from it what the setup does not ask (System AI, sign-in with Microsoft / Google, ...), then delete it."
 [ "$MONGO_CHANGED" -eq 1 ] && echo "MongoDB's operators' account (nfn_admin) is in $BASE/.mongodb-admin (root's): move it to a password manager, then delete the file."
 if [ "$OPT_MAIL" -eq 1 ]; then
     echo "Inbound email: point the MX record of $MAIL_DOMAIN to this server; DKIM keys: cd $BASE/haraka/dkim && ./dkim_key_gen.sh $MAIL_DOMAIN"
