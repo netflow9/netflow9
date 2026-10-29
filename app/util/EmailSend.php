@@ -160,7 +160,9 @@ class EmailSend {
         }
 
         // Only send the DATA command if we have viable recipients
-        if( !$smtp->data($data['headers'] . "\r\n" . $data['body'])) {
+        //CLD: 2026-10-29T12:00:00+03:00: the headers come without a trailing CRLF (compose(), Job::reportError): CRLF CRLF ends the last header and adds the blank line
+        //before the body (was one CRLF: the body's first line, e.g. the MIME boundary, read as a header - Haraka: "Header did not look right")
+        if( !$smtp->data(rtrim($data['headers'], "\r\n") . "\r\n\r\n" . $data['body'])) {
     	    \V::app()->log->debug('SMTP: error sending mail');
     	    return -1;
         }
