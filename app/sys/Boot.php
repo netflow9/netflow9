@@ -81,6 +81,8 @@ class Boot {
 	    \V::app()->auth->userRole = null;
 	}
 	$this->user = $user;
+	//CLD: 2026-10-30T12:00:00+02:00: the stored user, for the layout (its UI state: sidebar_width)
+	\V::app()->config('rt.user', $user);
 
 	$account = \V::app()->om->findById('Account', \V::app()->user->aid);
 	if (empty($account)) {
@@ -112,12 +114,16 @@ class Boot {
 	\V::app()->session->setState(Session::KEY_ACTIVE_TS, $now);
 
 	//set a project in session
-	//the personal project,
+	//CLD: 2026-10-30T12:00:00+02:00: the project last opened (User last_project), if the user still owns it or is a member,
+	//	else the personal project,
 	//	else the first project the user is a member of (e.g. a Participant),
 	//	else a personal project created now (as the seed command does);
 	if (empty(\V::app()->user->crtProject)) {
 	    $uid = \V::app()->user->_id;
-	    $project = \V::app()->om->findOne('Project', [ 'aid' => $account->_id, 'owner' => $uid, 'personal' => true ]);
+	    $project = empty($this->user->last_project) ? null : \V::app()->om->findOne('Project', [ '_id' => \V::app()->om->to_oid($this->user->last_project), 'aid' => $account->_id,
+		'$or' => [ [ 'owner' => $uid ], [ 'members.' . (string)$uid => [ '$exists' => true ] ] ] ]);
+	    if (empty($project))
+		$project = \V::app()->om->findOne('Project', [ 'aid' => $account->_id, 'owner' => $uid, 'personal' => true ]);
 	    if (empty($project))
 		$project = \V::app()->om->findOne('Project', [ 'aid' => $account->_id, 'members.' . (string)$uid => [ '$exists' => true ] ], [ 'sort' => [ '_id' => 1 ] ]);
 	    if (empty($project)) {
