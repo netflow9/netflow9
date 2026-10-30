@@ -555,6 +555,75 @@ class DatatableController extends \sys\BaseController {
 	$this->sendEvents();
     }
 
+    //---------------------------------------------------------------------------------------------------------------
+    //CLD: 2026-10-30T17:18:20+02:00: saved views (models\DataTableView: a named filter of the table), shared by the users with DataTable::readData on the table; JSON answers
+    //for the grid's Filter (app.dataview.js), errors as { error }
+
+    //a view as the grid uses it
+    private function viewData($view) {
+	return [ 'id' => (string)$view->_id, 'name' => (string)$view->name, 'filter' => array_values((array)$view->filter) ];
+    }
+
+    //?id=<table> -> { views: [ { id, name, filter } ] }, by name
+    public function views($req, $resp) {
+	$dt = $this->findTable('DataTable::readData');
+	$views = [];
+	foreach(\V::app()->om->find('DataTableView', [ 'table' => $dt->_id, 'aid' => $dt->aid ], [ 'sort' => [ 'name' => 1 ] ]) as $view)
+	    $views[] = $this->viewData($view);
+	$resp->sendJSON([ 'views' => $views ]);
+    }
+
+    //POST ?id=<table>, name, filter (JSON: [ { field, op, value } ]) -> { view }; the name unique within the table, the fields its filterable columns
+    public function create_view($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$dt = $this->findTable('DataTable::readData');
+
+	$name = trim((string)($req->data['name'] ?? ''));
+	if ($name === '' || mb_strlen($name) > 64)
+	    $resp->sendJSON([ 'error' => 'A name is required (at most 64 characters)' ], true, 422);
+	if (\V::app()->om->count('DataTableView', [ 'table' => $dt->_id, 'aid' => $dt->aid, 'name' => $name ]) > 0)
+	    $resp->sendJSON([ 'error' => 'A view named "' . $name . '" already exists' ], true, 422);
+
+	$columns = $dt->columns();
+	$filter = [];
+	foreach((array)json_decode((string)($req->data['filter'] ?? ''), true) as $row) {
+	    if (!is_array($row) || !is_string($row['field'] ?? null) || !isset($columns[$row['field']]) || !is_string($row['op'] ?? null))
+		continue;
+	    $filter[] = [ 'field' => $row['field'], 'op' => $row['op'], 'value' => is_scalar($row['value'] ?? null) ? (string)$row['value'] : '' ];
+	}
+	if (empty($filter))
+	    $resp->sendJSON([ 'error' => 'The filter is empty' ], true, 422);
+
+	$view = \V::app()->om->create('DataTableView', [
+	    'aid' => $dt->aid,
+	    'table' => $dt->_id,
+	    'name' => $name,
+	    'filter' => $filter,
+	    'user' => \V::app()->user->_id,
+	]);
+	if (!$view->validates())
+	    $resp->sendJSON([ 'error' => 'The view is not valid' ], true, 422);
+	$view->save();
+	$resp->sendJSON([ 'view' => $this->viewData($view) ]);
+    }
+
+    //POST ?id=<table>&view=<view> -> { deleted: <view id> }
+    public function delete_view($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$dt = $this->findTable('DataTable::readData');
+	$viewId = $this->getOidParam('view');
+	if (empty($viewId))
+	    \V::app()->error(400, 'malformed request: view missing');
+
+	$view = \V::app()->om->findOne('DataTableView', [ '_id' => $viewId, 'table' => $dt->_id, 'aid' => $dt->aid ]);
+	if (empty($view))
+	    $resp->sendJSON([ 'error' => 'The view no longer exists' ], true, 404);
+	$view->delete();
+	$resp->sendJSON([ 'deleted' => $viewId ]);
+    }
+
     public function manage($req, $resp) {
 	//CLD: 2026-10-05T21:24:12+03:00: shared lookup + permission check; also restricts to the current account (was findById)
 	//CLD: 2026-10-11T22:10:29+03:00: viewing the table and its rows needs DataTable::readData (was DataTable::update); the view offers the column designer only with

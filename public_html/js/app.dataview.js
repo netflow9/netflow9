@@ -172,6 +172,13 @@ window.app.BaseDataView = (function() {
 
 	filterOps = false;
 
+	//CLD: 2026-10-30T17:18:20+02:00: saved views (a named filter, shared by the users of a data table): options.views = { listUrl, createUrl, deleteUrl (__VIEW__: the view's id) };
+	//none without it. crtView: the view applied ({ id, name, filter }), null after a filter changed by hand
+	views = null;
+	viewList = [];
+	crtView = null;
+	viewsWrap = null;
+
 	constructor(parent, options) {
 	    this.parent = parent;
 
@@ -198,10 +205,28 @@ window.app.BaseDataView = (function() {
 	    this.renderer = app.template.compile(options.layout || defLayout);
 
 	    this.filterOps = options.data || false;
+	    this.views = options.views || null;
 	}
 
 	render() {
-	    return this.renderer({});
+	    //CLD: 2026-10-30T17:18:20+02:00: the views dropdown before the filter's, when options.views
+	    if (!this.views)
+		return this.renderer({});
+	    return `
+	    <div class="dropdown filter-views">
+		<button class="btn btn-sm btn-outline-info dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Saved views">
+		    <i class="bi bi-bookmark"></i> <span class="filter-view-name">View</span>
+		</button>
+		<div class="dropdown-menu dropdown-menu-end p-0" style="width:min(18rem, calc(100vw - 2rem)); z-index: 1030">
+		    <div class="filter-views-list py-1"></div>
+		    <div class="border-top p-2 filter-views-save">
+			<div class="input-group input-group-sm">
+			    <input type="text" class="form-control filter-views-name" maxlength="64" placeholder="Save current filter as…">
+			    <button class="btn btn-primary btn-filter-views-save" type="button" title="Save view"><i class="bi bi-floppy"></i></button>
+			</div>
+		    </div>
+		</div>
+	    </div>` + this.renderer({});
 	}
 
 	cloneRow(row) {
@@ -368,9 +393,165 @@ window.app.BaseDataView = (function() {
 	    return url;
 	}
 
+	//CLD: 2026-10-30T17:18:20+02:00: the current filter used: back to the first page, data reloaded, the count badge and the view's name updated
+	applyCurrent() {
+	    if (this.parent.widgets.pager)
+		this.parent.widgets.pager.reset();
+
+	    this.parent.loadData();
+
+	    this.filterCountBadge.textContent = this.crtFilter.length;
+	    this.filterCountBadge.classList.toggle("d-none", this.crtFilter.length === 0);
+
+	    if (this.viewsWrap)
+		this.viewsWrap.querySelector('.filter-view-name').textContent = this.crtView ? this.crtView.name : 'View';
+	}
+
+	//CLD: 2026-10-30T17:18:20+02:00: a request to the views' URLs: the answer's JSON, or an Error with its `error`
+	async viewsRequest(url, body) {
+	    const opts = { headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } };
+	    if (body) {
+		opts.method = 'POST';
+		opts.headers['X-Csrf-Token'] = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+		opts.body = body;
+	    }
+	    const res = await fetch(url, opts);
+	    const data = await res.json().catch(() => ({}));
+	    if (!res.ok)
+		throw new Error(data.error || 'the server answered ' + res.status);
+	    return data;
+	}
+
+	viewsToast(type, title, body) {
+	    app.utils.toast({ type: type, title: app.utils.escapeHtml(title), body: app.utils.escapeHtml(body), delay: 5000 });
+	}
+
+	//CLD: 2026-10-30T17:18:20+02:00: the views' list (loaded each time the dropdown opens: views saved by others are seen)
+	async loadViews() {
+	    const list = this.viewsWrap.querySelector('.filter-views-list');
+	    list.innerHTML = `<div class="text-center p-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>`;
+	    try {
+		this.viewList = (await this.viewsRequest(this.views.listUrl)).views || [];
+	    } catch (err) {
+		this.viewList = [];
+		list.innerHTML = `<div class="text-danger small p-2">${app.utils.escapeHtml(err.message)}</div>`;
+		return;
+	    }
+	    this.renderViews();
+	}
+
+	renderViews() {
+	    const list = this.viewsWrap.querySelector('.filter-views-list');
+	    list.innerHTML = '';
+	    if (!this.viewList.length) {
+		list.innerHTML = `<div class="text-center small p-2">No saved views yet</div>`;
+		return;
+	    }
+	    this.viewList.forEach((view) => {
+		const row = document.createElement('div');
+		row.className = 'd-flex align-items-center';
+
+		const a = document.createElement('a');
+		a.href = '#';
+		a.className = 'dropdown-item flex-fill text-truncate' + (this.crtView && this.crtView.id === view.id ? ' active' : '');
+		a.textContent = view.name;
+		a.title = view.filter.map((r) => r.field + ' ' + r.op + ' ' + r.value).join(', ');
+		a.addEventListener('click', (e) => {
+		    e.preventDefault();
+		    this.applyView(view);
+		});
+		row.appendChild(a);
+
+		const del = document.createElement('button');
+		del.type = 'button';
+		del.className = 'btn btn-sm btn-link px-2';
+		del.title = 'Delete this view';
+		del.innerHTML = `<i class="bi bi-trash"></i>`;
+		del.addEventListener('click', () => this.askDeleteView(row, view));
+		row.appendChild(del);
+
+		list.appendChild(row);
+	    });
+	}
+
+	//a view applied: its conditions on the columns that can still be filtered become the filter
+	applyView(view) {
+	    const id = () => "f" + Date.now() + Math.random().toString(16).slice(2);
+	    this.crtFilter = view.filter
+		.filter((r) => this.parent.schema.getColumnNames().includes(r.field) && this.parent.schema.column(r.field).filter)
+		.map((r) => ({ id: id(), field: r.field, op: r.op, value: r.value }));
+	    this.draftFilter = this.crtFilter.map(this.cloneRow);
+	    this.crtView = view;
+	    this.applyCurrent();
+
+	    const toggleBtn = this.viewsWrap.querySelector('.dropdown-toggle');
+	    bootstrap.Dropdown.getOrCreateInstance(toggleBtn).hide();
+	}
+
+	//delete: confirmed in the view's row (Yes / No)
+	askDeleteView(row, view) {
+	    row.innerHTML = `<span class="small flex-fill text-truncate px-3">Delete "${app.utils.escapeHtml(view.name)}"?</span>
+		<button type="button" class="btn btn-sm btn-danger py-0 me-1 filter-view-del-yes">Yes</button>
+		<button type="button" class="btn btn-sm btn-outline-secondary py-0 me-2 filter-view-del-no">No</button>`;
+	    row.querySelector('.filter-view-del-no').addEventListener('click', () => this.renderViews());
+	    row.querySelector('.filter-view-del-yes').addEventListener('click', async () => {
+		row.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+		try {
+		    await this.viewsRequest(this.views.deleteUrl.replace('__VIEW__', encodeURIComponent(view.id)), new URLSearchParams());
+		    if (this.crtView && this.crtView.id === view.id) {
+			this.crtView = null;
+			this.viewsWrap.querySelector('.filter-view-name').textContent = 'View';
+		    }
+		} catch (err) {
+		    this.viewsToast('error', 'View not deleted', err.message);
+		}
+		this.loadViews();
+	    });
+	}
+
+	//the current filter saved as a view named from the input
+	async saveView() {
+	    const input = this.viewsWrap.querySelector('.filter-views-name');
+	    const name = input.value.trim();
+	    if (!name) {
+		input.focus();
+		return;
+	    }
+	    if (!this.crtFilter.length) {
+		this.viewsToast('warning', 'Nothing to save', 'Apply a filter first, then save it as a view');
+		return;
+	    }
+	    const body = new URLSearchParams();
+	    body.append('name', name);
+	    body.append('filter', JSON.stringify(this.crtFilter.map((r) => ({ field: r.field, op: r.op, value: r.value }))));
+	    try {
+		const data = await this.viewsRequest(this.views.createUrl, body);
+		input.value = '';
+		this.crtView = data.view;
+		this.viewsWrap.querySelector('.filter-view-name').textContent = data.view.name;
+		this.viewsToast('success', 'OK', 'View saved!');
+	    } catch (err) {
+		this.viewsToast('error', 'View not saved', err.message);
+	    }
+	    this.loadViews();
+	}
+
 	postRender() {
 	    if (this.filterWrap)
 		return;
+
+	    //CLD: 2026-10-30T17:18:20+02:00: the views dropdown
+	    if (this.views) {
+		this.viewsWrap = this.parent.container.getElementsByClassName('filter-views')[0];
+		this.viewsWrap.querySelector('.dropdown-toggle').addEventListener('show.bs.dropdown', () => this.loadViews());
+		this.viewsWrap.querySelector('.btn-filter-views-save').addEventListener('click', () => this.saveView());
+		this.viewsWrap.querySelector('.filter-views-name').addEventListener('keydown', (e) => {
+		    if (e.key !== 'Enter')
+			return;
+		    e.preventDefault();
+		    this.saveView();
+		});
+	    }
 
 	    this.filterWrap = this.parent.container.getElementsByClassName('filter-wrap')[0];
 	    this.filterRows = this.filterWrap.getElementsByClassName('filter-rows')[0];
@@ -385,19 +566,12 @@ window.app.BaseDataView = (function() {
 	    //apply filter
 	    this.filterWrap.getElementsByClassName('btn-filter-apply')[0].addEventListener('click', (e) => {
 		this.crtFilter = this.draftFilter.map(this.cloneRow);
-
-		//reset paging
-		if (this.parent.widgets.pager)
-		    this.parent.widgets.pager.reset();
-
-		this.parent.loadData();
+		//CLD: 2026-10-30T17:18:20+02:00: a filter changed by hand is no longer the view's; paging reset, reload and badge in applyCurrent()
+		this.crtView = null;
+		this.applyCurrent();
 
 		const toggleBtn = this.filterWrap.getElementsByClassName('dropdown-toggle')[0];
 		bootstrap.Dropdown.getOrCreateInstance(toggleBtn).hide();
-
-		this.filterCountBadge.textContent = this.crtFilter.length;
-		this.filterCountBadge.classList.toggle("d-none", this.crtFilter.length === 0);
-
 	    });
 
 	    //add filter row
@@ -429,8 +603,13 @@ window.app.BaseDataView = (function() {
 
 	renderer = null;
 
+	//CLD: 2026-10-30T17:18:20+02:00: the page size kept in this browser (localStorage) under options.storeKey, when given; the page-number input's debounce timer
+	storeKey = null;
+	timer = null;
+
 	constructor(parent, options) {
 	    this.parent = parent;
+	    this.storeKey = options.storeKey || null;
 	    const defLayout = `
 	    <!--CLD: 2026-10-19T22:19:24+03:00: the range text hidden on phones-->
 	    <!--CLD: 2026-10-19T22:41:00+03:00: no flex-wrap (the select, width 100% from .form-select, took a line of its own and pushed the arrows below); w-auto on the select-->
@@ -453,6 +632,14 @@ window.app.BaseDataView = (function() {
 	    </div>
 	    `;
 	    this.renderer = app.template.compile(options.layout || defLayout);
+
+	    //CLD: 2026-10-30T17:18:20+02:00: the kept page size, if it is one of the select's sizes
+	    if (this.storeKey) {
+		let kept = null;
+		try { kept = parseInt(localStorage.getItem(this.storeKey), 10); } catch (e) { /* not kept */ }
+		if ([5, 10, 25, 50].includes(kept))
+		    this.pageSize = kept;
+	    }
 	}
 
 	render() {
@@ -479,7 +666,27 @@ window.app.BaseDataView = (function() {
 	    this.crtPage = 1;
 	}
 
+	//CLD: 2026-10-30T17:18:20+02:00: go to page n (from the page-number input): kept within 1..nPages, nothing for an empty / invalid number or the current page
+	goTo(n) {
+	    if (this.timer)
+		clearTimeout(this.timer);
+	    this.timer = null;
+	    n = parseInt(n, 10);
+	    if (!Number.isFinite(n))
+		return;
+	    n = Math.max(1, Math.min(Math.max(this.nPages, 1), n));
+	    if (n == this.crtPage)
+		return;
+	    this.crtPage = n;
+	    this.parent.loadData();
+	}
+
 	onDataLoaded(data) {
+	    //CLD: 2026-10-30T17:18:20+02:00: data loaded by another control (arrows, page size, search, filter): a pending page-number change is dropped
+	    if (this.timer)
+		clearTimeout(this.timer);
+	    this.timer = null;
+
 	    this.nRecords = data.nRecords;
 	    this.nPages = Math.ceil(this.nRecords / this.pageSize);
 
@@ -509,10 +716,29 @@ window.app.BaseDataView = (function() {
 	    pgSizeSel.value = this.pageSize;
 	    pgSizeSel.addEventListener('change', (e) => {
 		this.pageSize = parseInt(e.target.value);
+		//CLD: 2026-10-30T17:18:20+02:00: kept in this browser (options.storeKey)
+		if (this.storeKey) {
+		    try { localStorage.setItem(this.storeKey, String(this.pageSize)); } catch (e) { /* not kept */ }
+		}
 		//CLD: 2026-10-11T21:48:17+03:00: back to the first page (the current page may not exist with the new size: e.g. page 2 of 12 records at 25/pg showed nothing)
 		this.crtPage = 1;
 		this.parent.loadData();
 	    })
+
+	    //CLD: 2026-10-30T17:18:20+02:00: the page-number input (had no handler): its up / down arrows or typing change the page 500 ms after the last change
+	    //(debounce, as the search), Enter at once
+	    const pgNumber = this.parent.container.getElementsByClassName('nav-page-number')[0];
+	    pgNumber.addEventListener('input', (e) => {
+		if (this.timer)
+		    clearTimeout(this.timer);
+		this.timer = setTimeout(() => this.goTo(pgNumber.value), 500);
+	    });
+	    pgNumber.addEventListener('keydown', (e) => {
+		if (e.key !== 'Enter')
+		    return;
+		e.preventDefault();
+		this.goTo(pgNumber.value);
+	    });
 	}
     }
 
