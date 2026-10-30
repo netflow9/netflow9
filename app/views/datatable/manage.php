@@ -32,6 +32,11 @@ $updateColumnUrl = $canUpdate ? \V::app()->createUrl('/datatable/update_column',
 $deleteColumnUrl = $canUpdate ? \V::app()->createUrl('/datatable/delete_column', [ 'id' => $dt->_id, 'key' => '__KEY__' ]) : '';
 $readonly = $canUpdate ? 'false' : 'true';
 
+//CLD: 2026-10-30T17:18:20+02:00: saved views (named filters, shared by the users who can open the table): list / save / delete URLs; the grid replaces __VIEW__ with the view id
+$viewsUrl = \V::app()->createUrl('/datatable/views', [ 'id' => $dt->_id ]);
+$createViewUrl = \V::app()->createUrl('/datatable/create_view', [ 'id' => $dt->_id ]);
+$deleteViewUrl = \V::app()->createUrl('/datatable/delete_view', [ 'id' => $dt->_id, 'view' => '__VIEW__' ]);
+
 //CLD: 2026-10-05T21:30:59+03:00: row editing URLs; rowActions templates get the row id from {{item._id}}
 $createRowUrl = \V::app()->createUrl('/datatable/create_row', [ 'id' => $dt->_id ]);
 $updateRowUrl = str_replace('__ROW__', '{{item._id}}', \V::app()->createUrl('/datatable/update_row', [ 'id' => $dt->_id, 'row' => '__ROW__' ]));
@@ -64,6 +69,16 @@ $script = "
 	    },
 	    filter: {
 		data: {$filter},
+		//CLD: 2026-10-30T17:18:20+02:00: saved views
+		views: {
+		    listUrl: '{$viewsUrl}',
+		    createUrl: '{$createViewUrl}',
+		    deleteUrl: '{$deleteViewUrl}',
+		},
+	    },
+	    //CLD: 2026-10-30T17:18:20+02:00: the page size kept in this browser, the same for every data table
+	    pager: {
+		storeKey: 'netflow9.datatable.pageSize',
 	    },
 	    //CLD: 2026-10-05T21:30:59+03:00: was under `data:`, which the grid does not read (it reads `grid:`); real row URLs and actions
 	    grid: {
