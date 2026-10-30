@@ -962,29 +962,11 @@ window.app.GridView = (function() {
         		    td.className = 'p-0 position-relative';
         		    //td.style.width = col.width + "px";
 
-        		    if (col.type === "checkbox" || col.type === 'switch') {
-            		const wrap = document.createElement("div");
-            		wrap.className = "cell-content d-flex align-items-center justify-content-center px-2 py-1 w-100 h-100";
-
-            		const cb = document.createElement("input");
-            		cb.type = "checkbox";
-            		cb.className = "form-check-input";
-            		cb.style.cursor = "pointer";
-            		cb.checked = ['On', 'Yes'].includes(row[colName]);;
-            		cb.addEventListener("change", () => {
-            		    setCellValue(ri, ci, cb.checked ? "true" : "false");
-            		    clampSelection();
-            		    render();
-            		});
-
-            		wrap.appendChild(cb);
-            		td.appendChild(wrap);
-        		    } else {
-            		const content = document.createElement("div");
-            		content.className = "cell-content px-2 py-1 text-truncate w-100 h-100";
-            		content.textContent = row[colName];
-            		td.appendChild(content);
-        		    }
+        		    //CLD: 2026-10-30T00:00:00Z: boolean columns (checkbox / switch) shown as text, as any other field (were a checkbox)
+        		    const content = document.createElement("div");
+        		    content.className = "cell-content px-2 py-1 text-truncate w-100 h-100";
+        		    content.textContent = row[colName];
+        		    td.appendChild(content);
 
     /*
     		    // Guard: while this exact cell is being edited (e.g. an open <select>
