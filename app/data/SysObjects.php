@@ -336,6 +336,11 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerSchedule',
 		'wfNode' => true,
 	    ],
+	    //CLD: 2026-10-30T19:00:00+02:00: Called by a workflow (the workflow is started by the Run a workflow step of another one: its inputs and outputs)
+	    'NodeTriggerCall' => [
+		'class' => 'models\node\NodeTriggerCall',
+		'wfNode' => true,
+	    ],
 	    'NodeAppSet' => [
 		'class' => 'models\node\NodeAppSet',
 		'wfNode' => true,
@@ -470,6 +475,11 @@ class SysObjects {
 	    ],
 	    'NodeAppTask' => [
 		'class' => 'models\node\NodeAppTask',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-10-30T19:00:00+02:00: Run a workflow (starts a workflow that starts with Called by a workflow; waits for its outputs, or continues)
+	    'NodeAppWorkflow' => [
+		'class' => 'models\node\NodeAppWorkflow',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-10-26T23:49:50+02:00: the designer's Assistant, core (were registered by the Assistant plugin): the account's settings, its spending per month, the conversation of each workflow

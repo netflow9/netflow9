@@ -14,6 +14,8 @@ class WfExecution extends \sys\BaseModel {
     public static $indexes = [
 	[ [ 'wf' => 1, '_id' => -1 ], [] ],
 	[ [ 'state' => 1, 'wake_at' => 1 ], [] ],
+	//CLD: 2026-10-30T19:00:00+02:00: the workflows a run started and waits for (Run a workflow; kill cancels them)
+	[ [ 'input.caller.execution' => 1 ], [ 'sparse' => true ] ],
     ];
 
 
@@ -351,6 +353,9 @@ class WfExecution extends \sys\BaseModel {
 		    \models\ExecutionLog::record('execution.sleep', null, 'waiting until ' . $wake);
 		    break;
 	    }
+	    //CLD: 2026-10-30T19:00:00+02:00: ended or failed: the workflow waiting for it (Run a workflow) is resumed
+	    if (in_array($this->state, [ 'end', 'error' ], true))
+		$this->notifyCaller();
 	} finally {
 	    [ \models\ExecutionLog::$execution, \models\ExecutionLog::$step ] = $outer;
 	}
@@ -382,7 +387,24 @@ class WfExecution extends \sys\BaseModel {
 	\models\ExecutionLog::$execution = $this;
 	\models\ExecutionLog::record('execution.cancel', null, $message);
 	\models\ExecutionLog::$execution = $outer;
+
+	//CLD: 2026-10-30T19:00:00+02:00: the workflows it waits for (Run a workflow) are cancelled too; the workflow waiting for it is resumed (its step: cancelled)
+	foreach(\V::app()->om->find('WfExecution', [ 'aid' => $this->aid, 'input.caller.execution' => (string)$this->_id, 'input.caller.wait' => true,
+	    'state' => [ '$in' => [ 'new', 'run', 'sleep' ] ] ]) as $child)
+	    $child->kill('the calling workflow was cancelled');
+	$this->notifyCaller();
 	return true;
+    }
+
+    //CLD: 2026-10-30T19:00:00+02:00: new: a workflow started by a Run a workflow step that waits for it has ended (end, error, cancel): the caller, when it is paused, is queued to
+    //continue (its step reads the result). A caller still running (this workflow ran nested in it, or it is busy elsewhere) reads it itself
+    public function notifyCaller() {
+	$caller = is_array($this->input) ? ($this->input['caller'] ?? null) : null;
+	if (!is_array($caller) || empty($caller['wait']) || empty($caller['execution']) || !\util\Validator::rule('oid', (string)$caller['execution']))
+	    return;
+	$parent = \V::app()->om->findOne('WfExecution', [ '_id' => \V::app()->om->to_oid((string)$caller['execution']), 'aid' => $this->aid, 'state' => 'sleep' ]);
+	if ($parent)
+	    $parent->queue('the workflow it waits for has ended (execution ' . (string)$this->_id . '): queued for the daemon');
     }
 
     //CLD: 2026-10-26T10:06:24+02:00: whether it was killed meanwhile (state `cancel` in the database; then also here)

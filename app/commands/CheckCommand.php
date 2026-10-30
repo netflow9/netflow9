@@ -47,7 +47,7 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -3104,6 +3104,122 @@ class CheckCommand extends \sys\BaseController {
 
     //CLD: 2026-10-22T23:00:00+03:00: a suspended account (state `disabled`, set by a super-admin: the Admin plugin): its users cannot sign in (unless a super-admin views it), it
     //starts no execution, the daemon leaves its jobs queued; reactivated, all of it works again. In an account made for it (removed after)
+    //CLD: 2026-10-30T19:00:00+02:00: new: Run a workflow / Called by a workflow: the inputs (cast, defaults, required), the outputs, the checks of the step, a workflow that pauses
+    //(the caller pauses, is queued when it ends, reads its outputs), the time limit (cancelled), no loops, cancelling the caller cancels the workflow it waits for
+    private function suiteCall() {
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	//a saved workflow of $elements
+	$saved = function($name, array $elements) {
+	    $wf = $this->workflow($name, $elements);
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    return $wf;
+	};
+	$setNodes = function($wf, array $elements) {
+	    $map = [];
+	    foreach($elements as $el)
+		$map[$el['wfid']] = $el;
+	    $wf->nodes = $map;
+	    $wf->save();
+	};
+	//queued for the daemon (its log: a daemon running may have taken the job already)
+	$queuedLog = fn($exe, $text) => (bool)array_filter((array)($om->findOne('WfExecution', [ '_id' => $exe->_id ])?->log ?? []), fn($l) => str_contains((string)($l['message'] ?? ''), $text));
+	$dropJobs = fn($exe) => \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection())->deleteMany([ 'job_data.exe' => (string)$exe->_id ]);
+
+	$trigger = $n('c', 'trigger::call', [ 'inputs' => [ [ 'name' => 'who', 'type' => 'text', 'required' => true ], [ 'name' => 'n', 'type' => 'number', 'default' => '2' ],
+	    [ 'name' => 'tags', 'type' => 'list' ] ], 'outputs' => [ [ 'name' => 'greeting' ], [ 'name' => 'missing' ] ] ]);
+	$child = $saved('call child', [ $trigger, $n('s', 'app::set', [ 'variable' => 'greeting', 'value' => 'Hi {{ who }} x{{ n + 1 }} {{ caller.name }}' ]), $e('e1', 'c', 's') ]);
+	$call = fn($cfg = []) => [ $n('m', 'trigger::manual'), $n('w', 'app::workflow', $cfg + [ 'workflow' => (string)$child->_id, 'inputs' => [ [ 'name' => 'who', 'value' => '{{ "Ana" }}' ],
+	    [ 'name' => 'tags', 'value' => '{{ ["a"] }}' ] ], 'onError' => 'output' ]), $n('ok', 'app::set', [ 'variable' => 'route', 'value' => 'success' ]),
+	    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'w'), $e('e2', 'w', 'ok', 0), $e('e3', 'w', 'err', 1) ];
+
+	$exe = $this->runFlow('call parent', $call());
+	$r = $exe?->getVariable('result');
+	$this->check('Run a workflow: waits, the outputs (inputs cast, a default, the caller), the child linked to its caller', [ 'end', 'success', true, 'end', [ 'greeting' => 'Hi Ana x3 Check: call parent', 'missing' => null ], 'call', (string)($exe?->_id) ],
+	    [ $exe?->state, $exe?->getVariable('route'), $r['ok'] ?? null, $r['state'] ?? null, $r['outputs'] ?? null,
+	      ($c = $om->findOne('WfExecution', [ '_id' => $om->to_oid((string)($r['execution'] ?? '000000000000000000000000')) ]))?->trigger, (string)($c?->input['caller']['execution'] ?? '') ]);
+
+	$wf = $this->workflow('call checks', $call([ 'inputs' => [ [ 'name' => 'nope', 'value' => '1' ] ] ]));
+	$wf->validates();
+	$errs = json_encode($wf->errors(), JSON_UNESCAPED_UNICODE);
+	$this->check('Run a workflow: a required input missing, an input the workflow does not have', [ true, true ], [ str_contains($errs, '`who` is required'), str_contains($errs, 'has no input `nope`') ]);
+	$wf = $this->workflow('call checks', $call([ 'workflow' => (string)$saved('call no trigger', [ $n('m', 'trigger::manual') ])->_id ]));
+	$wf->validates();
+	$this->check('Run a workflow: a workflow without Called by a workflow refused', true, str_contains(json_encode($wf->errors()), 'starts with Called by a workflow'));
+
+	$exe = $this->runFlow('call bad input', $call([ 'inputs' => [ [ 'name' => 'who', 'value' => 'x' ], [ 'name' => 'tags', 'value' => 'not a list' ] ] ]));
+	$r = $exe?->getVariable('result');
+	$this->check('Run a workflow: an input of another type fails the workflow: the error output', [ 'error', false, 'error', 'Called by a workflow: the input `tags`: a list is expected' ],
+	    [ $exe?->getVariable('route'), $r['ok'] ?? null, $r['state'] ?? null, $r['error'] ?? null ]);
+
+	$exe = $this->runFlow('call start', $call([ 'mode' => 'start' ]));
+	$r = $exe?->getVariable('result');
+	$queued = $r['execution'] ?? null ? $om->findOne('WfExecution', [ '_id' => $om->to_oid($r['execution']) ]) : null;
+	$this->check('Run a workflow: start and continue: queued for the daemon', [ 'success', 'queued', true ], [ $exe?->getVariable('route'), $r['state'] ?? null, $queued && $queuedLog($queued, 'queued for the daemon') ]);
+
+	//a workflow that pauses (Wait 1 s): the caller pauses, is queued when it ends, then reads its outputs (here, unless a daemon running did it)
+	$setNodes($child, [ $trigger, $n('wt', 'app::wait', [ 'amount' => 1, 'unit' => 'seconds' ]), $n('s', 'app::set', [ 'variable' => 'greeting', 'value' => 'later {{ who }}' ]),
+	    $e('e1', 'c', 'wt'), $e('e2', 'wt', 's') ]);
+	$exe = $this->runFlow('call paused', $call());
+	$waiting = $exe ? $om->findOne('WfExecution', [ 'input.caller.execution' => (string)$exe->_id ]) : null;
+	$this->check('Run a workflow: the workflow pauses: the caller too', [ 'sleep', 'sleep', true ], [ $exe?->state, $waiting?->state, $exe?->wake_at instanceof \MongoDB\BSON\UTCDateTime ]);
+	if ($waiting) {
+	    sleep(2);
+	    if ($waiting->canRun())
+		$waiting->run();
+	    $this->check('Run a workflow: the workflow ends: the caller is queued', [ 'end', true ], [ $om->findOne('WfExecution', [ '_id' => $waiting->_id ])?->state, $queuedLog($exe, 'the workflow it waits for has ended') ]);
+	    for($i = 0; $i < 40 && $om->findOne('WfExecution', [ '_id' => $exe->_id ])?->state === 'sleep' && $om->count('Job', [ 'job_data.exe' => (string)$exe->_id, 'state' => 'run' ]); $i++)
+		usleep(250000);
+	    $exe = $om->findOne('WfExecution', [ '_id' => $exe->_id ]);
+	    if ($exe->state === 'sleep') {
+		$dropJobs($exe);
+		$exe->run();
+	    }
+	    for($i = 0; $i < 40 && in_array(($exe = $om->findOne('WfExecution', [ '_id' => $exe->_id ]))->state, [ 'new', 'run' ], true); $i++)
+		usleep(250000);
+	    $r = $exe->getVariable('result');
+	    $this->check('Run a workflow: the caller continues with the outputs', [ 'end', 'success', [ 'greeting' => 'later Ana', 'missing' => null ] ], [ $exe->state, $exe->getVariable('route'), $r['outputs'] ?? null ]);
+	}
+
+	//a workflow that pauses for an hour (cancel, time limit)
+	$setNodes($child, [ $trigger, $n('wt', 'app::wait', [ 'amount' => 1, 'unit' => 'hours' ]), $e('e1', 'c', 'wt') ]);
+
+	//cancelling the caller cancels the workflow it waits for
+	$exe = $this->runFlow('call cancel', $call());
+	$waiting = $exe ? $om->findOne('WfExecution', [ 'input.caller.execution' => (string)$exe->_id ]) : null;
+	if ($exe && $waiting) {
+	    $exe->kill('check');
+	    $this->check('Run a workflow: the caller cancelled: the workflow it waits for too', 'cancel', $om->findOne('WfExecution', [ '_id' => $waiting->_id ])?->state);
+	}
+
+	//the time limit: the workflow is cancelled, the error output
+	$exe = $this->runFlow('call timeout', $call());
+	$waiting = $exe ? $om->findOne('WfExecution', [ 'input.caller.execution' => (string)$exe->_id ]) : null;
+	if ($exe && $waiting) {
+	    $nodes = $exe->nodes;
+	    $nodes['w']['deadline'] = new \MongoDB\BSON\UTCDateTime((time() - 1) * 1000);
+	    $om->updateOne('WfExecution', [ '_id' => $exe->_id ], [ '$set' => [ 'nodes' => $nodes ] ]);
+	    $exe = $om->findOne('WfExecution', [ '_id' => $exe->_id ]);
+	    $exe->run();
+	    $r = $exe->getVariable('result');
+	    $this->check('Run a workflow: past the time limit: the workflow cancelled, the error output', [ 'error', 'cancel', 'cancel' ],
+		[ $exe->getVariable('route'), $r['state'] ?? null, $om->findOne('WfExecution', [ '_id' => $waiting->_id ])?->state ]);
+	    $dropJobs($exe);
+	}
+
+	//no loops: A runs B, B runs A
+	$a = $saved('call loop a', [ $n('c', 'trigger::call') ]);
+	$b = $saved('call loop b', [ $n('c', 'trigger::call') ]);
+	$setNodes($b, [ $n('c', 'trigger::call'), $n('w', 'app::workflow', [ 'workflow' => (string)$a->_id ]), $e('e1', 'c', 'w') ]);
+	$setNodes($a, [ $n('c', 'trigger::call'), $n('w', 'app::workflow', [ 'workflow' => (string)$b->_id, 'onError' => 'output' ]), $e('e1', 'c', 'w') ]);
+	$exe = \models\WfExecution::startFor($a, 'console', []);
+	$exe->run();
+	$this->check('Run a workflow: no loops (a workflow already in the chain)', [ 'end', true ],
+	    [ $exe->state, str_contains((string)($exe->getVariable('result')['error'] ?? ''), 'already running in this chain of workflows') ]);
+    }
+
     private function suiteSuspend() {
 	$om = \V::app()->om;
 	$restore = \V::app()->config('rt.account');
