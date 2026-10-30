@@ -340,10 +340,7 @@ class SysObjects {
 		'class' => 'models\node\NodeAppSet',
 		'wfNode' => true,
 	    ],
-	    'NodeAppAction' => [
-		'class' => 'models\node\NodeAppAction',
-		'wfNode' => true,
-	    ],
+	    //CLD: 2026-10-30T00:00:00Z: the Action step (NodeAppAction: an empty step, it did nothing) removed
 	    'NodeAppCode' => [
 		'class' => 'models\node\NodeAppCode',
 		'wfNode' => true,
