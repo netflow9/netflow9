@@ -186,12 +186,22 @@ class User extends \sys\BaseModel {
 		'perm:read' => 'nobody',
 		'perm:update' => 'nobody',
 		'showInForms' => false,
+	    ],
+	    //CLD: 2026-10-30T13:00:00+02:00: the sidebar collapsed (its collapse / expand buttons: app.sidebar)
+	    [
+		'key' => 'sidebar_collapsed',
+		'type' => 'checkbox',
+		'label' => 'Sidebar collapsed',
+		'default' => false,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
 	    ]
 	];
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //CLD: 2026-10-30T12:00:00+02:00: new: the signed-in user's UI state kept ($set: last_project, sidebar_width)
+    //CLD: 2026-10-30T12:00:00+02:00: new: the signed-in user's UI state kept ($set: last_project, sidebar_width, sidebar_collapsed)
     public static function rememberUi(array $set) {
 	if (\V::app()->user->isGuest || empty($set))
 	    return;

@@ -10,17 +10,21 @@ window.app.sidebar = (function() {
     let lastWidth = 0;
 
     //CLD: 2026-10-30T12:00:00+02:00: the width set by the resize handle is kept for the user (User sidebar_width: every browser; was localStorage, this browser only):
-    //rendered by the layout (aside data-width), saved by /site/sidebar_width
+    //rendered by the layout (aside data-width), saved by /site/sidebar
     const storedWidth = () => {
 	const w = parseInt(sidebar.attr('data-width'), 10);
 	return Number.isFinite(w) ? Math.max(minWidth, Math.min(maxWidth, w)) : null;
     };
+    //CLD: 2026-10-30T13:00:00+02:00: + the collapsed state (User sidebar_collapsed; rendered by the layout: aside.collapsed); storeWidth saves both (a drag expands the sidebar)
+    const store = (data) => {
+	$.ajax({ url: '/site/sidebar', method: 'POST', data: data, dataType: 'json',
+	    headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content'), 'X-Requested-With': 'XMLHttpRequest' } })
+	    .fail((xhr) => console.warn('app.sidebar: the state was not saved', xhr.status));
+    };
     const storeWidth = (w) => {
 	w = Math.round(w);
 	sidebar.attr('data-width', w);
-	$.ajax({ url: '/site/sidebar_width', method: 'POST', data: { width: w }, dataType: 'json',
-	    headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content'), 'X-Requested-With': 'XMLHttpRequest' } })
-	    .fail((xhr) => console.warn('app.sidebar: the width was not saved', xhr.status));
+	store({ width: w, collapsed: 0 });
     };
 
     //CLD: 2026-10-19T22:19:24+03:00: the width goes in the --sidebar-w custom property (was inline width/min-width), so the theme's media queries can replace it
@@ -69,8 +73,11 @@ window.app.sidebar = (function() {
 	    if (!sidebar)
 		return;
 
+	    //CLD: 2026-10-30T13:00:00+02:00: rendered collapsed (the state kept for the user)
+	    isCollapsed = sidebar.hasClass('collapsed');
 	    //CLD: 2026-10-19T22:19:24+03:00: on a small screen the drawer's width is not the desktop one: 16rem, the theme's default
-	    lastWidth = isMobile() ? 16 * parseFloat(getComputedStyle(document.documentElement).fontSize) : sidebar.width();
+	    //CLD: 2026-10-30T13:00:00+02:00: the same when collapsed (its width is 0)
+	    lastWidth = isMobile() || isCollapsed ? 16 * parseFloat(getComputedStyle(document.documentElement).fontSize) : sidebar.width();
 	    //CLD: 2026-10-19T19:05:00+03:00: the stored width, if any
 	    const stored = storedWidth();
 	    if (stored !== null) {
@@ -88,6 +95,7 @@ window.app.sidebar = (function() {
 		    isCollapsed = true;
 		    sidebar.addClass('collapsed');
 		    $('.btn-expand-sidebar').removeClass('d-none');
+		    store({ collapsed: 1 });
 	    })
 	    _document.on('click', '.btn-expand-sidebar', (e) => {
 		    //CLD: 2026-10-19T22:19:24+03:00: preventDefault (an <a href="#">); small screen: opens the drawer
@@ -98,6 +106,7 @@ window.app.sidebar = (function() {
 		    sidebar.removeClass('collapsed');
 		    setWidth(lastWidth);
 		    $('.btn-expand-sidebar').addClass('d-none');
+		    store({ collapsed: 0 });
 	    });
 
 	    //CLD: 2026-10-19T22:19:24+03:00: the drawer closes on its backdrop, Escape, a link that navigates, going back, or when the window gets wide
@@ -130,6 +139,9 @@ window.app.sidebar = (function() {
 
 		handle.addClass('dragging');
 		sidebar.removeClass('collapsed');
+		//CLD: 2026-10-30T13:00:00+02:00: expanded by the drag, as by the expand button (saved with the width: storeWidth)
+		isCollapsed = false;
+		$('.btn-expand-sidebar').addClass('d-none');
 		$('body').css({ userSelect: 'none', cursor: 'col-resize' });
 
 		handle
