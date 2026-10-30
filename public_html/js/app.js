@@ -9,20 +9,18 @@ window.app.sidebar = (function() {
     let sidebar;
     let lastWidth = 0;
 
-    //CLD: 2026-10-19T19:05:00+03:00: the width set by the resize handle is kept in localStorage (this browser), and used again on load
-    const WIDTH_KEY = 'netflow9.sidebar.width';
+    //CLD: 2026-10-30T12:00:00+02:00: the width set by the resize handle is kept for the user (User sidebar_width: every browser; was localStorage, this browser only):
+    //rendered by the layout (aside data-width), saved by /site/sidebar_width
     const storedWidth = () => {
-	try {
-	    const w = parseInt(localStorage.getItem(WIDTH_KEY), 10);
-	    return Number.isFinite(w) ? Math.max(minWidth, Math.min(maxWidth, w)) : null;
-	} catch (e) {
-	    return null;
-	}
+	const w = parseInt(sidebar.attr('data-width'), 10);
+	return Number.isFinite(w) ? Math.max(minWidth, Math.min(maxWidth, w)) : null;
     };
     const storeWidth = (w) => {
-	try {
-	    localStorage.setItem(WIDTH_KEY, String(w));
-	} catch (e) {}
+	w = Math.round(w);
+	sidebar.attr('data-width', w);
+	$.ajax({ url: '/site/sidebar_width', method: 'POST', data: { width: w }, dataType: 'json',
+	    headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content'), 'X-Requested-With': 'XMLHttpRequest' } })
+	    .fail((xhr) => console.warn('app.sidebar: the width was not saved', xhr.status));
     };
 
     //CLD: 2026-10-19T22:19:24+03:00: the width goes in the --sidebar-w custom property (was inline width/min-width), so the theme's media queries can replace it

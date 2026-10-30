@@ -10,7 +10,9 @@ ob_start();
 <?php \V::app()->hooks->applyHook('layout:page-top'); ?>
 <main class="app-shell">
     <!-- SIDEBAR -->
-    <aside class="sidebar">
+    <?php //CLD: 2026-10-30T12:00:00+02:00: the width kept for the user (User sidebar_width, set by the resize handle: app.sidebar) ?>
+    <?php $sidebarW = (int)(\V::app()->var('rt.user')->sidebar_width ?? 0); ?>
+    <aside class="sidebar"<?= $sidebarW ? ' style="--sidebar-w: ' . min(max($sidebarW, \controllers\SiteController::SIDEBAR_MIN_W), \controllers\SiteController::SIDEBAR_MAX_W) . 'px" data-width="' . $sidebarW . '"' : '' ?>>
 	<?php require(dirname(__FILE__) . '/main_aside.php') ?>
     </aside>
     <?php //CLD: 2026-10-19T22:19:24+03:00: behind the sidebar when it is a drawer (small screens, theme netflow9/_app.scss); a click closes it (app.sidebar) ?>

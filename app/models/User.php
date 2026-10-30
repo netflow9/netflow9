@@ -167,9 +167,35 @@ class User extends \sys\BaseModel {
 		'perm:read' => 'nobody',
 		'perm:update' => 'nobody',
 		'showInForms' => false,
+	    ],
+	    //CLD: 2026-10-30T12:00:00+02:00: the UI kept across sessions and browsers: the project last opened (the next session starts on it, Boot) and the sidebar's width (px, set by its
+	    //resize handle: app.sidebar). Written by rememberUi only (not save(): no audit entry)
+	    [
+		'key' => 'last_project',
+		'type' => 'object',
+		'label' => 'Last project',
+		'object' => 'Project',
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
+	    ],
+	    [
+		'key' => 'sidebar_width',
+		'type' => 'number',
+		'label' => 'Sidebar width',
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
 	    ]
 	];
 	return array_merge($fields, $this->getSystemSchema());
+    }
+
+    //CLD: 2026-10-30T12:00:00+02:00: new: the signed-in user's UI state kept ($set: last_project, sidebar_width)
+    public static function rememberUi(array $set) {
+	if (\V::app()->user->isGuest || empty($set))
+	    return;
+	\V::app()->om->updateOne('User', [ '_id' => \V::app()->om->to_oid(\V::app()->user->_id) ], [ '$set' => $set ]);
     }
 
     public function __toString() {

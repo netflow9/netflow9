@@ -8,6 +8,9 @@ class SiteController extends \sys\BaseController {
     //and how long the choice waits (seconds)
     const CHOICES = 'login_choices';
     const CHOICES_TTL = 300;
+    //CLD: 2026-10-30T12:00:00+02:00: the sidebar's width limits (px; as app.sidebar's minWidth / maxWidth)
+    const SIDEBAR_MIN_W = 250;
+    const SIDEBAR_MAX_W = 400;
 
     public function login($req, $resp) {
 	$this->layout = 'bare';
@@ -506,8 +509,25 @@ class SiteController extends \sys\BaseController {
 	    \V::app()->error(403, 'Unauthorized');
 
 	\V::app()->user->crtProject = $project->_id;
+	//CLD: 2026-10-30T12:00:00+02:00: the next session starts on this project (Boot)
+	\models\User::rememberUi([ 'last_project' => $project->_id ]);
 
 	$resp->redirect('/site/index');
+    }
+
+    //CLD: 2026-10-30T12:00:00+02:00: new: the sidebar's width (px) set by its resize handle (app.sidebar), kept for the user (User sidebar_width; was this browser only: localStorage)
+    public function sidebar_width($req, $resp) {
+	if (\V::app()->user->isGuest)
+	    \V::app()->error(401, 'Unauthorized');
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+
+	$w = filter_var($req->data['width'] ?? null, FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => self::SIDEBAR_MIN_W, 'max_range' => self::SIDEBAR_MAX_W ] ]);
+	if ($w === false)
+	    \V::app()->error(400, 'Invalid width');
+	\models\User::rememberUi([ 'sidebar_width' => $w ]);
+
+	$resp->sendJSON([ 'ok' => true ]);
     }
 
     public function render_aside($req, $resp) {
