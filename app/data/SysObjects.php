@@ -132,6 +132,10 @@ class SysObjects {
 	    'DataTableDef' => [
 		'class' => 'models\DataTableDef',
 	    ],
+	    //CLD: 2026-10-30T17:18:20+02:00: the saved views of a data table (named filters)
+	    'DataTableView' => [
+		'class' => 'models\DataTableView',
+	    ],
 	    //CLD: 2026-10-20T23:40:00+03:00: McpToken (access tokens of the project's MCP server) is registered by the SysMCPTools plugin
 	    //CLD: 2026-10-26T23:56:07+02:00: core again (the project's MCP server, controllers\McpController; same object name: stored tokens, audit entries and roles keep working)
 	    'McpToken' => [

@@ -81,6 +81,9 @@ class DataTableDef extends \sys\BaseModel {
 	//CLD: 2026-10-12T12:21:36+03:00: through ObjectManager (was the MongoDB collections directly): the columns deleted one by one, the rows with om->drop()
 	foreach(\V::app()->om->find('Field', [ 'objectName' => $this->iname ]) as $field)
 	    $field->delete();
+	//CLD: 2026-10-30T17:18:20+02:00: and its saved views
+	foreach(\V::app()->om->find('DataTableView', [ 'table' => $this->_id, 'aid' => $this->aid ]) as $view)
+	    $view->delete();
 	if (!\V::app()->om->isDefined($this->iname))
 	    \V::app()->om->registerDataTables();
 	if (\V::app()->om->isDefined($this->iname))
