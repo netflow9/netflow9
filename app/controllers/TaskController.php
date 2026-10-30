@@ -72,20 +72,11 @@ class TaskController extends \sys\BaseController {
 	$task->completed_at = new \MongoDB\BSON\UTCDateTime();
 	$task->save();
 
-	//answer now, resume the run after the connection is closed (php-fpm)
+	//CLD: 2026-10-30T15:00:00+02:00: the run resumed by the daemon (queued; was resumed here after the answer: runSync)
 	$exe = \V::app()->om->findOne('WfExecution', [ '_id' => $task->execution, 'aid' => $task->aid ]);
-	//CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON without ending (was status + headers + body set here); the answer is sent below
-	$resp->sendJSON([ 'ok' => true, 'message' => 'Done, thank you.' ], false);
-	//CLD: 2026-10-18T18:34:20+03:00: output buffers are no longer used by the framework (was: ob_end_clean() of every level)
-	$resp->output();
-	flush();
-	session_write_close();
-	ignore_user_abort(true);
-	if (function_exists('fastcgi_finish_request'))
-	    fastcgi_finish_request();
-
 	if ($exe && $exe->canRun())
-	    $exe->runSync();
-	exit(0);
+	    $exe->queue('task completed by ' . (string)\V::app()->user->name . ': queued for the daemon');
+
+	$resp->sendJSON([ 'ok' => true, 'message' => 'Done, thank you.' ]);
     }
 }

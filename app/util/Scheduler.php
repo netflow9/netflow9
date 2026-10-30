@@ -94,6 +94,7 @@ class Scheduler {
 
     //run an execution a web request handed over (WfExecution::queue: the account's sync executions were all
     //running); skipped when it can no longer run (cancelled meanwhile)
+    //CLD: 2026-10-30T15:00:00+02:00: every execution started by a web request (WfExecution::queue)
     public static function start($data) {
 	$exe = \V::app()->om->findOne('WfExecution', [ '_id' => \V::app()->om->to_oid($data->exe ?? null), 'aid' => $data->aid ?? null ]);
 	if (empty($exe) || !$exe->canRun()) {
