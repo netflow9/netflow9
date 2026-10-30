@@ -5,7 +5,8 @@ $this->pageTitle = 'Overview';
 ?>
 
 <div class="main-header py-2 px-3">
-    <a href="#" class="btn-expand-sidebar d-none" title="Expand sidebar">
+    <?php //CLD: 2026-10-30T13:00:00+02:00: shown when the sidebar is kept collapsed (User sidebar_collapsed) ?>
+    <a href="#" class="btn-expand-sidebar<?= empty(\V::app()->var('rt.user')->sidebar_collapsed) ? ' d-none' : '' ?>" title="Expand sidebar">
 	<i class="bi bi-layout-sidebar-inset"></i>
     </a>
 

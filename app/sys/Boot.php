@@ -81,7 +81,7 @@ class Boot {
 	    \V::app()->auth->userRole = null;
 	}
 	$this->user = $user;
-	//CLD: 2026-10-30T12:00:00+02:00: the stored user, for the layout (its UI state: sidebar_width)
+	//CLD: 2026-10-30T12:00:00+02:00: the stored user, for the layout (its UI state: sidebar_width, sidebar_collapsed)
 	\V::app()->config('rt.user', $user);
 
 	$account = \V::app()->om->findById('Account', \V::app()->user->aid);
