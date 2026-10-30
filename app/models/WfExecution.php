@@ -24,6 +24,9 @@ class WfExecution extends \sys\BaseModel {
     //CLD: 2026-10-29T22:05:00+02:00: and before a pass whose steps are not the ones saved (the designer shows the step running, not the one before it during a long step), at most this many
     //times a second (a loop of quick steps)
     const SAVE_RATE = 5;
+    //CLD: 2026-10-30T15:00:00+02:00: a web request waiting for the result of a queued execution (waitFor): at most WAIT_RESULT s, checked every WAIT_POLL ms
+    const WAIT_RESULT = 30;
+    const WAIT_POLL = 250;
 
     //log entries kept per execution
     const MAX_LOG = 500;
@@ -36,9 +39,6 @@ class WfExecution extends \sys\BaseModel {
     private $steps = 0;
     //CLD: 2026-10-13T13:15:14+03:00: step executions in the current pass of each active loop (loop wfid => count; reset when a pass starts)
     private $passSteps = [];
-    //CLD: 2026-10-26T09:58:28+02:00: run() is in progress in this process (still true at shutdown: the process was stopped in the middle of a step)
-    private $running = false;
-    private $interruptWatched = false;
 
     public function _init() {
 	parent::_init();
@@ -276,17 +276,12 @@ class WfExecution extends \sys\BaseModel {
     //run until the execution ends, fails, or only sleeping tokens are left; saves the execution
     //CLD: 2026-10-11T17:45:25+03:00: the execution log: changes made while running are recorded there (ExecutionLog::$execution, also when a user clicked Run), with
     //execution.start (a new execution; saved first, so the entry has its id) and how the run stopped (end / error / sleep)
-    //CLD: 2026-10-26T09:58:28+02:00: inside a web request (not nested in another run), running for more than app.executions.sync_timeout s: handed to the daemon after the
-    //current pass (handOver; returns `queued`), so it does not reach max_execution_time; a step that is killed by it anyway fails the execution (interrupted)
+    //CLD: 2026-10-30T15:00:00+02:00: runs in the daemon (or the console) only: the web requests queue their executions (queue); the handover to the daemon after
+    //app.executions.sync_timeout s in a web request and the interrupted-request handler are removed
     public function run() {
 	$outer = [ \models\ExecutionLog::$execution, \models\ExecutionLog::$step ];
-	$handover = $outer[0] === null && PHP_SAPI !== 'cli' ? (int)\V::app()->config('app.executions.sync_timeout') : 0;
-	$started = microtime(true);
 	\models\ExecutionLog::$execution = $this;
 	\models\ExecutionLog::$step = null;
-	if (PHP_SAPI !== 'cli')
-	    $this->watchInterrupt();
-	$this->running = true;
 	try {
 	    if ($this->state == 'new') {
 		if (!$this->exists())
@@ -309,9 +304,6 @@ class WfExecution extends \sys\BaseModel {
 
 	    $this->steps = 0;
 	    while ($this->canRun()) {
-		//CLD: 2026-10-17T19:29:50+03:00: keep the sync slot while running
-		//CLD: 2026-10-18T16:05:00+03:00: ExecutionSlot::renew (was self::renewSlot)
-		\models\ExecutionSlot::renew();
 		//CLD: 2026-10-29T22:05:00+02:00: the steps about to run saved first (e.g. the trigger done in a few ms, then a long download: was shown at the trigger until the download ended)
 		if ($this->state == 'run' && json_encode($this->tokens) !== $savedTokens) {
 		    $now = microtime(true);
@@ -328,14 +320,6 @@ class WfExecution extends \sys\BaseModel {
 		$progress = $this->advance();
 		if (!$progress)
 		    break;
-		//CLD: 2026-10-26T09:58:28+02:00: the rest runs in a daemon worker
-		if ($handover > 0 && $this->state == 'run' && microtime(true) - $started >= $handover) {
-		    //CLD: 2026-10-26T10:06:24+02:00: not when it was killed meanwhile
-		    if ($this->killed())
-			return $this->state;
-		    $this->handOver($handover);
-		    return 'queued';
-		}
 		if ($this->state == 'run' && microtime(true) - $saved >= self::SAVE_EVERY) {
 		    //CLD: 2026-10-26T10:06:24+02:00: killed meanwhile (kill(), another process): stops here, not saved (would undo the kill)
 		    if ($this->killed())
@@ -368,7 +352,6 @@ class WfExecution extends \sys\BaseModel {
 		    break;
 	    }
 	} finally {
-	    $this->running = false;
 	    [ \models\ExecutionLog::$execution, \models\ExecutionLog::$step ] = $outer;
 	}
 	return $this->state;
@@ -410,65 +393,35 @@ class WfExecution extends \sys\BaseModel {
 	return true;
     }
 
-    //CLD: 2026-10-26T09:58:28+02:00: hand a running execution to the daemon after $seconds in a web request (its progress saved; the daemon continues from the current tokens)
-    private function handOver($seconds) {
-	\models\ExecutionLog::$step = null;
-	\models\ExecutionLog::record('execution.queued', null, "running for more than {$seconds} s in a web request, moved to the daemon");
-	$this->queue("running for more than {$seconds} s: moved to the daemon");
-    }
-
-    //CLD: 2026-10-26T09:58:28+02:00: a web request stopped while run() was in a step (max_execution_time, a fatal error): the execution fails instead of staying `run`
-    //(the step in progress cannot be resumed). A targeted update: the object may be in the middle of a step
-    private function watchInterrupt() {
-	if ($this->interruptWatched)
-	    return;
-	$this->interruptWatched = true;
-	register_shutdown_function(function() {
-	    if (!$this->running || empty($this->_id))
-		return;
-	    $message = 'interrupted: the web request running it was stopped' . (($e = error_get_last()) ? ' (' . $e['message'] . ')' : '');
-	    try {
-		\V::app()->om->updateOne('WfExecution', [ '_id' => $this->_id, 'state' => 'run' ],
-		    [ '$set' => [ 'state' => 'error', 'error' => $message, 'end_at' => new \MongoDB\BSON\UTCDateTime() ],
-			'$push' => [ 'log' => [ 'ts' => new \MongoDB\BSON\UTCDateTime(), 'node' => null, 'message' => 'error: ' . $message ] ] ]);
-		\models\ExecutionLog::$execution = $this;
-		\models\ExecutionLog::record('execution.error', null, $message);
-	    } catch (\Throwable $e) {
-		\V::app()->log->error('WfExecution ' . $this->_id . ': ' . $message . '; not saved: ' . $e->getMessage());
-	    }
-	});
-    }
-
     //---------------------------------------------------------------------------------------------------------------
-    //CLD: 2026-10-17T19:29:50+03:00: sync executions (run inside a web request): at most app.executions.max_sync at the same time per account
-    //CLD: 2026-10-18T16:05:00+03:00: the slots are models\ExecutionSlot (acquire / release / renew; were SLOTS_COLLECTION, acquireSlot, releaseSlot, renewSlot here)
-
-    //run as a sync execution: in this process when a slot is free, else handed to the daemon (Scheduler::start); returns the state, `queued` when handed over
-    //CLD: 2026-10-18T16:05:00+03:00: ExecutionSlot::acquire / release (were self::acquireSlot / releaseSlot)
-    public function runSync() {
-	if (!\models\ExecutionSlot::acquire($this->aid)) {
-	    $this->queue();
-	    return 'queued';
-	}
-
-	try {
-	    return $this->run();
-	} finally {
-	    \models\ExecutionSlot::release();
-	}
-    }
-
     //hand the run to the daemon (saved first)
     //CLD: 2026-10-26T09:58:28+02:00: + $reason, the log message (default: the account's sync executions were all running)
+    //CLD: 2026-10-30T15:00:00+02:00: every execution started by a web request (designer Run, Webhook, Form, Human task, MCP run_workflow) is queued here (were run in the request:
+    //runSync, the sync slots models\ExecutionSlot, removed); Job::submit wakes the daemon (NEWJOB on its socket), so an idle worker starts it at once
     public function queue($reason = null) {
-	$max = (int)\V::app()->config('app.executions.max_sync');
-	$this->log(null, $reason ?? "queued for the daemon: {$max} executions of the account were already running");
+	$this->log(null, $reason ?? 'queued for the daemon');
 	$this->save();
 	\models\Job::submit('\util\Scheduler::start', [ 'exe' => (string)$this->_id ], [
 	    'aid' => $this->aid,
 	    'project' => $this->project,
 	    'delete_on_done' => true,
 	]);
+    }
+
+    //CLD: 2026-10-30T15:00:00+02:00: new: wait (at most $seconds) for the daemon to run this queued execution until it stops (end, error, cancel, sleep); reloaded from the database.
+    //Returns its state, or `queued` when it still runs (or waits for a worker) after $seconds. For the callers that answer with the result (Webhook "when finished", MCP run_workflow)
+    public function waitFor($seconds) {
+	$until = microtime(true) + $seconds;
+	do {
+	    usleep(self::WAIT_POLL * 1000);
+	    if (\V::app()->om->count('WfExecution', [ '_id' => $this->_id, 'aid' => $this->aid, 'state' => [ '$nin' => [ 'new', 'run' ] ] ])) {
+		$fresh = \V::app()->om->findOne('WfExecution', [ '_id' => $this->_id, 'aid' => $this->aid ]);
+		foreach([ 'state', 'error', 'variables', 'version', 'end_at' ] as $k)
+		    $this->$k = $fresh->$k;
+		return $this->state;
+	    }
+	} while (microtime(true) < $until);
+	return 'queued';
     }
 
     //one pass over the current tokens; true if any node completed (more work may follow)

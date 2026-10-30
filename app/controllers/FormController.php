@@ -117,20 +117,9 @@ class FormController extends \sys\BaseController {
 	$exe = \models\WfExecution::startFor($live, 'form', [ 'form' => $token, 'user' => $user['id'] ?? null, 'received_at' => new \MongoDB\BSON\UTCDateTime(),
 	    'vars' => [ $variable => $answers, $variable . '_user' => $user ] ], $link->node);
 	$exe->log($link->node, 'form sent' . ($user ? ' by ' . $user['name'] : ''));
-	$exe->save();
+	//CLD: 2026-10-30T15:00:00+02:00: queued for the daemon (saved; was run here after the answer: runSync)
+	$exe->queue();
 
-	//answer now, run after the connection is closed (php-fpm)
-	//CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON without ending (was status + headers + body set here); the answer is sent below
-	$resp->sendJSON([ 'ok' => true, 'message' => (string)($cfg['message'] ?? 'Thank you, your answers were sent.') ], false);
-	//CLD: 2026-10-18T18:34:20+03:00: output buffers are no longer used by the framework (was: ob_end_clean() of every level)
-	$resp->output();
-	flush();
-	session_write_close();
-	ignore_user_abort(true);
-	if (function_exists('fastcgi_finish_request'))
-	    fastcgi_finish_request();
-	//CLD: 2026-10-17T19:29:50+03:00: a sync execution (handed to the daemon when the account's are all running)
-	$exe->runSync();
-	exit(0);
+	$resp->sendJSON([ 'ok' => true, 'message' => (string)($cfg['message'] ?? 'Thank you, your answers were sent.') ]);
     }
 }

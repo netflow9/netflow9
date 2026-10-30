@@ -427,27 +427,26 @@ class McpServerTools {
 		}
 		if (self::$depth >= self::MAX_DEPTH)
 		    throw new \ErrorException('workflows started from tools are nested too deep (at most ' . self::MAX_DEPTH . ')');
-		//CLD: 2026-10-17T19:29:50+03:00: the caller waits for the result: a sync slot (the one held already when an AI step of a sync run calls this; none needed in the daemon)
-		//CLD: 2026-10-18T16:05:00+03:00: ExecutionSlot (was WfExecution::acquireSlot / releaseSlot)
-		if (!\models\ExecutionSlot::acquire($wf->aid))
-		    throw new \ErrorException('too many executions are running at the same time in this account, try again later');
-		try {
-		    $exe = \models\WfExecution::startFor($live, $asUser ? 'mcp' : 'ai', [ 'user' => $user ? (string)$user->_id : null, 'vars' => $vars ], (string)$trigger['wfid']);
-		    $exe->log(null, $asUser ? 'started by ' . (string)$user->name . ' over MCP' : 'started by an AI step');
-		    $exe->save();
-		    if ($asUser)
-			\models\AuditLog::record('workflow.run', $wf, 'execution ' . (string)$exe->_id . ' (MCP)');
+		//CLD: 2026-10-30T15:00:00+02:00: the caller waits for the result. Called by an AI step of a running execution (a daemon worker): run here, nested (waiting for another
+		//worker could wait for ever when the account's are all busy); over MCP (a web request): queued for the daemon, waited for (WfExecution::waitFor, at most
+		//WAIT_RESULT s; were run here, in a sync slot: models\ExecutionSlot, removed)
+		$exe = \models\WfExecution::startFor($live, $asUser ? 'mcp' : 'ai', [ 'user' => $user ? (string)$user->_id : null, 'vars' => $vars ], (string)$trigger['wfid']);
+		$exe->log(null, $asUser ? 'started by ' . (string)$user->name . ' over MCP' : 'started by an AI step');
+		$exe->save();
+		if ($asUser)
+		    \models\AuditLog::record('workflow.run', $wf, 'execution ' . (string)$exe->_id . ' (MCP)');
+		if (\models\ExecutionLog::$execution === null) {
+		    $exe->queue();
+		    $state = $exe->waitFor(\models\WfExecution::WAIT_RESULT);
+		} else {
 		    self::$depth++;
 		    try {
 			$state = $exe->run();
 		    } finally {
 			self::$depth--;
 		    }
-		} finally {
-		    //CLD: 2026-10-18T16:05:00+03:00: ExecutionSlot (was WfExecution::acquireSlot / releaseSlot)
-		    \models\ExecutionSlot::release();
 		}
-		//CLD: 2026-10-26T09:58:28+02:00: `queued`: ran too long for the request (app.executions.sync_timeout), the daemon finishes it
+		//CLD: 2026-10-26T09:58:28+02:00: `queued`: still running, the daemon finishes it (get_execution)
 		return [ 'execution' => (string)$exe->_id, 'state' => $state === 'queued' ? 'queued' : (string)$exe->state, 'error' => $exe->error ?: null,
 		    'version' => $exe->version, 'variables' => \util\Expression::hostValue($exe->variables ?: []) ];
 

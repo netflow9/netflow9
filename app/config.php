@@ -56,9 +56,7 @@ function get_config($mode = 'web') {
 	'app.security.secret' => defined('APP_SECRET') ? APP_SECRET : null,
 	'mail.inbound_domain' => defined('MAIL_INBOUND_DOMAIN') ? MAIL_INBOUND_DOMAIN : null,
 	'mail.from' => defined('MAIL_FROM') ? MAIL_FROM : 'noreply@' . (defined('SMTP_DOMAIN') && SMTP_DOMAIN ? SMTP_DOMAIN : 'localhost'),
-	'app.executions.max_sync' => defined('MAX_SYNC_EXECUTIONS') ? (int)MAX_SYNC_EXECUTIONS : 0,
-	//CLD: 2026-10-26T09:58:28+02:00: seconds an execution runs inside a web request before it is handed to the daemon (WfExecution::run); 0 = never (max_execution_time may stop it)
-	'app.executions.sync_timeout' => defined('SYNC_EXECUTION_TIMEOUT') ? (int)SYNC_EXECUTION_TIMEOUT : 30,
+	//CLD: 2026-10-30T15:00:00+02:00: app.executions.max_sync (MAX_SYNC_EXECUTIONS) and app.executions.sync_timeout (SYNC_EXECUTION_TIMEOUT) removed: every execution runs in the daemon
 	//the HTTP Request and Download File steps may call this machine and its network (private / internal addresses): HTTP_STEPS_ALLOW_PRIVATE in app.env
 	//(default false: public addresses only, checked by util\Http for each redirect too)
 	'http.steps.allow_private' => defined('HTTP_STEPS_ALLOW_PRIVATE') && filter_var(HTTP_STEPS_ALLOW_PRIVATE, FILTER_VALIDATE_BOOLEAN),
