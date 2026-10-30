@@ -516,16 +516,23 @@ class SiteController extends \sys\BaseController {
     }
 
     //CLD: 2026-10-30T12:00:00+02:00: new: the sidebar's width (px) set by its resize handle (app.sidebar), kept for the user (User sidebar_width; was this browser only: localStorage)
-    public function sidebar_width($req, $resp) {
+    //CLD: 2026-10-30T13:00:00+02:00: renamed (was sidebar_width): + `collapsed` (0 / 1: User sidebar_collapsed); each one optional
+    public function sidebar($req, $resp) {
 	if (\V::app()->user->isGuest)
 	    \V::app()->error(401, 'Unauthorized');
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 
-	$w = filter_var($req->data['width'] ?? null, FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => self::SIDEBAR_MIN_W, 'max_range' => self::SIDEBAR_MAX_W ] ]);
-	if ($w === false)
-	    \V::app()->error(400, 'Invalid width');
-	\models\User::rememberUi([ 'sidebar_width' => $w ]);
+	$set = [];
+	if (isset($req->data['width'])) {
+	    $w = filter_var($req->data['width'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => self::SIDEBAR_MIN_W, 'max_range' => self::SIDEBAR_MAX_W ] ]);
+	    if ($w === false)
+		\V::app()->error(400, 'Invalid width');
+	    $set['sidebar_width'] = $w;
+	}
+	if (isset($req->data['collapsed']))
+	    $set['sidebar_collapsed'] = (bool)filter_var($req->data['collapsed'], FILTER_VALIDATE_BOOLEAN);
+	\models\User::rememberUi($set);
 
 	$resp->sendJSON([ 'ok' => true ]);
     }
