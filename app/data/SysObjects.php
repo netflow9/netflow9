@@ -128,11 +128,7 @@ class SysObjects {
 		'class' => 'models\TriggerToken',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-18T16:05:00+03:00: sync execution slots (were used by WfExecution directly; leases, not in the audit log)
-	    'ExecutionSlot' => [
-		'class' => 'models\ExecutionSlot',
-		'auditLog' => false,
-	    ],
+	    //CLD: 2026-10-30T15:00:00+02:00: ExecutionSlot removed (sync executions: every execution runs in the daemon)
 	    'DataTableDef' => [
 		'class' => 'models\DataTableDef',
 	    ],

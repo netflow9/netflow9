@@ -271,7 +271,7 @@ class ObjectManager {
 
     //the _id of $query for the write methods (updateMany, updateOne, deleteOne, findOneAndUpdate): an ObjectId, or a string that is one, is an ObjectId;
     //also for find, findOne (findById) and count
-    //another non-empty string is kept as it is (objects keyed by a string, e.g. ExecutionSlot `<aid>:<n>`); an operator array is left alone; anything else is invalid
+    //another non-empty string is kept as it is (objects keyed by a string, e.g. LocalMcpSlot `<server>:<n>`); an operator array is left alone; anything else is invalid
     public static function keyIdQuery(array $query, $method) {
 	if (!array_key_exists('_id', $query) || is_array($query['_id']) || $query['_id'] instanceof \MongoDB\BSON\ObjectId)
 	    return $query;

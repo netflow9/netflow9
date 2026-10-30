@@ -111,37 +111,23 @@ class HookController extends \sys\BaseController {
 
 	//CLD: 2026-10-10T19:08:46+03:00: started at this webhook step only (was every trigger step of the workflow: Manual, Schedule, IMAP, ... ran too)
 	//CLD: 2026-10-11T13:51:42+03:00: the published version (records its number)
-	//CLD: 2026-10-17T19:29:50+03:00: answered with its result: a sync slot is needed now (refused when the account's sync executions are all running; nothing is started)
+	//CLD: 2026-10-30T15:00:00+02:00: always run by the daemon (queued); answered with its result: waits for it (WfExecution::waitFor, at most WAIT_RESULT s; was run here, in a sync slot:
+	//429 when the account's were all running)
 	$respWhenFinished = ($cfg['respond'] ?? 'received') === 'finished';
-	//CLD: 2026-10-18T16:05:00+03:00: ExecutionSlot (was WfExecution::acquireSlot / releaseSlot)
-	if ($respWhenFinished && !\models\ExecutionSlot::acquire($wf->aid)) {
-	    //CLD: 2026-10-18T18:31:49+03:00: $resp (was \V::app()->response)
-	    $resp->addHeader('Retry-After', '10');
-	    $this->refuse(429, 'Too many executions running at the same time, try again later');
-	}
 
 	$exe = \models\WfExecution::startFor($live, 'webhook', $input, $hook->node);
 	$exe->log($hook->node, "webhook {$method} received");
-	$exe->save();
+	$exe->queue();
 
 	if ($respWhenFinished) {
-	    try {
-		$state = $exe->run();
-	    } finally {
-		//CLD: 2026-10-18T16:05:00+03:00: ExecutionSlot (was WfExecution::acquireSlot / releaseSlot)
-		\models\ExecutionSlot::release();
-	    }
-	    //CLD: 2026-10-26T09:58:28+02:00: ran too long for the request (app.executions.sync_timeout): the daemon finishes it, no result to answer with
-	    if ($state === 'queued')
+	    //CLD: 2026-10-26T09:58:28+02:00: still running: the daemon finishes it, no result to answer with
+	    if ($exe->waitFor(\models\WfExecution::WAIT_RESULT) === 'queued')
 		$resp->sendJSON([ 'execution' => (string)$exe->_id, 'state' => 'queued' ], true, 202);
 	    $answer = [ 'execution' => (string)$exe->_id, 'state' => $exe->state ];
 	    if ($exe->state == 'error')
 		$answer['error'] = $exe->error;
 	    $resp->sendJSON($answer);
 	}
-
-	//send jobs into queue
-	$exe->queue();
 
 	//answer now
 	$resp->sendJSON([ 'execution' => (string)$exe->_id, 'state' => 'accepted' ], true, 202);

@@ -31,6 +31,7 @@ class ExecutionLog extends \sys\BaseModel {
 	'execution.error' => 'Execution failed',
 	'execution.sleep' => 'Execution waiting',
 	//CLD: 2026-10-26T09:58:28+02:00: a run inside a web request handed to the daemon (WfExecution::run, app.executions.sync_timeout)
+	//CLD: 2026-10-30T15:00:00+02:00: no longer written (every execution runs in the daemon); kept for the older entries
 	'execution.queued' => 'Execution moved to the daemon',
 	//CLD: 2026-10-26T10:06:24+02:00: killed by a user (WfExecution::kill, the Overview)
 	'execution.cancel' => 'Execution killed',

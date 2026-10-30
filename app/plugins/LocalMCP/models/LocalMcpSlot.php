@@ -2,7 +2,7 @@
 
 /*
     a session of a tool server held by a running AI step: at most `max_sessions` at once on the installation (documents `<server>:<n>`) and
-    `max_sessions_per_account` per account (`<server>:<aid>:<n>`). As models\ExecutionSlot: taking one is an atomic upsert on the _id (a free one is missing or expired), leased until
+    `max_sessions_per_account` per account (`<server>:<aid>:<n>`). Taking one is an atomic upsert on the _id (a free one is missing or expired), leased until
     `until`, renewed while the session is used (SessionClient), freed when it is closed or, when the process died, after LEASE. Global: the installation's slots are shared by the accounts
 */
 

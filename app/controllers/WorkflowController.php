@@ -169,7 +169,7 @@ class WorkflowController extends \sys\BaseController {
 
     //CLD: 2026-10-10T19:08:46+03:00: manual run from the designer: an execution started at the workflow's trigger, which must be a Manual trigger (trigger
     //`manual`; CLD: 2026-10-12T20:33:47+03:00: now any trigger with startNow(), see below; nothing started -> { execution: null, message }); POST, the user must be allowed to update the workflow; refused when the saved workflow has connection errors (as `wf::run`). Answers { execution } and
-    //runs it after the answer is sent (as the webhook endpoint): the designer follows it through executions / execution. Named `start`:
+    //runs it after the answer is sent (as the webhook endpoint): the designer follows it through executions / execution. CLD: 2026-10-30T15:00:00+02:00: run by the daemon (queued). Named `start`:
     //BaseController::run() is the request dispatcher
     public function start($req, $resp) {
 	if (!$req->is('post'))
@@ -204,9 +204,10 @@ class WorkflowController extends \sys\BaseController {
 	    $resp->sendJSON([ 'error' => $e->getMessage() ], true, 409);
 	}
 	$executions = $started['executions'] ?? [];
+	//CLD: 2026-10-30T15:00:00+02:00: each one queued for the daemon (saved; was run here after the answer: runSync)
 	foreach($executions as $exe) {
 	    $exe->log(null, 'started by ' . (string)\V::app()->user->name);
-	    $exe->save();
+	    $exe->queue();
 	    //CLD: 2026-10-11T17:35:22+03:00: audit log (executions themselves are not recorded)
 	    \models\AuditLog::record('workflow.run', $wf, 'execution ' . (string)$exe->_id);
 	}
@@ -214,23 +215,9 @@ class WorkflowController extends \sys\BaseController {
 	    //CLD: 2026-10-18T12:49:28+03:00: $resp->sendJSON (was $this->json, removed)
 	    $resp->sendJSON([ 'execution' => null, 'executions' => [], 'message' => (string)($started['message'] ?? 'Nothing was started') ]);
 
-	//answer now, run after the connection is closed (php-fpm)
 	//CLD: 2026-10-12T20:33:47+03:00: + executions (all ids, first = execution) and message
-	//CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON without ending (was status + headers + body set here); the answer is sent below
 	$resp->sendJSON([ 'execution' => (string)$executions[0]->_id, 'executions' => array_map(fn($e) => (string)$e->_id, $executions),
-	    'message' => $started['message'] ?? null ], false);
-	//CLD: 2026-10-18T18:34:20+03:00: output buffers are no longer used by the framework (was: ob_end_clean() of every level)
-	$resp->output();
-	flush();
-	session_write_close();
-	ignore_user_abort(true);
-	if (function_exists('fastcgi_finish_request'))
-	    fastcgi_finish_request();
-
-	//CLD: 2026-10-17T19:29:50+03:00: sync executions (handed to the daemon when the account's are all running)
-	foreach($executions as $exe)
-	    $exe->runSync();
-	exit(0);
+	    'message' => $started['message'] ?? null ]);
     }
 
     //CLD: 2026-10-11T13:51:42+03:00: publish (was a JSON draft/published switch, 2026-10-11T13:29:36+03:00): GET shows the dialog, POST publishes. The saved draft
