@@ -35,6 +35,8 @@ namespace models\node;
 abstract class NodeAppAi extends \models\WfNode {
     public static $type = 'app';
     public static $color = 'var(--wf-color-app)';
+    //CLD: 2026-10-30T15:00:00+02:00: the step picker: the AI steps in AI
+    public static $category = 'ai';
     public static $inputs = 1;
     public static $outputs = 1;
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];

@@ -427,7 +427,14 @@ window.app.Workflow = (function() {
 	//CLD: 2026-10-11T13:34:03+03:00: + "no match" line; the search box is wired by showPicker()
 	return $(`
 	<div class="picker card bg-white p-2 position-fixed active-picker" style="z-index:20">
-	    <h6>Add node</h6>
+	    <!-- CLD: 2026-10-30T15:00:00+02:00: + the "Advanced" switch: the advanced steps listed or not (wired by showPicker) -->
+	    <div class="d-flex align-items-center justify-content-between gap-3 mb-2">
+		<h6 class="mb-0">Add node</h6>
+		<div class="form-check form-switch small mb-0" title="List the advanced (technical) steps too; the search finds them always">
+		    <input class="form-check-input picker-advanced-switch" type="checkbox" role="switch" id="picker-advanced-switch">
+		    <label class="form-check-label text-muted" for="picker-advanced-switch">Advanced</label>
+		</div>
+	    </div>
 	    <input type="text" class="form-control form-control-sm picker-search" placeholder="Search..." autocomplete="off">
 	    <div class="nodes-container mt-2" style="overflow-y: scroll; max-height: 50vh;"></div>
 	    <div class="picker-empty small text-muted px-1 d-none">No matching step</div>
@@ -1847,6 +1854,8 @@ window.app.Workflow = (function() {
 	/* ---------------- Node Picker ---------------- */
 	//CLD: 2026-10-11T13:34:03+03:00: the items carry what the search box matches (name, label, type, fqname); groups / items get classes for filtering
 	//CLD: 2026-10-14T21:06:38+03:00: insideLoop: the step goes inside a loop, so no loop is offered (a loop cannot be inside another loop)
+	//CLD: 2026-10-30T15:00:00+02:00: grouped by the steps' category (WfNode::CATEGORIES, in their order; was by type: Trigger / Core / App); the advanced steps (audience) get
+	//the picker-advanced class and an "advanced" badge: showPicker lists them or not. No trigger offered when the workflow has one (was: the trigger group left out)
 	buildPickerContent(picker, insideLoop) {
 	    const nodeDefs = this.nodeDefs;
 	    const main_ul = $('<ul>', { class: "list-unstyled p-0 m-0" });
@@ -1857,40 +1866,46 @@ window.app.Workflow = (function() {
 		    hasTriggerNode = true;
 	    });
 
-	    //get distinct node typesfrom nodeDefs
 	    //CLD: 2026-10-24T09:45:36+03:00: without the steps the account's tier does not have (`unavailable`: views/workflow/index.php)
-	    const allNodeTypes = Object.keys(nodeDefs).filter((fqname) => !nodeDefs[fqname].unavailable);
+	    const allNodeTypes = Object.keys(nodeDefs).filter((fqname) => !nodeDefs[fqname].unavailable && !(insideLoop && nodeDefs[fqname].isContainer)
+		&& !(hasTriggerNode && nodeDefs[fqname].type === 'trigger'));
 
-	    const types = allNodeTypes.map((fqname) => nodeDefs[fqname].type ).filter((value, index, self) => self.indexOf(value) === index)
+	    const groups = {};
+	    allNodeTypes.forEach((fqname) => {
+		const def = nodeDefs[fqname];
+		const key = def.category || def.type;
+		if (!groups[key])
+		    groups[key] = { label: def.categoryLabel || (def.type[0].toUpperCase() + def.type.slice(1)), order: def.categoryOrder ?? 99, items: [] };
+		groups[key].items.push(fqname);
+	    });
 
-	    types.forEach((typename) => {
-		if (hasTriggerNode && typename == 'trigger')
-		    return;
-
+	    Object.keys(groups).sort((a, b) => groups[a].order - groups[b].order).forEach((key) => {
 		const li = $('<li>', { class: 'mb-1 picker-group' });
 		const btn = $('<button>', {
 		    type: 'button',
 		    class: "btn btn-toggle d-inline-flex align-items-center border-0 text-muted",
 		    "data-bs-toggle": "collapse",
-		    "data-bs-target": "#" + typename + "-collapse",
+		    "data-bs-target": "#picker-" + key + "-collapse",
 		    "aria-expanded": true,
-		    "text": typename[0].toUpperCase() + typename.slice(1),
+		    "text": groups[key].label,
 		}).appendTo(li);
 
-		const collapse = $('<div>', { class: 'collapse show', id: typename + "-collapse", }).appendTo(li);
+		const collapse = $('<div>', { class: 'collapse show', id: "picker-" + key + "-collapse", }).appendTo(li);
 		const collapse_ul = $('<ul>', { class: "btn-toggle-nav list-group list-group-flush" }).appendTo(collapse);
-		allNodeTypes.filter((fqname) => nodeDefs[fqname].type === typename && !(insideLoop && nodeDefs[fqname].isContainer)).forEach((fqname) => {
+		groups[key].items.forEach((fqname) => {
 		    const def = nodeDefs[fqname];
-		    const search = [ def.name, def.label, def.type, fqname ].join(' ').toLowerCase();
+		    const advanced = def.audience === 'advanced';
+		    const search = [ def.name, def.label, def.type, def.categoryLabel || '', advanced ? 'advanced' : '', fqname ].join(' ').toLowerCase();
 		    //CLD: 2026-10-17T19:41:38+03:00: the step's label (was its name, e.g. `download` for Download File); the name when it has no label
-		    $('<li>', { class: 'list-group-item list-group-item-action picker-item d-flex align-items-center gap-2', 'data-fqname': fqname, 'data-search': search, draggable: true })
+		    const item = $('<li>', { class: 'list-group-item list-group-item-action picker-item d-flex align-items-center gap-2' + (advanced ? ' picker-advanced' : ''), 'data-fqname': fqname, 'data-search': search, draggable: true })
 			.html(`<span class="d-inline-flex align-items-center justify-content-center rounded-2 text-white" style="width:20px;height:20px;background:${def.color};font-size:11px;"><i class="bi ${def.icon}"></i></span>`)
 			.append(document.createTextNode(def.label || def.name))
 			.appendTo(collapse_ul);
-
-		})
+		    if (advanced)
+			item.append($('<span>', { class: 'badge text-bg-light border fw-normal ms-auto me-1', text: 'advanced' }));
+		});
 		li.appendTo(main_ul);
-	    })
+	    });
 	    main_ul.appendTo($(picker).find('.nodes-container'));
 	}
 
@@ -1932,10 +1947,12 @@ window.app.Workflow = (function() {
 		pick(e.currentTarget.dataset.fqname);
 	    });
 
-	    search.on('input', () => {
+	    //CLD: 2026-10-30T15:00:00+02:00: the advanced steps listed when the "Advanced" switch is on (User hide_advanced_steps, options.showAdvancedSteps); a search finds every step
+	    const filter = () => {
 		const q = search.val().trim().toLowerCase();
+		const showAdvanced = !!this.options.showAdvancedSteps;
 		picker.find('.picker-item').each(function() {
-		    this.classList.toggle('d-none', q !== '' && !this.dataset.search.includes(q));
+		    this.classList.toggle('d-none', q !== '' ? !this.dataset.search.includes(q) : (!showAdvanced && this.classList.contains('picker-advanced')));
 		});
 		picker.find('.picker-group').each(function() {
 		    this.classList.toggle('d-none', $(this).find('.picker-item').not('.d-none').length == 0);
@@ -1945,7 +1962,21 @@ window.app.Workflow = (function() {
 		});
 		picker.find('.picker-empty').toggleClass('d-none', visible().length > 0);
 		highlight(q !== '' ? visible().first() : null);
+	    };
+	    search.on('input', filter);
+
+	    const advancedSwitch = picker.find('.picker-advanced-switch');
+	    advancedSwitch.prop('checked', !!this.options.showAdvancedSteps);
+	    advancedSwitch.on('change', () => {
+		this.options.showAdvancedSteps = advancedSwitch.prop('checked');
+		filter();
+		fitPicker(picker);
+		search.trigger('focus');
+		$.ajax({ url: '/site/steps_view', method: 'POST', data: { show: this.options.showAdvancedSteps ? 1 : 0 }, dataType: 'json',
+		    headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content'), 'X-Requested-With': 'XMLHttpRequest' } })
+		    .fail((xhr) => console.warn('app.Workflow: the steps view was not saved', xhr.status));
 	    });
+	    filter();
 
 	    search.on('keydown', (e) => {
 		const list = visible();
