@@ -22,6 +22,23 @@ class WfNode extends \sys\NestedModel {
     public static $minHeight = 120;
     public static $isNote = false;
     public static $isContainer = false;
+    //CLD: 2026-10-30T15:00:00+02:00: how the designer's step picker presents the step (every step is available to every user): $audience basic / advanced (advanced: listed when
+    //the user shows the advanced steps, found by the search always), $category the picker's group (CATEGORIES; null: from $type - triggers, core: flow, app: data)
+    public static $audience = 'basic';
+    public static $category = null;
+
+    //CLD: 2026-10-30T15:00:00+02:00: the step picker's groups, in their order
+    const CATEGORIES = [
+	'trigger' => 'Triggers',
+	'flow' => 'Flow',
+	'data' => 'Data',
+	'email' => 'Email',
+	'web' => 'Web & files',
+	'google' => 'Google',
+	'microsoft' => 'Microsoft',
+	'ai' => 'AI',
+	'developer' => 'Developer',
+    ];
     //a step started by the daemon's scheduler on its schedule (config of models\WfSchedule); the class implements runScheduled()
     public static $scheduled = false;
     //outputs that follow the step's config (e.g. Switch: one per case): [ 'rows' => <config key of the rows>, 'label' => <row key of the
@@ -368,6 +385,10 @@ class WfNode extends \sys\NestedModel {
 	    $__class = $objDef['class'];
 
 	    $fqNodeName = $__class::$type . '::' . $__class::$name;
+	    //CLD: 2026-10-30T15:00:00+02:00: the picker's group (WfNode::$category, else from the type)
+	    $category = $__class::$category ?? ([ 'trigger' => 'trigger', 'core' => 'flow' ][$__class::$type] ?? 'data');
+	    if (!isset(self::CATEGORIES[$category]))
+		$category = 'data';
 
 	    $nodeDefs[$fqNodeName] = [
 		'objectName' => $objectName,
@@ -387,6 +408,11 @@ class WfNode extends \sys\NestedModel {
 		'outPorts' => $__class::$outPorts,
 		'isContainer' => $__class::$isContainer ?? false,
 		'isNote' => $__class::$isNote ?? false,
+		//CLD: 2026-10-30T15:00:00+02:00: the picker's presentation: audience (basic / advanced), group (key, label, position)
+		'audience' => $__class::$audience === 'advanced' ? 'advanced' : 'basic',
+		'category' => $category,
+		'categoryLabel' => self::CATEGORIES[$category],
+		'categoryOrder' => array_search($category, array_keys(self::CATEGORIES)),
 		'hasInitConfig' => (new \ReflectionMethod($__class, 'initConfig'))->getDeclaringClass()->getName() !== self::class,
 		//CLD: 2026-10-12T20:33:47+03:00: the class has its own startNow(): Run in the designer can start the workflow at this trigger
 		'canRun' => (new \ReflectionMethod($__class, 'startNow'))->getDeclaringClass()->getName() !== self::class,

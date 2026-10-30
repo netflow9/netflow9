@@ -23,6 +23,8 @@ abstract class NodeAppGoogle extends \models\WfNode {
     public static $type = 'app';
     public static $icon = 'bi-google';
     public static $color = 'var(--wf-color-app)';
+    //CLD: 2026-10-30T15:00:00+02:00: the step picker: the Google steps in Google
+    public static $category = 'google';
     public static $inputs = 1;
     public static $outputs = 1;
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];

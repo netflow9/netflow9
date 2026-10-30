@@ -27,6 +27,9 @@ class NodeAppFtp extends \models\WfNode {
     public static $label = 'FTP / SFTP';
     public static $icon = 'bi-hdd-network';
     public static $color = 'var(--wf-color-app)';
+    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step, in Web & files
+    public static $audience = 'advanced';
+    public static $category = 'web';
     public static $inputs = 1;
     public static $outputs = 1;
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];
