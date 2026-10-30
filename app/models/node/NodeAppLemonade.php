@@ -10,6 +10,8 @@
 namespace models\node;
 
 class NodeAppLemonade extends NodeAppOpenAI {
+    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step (a self-hosted server)
+    public static $audience = 'advanced';
     public static $name = 'lemonade';
     public static $label = 'Lemonade AI';
     public static $icon = 'bi-cup-straw';

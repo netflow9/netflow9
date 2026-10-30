@@ -196,12 +196,30 @@ class User extends \sys\BaseModel {
 		'perm:read' => 'nobody',
 		'perm:update' => 'nobody',
 		'showInForms' => false,
+	    ],
+	    //CLD: 2026-10-30T15:00:00+02:00: the designer's step picker lists the basic steps only (its "Advanced steps" switch: app.workflow.js); the advanced ones still found by its
+	    //search. New users: true (beforeSave); missing (the users before it): false, every step listed
+	    [
+		'key' => 'hide_advanced_steps',
+		'type' => 'checkbox',
+		'label' => 'Hide advanced steps',
+		'default' => false,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
 	    ]
 	];
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //CLD: 2026-10-30T12:00:00+02:00: new: the signed-in user's UI state kept ($set: last_project, sidebar_width, sidebar_collapsed)
+    //CLD: 2026-10-30T15:00:00+02:00: a new user's step picker starts with the basic steps only (User hide_advanced_steps)
+    public function beforeSave() {
+	parent::beforeSave();
+	if (!$this->exists())
+	    $this->hide_advanced_steps = true;
+    }
+
+    //CLD: 2026-10-30T12:00:00+02:00: new: the signed-in user's UI state kept ($set: last_project, sidebar_width, sidebar_collapsed, hide_advanced_steps)
     public static function rememberUi(array $set) {
 	if (\V::app()->user->isGuest || empty($set))
 	    return;

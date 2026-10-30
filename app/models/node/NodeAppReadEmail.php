@@ -21,6 +21,8 @@ class NodeAppReadEmail extends \models\WfNode {
     public static $label = 'Read emails (IMAP)';
     public static $icon = 'bi-envelope-arrow-down';
     public static $color = 'var(--wf-color-app)';
+    //CLD: 2026-10-30T15:00:00+02:00: the step picker: in Email
+    public static $category = 'email';
     public static $inputs = 1;
     public static $outputs = 1;
 

@@ -8,6 +8,8 @@ class NodeTriggerWebhook extends \models\WfNode {
     public static $label = 'Webhook';
     public static $icon = 'bi-broadcast';
     public static $color = 'var(--wf-color-trigger)';
+    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step
+    public static $audience = 'advanced';
     public static $inputs = 0;
     public static $outputs = 1;
 

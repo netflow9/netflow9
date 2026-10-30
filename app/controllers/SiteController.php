@@ -537,6 +537,19 @@ class SiteController extends \sys\BaseController {
 	$resp->sendJSON([ 'ok' => true ]);
     }
 
+    //CLD: 2026-10-30T15:00:00+02:00: new: the designer's step picker shows the advanced steps or not (`show`: 0 / 1), kept for the user (User hide_advanced_steps)
+    public function steps_view($req, $resp) {
+	if (\V::app()->user->isGuest)
+	    \V::app()->error(401, 'Unauthorized');
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	if (!isset($req->data['show']))
+	    \V::app()->error(400, 'Missing show');
+
+	\models\User::rememberUi([ 'hide_advanced_steps' => !filter_var($req->data['show'], FILTER_VALIDATE_BOOLEAN) ]);
+	$resp->sendJSON([ 'ok' => true ]);
+    }
+
     public function render_aside($req, $resp) {
 	if (\V::app()->user->isGuest)
 	    return;

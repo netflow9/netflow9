@@ -11,6 +11,9 @@
 namespace models\node;
 
 class NodeAppDownload extends NodeAppHttp {
+    //CLD: 2026-10-30T15:00:00+02:00: the step picker: a basic step, in Web & files (the HTTP Request it extends: advanced, Developer)
+    public static $audience = 'basic';
+    public static $category = 'web';
     public static $name = 'download';
     public static $label = 'Download File';
     public static $icon = 'bi-cloud-download';

@@ -1936,6 +1936,12 @@ class CheckCommand extends \sys\BaseController {
     //a private address unless http.steps.allow_private (app.env HTTP_STEPS_ALLOW_PRIVATE)
     private function suiteHttp() {
 	$H = \util\Http::class;
+	//CLD: 2026-10-30T15:00:00+02:00: the step picker's presentation (WfNode audience / category): every step in a known group; HTTP Request advanced, its basic variants not
+	$defs = \models\WfNode::getAll();
+	$this->check('steps: every step in a group of the picker', [], array_keys(array_filter($defs, fn($d) => !isset(\models\WfNode::CATEGORIES[$d['category']]))));
+	$this->check('steps: audience and group (HTTP Request, Download File, Read a web page, Webhook, Gmail, Ollama, If)',
+	    [ [ 'advanced', 'developer' ], [ 'basic', 'web' ], [ 'basic', 'web' ], [ 'advanced', 'trigger' ], [ 'basic', 'google' ], [ 'advanced', 'ai' ], [ 'basic', 'flow' ] ],
+	    array_map(fn($fq) => [ $defs[$fq]['audience'] ?? null, $defs[$fq]['category'] ?? null ], [ 'app::http', 'app::download', 'app::webpage', 'trigger::webhook', 'app::gmail', 'app::ollama', 'core::if' ]));
 	$this->check('http: public addresses', [ true, true, false, false, false, false, false, false, false, false ], array_map([ $H, 'isPublicIp' ],
 	    [ '8.8.8.8', '2606:4700::1111', '127.0.0.1', '10.1.2.3', '192.168.0.1', '100.64.0.1', '169.254.169.254', '::1', '::ffff:127.0.0.1', '64:ff9b::7f00:1' ]));
 	$this->check('http: a host of this machine is not public', [ [], 'the host localhost is not a public address' ], $H::publicAddresses('localhost'));
@@ -2029,6 +2035,14 @@ class CheckCommand extends \sys\BaseController {
 		\models\node\NodeAppHttp::withQuery('https://x.io/a', [ [ 'key', 'mine' ], [ 'b', '1' ], [ 'key', 'two' ], [ 'b', '2' ] ], [ 'key' => 'k' ]));
 	    [ $route, $v ] = $step('download', "{$base}/file", 'file');
 	    $this->check('Download File: allowed: the name from Content-Disposition, the size', [ 'success', 'report.csv', 8 ], [ $route, $v['filename'] ?? null, $v['size'] ?? null ]);
+	    //CLD: 2026-10-30T15:00:00+02:00: Read a web page: the title, the readable text (no head / script), or the HTML as it is; an error status on the error output
+	    [ $route, $v ] = $step('webpage', "{$base}/page", 'page', [ 'keep' => 'text' ]);
+	    $this->check('Read a web page: the title and the text of the page', [ 'success', 200, 'Check & page', "Hello\n\nFirst line", 'text/html; charset=utf-8' ],
+		[ $route, $v['status'] ?? null, $v['title'] ?? null, $v['content'] ?? null, $v['contentType'] ?? null ]);
+	    [ $route, $v ] = $step('webpage', "{$base}/page", 'page', [ 'keep' => 'html' ]);
+	    $this->check('Read a web page: the HTML as it is', [ 'success', true ], [ $route, str_starts_with((string)($v['content'] ?? ''), '<!doctype html>') ]);
+	    [ $route, $v ] = $step('webpage', "{$base}/status?code=404", 'page');
+	    $this->check('Read a web page: an error status on the error output', [ 'error', false, 'HTTP status 404' ], [ $route, $v['ok'] ?? null, $v['error'] ?? null ]);
 	} finally {
 	    \V::app()->config('http.steps.allow_private', $allow);
 	    foreach($files as $fid)

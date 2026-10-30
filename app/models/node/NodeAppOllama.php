@@ -15,6 +15,8 @@
 namespace models\node;
 
 class NodeAppOllama extends NodeAppAi {
+    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step (a self-hosted server)
+    public static $audience = 'advanced';
     public static $name = 'ollama';
     public static $label = 'Ollama';
     public static $icon = 'bi-robot';

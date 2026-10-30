@@ -353,6 +353,11 @@ class SysObjects {
 		'class' => 'models\node\NodeAppDownload',
 		'wfNode' => true,
 	    ],
+	    //CLD: 2026-10-30T15:00:00+02:00: Read a web page (the basic HTTP Request: a GET, the page's text or HTML)
+	    'NodeAppWebPage' => [
+		'class' => 'models\node\NodeAppWebPage',
+		'wfNode' => true,
+	    ],
 	    //CLD: 2026-10-20T16:00:00+03:00: FTP / SFTP (list or download files: filters, decryption, decompression, afterwards delete / move)
 	    'NodeAppFtp' => [
 		'class' => 'models\node\NodeAppFtp',

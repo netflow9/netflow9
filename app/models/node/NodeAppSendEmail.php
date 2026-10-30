@@ -17,6 +17,8 @@ class NodeAppSendEmail extends \models\WfNode {
     public static $label = 'Send email';
     public static $icon = 'bi-envelope-paper';
     public static $color = 'var(--wf-color-app)';
+    //CLD: 2026-10-30T15:00:00+02:00: the step picker: in Email
+    public static $category = 'email';
     public static $inputs = 1;
     public static $outputs = 1;
 
