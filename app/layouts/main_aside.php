@@ -299,7 +299,8 @@ $dd_items = implode('', $dd_items);
 	    </a>
 	    <?php endif; ?>
 	    <?php //CLD: 2026-10-31T11:05:39+02:00: the installation's services (util\Services::allowed: the owners; with the Admin plugin, its super-admins) ?>
-	    <?php if (\util\Services::allowed()): ?>
+	    <?php //CLD: 2026-10-31T19:30:00+02:00: only with the Admin plugin (its super-admins' page); without it the services are a tab of the account's settings ?>
+	    <?php if (\util\Services::adminPlugin() && \util\Services::allowed()): ?>
 	    <a href="<?= \V::app()->createUrl('/services/index') ?>" class="nav-link">
 		<i class="bi bi-gear-wide-connected"></i> Services
 	    </a>

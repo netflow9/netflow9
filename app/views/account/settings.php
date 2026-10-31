@@ -26,7 +26,8 @@ $this->pageTitle = 'Account::Settings';
 	<div class="flex-fill"></div>
     </div>
     <?php
-    $labels = [ 'general' => 'Settings', 'usage' => 'Usage' ];
+    //CLD: 2026-10-31T19:30:00+02:00: + Services (_services.php: $services; without the Admin plugin)
+    $labels = [ 'general' => 'Settings', 'usage' => 'Usage', 'services' => 'Services' ];
     $items = [];
     foreach($tabs as $t)
 	$items[$t] = [ 'label' => $labels[$t], 'href' => \V::app()->createUrl('/account/settings', [ '__tab' => $t ]) ];

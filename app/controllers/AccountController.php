@@ -12,8 +12,10 @@ class AccountController extends \sys\BaseController {
     }
 
     //CLD: 2026-10-31T11:32:07+02:00: two tabs (?__tab=): general (the settings, Account::update) and usage (was the action usage, Account::usage); the first one the user may see by default
+    //CLD: 2026-10-31T19:30:00+02:00: + services (the installation's services, util\Services): without the Admin plugin, for the account's owners (with it: the super-admins' page /services/index)
     public function settings($req, $resp) {
-	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'usage' => \V::app()->user->can('Account::usage') ]));
+	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'usage' => \V::app()->user->can('Account::usage'),
+	    'services' => !\util\Services::adminPlugin() && \util\Services::allowed() ]));
 	if (!$tabs)
 	    \V::app()->error(403, 'Unauthorized');
 	$tab = (string)($req->query['__tab'] ?? '');
@@ -21,6 +23,12 @@ class AccountController extends \sys\BaseController {
 	    $tab = $tabs[0];
 
 	$account = \V::app()->config('rt.account');
+
+	if ($tab === 'services') {
+	    $services = \util\Services::withStatus();
+	    $this->render('settings', compact('account', 'tab', 'tabs', 'services'));
+	    return;
+	}
 
 	if ($tab === 'usage') {
 	    $usage = \util\Tiers::usage($account);

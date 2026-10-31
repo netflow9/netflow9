@@ -20,6 +20,19 @@ class Services {
 	return $services->getArrayCopy();
     }
 
+    //CLD: 2026-10-31T19:30:00+02:00: the services, each with its `status` (status()): what the page shows (was ServicesController::index's own loop)
+    public static function withStatus() {
+	$r = [];
+	foreach(self::services() as $id => $s)
+	    $r[$id] = $s + [ 'status' => self::status($s) ];
+	return $r;
+    }
+
+    //CLD: 2026-10-31T19:30:00+02:00: where the services are managed: with the Admin plugin its super-admins' page (/services/index), without it a tab of the account's settings
+    public static function pageUrl() {
+	return self::adminPlugin() ? \V::app()->createUrl('/services/index') : \V::app()->createUrl('/account/settings', [ '__tab' => 'services' ]);
+    }
+
     //CLD: 2026-10-31T11:05:39+02:00: whether the signed-in user may see and manage the services: with the Admin plugin, a super-admin (as before: plugins\Admin\Plugin::isAdmin; its
     //2FA is required by the page); without it, the account's owners (ownerSignedIn)
     public static function allowed() {
