@@ -6,7 +6,8 @@
 return [
     //CLD: 2026-10-31T21:00:00+02:00: an installation that hosts many accounts: the administration (super-admins: the accounts, their plans, credits and tool servers, the
     //services), and as options (plugins/MultiTenant/config.php) the sign-up and the System AI; was the Admin, Registration and SystemAI plugins. First: the others add their sections
-    'MultiTenant',
+    //CLD: 2026-10-31T23:00:00+02:00: not listed here: it is kept in its own repository (toolmk/multitenant), cloned into app/plugins/MultiTenant; an installation that has it lists
+    //it first in plugins.local.php: 'MultiTenant',
     //CLD: 2026-10-19T21:10:00+03:00: inbound mail: the Email (inbound) trigger (was in the core); active only when Haraka is found
     'InboundMail',
     //CLD: 2026-10-22T22:00:00+03:00: the installation's tool servers for the AI steps (MCP servers run on this machine, e.g. a web browser), for the accounts the administrator enables
