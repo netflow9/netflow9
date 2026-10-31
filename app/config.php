@@ -58,15 +58,16 @@ function get_config($mode = 'web') {
 
 	'app.security.secret' => defined('APP_SECRET') ? APP_SECRET : null,
 	'mail.inbound_domain' => defined('MAIL_INBOUND_DOMAIN') ? MAIL_INBOUND_DOMAIN : null,
-	'mail.from' => defined('MAIL_FROM') ? MAIL_FROM : 'noreply@' . (defined('SMTP_DOMAIN') && SMTP_DOMAIN ? SMTP_DOMAIN : 'localhost'),
+	//CLD: 2026-10-31T12:12:05+02:00: an empty MAIL_FROM (app.env.example's placeholder) is as none
+	'mail.from' => defined('MAIL_FROM') && MAIL_FROM !== '' ? MAIL_FROM : 'noreply@' . (defined('SMTP_DOMAIN') && SMTP_DOMAIN ? SMTP_DOMAIN : 'localhost'),
 	//CLD: 2026-10-30T15:00:00+02:00: app.executions.max_sync (MAX_SYNC_EXECUTIONS) and app.executions.sync_timeout (SYNC_EXECUTION_TIMEOUT) removed: every execution runs in the daemon
 	//the HTTP Request and Download File steps may call this machine and its network (private / internal addresses): HTTP_STEPS_ALLOW_PRIVATE in app.env
 	//(default false: public addresses only, checked by util\Http for each redirect too)
 	'http.steps.allow_private' => defined('HTTP_STEPS_ALLOW_PRIVATE') && filter_var(HTTP_STEPS_ALLOW_PRIVATE, FILTER_VALIDATE_BOOLEAN),
 	'app.base_url' => defined('BASE_URL') ? BASE_URL : null,
 	/*
-	    the Assistant's System provider (the core's Assistant, util\WorkflowAssistant: the server this installation offers to every account;
-		off without ASSISTANT_PROVIDER / ASSISTANT_MODEL):
+	    the System AI (the SystemAI plugin: the server this installation offers to every account, for the Assistant's provider System and the AI steps;
+		off without SYSTEM_AI_PROVIDER / SYSTEM_AI_MODEL; CLD: 2026-10-31T12:12:05+02:00: was described as the Assistant's, ASSISTANT_*):
 		    its provider (anthropic, openai, gemini, ollama, lemonade),
 		    Server URL (empty: the provider's own), key, model, effort (Claude),
 		    and the prices (USD per 1M tokens; empty: the known prices of Claude models)

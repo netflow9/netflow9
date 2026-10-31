@@ -101,10 +101,12 @@ class EmailSend {
 
 	if (!defined('SMTP_FROM_DOMAIN'))
 	    define('SMTP_FROM_DOMAIN', gethostname());
+	//CLD: 2026-10-31T12:12:05+02:00: an empty SMTP_FROM_DOMAIN (app.env.example's placeholder) is as none: the host name
+	$helo = SMTP_FROM_DOMAIN !== '' ? SMTP_FROM_DOMAIN : gethostname();
 
 	//try sending hello
         try {
-    	    $smtp->hello(SMTP_FROM_DOMAIN);
+    	    $smtp->hello($helo);
             //Disable TLS if server does not offer STARTTLS
             if (!$smtp->getServerExt('STARTTLS'))
         	$tls = false;
@@ -116,7 +118,7 @@ class EmailSend {
             	    return -1;
                 }
                 // We must resend EHLO after TLS negotiation
-                $smtp->hello(SMTP_FROM_DOMAIN);
+                $smtp->hello($helo);
             }
 
             if ($smtp_auth) {
