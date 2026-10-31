@@ -45,10 +45,11 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-24T10:28:12+03:00: + Google / Microsoft by tier
     //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
     //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
+    //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
     //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -4335,6 +4336,227 @@ class CheckCommand extends \sys\BaseController {
 		[ '192.0.2.127', '192.0.2.128', '2001:db8:1::5', '198.51.100.7', '198.51.100.8', 'x' ]));
 	} finally {
 	    $_SERVER = $server;
+	}
+    }
+
+    //CLD: 2026-11-01T00:30:00+02:00: the Bitdefender GravityZone integration against a fake console (commands/tests/GravityZoneTestServer.php; util\GravityZone::$testing: http, no address guard):
+    //util\Http's private network addresses, the client (both keys, errors, 429, pages, the access URL), the credential's test, the steps' calls (their parameters as sent, Other
+    //parameters, the `error` output, a report saved in Files), the event trigger (publishing sets the push service, unpublishing turns it off; the events received by its address)
+    private function suiteGravityzone() {
+	$H = \util\Http::class;
+	$G = \util\GravityZone::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+
+	//util\Http: private network addresses
+	$this->check('gravityzone: private network addresses (not loopback, link-local, this machine; IPv4-mapped too)', [ true, true, true, true, false, false, false, false, false ],
+	    array_map([ $H, 'isPrivateNetworkIp' ], [ '10.1.2.3', '172.20.0.1', '192.168.5.5', 'fd00::1', '127.0.0.1', '169.254.169.254', '::1', '8.8.8.8', \util\Http::ownAddresses()[2] ?? '127.0.0.2' ]));
+	$this->check('gravityzone: the guard with private addresses: loopback still refused', true,
+	    str_contains((string)$H::request('GET', 'http://127.0.0.1:1/', [ 'public' => true, 'private' => true ])['error'], 'link-local and reserved ones are refused'));
+	$this->check('gravityzone: the access URL as given, without a pasted /v1.0/jsonrpc/...', [ 'https://cloud.gravityzone.bitdefender.com/api', 'https://gz.local/api' ],
+	    [ $G::baseUrl('https://cloud.gravityzone.bitdefender.com/api/'), $G::baseUrl(' https://gz.local/api/v1.0/jsonrpc/network ') ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-gz-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('gravityzone', 'GravityZoneTestServer.php', $dir, [ 'GZ_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$G::$testing = true;
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$creds = [];
+	$wfs = [];
+	$files = [];
+	$account = $om->findById('Account', (string)$this->account->_id);
+	$privateBefore = (bool)($account->allow_private_addresses ?? false);
+	try {
+	    $make = function($key, $type = 'personal', $more = []) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialGravityZone', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: GravityZone ' . uniqid(),
+		    'accessUrl' => "https://127.0.0.1:{$port}/api", 'keyType' => $type, 'apiKey' => $key ] + $more);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('gravityzone: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		//the fake console is http (the form takes https only)
+		$c->accessUrl = "http://127.0.0.1:{$port}/api";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialGravityZone', (string)$c->_id);
+	    };
+	    $cred = $make('pkey');
+	    $service = $make('skey', 'service');
+	    $wrong = $make('nope');
+	    if (!$cred || !$service || !$wrong)
+		return;
+	    $gz = fn($c, $timeout = 20) => $c->client($this->account->_id, $timeout);
+	    $thrown = function(\Closure $f) {
+		try {
+		    $f();
+		    return 'no error';
+		} catch (\Throwable $e) {
+		    return $e->getMessage();
+		}
+	    };
+
+	    //the credential
+	    $this->check('gravityzone: the form: an https:// access URL, the key required', [ [ 'accessUrl', 'apiKey' ] ],
+		[ array_values(array_intersect([ 'accessUrl', 'apiKey' ], array_keys((array)(function() use ($om) { $c = $om->create('CredentialGravityZone', [ 'name' => 'x', 'accessUrl' => 'http://gz.local/api' ]); $c->validates(); return $c->errors(); })()))) ]);
+	    $this->check('gravityzone: Test: the key\'s APIs (personal key: Basic key:, service key: X-API-Key); a wrong key refused', [
+		'connected to 127.0.0.1; APIs of the key: network, incidents, reports, push', true, [ 'Basic ' . base64_encode('pkey:'), null ], [ null, 'skey' ] ], [
+		$cred->test(), str_contains($thrown(fn() => $wrong->test()), 'The API key is not valid'),
+		(function() use ($requests) { $r = $requests(); return [ $r[0]['auth'] ?? null, $r[0]['apiKey'] ?? null ]; })(),
+		(function() use ($service, $requests) { $service->test(); $r = $requests(); return [ $r[0]['auth'] ?? null, $r[0]['apiKey'] ?? null ]; })() ]);
+
+	    //the client
+	    $call = $gz($cred)->call('licensing', 'getLicenseInfo', [ 'a' => 1 ], '1.2');
+	    $sent = $requests()[0]['request'] ?? [];
+	    $this->check('gravityzone: a call: JSON-RPC 2.0 to v<version>/jsonrpc/<area>, its result', [ [ 'method' => 'getLicenseInfo', 'params' => [ 'a' => 1 ], 'area' => 'licensing', 'version' => '1.2' ], '2.0', true ],
+		[ $call, $sent['jsonrpc'] ?? null, is_string($sent['id'] ?? null) ]);
+	    $this->check('gravityzone: errors: GravityZone\'s message and details; bad API / method names refused before any call', [
+		'failing: Invalid params: The endpointId is not valid (code -32602)', 'not an API name: `net work`', 'not a method name: `get-x`' ], [
+		$thrown(fn() => $gz($cred)->call('network', 'failing')), $thrown(fn() => $gz($cred)->call('net work', 'x')), $thrown(fn() => $gz($cred)->call('network', 'get-x')) ]);
+	    $t = microtime(true);
+	    $this->check('gravityzone: 429: waited for Retry-After, tried once more', [ [ 'ok' => true ], true ], [ $gz($cred)->call('network', 'limited'), microtime(true) - $t >= 0.9 ]);
+	    $requests();
+	    [ $items, $total, $truncated ] = $gz($cred)->all('network', 'getEndpointsList', [], 120);
+	    $pages = array_map(fn($r) => [ $r['request']['params']['page'], $r['request']['params']['perPage'] ], $requests());
+	    [ $all, $total2, $truncated2 ] = $gz($cred)->all('network', 'getEndpointsList', [], 1000);
+	    $requests();
+	    $this->check('gravityzone: pages: 120 of 250 (truncated, 2 pages read); all 250 (3 pages)', [ [ 120, 250, true, 'ep0119', [ [ 1, 100 ], [ 2, 100 ] ] ], [ 250, 250, false, 'ep0249' ] ],
+		[ [ count($items), $total, $truncated, end($items)['id'], $pages ], [ count($all), $total2, $truncated2, end($all)['id'] ] ]);
+
+	    //the account's private addresses (the request options)
+	    $account->allow_private_addresses = false;
+	    $account->save();
+	    $off = $gz($cred)->options()['private'];
+	    $account->allow_private_addresses = true;
+	    $account->save();
+	    $on = $gz($cred)->options()['private'];
+	    $cred->trustCertificate = true;
+	    $this->check('gravityzone: private addresses follow the account\'s setting; the certificate the credential\'s', [ false, true, true ], [ $off, $on, $gz($cred)->options()['insecure'] ]);
+	    $cred->trustCertificate = false;
+
+	    //the steps in workflows: the parameters as sent
+	    $id = (string)$cred->_id;
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $id, $requests) {
+		$requests();
+		$exe = $this->runFlow("gz {$fq}", [ $n('m', 'trigger::manual'), $n('g', $fq, $cfg + [ 'credential' => $id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'g'), $e('e2', 'g', 'err', 1) ], $vars);
+		return [ $exe, array_map(fn($r) => [ $r['area'] . '.' . $r['request']['method'], $r['request']['params'] ], $requests()) ];
+	    };
+	    [ $exe, $sent ] = $step('app::gz-endpoints', [ 'operation' => 'list', 'managed' => 'managed', 'groupId' => '{{ grp }}', 'maxItems' => 30, 'variable' => 'eps' ], [ 'grp' => 'g1' ]);
+	    $eps = $exe?->getVariable('eps');
+	    $this->check('gravityzone: Endpoints list: of a group, managed, with subgroups; at most 30', [ 'end', 30, 250, true, [ 'network.getEndpointsList',
+		[ 'parentId' => 'g1', 'filters' => [ 'depth' => [ 'allItemsRecursively' => true ] ], 'isManaged' => true, 'page' => 1, 'perPage' => 30 ] ] ],
+		[ $exe?->state, $eps['count'] ?? null, $eps['total'] ?? null, $eps['truncated'] ?? null, $sent[0] ?? null ]);
+	    [ $exe, $sent ] = $step('app::gz-endpoints', [ 'operation' => 'scan', 'targetIds' => '{{ eps }}', 'scanType' => '2', 'taskName' => 'Nightly',
+		'params' => '{"customScanSettings": {"scanDepth": 1}}' ], [ 'eps' => [ [ 'id' => 'ep1' ], [ 'id' => 'ep2' ] ] ]);
+	    $this->check('gravityzone: Endpoints scan: targets from a list of objects, the type as a number, Other parameters added', [ 'end', [ 'network.createScanTask',
+		[ 'targetIds' => [ 'ep1', 'ep2' ], 'type' => 2, 'name' => 'Nightly', 'customScanSettings' => [ 'scanDepth' => 1 ] ] ] ], [ $exe?->state, $sent[0] ?? null ]);
+	    [ $exe, $sent ] = $step('app::gz-incidents', [ 'operation' => 'status', 'kind' => 'extendedIncidents', 'incidentId' => 'inc9', 'status' => '4' ]);
+	    [ $exe2, $sent2 ] = $step('app::gz-incidents', [ 'operation' => 'isolate', 'endpointId' => 'ep7' ]);
+	    $this->check('gravityzone: Incidents: a status change, an isolation', [ [ 'incidents.changeIncidentStatus', [ 'type' => 'extendedIncidents', 'incidentId' => 'inc9', 'status' => 4 ] ],
+		[ 'incidents.createIsolateEndpointTask', [ 'endpointId' => 'ep7' ] ] ], [ $sent[0] ?? null, $sent2[0] ?? null ]);
+	    [ $exe, $sent ] = $step('app::gz-blocklist', [ 'operation' => 'add', 'hashType' => '2', 'hashes' => "D41D8CD98F00B204E9800998ECF8427E\n0cc175b9c0f1b6a831c399e269772661", 'source' => 'IOC feed' ]);
+	    [ $bad, $none ] = $step('app::gz-blocklist', [ 'operation' => 'add', 'hashType' => '1', 'hashes' => 'd41d8cd98f00b204e9800998ecf8427e' ]);
+	    $this->check('gravityzone: Blocklist: MD5 hashes (lower case) with the note; a hash of the wrong kind: the `error` output, nothing sent', [
+		[ 'incidents.addToBlocklist', [ 'hashType' => 2, 'hashList' => [ 'd41d8cd98f00b204e9800998ecf8427e', '0cc175b9c0f1b6a831c399e269772661' ], 'sourceInfo' => 'IOC feed' ] ], 'error', [], true ],
+		[ $sent[0] ?? null, $bad?->getVariable('route'), $none, str_contains((string)self::logLine($bad, 'GravityZone Blocklist add: '), 'not a SHA-256 hash') ]);
+	    [ $exe, $sent ] = $step('app::gz-quarantine', [ 'operation' => 'restore', 'itemIds' => 'q1, q2', 'location' => 'C:\\Restored', 'exclusion' => true ]);
+	    [ $exe2, $sent2 ] = $step('app::gz-investigation', [ 'operation' => 'kill', 'endpointId' => 'ep3', 'processId' => '4242' ]);
+	    $this->check('gravityzone: Quarantine restore (quarantine/computers), Investigation kill', [
+		[ 'quarantine/computers.createRestoreQuarantineItemTask', [ 'quarantineItemsIds' => [ 'q1', 'q2' ], 'addExclusionInPolicy' => true, 'locationToRestore' => 'C:\\Restored' ] ],
+		[ 'investigation.killProcess', [ 'endpointId' => 'ep3', 'processId' => 4242 ] ] ], [ $sent[0] ?? null, $sent2[0] ?? null ]);
+	    [ $exe, $sent ] = $step('app::gz-reports', [ 'operation' => 'download', 'reportId' => 'r1', 'variable' => 'rep' ]);
+	    $rep = $exe?->getVariable('rep');
+	    foreach((array)($rep['files'] ?? []) as $f)
+		if ($file = $om->findOne('File', [ '_id' => $f['id'] ]))
+		    $files[] = $file;
+	    $this->check('gravityzone: Reports download: the ZIP unpacked, its CSV saved in Files (an .exe left out)', [ 'end', 1, 'endpoints.csv', 20, "name,status\nPC-1,ok\n" ],
+		[ $exe?->state, $rep['count'] ?? null, $rep['files'][0]['filename'] ?? null, $rep['files'][0]['size'] ?? null, isset($files[0]) ? $files[0]->getContents() : null ]);
+	    [ $exe, $sent ] = $step('app::gz-api', [ 'area' => 'licensing', 'method' => 'getMonthlyUsage', 'callParams' => '{"targetMonth": "{{ month }}"}', 'variable' => 'usage' ], [ 'month' => '10/2026' ]);
+	    [ $err, ] = $step('app::gz-api', [ 'area' => 'network', 'method' => 'failing' ]);
+	    $this->check('gravityzone: API: any method, its parameters with expressions; GravityZone\'s error: the `error` output', [
+		[ 'method' => 'getMonthlyUsage', 'params' => [ 'targetMonth' => '10/2026' ], 'area' => 'licensing', 'version' => '1.0' ], 'error' ],
+		[ $exe?->getVariable('usage'), $err?->getVariable('route') ]);
+	    $this->check('gravityzone: a step without a credential of the project refused', true,
+		str_contains(implode(' ', $this->errorsOf('gz nocred', [ $n('m', 'trigger::manual'), $n('g', 'app::gz-endpoints', [ 'credential' => '000000000000000000000000' ]), $e('e1', 'm', 'g') ])), 'GravityZone credential'));
+
+	    //the event trigger: publishing / unpublishing (the push service), the events received
+	    $init = \models\node\NodeTriggerGravityZone::initConfig();
+	    $wf = $this->workflow('gz event', [ $n('t', 'trigger::gravityzone', $init + [ 'credential' => $id, 'connect' => true, 'events' => [ 'av', 'new-incident' ], 'runs' => 'each', 'variable' => 'ev' ]),
+		$n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ev.module }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('gravityzone: the event trigger\'s workflow is valid; its secret kept', [ true, $init['secret'] ], [ $wf->validates(), $wf->nodes['t']['config']['secret'] ?? null ]);
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $version = $om->create('WfVersion', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'number' => 1, 'name' => (string)$wf->name, 'nodes' => $wf->nodes ]);
+	    $version->save();
+	    $wf->version = $version->_id;
+	    $wf->status = \models\Workflow::PUBLISHED;
+	    $wf->save();
+	    $hooks = new \ReflectionMethod(\controllers\WorkflowController::class, 'publishHooks');
+	    $published = $hooks->invoke(null, $wf, $version, null);
+	    $push = json_decode((string)@file_get_contents("{$dir}/push.json"), true);
+	    $this->check('gravityzone: publishing sets the push service: jsonRPC to the step\'s address, its secret, the event types chosen', [
+		[ 'GravityZone sends its events to this workflow (2 event types)' ], 1, 'jsonRPC', $init['url'], 'Bearer ' . $init['secret'], [ 'av' => true, 'new-incident' => true ] ],
+		[ $published, $push['status'] ?? null, $push['serviceType'] ?? null, $push['serviceSettings']['url'] ?? null, $push['serviceSettings']['authorization'] ?? null, $push['subscribeToEventTypes'] ?? null ]);
+
+	    //the address: a POST to this installation's web server (skipped when it cannot be reached from here)
+	    $post = function($body, $secret) use ($init) {
+		$url = $init['url'];
+		$host = (string)parse_url($url, PHP_URL_HOST);
+		$ch = curl_init($url);
+		curl_setopt_array($ch, [ CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode($body), CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+		    CURLOPT_HTTPHEADER => [ 'Content-Type: application/json', 'Authorization: Bearer ' . $secret ], CURLOPT_RESOLVE => [ "{$host}:443:127.0.0.1" ],
+		    CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0 ]);
+		$answer = curl_exec($ch);
+		$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+		curl_close($ch);
+		return [ $status, json_decode((string)$answer, true) ];
+	    };
+	    $batch = [ 'jsonrpc' => '2.0', 'method' => 'addEvents', 'id' => 'b1', 'params' => [ 'events' => [
+		[ 'module' => 'av', 'computer_name' => 'PC-1', 'malware_name' => 'EICAR' ], [ 'module' => 'fw', 'computer_name' => 'PC-2' ], [ 'module' => 'new-incident', 'incident_id' => 'i1' ] ] ] ];
+	    [ $status ] = $post($batch, 'wrong');
+	    if ($status === 0) {
+		echo "  skipped: the event trigger's address (this installation's web server cannot be reached from here)\n";
+	    } else {
+		$before = $om->count('WfExecution', [ 'wf' => $wf->_id ]);
+		[ $ok, $answer ] = $post($batch, $init['secret']);
+		$runs = iterator_to_array($om->find('WfExecution', [ 'wf' => $wf->_id, 'trigger' => 'gravityzone' ]), false);
+		$got = array_map(fn($x) => [ $x->getVariable('ev')['module'] ?? null, $x->getVariable('ev')['computer_name'] ?? ($x->getVariable('ev')['incident_id'] ?? null) ], $runs);
+		sort($got);
+		$this->check('gravityzone: the address: a wrong secret refused (no run); the events of the chosen types: one run each (fw left out), answered 200', [
+		    401, 0, 200, [ 'received' => 3, 'runs' => 2 ], [ [ 'av', 'PC-1' ], [ 'new-incident', 'i1' ] ] ], [ $status, $before, $ok, $answer['result'] ?? null, $got ]);
+		foreach($runs as $x)
+		    $x->delete();
+	    }
+
+	    $unpublished = $hooks->invoke(null, $wf, null, $version);
+	    $push = json_decode((string)@file_get_contents("{$dir}/push.json"), true);
+	    $this->check('gravityzone: unpublishing turns the push service off (it still pointed here)', [ [ 'GravityZone no longer sends its events here' ], 0, $init['url'] ],
+		[ $unpublished, $push['status'] ?? null, $push['serviceSettings']['url'] ?? null ]);
+	} finally {
+	    $G::$testing = false;
+	    $account->allow_private_addresses = $privateBefore;
+	    $account->save();
+	    foreach($creds as $c)
+		$c->delete();
+	    foreach($files as $f)
+		$f->delete();
+	    foreach($wfs as $wf)
+		foreach($om->find('WfVersion', [ 'wf' => $wf->_id ]) as $v)
+		    $v->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
 	}
     }
 

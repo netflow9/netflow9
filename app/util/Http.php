@@ -22,6 +22,9 @@
 	redirects       how many redirects are followed (default 0); 303 (and 301 / 302 of a POST) continue as GET without a body; Authorization / Cookie dropped for another host
 	https           https:// only (redirects too)
 	public          the public-address guard
+	private         with `public`: addresses of a private network (10/8, 172.16/12, 192.168/16, 100.64/10, fc00::/7) are accepted too; never this machine (its own
+	                addresses, loopback), link-local or reserved ones (CLD: 2026-11-01T00:30:00+02:00: on-premises servers, e.g. a GravityZone console: the account's allow_private_addresses)
+	insecure        the server's TLS certificate is not checked (a self-signed one) (CLD: 2026-11-01T00:30:00+02:00)
 	compressed      accept gzip / deflate / br (decoded)
 
     The answer: ok (no error, status 1..399), status, error (null when there is an answer), tooLarge, headers [ lower-case name => value ] (the last of a repeated one),
@@ -69,7 +72,9 @@ class Http {
 		break;
 	    }
 	    $follow = $hop < $redirects && $upload === null;
-	    $answer = self::once($method, $r['url'], $headers, $body, $upload, $sink, $maxBytes, $https, !empty($o['public']), !empty($o['compressed']), $left, $connectTimeout, $follow);
+	    //CLD: 2026-11-01T00:30:00+02:00: + private, insecure
+	    $answer = self::once($method, $r['url'], $headers, $body, $upload, $sink, $maxBytes, $https, !empty($o['public']) ? (!empty($o['private']) ? 'private' : 'public') : false,
+		!empty($o['compressed']), $left, $connectTimeout, $follow, !empty($o['insecure']));
 	    $location = $answer['headers']['location'] ?? null;
 	    $r = array_merge($r, $answer);
 	    if ($answer['error'] !== null || $location === null || !in_array($answer['status'], self::REDIRECT_STATUSES, true) || !$follow)
@@ -120,7 +125,8 @@ class Http {
     }
 
     //the addresses $host resolves to, when all are public: [ ips, null ]; else [ [], the reason ]
-    public static function publicAddresses($host) {
+    //CLD: 2026-11-01T00:30:00+02:00: + $private: addresses of a private network accepted too (isPrivateNetworkIp)
+    public static function publicAddresses($host, $private = false) {
 	$host = trim((string)$host, '[]');
 	if ($host === '')
 	    return [ [], 'no host' ];
@@ -133,10 +139,55 @@ class Http {
 		return [ [], "the host {$host} is not found" ];
 	}
 	foreach($ips as $ip) {
-	    if (!self::isPublicIp($ip))
-		return [ [], "the host {$host} is not a public address" ];
+	    if (!self::isPublicIp($ip) && !($private && self::isPrivateNetworkIp($ip)))
+		return [ [], "the host {$host} is not " . ($private ? 'a public or private network address (this machine, link-local and reserved ones are refused)' : 'a public address') ];
 	}
 	return [ $ips, null ];
+    }
+
+    //CLD: 2026-11-01T00:30:00+02:00: an address of a private network (RFC 1918, shared 100.64/10, IPv6 unique local fc00::/7), not one of this machine's own (its interfaces), not loopback,
+    //link-local or reserved; IPv4-mapped IPv6 by its IPv4 address
+    public static function isPrivateNetworkIp($ip) {
+	$bin = @inet_pton((string)$ip);
+	if ($bin === false)
+	    return false;
+	if (strlen($bin) === 16 && str_starts_with($bin, str_repeat("\0", 10) . "\xff\xff"))
+	    return self::isPrivateNetworkIp(inet_ntop(substr($bin, 12)));
+	if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_RES_RANGE))
+	    return false;
+	$in = function($cidr) use ($bin) {
+	    [ $net, $bits ] = explode('/', $cidr);
+	    $n = inet_pton($net);
+	    if (strlen($n) !== strlen($bin))
+		return false;
+	    $bytes = intdiv((int)$bits, 8);
+	    $rest = (int)$bits % 8;
+	    if (substr($n, 0, $bytes) !== substr($bin, 0, $bytes))
+		return false;
+	    return $rest === 0 || ((ord($n[$bytes]) ^ ord($bin[$bytes])) & (0xff << (8 - $rest)) & 0xff) === 0;
+	};
+	if (!array_filter([ '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10', 'fc00::/7' ], $in))
+	    return false;
+	return !in_array(inet_ntop($bin), self::ownAddresses(), true);
+    }
+
+    //CLD: 2026-11-01T00:30:00+02:00: this machine's addresses (its interfaces), normalized (inet_ntop)
+    public static function ownAddresses() {
+	static $own = null;
+	if ($own === null) {
+	    $own = [];
+	    foreach(function_exists('net_get_interfaces') ? (array)@net_get_interfaces() : [] as $if) {
+		foreach((array)($if['unicast'] ?? []) as $u) {
+		    $b = isset($u['address']) ? @inet_pton((string)$u['address']) : false;
+		    if ($b !== false)
+			$own[] = inet_ntop($b);
+		}
+	    }
+	    foreach(@gethostbynamel((string)gethostname()) ?: [] as $a)
+		$own[] = inet_ntop(inet_pton($a));
+	    $own = array_values(array_unique($own));
+	}
+	return $own;
     }
 
     //an address of the internet (not this machine, a private network, link-local, reserved, ...); NAT64 (64:ff9b::/96) by the IPv4 address it holds
@@ -152,7 +203,8 @@ class Http {
     // ------------------------------------------------------------------------------------
 
     //one exchange (no redirect followed): the answer's status, error, tooLarge, headers, headerList, body, size, contentType, mime; $follow: a redirect's body is not kept (it is followed)
-    protected static function once($method, $url, array $headers, $body, $upload, $sink, $maxBytes, $https, $public, $compressed, $timeoutMs, $connectTimeout, $follow) {
+    //CLD: 2026-11-01T00:30:00+02:00: $public: false, 'public' or 'private' (private network addresses accepted too); + $insecure: the certificate not checked
+    protected static function once($method, $url, array $headers, $body, $upload, $sink, $maxBytes, $https, $public, $compressed, $timeoutMs, $connectTimeout, $follow, $insecure = false) {
 	$r = [ 'status' => 0, 'error' => null, 'tooLarge' => false, 'headers' => [], 'headerList' => [], 'body' => '', 'size' => 0, 'contentType' => '', 'mime' => '' ];
 	$parts = parse_url($url);
 	$scheme = strtolower((string)($parts['scheme'] ?? ''));
@@ -170,7 +222,7 @@ class Http {
 	];
 	if ($public) {
 	    //the address checked is the one connected to (pinned: no second lookup)
-	    [ $ips, $why ] = self::publicAddresses($parts['host']);
+	    [ $ips, $why ] = self::publicAddresses($parts['host'], $public === 'private');
 	    if ($why !== null) {
 		$r['error'] = $why;
 		return $r;
@@ -183,6 +235,10 @@ class Http {
 	}
 	if ($compressed)
 	    $opts[CURLOPT_ENCODING] = '';
+	if ($insecure) {
+	    $opts[CURLOPT_SSL_VERIFYPEER] = false;
+	    $opts[CURLOPT_SSL_VERIFYHOST] = 0;
+	}
 
 	if ($method === 'GET')
 	    $opts[CURLOPT_HTTPGET] = true;

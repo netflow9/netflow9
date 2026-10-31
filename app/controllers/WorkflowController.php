@@ -268,6 +268,10 @@ class WorkflowController extends \sys\BaseController {
 		$this->redirect('/workflow/index', $params);
 	    }
 	    $this->addToast('success', 'Published', (string)$version . ' is published: its trigger starts runs of this version');
+	    //CLD: 2026-11-01T00:30:00+02:00: the steps' own publishing work (e.g. GravityZone event: its push service), their messages as toasts; the triggers of the version replaced that the new
+	    //one does not have: their unpublishing work
+	    foreach(self::publishHooks($wf, $version, $active) as $message)
+		$this->addToast('info', 'Published', $message);
 	    $this->addEvent('sidebar::refresh');
 	    $this->redirect('/workflow/index', $params);
 	}
@@ -282,12 +286,40 @@ class WorkflowController extends \sys\BaseController {
 	    \V::app()->error(405, 'Method not allowed');
 	$wf = $this->findWorkflow('Workflow::publish');
 	$wf->status = \models\Workflow::DRAFT;
-	if ($wf->save())
+	if ($wf->save()) {
 	    $this->addToast('success', 'Unpublished', 'The trigger of this workflow no longer starts runs');
+	    //CLD: 2026-11-01T00:30:00+02:00: the steps' own unpublishing work (e.g. GravityZone event: its push service off)
+	    foreach(self::publishHooks($wf, null, $wf->publishedVersion()) as $message)
+		$this->addToast('info', 'Unpublished', $message);
+	}
 	else
 	    $this->addToast('error', 'Not changed', 'The workflow could not be saved');
 	$this->addEvent('sidebar::refresh');
 	$this->redirect('/workflow/index', [ 'id' => (string)$wf->_id ]);
+    }
+
+    //CLD: 2026-11-01T00:30:00+02:00: the steps of $new (a version published; null: unpublished) with an onPublish($wf, $node), and those of $old (the version replaced) not in $new with an
+    //onUnpublish($wf, $node), called; their messages (an error stops nothing: the workflow is published / unpublished already)
+    private static function publishHooks($wf, $new, $old) {
+	$classOf = function($n) {
+	    $def = empty($n['isNode']) ? null : (\models\WfNode::getAll()[$n['fqname'] ?? ''] ?? null);
+	    return $def ? \V::app()->om->getObjectClass($def['objectName']) : null;
+	};
+	$messages = [];
+	$kept = [];
+	foreach(($new && is_array($new->nodes)) ? $new->nodes : [] as $n) {
+	    $class = $classOf($n);
+	    if ($class && method_exists($class, 'onPublish')) {
+		$kept[(string)($n['config']['token'] ?? $n['wfid'] ?? '')] = true;
+		$messages[] = $class::onPublish($wf, $n);
+	    }
+	}
+	foreach(($old && is_array($old->nodes)) ? $old->nodes : [] as $n) {
+	    $class = $classOf($n);
+	    if ($class && method_exists($class, 'onUnpublish') && !isset($kept[(string)($n['config']['token'] ?? $n['wfid'] ?? '')]))
+		$messages[] = $class::onUnpublish($wf, $n);
+	}
+	return array_values(array_filter($messages, fn($m) => is_string($m) && $m !== ''));
     }
 
     //CLD: 2026-10-11T13:51:42+03:00: the versions dialog (newest first): view, publish again, copy into the draft. Workflow::read

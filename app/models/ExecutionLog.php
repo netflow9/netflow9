@@ -36,6 +36,8 @@ class ExecutionLog extends \sys\BaseModel {
 	//CLD: 2026-10-26T10:06:24+02:00: killed by a user (WfExecution::kill, the Overview)
 	'execution.cancel' => 'Execution killed',
 	'webhook.refused' => 'Webhook refused',
+	//CLD: 2026-11-01T00:30:00+02:00: a GravityZone event push refused, or events left out (GravityzoneController)
+	'gravityzone.refused' => 'GravityZone event refused',
 	'job.failed' => 'Job failed',
     ];
 
