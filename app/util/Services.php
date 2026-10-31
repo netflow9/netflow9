@@ -43,6 +43,26 @@ class Services {
 	return in_array('Admin', (array)\V::app()->config('modules'), true);
     }
 
+    //CLD: 2026-10-31T18:00:00+02:00: the systemd unit of this installation's service $name (daemon, playwright): nfn-<name>-<the app's user> (the owner of app/, as
+    //scripts/4_services-install.sh and scripts/playwright-mcp.sh name them), so that several installations on one server (live, development) each have theirs; was nfn-<name>.service
+    public static function unit($name) {
+	$owner = @fileowner(BASE . '/app');
+	$user = $owner !== false && function_exists('posix_getpwuid') ? (posix_getpwuid($owner)['name'] ?? '') : '';
+	return "nfn-{$name}-" . ($user !== '' ? $user : basename(BASE)) . '.service';
+    }
+
+    //CLD: 2026-10-31T18:00:00+02:00: unit $unit was written by this installation's scripts/4_services-install.sh (its first line), or is not there yet: a server's Haraka is one installation's
+    public static function ownUnit($unit) {
+	$file = '/etc/systemd/system/' . $unit;
+	if (!is_file($file))
+	    return true;
+	$f = @fopen($file, 'r');
+	$first = $f ? trim((string)fgets($f, 4096)) : '';
+	if ($f)
+	    fclose($f);
+	return $first === '#written by ' . BASE . '/scripts/4_services-install.sh';
+    }
+
     //the status of service $s: [ unit (installed as a systemd unit), running (bool|null: unknown), state (text), pid, since (unix s|null), health: [ ok, text ]|null ]
     public static function status(array $s) {
 	$r = [ 'unit' => false, 'running' => null, 'state' => 'unknown', 'pid' => null, 'since' => null, 'health' => null ];

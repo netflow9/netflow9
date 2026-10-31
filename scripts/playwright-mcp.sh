@@ -11,23 +11,33 @@
 #   sudo scripts/playwright-mcp.sh install [--version=<x.y.z>] [--port=<n>]   install / update, start at boot, start now
 #   sudo scripts/playwright-mcp.sh start | stop | restart | status | uninstall
 #Then: ./v LocalMCP::servers::test, and ./v LocalMCP::servers::enable --account=<id> --server=playwright
+#CLD: 2026-10-31T18:30:00+02:00: one per installation (several on one server: e.g. /home/app live, /home/dev development), as the daemon: the unit nfn-playwright-<the app's user>
+#(was nfn-playwright), its own user pwmcp-<user>, folder /var/lib/playwright-mcp-<user>, firewall table playwright_mcp_<user> (/etc/playwright-mcp/egress-<user>.nft) and port:
+#--port, else PLAYWRIGHT_MCP_PORT of app.env (the app's servers.php uses it too), else 8931. The @playwright/mcp package and the Chromium are the server's (shared)
 
 set -euo pipefail
 
 SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")
+BASE=$(cd "$(dirname "$SELF")/.." && pwd)
+APP_USER=$(stat -c %U "$BASE/app")
 
 #the @playwright/mcp version: tested with the shared Chromium (scripts/1_playwright-install.sh: Playwright 1.64)
 VERSION="0.0.83"
-PORT=8931
+#CLD: 2026-10-31T18:30:00+02:00: the port of app.env (PLAYWRIGHT_MCP_PORT), else 8931; --port before both
+PORT=$(sed -n "s/^PLAYWRIGHT_MCP_PORT=['\"]\{0,1\}\([0-9]*\).*/\1/p" "$BASE/app.env" 2>/dev/null | tail -1 || true)
+PORT=${PORT:-8931}
 #CLD: 2026-10-29T13:00:00+02:00: the unit nfn-playwright, as the app's other units (nfn-daemon, nfn-haraka; was playwright-mcp: removed by install / uninstall when there)
-SERVICE=nfn-playwright
-OLD_SERVICE=playwright-mcp
-SVC_USER=pwmcp
-HOME_DIR=/var/lib/playwright-mcp
+#CLD: 2026-10-31T18:30:00+02:00: the installation's: nfn-playwright-<user> and its user, folder, table (was nfn-playwright, pwmcp, /var/lib/playwright-mcp, playwright_mcp)
+SERVICE=nfn-playwright-$APP_USER
+#its former names: removed by install / uninstall when this installation wrote them (playwright-mcp: any)
+OLD_SERVICES="playwright-mcp nfn-playwright"
+SVC_USER=pwmcp-$APP_USER
+HOME_DIR=/var/lib/playwright-mcp-$APP_USER
 CONF_DIR=/etc/playwright-mcp
+NFT_FILE=$CONF_DIR/egress-$APP_USER.nft
 BROWSERS_PATH=/opt/playwright/browsers
 UNIT=/etc/systemd/system/$SERVICE.service
-NFT_TABLE=playwright_mcp
+NFT_TABLE=playwright_mcp_${APP_USER//-/_}
 
 command="${1:-}"
 [ -n "$command" ] && shift || true
@@ -87,18 +97,28 @@ write_nft() {
         echo "        meta skuid \"$SVC_USER\" ct state new ip6 daddr { ::/128, ::1/128, ::ffff:0:0/96, 64:ff9b::/96, fc00::/7, fe80::/10, ff00::/8 } reject"
         echo "    }"
         echo "}"
-    } > "$CONF_DIR/egress.nft"
-    chmod 644 "$CONF_DIR/egress.nft"
+    } > "$NFT_FILE"
+    chmod 644 "$NFT_FILE"
 }
 
 #CLD: 2026-10-29T13:00:00+02:00: the unit of its former name (playwright-mcp.service) stopped and removed: it holds the same port
+#CLD: 2026-10-31T18:30:00+02:00: + nfn-playwright.service, only when this installation wrote it (another's is left alone)
 remove_old_unit() {
-    local old=/etc/systemd/system/$OLD_SERVICE.service
-    [ -f "$old" ] || return 0
-    echo "- the unit's former name: $OLD_SERVICE.service removed"
-    systemctl disable --now "$OLD_SERVICE" 2>/dev/null || true
-    rm -f "$old"
-    systemctl daemon-reload
+    local name old
+    for name in $OLD_SERVICES; do
+        old=/etc/systemd/system/$name.service
+        [ -f "$old" ] || continue
+        [ "$name" = "playwright-mcp" ] || [ "$(head -n1 "$old")" = "#written by $SELF" ] || continue
+        echo "- the unit's former name: $name.service removed"
+        systemctl disable --now "$name" 2>/dev/null || true
+        rm -f "$old"
+        systemctl daemon-reload
+    done
+}
+
+#CLD: 2026-10-31T18:30:00+02:00: another installation's browser unit (they share the package)
+other_units() {
+    ls /etc/systemd/system/nfn-playwright-*.service 2>/dev/null | grep -v -x "$UNIT" || true
 }
 
 write_unit() {
@@ -106,7 +126,7 @@ write_unit() {
     cat > "$UNIT" <<EOF
 #written by $SELF
 [Unit]
-Description=Playwright MCP server (web browser for the AI steps)
+Description=Playwright MCP server (web browser for the AI steps of $BASE)
 After=network-online.target
 Wants=network-online.target
 
@@ -117,7 +137,7 @@ WorkingDirectory=$HOME_DIR
 Environment=HOME=$HOME_DIR
 Environment=PLAYWRIGHT_BROWSERS_PATH=$BROWSERS_PATH
 #the firewall table first (as root: +), removed when the service stops
-ExecStartPre=+/usr/sbin/nft -f $CONF_DIR/egress.nft
+ExecStartPre=+/usr/sbin/nft -f $NFT_FILE
 ExecStart=$(npm prefix -g)/bin/playwright-mcp --headless --isolated --host 127.0.0.1 --port $PORT --allowed-hosts localhost:$PORT,127.0.0.1:$PORT --executable-path $chrome --output-dir $HOME_DIR/output --output-max-size 209715200 --idle-timeout 300000 --timeout-navigation 30000 --blocked-origins "http://localhost;https://localhost;http://127.0.0.1;https://127.0.0.1;http://169.254.169.254"
 ExecStopPost=+-/usr/sbin/nft delete table inet $NFT_TABLE
 Restart=on-failure
@@ -151,12 +171,12 @@ case "$command" in
         [ -n "$chrome" ] || { echo "no shared Chromium in $BROWSERS_PATH: run scripts/1_playwright-install.sh first"; exit 1; }
         echo "+ @playwright/mcp $VERSION, Chromium $chrome, port $PORT"
         command -v nft >/dev/null || dnf install -y nftables
-        id "$SVC_USER" >/dev/null 2>&1 || useradd --system --home-dir "$HOME_DIR" --shell /sbin/nologin --comment "Playwright MCP server" "$SVC_USER"
+        id "$SVC_USER" >/dev/null 2>&1 || useradd --system --home-dir "$HOME_DIR" --shell /sbin/nologin --comment "Playwright MCP server of $BASE" "$SVC_USER"
         install -d -o "$SVC_USER" -g "$SVC_USER" -m 750 "$HOME_DIR" "$HOME_DIR/output"
         install -d -m 755 "$CONF_DIR"
         npm install -g "@playwright/mcp@$VERSION"
         write_nft
-        /usr/sbin/nft -c -f "$CONF_DIR/egress.nft"
+        /usr/sbin/nft -c -f "$NFT_FILE"
         remove_old_unit
         write_unit "$chrome"
         systemctl daemon-reload
@@ -183,8 +203,13 @@ case "$command" in
         systemctl daemon-reload
         remove_old_unit
         /usr/sbin/nft delete table inet "$NFT_TABLE" 2>/dev/null || true
-        npm uninstall -g @playwright/mcp || true
-        echo "Removed the service and the package; kept: user $SVC_USER, $HOME_DIR, $CONF_DIR (remove them by hand when no longer needed)"
+        #CLD: 2026-10-31T18:30:00+02:00: the package only when no other installation's browser uses it
+        if [ -z "$(other_units)" ]; then
+            npm uninstall -g @playwright/mcp || true
+            echo "Removed the service and the package; kept: user $SVC_USER, $HOME_DIR, $NFT_FILE (remove them by hand when no longer needed)"
+        else
+            echo "Removed the service (the package stays: $(other_units | xargs -n1 basename | tr '\n' ' ')use it); kept: user $SVC_USER, $HOME_DIR, $NFT_FILE"
+        fi
         ;;
     *)
         usage
