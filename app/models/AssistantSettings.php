@@ -17,6 +17,19 @@ namespace models;
 
 
 class AssistantSettings extends \sys\BaseModel {
+
+    //CLD: 2026-11-01T03:00:00+02:00: data_access's choices
+    const DATA_ACCESS = [
+	'structure' => 'Structure only',
+	'data' => 'Structure and data',
+    ];
+
+    //CLD: 2026-11-01T03:00:00+02:00: whether the Assistant of account $aid may read the projects' data (its saved settings' data_access), else their structure only (also without settings)
+    public static function readsData($aid) {
+	$s = $aid ? \V::app()->om->findOne('AssistantSettings', [ 'aid' => \V::app()->om->to_oid((string)$aid) ]) : null;
+	return (string)($s->data_access ?? 'structure') === 'data';
+    }
+
     protected static $collection = 'assistant_settings';
     public static $indexes = [
 	[ [ 'aid' => 1 ], [ 'unique' => true ] ],
@@ -111,6 +124,19 @@ class AssistantSettings extends \sys\BaseModel {
 		//CLD: 2026-10-20T10:45:00+03:00: self:: (was WorkflowAssistant::)
 		'default' => self::DEFAULT_EFFORT,
 		'choices' => \models\node\NodeAppClaude::EFFORT,
+	    ],
+	    //CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read (util\WorkflowAssistant): structure (tables' columns, workflows, step types, file names, variable names) or structure and data
+	    //(rows, file contents, images, executions, variable values); was the account's assistant_data (Account settings, Data access)
+	    [
+		'key' => 'data_access',
+		'type' => 'select',
+		'label' => 'May read',
+		'help' => false,
+		'perm:read' => 'everybody',
+		'perm:update' => 'everybody',
+		'required' => true,
+		'default' => 'structure',
+		'choices' => self::DATA_ACCESS,
 	    ],
 	    //CLD: 2026-10-22T14:00:00+03:00: the monthly budget and the prices it is counted with
 	    [

@@ -1,12 +1,18 @@
 <?php
 //CLD: 2026-11-01T02:00:00+02:00: new: the Data access tab of the account's settings (AccountController::settings, the owners: Account::update): the projects whose MCP server is on
 //(switches mcp_projects[]: Account::mcpEnabled), what the designer's Assistant may read (assistant_data: Account::assistantReadsData). $account, $projects (id => Project)
+//CLD: 2026-11-01T03:30:00+02:00: + $owners (id => User): the owners of the personal projects
+//CLD: 2026-11-01T03:00:00+02:00: the MCP server only: what the Assistant may read moved to the Assistant's settings (AssistantSettings data_access), linked from here
 $on = array_map('strval', (array)($account->mcp_projects ?? []));
 $rows = '';
 foreach($projects as $id => $p)
-    $rows .= \util\VString::insert('<tr><td class="align-middle">{:name}</td><td class="text-end"><div class="form-check form-switch d-inline-block mb-0">'
-	. '<input class="form-check-input" type="checkbox" role="switch" name="mcp_projects[]" value="{:id}" id="mcp-{:id}" aria-label="MCP server of {:name}"{:checked}></div></td></tr>', [
+    $rows .= \util\VString::insert('<tr><td class="align-middle">{:name}{:owner}</td><td class="text-end"><div class="form-check form-switch d-inline-block mb-0">'
+	. '<input class="form-check-input" type="checkbox" role="switch" name="mcp_projects[]" value="{:id}" id="mcp-{:id}" aria-label="MCP server of {:label}"{:checked}></div></td></tr>', [
 	'name' => \V::app()->html->escape((string)$p->name),
+	//CLD: 2026-11-01T03:30:00+02:00: a personal project: its owner's name ($owners: id => User), as every user's is named "Personal"
+	'owner' => $p->personal ? \util\VString::insert(' <span class="text-muted">({:who})</span>', [
+	    'who' => \V::app()->html->escape(isset($owners[(string)$p->owner]) ? trim((string)$owners[(string)$p->owner]) : 'a removed user') ]) : '',
+	'label' => \V::app()->html->escape((string)$p->name . ($p->personal ? ' (' . (isset($owners[(string)$p->owner]) ? trim((string)$owners[(string)$p->owner]) : 'a removed user') . ')' : '')),
 	'id' => \V::app()->html->escape($id),
 	'checked' => in_array($id, $on, true) ? ' checked' : '',
     ]);
@@ -31,11 +37,7 @@ foreach($projects as $id => $p)
 	    <div class="col-xl-6">
 		<div class="pt-4">
 		    <h6>Assistant</h6>
-		    <?= $account->schema['assistant_data']->input([ 'cols' => '6,6' ]) ?>
-		    <div class="form-text">
-			<strong>Structure only</strong>: the designer's Assistant sees what the project is made of (data tables and their columns, workflows, step types, file names, variable names), and can build with it, but reads no rows, file contents, images, run results or variable values.<br>
-			<strong>Structure and data</strong>: it may also read and change rows, read files and images, and run workflows, with the rights of the person asking. What it reads is sent to the Assistant's AI provider.
-		    </div>
+		    <div class="form-text">What the designer's Assistant may read of the projects (their structure only, or their data too) is set in the <?= \V::app()->html->link('Assistant settings', \V::app()->createUrl('/assistant/settings')) ?>.</div>
 		</div>
 	    </div>
 	</div>

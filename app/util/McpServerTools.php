@@ -21,7 +21,7 @@ namespace util;
 class McpServerTools {
 
     //CLD: 2026-11-01T02:00:00+02:00: the tools that read or change only the project's structure (tables and their columns, workflows, step types, file names, variable names: list_variables
-    //without the values, see structureOnly): the ones the designer's Assistant gets when the account lets it read the structure only (Account::assistantReadsData)
+    //without the values, see structureOnly): the ones the designer's Assistant gets when the account lets it read the structure only (AssistantSettings::readsData)
     const STRUCTURE_TOOLS = [ 'list_tables', 'create_table', 'update_table', 'add_column', 'update_column', 'delete_column', 'list_workflows', 'get_workflow', 'create_workflow',
 	'update_workflow', 'list_step_types', 'list_files', 'list_variables' ];
 
