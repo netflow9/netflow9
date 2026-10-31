@@ -4,12 +4,21 @@
 $actionUrl = \V::app()->createUrl('/datatable/import');
 $formId = 'dt-import-' . uniqid();
 
-$body = ($error ? "<div class='alert alert-danger py-2'>" . \V::app()->html->escape($error) . "</div>" : '') . "
-<form id='{$formId}' method='post' action='{$actionUrl}' enctype='multipart/form-data'>
-    <label class='form-label' for='{$formId}-file'>File</label>
-    <input type='file' class='form-control' id='{$formId}-file' name='file' accept='.csv,.txt,.tsv,.xlsx' required>
-    <div class='form-text'>CSV or Excel (.xlsx), up to " . \util\Format::bytes(\util\TableImport::MAX_BYTES) . " and " . \util\Format::plural(\util\TableImport::MAX_ROWS, 'row') . ". The next step shows the columns found (names from the header row, if there is one; types from the values), to check before importing.</div>
-</form>";
+$bodyTpl = '
+{:error}
+<form id="{:formId}" method="post" action="{:action}" enctype="multipart/form-data">
+    <label class="form-label" for="{:formId}-file">File</label>
+    <input type="file" class="form-control" id="{:formId}-file" name="file" accept=".csv,.txt,.tsv,.xlsx" required>
+    <div class="form-text">CSV or Excel (.xlsx), up to {:maxBytes} and {:maxRows}. The next step shows the columns found (names from the header row, if there is one; types from the values), to check before importing.</div>
+</form>
+';
+$body = \util\VString::insert($bodyTpl, [
+    'error' => $error ? \util\VString::insert('<div class="alert alert-danger py-2">{:error}</div>', [ 'error' => \V::app()->html->escape($error) ]) : '',
+    'formId' => $formId,
+    'action' => $actionUrl,
+    'maxBytes' => \util\Format::bytes(\util\TableImport::MAX_BYTES),
+    'maxRows' => \util\Format::plural(\util\TableImport::MAX_ROWS, 'row'),
+]);
 
 $footer = "
 <button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button>

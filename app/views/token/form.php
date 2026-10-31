@@ -1,8 +1,10 @@
 <?php
 //create an MCP server token (modal: its name)
 $form_begin = \V::app()->form->create($token, [ 'action' => \V::app()->createUrl('/token/create') ]);
-$body = $token->schema['name']->input()
-    . "<div class='form-text'>The token acts as you (" . \V::app()->html->escape((string)\V::app()->user->name) . "), within your permissions, on this project only. It is shown once.</div>";
+$body = \util\VString::insert('{:name}<div class="form-text">The token acts as you ({:user}), within your permissions, on this project only. It is shown once.</div>', [
+    'name' => $token->schema['name']->input(),
+    'user' => \V::app()->html->escape((string)\V::app()->user->name),
+]);
 $form_end = \V::app()->form->end();
 
 $footer = "

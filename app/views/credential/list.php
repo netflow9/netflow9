@@ -13,14 +13,22 @@ if (\V::app()->user->can('Credential::create', [ 'object' => $__new ])) {
 	if (!$class::available())
 	    continue;
 	$search = \V::app()->html->escape(str_replace("'", ' ', mb_strtolower($class::$label . ' ' . $class::$group)));
-	$groups[$class::$group][$class::$label] = "<li class=\"cred-type\" data-search=\"{$search}\"><a class=\"dropdown-item\" href=\"/credential/create?type=" . rawurlencode($name) . "\"><i class=\"bi " . $class::$icon . " me-2\"></i>" . \V::app()->html->escape($class::$label) . "</a></li>";
+	$groups[$class::$group][$class::$label] = \util\VString::insert('<li class="cred-type" data-search="{:search}"><a class="dropdown-item" href="/credential/create?type={:type}"><i class="bi {:icon} me-2"></i>{:label}</a></li>', [
+	    'search' => $search,
+	    'type' => rawurlencode($name),
+	    'icon' => $class::$icon,
+	    'label' => \V::app()->html->escape($class::$label),
+	]);
     }
     ksort($groups);
 
     $items = '';
     foreach($groups as $group => $links) {
 	ksort($links);
-	$items .= "<li class=\"cred-type-group\"><h6 class=\"dropdown-header\">" . \V::app()->html->escape($group) . "</h6></li>" . implode('', $links);
+	$items .= \util\VString::insert('<li class="cred-type-group"><h6 class="dropdown-header">{:group}</h6></li>{:links}', [
+	    'group' => \V::app()->html->escape($group),
+	    'links' => implode('', $links),
+	]);
     }
     //one line, no single quotes: it goes into a JS string
     //CLD: 2026-10-22T01:18:42+03:00: the menu scrolls (at most 60% of the window), a search box stays on top (its handlers: the page script below); a line when nothing matches
@@ -41,8 +49,6 @@ $schema = $sf['schema'];
 unset($schema['created_at'], $schema['updated_at']);
 $schema = \util\JSON::encode($schema);
 $filter = \util\JSON::encode($sf['filter']);
-
-//CLD: 2026-10-24T09:06:00+03:00: removed the result of Connect passed back in the URL (?error / ?message): CredentialController shows it as a toast
 
 $script = "
 +function() {
