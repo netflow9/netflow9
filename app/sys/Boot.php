@@ -82,6 +82,9 @@ class Boot {
 	//CLD: 2026-11-01T00:30:00+02:00: the GravityZone event trigger's endpoint: `/gravityzone/<32 hex token>` -> GravityzoneController::receive (GravityZone's push service; no session)
 	\V::app()->session->noSessionFor('/gravityzone/');
 	\V::app()->router->add_rule('gravityzone/<id:[a-f0-9]{32}>', 'gravityzone/receive', true);
+	//CLD: 2026-11-01T06:00:00+02:00: the FortiGate event trigger's endpoint: `/fortigate/<32 hex token>` -> FortigateController::receive (an automation stitch's webhook; no session)
+	\V::app()->session->noSessionFor('/fortigate/');
+	\V::app()->router->add_rule('fortigate/<id:[a-f0-9]{32}>', 'fortigate/receive', true);
 	\V::app()->router->add_rule('form/<id:[a-f0-9]{32}>', 'form/open', true);
 	\V::app()->router->add_rule('task/<id:[a-f0-9]{24}>', 'task/open', true);
 	//CLD: 2026-10-26T23:56:07+02:00: POST /mcp -> McpController::serve (was the SysMCPTools plugin's); its callers are tokens, not browser users: no session

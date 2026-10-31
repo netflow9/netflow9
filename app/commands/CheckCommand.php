@@ -46,12 +46,13 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
     //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
     //CLD: 2026-11-01T04:00:00+02:00: + veeam (the Veeam credential, steps and event trigger against a fake Veeam Backup & Replication: commands/tests/VeeamTestServer.php)
+    //CLD: 2026-11-01T06:00:00+02:00: + fortigate (the FortiGate credential, steps and event trigger against a fake FortiGate: commands/tests/FortiGateTestServer.php)
     //CLD: 2026-11-01T02:00:00+02:00: + access (the account's Data access: the projects' MCP server on / off, what the Assistant may read)
     //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
     //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -4754,6 +4755,178 @@ class CheckCommand extends \sys\BaseController {
 	    }
 	    foreach($wfs as $wf)
 		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-01T06:00:00+02:00: FortiGate against a fake FortiOS (commands/tests/FortiGateTestServer.php; util\FortiGate::$testing: http, no address guard): the client (the token, the VDOM, FortiOS's
+    //errors named), the credential's test, the steps' requests (blocking and unblocking IPs: done already is fine; a subnet from a CIDR; bans with their expiry; a policy
+    //disabled; the configuration backup in Files), the event trigger (its FortiOS CLI; a stitch's webhook starts a run, a wrong secret does not)
+    private function suiteFortigate() {
+	$F = \util\FortiGate::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$A = \models\node\NodeAppFgtAddresses::class;
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $e) {
+		return $e->getMessage();
+	    }
+	};
+	$this->check('fortigate: an address without /api; a subnet from an IP, a CIDR, "ip mask"; a bad one refused; FortiOS\'s error numbers named', [
+	    'https://fw:8443', '10.1.2.3 255.255.255.255', '10.1.2.0 255.255.255.0', '10.1.0.0 255.255.0.0', true, 'HTTP status 500: an object of that name already exists (-5)' ], [
+	    $F::baseUrl('https://fw:8443/api/v2/'), $A::subnet('10.1.2.3'), $A::subnet('10.1.2.0/24'), $A::subnet('10.1.0.0 255.255.0.0'),
+	    str_contains($thrown(fn() => $A::subnet('10.1.2.0/33')), 'not a subnet'), $F::errorText([ 'status' => 'error', 'http_status' => 500, 'error' => -5 ], 500) ]);
+	$this->check('fortigate: IPs from text or a list of objects (srcip), checked; one not an IP refused', [ [ '198.51.100.1', '2001:db8::1' ], [ '192.0.2.5' ], true ], [
+	    \models\node\NodeAppFortiGate::ips("198.51.100.1, 2001:db8::1\n198.51.100.1", 'IPs'), \models\node\NodeAppFortiGate::ips([ [ 'srcip' => '192.0.2.5' ] ], 'IPs'),
+	    str_contains($thrown(fn() => \models\node\NodeAppFortiGate::ips('1.2.3.4; evil.example', 'IPs')), 'not an IP address: `evil.example`') ]);
+
+	$dir = sys_get_temp_dir() . '/netflow9-check-fgt-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('fortigate', 'FortiGateTestServer.php', $dir, [ 'FGT_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$F::$testing = true;
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$objects = fn() => json_decode((string)@file_get_contents("{$dir}/objects.json"), true);
+	$creds = [];
+	$files = [];
+	$wfs = [];
+	$runs = [];
+	try {
+	    $make = function($token, $vdom = '') use ($om, $port, &$creds) {
+		$c = $om->create('CredentialFortiGate', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: FortiGate ' . uniqid(),
+		    'serverUrl' => "https://127.0.0.1:{$port}", 'apiToken' => $token, 'vdom' => $vdom ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('fortigate: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->serverUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialFortiGate', (string)$c->_id);
+	    };
+	    $cred = $make('fgtoken', 'root');
+	    $wrong = $make('nope');
+	    if (!$cred || !$wrong)
+		return;
+	    $bad = $om->create('CredentialFortiGate', [ 'name' => 'x', 'serverUrl' => 'http://fw', 'apiToken' => 't', 'vdom' => 'a b' ]);
+	    $bad->validates();
+	    $requests();
+	    $this->check('fortigate: the form (https, a VDOM name); Test: the firewall, the token as Bearer, the VDOM; a wrong token: said so', [
+		[ 'serverUrl', 'vdom' ], 'connected to FGT-HQ (FortiGate 100F), FortiOS v7.4.4 build 2662, serial FG100FTK20000001, VDOM root', 'root', true ], [
+		array_values(array_intersect([ 'serverUrl', 'vdom' ], array_keys((array)$bad->errors()))), $cred->test(), $requests()[0]['query']['vdom'] ?? null,
+		str_contains($thrown(fn() => $wrong->test()), 'the API token is refused') ]);
+
+	    $id = (string)$cred->_id;
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $id, $requests) {
+		$requests();
+		$exe = $this->runFlow("fgt {$fq}", [ $n('m', 'trigger::manual'), $n('f', $fq, $cfg + [ 'credential' => $id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'f'), $e('e2', 'f', 'err', 1) ], $vars);
+		return [ $exe, array_map(fn($r) => $r['method'] . ' ' . $r['path'], $requests()) ];
+	    };
+	    [ $exe, $sent ] = $step('app::fgt-addresses', [ 'operation' => 'block', 'ips' => '{{ ips }}', 'group' => 'Blocked', 'comment' => 'IOC' ],
+		[ 'ips' => [ '203.0.113.9', '2001:db8::66' ] ]);
+	    $o = $objects();
+	    [ $again, ] = $step('app::fgt-addresses', [ 'operation' => 'block', 'ips' => '203.0.113.9', 'group' => 'Blocked' ]);
+	    $this->check('fortigate: block: an address per IP (IPv6 in address6; one that exists kept), each in the group (v4 / v6); blocking again: fine', [
+		'end', [ 'POST /api/v2/cmdb/firewall/address', 'POST /api/v2/cmdb/firewall/addrgrp/Blocked/member', 'POST /api/v2/cmdb/firewall/address6', 'POST /api/v2/cmdb/firewall/addrgrp6/Blocked/member' ],
+		[ 'nf9-block-203.0.113.9' ], [ 'nf9-block-2001:db8::66' ], '2001:db8::66/128', 2, 'end' ], [
+		$exe?->state, $sent, $o['addrgrp']['Blocked'] ?? null, $o['addrgrp6']['Blocked'] ?? null, $o['address6']['nf9-block-2001:db8::66']['ip6'] ?? null,
+		$exe?->getVariable('addresses')['count'] ?? null, $again?->state ]);
+	    [ $exe, $sent ] = $step('app::fgt-addresses', [ 'operation' => 'unblock', 'ips' => '203.0.113.9, 198.51.100.200', 'group' => 'Blocked', 'deleteAddress' => true ]);
+	    $o = $objects();
+	    $this->check('fortigate: unblock: out of the group and deleted; one never blocked: fine', [ 'end', [], false ],
+		[ $exe?->state, $o['addrgrp']['Blocked'] ?? null, isset($o['address']['nf9-block-203.0.113.9']) ]);
+	    [ $exe, ] = $step('app::fgt-addresses', [ 'operation' => 'create', 'name' => 'Office LAN', 'addrType' => 'ipmask', 'value' => '10.20.0.0/16', 'comment' => 'HQ' ]);
+	    [ $dup, ] = $step('app::fgt-addresses', [ 'operation' => 'create', 'name' => 'Office LAN', 'addrType' => 'ipmask', 'value' => '10.20.0.0/16' ]);
+	    [ $list, $sent ] = $step('app::fgt-addresses', [ 'operation' => 'list', 'contains' => 'office' ]);
+	    $this->check('fortigate: create a subnet from a CIDR; again: the error output named; list: the name filter, the VDOM', [
+		'10.20.0.0 255.255.0.0', 'error', true, [ 'Office LAN' ] ], [
+		$objects()['address']['Office LAN']['subnet'] ?? null, $dup?->getVariable('route'), str_contains((string)self::logLine($dup, 'FortiGate Addresses create: '), 'already exists (-5)'),
+		array_column($list?->getVariable('addresses')['items'] ?? [], 'name') ]);
+	    [ $exe, ] = $step('app::fgt-banned', [ 'operation' => 'ban', 'ips' => '192.0.2.44', 'minutes' => 30 ]);
+	    $this->check('fortigate: ban: the IP for 30 minutes (expiry in seconds)', [ 'end', [ '192.0.2.44' => 1800 ] ], [ $exe?->state, $objects()['banned'] ?? null ]);
+	    [ $exe, ] = $step('app::fgt-banned', [ 'operation' => 'unban', 'ips' => '192.0.2.44' ]);
+	    $this->check('fortigate: unban', [], $objects()['banned'] ?? null);
+	    [ $exe, ] = $step('app::fgt-policies', [ 'operation' => 'disable', 'policyId' => '{{ 7 }}' ]);
+	    [ $nan, ] = $step('app::fgt-policies', [ 'operation' => 'disable', 'policyId' => 'seven' ]);
+	    $this->check('fortigate: a policy disabled; a policy ID that is not a number: the error output', [ 'disable', 'error' ], [ $objects()['policy'][7]['status'] ?? null, $nan?->getVariable('route') ]);
+	    [ $exe, ] = $step('app::fgt-system', [ 'operation' => 'backup', 'variable' => 'bk' ]);
+	    $bk = $exe?->getVariable('bk');
+	    $file = !empty($bk['id']) ? $om->findOne('File', [ '_id' => $bk['id'] ]) : null;
+	    if ($file)
+		$files[] = $file;
+	    $this->check('fortigate: the configuration backup in Files (<hostname>-<time>.txt)', [ 'end', true, true ],
+		[ $exe?->state, (bool)preg_match('/^FGT-HQ-\d{8}-\d{6}\.txt$/', (string)($bk['filename'] ?? '')), $file && str_starts_with($file->getContents(), '#config-version=FG100F') ]);
+	    [ $exe, ] = $step('app::fgt-api', [ 'method' => 'GET', 'path' => '/api/v2/cmdb/firewall/policy', 'variable' => 'raw' ]);
+	    [ $err, ] = $step('app::fgt-api', [ 'method' => 'GET', 'path' => '/api/v2/../../etc/passwd' ]);
+	    $this->check('fortigate: API: the whole answer; a path outside the API refused', [ 'success', 'Deny blocked', 'error' ],
+		[ $exe?->getVariable('raw')['status'] ?? null, $exe?->getVariable('raw')['results'][0]['name'] ?? null, $err?->getVariable('route') ]);
+
+	    //the event trigger: its CLI, a stitch's webhook
+	    $init = \models\node\NodeTriggerFortiGate::initConfig();
+	    $host = (string)parse_url($init['url'], PHP_URL_HOST);
+	    $this->check('fortigate: event: the CLI makes the webhook action: the URI without scheme, the port, %%log%%, the secret as Bearer', [ true, true, true, true ], [
+		str_contains($init['setup'], 'set uri "' . $host . '/fortigate/' . $init['token'] . '"'), str_contains($init['setup'], 'set port ' . ((int)(parse_url($init['url'], PHP_URL_PORT) ?: 443))),
+		str_contains($init['setup'], 'set http-body "%%log%%"'), str_contains($init['setup'], 'set value "Bearer ' . $init['secret'] . '"') ]);
+	    $wf = $this->workflow('fgt event', [ $n('t', 'trigger::fortigate', $init + [ 'variable' => 'ev' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ev.logid }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('fortigate: event: the workflow is valid; the secret and setup kept', [ true, $init['secret'], $init['setup'] ],
+		[ $wf->validates(), $wf->nodes['t']['config']['secret'] ?? null, $wf->nodes['t']['config']['setup'] ?? null ]);
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $version = $om->create('WfVersion', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'number' => 1, 'name' => (string)$wf->name, 'nodes' => $wf->nodes ]);
+	    $version->save();
+	    $wf->version = $version->_id;
+	    $wf->status = \models\Workflow::PUBLISHED;
+	    $wf->save();
+	    $post = function($secret) use ($init, $host) {
+		$ch = curl_init($init['url']);
+		curl_setopt_array($ch, [ CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode([ 'logid' => '0100032002', 'type' => 'event', 'subtype' => 'system', 'srcip' => '198.51.100.7',
+		    'msg' => 'Administrator login failed' ]), CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+		    CURLOPT_HTTPHEADER => [ 'Content-Type: application/json', 'Authorization: Bearer ' . $secret ], CURLOPT_RESOLVE => [ "{$host}:443:127.0.0.1" ],
+		    CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0 ]);
+		$answer = json_decode((string)curl_exec($ch), true);
+		$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+		curl_close($ch);
+		return [ $status, $answer ];
+	    };
+	    [ $status ] = $post('wrong');
+	    if ($status === 0) {
+		echo "  skipped: the event trigger's address (this installation's web server cannot be reached from here)\n";
+	    } else {
+		[ $ok, $answer ] = $post($init['secret']);
+		$runs = iterator_to_array($om->find('WfExecution', [ 'wf' => $wf->_id, 'trigger' => 'fortigate' ]), false);
+		$this->check('fortigate: event: a wrong secret refused; the stitch\'s log starts one run with its fields', [ 401, 200, 1, '0100032002', '198.51.100.7', true ],
+		    [ $status, $ok, count($runs), $runs[0]?->getVariable('ev')['logid'] ?? null, $runs[0]?->getVariable('ev')['srcip'] ?? null, isset($runs[0]?->getVariable('ev')['received_at']) ]);
+	    }
+	} finally {
+	    $F::$testing = false;
+	    foreach($runs as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		foreach($om->find('WfVersion', [ 'wf' => $wf->_id ]) as $v)
+		    $v->delete();
+	    foreach($files as $f)
+		$f->delete();
 	    foreach($creds as $c)
 		$c->delete();
 	    proc_terminate($proc);
