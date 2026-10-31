@@ -136,6 +136,23 @@ class SysObjects {
 	    'DataTableView' => [
 		'class' => 'models\DataTableView',
 	    ],
+	    //CLD: 2026-10-30T23:30:00+02:00: the knowledge bases (documents cut into chunks, searched by meaning and by words: the Knowledge base step, the AI steps' tool); their documents and
+	    //chunks are written in bulk, not in the audit log
+	    'KnowledgeBase' => [
+		'class' => 'models\KnowledgeBase',
+	    ],
+	    'KbDocument' => [
+		'class' => 'models\KbDocument',
+		'auditLog' => false,
+	    ],
+	    'KbChunk' => [
+		'class' => 'models\KbChunk',
+		'auditLog' => false,
+	    ],
+	    //CLD: 2026-10-31T01:00:00+02:00: the account's embedding model (the knowledge bases': Settings, Knowledge bases)
+	    'EmbeddingSettings' => [
+		'class' => 'models\EmbeddingSettings',
+	    ],
 	    //CLD: 2026-10-20T23:40:00+03:00: McpToken (access tokens of the project's MCP server) is registered by the SysMCPTools plugin
 	    //CLD: 2026-10-26T23:56:07+02:00: core again (the project's MCP server, controllers\McpController; same object name: stored tokens, audit entries and roles keep working)
 	    'McpToken' => [
@@ -405,6 +422,11 @@ class SysObjects {
 	    //CLD: 2026-10-22T12:00:00+03:00: Gemini (Google; the Gemini API)
 	    'NodeAppGemini' => [
 		'class' => 'models\node\NodeAppGemini',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-10-30T23:30:00+02:00: Knowledge base (add documents, search them by meaning and by words)
+	    'NodeAppKnowledge' => [
+		'class' => 'models\node\NodeAppKnowledge',
 		'wfNode' => true,
 	    ],
 	    'NodeAppTable' => [
