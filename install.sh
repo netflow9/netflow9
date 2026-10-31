@@ -749,9 +749,10 @@ if [ "$OPT_MONGO" -eq 1 ] && mongo_auth_off; then
 fi
 
 step "The background services"
-"$SCRIPTS/4_services-install.sh" install $([ "$OPT_BROWSER" -eq 1 ] || echo --no-playwright)
+#CLD: 2026-10-31T18:00:00+02:00: no Haraka without inbound email (one server may hold several installations: Haraka is one's); the daemon's unit is the installation's: nfn-daemon-<user>
+"$SCRIPTS/4_services-install.sh" install $([ "$OPT_BROWSER" -eq 1 ] || echo --no-playwright) $([ "$OPT_MAIL" -eq 1 ] || echo --no-haraka)
 #the services running before reconnect with the new MongoDB users
-[ "$MONGO_CHANGED" -eq 0 ] || systemctl try-restart nfn-daemon.service nfn-haraka.service || true
+[ "$MONGO_CHANGED" -eq 0 ] || systemctl try-restart "nfn-daemon-$APP_USER.service" $([ "$OPT_MAIL" -eq 1 ] && echo nfn-haraka.service) || true
 
 # ---------------------------------------------------------------------------------------------------------------
 step "Done"

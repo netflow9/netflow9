@@ -128,7 +128,7 @@ Then:
            authorization: enabled
   2. systemctl restart mongod
   3. restart the long-running clients so they reconnect with their users:
-         systemctl restart nfn-daemon nfn-haraka     (installed by scripts/4_services-install.sh)
+         systemctl restart nfn-daemon-$(stat -c %U "$BASE/app") nfn-haraka     (installed by scripts/4_services-install.sh)
      or, without the units (from the scripts folder: they load ../app.env relative to it):
          cd $BASE/scripts && ./haraka.sh restart && ./daemon.sh restart
   4. check: mongosh --quiet mongodb://127.0.0.1:27017/$NFN_DB --eval 'db.users.findOne()'   -> must fail (requires authentication)
