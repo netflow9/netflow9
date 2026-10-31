@@ -47,12 +47,13 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
     //CLD: 2026-11-01T04:00:00+02:00: + veeam (the Veeam credential, steps and event trigger against a fake Veeam Backup & Replication: commands/tests/VeeamTestServer.php)
     //CLD: 2026-11-01T06:00:00+02:00: + fortigate (the FortiGate credential, steps and event trigger against a fake FortiGate: commands/tests/FortiGateTestServer.php)
+    //CLD: 2026-11-01T10:00:00+02:00: + sophos (the Sophos Firewall credential and steps against a fake firewall's XML API: commands/tests/SophosTestServer.php)
     //CLD: 2026-11-01T02:00:00+02:00: + access (the account's Data access: the projects' MCP server on / off, what the Assistant may read)
     //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
     //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -4927,6 +4928,139 @@ class CheckCommand extends \sys\BaseController {
 		    $v->delete();
 	    foreach($files as $f)
 		$f->delete();
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-01T10:00:00+02:00: Sophos Firewall against a fake firewall (commands/tests/SophosTestServer.php; util\Sophos::$testing: http, no address guard): the client (entities to and from
+    //XML, a repeated element a list, the login, the codes said with what to do), the credential's test, the steps' requests (blocking and unblocking IPs: a host per IP, the group's
+    //HostList sent back whole, IPv6 in its own group, done already is fine; a network from a CIDR; a rule disabled; a user made inactive; domains in a URL group), the API step
+    private function suiteSophos() {
+	$S = \util\Sophos::class;
+	$H = \models\node\NodeAppSfosHosts::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $e) {
+		return $e->getMessage();
+	    }
+	};
+	$xml = simplexml_load_string('<IPHostGroup><Name>G</Name><HostList><Host>a</Host><Host>b</Host></HostList><Description/></IPHostGroup>');
+	$this->check('sophos: an address without /webconsole; an entity to XML (a list repeated, escaped) and back (repeated children a list); a code said with what to do', [
+	    'https://fw:4444', '<IPHostGroup><Name>A &amp; B</Name><HostList><Host>a</Host><Host>b</Host></HostList></IPHostGroup>',
+	    [ 'Name' => 'G', 'HostList' => [ 'Host' => [ 'a', 'b' ] ], 'Description' => '' ], [ 'x' ], true ], [
+	    $S::baseUrl('https://fw:4444/webconsole/APIController'), $S::toXml('IPHostGroup', [ 'Name' => 'A & B', 'HostList' => [ 'Host' => [ 'a', 'b' ] ] ]), $S::toArray($xml), $S::items('x'),
+	    str_contains($thrown(fn() => $S::checkStatus(simplexml_load_string('<Status code="534">no</Status>'))), 'add Rail22\'s address') ]);
+	$this->check('sophos: an IP host from an IP, a CIDR, "ip mask", an IPv6 network; a blocked IPv6 host\'s name; domains from URLs', [
+	    [ 'HostType' => 'IP', 'IPAddress' => '10.1.2.3' ], [ 'HostType' => 'Network', 'IPAddress' => '10.1.0.0', 'Subnet' => '255.255.0.0' ],
+	    [ 'HostType' => 'Network', 'IPAddress' => '10.1.2.0', 'Subnet' => '255.255.255.0' ], [ [ 'HostType' => 'Network', 'IPAddress' => '2001:db8::', 'Subnet' => '64' ], 'IPv6' ],
+	    'r22-block-2001-db8--66', [ 'bad.example.com', 'www.example.org' ], true ], [
+	    $H::ipHost('10.1.2.3')[0], $H::ipHost('10.1.0.0/16')[0], $H::ipHost('10.1.2.0 255.255.255.0')[0], $H::ipHost('2001:db8::/64'), $H::blockName('r22-block-', '2001:db8::66'),
+	    \models\node\NodeAppSfosWeb::domains("Bad.Example.com, https://www.example.org/path\nbad.example.com", 'Domains', 10),
+	    str_contains($thrown(fn() => \models\node\NodeAppSfosWeb::domains('ok.example; not a domain!', 'Domains', 10)), 'not a domain') ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-sfos-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('sophos', 'SophosTestServer.php', $dir, [ 'SFOS_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$S::$testing = true;
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$objects = fn() => json_decode((string)@file_get_contents("{$dir}/objects.json"), true);
+	$creds = [];
+	try {
+	    $make = function($password) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialSophos', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Sophos ' . uniqid(),
+		    'serverUrl' => "https://127.0.0.1:{$port}", 'username' => 'admin', 'password' => $password ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('sophos: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->serverUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialSophos', (string)$c->_id);
+	    };
+	    $cred = $make('sfpass');
+	    $wrong = $make('nope');
+	    if (!$cred || !$wrong)
+		return;
+	    $bad = $om->create('CredentialSophos', [ 'name' => 'x', 'serverUrl' => 'http://fw:4444', 'username' => 'admin', 'password' => 'p' ]);
+	    $bad->validates();
+	    $this->check('sophos: the form (https); Test: the hostname and API version (the password decrypted); a wrong password: said so', [
+		[ 'serverUrl' ], 'connected to SFW-HQ, API version 2000.1', true ], [
+		array_values(array_intersect([ 'serverUrl', 'username', 'password' ], array_keys((array)$bad->errors()))), $cred->test(),
+		str_contains($thrown(fn() => $wrong->test()), 'Authentication Failure: the user name or password is refused') ]);
+
+	    $id = (string)$cred->_id;
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $id, $requests) {
+		$requests();
+		$exe = $this->runFlow("sfos {$fq}", [ $n('m', 'trigger::manual'), $n('f', $fq, $cfg + [ 'credential' => $id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'f'), $e('e2', 'f', 'err', 1) ], $vars);
+		return [ $exe, array_map(fn($r) => $r[0] . ' ' . $r[1], $requests()) ];
+	    };
+	    [ $exe, $sent ] = $step('app::sfos-hosts', [ 'operation' => 'block', 'ips' => '{{ ips }}', 'group' => 'Blocked', 'group6' => 'Blocked6', 'comment' => 'IOC' ],
+		[ 'ips' => [ '203.0.113.9', '198.51.100.20', '2001:db8::66' ] ]);
+	    $o = $objects();
+	    [ $again, $sentAgain ] = $step('app::sfos-hosts', [ 'operation' => 'block', 'ips' => '203.0.113.9', 'group' => 'Blocked' ]);
+	    [ $no6, ] = $step('app::sfos-hosts', [ 'operation' => 'block', 'ips' => '2001:db8::77', 'group' => 'Blocked' ]);
+	    $this->check('sophos: block: a host per IP (one that exists kept), the groups updated whole (IPv6 in its own); again: nothing sent; IPv6 without an IPv6 group: the error output', [
+		'end', [ 'r22-block-203.0.113.9', 'r22-block-198.51.100.20' ], 'r22-block-2001-db8--66', 'IPv6', 'IOC', 3, 'end', [ 'Get IPHostGroup', 'Get IPHost' ], 'error' ], [
+		$exe?->state, $o['IPHostGroup']['Blocked']['HostList']['Host'] ?? null, $o['IPHostGroup']['Blocked6']['HostList']['Host'] ?? null,
+		$o['IPHost']['r22-block-2001-db8--66']['IPFamily'] ?? null, $o['IPHost']['r22-block-198.51.100.20']['Description'] ?? null,
+		$exe?->getVariable('hosts')['count'] ?? null, $again?->state, $sentAgain, $no6?->getVariable('route') ]);
+	    [ $exe, ] = $step('app::sfos-hosts', [ 'operation' => 'unblock', 'ips' => '203.0.113.9, 192.0.2.250', 'group' => 'Blocked', 'deleteHost' => true ]);
+	    $o = $objects();
+	    $this->check('sophos: unblock: out of the group, the host removed; one never blocked: fine', [ 'end', 'r22-block-198.51.100.20', false, true ],
+		[ $exe?->state, $o['IPHostGroup']['Blocked']['HostList']['Host'] ?? null, isset($o['IPHost']['r22-block-203.0.113.9']), isset($o['IPHost']['r22-block-198.51.100.20']) ]);
+	    [ $exe, ] = $step('app::sfos-hosts', [ 'operation' => 'create', 'name' => 'Office LAN', 'hostType' => 'ip', 'value' => '10.20.0.0/16', 'comment' => 'HQ' ]);
+	    [ $dup, ] = $step('app::sfos-hosts', [ 'operation' => 'create', 'name' => 'Office LAN', 'hostType' => 'ip', 'value' => '10.20.0.0/16' ]);
+	    [ $list, $sent ] = $step('app::sfos-hosts', [ 'operation' => 'list', 'contains' => 'office' ]);
+	    [ $fq, ] = $step('app::sfos-hosts', [ 'operation' => 'create', 'name' => 'Updates', 'hostType' => 'fqdn', 'value' => 'updates.example.com', 'params' => '{"Description": "x"}' ]);
+	    $this->check('sophos: create a network from a CIDR; again: the error output with the firewall\'s message; list: the name filter; an FQDN host with Other fields', [
+		'255.255.0.0', 'error', true, [ 'Office LAN' ], [ 'Get IPHost' ], [ 'Name' => 'Updates', 'FQDN' => 'updates.example.com', 'Description' => 'x' ] ], [
+		$objects()['IPHost']['Office LAN']['Subnet'] ?? null, $dup?->getVariable('route'), str_contains((string)self::logLine($dup, 'Sophos Firewall Hosts create: '), 'status 502: Operation failed. Entity having same name already exists.'),
+		array_column($list?->getVariable('hosts')['items'] ?? [], 'Name'), $sent, $objects()['FQDNHost']['Updates'] ?? null ]);
+	    [ $exe, ] = $step('app::sfos-hosts', [ 'operation' => 'add', 'name' => 'Web server', 'group' => 'Blocked' ]);
+	    $this->check('sophos: add a host to a group: the members kept', [ [ 'r22-block-198.51.100.20', 'Web server' ] ], [ $objects()['IPHostGroup']['Blocked']['HostList']['Host'] ?? null ]);
+
+	    [ $exe, ] = $step('app::sfos-rules', [ 'operation' => 'disable', 'rule' => '{{ "Drop " + "blocked" }}' ]);
+	    $rule = $objects()['FirewallRule']['Drop blocked'] ?? [];
+	    [ $missing, ] = $step('app::sfos-rules', [ 'operation' => 'disable', 'rule' => 'Nope' ]);
+	    $this->check('sophos: a rule disabled, sent back whole; one that does not exist: the error output', [ 'Disable', 'Drop', 'error' ],
+		[ $rule['Status'] ?? null, $rule['NetworkPolicy']['Action'] ?? null, $missing?->getVariable('route') ]);
+	    [ $exe, ] = $step('app::sfos-users', [ 'operation' => 'disable', 'user' => 'jdoe' ]);
+	    [ $again, ] = $step('app::sfos-users', [ 'operation' => 'disable', 'user' => 'jdoe' ]);
+	    $this->check('sophos: a user made inactive; again: done already', [ 'Inactive', 'Open Group', 'disabled already' ],
+		[ $objects()['User']['jdoe']['Status'] ?? null, $objects()['User']['jdoe']['Group'] ?? null, $again?->getVariable('users')['message'] ?? null ]);
+	    [ $exe, ] = $step('app::sfos-web', [ 'operation' => 'block', 'domains' => 'bad.example.com, https://evil.example.net/x', 'group' => 'Blocked sites' ]);
+	    $urls = $objects()['WebFilterURLGroup']['Blocked sites']['URLlist']['URL'] ?? null;
+	    [ $exe, ] = $step('app::sfos-web', [ 'operation' => 'unblock', 'domains' => 'old.example.com', 'group' => 'Blocked sites' ]);
+	    $this->check('sophos: web: domains added to the URL group (the list kept), then one taken out', [ [ 'old.example.com', 'bad.example.com', 'evil.example.net' ], [ 'bad.example.com', 'evil.example.net' ] ],
+		[ $urls, $objects()['WebFilterURLGroup']['Blocked sites']['URLlist']['URL'] ?? null ]);
+	    [ $exe, ] = $step('app::sfos-system', [ 'operation' => 'zones', 'maxItems' => 1 ]);
+	    $this->check('sophos: system: zones, At most', [ 1, 2, true ], [ $exe?->getVariable('system')['count'] ?? null, $exe?->getVariable('system')['total'] ?? null, $exe?->getVariable('system')['truncated'] ?? null ]);
+	    [ $exe, ] = $step('app::sfos-api', [ 'xml' => '<Get><User/></Get>', 'variable' => 'raw' ]);
+	    [ $err, ] = $step('app::sfos-api', [ 'xml' => '<Login><Username>x</Username></Login>' ]);
+	    $this->check('sophos: API: the answer as JSON; a request with its own login refused', [ '2000.1', 'jdoe', 'error' ],
+		[ $exe?->getVariable('raw')['APIVersion'] ?? null, $exe?->getVariable('raw')['User']['Username'] ?? null, $err?->getVariable('route') ]);
+	} finally {
+	    $S::$testing = false;
 	    foreach($creds as $c)
 		$c->delete();
 	    proc_terminate($proc);
