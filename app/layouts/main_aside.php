@@ -294,6 +294,20 @@ $dd_items = implode('', $dd_items);
 		<i class="bi bi-journal-bookmark"></i> Knowledge bases
 	    </a>
 	    <?php endif; ?>
+	    <?php if (\V::app()->user->can('Account::update')): ?>
+	    <a href="<?= \V::app()->createUrl('/ldap/settings') ?>" class="nav-link">
+		<i class="bi bi-diagram-3"></i> LDAP sign-in
+	    </a>
+	    <a href="<?= \V::app()->createUrl('/saml/settings') ?>" class="nav-link">
+		<i class="bi bi-shield-lock"></i> SAML single sign-on
+	    </a>
+	    <?php endif; ?>
+	    <?php //CLD: 2026-10-31T11:05:39+02:00: the installation's services (util\Services::allowed: the owners; with the Admin plugin, its super-admins) ?>
+	    <?php if (\util\Services::allowed()): ?>
+	    <a href="<?= \V::app()->createUrl('/services/index') ?>" class="nav-link">
+		<i class="bi bi-gear-wide-connected"></i> Services
+	    </a>
+	    <?php endif; ?>
 	    <?php \V::app()->hooks->applyHook('layout:settings-menu'); ?>
 	    <?php
 	    $aid = \V::app()->config('rt.account')->_id ?? null;

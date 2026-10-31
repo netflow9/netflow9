@@ -5,7 +5,7 @@
     as one JSON value `settings_json`: the groups' rows are an edit grid), Import of the IdP's metadata into the form (SamlController::import: nothing saved), the details of
     this service provider for the IdP (entity ID, ACS URL, metadata, certificate: Renew), Test sign-in (saved settings), the SSO users of the account (Unlink)
 */
-use plugins\Saml\models\SamlSettings;
+use models\SamlSettings;
 
 $this->pageTitle = 'SAML single sign-on';
 
@@ -30,10 +30,10 @@ foreach((array)$settings->errors() as $key => $messages)
 
 $js = \util\JSON::encode([
     'containerId' => $containerId,
-    'schema' => [ 'id' => $formId, 'action' => \V::app()->createUrl('/Saml/saml/settings'), 'method' => 'post', 'fields' => $fields ],
+    'schema' => [ 'id' => $formId, 'action' => \V::app()->createUrl('/saml/settings'), 'method' => 'post', 'fields' => $fields ],
     'values' => \util\SmartForm::modelValues($settings),
     'errors' => (object)$errors,
-    'importUrl' => \V::app()->createUrl('/Saml/saml/import'),
+    'importUrl' => \V::app()->createUrl('/saml/import'),
 ]);
 
 //the SP's details for the IdP
@@ -155,7 +155,7 @@ JS . "}({$js});");
 		    <div class="d-flex flex-wrap gap-2">
 			<a class="btn btn-sm btn-outline-primary" href="<?= \V::app()->html->escape($settings->metadataUrl() . '?download=1') ?>"><i class="bi bi-download me-1"></i>Metadata</a>
 			<a class="btn btn-sm btn-outline-primary" href="<?= \V::app()->html->escape('data:application/x-pem-file;base64,' . base64_encode((string)$settings->spCert)) ?>" download="sp-certificate.pem"><i class="bi bi-file-earmark-lock me-1"></i>Certificate</a>
-			<a class="btn btn-sm btn-outline-danger" href="<?= \V::app()->createUrl('/Saml/saml/renew') ?>" data-method="post"
+			<a class="btn btn-sm btn-outline-danger" href="<?= \V::app()->createUrl('/saml/renew') ?>" data-method="post"
 			    data-confirm="<?= \V::app()->html->escape('Make a new certificate? Sign-ins fail until the IdP has the new metadata (or certificate) when it checks signed requests or encrypts the assertions') ?>"><i class="bi bi-arrow-repeat me-1"></i>Renew</a>
 		    </div>
 		</div>
@@ -171,7 +171,7 @@ JS . "}({$js});");
 		    <hr>
 		    <h6 class="card-title">Test the sign-in</h6>
 		    <p class="small text-muted">With the saved settings, on or off: you sign in at the IdP, and see what the sign-in would do here. Nobody is signed in, nothing is saved.</p>
-		    <a class="btn btn-sm btn-outline-primary" href="<?= \V::app()->createUrl('/Saml/saml/test') ?>" target="_blank" rel="noopener"><i class="bi bi-person-check me-1"></i>Test sign-in</a>
+		    <a class="btn btn-sm btn-outline-primary" href="<?= \V::app()->createUrl('/saml/test') ?>" target="_blank" rel="noopener"><i class="bi bi-person-check me-1"></i>Test sign-in</a>
 		</div>
 	    </div>
 	</div>
@@ -193,7 +193,7 @@ JS . "}({$js});");
 			<td class="text-break"><?= \V::app()->html->escape($l->subject) ?></td>
 			<td><?= $l->synced_at ? \V::app()->html->escape($l->schema['synced_at']->display()) : '' ?></td>
 			<td class="text-end">
-			    <a class="btn btn-sm btn-outline-danger" href="<?= \V::app()->createUrl('/Saml/saml/unlink', [ 'id' => (string)$u->_id ]) ?>" data-method="post"
+			    <a class="btn btn-sm btn-outline-danger" href="<?= \V::app()->createUrl('/saml/unlink', [ 'id' => (string)$u->_id ]) ?>" data-method="post"
 				data-confirm="<?= \V::app()->html->escape('Unlink ' . $u . '? The user then signs in with a password of this application (set with "Forgot username or password?")') ?>"><i class="bi bi-link-45deg me-1"></i>Unlink</a>
 			</td>
 		    </tr>

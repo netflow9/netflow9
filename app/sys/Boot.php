@@ -39,6 +39,33 @@ class Boot {
 	//CLD: 2026-10-26T23:49:50+02:00: the Assistant's conversation goes with its workflow (was the Assistant plugin's)
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\AssistantChat::class, 'beforeWorkflowDelete' ]);
 
+	//the LDAP and SAML sign-ins: a deleted user's link; the sign-in (sys\Identity::authenticate) and who keeps a password here (password reset / change);
+	//in every mode: the check suite signs in from the console
+	\V::app()->hooks->addHook('model:after-delete', [ \models\LdapLink::class, 'afterModelDelete' ]);
+	\V::app()->hooks->addHook('identity:authenticate', [ \util\LdapAuth::class, 'onAuthenticate' ]);
+	\V::app()->hooks->addHook('identity:password-source', [ \util\LdapAuth::class, 'onPasswordSource' ]);
+	\V::app()->hooks->addHook('model:after-delete', [ \models\SamlLink::class, 'afterModelDelete' ]);
+	\V::app()->hooks->addHook('identity:authenticate', [ \util\SamlAuth::class, 'onAuthenticate' ]);
+	\V::app()->hooks->addHook('identity:password-source', [ \util\SamlAuth::class, 'onPasswordSource' ]);
+
+	//CLD: 2026-10-31T11:05:39+02:00: the workflow daemon, a service of the Services page (util\Services; was the Admin plugin's); the plugins add theirs
+	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
+	    $services['daemon'] = [
+		'label' => 'Workflow daemon',
+		'description' => 'Runs the queued jobs: scheduled and background workflow runs, emails, timers',
+		'unit' => 'nfn-daemon.service',
+		'pidfile' => BASE . '/run/daemon.pid',
+		'health' => function() {
+		    $sock = BASE . '/run/job-notify.sock';
+		    $s = @stream_socket_client('unix://' . $sock, $errno, $errstr, 1);
+		    if (!$s)
+			return [ false, 'does not answer on ' . basename($sock) . ($errstr ? ": {$errstr}" : '') ];
+		    fclose($s);
+		    return [ true, 'answers on ' . basename($sock) ];
+		},
+	    ];
+	}, 5);
+
 	if (\V::app()->config('app.mode') != 'web')
 	    return;
 

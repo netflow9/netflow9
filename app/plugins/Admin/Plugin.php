@@ -3,15 +3,13 @@
 /*
     the installation's administration, for super-admins (users with the `superadmin` flag, set only from the console: ./v Admin::admins::grant).
     Enabled in app/plugins.php.
-      controllers/AdminController.php    /Admin/admin/...: the installation (its services: status, start / stop / restart), the accounts, an account (suspend / reactivate,
-                                         "view as"), the plugins' sections
-      util/Services.php                  the services (systemd units; the PID files of the scripts before them): status, start / stop / restart
+      controllers/AdminController.php    /Admin/admin/...: the installation, the accounts, an account (suspend / reactivate, "view as"), the plugins' sections
+      CLD: 2026-10-31T11:05:39+02:00: the services are the core's (util\Services, controllers\ServicesController: Settings, Services); with this plugin, only super-admins see them
       commands/AdminsCommand.php         ./v Admin::admins::<list | grant | revoke>
     Who may: a super-admin with 2FA (require()); every action is in the audit log of the account acted on and of the super-admin's own (audit()).
     "View as": the super-admin is signed in as the account's owner, read-only (any request but GET refused, except a few that only read), at most VIEW_MAX, with a bar to go back;
     the session's `impersonator` keeps who they are (sys\Boot lets a suspended account be viewed so).
     Hooks for the plugins:
-      admin:services ($services: \ArrayObject)        id => [ label, description, unit (systemd), pidfile (before the unit: a script's), health: fn() => [ ok (bool|null), text ] ]
       admin:installation-panels ()                    the installation page's sections (echo)
       admin:account-panels ($account)                 the account page's sections (echo)
       admin:account-features ($account)               the account page's sections of what the account may use, after its features (echo; CLD: 2026-10-24T10:06:05+03:00: e.g. the tool servers)
@@ -27,23 +25,7 @@ class Plugin {
     const VIEW_ALLOWED = [ 'admin/admin/exit_view', 'site/logout', 'workflow/expression' ];
 
     public function __construct() {
-	//the workflow daemon (the others: their plugins)
-	\V::app()->hooks->addHook('admin:services', function(\ArrayObject $services) {
-	    $services['daemon'] = [
-		'label' => 'Workflow daemon',
-		'description' => 'Runs the queued jobs: scheduled and background workflow runs, emails, timers',
-		'unit' => 'nfn-daemon.service',
-		'pidfile' => BASE . '/run/daemon.pid',
-		'health' => function() {
-		    $sock = BASE . '/run/job-notify.sock';
-		    $s = @stream_socket_client('unix://' . $sock, $errno, $errstr, 1);
-		    if (!$s)
-			return [ false, 'does not answer on ' . basename($sock) . ($errstr ? ": {$errstr}" : '') ];
-		    fclose($s);
-		    return [ true, 'answers on ' . basename($sock) ];
-		},
-	    ];
-	});
+	//CLD: 2026-10-31T11:05:39+02:00: the workflow daemon's service is the core's (sys\Boot, hook app:services)
 
 	if (\V::app()->config('app.mode') != 'web')
 	    return;
@@ -176,13 +158,5 @@ class Plugin {
 	    . '<button type="submit" class="btn btn-sm btn-warning py-0">Back to administration</button></form></div>';
     }
 
-    // ------------------------------------------------------------------------------------
-    //the services
-
-    //the services of the installation (hook admin:services): [ id => definition ]
-    public static function services() {
-	$services = new \ArrayObject();
-	\V::app()->hooks->applyHook('admin:services', [ $services ]);
-	return $services->getArrayCopy();
-    }
+    //CLD: 2026-10-31T11:05:39+02:00: services() moved to util\Services::services (the core's Services page)
 }

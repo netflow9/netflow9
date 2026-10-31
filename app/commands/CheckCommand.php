@@ -3697,13 +3697,13 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('the default tier: an account without one', [ $t['default'], $t['default'] ], [ $T::tierOf($account), $T::tierOf((string)$account->_id) ]);
 	    $set('free');
 	    $free = $t['tiers']['free'];
-	    $this->check('free: its limits, no SAML / LDAP', [ $free['limits']['datatables'], $free['limits']['files_bytes'], false, false ],
-		[ $T::limit($account, 'datatables'), $T::limit($account, 'files_bytes'), $T::has($account, 'saml'), $T::has($account, 'ldap') ]);
-	    $set('free', [ 'datatables' => null, 'datatable_records' => 7 ], [ 'saml' => true ]);
+	    $this->check('free: its limits, no feature', [ $free['limits']['datatables'], $free['limits']['files_bytes'], false, false ],
+		[ $T::limit($account, 'datatables'), $T::limit($account, 'files_bytes'), $T::has($account, 'chk_a'), $T::has($account, 'chk_b') ]);
+	    $set('free', [ 'datatables' => null, 'datatable_records' => 7 ], [ 'chk_a' => true ]);
 	    $this->check('the account\'s own: no limit, another limit, a feature on', [ null, 7, true, false ],
-		[ $T::limit($account, 'datatables'), $T::limit($account, 'datatable_records'), $T::has($account, 'saml'), $T::has($account, 'ldap') ]);
-	    $set('enterprise', [], [ 'ldap' => false ]);
-	    $this->check('enterprise: no limits; a feature off', [ null, true, false ], [ $T::limit($account, 'files_bytes'), $T::has($account, 'saml'), $T::has($account, 'ldap') ]);
+		[ $T::limit($account, 'datatables'), $T::limit($account, 'datatable_records'), $T::has($account, 'chk_a'), $T::has($account, 'chk_b') ]);
+	    $set('enterprise', [], [ 'chk_a' => true, 'chk_b' => false ]);
+	    $this->check('enterprise: no limits; a feature on, a feature off', [ null, true, false ], [ $T::limit($account, 'files_bytes'), $T::has($account, 'chk_a'), $T::has($account, 'chk_b') ]);
 
 	    //data tables: 2 of the account's, the limit 2 refuses a third
 	    $defs = \V::app()->mongo->selectCollection($db, \models\DataTableDef::_collection());
@@ -3750,19 +3750,10 @@ class CheckCommand extends \sys\BaseController {
 		[ $a, $b, $c, \V::app()->mongo->selectCollection(\models\File::_database(), \models\File::_collection())->countDocuments([ 'metadata.aid' => $account->_id ]),
 		$T::used($account, 'files_bytes') ]);
 
-	    //SAML / LDAP: their sign-in off without the feature (settings kept)
-	    if (class_exists(\plugins\Saml\util\SamlAuth::class)) {
-		$set('free');
-		\plugins\Saml\util\SamlAuth::reset();
-		$this->check('SAML: no sign-in without the feature', null, \plugins\Saml\util\SamlAuth::enabledFor($account->_id));
-	    }
-	    if (class_exists(\plugins\Ldap\util\LdapAuth::class)) {
-		$set('free');
-		\plugins\Ldap\util\LdapAuth::reset();
-		//CLD: 2026-10-25T19:30:00+02:00: the step and its credential are core: offered without the feature (were the feature's)
-		$this->check('LDAP: no sign-in without the feature; the step and its credential offered all the same (core, no plan feature)', [ null, true, true ],
-		    [ \plugins\Ldap\util\LdapAuth::enabledFor($account->_id), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ]);
-	    }
+	    //SAML / LDAP: core, not features of a tier; the LDAP step and its credential on every tier
+	    $set('free');
+	    $this->check('SAML / LDAP: no plan feature; the LDAP step and its credential on free', [ false, false, true, true ],
+		[ isset($T::features()['saml']), isset($T::features()['ldap']), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ]);
 	    //CLD: 2026-10-25T18:30:00+02:00: Database: on enterprise only (as LDAP); its credentials and step follow; the step does not run without it
 	    //CLD: 2026-10-25T20:00:00+02:00: core: its credentials and step on every tier (were the feature `database`'s)
 	    $on = [];
@@ -4311,8 +4302,8 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-21T10:00:00+03:00: the Ldap plugin (skipped without it): BER and filters, the clients (each driver PHP has here: the built-in one, and the ldap extension's
     //when it is loaded) against the plugin's test server (plugins/Ldap/tests/LdapTestServer.php: plain + StartTLS, LDAPS; a certificate made here with openssl), the LDAP
     //sign-in (in an account made for the checks, removed afterwards) and the LDAP step
-    //CLD: 2026-10-25T19:30:00+02:00: the client, the credential and the step are core (always checked; the test server: app/tests/LdapTestServer.php); only the sign-in is the Ldap plugin's
-    //(skipped without it)
+    //CLD: 2026-10-25T19:30:00+02:00: the client, the credential and the step are core (always checked; the test server: app/tests/LdapTestServer.php)
+    //the LDAP sign-in is core too (always checked)
     //CLD: 2026-10-21T20:10:00+03:00: the account guard of sys\ObjectManager (web requests: an account's objects only, a query for another account refused, acrossAccounts,
     //global models and the console not limited) and the sign-in of a name used in two accounts (sys\Identity::authenticate: the password picks the user, several fit: choices).
     //Account B and the users are written directly (no model hooks) and removed at the end
@@ -4594,10 +4585,7 @@ class CheckCommand extends \sys\BaseController {
 		$failover->close();
 	    }
 
-	    if (in_array('Ldap', (array)\V::app()->config('modules'), true))
-		$this->ldapSignInChecks($port, $tls ? $ca : null);
-	    else
-		echo "  (the LDAP sign-in not checked: the Ldap plugin is not enabled)\n";
+	    $this->ldapSignInChecks($port, $tls ? $ca : null);
 	    $this->ldapStepChecks($port);
 	} finally {
 	    foreach($servers as [ $proc ]) {
@@ -4716,7 +4704,7 @@ class CheckCommand extends \sys\BaseController {
     //the LDAP sign-in, in an account made for it: provisioning, roles from (nested) groups, refusals, linking existing users, the owner kept, the directory not answering
     private function ldapSignInChecks($port, $ca) {
 	$om = \V::app()->om;
-	$Auth = \plugins\Ldap\util\LdapAuth::class;
+	$Auth = \util\LdapAuth::class;
 	$account = \models\Account::create([ 'state' => 'active', 'name' => 'Check LDAP ' . uniqid() ]);
 	$account->save();
 	$restore = $this->account;
@@ -4757,7 +4745,7 @@ class CheckCommand extends \sys\BaseController {
 		[ $try('ana@example.com', 'anapw'), $try('ana@example.com', 'wrong'), $try('bob@example.com', 'bobpw'), $try('dave@example.com', 'davepw'),
 		    $try('dup@example.com', 'dup1pw'), $try('gone@example.com', 'gonepw'), $try('nobody@example.com', 'x'), $try('ana@other.com', 'anapw'), $try('carol', 'carolpw') ]);
 	    $ana = $om->findOne('User', [ 'aid' => $account->_id, 'email' => 'ana@example.com' ]);
-	    $link = $ana ? \plugins\Ldap\models\LdapLink::forUser($ana) : null;
+	    $link = $ana ? \models\LdapLink::forUser($ana) : null;
 	    $this->check('LDAP sign-in: the user created (names, no password), linked (DN, name), an LDAP user (no password here)', [ 'Ana Pop', '', 'cn=ana,ou=People,dc=example,dc=com', 'ana', 'LDAP' ],
 		[ (string)$ana, (string)$ana?->password, $link?->dn, $link?->login, \sys\Identity::passwordSource($ana) ]);
 
@@ -4805,7 +4793,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('LDAP sign-in: the directory not answering: an LDAP user is refused, an unknown email is not handled', [ 'refused:The directory cannot be reached: try again later', null ],
 		[ $try('ana', 'anapw'), $try('zed@example.com', 'x') ]);
 
-	    $bad = \plugins\Ldap\models\LdapSettings::create([ 'aid' => $account->_id, 'enabled' => true, 'directory' => 'openldap', 'hosts' => 'a b/c', 'baseDn' => 'dc=x', 'bindDn' => 'cn=x',
+	    $bad = \models\LdapSettings::create([ 'aid' => $account->_id, 'enabled' => true, 'directory' => 'openldap', 'hosts' => 'a b/c', 'baseDn' => 'dc=x', 'bindDn' => 'cn=x',
 		'userFilter' => '(uid=x)', 'groupSource' => 'nested', 'domains' => 'not_a_domain', 'groupFilter' => '(cn=a' ]);
 	    $bad->validates();
 	    $this->check('LDAP settings refused: a server, a bind DN without password, a filter without {login}, a broken filter, nested groups outside AD, a domain', [
@@ -5062,14 +5050,11 @@ class CheckCommand extends \sys\BaseController {
     //the request and the metadata of the SP, the IdP metadata read, the responses checked (signed response / assertion, encrypted with RSA-OAEP SHA-1 / SHA-256) and refused
     //(not signed, changed, another key, signature wrapping, audience, recipient, times, InResponseTo, issuer, status, DOCTYPE, encryption required), a comment in the NameID,
     //the sign-in (provisioning, roles from groups, linking existing users, the last owner, the password of an SSO user refused), replays, the request's browser token
+    //the SAML sign-in is core (always checked)
     private function suiteSaml() {
-	if (!in_array('Saml', (array)\V::app()->config('modules'), true)) {
-	    echo "  skipped: the Saml plugin is not enabled\n";
-	    return;
-	}
-	$X = \plugins\Saml\util\SamlXml::class;
-	$Sp = \plugins\Saml\util\SamlSp::class;
-	$Auth = \plugins\Saml\util\SamlAuth::class;
+	$X = \util\SamlXml::class;
+	$Sp = \util\SamlSp::class;
+	$Auth = \util\SamlAuth::class;
 	$om = \V::app()->om;
 
 	//the test IdP's key pair
@@ -5182,7 +5167,7 @@ class CheckCommand extends \sys\BaseController {
 	    $claims = function($b64, $expected = '_req1') use ($Sp, $s) {
 		try {
 		    return $Sp::response($s, $b64, $expected);
-		} catch (\plugins\Saml\util\SamlException $e) {
+		} catch (\util\SamlException $e) {
 		    return 'refused: ' . $e->getMessage();
 		}
 	    };
@@ -5226,7 +5211,7 @@ class CheckCommand extends \sys\BaseController {
 		    $signed->parentNode->insertBefore($evil, $signed);
 		} elseif ($where === 'hidden') {
 		    $evil->setAttribute('ID', '_evil');
-		    $ext = $doc->createElementNS(\plugins\Saml\util\SamlXml::SAMLP, 'samlp:Extensions');
+		    $ext = $doc->createElementNS(\util\SamlXml::SAMLP, 'samlp:Extensions');
 		    $signed->parentNode->insertBefore($ext, $xp->query('//samlp:Status')->item(0));
 		    $signed->parentNode->replaceChild($evil, $signed);
 		    $ext->appendChild($signed);
@@ -5242,7 +5227,7 @@ class CheckCommand extends \sys\BaseController {
 		$refused($response([ 'change' => fn($d, $x) => $forged($d, $x, 'moved') ]), 'the signature is not of the Assertion') ]);
 	    $dupId = function($doc, $xp) {
 		$a = $xp->query('//saml:Assertion')->item(0);
-		$copy = $doc->createElementNS(\plugins\Saml\util\SamlXml::SAMLP, 'samlp:Extensions');
+		$copy = $doc->createElementNS(\util\SamlXml::SAMLP, 'samlp:Extensions');
 		$copy->setAttribute('ID', $a->getAttribute('ID'));
 		$a->parentNode->insertBefore($copy, $xp->query('//samlp:Status')->item(0));
 	    };
@@ -5281,7 +5266,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('SAML sign-in: a test (dry): signed in, nothing saved', [ 'user:ana@example.com:member', $users ], [ $dry, $om->count('User', [ 'aid' => $account->_id ]) ]);
 	    $first = $signIn();
 	    $ana = $om->findOne('User', [ 'aid' => $account->_id, 'email' => 'ana@example.com' ]);
-	    $link = $ana ? \plugins\Saml\models\SamlLink::forUser($ana) : null;
+	    $link = $ana ? \models\SamlLink::forUser($ana) : null;
 	    $this->check('SAML sign-in: the user created (names, role from the group), linked by its NameID, an SSO user; again: the same user', [
 		'user:ana@example.com:member', 'Ana Pop', 'ana@example.com', 'SSO', 'user:ana@example.com:member', 1 ],
 		[ $first, (string)$ana, $link?->subject, \sys\Identity::passwordSource($ana), $signIn(), $om->count('User', [ 'aid' => $account->_id, 'email' => 'ana@example.com' ]) ]);
@@ -5291,7 +5276,7 @@ class CheckCommand extends \sys\BaseController {
 		$signIn([ 'nameId' => 'c-123', 'format' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
 		    'attributes' => [ 'email' => [ 'Carol@Example.com' ], 'groups' => [ 'CN=Staff, OU=Groups,DC=example,DC=com' ] ] ]),
 		$signIn([ 'nameId' => 'dave@example.com', 'attributes' => [ 'groups' => [ 'Others' ] ] ]),
-		$signIn([ 'nameId' => '_t1', 'format' => \plugins\Saml\models\SamlSettings::TRANSIENT, 'attributes' => [ 'groups' => [ 'Devs' ] ] ]) ]);
+		$signIn([ 'nameId' => '_t1', 'format' => \models\SamlSettings::TRANSIENT, 'attributes' => [ 'groups' => [ 'Devs' ] ] ]) ]);
 
 	    //an existing user with a password
 	    $erin = \models\User::create([ 'aid' => $account->_id, 'email' => 'erin@example.com', 'firstname' => 'Erin', 'lastname' => 'Local', 'state' => 'active', 'role' => $roles['member']->_id,
@@ -5321,10 +5306,10 @@ class CheckCommand extends \sys\BaseController {
 	    //replays, the request's browser token, "Sign in with SSO"
 	    $once = $claims($response());
 	    $replay = [ $Auth::useOnce($account->_id, $once), $Auth::useOnce($account->_id, $once) ];
-	    [ $rq, $token ] = \plugins\Saml\models\SamlRequest::start($account->_id);
-	    [ $rq2, ] = \plugins\Saml\models\SamlRequest::start($account->_id);
-	    $taken = [ \plugins\Saml\models\SamlRequest::take($account->_id, $rq2->request_id, $token) === null, \plugins\Saml\models\SamlRequest::take($account->_id, $rq->request_id, $token)?->request_id,
-		\plugins\Saml\models\SamlRequest::take($account->_id, $rq->request_id, $token) ];
+	    [ $rq, $token ] = \models\SamlRequest::start($account->_id);
+	    [ $rq2, ] = \models\SamlRequest::start($account->_id);
+	    $taken = [ \models\SamlRequest::take($account->_id, $rq2->request_id, $token) === null, \models\SamlRequest::take($account->_id, $rq->request_id, $token)?->request_id,
+		\models\SamlRequest::take($account->_id, $rq->request_id, $token) ];
 	    $this->check('SAML: an assertion used once; a request taken with its browser\'s token only, once; Sign in with SSO: by the domain, an SSO user\'s email, not another domain', [
 		[ true, false ], [ true, $rq->request_id, null ], (string)$account->_id, (string)$account->_id, null ],
 		[ $replay, $taken, (string)$Auth::accountFor('Someone@Example.com')?->aid, (string)$Auth::accountFor('erin@example.com')?->aid, $Auth::accountFor('x@other.test') ]);

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-23T12:00:00+03:00: new: the public pages of the SAML sign-in (the Saml plugin), served at /Saml/sso/<action>:
+    CLD: 2026-10-23T12:00:00+03:00: new: the public pages of the SAML sign-in, served at /sso/<action>:
 	login      "Sign in with SSO": the email asked (?email=), its account found (util\SamlAuth::accountFor), then start
 	start      /<account>: a request sent to the account's IdP (begin): a SamlRequest, the browser's token in a cookie, the redirect
 	acs        /<account>, POST from the IdP (no CSRF token: the response is checked instead): the response checked (util\SamlSp::response) against the request it
@@ -10,12 +10,12 @@
 	metadata   /<account>: the service provider's metadata (XML), for the IdP
 */
 
-namespace plugins\Saml\controllers;
+namespace controllers;
 
-use plugins\Saml\models\SamlRequest;
-use plugins\Saml\util\SamlAuth;
-use plugins\Saml\util\SamlException;
-use plugins\Saml\util\SamlSp;
+use models\SamlRequest;
+use util\SamlAuth;
+use util\SamlException;
+use util\SamlSp;
 
 class SsoController extends \sys\BaseController {
     public $layout = 'bare';
@@ -30,8 +30,7 @@ class SsoController extends \sys\BaseController {
     protected function settingsOf($aid, $enabled = true) {
 	$om = \V::app()->om;
 	$account = $om->acrossAccounts(fn() => $om->findById('Account', (string)$aid));
-	//CLD: 2026-10-24T09:45:36+03:00: + the account's tier has SAML (util\Tiers)
-	if (!$account || \models\Account::isSuspended($account->_id) || !\util\Tiers::has($account, 'saml'))
+	if (!$account || \models\Account::isSuspended($account->_id))
 	    return null;
 	$s = $om->acrossAccounts(fn() => $om->findOne('SamlSettings', [ 'aid' => $account->_id ] + ($enabled ? [ 'enabled' => true ] : [])));
 	if ($s)
@@ -47,7 +46,7 @@ class SsoController extends \sys\BaseController {
 	if ($email !== '') {
 	    $s = SamlAuth::accountFor($email);
 	    if ($s)
-		$resp->redirect(\V::app()->createUrl('/Saml/sso/start/' . $s->aid));
+		$resp->redirect(\V::app()->createUrl('/sso/start/' . $s->aid));
 	    $error = \V::t('Single sign-on is not set up for this email: sign in with your password');
 	}
 	$this->render('login', compact('email', 'error'));
