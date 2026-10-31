@@ -38,6 +38,8 @@ class ExecutionLog extends \sys\BaseModel {
 	'webhook.refused' => 'Webhook refused',
 	//CLD: 2026-11-01T00:30:00+02:00: a GravityZone event push refused, or events left out (GravityzoneController)
 	'gravityzone.refused' => 'GravityZone event refused',
+	//CLD: 2026-11-01T06:00:00+02:00: a FortiGate event refused (FortigateController)
+	'fortigate.refused' => 'FortiGate event refused',
 	'job.failed' => 'Job failed',
     ];
 

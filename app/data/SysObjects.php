@@ -281,6 +281,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialOdbc',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-01T06:00:00+02:00: a FortiGate firewall (the FortiGate steps), core for every account
+	    'CredentialFortiGate' => [
+		'class' => 'models\credential\CredentialFortiGate',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-01T04:00:00+02:00: a Veeam Backup & Replication server (the Veeam steps and event trigger), core for every account
 	    'CredentialVeeam' => [
 		'class' => 'models\credential\CredentialVeeam',
@@ -425,6 +430,35 @@ class SysObjects {
 	    ],
 	    'NodeAppOdbc' => [
 		'class' => 'models\node\NodeAppOdbc',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-01T06:00:00+02:00: FortiGate (one step per area, NodeAppFortiGate their base; the event trigger: an automation stitch's webhook), core for every account
+	    'NodeAppFgtAddresses' => [
+		'class' => 'models\node\NodeAppFgtAddresses',
+		'wfNode' => true,
+	    ],
+	    'NodeAppFgtBanned' => [
+		'class' => 'models\node\NodeAppFgtBanned',
+		'wfNode' => true,
+	    ],
+	    'NodeAppFgtPolicies' => [
+		'class' => 'models\node\NodeAppFgtPolicies',
+		'wfNode' => true,
+	    ],
+	    'NodeAppFgtUsers' => [
+		'class' => 'models\node\NodeAppFgtUsers',
+		'wfNode' => true,
+	    ],
+	    'NodeAppFgtSystem' => [
+		'class' => 'models\node\NodeAppFgtSystem',
+		'wfNode' => true,
+	    ],
+	    'NodeAppFgtApi' => [
+		'class' => 'models\node\NodeAppFgtApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerFortiGate' => [
+		'class' => 'models\node\NodeTriggerFortiGate',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-01T04:00:00+02:00: Veeam Backup & Replication (one step per area, NodeAppVeeam their base; the event trigger, polling), core for every account
