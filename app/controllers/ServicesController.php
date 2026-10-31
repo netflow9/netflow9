@@ -4,6 +4,8 @@
     CLD: 2026-10-31T11:05:39+02:00: new (was the Admin plugin's AdminController::index / service): the installation's services, at /services/<action>:
 	index      their status and health (util\Services::services, status)
 	control    POST id, verb: start / stop / restart one (util\Services::control); in the audit log
+    CLD: 2026-10-31T19:30:00+02:00: without the Admin plugin the services are a tab of the account's settings (AccountController::settings, views/account/_services.php): index goes there,
+    control returns there (util\Services::pageUrl)
     Who may: with the Admin plugin, its super-admins with 2FA (plugins\Admin\Plugin::require, as before); without it, the account's owners (util\Services::ownerSignedIn)
 */
 
@@ -25,9 +27,12 @@ class ServicesController extends \sys\BaseController {
     }
 
     public function index($req, $resp) {
-	$services = [];
-	foreach(Services::services() as $id => $s)
-	    $services[$id] = $s + [ 'status' => Services::status($s) ];
+	//CLD: 2026-10-31T19:30:00+02:00: without the Admin plugin: the account settings' tab
+	if (!Services::adminPlugin()) {
+	    \V::app()->response->redirect(Services::pageUrl());
+	    return;
+	}
+	$services = Services::withStatus();
 	$this->render('index', compact('services'));
     }
 
@@ -44,6 +49,7 @@ class ServicesController extends \sys\BaseController {
 	\V::app()->log->info("Services: {$verb} {$id} by {$who} " . \V::app()->user->name . ': ' . ($ok ? 'ok' : $message));
 	\models\AuditLog::record('service_' . $verb, null, "{$who}: {$verb} {$s['label']} (" . ($ok ? 'done' : 'failed: ' . mb_substr($message, 0, 200)) . ')');
 	$this->addToast($ok ? 'success' : 'error', $ok ? 'Done' : 'Failed', $message);
-	$this->redirect('/services/index');
+	//CLD: 2026-10-31T19:30:00+02:00: back where the services are (the account settings' tab without the Admin plugin)
+	\V::app()->response->redirect(Services::pageUrl());
     }
 }
