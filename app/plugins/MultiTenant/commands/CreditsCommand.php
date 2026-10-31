@@ -59,7 +59,7 @@ class CreditsCommand extends \sys\BaseController {
 	foreach(array_unique($models) as $i => $model) {
 	    $s = $system && $model === $system->model ? $system : (object)[ 'model' => $model ];
 	    $r = SystemAiWallet::ratesOf($s, $table);
-	    $p = SystemAi::pricesOf($s);
+	    $p = \util\AiPrices::of($s);
 	    $line = sprintf('%-22s', $model . ($system && $i === 0 ? ' *' : ''));
 	    if ($r === null) {
 		echo "{$line} no rates: set them in credit_rates.php\n";

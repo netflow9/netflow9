@@ -20,8 +20,9 @@ class ServicesController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	if (Services::adminPlugin())
-	    \plugins\MultiTenant\Plugin::require();
+	//CLD: 2026-10-31T22:00:00+02:00: the administration's own check (util\Services::admin, hook services:admin; was plugins\MultiTenant\Plugin::require)
+	if (($admin = Services::admin()) !== null)
+	    ($admin['require'])();
 	elseif (!Services::ownerSignedIn())
 	    \V::app()->error(403, 'Unauthorized');
     }

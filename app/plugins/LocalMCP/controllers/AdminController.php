@@ -14,7 +14,8 @@ class AdminController extends \sys\BaseController {
     public function _init() {
 	parent::_init();
 	//CLD: 2026-10-31T21:00:00+02:00: the administration is the MultiTenant plugin's (was: the Admin plugin's class exists)
-	if (!\plugins\MultiTenant\Plugin::enabled())
+	//CLD: 2026-10-31T22:00:00+02:00: the MultiTenant plugin may not be installed (its own repository): its class is looked for first
+	if (!class_exists(\plugins\MultiTenant\Plugin::class) || !\plugins\MultiTenant\Plugin::enabled())
 	    \V::app()->error(404, 'Not found');
 	\plugins\MultiTenant\Plugin::require();
     }

@@ -140,7 +140,7 @@ class SystemAiWallet extends \sys\BaseModel {
 	}
 	if (isset($def['in'], $def['out']))
 	    return [ (float)$def['in'], (float)$def['out'], (float)($def['cache_read'] ?? $def['in'] * 0.1) ];
-	$prices = SystemAi::pricesOf($settings); //CLD: 2026-10-23T10:00:00+03:00: (was AssistantSettings::pricesOf)
+	$prices = \util\AiPrices::of($settings); //CLD: 2026-10-23T10:00:00+03:00: (was AssistantSettings::pricesOf)
 	$unit = (float)$table['credit_usd'];
 	if ($prices === null || $unit <= 0)
 	    return null;
@@ -149,11 +149,11 @@ class SystemAiWallet extends \sys\BaseModel {
     }
 
     //the credits of $usage (tokens: WorkflowAssistant's) at $rates (ratesOf), as a number (WorkflowAssistant counts with it)
-    //CLD: 2026-10-23T10:00:00+03:00: SystemAi::CACHE_WRITE (was AssistantSettings::)
+    //CLD: 2026-10-23T10:00:00+03:00: \util\AiPrices::CACHE_WRITE (was AssistantSettings::)
     public static function creditsOf(array $rates, array $usage) {
 	[ $in, $out, $cacheRead ] = $rates;
 	return ((int)($usage['input_tokens'] ?? 0) * $in + (int)($usage['output_tokens'] ?? 0) * $out
-	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * SystemAi::CACHE_WRITE) / 1000000;
+	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * \util\AiPrices::CACHE_WRITE) / 1000000;
     }
 
     //what a request charges for $credits counted: whole credits, at least 1
