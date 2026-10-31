@@ -11,11 +11,26 @@ class AccountController extends \sys\BaseController {
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
     }
 
+    //CLD: 2026-10-31T11:32:07+02:00: two tabs (?__tab=): general (the settings, Account::update) and usage (was the action usage, Account::usage); the first one the user may see by default
     public function settings($req, $resp) {
-	if (!\V::app()->user->can('Account::update'))
+	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'usage' => \V::app()->user->can('Account::usage') ]));
+	if (!$tabs)
 	    \V::app()->error(403, 'Unauthorized');
+	$tab = (string)($req->query['__tab'] ?? '');
+	if (!in_array($tab, $tabs, true))
+	    $tab = $tabs[0];
 
 	$account = \V::app()->config('rt.account');
+
+	if ($tab === 'usage') {
+	    $usage = \util\Tiers::usage($account);
+	    $limits = \util\Tiers::limits($account);
+	    $projects = [];
+	    foreach(\V::app()->om->find('Project', [ 'aid' => $account->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $p)
+		$projects[(string)$p->_id] = $p;
+	    $this->render('settings', compact('account', 'tab', 'tabs', 'usage', 'limits', 'projects'));
+	    return;
+	}
 
 	if ($req->is('post')) {
 	    //CLD: 2026-10-05T20:44:56+03:00: only the form's field; `hostname` is part of data collection names, `state` is not user-settable (was the whole POST)
@@ -29,21 +44,9 @@ class AccountController extends \sys\BaseController {
 	}
 
 
-	$this->render('settings', compact('account'));
+	$this->render('settings', compact('account', 'tab', 'tabs'));
     }
 
-    //CLD: 2026-10-24T09:45:36+03:00: what the account uses of its tier's limits (util\Tiers), in all and per project (only a breakdown: the limits are the account's)
-    public function usage($req, $resp) {
-	if (!\V::app()->user->can('Account::usage'))
-	    \V::app()->error(403, 'Unauthorized');
-
-	$account = \V::app()->config('rt.account');
-	$usage = \util\Tiers::usage($account);
-	$limits = \util\Tiers::limits($account);
-	$projects = [];
-	foreach(\V::app()->om->find('Project', [ 'aid' => $account->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $p)
-	    $projects[(string)$p->_id] = $p;
-	$this->render('usage', compact('account', 'usage', 'limits', 'projects'));
-    }
+    //CLD: 2026-10-31T11:32:07+02:00: usage() removed: the Usage tab of the settings (what the account uses of its tier's limits, in all and per project)
 
 }

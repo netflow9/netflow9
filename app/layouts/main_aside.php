@@ -272,14 +272,10 @@ $dd_items = implode('', $dd_items);
 		<i class="bi bi-person-lines-fill"></i> Roles
 	    </a>
 	    <?php endif; ?>
-	    <?php if (\V::app()->user->can('Account::update')): ?>
+	    <?php //CLD: 2026-10-31T11:32:07+02:00: Account settings with its Usage tab (was a menu entry of its own): for who may see either ?>
+	    <?php if (\V::app()->user->can('Account::update') || \V::app()->user->can('Account::usage')): ?>
 	    <a href="<?= \V::app()->createUrl('/account/settings') ?>" class="nav-link">
 		<i class="bi bi-house-gear"></i> Account settings
-	    </a>
-	    <?php endif; ?>
-	    <?php if (\V::app()->user->can('Account::usage')): ?>
-	    <a href="<?= \V::app()->createUrl('/account/usage') ?>" class="nav-link">
-		<i class="bi bi-speedometer2"></i> Usage
 	    </a>
 	    <?php endif; ?>
 	    <?php //CLD: 2026-10-26T23:49:50+02:00: Assistant settings (was the Assistant plugin's, hook layout:settings-menu) ?>
