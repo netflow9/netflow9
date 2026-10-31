@@ -286,6 +286,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialFortiGate',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-01T10:00:00+02:00: a Sophos Firewall (the Sophos Firewall steps: its XML API), core for every account
+	    'CredentialSophos' => [
+		'class' => 'models\credential\CredentialSophos',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-01T04:00:00+02:00: a Veeam Backup & Replication server (the Veeam steps and event trigger), core for every account
 	    'CredentialVeeam' => [
 		'class' => 'models\credential\CredentialVeeam',
@@ -459,6 +464,31 @@ class SysObjects {
 	    ],
 	    'NodeTriggerFortiGate' => [
 		'class' => 'models\node\NodeTriggerFortiGate',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-01T10:00:00+02:00: Sophos Firewall (one step per area, NodeAppSophos their base; no trigger: SFOS sends no webhooks), core for every account
+	    'NodeAppSfosHosts' => [
+		'class' => 'models\node\NodeAppSfosHosts',
+		'wfNode' => true,
+	    ],
+	    'NodeAppSfosRules' => [
+		'class' => 'models\node\NodeAppSfosRules',
+		'wfNode' => true,
+	    ],
+	    'NodeAppSfosUsers' => [
+		'class' => 'models\node\NodeAppSfosUsers',
+		'wfNode' => true,
+	    ],
+	    'NodeAppSfosWeb' => [
+		'class' => 'models\node\NodeAppSfosWeb',
+		'wfNode' => true,
+	    ],
+	    'NodeAppSfosSystem' => [
+		'class' => 'models\node\NodeAppSfosSystem',
+		'wfNode' => true,
+	    ],
+	    'NodeAppSfosApi' => [
+		'class' => 'models\node\NodeAppSfosApi',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-01T04:00:00+02:00: Veeam Backup & Replication (one step per area, NodeAppVeeam their base; the event trigger, polling), core for every account
