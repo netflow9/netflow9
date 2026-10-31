@@ -4,7 +4,7 @@
 //directory name (`login`, lower case: a name typed without @domain finds the user), when the user was last refreshed from the directory. Made on a first LDAP sign-in
 //(a user created, or an existing one linked); removed with the user, or by the settings page (Unlink: the user signs in with a password of this application again)
 
-namespace plugins\Ldap\models;
+namespace models;
 
 class LdapLink extends \sys\BaseModel {
     protected static $collection = 'ldap_links';

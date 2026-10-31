@@ -4,7 +4,7 @@
 //with a transient NameID format) and its format, the last sign-in. Made on a first SAML sign-in (a user created, or an existing one linked); removed with the user, or by the
 //settings page (Unlink: the user signs in with a password of this application again)
 
-namespace plugins\Saml\models;
+namespace models;
 
 class SamlLink extends \sys\BaseModel {
     protected static $collection = 'saml_links';

@@ -1,18 +1,17 @@
 <?php
 
 /*
-    CLD: 2026-10-21T10:00:00+03:00: new: the pages of the Ldap plugin, served at /Ldap/ldap/<action>, for who may change the account (Account::update, as AccountController::settings):
+    CLD: 2026-10-21T10:00:00+03:00: new: the pages of the LDAP sign-in, served at /ldap/<action>, for who may change the account (Account::update, as AccountController::settings):
 	settings   the account's LDAP sign-in settings (models\LdapSettings; posted as JSON: `settings_json`, the form's app.smartform data) and its LDAP users
 	test       POST, JSON: the settings of the form (not saved) tried: mode `connection` (connect, bind, the Base DN, a few people of the user filter) or `signin` (what the
 		   sign-in of `login` / `password` would do: util\LdapAuth::trial); answers { ok, lines }
 	unlink     POST ?id=<user>: the user is no longer an LDAP user (signs in with a password of this application: "forgot password" sets one)
 */
 
-namespace plugins\Ldap\controllers;
+namespace controllers;
 
-use plugins\Ldap\models\LdapSettings;
-use plugins\Ldap\util\LdapAuth;
-//CLD: 2026-10-25T19:30:00+02:00: the LDAP client is core (util\LdapClient; was plugins\Ldap\util)
+use models\LdapSettings;
+use util\LdapAuth;
 use util\LdapClient;
 
 class LdapController extends \sys\BaseController {
@@ -25,8 +24,6 @@ class LdapController extends \sys\BaseController {
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
-	//CLD: 2026-10-24T09:45:36+03:00: a feature of the account's tier (util\Tiers)
-	\util\Tiers::requireFeature('ldap');
     }
 
     protected function settingsOfAccount() {
@@ -127,6 +124,6 @@ class LdapController extends \sys\BaseController {
 	    $l->delete();
 	\models\AuditLog::record('ldap.unlink', $user, 'no longer an LDAP user');
 	$this->addToast('success', 'OK', \V::app()->html->escape((string)$user) . ' is no longer an LDAP user: "Forgot username or password?" sets a password');
-	$this->redirect('/Ldap/ldap/settings');
+	$this->redirect('/ldap/settings');
     }
 }

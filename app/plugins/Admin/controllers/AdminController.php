@@ -2,8 +2,8 @@
 
 /*
     the administration pages, at /Admin/admin/<action> (super-admins with 2FA: Plugin::require; across the accounts on purpose):
-	index         the installation: its services (status, start / stop / restart), the app, the plugins' sections
-	service       POST: start / stop / restart a service
+	index         the installation: the app, the plugins' sections
+	CLD: 2026-10-31T11:05:39+02:00: the services (status, start / stop / restart) are the core's page (controllers\ServicesController), for super-admins only with this plugin
 	accounts      the accounts (search by name, hostname or a user's email)
 	account       one account: its users and projects, suspend / reactivate, view as, the plugins' sections
 	account_state POST: suspend / reactivate
@@ -16,7 +16,6 @@
 namespace plugins\Admin\controllers;
 
 use plugins\Admin\Plugin;
-use plugins\Admin\util\Services;
 
 //CLD: 2026-10-27T21:47:05+02:00: the messages are toasts (addToast + $this->redirect: kept for the next page, as in the other controllers); was its own session flash (admin_flash), shown in _header.php
 class AdminController extends \sys\BaseController {
@@ -31,27 +30,10 @@ class AdminController extends \sys\BaseController {
     // ------------------------------------------------------------------------------------
     //the installation
 
+    //CLD: 2026-10-31T11:05:39+02:00: without the services (controllers\ServicesController) and the action `service` (ServicesController::control)
     public function index($req, $resp) {
-	$services = [];
-	foreach(Plugin::services() as $id => $s)
-	    $services[$id] = $s + [ 'status' => Services::status($s) ];
 	$app = $this->appInfo();
-	$this->render('index', compact('services', 'app'));
-    }
-
-    public function service($req, $resp) {
-	if (!$req->is('post'))
-	    \V::app()->error(405, 'Method not allowed');
-	$id = (string)($req->data['id'] ?? '');
-	$verb = (string)($req->data['verb'] ?? '');
-	$s = Plugin::services()[$id] ?? null;
-	if (!$s)
-	    \V::app()->error(404, 'Not found');
-	[ $ok, $message ] = Services::control($s, $verb);
-	\V::app()->log->info("Admin: {$verb} {$id} by " . \V::app()->user->name . ': ' . ($ok ? 'ok' : $message));
-	\models\AuditLog::record('service_' . $verb, null, "super-admin: {$verb} {$s['label']} (" . ($ok ? 'done' : 'failed: ' . mb_substr($message, 0, 200)) . ')');
-	$this->addToast($ok ? 'success' : 'error', $ok ? 'Done' : 'Failed', $message);
-	$this->redirect('/Admin/admin/index');
+	$this->render('index', compact('app'));
     }
 
     //the app's version and its server

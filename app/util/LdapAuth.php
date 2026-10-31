@@ -13,13 +13,10 @@
 //  trial($settings, $login, $password) what a sign-in would do (the settings page's Try): [ 'ok' => bool, 'lines' => [ texts ] ] - nothing is saved
 //  passwordSource($user)               'LDAP' for an LDAP user (hook identity:password-source: no password reset / change here)
 
-namespace plugins\Ldap\util;
+namespace util;
 
-use plugins\Ldap\models\LdapSettings;
-use plugins\Ldap\models\LdapLink;
-//CLD: 2026-10-25T19:30:00+02:00: the LDAP client is core (util\LdapClient, util\LdapException; were plugins\Ldap\util)
-use util\LdapClient;
-use util\LdapException;
+use models\LdapSettings;
+use models\LdapLink;
 
 class LdapAuth {
     const GENERIC = 'User or password is incorrect';
@@ -52,10 +49,9 @@ class LdapAuth {
     }
 
     //the settings of account $aid when its LDAP sign-in is on, else null
-    //CLD: 2026-10-24T09:45:36+03:00: null too when the account's tier does not have LDAP (util\Tiers; its settings are kept)
     public static function enabledFor($aid) {
 	$key = (string)$aid;
-	if ($key === '' || !\util\Tiers::has($key, 'ldap'))
+	if ($key === '')
 	    return null;
 	if (!array_key_exists($key, self::$settings)) {
 	    $s = \V::app()->om->findOne('LdapSettings', [ 'aid' => \V::app()->om->to_oid($aid), 'enabled' => true ]);

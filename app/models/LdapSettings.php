@@ -9,9 +9,8 @@
 //  - who: an LDAP user of the account (LdapLink) signs in only with LDAP; provision = people found in the directory get a user on their first sign-in; linkExisting = a user
 //    of the account with the person's email becomes an LDAP user on a directory sign-in; domains / bareLogins = which account a name without a user is looked up in
 
-namespace plugins\Ldap\models;
+namespace models;
 
-//CLD: 2026-10-25T19:30:00+02:00: the LDAP client and the server's settings are core (were plugins\Ldap\util, plugins\Ldap\models)
 use util\LdapClient;
 use models\credential\LdapServerTrait;
 

@@ -12,10 +12,10 @@
 //                                       identity:password-source ('SSO' for an SSO user: no password reset / change here)
 //  accountFor($email)                   the enabled settings for "Sign in with SSO" of $email: its SSO user's account, else the account of its email domain; null
 
-namespace plugins\Saml\util;
+namespace util;
 
-use plugins\Saml\models\SamlSettings;
-use plugins\Saml\models\SamlLink;
+use models\SamlSettings;
+use models\SamlLink;
 
 class SamlAuth {
     const GENERIC = 'The single sign-on did not succeed';
@@ -60,10 +60,9 @@ class SamlAuth {
     }
 
     //the settings of account $aid when its SAML sign-in is on, else null
-    //CLD: 2026-10-24T09:45:36+03:00: null too when the account's tier does not have SAML (util\Tiers; its settings are kept)
     public static function enabledFor($aid) {
 	$key = (string)$aid;
-	if ($key === '' || !\util\Tiers::has($key, 'saml'))
+	if ($key === '')
 	    return null;
 	if (!array_key_exists($key, self::$settings)) {
 	    $s = \V::app()->om->acrossAccounts(fn() => \V::app()->om->findOne('SamlSettings', [ 'aid' => \V::app()->om->to_oid($aid), 'enabled' => true ]));
@@ -75,6 +74,11 @@ class SamlAuth {
     //forget the settings read (they were changed; the check suite)
     public static function reset() {
 	self::$settings = [];
+    }
+
+    //whether an account of the installation has its SAML sign-in on ("Sign in with SSO" on the login page)
+    public static function anyEnabled() {
+	return \V::app()->om->acrossAccounts(fn() => \V::app()->om->count('SamlSettings', [ 'enabled' => true ])) > 0;
     }
 
     public static function accountFor($email) {

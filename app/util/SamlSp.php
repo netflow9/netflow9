@@ -11,9 +11,9 @@
 //  idpMetadata($xml)                   the IdP's settings in its metadata: idpEntityId, idpSsoUrl, idpCerts (PEM), nameIdFormats; else SamlException
 //  fetch($url)                         the text at $url (https; not this machine's network: a public address only), for the metadata
 
-namespace plugins\Saml\util;
+namespace util;
 
-use plugins\Saml\models\SamlSettings;
+use models\SamlSettings;
 
 class SamlSp {
     const BINDING_REDIRECT = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect';

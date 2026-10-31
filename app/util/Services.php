@@ -1,14 +1,47 @@
 <?php
 
 /*
-    the installation's services (Plugin::services): their status (systemd: `systemctl show`, which any user may read; a service not yet made a unit:
+    CLD: 2026-10-31T11:05:39+02:00: moved to the core from the Admin plugin (was plugins\Admin\util\Services): the Services page of the Settings (controllers\ServicesController);
+    the list (services(): hook app:services, was admin:services) and who may see / manage them (allowed())
+    the installation's services: their status (systemd: `systemctl show`, which any user may read; a service not yet made a unit:
     its script's PID file) and start / stop / restart (`systemctl`, allowed to this app's user for these units only by the polkit rule of scripts/4_services-install.sh)
 */
 
-namespace plugins\Admin\util;
+namespace util;
 
 class Services {
     const VERBS = [ 'start', 'stop', 'restart' ];
+
+    //CLD: 2026-10-31T11:05:39+02:00: the services of the installation (hook app:services ($services: \ArrayObject): id => [ label, description, unit (systemd), pidfile (before the unit:
+    //a script's), health: fn() => [ ok (bool|null), text ] ]); was plugins\Admin\Plugin::services
+    public static function services() {
+	$services = new \ArrayObject();
+	\V::app()->hooks->applyHook('app:services', [ $services ]);
+	return $services->getArrayCopy();
+    }
+
+    //CLD: 2026-10-31T11:05:39+02:00: whether the signed-in user may see and manage the services: with the Admin plugin, a super-admin (as before: plugins\Admin\Plugin::isAdmin; its
+    //2FA is required by the page); without it, the account's owners (ownerSignedIn)
+    public static function allowed() {
+	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest)
+	    return false;
+	if (self::adminPlugin())
+	    return \plugins\Admin\Plugin::isAdmin();
+	return self::ownerSignedIn();
+    }
+
+    //the signed-in user's role is the account's Owner role (Role `iname` owner)
+    public static function ownerSignedIn() {
+	if (\V::app()->user->isGuest || empty(\V::app()->user->role))
+	    return false;
+	$role = \V::app()->om->findById('Role', (string)\V::app()->user->role);
+	return $role && (string)$role->iname === 'owner';
+    }
+
+    //the Admin plugin is enabled (app/plugins.php)
+    public static function adminPlugin() {
+	return in_array('Admin', (array)\V::app()->config('modules'), true);
+    }
 
     //the status of service $s: [ unit (installed as a systemd unit), running (bool|null: unknown), state (text), pid, since (unix s|null), health: [ ok, text ]|null ]
     public static function status(array $s) {
