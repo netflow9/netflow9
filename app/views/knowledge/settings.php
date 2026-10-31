@@ -51,6 +51,16 @@ $connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/knowledge/conn
 	});
     };
 
+    //CLD: 2026-10-31T20:00:00+02:00: the API key's "Stored" placeholder (sys\fields\Field_password) only while the provider and the server are the saved ones: otherwise the saved key
+    //is not kept (KnowledgeController::settings)
+    const keyInput = form.querySelector('[name=api_key]');
+    const storedHint = keyInput.placeholder;
+    const saved = [ provider.value, urlInput.value.trim() ];
+    const keyHint = () => {
+	keyInput.placeholder = provider.value === saved[0] && urlInput.value.trim() === saved[1] ? storedHint : '';
+    };
+    provider.addEventListener('change', keyHint);
+    urlInput.addEventListener('input', keyHint);
     provider.addEventListener('change', () => {
 	urlInput.placeholder = o.urls[provider.value] || '';
 	select.innerHTML = '<option value="">Connect to list the models</option>';
