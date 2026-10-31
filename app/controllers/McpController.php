@@ -12,8 +12,7 @@ namespace controllers;
 
 class McpController extends \sys\BaseController {
 
-    //CLD: 2026-10-26T23:56:07+02:00: whether the project menu shows the MCP server link (layouts/main_aside.php; hidden for the moment, as in the SysMCPTools plugin: true shows it again)
-    const SHOW_MENU = false;
+    //CLD: 2026-11-01T02:00:00+02:00: removed SHOW_MENU (the menu link hidden for every project): the account's owners turn the server on per project (Account::mcpEnabled; account settings, Data access)
 
     //supported protocol versions, newest first (initialize answers the client's when supported, else the newest)
     const PROTOCOL_VERSIONS = [ '2025-06-18', '2025-03-26', '2024-11-05' ];
@@ -50,6 +49,9 @@ class McpController extends \sys\BaseController {
 	    $resp->addHeader('WWW-Authenticate', 'Bearer realm="NetFlow9 MCP", error="invalid_token"');
 	    $resp->sendJSON($this->fail(null, -32000, 'A valid token is required (Authorization: Bearer <token>)'), true, 401, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	}
+	//CLD: 2026-11-01T02:00:00+02:00: only for a project whose MCP server is on (Account::mcpEnabled)
+	if (!\models\Account::mcpEnabled((string)$token->aid, $project->_id))
+	    $resp->sendJSON($this->fail(null, -32000, 'The MCP server of this project is off (the account\'s owners turn it on in Account settings, Data access)'), true, 403, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	\V::app()->user->crtProject = $project->_id;
 	\V::app()->user->login($identity);
 	if ((string)\V::app()->var('rt.account')->_id !== (string)$token->aid)

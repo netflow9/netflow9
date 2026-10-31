@@ -19,6 +19,19 @@
 namespace util;
 
 class McpServerTools {
+
+    //CLD: 2026-11-01T02:00:00+02:00: the tools that read or change only the project's structure (tables and their columns, workflows, step types, file names, variable names: list_variables
+    //without the values, see structureOnly): the ones the designer's Assistant gets when the account lets it read the structure only (Account::assistantReadsData)
+    const STRUCTURE_TOOLS = [ 'list_tables', 'create_table', 'update_table', 'add_column', 'update_column', 'delete_column', 'list_workflows', 'get_workflow', 'create_workflow',
+	'update_workflow', 'list_step_types', 'list_files', 'list_variables' ];
+
+    //CLD: 2026-11-01T02:00:00+02:00: the result of tool $name with the data left out (a structure tool's: list_variables without the values)
+    public static function structureOnly($name, $result) {
+	if ($name === 'list_variables' && is_array($result['variables'] ?? null))
+	    $result['variables'] = array_map(fn($v) => array_diff_key((array)$v, [ 'value' => 1 ]), $result['variables']);
+	return $result;
+    }
+
     const MAX_DEPTH = 3;
     private static $depth = 0;
 

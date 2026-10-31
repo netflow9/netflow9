@@ -53,6 +53,8 @@ class WorkflowAssistant {
     //CLD: 2026-10-23T23:30:00+03:00: removed PROJECT_TOOLS (the read-only project tools): every tool of util\MCPTools is offered, as the user
 
     private $wf;
+    //CLD: 2026-11-01T02:00:00+02:00: whether the account lets the Assistant read the project's data (Account::assistantReadsData), else its structure only (McpServerTools::STRUCTURE_TOOLS)
+    private $readsData = false;
     private $cred;
     private $project;
     //the designer's steps while the model works: [ element ] (a list, as the designer sends them)
@@ -88,6 +90,7 @@ class WorkflowAssistant {
     public function __construct($wf, $project, $settings = null) {
 	$this->wf = $wf;
 	$this->project = $project;
+	$this->readsData = \models\Account::assistantReadsData($wf->aid);
 	$settings = $settings ?? \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
 	//CLD: 2026-10-22T14:00:00+03:00: System: the installation's server
 	$settings = self::resolve($settings);
@@ -215,7 +218,7 @@ class WorkflowAssistant {
 	//CLD: 2026-10-19T16:05:12+03:00: the provider's turns (turnAnthropic / turnOpenAI: the model's turn added to $messages, as the provider wants them) and tool results
 	//(addResults); was the Anthropic API only, here
 	if ($this->protocol === 'openai')
-	    array_unshift($messages, [ 'role' => 'system', 'content' => self::systemPrompt() . "\n\n" . self::stepTypesText() ]);
+	    array_unshift($messages, [ 'role' => 'system', 'content' => self::systemPrompt($this->readsData) . "\n\n" . self::stepTypesText() ]);
 	//CLD: 2026-10-22T14:00:00+03:00: $this->usage, $this->cost (were $usage only: also known when the request fails)
 	$this->usage = [ 'input_tokens' => 0, 'output_tokens' => 0, 'cache_read_input_tokens' => 0, 'cache_creation_input_tokens' => 0 ];
 	$this->cost = 0.0;
@@ -318,7 +321,14 @@ class WorkflowAssistant {
 
     //the rules and the step types (the same for every request of the project: cached)
     //CLD: 2026-10-23T23:30:00+03:00: + the project tools that change things at once (all tools are offered), and set_workflow for the canvas
-    private static function systemPrompt() {
+    //CLD: 2026-11-01T02:00:00+02:00: + $readsData: false: what the Assistant may not do (the account lets it read the structure only)
+    private static function systemPrompt($readsData = true) {
+	return self::basePrompt() . ($readsData ? '' : "\n\n" . <<<'TXT'
+Privacy: this account lets you see the project's structure only. Your project tools show data tables and their columns, workflows, step types, file names and variable names, and let you build with them; you cannot read or change rows, read files or images, run workflows or see executions, and you do not see the variables' values. Never guess or invent data: when a request needs it, say that the account's owners allow it in Account settings, Data access, or build the workflow so that it reads the data when it runs.
+TXT);
+    }
+
+    private static function basePrompt() {
 	return <<<'TXT'
 You are the Assistant of NetFlow9's workflow designer. You sit in a panel next to the person's canvas. They describe a workflow, or a change to the one on the canvas, in their own words; you build it on the canvas with the set_workflow tool.
 
@@ -358,10 +368,16 @@ TXT;
 	] ];
 	foreach(\util\MCPTools::all() as $t) { //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::definitions)
 	    //CLD: 2026-10-23T23:30:00+03:00: every tool (was PROJECT_TOOLS only); a plugin's set_workflow would clash with the Assistant's own
-	    if ($t['name'] !== 'set_workflow')
+	    //CLD: 2026-11-01T02:00:00+02:00: the structure tools only, unless the account lets it read data (a plugin's tools then too: what they read is not known)
+	    if ($t['name'] !== 'set_workflow' && $this->allowed($t['name']))
 		$tools[] = [ 'name' => $t['name'], 'description' => mb_substr($t['description'], 0, 1000), 'input_schema' => $t['inputSchema'] ];
 	}
 	return $tools;
+    }
+
+    //CLD: 2026-11-01T02:00:00+02:00: whether the Assistant may use project tool $name: any when the account lets it read data, else the structure tools
+    public function allowed($name) {
+	return $this->readsData || in_array($name, \util\McpServerTools::STRUCTURE_TOOLS, true);
     }
 
     //call $id of tool $name: [ id, text, isError ]
@@ -379,9 +395,12 @@ TXT;
 		throw new \ErrorException('this is the workflow on the canvas: change it with set_workflow');
 	    //CLD: 2026-10-20T23:40:00+03:00: a project tool, as the user (util\MCPTools; was util\McpTools::call); none when no plugin gives it
 	    //CLD: 2026-10-23T23:30:00+03:00: any of them (was PROJECT_TOOLS only), with the images of its result
+	    //CLD: 2026-11-01T02:00:00+02:00: a tool the account does not let it use (structure only) is refused; a structure tool's result without the data (McpServerTools::structureOnly)
+	    elseif (!$this->allowed($name))
+		throw new \ErrorException("`{$name}` reads the project's data, which this account does not let the Assistant read (Account settings, Data access)");
 	    elseif ($tool = \util\MCPTools::all()[$name] ?? null) {
 		$answer = ($tool['run'])($args, $this->project, true);
-		$result = $answer[0];
+		$result = $this->readsData ? $answer[0] : \util\McpServerTools::structureOnly($name, $answer[0]);
 		$images = (array)($answer[1] ?? []);
 	    }
 	    else
@@ -474,7 +493,7 @@ TXT;
 	    'model' => $this->model,
 	    'max_tokens' => self::MAX_TOKENS,
 	    'system' => [
-		[ 'type' => 'text', 'text' => self::systemPrompt() ],
+		[ 'type' => 'text', 'text' => self::systemPrompt($this->readsData) ],
 		[ 'type' => 'text', 'text' => self::stepTypesText(), 'cache_control' => [ 'type' => 'ephemeral' ] ],
 	    ],
 	    'messages' => $messages,

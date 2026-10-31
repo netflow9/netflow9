@@ -14,7 +14,8 @@ class AccountController extends \sys\BaseController {
     //CLD: 2026-10-31T11:32:07+02:00: two tabs (?__tab=): general (the settings, Account::update) and usage (was the action usage, Account::usage); the first one the user may see by default
     //CLD: 2026-10-31T19:30:00+02:00: + services (the installation's services, util\Services): without the Admin plugin, for the account's owners (with it: the super-admins' page /services/index)
     public function settings($req, $resp) {
-	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'usage' => \V::app()->user->can('Account::usage'),
+	//CLD: 2026-11-01T02:00:00+02:00: + access (Data access: the projects' MCP server, what the Assistant may read; Account::update, the owners)
+	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'access' => \V::app()->user->can('Account::update'), 'usage' => \V::app()->user->can('Account::usage'),
 	    'services' => !\util\Services::adminPlugin() && \util\Services::allowed() ]));
 	if (!$tabs)
 	    \V::app()->error(403, 'Unauthorized');
@@ -27,6 +28,24 @@ class AccountController extends \sys\BaseController {
 	if ($tab === 'services') {
 	    $services = \util\Services::withStatus();
 	    $this->render('settings', compact('account', 'tab', 'tabs', 'services'));
+	    return;
+	}
+
+	//CLD: 2026-11-01T02:00:00+02:00: Data access: the projects whose MCP server is on (switches: mcp_projects[]; only the account's projects are kept), what the Assistant may read
+	if ($tab === 'access') {
+	    $projects = [];
+	    foreach(\V::app()->om->find('Project', [ 'aid' => $account->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $p)
+		$projects[(string)$p->_id] = $p;
+	    if ($req->is('post')) {
+		$on = array_values(array_intersect(array_map('strval', (array)($req->data['mcp_projects'] ?? [])), array_keys($projects)));
+		$account->mcp_projects = $on;
+		$account->assistant_data = (string)($req->data['assistant_data'] ?? '');
+		if ($account->validates() && $account->save()) {
+		    $this->addToast('success', 'OK', 'Data access saved');
+		    $this->addEvent('sidebar::refresh');
+		}
+	    }
+	    $this->render('settings', compact('account', 'tab', 'tabs', 'projects'));
 	    return;
 	}
 
