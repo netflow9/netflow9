@@ -3,7 +3,10 @@
 function get_config($mode = 'web') {
 
     //plugins
-    $plugins_fn = dirname(__FILE__) . '/plugins.php';
+    //CLD: 2026-10-31T11:22:13+02:00: plugins.local.php, when present, is read instead of plugins.php: an installation's own list (not in git: never blocks an update), as tiers.local.php
+    $plugins_fn = dirname(__FILE__) . '/plugins.local.php';
+    if (!is_readable($plugins_fn))
+	$plugins_fn = dirname(__FILE__) . '/plugins.php';
 
     $_config = [
 	//development switch; also enables development-only endpoints (DataController / data/get) - set false outside development
