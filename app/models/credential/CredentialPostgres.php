@@ -7,6 +7,8 @@ namespace models\credential;
 
 class CredentialPostgres extends CredentialDatabase {
     public static $label = 'PostgreSQL';
+    //CLD: 2026-10-31T23:30:00+02:00: + database:pgsql: the credentials of the Postgres step (models\node\NodeAppPostgres)
+    public static $provides = [ 'database', 'database:pgsql' ];
 
     const TYPE = 'pgsql';
     const PORT = 5432;

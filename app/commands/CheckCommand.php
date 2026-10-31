@@ -3665,7 +3665,8 @@ class CheckCommand extends \sys\BaseController {
 	    $on = [];
 	    foreach([ 'free', 'team', 'enterprise' ] as $tier) {
 		$set($tier);
-		$on[] = [ $T::allows($account, 'CredentialPostgres'), $T::allows($account, 'NodeAppDatabase') ];
+		//CLD: 2026-10-31T23:30:00+02:00: the PostgreSQL step (was the Database step)
+		$on[] = [ $T::allows($account, 'CredentialPostgres'), $T::allows($account, 'NodeAppPostgres') ];
 	    }
 	    $this->check('database: its credentials and its step on every tier (core, no plan feature)', [ [ true, true ], [ true, true ], [ true, true ] ], $on);
 
@@ -4754,7 +4755,10 @@ class CheckCommand extends \sys\BaseController {
 	//CLD: 2026-10-25T20:00:00+02:00: core (was the Database plugin's: skipped without it)
 	$om = \V::app()->om;
 	$D = \util\SqlDb::class;
-	$S = \models\node\NodeAppDatabase::class;
+	//CLD: 2026-10-31T23:30:00+02:00: one step per type (NodeAppDatabase their base): the MySQL one for the checks of a step
+	$S = \models\node\NodeAppMysql::class;
+	$steps = [ 'CredentialMysql' => 'NodeAppMysql', 'CredentialPostgres' => 'NodeAppPostgres', 'CredentialMssql' => 'NodeAppMssql', 'CredentialOracle' => 'NodeAppOracle',
+	    'CredentialFirebird' => 'NodeAppFirebird', 'CredentialOdbc' => 'NodeAppOdbc' ];
 	$loaded = \PDO::getAvailableDrivers();
 
 	//offered when this PHP has the driver
@@ -4764,10 +4768,19 @@ class CheckCommand extends \sys\BaseController {
 	    $expected[$name] = (bool)array_intersect(array_keys($D::TYPES[$class::TYPE]['drivers']), $loaded);
 	    $actual[$name] = $class::available();
 	}
-	$this->check('Database: the types offered are those whose PDO driver is loaded; the step when one is; all in the Database group', [ $expected, in_array(true, $expected, true), [ 'Database' ] ],
-	    [ $actual, $S::available(), array_values(array_unique(array_map(fn($n) => $om->getObjectClass($n)::$group, \models\credential\CredentialDatabase::CREDENTIALS))) ]);
+	//CLD: 2026-10-31T23:30:00+02:00: each type's step offered as its credential (was: the one step when some type is)
+	$this->check('Database: the types offered are those whose PDO driver is loaded; the step of each with it; all in the Database group', [ $expected, $expected, [ 'Database' ] ],
+	    [ $actual, array_map(fn($step) => $om->getObjectClass($step)::available(), $steps), array_values(array_unique(array_map(fn($n) => $om->getObjectClass($n)::$group, \models\credential\CredentialDatabase::CREDENTIALS))) ]);
+	//CLD: 2026-10-31T23:30:00+02:00: the six steps, in the Databases group; a step's credentials are those of its type only
+	$defs = \models\WfNode::getAll();
+	$this->check('Database: the steps (one per type, in Databases, advanced); each step takes the credentials of its type only', [
+	    [ 'app::mysql', 'app::postgres', 'app::mssql', 'app::oracle', 'app::firebird', 'app::odbc' ], [ 'database' ], [ 'advanced' ], [ 'CredentialMysql' ], [ 'CredentialOdbc' ], false ], [
+	    array_values(array_filter(array_keys($defs), fn($fq) => is_subclass_of($om->getObjectClass($defs[$fq]['objectName']), \models\node\NodeAppDatabase::class))),
+	    array_values(array_unique(array_map(fn($step) => $om->getObjectClass($step)::$category, $steps))), array_values(array_unique(array_map(fn($step) => $om->getObjectClass($step)::$audience, $steps))),
+	    \models\Credential::variantsProviding($S::capability()), \models\Credential::variantsProviding(\models\node\NodeAppOdbc::capability()),
+	    $om->create('CredentialPostgres', [ 'name' => 'x' ])->provides($S::capability()) ]);
 	$this->check('Database: the step type, its `error` output, its result variables', [ true, [ 'success', 'error' ], [ 'rows', 'count', 'columns', 'truncated', 'error' ], [ 'affected', 'lastInsertId', 'error' ], [ 'affected', 'error' ] ],
-	    [ isset(\models\WfNode::getAll()['app::database']), $S::outLabelsFor([ 'onError' => 'output' ]), array_keys($S::outputVariables([ 'variable' => 'db' ])['db']['fields']),
+	    [ isset($defs['app::mysql']), $S::outLabelsFor([ 'onError' => 'output' ]), array_keys($S::outputVariables([ 'variable' => 'db' ])['db']['fields']),
 		array_keys($S::outputVariables([ 'operation' => 'execute' ])['db']['fields']), array_keys($S::outputVariables([ 'operation' => 'insert', 'variable' => 'x' ])['x']['fields']) ]);
 
 	//the DSNs (no connection)
@@ -4893,16 +4906,17 @@ class CheckCommand extends \sys\BaseController {
 	}
 	try {
 	    $this->check('Database: the step refused without a credential; valid with one', [ true, [] ], [
-		str_contains(implode(' ', $this->errorsOf('db nocred', [ $n('m', 'trigger::manual'), $n('d', 'app::database', [ 'sql' => 'SELECT 1' ]), $e('e1', 'm', 'd') ])), 'Database'),
-		$this->errorsOf('db cred', [ $n('m', 'trigger::manual'), $n('d', 'app::database', [ 'sql' => 'SELECT 1', 'credential' => (string)$c->_id ]), $e('e1', 'm', 'd') ]) ]);
+		//CLD: 2026-10-31T23:30:00+02:00: the MySQL step (was the Database step); its messages name it
+		str_contains(implode(' ', $this->errorsOf('db nocred', [ $n('m', 'trigger::manual'), $n('d', 'app::mysql', [ 'sql' => 'SELECT 1' ]), $e('e1', 'm', 'd') ])), 'MySQL / MariaDB'),
+		$this->errorsOf('db cred', [ $n('m', 'trigger::manual'), $n('d', 'app::mysql', [ 'sql' => 'SELECT 1', 'credential' => (string)$c->_id ]), $e('e1', 'm', 'd') ]) ]);
 	    $this->check('Database: the credential\'s test fails on a closed port', true, str_contains($thrown(fn() => $c->test()), 'SQLSTATE'));
 	    $step = [ 'sql' => 'SELECT * FROM t WHERE id = {{ id }}', 'credential' => (string)$c->_id, 'timeout' => 3 ];
-	    $exe = $this->runFlow('database error output', [ $n('m', 'trigger::manual'), $n('d', 'app::database', $step + [ 'onError' => 'output' ]),
+	    $exe = $this->runFlow('database error output', [ $n('m', 'trigger::manual'), $n('d', 'app::mysql', $step + [ 'onError' => 'output' ]),
 		$n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'd'), $e('e2', 'd', 'err', 1) ], [ 'id' => 1 ]);
-	    $failed = $this->runFlow('database fails', [ $n('m', 'trigger::manual'), $n('d', 'app::database', $step), $e('e1', 'm', 'd') ], [ 'id' => 1 ]);
+	    $failed = $this->runFlow('database fails', [ $n('m', 'trigger::manual'), $n('d', 'app::mysql', $step), $e('e1', 'm', 'd') ], [ 'id' => 1 ]);
 	    $this->check('Database: a closed port: the `error` output (the message in the variable, and logged); without it the run fails', [ 'end', 'error', true, true, 'error', true ], [
-		$exe?->state, $exe?->getVariable('route'), str_contains((string)($exe?->getVariable('db')['error'] ?? ''), 'SQLSTATE'), str_contains((string)self::logLine($exe, 'Database query: '), 'SQLSTATE'),
-		$failed?->state, str_contains((string)$failed?->error, 'Database: query: SQLSTATE') ]);
+		$exe?->state, $exe?->getVariable('route'), str_contains((string)($exe?->getVariable('db')['error'] ?? ''), 'SQLSTATE'), str_contains((string)self::logLine($exe, 'MySQL / MariaDB query: '), 'SQLSTATE'),
+		$failed?->state, str_contains((string)$failed?->error, 'MySQL / MariaDB: query: SQLSTATE') ]);
 	} finally {
 	    $c->delete();
 	}

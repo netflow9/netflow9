@@ -9,6 +9,8 @@ namespace models\credential;
 
 class CredentialMysql extends CredentialDatabase {
     public static $label = 'MySQL / MariaDB';
+    //CLD: 2026-10-31T23:30:00+02:00: + database:mysql: the credentials of the Mysql step (models\node\NodeAppMysql)
+    public static $provides = [ 'database', 'database:mysql' ];
 
     const TYPE = 'mysql';
     const PORT = 3306;

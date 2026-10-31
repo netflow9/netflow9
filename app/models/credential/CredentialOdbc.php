@@ -9,6 +9,8 @@ namespace models\credential;
 
 class CredentialOdbc extends CredentialDatabase {
     public static $label = 'ODBC data source';
+    //CLD: 2026-10-31T23:30:00+02:00: + database:odbc: the credentials of the Odbc step (models\node\NodeAppOdbc)
+    public static $provides = [ 'database', 'database:odbc' ];
 
     const TYPE = 'odbc';
     const TEST_SQL = '';
