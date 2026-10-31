@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-10-23T10:00:00+03:00: new: the account's Assistant in the administration (hook admin:account-panels; its System credits: plugins\SystemAI's panel): $settings
+    CLD: 2026-10-23T10:00:00+03:00: new: the account's Assistant in the administration (hook admin:account-panels; its System credits: plugins\MultiTenant's panel): $settings
     (AssistantSettings|null), $usage (AssistantUsage::current: this month on its own key)
 */
 use models\AssistantSettings;

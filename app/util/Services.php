@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-31T11:05:39+02:00: moved to the core from the Admin plugin (was plugins\Admin\util\Services): the Services page of the Settings (controllers\ServicesController);
+    CLD: 2026-10-31T11:05:39+02:00: moved to the core from the Admin plugin (was plugins\MultiTenant\util\Services): the Services page of the Settings (controllers\ServicesController);
     the list (services(): hook app:services, was admin:services) and who may see / manage them (allowed())
     the installation's services: their status (systemd: `systemctl show`, which any user may read; a service not yet made a unit:
     its script's PID file) and start / stop / restart (`systemctl`, allowed to this app's user for these units only by the polkit rule of scripts/4_services-install.sh)
@@ -13,7 +13,7 @@ class Services {
     const VERBS = [ 'start', 'stop', 'restart' ];
 
     //CLD: 2026-10-31T11:05:39+02:00: the services of the installation (hook app:services ($services: \ArrayObject): id => [ label, description, unit (systemd), pidfile (before the unit:
-    //a script's), health: fn() => [ ok (bool|null), text ] ]); was plugins\Admin\Plugin::services
+    //a script's), health: fn() => [ ok (bool|null), text ] ]); was plugins\MultiTenant\Plugin::services
     public static function services() {
 	$services = new \ArrayObject();
 	\V::app()->hooks->applyHook('app:services', [ $services ]);
@@ -33,13 +33,13 @@ class Services {
 	return self::adminPlugin() ? \V::app()->createUrl('/services/index') : \V::app()->createUrl('/account/settings', [ '__tab' => 'services' ]);
     }
 
-    //CLD: 2026-10-31T11:05:39+02:00: whether the signed-in user may see and manage the services: with the Admin plugin, a super-admin (as before: plugins\Admin\Plugin::isAdmin; its
+    //CLD: 2026-10-31T11:05:39+02:00: whether the signed-in user may see and manage the services: with the Admin plugin, a super-admin (as before: plugins\MultiTenant\Plugin::isAdmin; its
     //2FA is required by the page); without it, the account's owners (ownerSignedIn)
     public static function allowed() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest)
 	    return false;
 	if (self::adminPlugin())
-	    return \plugins\Admin\Plugin::isAdmin();
+	    return \plugins\MultiTenant\Plugin::isAdmin();
 	return self::ownerSignedIn();
     }
 
@@ -51,9 +51,10 @@ class Services {
 	return $role && (string)$role->iname === 'owner';
     }
 
-    //the Admin plugin is enabled (app/plugins.php)
+    //the administration is there: the MultiTenant plugin is enabled (app/plugins.php)
+    //CLD: 2026-10-31T21:00:00+02:00: the MultiTenant plugin (was the Admin plugin)
     public static function adminPlugin() {
-	return in_array('Admin', (array)\V::app()->config('modules'), true);
+	return \plugins\MultiTenant\Plugin::enabled();
     }
 
     //CLD: 2026-10-31T18:00:00+02:00: the systemd unit of this installation's service $name (daemon, playwright): nfn-<name>-<the app's user> (the owner of app/, as

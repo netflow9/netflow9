@@ -1,0 +1,321 @@
+<?php
+
+/*
+    the administration pages, at /MultiTenant/admin/<action> (super-admins with 2FA: Plugin::require; across the accounts on purpose):
+	index         the installation: the app, the plugins' sections
+	CLD: 2026-10-31T11:05:39+02:00: the services (status, start / stop / restart) are the core's page (controllers\ServicesController), for super-admins only with this plugin
+	accounts      the accounts (search by name, hostname or a user's email)
+	account       one account: its users and projects, suspend / reactivate, view as, the plugins' sections
+	account_state POST: suspend / reactivate
+	account_tier  POST: the account's tier and its own limits / features (util\Tiers; CLD: 2026-10-24T09:45:36+03:00)
+	account_feature POST: the account's own value of a feature (util\Tiers; CLD: 2026-10-24T10:06:05+03:00: was in account_tier)
+	view_as       POST: sign in as the account's owner, read-only (Plugin::startView)
+	exit_view     POST: back (allowed while viewing as)
+	CLD: 2026-10-31T21:00:00+02:00: + the account's System AI credits (with the option system_ai; was the SystemAI plugin's AdminController: /SystemAI/admin/plan, grant):
+	credits_plan  POST: id = account, credits (empty: the installation's monthly allowance)
+	credits_grant POST: id = account, credits, note: a top-up (models\SystemAiWallet::grant)
+*/
+
+namespace plugins\MultiTenant\controllers;
+
+use plugins\MultiTenant\Plugin;
+use plugins\MultiTenant\models\SystemAiWallet;
+
+//CLD: 2026-10-27T21:47:05+02:00: the messages are toasts (addToast + $this->redirect: kept for the next page, as in the other controllers); was its own session flash (admin_flash), shown in _header.php
+class AdminController extends \sys\BaseController {
+
+    public function _init() {
+	parent::_init();
+	//going back from "view as" is the one action of someone viewing as (Plugin::require refuses the others)
+	if (\V::app()->config('rt.action') !== 'exit_view')
+	    Plugin::require();
+    }
+
+    // ------------------------------------------------------------------------------------
+    //the installation
+
+    //CLD: 2026-10-31T11:05:39+02:00: without the services (controllers\ServicesController) and the action `service` (ServicesController::control)
+    public function index($req, $resp) {
+	$app = $this->appInfo();
+	$this->render('index', compact('app'));
+    }
+
+    //the app's version and its server
+    private function appInfo() {
+	$git = @file_get_contents(BASE . '/.git/HEAD');
+	$commit = null;
+	if ($git && preg_match('~^ref: (\S+)~', $git, $m))
+	    $commit = trim((string)@file_get_contents(BASE . '/.git/' . $m[1])) ?: null;
+	elseif ($git)
+	    $commit = trim($git);
+	$mongo = null;
+	try {
+	    $info = \V::app()->mongo->selectDatabase('admin')->command([ 'buildInfo' => 1 ])->toArray()[0] ?? null;
+	    $mongo = $info['version'] ?? null;
+	} catch (\Throwable $e) {
+	}
+	$om = \V::app()->om;
+	$count = fn($name, $q = []) => $om->acrossAccounts(fn() => $om->count($name, $q));
+	return [
+	    'commit' => $commit ? substr($commit, 0, 10) : null,
+	    'php' => PHP_VERSION,
+	    'mongo' => $mongo,
+	    'host' => gethostname(),
+	    'load' => function_exists('sys_getloadavg') ? sys_getloadavg() : null,
+	    'disk_free' => @disk_free_space(BASE),
+	    'disk_total' => @disk_total_space(BASE),
+	    'accounts' => $count('Account'),
+	    'suspended' => $count('Account', [ 'state' => 'disabled' ]),
+	    'users' => $count('User'),
+	    'workflows' => $count('Workflow'),
+	    'jobs_waiting' => $count('Job', [ 'state' => 'new' ]),
+	    'runs_24h' => $count('WfExecution', [ '_id' => [ '$gte' => self::oidAt(time() - 86400) ] ]),
+	];
+    }
+
+    // ------------------------------------------------------------------------------------
+    //the accounts
+
+    public function accounts($req, $resp) {
+	$om = \V::app()->om;
+	$q = trim((string)($req->query['q'] ?? ''));
+	$query = [];
+	if ($q !== '') {
+	    $rx = new \MongoDB\BSON\Regex(preg_quote($q), 'i');
+	    $byUser = $om->acrossAccounts(fn() => array_map(fn($u) => $u->aid, iterator_to_array($om->find('User', [ '$or' => [ [ 'email' => $rx ], [ 'username' => $rx ] ] ], [ 'projection' => [ 'aid' => 1 ], 'limit' => 200 ]), false)));
+	    $query = [ '$or' => [ [ 'name' => $rx ], [ 'hostname' => $rx ], [ '_id' => [ '$in' => array_values(array_filter($byUser)) ] ] ] ];
+	}
+	$accounts = $om->acrossAccounts(fn() => iterator_to_array($om->find('Account', $query, [ 'sort' => [ '_id' => -1 ], 'limit' => 500 ]), false));
+	$counts = [ 'users' => $this->countByAccount('User'), 'projects' => $this->countByAccount('Project'), 'workflows' => $this->countByAccount('Workflow'),
+	    'runs' => $this->countByAccount('WfExecution', [ '_id' => [ '$gte' => self::oidAt(time() - 30 * 86400) ] ]) ];
+	$this->render('accounts', compact('accounts', 'counts', 'q'));
+    }
+
+    public function account($req, $resp) {
+	$account = $this->findAccount($req->query['id'] ?? null);
+	$om = \V::app()->om;
+	$aid = $account->_id;
+	[ $users, $projects, $roles ] = $om->acrossAccounts(fn() => [
+	    iterator_to_array($om->find('User', [ 'aid' => $aid ], [ 'sort' => [ '_id' => 1 ] ]), false),
+	    iterator_to_array($om->find('Project', [ 'aid' => $aid ], [ 'sort' => [ '_id' => 1 ] ]), false),
+	    iterator_to_array($om->find('Role', [ 'aid' => $aid ]), false),
+	]);
+	$roleNames = [];
+	foreach($roles as $r)
+	    $roleNames[(string)$r->_id] = (string)$r->name;
+	$workflows = $this->countByAccount('Workflow', [ 'aid' => $aid ], 'project');
+	$owner = $this->ownerOf($account);
+	//CLD: 2026-10-24T09:45:36+03:00: what the account uses of its tier's limits (util\Tiers)
+	$usage = \util\Tiers::usage($account);
+	$this->render('account', compact('account', 'users', 'projects', 'roleNames', 'workflows', 'owner', 'usage'));
+    }
+
+    public function account_state($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$account = $this->findAccount($req->data['id'] ?? null);
+	$state = (string)($req->data['state'] ?? '');
+	if (!in_array($state, [ 'active', 'disabled' ], true))
+	    \V::app()->error(400, 'Unknown state');
+	$reason = trim(mb_substr((string)($req->data['reason'] ?? ''), 0, 300));
+	if ($state === 'disabled' && $reason === '') {
+	    $this->addToast('error', 'Not suspended', 'Say why the account is suspended (the reason is kept in the audit log)');
+	    $this->redirect('/MultiTenant/admin/account', [ 'id' => (string)$account->_id ]);
+	}
+	if ((string)$account->state !== $state) {
+	    //written with the collection: the account's own checks (its form's permissions) are not the super-admin's
+	    \V::app()->om->acrossAccounts(fn() => \V::app()->om->updateOne('Account', [ '_id' => $account->_id ], [ '$set' => [ 'state' => $state, 'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]));
+	    Plugin::audit($state === 'disabled' ? 'account_suspend' : 'account_reactivate', $account, ($state === 'disabled' ? 'suspended' : 'reactivated') . ($reason !== '' ? ": {$reason}" : ''));
+	}
+	$this->addToast('success', $state === 'disabled' ? 'Suspended' : 'Reactivated', $state === 'disabled' ? 'Its users are signed out, nothing new runs, its queued jobs wait' : 'The account is active again');
+	$this->redirect('/MultiTenant/admin/account', [ 'id' => (string)$account->_id ]);
+    }
+
+    //CLD: 2026-10-24T09:45:36+03:00: the account's tier (empty: the default) and its own changes: limits[key] (empty: the tier's, `unlimited`, or a whole number; files_bytes in MB),
+    //features[key] (empty: the tier's, 1 / 0); hook tiers:changed ($account) after (e.g. the System AI's allowance)
+    //CLD: 2026-10-24T10:06:05+03:00: the features are no longer posted here (account_feature): the account's own are kept
+    public function account_tier($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$account = $this->findAccount($req->data['id'] ?? null);
+	$tier = (string)($req->data['tier'] ?? '');
+	if ($tier !== '' && !isset(\util\Tiers::names()[$tier]))
+	    \V::app()->error(400, 'Unknown tier');
+
+	$limits = [];
+	$posted = is_array($req->data['limits'] ?? null) ? $req->data['limits'] : [];
+	foreach(\util\Tiers::LIMITS as $key => [ $label, $unit ]) {
+	    $v = strtolower(trim((string)($posted[$key] ?? '')));
+	    if ($v === '')
+		continue;
+	    if ($v === 'unlimited')
+		$limits[$key] = null;
+	    elseif (preg_match('/^\d{1,12}$/', $v))
+		$limits[$key] = $unit === 'bytes' ? (int)$v * 1024 * 1024 : (int)$v;
+	    else {
+		$this->addToast('error', 'Not saved', "{$label}: empty (the tier's), `unlimited`, or a whole number" . ($unit === 'bytes' ? ' (MB)' : ''));
+		$this->redirect('/MultiTenant/admin/account', [ 'id' => (string)$account->_id ]);
+	    }
+	}
+	$features = \util\Tiers::overridesOf($account)['features'];
+
+	$this->saveTier($account, $tier, $limits, $features);
+	$changes = [];
+	foreach($limits as $key => $n)
+	    $changes[] = "{$key} " . ($n === null ? 'unlimited' : $n);
+	Plugin::audit('account_tier', $account, 'tier: ' . \util\Tiers::labelOf($account) . ($tier === '' ? ' (the default)' : '') . ($changes ? '; ' . implode(', ', $changes) : ''));
+	\V::app()->hooks->applyHook('tiers:changed', [ $account ]);
+	$this->addToast('success', 'Saved', 'Tier: ' . \util\Tiers::labelOf($account));
+	$this->redirect('/MultiTenant/admin/account', [ 'id' => (string)$account->_id ]);
+    }
+
+    //CLD: 2026-10-24T10:06:05+03:00: the account's own value of feature `feature`: `value` empty (the tier's), 1 (on) or 0 (off)
+    public function account_feature($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$account = $this->findAccount($req->data['id'] ?? null);
+	$feature = (string)($req->data['feature'] ?? '');
+	$label = \util\Tiers::features()[$feature] ?? null;
+	$value = (string)($req->data['value'] ?? '');
+	if ($label === null || !in_array($value, [ '', '1', '0' ], true))
+	    \V::app()->error(400, 'Unknown feature');
+	$o = \util\Tiers::overridesOf($account);
+	if ($value === '')
+	    unset($o['features'][$feature]);
+	else
+	    $o['features'][$feature] = $value === '1';
+	$this->saveTier($account, (string)$account->tier, $o['limits'], $o['features']);
+	$state = \util\Tiers::has($account, $feature) ? 'on' : 'off';
+	Plugin::audit('account_feature', $account, "{$label}: " . ($value === '' ? "the tier's ({$state})" : $state));
+	\V::app()->hooks->applyHook('tiers:changed', [ $account ]);
+	$this->addToast('success', 'Saved', "{$label}: {$state}" . ($value === '' ? " (the tier's)" : ''));
+	$this->redirect('/MultiTenant/admin/account', [ 'id' => (string)$account->_id ]);
+    }
+
+    // ------------------------------------------------------------------------------------
+    //view as
+
+    public function view_as($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$account = $this->findAccount($req->data['id'] ?? null);
+	if ((string)$account->_id === (string)\V::app()->user->aid) {
+	    $this->addToast('error', 'Not viewing as', 'This is your own account');
+	    $this->redirect('/MultiTenant/admin/account', [ 'id' => (string)$account->_id ]);
+	}
+	$owner = $this->ownerOf($account);
+	if (!$owner) {
+	    $this->addToast('error', 'Not viewing as', 'The account has no active owner to view it as');
+	    $this->redirect('/MultiTenant/admin/account', [ 'id' => (string)$account->_id ]);
+	}
+	try {
+	    Plugin::startView($account, $owner, '/MultiTenant/admin/account?id=' . $account->_id);
+	} catch (\ErrorException $e) {
+	    $this->addToast('error', 'Not viewing as', $e->getMessage());
+	    $this->redirect('/MultiTenant/admin/account', [ 'id' => (string)$account->_id ]);
+	}
+	$resp->redirect('/site/index');
+    }
+
+    public function exit_view($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$v = Plugin::viewing();
+	if ($v === null)
+	    $resp->redirect('/MultiTenant/admin/index');
+	Plugin::endView();
+	$resp->redirect($v['return'] ?? '/MultiTenant/admin/index');
+    }
+
+    // ------------------------------------------------------------------------------------
+
+    //account $id (any account), else 404
+    private function findAccount($id) {
+	$account = preg_match('/^[a-f0-9]{24}$/', (string)$id) ? \V::app()->om->acrossAccounts(fn() => \V::app()->om->findById('Account', (string)$id)) : null;
+	if (!$account)
+	    \V::app()->error(404, 'Not found');
+	return $account;
+    }
+
+    //the account's first active user with the owner role
+    private function ownerOf($account) {
+	$om = \V::app()->om;
+	return $om->acrossAccounts(function() use ($om, $account) {
+	    $role = $om->findOne('Role', [ 'aid' => $account->_id, 'iname' => 'owner' ]);
+	    return $role ? $om->findOne('User', [ 'aid' => $account->_id, 'role' => $role->_id, 'state' => 'active' ], [ 'sort' => [ '_id' => 1 ] ]) : null;
+	});
+    }
+
+    //objects of $objectName per account (or per $by), matching $match: [ id => n ]
+    private function countByAccount($objectName, array $match = [], $by = 'aid') {
+	$class = \V::app()->om->getObjectClass($objectName);
+	$coll = \V::app()->mongo->selectCollection($class::_database(), $class::_collection());
+	$n = [];
+	foreach($coll->aggregate([ [ '$match' => (object)$match ], [ '$group' => [ '_id' => '$' . $by, 'n' => [ '$sum' => 1 ] ] ] ]) as $row)
+	    $n[(string)$row['_id']] = (int)$row['n'];
+	return $n;
+    }
+
+    //the smallest ObjectId of unix time $ts (objects created since then: _id >= it)
+    private static function oidAt($ts) {
+	return new \MongoDB\BSON\ObjectId(sprintf('%08x', (int)$ts) . str_repeat('0', 16));
+    }
+
+    private function saveTier($account, $tier, array $limits, array $features) {
+	$overrides = [ 'limits' => (object)$limits, 'features' => (object)$features ];
+	\V::app()->om->acrossAccounts(fn() => \V::app()->om->updateOne('Account', [ '_id' => $account->_id ], [ '$set' => [ 'tier' => $tier, 'tier_overrides' => $overrides,
+	    'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]));
+	$account->tier = $tier;
+	$account->tier_overrides = $overrides;
+	\util\Tiers::reset();
+    }
+
+    // ------------------------------------------------------------------------------------
+    //CLD: 2026-10-31T21:00:00+02:00: an account's System AI credits (was plugins\SystemAI\controllers\AdminController::plan, grant)
+
+    public function credits_plan($req, $resp) {
+	$this->requireSystemAi();
+	$account = $this->postedAccount($req);
+	$credits = trim((string)($req->data['credits'] ?? ''));
+	if ($credits !== '' && (!ctype_digit($credits) || (int)$credits > 100000000))
+	    $this->creditsBack($account, 'error', 'The allowance: a whole number of credits, or empty');
+	$plan = \V::app()->om->acrossAccounts(fn() => SystemAiWallet::setPlan($account->_id, $credits === '' ? null : (int)$credits));
+	Plugin::audit('credits_plan', $account, "System AI monthly allowance: {$plan} credits" . ($credits === '' ? ' (the installation\'s)' : ''));
+	$this->creditsBack($account, 'success', "Monthly allowance: {$plan} credits");
+    }
+
+    public function credits_grant($req, $resp) {
+	$this->requireSystemAi();
+	$account = $this->postedAccount($req);
+	$credits = trim((string)($req->data['credits'] ?? ''));
+	if (!ctype_digit($credits) || (int)$credits < 1 || (int)$credits > 100000000)
+	    $this->creditsBack($account, 'error', 'The top-up: a whole number of credits, at least 1');
+	$note = trim(mb_substr((string)($req->data['note'] ?? ''), 0, 200));
+	$t = \V::app()->om->acrossAccounts(fn() => SystemAiWallet::grant($account->_id, (int)$credits, $note));
+	Plugin::audit('credits_topup', $account, "System AI top-up: +{$credits} credits until " . gmdate('Y-m-d', $t['expires']) . ($note !== '' ? " ({$note})" : ''));
+	$this->creditsBack($account, 'success', "+{$credits} credits, until " . \util\Format::date($t['expires']));
+    }
+
+    //the account of POST `id`
+    private function postedAccount($req) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$id = (string)($req->data['id'] ?? '');
+	$account = preg_match('/^[a-f0-9]{24}$/', $id) ? \V::app()->om->acrossAccounts(fn() => \V::app()->om->findById('Account', $id)) : null;
+	if (!$account)
+	    \V::app()->error(404, 'Not found');
+	return $account;
+    }
+
+    //CLD: 2026-10-27T21:47:05+02:00: a toast (addToast + $this->redirect), as in the other controllers; was the Admin plugin's session flash (admin_flash)
+    private function creditsBack($account, $type, $message) {
+	$this->addToast($type, $type === 'success' ? 'Saved' : 'Not saved', $message);
+	$this->redirect('/MultiTenant/admin/account', [ 'id' => (string)$account->_id ]);
+    }
+
+    //CLD: 2026-10-31T21:00:00+02:00: only with the option system_ai
+    private function requireSystemAi() {
+	if (!Plugin::systemAi())
+	    \V::app()->error(404, 'Not found');
+    }
+}

@@ -7,7 +7,7 @@
 	features    the tier's (the plugins name theirs: hook tiers:features ($features: \ArrayObject, key => label)); has(), requireFeature()
 	usage       what the account uses (usage(): also per project), for the owners' usage page (AccountController::usage) and the administration
     $account: an Account, or its id (read again after 30 s: the daemon runs for days)
-    CLD: 2026-10-31T11:53:38+02:00: the tiers are the Admin plugin's (plugins/Admin/tiers.php, hook tiers:table): without it (self-hosting) there are none: no limits, every feature on,
+    CLD: 2026-10-31T11:53:38+02:00: the tiers are the Admin plugin's (plugins/MultiTenant/tiers.php, hook tiers:table): without it (self-hosting) there are none: no limits, every feature on,
     the accounts' own changes ignored
 */
 namespace util;
@@ -31,7 +31,7 @@ class Tiers {
     // ------------------------------------------------------------------------------------
     //the tiers
 
-    //[ default, tiers ]: the plugins' (hook tiers:table ($table: \ArrayObject): default, tiers; the Admin plugin's plugins/Admin/tiers.php); none: no tiers
+    //[ default, tiers ]: the plugins' (hook tiers:table ($table: \ArrayObject): default, tiers; the MultiTenant plugin's plugins/MultiTenant/tiers.php); none: no tiers
     //CLD: 2026-10-31T11:53:38+02:00: from the hook tiers:table (was app/tiers.php, or tiers.local.php)
     public static function table() {
 	if (self::$table === null) {

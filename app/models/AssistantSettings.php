@@ -9,13 +9,13 @@
     //Ollama, Lemonade; each speaks one protocol (PROTOCOLS: the Anthropic Messages API or OpenAI chat completions). + a monthly budget (USD; the spending: AssistantUsage) and the prices
     //it is counted with (USD per 1M tokens; empty: PRICES, the known prices of Claude models)
     //CLD: 2026-10-22T15:00:00+03:00: System is paid in credits (AssistantWallet), not with the budget: + credit_cap, the most credits the account lets the Assistant use per month
-    //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (plugins\SystemAI: util\SystemAi, models\SystemAiWallet), shared with the AI steps; the known prices are its own too
+    //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (plugins\MultiTenant: util\SystemAi, models\SystemAiWallet), shared with the AI steps; the known prices are its own too
 */
 
 //CLD: 2026-10-26T23:49:50+02:00: moved to the core (was the Assistant plugin's); its System provider only while the SystemAI plugin is enabled
 namespace models;
 
-use plugins\SystemAI\util\SystemAi;
+use plugins\MultiTenant\util\SystemAi;
 
 class AssistantSettings extends \sys\BaseModel {
     protected static $collection = 'assistant_settings';
@@ -204,7 +204,8 @@ class AssistantSettings extends \sys\BaseModel {
 
     //CLD: 2026-10-26T23:49:50+02:00: new: whether the SystemAI plugin is enabled (its credits and models registered)
     public static function systemEnabled() {
-	return in_array('SystemAI', (array)\V::app()->config('modules'), true);
+	//CLD: 2026-10-31T21:00:00+02:00: the MultiTenant plugin with its option system_ai (was the SystemAI plugin)
+	return \plugins\MultiTenant\Plugin::systemAi();
     }
 
     //CLD: 2026-10-22T14:00:00+03:00: the monthly limit (USD) for the account's settings $settings; null: no limit

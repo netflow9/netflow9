@@ -38,7 +38,7 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-21T20:10:00+03:00: + tenant (the account guard of sys\ObjectManager; the sign-in of a name used in two accounts)
     //CLD: 2026-10-22T00:41:28+03:00: + microsoft (the MicrosoftIntegration plugin: its credentials and steps; skipped without the plugin)
     //CLD: 2026-10-22T01:36:46+03:00: + localai (the Lemonade AI and Ollama steps and credentials, against a fake server: commands/tests/AiTestServer.php)
-    //CLD: 2026-10-23T10:00:00+03:00: + systemai (the AI steps on the System AI: plugins\SystemAI, its credits)
+    //CLD: 2026-10-23T10:00:00+03:00: + systemai (the AI steps on the System AI: plugins\MultiTenant, its credits)
     //CLD: 2026-10-23T15:00:00+03:00: + http (util\Http against a local server; the HTTP steps' private-address option)
     //CLD: 2026-10-24T09:45:36+03:00: + tiers (util\Tiers: the tier, the account's own changes, the limits of data tables / rows / files refused at the limit, SAML / LDAP off without the
     //feature, the System AI allowance of the tier, the usage)
@@ -2070,19 +2070,20 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-23T10:00:00+03:00: new: the AI steps on the System AI (plugins\SystemAI; Credential `system`): the step's credential per provider (URLs, keys), offered only to the
+    //CLD: 2026-10-23T10:00:00+03:00: new: the AI steps on the System AI (plugins\MultiTenant; Credential `system`): the step's credential per provider (URLs, keys), offered only to the
     //steps of its provider, refused by the others; a run against the fake AI server (as a Lemonade System AI): the installation's key sent, the credits charged (the ledger: the step,
     //its execution, the model), logged; a model not priced, the reserved credits used up, no credits left: the `error` output. The check account's credits are put back after
     private function suiteSystemAi() {
-	if (!class_exists(\plugins\SystemAI\util\SystemAi::class)) {
-	    $this->fail('System AI: the SystemAI plugin is not enabled');
+	//CLD: 2026-10-31T21:00:00+02:00: the MultiTenant plugin's option system_ai (was: the SystemAI plugin's classes)
+	if (!\plugins\MultiTenant\Plugin::systemAi()) {
+	    $this->fail('System AI: the MultiTenant plugin with its option system_ai is not enabled');
 	    return;
 	}
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
-	$SA = \plugins\SystemAI\util\SystemAi::class;
-	$W = \plugins\SystemAI\models\SystemAiWallet::class;
-	$L = \plugins\SystemAI\models\SystemAiLedger::class;
+	$SA = \plugins\MultiTenant\util\SystemAi::class;
+	$W = \plugins\MultiTenant\models\SystemAiWallet::class;
+	$L = \plugins\MultiTenant\models\SystemAiLedger::class;
 	$sys = fn($provider, $url = '', $key = 'k') => (object)[ 'provider' => $provider, 'url' => $url, 'api_key' => $key, 'model' => 'm' ];
 	$c = [ $SA::stepCredential($sys('anthropic')), $SA::stepCredential($sys('gemini', 'https://generativelanguage.googleapis.com/v1beta/openai')), $SA::stepCredential($sys('gemini')),
 	    $SA::stepCredential($sys('ollama', 'http://localhost:11434/v1', '')), $SA::stepCredential($sys('lemonade')), $SA::stepCredential($sys('openai', 'http://x/v1/')) ];
@@ -2950,18 +2951,19 @@ class CheckCommand extends \sys\BaseController {
 		\V::app()->om->findById('File', $id)?->delete();
 	}
 	//CLD: 2026-10-19T11:21:19+03:00: the sign-up is the Registration plugin (its classes; checked only when the plugin is enabled in app/plugins.php)
-	if (isset(\V::app()->Registration)) {
+	//CLD: 2026-10-31T21:00:00+02:00: the MultiTenant plugin's option registration (was the Registration plugin)
+	if (\plugins\MultiTenant\Plugin::registration()) {
 		//CLD: 2026-10-16T12:19:22+03:00: sign-up: a link's token finds its sign-up once (only its hash is stored), the system email (data\SysEmails) queued with the link, the form's password rules
-		[ $signup, $token ] = \plugins\Registration\models\Signup::start('zz-check@example.com');
+		[ $signup, $token ] = \plugins\MultiTenant\models\Signup::start('zz-check@example.com');
 		//CLD: 2026-10-18T23:35:30+03:00: the link as SiteController builds it (V::createAbsoluteUrl; was https://x.ro/...)
-		$job = \util\EmailSend::system('signup_confirm', 'zz-check@example.com', [ 'link' => \V::app()->createAbsoluteUrl('/Registration/register/confirm', [ 't' => $token ]) ]);
+		$job = \util\EmailSend::system('signup_confirm', 'zz-check@example.com', [ 'link' => \V::app()->createAbsoluteUrl('/MultiTenant/register/confirm', [ 't' => $token ]) ]);
 		$jobDoc = \V::app()->om->findById('Job', (string)$job);
-		$found = \plugins\Registration\models\Signup::findByToken($token);
+		$found = \plugins\MultiTenant\models\Signup::findByToken($token);
 		$this->check('signup: the token finds it, the hash is stored (not the token), the email queued with the link', [ true, false, true, 'Confirm your email for ' . \V::app()->config('app.name') ],
 		    [ $found && (string)$found->_id === (string)$signup->_id, $signup->token_hash === $token, str_contains((string)($jobDoc->job_data['html'] ?? ''), $token), $jobDoc->job_data['subject'] ?? null ]);
 		$jobDoc?->delete();
 		$signup->delete();
-		$form = \plugins\Registration\models\RegisterForm::create([], [ 'validateCurrentPassword' => false ]);
+		$form = \plugins\MultiTenant\models\RegisterForm::create([], [ 'validateCurrentPassword' => false ]);
 		$form->assign([ 'account_name' => 'Co', 'firstname' => 'A', 'lastname' => 'B', 'new_password' => 'weak', 'cfm_password' => 'other' ]);
 		$form->validates();
 		$this->check('signup: the form refuses a weak password and a different confirmation', [ 'cfm_password', 'new_password' ], array_values(array_intersect([ 'cfm_password', 'new_password' ], array_keys($form->errors()))));
@@ -3671,7 +3673,8 @@ class CheckCommand extends \sys\BaseController {
     private function suiteTiers() {
 	//CLD: 2026-10-31T11:53:38+02:00: the tiers are the Admin plugin's (hook tiers:table): without it, none (no limits, every feature)
 	if (!\util\Tiers::enabled()) {
-	    $this->check('no Admin plugin: no tiers, no limits, every feature', [ [], null, true ], [ \util\Tiers::names(), \util\Tiers::limit(\V::app()->config('rt.account'), 'datatables'), \util\Tiers::has(\V::app()->config('rt.account'), 'chk_a') ]);
+	    //CLD: 2026-10-31T21:00:00+02:00: the MultiTenant plugin (was the Admin plugin)
+	    $this->check('no MultiTenant plugin: no tiers, no limits, every feature', [ [], null, true ], [ \util\Tiers::names(), \util\Tiers::limit(\V::app()->config('rt.account'), 'datatables'), \util\Tiers::has(\V::app()->config('rt.account'), 'chk_a') ]);
 	    return;
 	}
 	$om = \V::app()->om;
@@ -3780,13 +3783,14 @@ class CheckCommand extends \sys\BaseController {
 	    }
 
 	    //the System AI's allowance: the account's plan, else the tier's, else the installation's
-	    if (class_exists(\plugins\SystemAI\models\SystemAiWallet::class)) {
-		$W = \plugins\SystemAI\models\SystemAiWallet::class;
+	    //CLD: 2026-10-31T21:00:00+02:00: with the option system_ai (was: the SystemAI plugin's classes)
+	    if (\plugins\MultiTenant\Plugin::systemAi()) {
+		$W = \plugins\MultiTenant\models\SystemAiWallet::class;
 		$set('free', [ 'ai_monthly_credits' => 123 ]);
 		$tierPlan = $W::planOf($W::blank(), $account->_id);
 		$own = $W::planOf([ 'plan' => 50 ] + $W::blank(), $account->_id);
 		$set('free', [ 'ai_monthly_credits' => null ]);
-		$this->check('System AI: the tier\'s allowance, the account\'s plan before it, the installation\'s without either', [ 123, 50, \plugins\SystemAI\util\SystemAi::monthlyCredits() ],
+		$this->check('System AI: the tier\'s allowance, the account\'s plan before it, the installation\'s without either', [ 123, 50, \plugins\MultiTenant\util\SystemAi::monthlyCredits() ],
 		    [ $tierPlan, $own, $W::planOf($W::blank(), $account->_id) ]);
 	    }
 
@@ -4160,7 +4164,7 @@ class CheckCommand extends \sys\BaseController {
 
 	//CLD: 2026-10-22T14:00:00+03:00: bring your own key: Gemini, Ollama, Lemonade speak OpenAI chat completions at their own URLs (Bearer key); Gemini's model ids without models/;
 	//System is the installation's server (config assistant.system), refused when there is none; the prices, the budget (the loop stops once it is spent)
-	//CLD: 2026-10-23T10:00:00+03:00: the System AI (config ai.system, plugins\SystemAI; was assistant.system)
+	//CLD: 2026-10-23T10:00:00+03:00: the System AI (config ai.system, plugins\MultiTenant; was assistant.system)
 	$AS = \models\AssistantSettings::class;
 	$gem = $WA::credentialOf((object)[ 'provider' => 'gemini', 'api_key' => 'g1' ]);
 	$this->check('gemini, ollama, lemonade: their own URLs, Bearer key', [ 'https://generativelanguage.googleapis.com/v1beta/openai', [ 'Authorization' => 'Bearer g1' ], 'http://localhost:11434/v1', 'http://localhost:8000/api/v1', [] ],
@@ -4172,6 +4176,10 @@ class CheckCommand extends \sys\BaseController {
 	});
 	$this->check('models: gemini: GET /models, ids without models/', [ '/models', 'gemini-x' ], [ $listed, $models[0]['id'] ?? null ]);
 	$savedSystem = \V::app()->config('ai.system');
+	//CLD: 2026-10-31T21:00:00+02:00: the System AI as the MultiTenant plugin's option system_ai turns it on (whatever its config.php says), as ai.system set here; both put back below
+	$MT = \plugins\MultiTenant\Plugin::class;
+	$savedOptions = $MT::options();
+	$MT::$options = [ 'system_ai' => true ] + $savedOptions;
 	\V::app()->config('ai.system', [ 'provider' => '', 'model' => '' ]);
 	$noSystem = [ $WA::isReady((object)[ 'provider' => 'system' ]), $AS::systemAvailable() ];
 	try {
@@ -4193,12 +4201,14 @@ class CheckCommand extends \sys\BaseController {
 	$s->ask([], 'x', $existing);
 	$this->check('system: the installation\'s model and effort', [ 'claude-sonnet-5-5', 'low', 'sys-key' ], [ $sentS[0][1]['model'], $sentS[0][1]['output_config']['effort'], $sentS[0][0]['x-api-key'] ?? null ]);
 	//CLD: 2026-10-26T23:49:50+02:00: the System provider is the SystemAI plugin's: none while it is not enabled (the Assistant itself is core)
-	$modules = \V::app()->config('modules');
-	\V::app()->config('modules', array_values(array_diff((array)$modules, [ 'SystemAI' ])));
+	//CLD: 2026-10-31T21:00:00+02:00: the MultiTenant plugin's option system_ai off (was: without the SystemAI plugin)
+	$options = $MT::options();
+	$MT::$options = [ 'system_ai' => false ] + $options;
 	$withoutPlugin = [ $AS::system(), $AS::systemAvailable(), $WA::isReady((object)[ 'provider' => 'system' ]) ];
-	\V::app()->config('modules', $modules);
-	$this->check('system: none without the SystemAI plugin (not offered, not ready)', [ null, false, false ], $withoutPlugin);
+	$MT::$options = $options;
+	$this->check('system: none without the System AI option (not offered, not ready)', [ null, false, false ], $withoutPlugin);
 	\V::app()->config('ai.system', $savedSystem);
+	$MT::$options = $savedOptions;
 	$this->check('prices: known Claude models, set ones, local free, else unknown', [ [ 4.0, 20.0, 0.2 ], [ 1.0, 2.0, 0.1 ], [ 0, 0, 0 ], null ],
 	    [ $AS::pricesOf((object)[ 'model' => 'claude-opus-5-5' ]), $AS::pricesOf((object)[ 'model' => 'gpt-x', 'price_input' => 1, 'price_output' => 2 ]),
 	    $AS::pricesOf((object)[ 'provider' => 'ollama', 'model' => 'qwen' ]), $AS::pricesOf((object)[ 'provider' => 'openai', 'model' => 'gpt-x' ]) ]);
@@ -4213,8 +4223,8 @@ class CheckCommand extends \sys\BaseController {
 
 	//CLD: 2026-10-22T15:00:00+03:00: System's credits (AssistantWallet): per model (its own rates, or the provider's price + the margin), the month's allowance without rollover,
 	//top-ups that expire, used allowance first then the top-up that expires first, the account's monthly limit, reserved then settled; the loop stops at the reserved credits
-	//CLD: 2026-10-23T10:00:00+03:00: the System AI's (plugins\SystemAI: SystemAiWallet, SystemAiLedger; were AssistantWallet, AssistantCreditLedger)
-	$W = \plugins\SystemAI\models\SystemAiWallet::class;
+	//CLD: 2026-10-23T10:00:00+03:00: the System AI's (plugins\MultiTenant: SystemAiWallet, SystemAiLedger; were AssistantWallet, AssistantCreditLedger)
+	$W = \plugins\MultiTenant\models\SystemAiWallet::class;
 	$table = [ 'credit_usd' => 0.01, 'default_margin' => 0.30, 'models' => [ 'claude-opus-5-5' => [ 'margin' => 0.25 ], 'my-model' => [ 'in' => 100, 'out' => 400 ] ] ];
 	$this->check('credits per model: price + margin, the default margin, own rates, unknown', [ [ 500.0, 2500.0, 25.0 ], [ 260.0, 1300.0, 26.0 ], [ 100.0, 400.0, 10.0 ], null ],
 	    [ $W::ratesOf((object)[ 'model' => 'claude-opus-5-5' ], $table), $W::ratesOf((object)[ 'model' => 'claude-sonnet-5-5' ], $table),
@@ -4248,13 +4258,13 @@ class CheckCommand extends \sys\BaseController {
 	    $after = $W::settle($aid, $h1[0], 22, [ 'wfid' => 'w1' ]);
 	    $W::settle($aid, $h2[0], 0);
 	    $cur = $W::current($aid);
-	    $types = array_map(fn($e) => $e->type, iterator_to_array(\plugins\SystemAI\models\SystemAiLedger::recent($aid, 10), false));
+	    $types = array_map(fn($e) => $e->type, iterator_to_array(\plugins\MultiTenant\models\SystemAiLedger::recent($aid, 10), false));
 	    $this->check('wallet (db): reserve at most the limit, within the monthly limit, none left; settled from the allowance then the top-up; the ledger',
 		[ 12, 25, 15, null, 28, 0, 28, 22, [ 'debit', 'topup', 'adjust', 'allowance' ] ],
 		[ (int)round(($t['expires'] - $t['at']) / 86400 / 30.4), $h1[1], $h2[1], $h3, $after, $cur['allowance_left'], array_sum(array_column($cur['topups'], 'left')), $cur['month_used'], array_values(array_unique($types)) ]);
 	} finally {
 	    \V::app()->om->deleteOne('SystemAiWallet', [ '_id' => $aid, 'aid' => \V::app()->om->to_oid($aid) ]);
-	    $L = \plugins\SystemAI\models\SystemAiLedger::class;
+	    $L = \plugins\MultiTenant\models\SystemAiLedger::class;
 	    \V::app()->mongo->selectCollection($L::_database(), $L::_collection())->deleteMany([ 'aid' => \V::app()->om->to_oid($aid) ]);
 	}
 	//the loop limited by the reserved credits: 10 + 5 tokens a turn at 500 / 2500 credits per 1M = 0.0175 credits; 0.03 reserved: 2 turns

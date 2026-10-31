@@ -6,7 +6,7 @@ class Identity {
 
     public $reason = null;
     public $data = [];
-    //CLD: 2026-10-22T23:00:00+03:00: users of a suspended account may sign in (only a super-admin's "view as": plugins\Admin)
+    //CLD: 2026-10-22T23:00:00+03:00: users of a suspended account may sign in (only a super-admin's "view as": plugins\MultiTenant)
     public $allowSuspended = false;
     //CLD: 2026-10-21T20:10:00+03:00: the users (of several accounts) the name and password of authenticate() fit, when more than one
     public $choices = [];

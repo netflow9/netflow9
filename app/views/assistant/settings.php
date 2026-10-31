@@ -9,11 +9,11 @@
     //Lemonade (the Server URL's placeholder is the provider's own). + the monthly budget, the prices (not for System) and this month's spending ($usage)
     //CLD: 2026-10-22T15:00:00+03:00: System is paid in credits: the wallet ($wallet: this month's allowance, the top-ups and their expiry), the model's rates ($rates), the last
     //entries ($ledger), the account's monthly limit (credit_cap). The budget and the prices are for the other providers only
-    //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (plugins\SystemAI): here its credits left and the account's monthly limit for the Assistant; the allowance, the top-ups
-    //and the last changes on its own page (AI credits: /SystemAI/credits/index; no $ledger)
+    //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (plugins\MultiTenant): here its credits left and the account's monthly limit for the Assistant; the allowance, the top-ups
+    //and the last changes on its own page (AI credits: /MultiTenant/credits/index; no $ledger)
 */
 use models\AssistantSettings;
-use plugins\SystemAI\models\SystemAiWallet;
+use plugins\MultiTenant\models\SystemAiWallet;
 
 $this->pageTitle = 'Assistant settings';
 
@@ -164,7 +164,7 @@ JS . "}({$connectJs});");
 		    <label class="col-sm-3 col-form-label">Credits</label>
 		    <div class="col-sm-9 pt-2 small">
 			<span class="fs-5 fw-semibold"><?= \util\Format::number(SystemAiWallet::balance($wallet)) ?></span> <span class="text-muted">credits left<?= $held ? ' (' . \util\Format::number($held) . ' reserved by running requests)' : '' ?></span>
-			&middot; <a href="<?= \V::app()->createUrl('/SystemAI/credits/index') ?>">AI credits</a>
+			&middot; <a href="<?= \V::app()->createUrl('/MultiTenant/credits/index') ?>">AI credits</a>
 			<div class="form-text">Shared with the AI steps that use the System AI. Used this month: <?= \util\Format::number($wallet['month_used']) ?> credits.</div>
 		    </div>
 		</div>

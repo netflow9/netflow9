@@ -118,7 +118,7 @@ class Boot {
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
 	}
 
-	//CLD: 2026-10-22T23:00:00+03:00: a suspended account (state `disabled`) is signed out at once, unless a super-admin is viewing it (session `impersonator`: plugins\Admin)
+	//CLD: 2026-10-22T23:00:00+03:00: a suspended account (state `disabled`) is signed out at once, unless a super-admin is viewing it (session `impersonator`: plugins\MultiTenant)
 	if ($account->state === 'disabled' && empty($_SESSION['impersonator'])) {
 	    \V::app()->log->info('Boot: signed out user ' . \V::app()->user->_id . ': the account is suspended');
 	    \V::app()->user->logout();
