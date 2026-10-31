@@ -26,7 +26,7 @@
 	//CLD: 2026-10-23T01:10:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page or an HTTP request
 	//CLD: 2026-10-23T02:30:00+03:00: in an email {{ ai.html }} shows it formatted (util\EmailHtml; was escaped: {{ markdown(ai.text) }} only)
     //CLD: 2026-10-23T10:00:00+03:00: Credential `system` (SYSTEM): the installation's System AI instead of a credential of the project, when it is of the step's provider (a plugin gives
-    //it: hook ai:system-provider, systemProvider(); the SystemAI plugin). A run reserves the account's credits, counts each call's tokens in credits, stops before a call once the
+    //it: hook ai:system-provider, systemProvider(); the MultiTenant plugin's System AI). A run reserves the account's credits, counts each call's tokens in credits, stops before a call once the
     //reserved ones are used up, and is charged what it used (its session: start, add, exhausted, finish)
 */
 

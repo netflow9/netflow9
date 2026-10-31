@@ -58,8 +58,8 @@ class Account extends \sys\BaseModel {
 		'showInForms' => false,
 	    ],
 	    //CLD: 2026-10-24T09:45:36+03:00: the account's tier (util\Tiers, app/tiers.php; empty: the default) and its own changes of the tier's limits / features ({ limits, features });
-	    //set by a super-admin only (the Admin plugin, ./v tiers::set)
-	    //CLD: 2026-10-31T11:53:38+02:00: the tiers are the Admin plugin's (plugins/Admin/tiers.php; ./v Admin::tiers::set); without it, none
+	    //set by a super-admin only (the MultiTenant plugin, ./v MultiTenant::tiers::set)
+	    //CLD: 2026-10-31T11:53:38+02:00: the tiers are the Admin plugin's (plugins/MultiTenant/tiers.php; ./v MultiTenant::tiers::set); without it, none
 	    [
 		'key' => 'tier',
 		'type' => 'select',

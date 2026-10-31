@@ -1,0 +1,75 @@
+<?php
+//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number (was number_format); the dates in the account's formats (util\Format::date / datetime; were Y-m-d / Y-m-d H:i, UTC)
+/*
+    CLD: 2026-10-22T23:00:00+03:00: new: the account's Assistant in the administration (hook admin:account-panels): $account, $settings (AssistantSettings|null), $wallet (AssistantWallet::current),
+    $ledger (the last entries), $usage (AssistantUsage::current), $system (AssistantSettings::system); the plan and a top-up (controllers/AdminController)
+    CLD: 2026-10-23T10:00:00+03:00: the account's System AI credits (plugins\MultiTenant; was the Assistant's panel): $account, $wallet (SystemAiWallet::current), $ledger, $system
+    (SystemAi::config); the Assistant's provider and spending: its own panel (views/assistant/_admin_account_panel)
+*/
+use plugins\MultiTenant\util\SystemAi;
+use plugins\MultiTenant\models\SystemAiWallet;
+use plugins\MultiTenant\models\SystemAiLedger;
+
+//CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly (was a $e wrapper)
+$csrf = '<input type="hidden" name="' . \V::app()->csrf->csrf_key . '" value="' . \V::app()->html->escape(\V::app()->csrf->getToken(false)) . '">';
+$aid = (string)$account->_id;
+$held = array_sum(array_column($wallet['holds'], 'credits'));
+$topups = $wallet['topups'];
+usort($topups, fn($a, $b) => $b['at'] <=> $a['at']);
+?>
+<h6>System AI</h6>
+
+<div class="border rounded-3 p-3 mb-4" style="max-width: 880px">
+    <div class="d-flex flex-wrap align-items-baseline gap-3 mb-2">
+	<div class="fs-5 fw-semibold"><?= \util\Format::number(SystemAiWallet::balance($wallet)) ?> <span class="fs-6 fw-normal text-muted">System credits</span></div>
+	<div class="small text-muted">allowance <?= \util\Format::number($wallet['allowance_left']) ?> of <?= \util\Format::number($wallet['allowance']) ?> &middot; used this month <?= \util\Format::number($wallet['month_used']) ?><?= $held ? ' &middot; ' . \util\Format::number($held) . ' reserved' : '' ?><?= $system ? '' : ' &middot; <span class="text-warning-emphasis">the installation has no System AI</span>' ?></div>
+    </div>
+
+    <div class="row g-3">
+	<div class="col-md-5">
+	    <form method="post" action="<?= \V::app()->createUrl('/MultiTenant/admin/credits_plan') ?>" class="m-0">
+		<?= $csrf ?><input type="hidden" name="id" value="<?= \V::app()->html->escape($aid) ?>">
+		<label class="form-label small mb-1" for="plan-credits">Monthly allowance <span class="text-muted">(empty: the tier's or the installation's, <?= (int)SystemAiWallet::planOf(array_merge($wallet, [ 'plan' => null ]), $aid) ?>)</span></label>
+		<div class="d-flex gap-2">
+		    <input id="plan-credits" type="number" min="0" step="1" name="credits" class="form-control form-control-sm" value="<?= $wallet['plan'] === null ? '' : (int)$wallet['plan'] ?>" placeholder="<?= (int)SystemAiWallet::planOf(array_merge($wallet, [ 'plan' => null ]), $aid) ?>">
+		    <button type="submit" class="btn btn-sm btn-outline-secondary">Set</button>
+		</div>
+	    </form>
+	</div>
+	<div class="col-md-7">
+	    <form method="post" action="<?= \V::app()->createUrl('/MultiTenant/admin/credits_grant') ?>" class="m-0">
+		<?= $csrf ?><input type="hidden" name="id" value="<?= \V::app()->html->escape($aid) ?>">
+		<label class="form-label small mb-1" for="topup-credits">Top-up <span class="text-muted">(valid <?= SystemAiWallet::TOPUP_MONTHS ?> months)</span></label>
+		<div class="d-flex gap-2">
+		    <input id="topup-credits" type="number" min="1" step="1" name="credits" class="form-control form-control-sm" style="max-width: 120px" placeholder="Credits" required>
+		    <input type="text" name="note" maxlength="200" class="form-control form-control-sm" placeholder="Note, e.g. invoice 123">
+		    <button type="submit" class="btn btn-sm btn-primary text-nowrap">Add credits</button>
+		</div>
+	    </form>
+	</div>
+    </div>
+
+    <?php if ($topups): ?>
+    <div class="small mt-3">Top-ups:
+	<?php foreach($topups as $t): ?>
+	<span class="badge <?= $t['left'] > 0 && $t['expires'] > time() ? 'text-bg-light border' : 'text-bg-secondary' ?> fw-normal"><?= \util\Format::number($t['left']) ?>/<?= \util\Format::number($t['granted']) ?> until <?= \V::app()->html->escape(\util\Format::date($t['expires'])) ?><?= $t['note'] !== '' ? ' &middot; ' . \V::app()->html->escape($t['note']) : '' ?></span>
+	<?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($ledger): ?>
+    <table class="table table-sm small mt-3 mb-0">
+	<thead><tr><th>When (UTC)</th><th>What</th><th class="text-end">Credits</th><th class="text-end">Balance</th></tr></thead>
+	<tbody>
+	<?php foreach($ledger as $l): ?>
+	    <tr>
+		<td class="text-nowrap"><?= \V::app()->html->escape(\util\Format::datetime($l->created_at)) ?></td>
+		<td><?= \V::app()->html->escape(SystemAiLedger::TYPES[$l->type] ?? $l->type) ?><?= (string)$l->model !== '' ? ' <code>' . \V::app()->html->escape($l->model) . '</code>' : '' ?><?= (string)$l->note !== '' ? ' <span class="text-muted">' . \V::app()->html->escape($l->note) . '</span>' : '' ?></td>
+		<td class="text-end <?= $l->credits < 0 ? 'text-danger' : 'text-success' ?>"><?= ($l->credits > 0 ? '+' : '') . \util\Format::number((float)$l->credits) ?></td>
+		<td class="text-end"><?= \util\Format::number((float)$l->balance) ?></td>
+	    </tr>
+	<?php endforeach; ?>
+	</tbody>
+    </table>
+    <?php endif; ?>
+</div>

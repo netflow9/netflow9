@@ -66,14 +66,14 @@ function get_config($mode = 'web') {
 	'http.steps.allow_private' => defined('HTTP_STEPS_ALLOW_PRIVATE') && filter_var(HTTP_STEPS_ALLOW_PRIVATE, FILTER_VALIDATE_BOOLEAN),
 	'app.base_url' => defined('BASE_URL') ? BASE_URL : null,
 	/*
-	    the System AI (the SystemAI plugin: the server this installation offers to every account, for the Assistant's provider System and the AI steps;
+	    the System AI (the MultiTenant plugin, option system_ai: the server this installation offers to every account, for the Assistant's provider System and the AI steps;
 		off without SYSTEM_AI_PROVIDER / SYSTEM_AI_MODEL; CLD: 2026-10-31T12:12:05+02:00: was described as the Assistant's, ASSISTANT_*):
 		    its provider (anthropic, openai, gemini, ollama, lemonade),
 		    Server URL (empty: the provider's own), key, model, effort (Claude),
 		    and the prices (USD per 1M tokens; empty: the known prices of Claude models)
 	    the credits each account gets per month (no rollover), the most one request may reserve (0: no limit)
 	    SYSTEM_AI_* in app.env.
-	    The credits per model and the margin: plugins/SystemAI/credit_rates.php
+	    The credits per model and the margin: plugins/MultiTenant/credit_rates.php
 	*/
 	'ai.system' => (function() {
 	    $env = fn($name, $default = '') => defined('SYSTEM_AI_' . $name) ? constant('SYSTEM_AI_' . $name) : $default;
