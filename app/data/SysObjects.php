@@ -281,6 +281,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialOdbc',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-01T08:00:00+02:00: a Checkmk site (the Checkmk steps and problem trigger), core for every account
+	    'CredentialCheckmk' => [
+		'class' => 'models\credential\CredentialCheckmk',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-01T06:00:00+02:00: a FortiGate firewall (the FortiGate steps), core for every account
 	    'CredentialFortiGate' => [
 		'class' => 'models\credential\CredentialFortiGate',
@@ -435,6 +440,27 @@ class SysObjects {
 	    ],
 	    'NodeAppOdbc' => [
 		'class' => 'models\node\NodeAppOdbc',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-01T08:00:00+02:00: Checkmk (one step per area, NodeAppCheckmk their base; the problem trigger, polling), core for every account
+	    'NodeAppCmkStatus' => [
+		'class' => 'models\node\NodeAppCmkStatus',
+		'wfNode' => true,
+	    ],
+	    'NodeAppCmkAck' => [
+		'class' => 'models\node\NodeAppCmkAck',
+		'wfNode' => true,
+	    ],
+	    'NodeAppCmkHosts' => [
+		'class' => 'models\node\NodeAppCmkHosts',
+		'wfNode' => true,
+	    ],
+	    'NodeAppCmkApi' => [
+		'class' => 'models\node\NodeAppCmkApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerCheckmk' => [
+		'class' => 'models\node\NodeTriggerCheckmk',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-01T06:00:00+02:00: FortiGate (one step per area, NodeAppFortiGate their base; the event trigger: an automation stitch's webhook), core for every account
