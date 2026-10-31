@@ -10,6 +10,7 @@
 !/app.env.example
 !/install.sh
 !/README.md
+!/LICENSE
 
 # --- never commit (secrets / runtime) ---
 public_html/assets/
