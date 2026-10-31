@@ -47,7 +47,8 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'systemai', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -1830,6 +1831,241 @@ class CheckCommand extends \sys\BaseController {
 	} finally {
 	    foreach($creds as $c)
 		$c->delete();
+	    $this->stopAiServer($server);
+	}
+    }
+
+    //CLD: 2026-10-30T23:30:00+02:00: new: the knowledge bases (models\KnowledgeBase, the Knowledge base step, the AI steps' search_knowledge_base tool) against the fake AI server's
+    //embeddings: the text cut into chunks (pages, overlap), a new knowledge base made by Add (its embedding model, dims), unchanged documents left as they are, files / web page /
+    //text, search by meaning and by words (merged), the metadata filter, remove, list, another vector length refused, Ollama's /api/embed, the model's prefixes, the AI tool
+    //CLD: 2026-10-31T01:00:00+02:00: the account's embedding model (models\EmbeddingSettings; the check account's put back after: was a credential of the step), Connect's list, the
+    //documents queued for the daemon (queue, indexJob), re-index after another model (reindex, reindexJob), the permissions' defaults
+    private function suiteKb() {
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$om = \V::app()->om;
+
+	//cutting
+	$text = "--- page 1 ---\n" . str_repeat('Alpha beta gamma. ', 40) . "\n\n--- page 2 ---\nShort page.";
+	$chunks = \util\TextChunks::split($text, 300, 60);
+	$this->check('kb: the text cut by pages, each chunk at most the size, the next starts with the end of the one before', [ true, 1, 2, true, true ], [ count($chunks) > 2, $chunks[0]['page'],
+	    end($chunks)['page'], max(array_map(fn($c) => mb_strlen($c['text']), $chunks)) <= 300, str_contains($chunks[1]['text'], mb_substr(trim(mb_substr($chunks[0]['text'], -40)), 0, 15)) ]);
+	$this->check('kb: a text without pages: one chunk, page null; an empty text: none', [ [ [ 'text' => "One.\n\nTwo.", 'page' => null ] ], [] ],
+	    [ \util\TextChunks::split("One.\n\n\n\nTwo.", 1000, 100), \util\TextChunks::split("  \n ", 1000, 100) ]);
+	$all = \models\WfNode::getAll();
+	$this->check('kb: the step (AI group, basic), the error output; the metadata / filter checks', [ true, 'ai', 'basic', [ 'success', 'error' ], [ 'meta.category' => [ '$in' => [ 'hr', 'it' ] ] ],
+	    'Filter: `a.b` is not a name (letters, digits, _)' ], [ isset($all['app::knowledge']), $all['app::knowledge']['category'] ?? null, $all['app::knowledge']['audience'] ?? null,
+	    \models\node\NodeAppKnowledge::outLabelsFor([ 'onError' => 'output' ]), \models\KnowledgeBase::filterQuery([ 'category' => [ 'hr', 'it' ] ]),
+	    (function() { try { \models\KnowledgeBase::filterQuery([ 'a.b' => 1 ]); return null; } catch (\ErrorException $x) { return $x->getMessage(); } })() ]);
+	$member = $om->create('Role', [ 'iname' => 'member', 'permissions' => [] ]);
+	$this->check('kb: the permissions: defaults for the roles already stored (member: the project\'s)', [ 'project', 'project', 'project', 'project' ], array_map(fn($p) => $member->getPermissionScope("KnowledgeBase::{$p}"),
+	    [ 'create', 'read', 'update', 'delete' ]));
+
+	$server = $this->startAiServer('kb');
+	if (!$server)
+	    return;
+	[ $port, $log, $requests ] = [ $server['port'], $server['log'], $server['requests'] ];
+	$files = [];
+	$lem = null;
+	$name = 'Check KB ' . uniqid();
+	$allow = \V::app()->config('http.steps.allow_private');
+	//the check account's embedding settings, put back after
+	$settingsColl = \V::app()->mongo->selectCollection(\models\EmbeddingSettings::_database(), \models\EmbeddingSettings::_collection());
+	$before = $settingsColl->findOne([ 'aid' => $this->account->_id ]);
+	$setModel = function($provider, $url, $model) {
+	    $s = \models\EmbeddingSettings::of($this->account->_id);
+	    $s->assign([ 'provider' => $provider, 'url' => $url, 'api_key' => 'check-key', 'model' => $model ]);
+	    if (!$s->validates() || !$s->save())
+		throw new \ErrorException('embedding settings: ' . json_encode($s->errors()));
+	};
+	try {
+	    $settingsColl->deleteMany([ 'aid' => $this->account->_id ]);
+	    $step = fn($config) => $n('k', 'app::knowledge', $config + [ 'onError' => 'output', 'timeout' => 15 ]);
+	    $flow = function($label, $config, $vars = []) use ($n, $e, $step) {
+		$exe = $this->runFlow("kb {$label}", [ $n('m', 'trigger::manual'), $step($config), $n('ok', 'app::set', [ 'variable' => 'route', 'value' => 'success' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'k'), $e('e2', 'k', 'ok', 0), $e('e3', 'k', 'err', 1) ], $vars);
+		return [ $exe?->getVariable('route'), $exe?->getVariable('kb'), $exe ];
+	    };
+
+	    //no embedding model for the account
+	    [ $route, $v ] = $flow('no model', [ 'knowledgeBase' => $name, 'operation' => 'addText', 'title' => 'x', 'text' => 'y' ]);
+	    $this->check('kb: Add to a new knowledge base, no embedding model for the account: the error output', [ 'error', true ],
+		[ $route, str_contains((string)($v['error'] ?? ''), 'no embedding model is set for the account') ]);
+	    $this->check('kb: the account\'s settings: a key needed for OpenAI (not for another OpenAI-compatible server), the provider\'s own address', [ false, true, 'http://localhost:11434' ],
+		[ $om->create('EmbeddingSettings', [ 'aid' => $this->account->_id, 'provider' => 'openai', 'model' => 'x' ])->validates(),
+		$om->create('EmbeddingSettings', [ 'aid' => $this->account->_id, 'provider' => 'openai', 'url' => 'http://10.0.0.1/v1', 'model' => 'x' ])->validates(),
+		$om->create('EmbeddingSettings', [ 'aid' => $this->account->_id, 'provider' => 'ollama' ])->baseUrl() ]);
+	    $setModel('lemonade', "http://127.0.0.1:{$port}/api/v1", 'nomic-embed-text-v2-moe-GGUF');
+	    $models = \util\Embeddings::models(\models\EmbeddingSettings::of($this->account->_id));
+	    $this->check('kb: Connect\'s list: the server\'s models, those not named as embedding models marked', [ 'Gemma-3-4b-it-GGUF', 'Gemma-3-4b-it-GGUF (not named as an embedding model)', 2 ],
+		[ $models[0]['id'] ?? null, $models[0]['label'] ?? null, count($models) ]);
+	    [ $route, $v ] = $flow('search missing', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'x' ]);
+	    $this->check('kb: Search of a knowledge base the project does not have: the error output', [ 'error', "there is no knowledge base `{$name}` in this project" ], [ $route, $v['error'] ?? null ]);
+
+	    //Add a text: made; the prefix of the nomic models; again: unchanged
+	    @unlink($log);
+	    [ $route, $v ] = $flow('add text', [ 'knowledgeBase' => $name, 'operation' => 'addText', 'title' => 'Holidays', 'text' => 'Employees get {{ days }} days of paid holiday every year.',
+		'meta' => '{"category": "hr"}' ], [ 'days' => 21 ]);
+	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $sent = $requests('/api/v1/embeddings');
+	    $this->check('kb: Add a text: the knowledge base made (the account\'s model, dims), the document added, the prefix and title embedded, the key sent', [ 'success', true,
+		[ [ 'key' => 'Holidays', 'title' => 'Holidays', 'status' => 'added', 'chunks' => 1 ] ], 'nomic-embed-text-v2-moe-GGUF', 64, 1,
+		"search_document: Holidays\n\nEmployees get 21 days of paid holiday every year." ], [ $route, $v['created'] ?? null, $v['documents'] ?? null, $kb?->model, (int)$kb?->dims,
+		(int)$kb?->chunks, $sent[0]['input'][0] ?? null ]);
+	    file_put_contents($log, '');
+	    [ $route, $v ] = $flow('add text again', [ 'knowledgeBase' => $name, 'operation' => 'addText', 'title' => 'Holidays', 'text' => 'Employees get 21 days of paid holiday every year.',
+		'meta' => '{"category": "hr"}' ]);
+	    $this->check('kb: the same document again: unchanged, not embedded again', [ 'success', false, 'unchanged', [] ],
+		[ $route, $v['created'] ?? null, $v['documents'][0]['status'] ?? null, $requests('/api/v1/embeddings') ]);
+
+	    //Add files: a PDF (its page) and a text file; an image refused
+	    $meta = [ 'metadata' => [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'owner' => null, 'source' => 'check' ] ];
+	    $pdf = \models\File::createFromString('check-kb.pdf', self::miniPdf('BT /F1 12 Tf 72 700 Td (Invoice 42 is due in 30 days) Tj ET'), $meta);
+	    $txt = \models\File::createFromString('check-kb.txt', "Office hours\n\nThe office is open from 9 to 17.", $meta);
+	    $png = \models\File::createFromString('check-kb.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='), $meta);
+	    $md = \models\File::createFromString('check-kb.md', "# Parking\n\nVisitors park on level -1.", $meta);
+	    array_push($files, $pdf, $txt, $png, $md);
+	    [ $route, $v ] = $flow('add files', [ 'knowledgeBase' => $name, 'operation' => 'addFiles', 'files' => '{{ ids }}' ], [ 'ids' => [ (string)$pdf, [ 'id' => (string)$txt ] ] ]);
+	    $this->check('kb: Add files: a PDF and a text file (keys: the file ids, titles: the names)', [ 'success', [ (string)$pdf, (string)$txt ], [ 'check-kb.pdf', 'check-kb.txt' ], [ 'added', 'added' ] ],
+		[ $route, array_column($v['documents'] ?? [], 'key'), array_column($v['documents'] ?? [], 'title'), array_column($v['documents'] ?? [], 'status') ]);
+	    [ $route, $v ] = $flow('add image', [ 'knowledgeBase' => $name, 'operation' => 'addFiles', 'files' => (string)$png ]);
+	    $this->check('kb: Add files: an image has no text: the error output', [ 'error', 'Files: `check-kb.png` has no text to add (PDF, Office or text files)' ], [ $route, $v['error'] ?? null ]);
+
+	    //Add a web page
+	    \V::app()->config('http.steps.allow_private', true);
+	    [ $route, $v ] = $flow('add page', [ 'knowledgeBase' => $name, 'operation' => 'addUrl', 'url' => "http://127.0.0.1:{$port}/kb/page" ]);
+	    $this->check('kb: Add a web page: its title, its text (no head)', [ 'success', 'Refund policy', "http://127.0.0.1:{$port}/kb/page" ],
+		[ $route, $v['documents'][0]['title'] ?? null, $v['documents'][0]['key'] ?? null ]);
+	    $chunk = \models\KnowledgeBase::chunkCollection()->findOne([ 'kb' => $kb->_id, 'key' => "http://127.0.0.1:{$port}/kb/page" ]);
+	    $this->check('kb: the page\'s chunk: the text without the style; the embedding a float32 vector', [ "Refunds\n\nRefunds are paid within 14 days of the return.", true, 64 ],
+		[ $chunk['text'] ?? null, ($chunk['embedding'] ?? null) instanceof \MongoDB\BSON\Binary, count($chunk['embedding']->toArray()) ]);
+
+	    //queued for the daemon (the Knowledge bases page): pending, then indexed by the job; a failure is the document's error
+	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $k1 = $kb->queue([ 'type' => 'file', 'file' => (string)$md ]);
+	    $k2 = $kb->queue([ 'type' => 'text', 'title' => 'Lunch', 'text' => 'Lunch is served from 12 to 14 in the canteen.' ]);
+	    $k3 = $kb->queue([ 'type' => 'file', 'file' => (string)$png ]);
+	    $status = fn($key) => \models\KnowledgeBase::documentCollection()->findOne([ 'kb' => $kb->_id, 'key' => $key ]);
+	    //pending (or indexed already by a daemon running)
+	    $this->check('kb: documents queued: pending', [ true, true ], [ in_array($status($k1)['status'] ?? null, [ 'pending', 'indexed' ], true),
+		in_array($status($k2)['status'] ?? null, [ 'pending', 'indexed' ], true) ]);
+	    //the jobs' work done here (a daemon running may take the jobs first: a document no longer pending is left as it is); the first as the daemon gives it (an object, aid an ObjectId)
+	    \models\KnowledgeBase::indexJob((object)[ 'aid' => $kb->aid, 'kb' => (string)$kb->_id, 'key' => $k1, 'src' => [ 'type' => 'file', 'file' => (string)$md ] ]);
+	    \models\KnowledgeBase::indexJob([ 'aid' => (string)$kb->aid, 'kb' => (string)$kb->_id, 'key' => $k2, 'src' => [ 'type' => 'text', 'title' => 'Lunch',
+		'text' => 'Lunch is served from 12 to 14 in the canteen.' ] ]);
+	    \models\KnowledgeBase::indexJob([ 'aid' => (string)$kb->aid, 'kb' => (string)$kb->_id, 'key' => $k3, 'src' => [ 'type' => 'file', 'file' => (string)$png ] ]);
+	    $this->check('kb: the jobs: indexed (a file, a text: the key its title), an image: the error', [ 'indexed', 1, 'indexed', 'Lunch', 'error', '`check-kb.png` has no text to add (PDF, Office or text files)' ],
+		[ $status($k1)['status'] ?? null, $status($k1)['chunks'] ?? null, $status($k2)['status'] ?? null, $k2, $status($k3)['status'] ?? null, $status($k3)['error'] ?? null ]);
+
+	    //Search
+	    @unlink($log);
+	    [ $route, $v ] = $flow('search', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'when is invoice 42 due', 'results' => 2 ]);
+	    $top = $v['results'][0] ?? [];
+	    $this->check('kb: Search: the best chunk first (by meaning and by words), its page, at most Results; the query\'s prefix', [ 'success', 2, (string)$pdf, 'check-kb.pdf', 1, 'both', true,
+		true, 'search_query: when is invoice 42 due' ], [ $route, $v['count'] ?? null, $top['document'] ?? null, $top['title'] ?? null, $top['page'] ?? null, $top['match'] ?? null,
+		($top['score'] ?? 0) > ($v['results'][1]['score'] ?? 1), str_starts_with((string)($v['context'] ?? ''), "[1] check-kb.pdf (page 1)\n"),
+		//the query's request (a daemon running may embed a queued document meanwhile)
+		array_values(array_filter(array_map(fn($r) => $r['input'][0] ?? '', $requests('/api/v1/embeddings')), fn($t) => str_starts_with($t, 'search_query: ')))[0] ?? null ]);
+	    [ $route, $v ] = $flow('search filter', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'invoice', 'filter' => '{{ f }}' ], [ 'f' => [ 'category' => 'hr' ] ]);
+	    $this->check('kb: Search with a metadata filter: only those documents', [ 'success', [ 'Holidays' ] ], [ $route, array_values(array_unique(array_column($v['results'] ?? [], 'document'))) ]);
+	    [ $route, $v ] = $flow('search min', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'zzz unrelated words', 'minScore' => '0.9' ]);
+	    $this->check('kb: Search with a least similarity: nothing that far', [ 'success', 0, '' ], [ $route, $v['count'] ?? null, $v['context'] ?? null ]);
+
+	    //List, Remove
+	    [ $route, $v ] = $flow('list', [ 'knowledgeBase' => $name, 'operation' => 'documents' ]);
+	    $this->check('kb: List the documents: 7 (one with an error), their source and metadata', [ 'success', 7, [ 'file', 'file', 'file', 'file', 'text', 'text', 'url' ], [ 'category' => 'hr' ], 1 ],
+		[ $route, $v['count'] ?? null, (function($d) { $s = array_column($d, 'source'); sort($s); return $s; })($v['documents'] ?? []),
+		array_column($v['documents'] ?? [], 'meta', 'key')['Holidays'] ?? null, count(array_filter($v['documents'] ?? [], fn($d) => $d['status'] === 'error')) ]);
+	    [ $route, $v ] = $flow('remove', [ 'knowledgeBase' => $name, 'operation' => 'remove', 'docKey' => (string)$txt ]);
+	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $this->check('kb: Remove a document by its file id: its chunks gone, the counts updated', [ 'success', 1, 6, 0 ], [ $route, $v['removed'] ?? null, (int)$kb->documents,
+		\models\KnowledgeBase::chunkCollection()->countDocuments([ 'kb' => $kb->_id, 'key' => (string)$txt ]) ]);
+
+	    //another vector length (the model changed on the server): refused
+	    $om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => [ 'dims' => 32 ] ]);
+	    [ $route, $v ] = $flow('dims', [ 'knowledgeBase' => $name, 'operation' => 'addText', 'title' => 'Other', 'text' => 'Some other text.' ]);
+	    $this->check('kb: embeddings of another length: refused', [ 'error', true ], [ $route, str_contains((string)($v['error'] ?? ''), 'the embeddings have 64 dimensions, knowledge base') ]);
+	    $om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => [ 'dims' => 64 ] ]);
+
+	    //the account's model changed: re-index needed (search and add refused), then re-indexed in the daemon
+	    $setModel('lemonade', "http://127.0.0.1:{$port}/api/v1", 'small-embed');
+	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    [ $route, $v ] = $flow('stale', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'holiday' ]);
+	    $this->check('kb: another model for the account: re-index needed, search refused', [ true, 'error', true ], [ $kb->needsReindex(), $route,
+		str_contains((string)($v['error'] ?? ''), 'was indexed with the model `nomic-embed-text-v2-moe-GGUF`, the account now uses `small-embed`: re-index it') ]);
+	    //while it is re-indexed (set here: a daemon running may finish the job before the check), then the job
+	    $om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => [ 'state' => 'reindexing' ] ]);
+	    [ $route, $v ] = $flow('reindexing', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'holiday' ]);
+	    $this->check('kb: re-indexing: searches wait', [ 'error', true ], [ $route, str_contains((string)($v['error'] ?? ''), 'is being re-indexed') ]);
+	    $om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => [ 'state' => 'ready' ] ]);
+	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $kb->reindex();
+	    \models\KnowledgeBase::reindexJob((object)[ 'aid' => $kb->aid, 'kb' => (string)$kb->_id ]);
+	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $chunk = \models\KnowledgeBase::chunkCollection()->findOne([ 'kb' => $kb->_id ]);
+	    [ $route, $v ] = $flow('reindexed', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'holiday', 'results' => 1 ]);
+	    $this->check('kb: re-indexed: the new model and length, every chunk\'s vector, searched again', [ 'ready', 'small-embed', 8, 8, false, false, 'success', 1 ],
+		[ (string)$kb->state, (string)$kb->model, (int)$kb->dims, count($chunk['embedding']->toArray()), isset($chunk['embedding_new']), $kb->needsReindex(), $route, $v['count'] ?? null ]);
+	    $setModel('lemonade', "http://127.0.0.1:{$port}/api/v1", 'slow-model');
+	    $kb->reindex();
+	    \models\KnowledgeBase::reindexJob([ 'aid' => (string)$kb->aid, 'kb' => (string)$kb->_id ]);
+	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $this->check('kb: a failed re-index: the old vectors and model kept, the error shown', [ 'ready', 'small-embed', true ],
+		[ (string)$kb->state, (string)$kb->model, str_starts_with((string)$kb->state_message, 'Re-index failed: Lemonade answered HTTP status 404') ]);
+	    $setModel('lemonade', "http://127.0.0.1:{$port}/api/v1", 'small-embed');
+
+	    //the AI step's tool (the fake model calls the first tool with {}: the query is empty)
+	    $lem = $om->create('CredentialLemonade', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: kb ' . uniqid(), 'baseUrl' => "http://127.0.0.1:{$port}/api/v1",
+		'apiKey' => 'check-key' ]);
+	    $lem->save();
+	    $om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => [ 'description' => 'HR rules' ] ]);
+	    $this->check('kb: the AI steps: an unknown knowledge base refused on save', true, str_contains(json_encode($this->errorsOf('kb ai unknown', [ $n('m', 'trigger::manual'),
+		$n('s', 'app::lemonade', [ 'credential' => (string)$lem->_id, 'model' => 'Qwen3-8B-GGUF', 'prompt' => 'x', 'knowledge' => [ 'No such KB' ] ]), $e('e1', 'm', 's') ])),
+		'the project has no knowledge base `No such KB`'));
+	    @unlink($log);
+	    $exe = $this->runFlow('kb ai tool', [ $n('m', 'trigger::manual'), $n('s', 'app::lemonade', [ 'credential' => (string)$lem->_id, 'model' => 'Qwen3-8B-GGUF', 'prompt' => 'How many holidays?',
+		'tools' => [], 'mcp' => [], 'knowledge' => [ $name ], 'onError' => 'output', 'timeout' => 15 ]), $e('e1', 'm', 's') ]);
+	    $sent = $requests('/api/v1/chat/completions');
+	    $tool = $sent[0]['tools'][0]['function'] ?? [];
+	    $ai = $exe?->getVariable('ai');
+	    $this->check('kb: the AI step\'s search_knowledge_base tool: offered (query; one knowledge base: no choice; its description), called, its error sent back', [ 'search_knowledge_base',
+		[ 'query' ], true, 'search_knowledge_base', true, 'The tool said: ERROR: the query is empty' ], [ $tool['name'] ?? null, $tool['parameters']['required'] ?? null,
+		str_contains((string)($tool['description'] ?? ''), "`{$name}` (HR rules)"), $ai['tool_calls'][0]['tool'] ?? null, $ai['tool_calls'][0]['error'] ?? null, $ai['text'] ?? null ]);
+	    $obj = (new \ReflectionClass(\models\node\NodeAppLemonade::class))->newInstanceWithoutConstructor();
+	    $obj->config = [ 'knowledge' => [ $name ], 'knowledgeResults' => 1 ];
+	    $tools = (new \ReflectionMethod($obj, 'knowledgeTool'))->invoke($obj, $this->project, 15);
+	    [ $out, $isError ] = ($tools['search_knowledge_base']['run'])([ 'query' => 'paid holiday days' ]);
+	    $found = json_decode($out, true)['results'] ?? [];
+	    $this->check('kb: the tool\'s answer: the best passage (Search results at most), with its title', [ false, 1, 'Holidays', 'Employees get 21 days of paid holiday every year.' ],
+		[ $isError, count($found), $found[0]['title'] ?? null, $found[0]['text'] ?? null ]);
+
+	    //Ollama's /api/embed
+	    $setModel('ollama', "http://127.0.0.1:{$port}", 'bge-m3');
+	    @unlink($log);
+	    [ $route, $v ] = $flow('ollama', [ 'knowledgeBase' => $name . ' ollama', 'operation' => 'addText', 'title' => 'T', 'text' => 'Ollama text.' ]);
+	    $sent = $requests('/api/embed');
+	    $this->check('kb: Ollama: /api/embed (a list of inputs, truncate; no prefix for this model; the key)', [ 'success', 'bge-m3', [ "T\n\nOllama text." ], true ],
+		[ $route, $sent[0]['model'] ?? null, $sent[0]['input'] ?? null, $sent[0]['truncate'] ?? null ]);
+
+	    //deleted with its documents and chunks
+	    $id = $kb->_id;
+	    $kb->delete();
+	    $this->check('kb: a knowledge base deleted takes its documents and chunks', [ 0, 0 ], [ \models\KnowledgeBase::documentCollection()->countDocuments([ 'kb' => $id ]),
+		\models\KnowledgeBase::chunkCollection()->countDocuments([ 'kb' => $id ]) ]);
+	} catch (\ErrorException $ex) {
+	    $this->fail('kb: ' . $ex->getMessage());
+	} finally {
+	    \V::app()->config('http.steps.allow_private', $allow);
+	    foreach($om->find('KnowledgeBase', [ 'aid' => $this->account->_id, 'name' => [ '$regex' => '^Check KB ' ] ]) as $k)
+		$k->delete();
+	    \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection())->deleteMany([ 'job_spec' => [ '$in' => [ '\models\KnowledgeBase::indexJob',
+		'\models\KnowledgeBase::reindexJob' ] ], 'aid' => $this->account->_id ]);
+	    foreach($files as $fid)
+		$om->findOne('File', [ '_id' => $fid ])?->delete();
+	    $lem?->delete();
+	    $settingsColl->deleteMany([ 'aid' => $this->account->_id ]);
+	    if ($before)
+		$settingsColl->insertOne($before);
 	    $this->stopAiServer($server);
 	}
     }

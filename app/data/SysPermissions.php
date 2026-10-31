@@ -269,6 +269,39 @@ class SysPermissions {
 	    ],
 	];
 
+	//CLD: 2026-10-31T01:00:00+02:00: knowledge bases (models\KnowledgeBase; controllers\KnowledgeController); defaults for the roles already stored, as the data tables'
+	$kbDefaults = [ 'owner' => [ 'enabled' => true, 'scope' => 'global' ], 'member' => [ 'enabled' => true, 'scope' => 'project' ] ];
+	$data['KnowledgeBase'] = [
+	    [
+		'name' => 'KnowledgeBase::create',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'Create knowledge bases',
+		'defaults' => $kbDefaults,
+	    ],
+	    [
+		'name' => 'KnowledgeBase::read',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'View knowledge bases, their documents, and search them (also grants: list)',
+		'defaults' => $kbDefaults,
+	    ],
+	    [
+		'name' => 'KnowledgeBase::list',
+		'alias-of' => 'KnowledgeBase::read'
+	    ],
+	    [
+		'name' => 'KnowledgeBase::update',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'Change knowledge bases: their settings, add and remove documents, re-index',
+		'defaults' => $kbDefaults,
+	    ],
+	    [
+		'name' => 'KnowledgeBase::delete',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'Delete knowledge bases',
+		'defaults' => $kbDefaults,
+	    ],
+	];
+
 	$data['AuditLog'] = [
 	    [
 		'name' => 'AuditLog::read',

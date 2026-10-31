@@ -7,6 +7,8 @@
 	- a chat with tools and no tool result yet: the model asks for the first tool (arguments {}); with a tool result: the answer names the tool's result (its first 40 characters);
 	  a JSON answer (Ollama `format`) when asked; a model named `slow-model` is refused (404, as an unknown model)
 	- every request body is appended to <AI_TEST_LOG> (one JSON line: { path, body }) for the checks to read
+    CLD: 2026-10-30T23:30:00+02:00: + embeddings (CheckCommand::suiteKb): POST /api/v1/embeddings (OpenAI-compatible) and /api/embed (Ollama): each text's words hashed into 64 numbers
+    (texts sharing words are similar); a model named `small-embed` answers 8 numbers (another length), `slow-model` is refused; GET /kb/page: an HTML page (Add a web page)
 */
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -21,6 +23,12 @@ $send = function($status, $data) {
     echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit;
 };
+//a web page (no API key)
+if ($path === '/kb/page') {
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!doctype html><html><head><title>Refund policy</title><style>p{}</style></head><body><h1>Refunds</h1><p>Refunds are paid within 14 days of the return.</p></body></html>';
+    exit;
+}
 $ollama = str_starts_with($path, '/api/') && !str_starts_with($path, '/api/v1/');
 $key = (string)getenv('AI_TEST_KEY');
 if ($key !== '' && ($_SERVER['HTTP_AUTHORIZATION'] ?? '') !== "Bearer {$key}")
@@ -36,7 +44,31 @@ $firstTool = (string)($body['tools'][0]['function']['name'] ?? '');
 $model = (string)($body['model'] ?? '');
 $answer = $toolResult !== null ? 'The tool said: ' . mb_substr($toolResult, 0, 40) : 'Hello from ' . $model;
 
+//a text's fake embedding: its words (letters and digits, lower case) counted into $dims numbers
+$embed = function($text, $dims) {
+    $v = array_fill(0, $dims, 0.0);
+    preg_match_all('/[\p{L}\p{N}]+/u', mb_strtolower((string)$text), $m);
+    foreach($m[0] as $w)
+	$v[crc32($w) % $dims] += 1.0;
+    if (!array_filter($v))
+	$v[0] = 1.0;
+    return $v;
+};
+
 switch($path) {
+    case '/api/v1/embeddings':
+	if ($model === 'slow-model')
+	    $send(404, [ 'error' => [ 'message' => "model {$model} not found" ] ]);
+	$data = [];
+	foreach(array_values((array)($body['input'] ?? [])) as $i => $t)
+	    $data[] = [ 'object' => 'embedding', 'index' => $i, 'embedding' => $embed($t, $model === 'small-embed' ? 8 : 64) ];
+	$send(200, [ 'object' => 'list', 'model' => $model, 'data' => array_reverse($data), 'usage' => [ 'prompt_tokens' => 5, 'total_tokens' => 5 ] ]);
+
+    case '/api/embed':
+	if ($model === 'slow-model')
+	    $send(404, [ 'error' => "model '{$model}' not found" ]);
+	$send(200, [ 'model' => $model, 'embeddings' => array_map(fn($t) => $embed($t, $model === 'small-embed' ? 8 : 64), array_values((array)($body['input'] ?? []))) ]);
+
     case '/api/v1/models':
 	$send(200, [ 'object' => 'list', 'data' => [ [ 'id' => 'Qwen3-8B-GGUF', 'object' => 'model' ], [ 'id' => 'Gemma-3-4b-it-GGUF', 'object' => 'model' ] ] ]);
 
