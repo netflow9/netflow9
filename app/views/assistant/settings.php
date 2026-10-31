@@ -137,7 +137,9 @@ JS . "}({$connectJs});");
 	    <div class="flex-fill"></div>
 	</div>
 
-	<div class="pt-4 w-50">
+	<?php //CLD: 2026-10-31T20:30:00+02:00: two columns, to fit one screen: the provider and its server on the left, the budget on the right (was one column, w-50) ?>
+	<div class="row gx-5 pt-4">
+	<div class="col-xl-6">
 	    <?= $settings->schema['provider']->input([ 'cols' => '3,9' ]) ?>
 
 	    <?php //CLD: 2026-10-22T14:00:00+03:00: System: what the installation provides ?>
@@ -178,7 +180,8 @@ JS . "}({$connectJs});");
 	    <?php //CLD: 2026-10-20T10:00:00+03:00: Connect: the server's models in Model ?>
 	    <div class="form-group row mb-2">
 		<div class="col-sm-9 offset-sm-3 d-flex align-items-center gap-2">
-		    <button type="button" class="btn btn-sm btn-outline-primary btn-assistant-connect"><i class="bi bi-plug me-1"></i>Connect</button>
+		    <?php //CLD: 2026-10-31T20:30:00+02:00: the button keeps its label on one line (text-nowrap) ?>
+		    <button type="button" class="btn btn-sm btn-outline-primary btn-assistant-connect text-nowrap flex-shrink-0"><i class="bi bi-plug me-1"></i>Connect</button>
 		    <span class="assistant-connect-status small text-muted"><?= $model !== '' ? 'Saved model: ' . \V::app()->html->escape($model) : 'Not connected' ?></span>
 		</div>
 	    </div>
@@ -202,10 +205,12 @@ JS . "}({$connectJs});");
 		<div class="form-text">The Server URL is reached from this application's server, so localhost means that machine. A local model needs a large context (the step types alone take about 10,000 tokens) and good tool calling.</div>
 	    </div>
 
+	</div>
+	<div class="col-xl-6">
 	    <?php //CLD: 2026-10-22T14:00:00+03:00: new: the monthly budget, the prices it is counted with, this month's spending ?>
 	    <?php //CLD: 2026-10-22T15:00:00+03:00: the budget is for your own key (System: credits, above) ?>
 	    <div data-assistant-provider="anthropic openai gemini ollama lemonade">
-	    <h6 class="mt-4">Budget</h6>
+	    <h6 class="mt-4 mt-xl-2">Budget</h6>
 	    <?= $settings->schema['budget']->input([ 'cols' => '3,9', 'input' => [ 'inputmode' => 'decimal', 'placeholder' => 'No limit' ] ]) ?>
 		<?= $settings->schema['price_input']->input([ 'cols' => '3,9', 'input' => [ 'inputmode' => 'decimal' ] ]) ?>
 		<?= $settings->schema['price_output']->input([ 'cols' => '3,9', 'input' => [ 'inputmode' => 'decimal' ] ]) ?>
@@ -228,8 +233,9 @@ JS . "}({$connectJs});");
 		</div>
 	    </div>
 	</div>
+	</div>
 
-	<div class="pt-4">
+	<div class="pt-3">
 	    <button type="submit" class="btn btn-primary">Save</button>
 	</div>
     <?= \V::app()->form->end() ?>
