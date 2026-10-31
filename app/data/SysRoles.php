@@ -46,6 +46,11 @@ class SysRoles {
 		'DataTable::delete' =>		[ 'enabled' => true, 'scope' => 'global' ],
 		'DataTable::readData' =>	[ 'enabled' => true, 'scope' => 'global', ],
 		'DataTable::writeData' =>	[ 'enabled' => true, 'scope' => 'global', ],
+		//CLD: 2026-10-31T01:00:00+02:00: knowledge bases
+		'KnowledgeBase::create' =>	[ 'enabled' => true, 'scope' => 'global' ],
+		'KnowledgeBase::read' =>		[ 'enabled' => true, 'scope' => 'global' ],
+		'KnowledgeBase::update' =>	[ 'enabled' => true, 'scope' => 'global' ],
+		'KnowledgeBase::delete' =>	[ 'enabled' => true, 'scope' => 'global' ],
 	    ],
 	],
 
@@ -87,6 +92,11 @@ class SysRoles {
 		'DataTable::delete' =>		[ 'enabled' => true, 'scope' => 'project' ],
 		'DataTable::readData' =>	[ 'enabled' => true, 'scope' => 'project', ],
 		'DataTable::writeData' =>	[ 'enabled' => true, 'scope' => 'project', ],
+		//CLD: 2026-10-31T01:00:00+02:00: knowledge bases
+		'KnowledgeBase::create' =>	[ 'enabled' => true, 'scope' => 'project' ],
+		'KnowledgeBase::read' =>		[ 'enabled' => true, 'scope' => 'project' ],
+		'KnowledgeBase::update' =>	[ 'enabled' => true, 'scope' => 'project' ],
+		'KnowledgeBase::delete' =>	[ 'enabled' => true, 'scope' => 'project' ],
 	    ],
 	],
 
@@ -131,6 +141,11 @@ class SysRoles {
 		'DataTable::delete' =>		[ 'enabled' => false, ],
 		'DataTable::readData' =>	[ 'enabled' => false, ],
 		'DataTable::writeData' =>	[ 'enabled' => false, ],
+		//CLD: 2026-10-31T01:00:00+02:00: knowledge bases
+		'KnowledgeBase::create' =>	[ 'enabled' => false, ],
+		'KnowledgeBase::read' =>		[ 'enabled' => false, ],
+		'KnowledgeBase::update' =>	[ 'enabled' => false, ],
+		'KnowledgeBase::delete' =>	[ 'enabled' => false, ],
 	    ],
 	],
 

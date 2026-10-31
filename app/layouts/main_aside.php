@@ -143,6 +143,15 @@ $dd_items = implode('', $dd_items);
 		    );
 		}
 
+		//CLD: 2026-10-31T01:00:00+02:00: the knowledge bases (KnowledgeController)
+		if (\V::app()->user->can('KnowledgeBase::list', [ 'object' => \V::app()->om->create('KnowledgeBase', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
+		    echo \V::app()->html->link(
+			'<i class="bi bi-journal-bookmark"></i> Knowledge bases',
+			\V::app()->createUrl('/knowledge/list'),
+			[ 'class' => 'nav-link py-1 w-100', 'escape' => false ]
+		    );
+		}
+
 		if (\V::app()->user->can('File::list', [ 'object' => \V::app()->om->create('File', [ 'aid' => $crtProject->aid, 'metadata' => [ 'project' => $crtProject->_id ] ]) ])) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-files"></i> Files',
@@ -277,6 +286,12 @@ $dd_items = implode('', $dd_items);
 	    <?php if (\V::app()->user->can('Account::update')): ?>
 	    <a href="<?= \V::app()->createUrl('/assistant/settings') ?>" class="nav-link">
 		<i class="bi bi-stars"></i> Assistant
+	    </a>
+	    <?php endif; ?>
+	    <?php //CLD: 2026-10-31T01:00:00+02:00: the account's embedding model (the knowledge bases') ?>
+	    <?php if (\V::app()->user->can('Account::update')): ?>
+	    <a href="<?= \V::app()->createUrl('/knowledge/settings') ?>" class="nav-link">
+		<i class="bi bi-journal-bookmark"></i> Knowledge bases
 	    </a>
 	    <?php endif; ?>
 	    <?php \V::app()->hooks->applyHook('layout:settings-menu'); ?>

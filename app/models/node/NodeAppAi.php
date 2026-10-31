@@ -369,6 +369,27 @@ abstract class NodeAppAi extends \models\WfNode {
 		'help' => 'E.g. a web browser',
 		'ui' => [ 'placeholder' => $servers ? 'None' : 'None enabled', 'width' => 3 ],
 	    ],
+	    //CLD: 2026-10-30T23:30:00+02:00: new: knowledge bases of the project the model may search (the search_knowledge_base tool: models\KnowledgeBase::search)
+	    [
+		'key' => 'knowledge',
+		'type' => 'select',
+		'multiple' => true,
+		'choices' => \models\KnowledgeBase::namesFor(static::designerAccount(), static::designerAccount() ? \V::app()->user->crtProject : null),
+		'label' => 'Knowledge bases',
+		'default' => [],
+		'help' => 'The model searches them when it needs to',
+		'ui' => [ 'placeholder' => 'None', 'width' => 6, 'newRow' => true ],
+	    ],
+	    [
+		'key' => 'knowledgeResults',
+		'type' => 'number',
+		'label' => 'Search results',
+		'required' => true,
+		'default' => 5,
+		'help' => 'Chunks per knowledge search',
+		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => 20, 'skipEmpty' => true, 'message' => 'from 1 to 20' ] ],
+		'ui' => [ 'limit' => true ],
+	    ],
 	    [
 		//CLD: 2026-10-24T13:06:25+03:00: shorter help (was: Most calls to the model (each tool use is one more))
 		'key' => 'maxRounds',
@@ -496,6 +517,13 @@ abstract class NodeAppAi extends \models\WfNode {
 		$this->errors('config', "Tool servers: `{$id}` is not enabled for this account");
 		$valid = false;
 		break;
+	    }
+	}
+	//CLD: 2026-10-30T23:30:00+02:00: the knowledge bases: of the workflow's project
+	foreach((array)$this->cfg('knowledge', []) as $kbName) {
+	    if ($this->workflow && !\models\KnowledgeBase::named((string)$kbName, $this->workflow->aid, $this->workflow->project)) {
+		$this->errors('config', "Knowledge bases: the project has no knowledge base `{$kbName}`");
+		$valid = false;
 	    }
 	}
 	$known = array_keys(static::projectTools());
@@ -688,6 +716,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	}
 	//CLD: 2026-10-29T22:44:26+02:00: the step's default (was 300)
 	$timeout = (int)$this->cfg('timeout', static::DEFAULT_TIMEOUT);
+	//CLD: 2026-10-30T23:30:00+02:00: the knowledge bases: one tool searching them (knowledgeTool)
+	$tools += $this->knowledgeTool($project, $timeout);
 	foreach((array)$this->cfg('mcp', []) as $i => $id) {
 	    $mcp = \models\Credential::findFor($this->exec, (string)$id, 'mcp');
 	    if (empty($mcp))
@@ -712,6 +742,46 @@ abstract class NodeAppAi extends \models\WfNode {
 	    $tools += $this->mcpTools($client, (string)$id, (string)$srv['label'], (string)$srv['label'], $srv['tools'] ?? null);
 	}
 	return $tools;
+    }
+
+    //CLD: 2026-10-30T23:30:00+02:00: new: the search_knowledge_base tool over the knowledge bases of setting Knowledge bases (none: no tool): its arguments query and, with more
+    //than one, knowledge_base (one of their names); its result { results: [ { text, title, document, page, score } ] } (KnowledgeBase::search, Search results at most)
+    protected function knowledgeTool($project, $timeout) {
+	$kbs = [];
+	foreach((array)$this->cfg('knowledge', []) as $kbName) {
+	    $kb = \models\KnowledgeBase::named((string)$kbName, $project->aid, $project->_id);
+	    if (!$kb)
+		throw new \ErrorException("the knowledge base `{$kbName}` is no longer in the project");
+	    $kbs[(string)$kb->name] = $kb;
+	}
+	if (!$kbs)
+	    return [];
+	$names = array_keys($kbs);
+	$props = [ 'query' => [ 'type' => 'string', 'description' => 'What to look for: a question or keywords, in the documents\' language' ] ];
+	$required = [ 'query' ];
+	if (count($names) > 1) {
+	    $props['knowledge_base'] = [ 'type' => 'string', 'enum' => $names, 'description' => 'The knowledge base to search' ];
+	    $required[] = 'knowledge_base';
+	}
+	$k = max(1, min(20, (int)$this->cfg('knowledgeResults', 5)));
+	return [ 'search_knowledge_base' => [ 'name' => 'search_knowledge_base',
+	    //CLD: 2026-10-31T01:00:00+02:00: + each knowledge base's description (what its documents are about)
+	    'description' => 'Searches the knowledge base' . (count($names) > 1 ? 's ' : ' ') . implode(', ', array_map(fn($kb) => "`{$kb->name}`"
+		. (trim((string)$kb->description) !== '' ? ' (' . trim(preg_replace('/\s+/', ' ', (string)$kb->description)) . ')' : ''), $kbs))
+		. ' - documents of this project - and returns the passages that best match the query, with their document titles. Use it to answer from those documents; search again with other words when the passages do not answer.',
+	    'schema' => json_decode(\util\JSON::encode([ 'type' => 'object', 'properties' => $props, 'required' => $required ])),
+	    'run' => function(array $args) use ($kbs, $names, $k, $timeout) {
+		$kb = $kbs[(string)($args['knowledge_base'] ?? $names[0])] ?? null;
+		if (!$kb)
+		    return [ 'knowledge_base: one of ' . implode(', ', $names), true, [] ];
+		try {
+		    $results = $kb->search((string)($args['query'] ?? ''), $k, [], null, $timeout);
+		} catch (\ErrorException $e) {
+		    return [ $e->getMessage(), true, [] ];
+		}
+		$out = array_map(fn($r) => [ 'text' => $r['text'], 'title' => $r['title'], 'document' => $r['document'], 'page' => $r['page'], 'score' => $r['score'] ], $results);
+		return [ json_encode([ 'results' => $out ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), false, [] ];
+	    } ] ];
     }
 
     //CLD: 2026-10-22T22:00:00+03:00: new (was in run(), for the MCP server credentials): the tools of MCP session $client (initialized here) named <$prefix>_<tool>, described with [$label];
@@ -764,26 +834,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	$value = $this->expr('files', '');
 	if ($value === '' || $value === null || $value === [])
 	    $value = $this->expr('images', '');
-	$ids = [];
-	$collect = function($v) use (&$collect, &$ids) {
-	    if (is_object($v))
-		$v = (array)$v;
-	    if (is_array($v)) {
-		if (!array_is_list($v)) {
-		    $id = $v['file'] ?? $v['id'] ?? null;
-		    if ($id !== null)
-			$collect($id);
-		    return;
-		}
-		foreach($v as $item)
-		    $collect($item);
-		return;
-	    }
-	    if (is_string($v) && preg_match_all('/\b[a-f0-9]{24}\b/i', $v, $m))
-		foreach($m[0] as $id)
-		    $ids[strtolower($id)] = true;
-	};
-	$collect($value);
+	//CLD: 2026-10-30T23:30:00+02:00: fileIds() (was here: the Knowledge base step reads its Files the same way)
+	$ids = array_fill_keys(self::fileIds($value), true);
 	if (count($ids) > self::MAX_FILES)
 	    throw new \ErrorException('Files: ' . count($ids) . ' files, at most ' . self::MAX_FILES);
 	$mode = (string)$this->cfg('pdfs', 'auto');
@@ -835,6 +887,31 @@ abstract class NodeAppAi extends \models\WfNode {
 	    $this->exec->log($this->wfid, static::$label . ': ' . count($kinds) . ' file(s) with the prompt (' . implode(', ', array_map(fn($k, $n) => "{$n} {$k}", array_keys($counts), $counts)) . ')');
 	}
 	return $parts;
+    }
+
+    //CLD: 2026-10-30T23:30:00+02:00: new (was in promptFiles): the file ids in $value - one, a list, objects with `id` / `file` (e.g. an attachment), or text with ids -, each once
+    public static function fileIds($value) {
+	$ids = [];
+	$collect = function($v) use (&$collect, &$ids) {
+	    if (is_object($v))
+		$v = (array)$v;
+	    if (is_array($v)) {
+		if (!array_is_list($v)) {
+		    $id = $v['file'] ?? $v['id'] ?? null;
+		    if ($id !== null)
+			$collect($id);
+		    return;
+		}
+		foreach($v as $item)
+		    $collect($item);
+		return;
+	    }
+	    if (is_string($v) && preg_match_all('/\b[a-f0-9]{24}\b/i', $v, $m))
+		foreach($m[0] as $id)
+		    $ids[strtolower($id)] = true;
+	};
+	$collect($value);
+	return array_keys($ids);
     }
 
     protected function closeClient($client) {
