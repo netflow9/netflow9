@@ -103,7 +103,7 @@ class User extends \sys\BaseModel {
 		'perm:update' => 'permission',
 		'showInForms' => false,
 	    ],
-	    //a super-admin of the installation (the Admin plugin's pages: every account); set only from the console (./v Admin::admins::grant), never by a form
+	    //a super-admin of the installation (the MultiTenant plugin's administration: every account); set only from the console (./v MultiTenant::admins::grant), never by a form
 	    [
 		'key' => 'superadmin',
 		'type' => 'checkbox',

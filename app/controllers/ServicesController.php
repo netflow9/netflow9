@@ -6,7 +6,7 @@
 	control    POST id, verb: start / stop / restart one (util\Services::control); in the audit log
     CLD: 2026-10-31T19:30:00+02:00: without the Admin plugin the services are a tab of the account's settings (AccountController::settings, views/account/_services.php): index goes there,
     control returns there (util\Services::pageUrl)
-    Who may: with the Admin plugin, its super-admins with 2FA (plugins\Admin\Plugin::require, as before); without it, the account's owners (util\Services::ownerSignedIn)
+    Who may: with the MultiTenant plugin, its super-admins with 2FA (plugins\MultiTenant\Plugin::require, as before); without it, the account's owners (util\Services::ownerSignedIn)
 */
 
 namespace controllers;
@@ -21,7 +21,7 @@ class ServicesController extends \sys\BaseController {
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
 	if (Services::adminPlugin())
-	    \plugins\Admin\Plugin::require();
+	    \plugins\MultiTenant\Plugin::require();
 	elseif (!Services::ownerSignedIn())
 	    \V::app()->error(403, 'Unauthorized');
     }

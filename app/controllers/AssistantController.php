@@ -15,8 +15,8 @@ use util\WorkflowAssistant;
 use models\AssistantSettings;
 use models\AssistantUsage;
 use models\AssistantChat;
-use plugins\SystemAI\util\SystemAi;
-use plugins\SystemAI\models\SystemAiWallet;
+use plugins\MultiTenant\util\SystemAi;
+use plugins\MultiTenant\models\SystemAiWallet;
 
 class AssistantController extends \sys\BaseController {
 
@@ -65,10 +65,10 @@ class AssistantController extends \sys\BaseController {
 	$hold = null;
 	$rates = null;
 	if (WorkflowAssistant::providerOf($settings) === 'system') {
-	    //CLD: 2026-10-23T10:00:00+03:00: the System AI's credits (plugins\SystemAI: SystemAiWallet, SystemAi::maxCreditsPerRequest; were AssistantWallet, config assistant.system)
+	    //CLD: 2026-10-23T10:00:00+03:00: the System AI's credits (plugins\MultiTenant: SystemAiWallet, SystemAi::maxCreditsPerRequest; were AssistantWallet, config assistant.system)
 	    $rates = SystemAiWallet::ratesOf(WorkflowAssistant::resolve($settings));
 	    if ($rates === null) {
-		\V::app()->log->error('Assistant: no credit rates for the System AI model: set them in plugins/SystemAI/credit_rates.php');
+		\V::app()->log->error('Assistant: no credit rates for the System AI model: set them in plugins/MultiTenant/credit_rates.php');
 		$resp->sendJSON([ 'error' => 'The Assistant of this installation is not priced yet: ask its administrator' ], true, 503);
 	    }
 	    try {
@@ -191,7 +191,7 @@ class AssistantController extends \sys\BaseController {
 	$usage = AssistantUsage::current($settings->aid);
 	$system = AssistantSettings::system();
 	//CLD: 2026-10-22T15:00:00+03:00: System's credits: the wallet, its last entries, the model's rates
-	//CLD: 2026-10-23T10:00:00+03:00: the System AI's (SystemAiWallet); the last entries: on its own page (/SystemAI/credits/index)
+	//CLD: 2026-10-23T10:00:00+03:00: the System AI's (SystemAiWallet); the last entries: on its own page (/MultiTenant/credits/index)
 	//CLD: 2026-10-26T23:49:50+02:00: only when there is a System AI (SystemAiWallet is the SystemAI plugin's)
 	$wallet = $system ? SystemAiWallet::current($settings->aid) : null;
 	$rates = $system ? SystemAiWallet::ratesOf($system) : null;
