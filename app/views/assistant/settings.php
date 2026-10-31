@@ -216,6 +216,14 @@ JS . "}({$connectJs});");
 		    <div class="form-text">Counted by the Assistant from the tokens and the prices; your provider's bill is what counts. Since <?= gmdate('F 1') ?> (UTC).</div>
 		</div>
 	    </div>
+
+	    <?php //CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read (data_access; was in the account settings' Data access tab), for every provider ?>
+	    <h6 class="mt-4">Data access</h6>
+	    <?= $settings->schema['data_access']->input([ 'cols' => '3,9' ]) ?>
+	    <div class="form-text">
+		<strong>Structure only</strong>: the Assistant sees what the project is made of (data tables and their columns, workflows, step types, file names, variable names), and can build with it, but reads no rows, file contents, images, run results or variable values.<br>
+		<strong>Structure and data</strong>: it may also read and change rows, read files and images, and run workflows, with the rights of the person asking. What it reads is sent to the Assistant's AI provider.
+	    </div>
 	</div>
 	</div>
 

@@ -15,6 +15,7 @@ class AccountController extends \sys\BaseController {
     //CLD: 2026-10-31T19:30:00+02:00: + services (the installation's services, util\Services): without the Admin plugin, for the account's owners (with it: the super-admins' page /services/index)
     public function settings($req, $resp) {
 	//CLD: 2026-11-01T02:00:00+02:00: + access (Data access: the projects' MCP server, what the Assistant may read; Account::update, the owners)
+	//CLD: 2026-11-01T03:00:00+02:00: the MCP server only (what the Assistant may read: its settings)
 	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'access' => \V::app()->user->can('Account::update'), 'usage' => \V::app()->user->can('Account::usage'),
 	    'services' => !\util\Services::adminPlugin() && \util\Services::allowed() ]));
 	if (!$tabs)
@@ -32,6 +33,7 @@ class AccountController extends \sys\BaseController {
 	}
 
 	//CLD: 2026-11-01T02:00:00+02:00: Data access: the projects whose MCP server is on (switches: mcp_projects[]; only the account's projects are kept), what the Assistant may read
+	//CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read moved to the Assistant's settings (AssistantSettings data_access)
 	if ($tab === 'access') {
 	    $projects = [];
 	    foreach(\V::app()->om->find('Project', [ 'aid' => $account->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $p)
@@ -39,13 +41,18 @@ class AccountController extends \sys\BaseController {
 	    if ($req->is('post')) {
 		$on = array_values(array_intersect(array_map('strval', (array)($req->data['mcp_projects'] ?? [])), array_keys($projects)));
 		$account->mcp_projects = $on;
-		$account->assistant_data = (string)($req->data['assistant_data'] ?? '');
 		if ($account->validates() && $account->save()) {
 		    $this->addToast('success', 'OK', 'Data access saved');
 		    $this->addEvent('sidebar::refresh');
 		}
 	    }
-	    $this->render('settings', compact('account', 'tab', 'tabs', 'projects'));
+	    //CLD: 2026-11-01T03:30:00+02:00: the owners of the personal projects (named after them in the list: every user's is "Personal")
+	    $owners = [];
+	    $ownerIds = array_values(array_filter(array_map(fn($p) => $p->personal ? $p->owner : null, $projects)));
+	    if ($ownerIds)
+		foreach(\V::app()->om->find('User', [ 'aid' => $account->_id, '_id' => [ '$in' => $ownerIds ] ]) as $u)
+		    $owners[(string)$u->_id] = $u;
+	    $this->render('settings', compact('account', 'tab', 'tabs', 'projects', 'owners'));
 	    return;
 	}
 

@@ -4568,7 +4568,16 @@ class CheckCommand extends \sys\BaseController {
 	$om = \V::app()->om;
 	$A = \models\Account::class;
 	$account = $om->findById('Account', (string)$this->account->_id);
-	[ $mcpBefore, $dataBefore ] = [ (array)($account->mcp_projects ?? []), (string)($account->assistant_data ?? 'structure') ];
+	//CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read is its settings' (AssistantSettings data_access; was the account's assistant_data): the account's, made for the check when it has none
+	$mcpBefore = (array)($account->mcp_projects ?? []);
+	$assistant = $om->findOne('AssistantSettings', [ 'aid' => $account->_id ]);
+	$madeSettings = $assistant === null;
+	$assistant = $assistant ?? $om->create('AssistantSettings', [ 'aid' => $account->_id ]);
+	$dataBefore = (string)($assistant->data_access ?? 'structure');
+	$setData = function($v) use ($assistant) {
+	    $assistant->data_access = $v;
+	    $assistant->save([ 'validate' => false ]);
+	};
 	$pid = (string)$this->project->_id;
 	$token = null;
 	$variable = null;
@@ -4579,7 +4588,7 @@ class CheckCommand extends \sys\BaseController {
 	    $account->mcp_projects = [ $pid ];
 	    $account->save();
 	    $this->check('access: the MCP server is off unless the account turns it on for the project; only for that project', [ false, true, false, 'structure' ],
-		[ $off, $A::mcpEnabled((string)$account->_id, $pid), $A::mcpEnabled($account, '000000000000000000000000'), (string)$om->create('Account', [])->assistant_data ]);
+		[ $off, $A::mcpEnabled((string)$account->_id, $pid), $A::mcpEnabled($account, '000000000000000000000000'), (string)$om->create('AssistantSettings', [])->data_access ]);
 
 	    //the /mcp endpoint, with a token of the project
 	    $owner = $om->findOne('Role', [ 'aid' => $account->_id, 'iname' => 'owner' ]);
@@ -4632,26 +4641,27 @@ class CheckCommand extends \sys\BaseController {
 		$results = array_column(end($sent[1]['messages'])['content'], null, 'tool_use_id');
 		return [ array_column($sent[0]['tools'], 'name'), $sent[0]['system'][0]['text'] ?? '', $results ];
 	    };
-	    $account->assistant_data = 'structure';
-	    $account->save();
+	    $setData('structure');
 	    [ $tools, $system, $results ] = $ask();
 	    $this->check('access: Assistant, structure only: the structure tools (no rows, files, images, runs), a data tool refused, the variables without values, said in the prompt', [
 		true, false, false, false, true, true, true, false, true ], [
 		in_array('list_tables', $tools, true) && in_array('create_workflow', $tools, true) && in_array('list_variables', $tools, true),
 		in_array('query_table', $tools, true), in_array('read_file', $tools, true), in_array('run_workflow', $tools, true),
-		!empty($results['q']['is_error']) && str_contains((string)$results['q']['content'], 'Data access'),
+		!empty($results['q']['is_error']) && str_contains((string)$results['q']['content'], 'Assistant settings'),
 		str_contains((string)$results['v']['content'], $variable->name), empty($results['v']['is_error']), str_contains((string)$results['v']['content'], 'secret-value'),
 		str_contains($system, 'Privacy: this account lets you see the project\'s structure only') ]);
-	    $account->assistant_data = 'data';
-	    $account->save();
+	    $setData('data');
 	    [ $tools, $system, $results ] = $ask();
 	    $this->check('access: Assistant, structure and data: every tool, the variables\' values, no privacy note', [ true, true, true, false ], [
 		in_array('query_table', $tools, true) && in_array('read_file', $tools, true), str_contains((string)$results['v']['content'], 'secret-value'),
-		!str_contains((string)$results['q']['content'], 'Data access'), str_contains($system, 'Privacy:') ]);
+		!str_contains((string)$results['q']['content'], 'Assistant settings'), str_contains($system, 'Privacy:') ]);
 	} finally {
 	    $account->mcp_projects = $mcpBefore;
-	    $account->assistant_data = $dataBefore;
 	    $account->save();
+	    if ($madeSettings)
+		$assistant->delete();
+	    else
+		$setData($dataBefore);
 	    $token?->delete();
 	    $variable?->delete();
 	}

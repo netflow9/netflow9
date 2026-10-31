@@ -53,7 +53,7 @@ class WorkflowAssistant {
     //CLD: 2026-10-23T23:30:00+03:00: removed PROJECT_TOOLS (the read-only project tools): every tool of util\MCPTools is offered, as the user
 
     private $wf;
-    //CLD: 2026-11-01T02:00:00+02:00: whether the account lets the Assistant read the project's data (Account::assistantReadsData), else its structure only (McpServerTools::STRUCTURE_TOOLS)
+    //CLD: 2026-11-01T02:00:00+02:00: whether the account lets the Assistant read the project's data (AssistantSettings::readsData; CLD: 2026-11-01T03:00:00+02:00: was Account::assistantReadsData), else its structure only (McpServerTools::STRUCTURE_TOOLS)
     private $readsData = false;
     private $cred;
     private $project;
@@ -90,7 +90,7 @@ class WorkflowAssistant {
     public function __construct($wf, $project, $settings = null) {
 	$this->wf = $wf;
 	$this->project = $project;
-	$this->readsData = \models\Account::assistantReadsData($wf->aid);
+	$this->readsData = AssistantSettings::readsData($wf->aid);
 	$settings = $settings ?? \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
 	//CLD: 2026-10-22T14:00:00+03:00: System: the installation's server
 	$settings = self::resolve($settings);
@@ -324,7 +324,7 @@ class WorkflowAssistant {
     //CLD: 2026-11-01T02:00:00+02:00: + $readsData: false: what the Assistant may not do (the account lets it read the structure only)
     private static function systemPrompt($readsData = true) {
 	return self::basePrompt() . ($readsData ? '' : "\n\n" . <<<'TXT'
-Privacy: this account lets you see the project's structure only. Your project tools show data tables and their columns, workflows, step types, file names and variable names, and let you build with them; you cannot read or change rows, read files or images, run workflows or see executions, and you do not see the variables' values. Never guess or invent data: when a request needs it, say that the account's owners allow it in Account settings, Data access, or build the workflow so that it reads the data when it runs.
+Privacy: this account lets you see the project's structure only. Your project tools show data tables and their columns, workflows, step types, file names and variable names, and let you build with them; you cannot read or change rows, read files or images, run workflows or see executions, and you do not see the variables' values. Never guess or invent data: when a request needs it, say that the account's owners allow it in the Assistant settings, or build the workflow so that it reads the data when it runs.
 TXT);
     }
 
@@ -397,7 +397,7 @@ TXT;
 	    //CLD: 2026-10-23T23:30:00+03:00: any of them (was PROJECT_TOOLS only), with the images of its result
 	    //CLD: 2026-11-01T02:00:00+02:00: a tool the account does not let it use (structure only) is refused; a structure tool's result without the data (McpServerTools::structureOnly)
 	    elseif (!$this->allowed($name))
-		throw new \ErrorException("`{$name}` reads the project's data, which this account does not let the Assistant read (Account settings, Data access)");
+		throw new \ErrorException("`{$name}` reads the project's data, which this account does not let the Assistant read (Assistant settings)");
 	    elseif ($tool = \util\MCPTools::all()[$name] ?? null) {
 		$answer = ($tool['run'])($args, $this->project, true);
 		$result = $this->readsData ? $answer[0] : \util\McpServerTools::structureOnly($name, $answer[0]);
