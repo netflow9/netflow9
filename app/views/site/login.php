@@ -48,5 +48,8 @@
     </div>
 
     <?=\V::app()->html->link(\V::t('Forgot username or password?'), '/site/forgot', [ 'class' => 'pt-2' ])?>
+    <?php if (\util\SamlAuth::anyEnabled()): ?>
+    <?=\V::app()->html->link(\V::t('Sign in with SSO'), '/sso/login', [ 'class' => 'pt-1' ])?>
+    <?php endif; ?>
     <?php \V::app()->hooks->applyHook('site:login-links'); ?>
 </main>

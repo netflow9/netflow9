@@ -2,7 +2,7 @@
 
 /*
     the LDAP step and credential are core, the plugin is the LDAP sign-in):
-    namespace models\credential (was plugins\Ldap\models); also the LDAP sign-in's settings (plugins\Ldap\models\LdapSettings)
+    namespace models\credential (was plugins\Ldap\models); also the LDAP sign-in's settings (models\LdapSettings)
 
     the settings of an LDAP server, shared by the account's sign-in settings (LdapSettings) and the LDAP server credential (CredentialLdap):
 //  serverSchema()        the fields: directory (Active Directory / other), servers, encryption, port, certificate check, CA certificate, timeout, bind DN + password, base DN

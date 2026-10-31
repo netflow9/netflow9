@@ -43,7 +43,8 @@ class Plugin {
 	});
 
 	//CLD: 2026-10-22T23:00:00+03:00: the administration (the Admin plugin): the browser service, the servers per account (a switch each), the sessions open
-	\V::app()->hooks->addHook('admin:services', function(\ArrayObject $services) {
+	//CLD: 2026-10-31T11:05:39+02:00: hook app:services (was admin:services): the core's Services page
+	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
 	    $pw = self::servers()['playwright'] ?? null;
 	    if (!$pw)
 		return;

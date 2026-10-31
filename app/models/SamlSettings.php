@@ -10,9 +10,9 @@
 //  - who: an SSO user of the account (SamlLink) signs in only with the IdP; provision = people get a user on their first sign-in; linkExisting = a user of the account with
 //    the person's email becomes an SSO user; domains = the email domains whose people "Sign in with SSO" sends to this IdP; askTfa = this application's 2FA after the IdP's
 
-namespace plugins\Saml\models;
+namespace models;
 
-use plugins\Saml\util\SamlXml;
+use util\SamlXml;
 
 class SamlSettings extends \sys\BaseModel {
     //CLD: 2026-10-26T07:23:58+02:00: the role choices are read from the database: not cached (BaseModel::attachSchema)
@@ -217,16 +217,16 @@ class SamlSettings extends \sys\BaseModel {
     //this service provider
 
     public function metadataUrl() {
-	return \V::app()->createAbsoluteUrl('/Saml/sso/metadata/' . $this->aid);
+	return \V::app()->createAbsoluteUrl('/sso/metadata/' . $this->aid);
     }
 
     public function acsUrl() {
-	return \V::app()->createAbsoluteUrl('/Saml/sso/acs/' . $this->aid);
+	return \V::app()->createAbsoluteUrl('/sso/acs/' . $this->aid);
     }
 
     //the link that starts a sign-in at the IdP (e.g. a bookmark of the account's people)
     public function loginUrl() {
-	return \V::app()->createAbsoluteUrl('/Saml/sso/start/' . $this->aid);
+	return \V::app()->createAbsoluteUrl('/sso/start/' . $this->aid);
     }
 
     public function spEntityId() {

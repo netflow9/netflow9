@@ -4,7 +4,7 @@
 //a hash of the token of the browser that sent it (a cookie: the session cookie does not come with the IdP's cross-site POST), a test of the settings page (who tests:
 //the result is shown, nobody is signed in). Used once; MongoDB removes it when it expires (expires_at, a TTL index)
 
-namespace plugins\Saml\models;
+namespace models;
 
 class SamlRequest extends \sys\BaseModel {
     protected static $collection = 'saml_requests';

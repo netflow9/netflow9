@@ -32,7 +32,8 @@ class Plugin {
 	\V::app()->hooks->addHook('execution:end', [ models\NodeTriggerEmail::class, 'afterExecutionEnd' ]);
 
 	//CLD: 2026-10-22T23:00:00+03:00: Haraka, a service of the administration (the Admin plugin): its unit (scripts/4_services-install.sh), its PID file before, SMTP answering on port 25
-	\V::app()->hooks->addHook('admin:services', function(\ArrayObject $services) {
+	//CLD: 2026-10-31T11:05:39+02:00: hook app:services (was admin:services): the core's Services page
+	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
 	    $services['haraka'] = [
 		'label' => 'Inbound mail (Haraka)',
 		'description' => 'Receives the mail of the Email (inbound) trigger, on port 25',

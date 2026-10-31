@@ -529,6 +529,28 @@ class SysObjects {
 	    'WfTask' => [
 		'class' => 'models\WfTask',
 	    ],
+	    //the LDAP sign-in: an account's settings, the users who are LDAP users
+	    'LdapSettings' => [
+		'class' => 'models\LdapSettings',
+	    ],
+	    'LdapLink' => [
+		'class' => 'models\LdapLink',
+	    ],
+	    //the SAML single sign-on: an account's settings, the users who are SSO users, the requests waiting for their response, the assertions used (not in the audit log)
+	    'SamlSettings' => [
+		'class' => 'models\SamlSettings',
+	    ],
+	    'SamlLink' => [
+		'class' => 'models\SamlLink',
+	    ],
+	    'SamlRequest' => [
+		'class' => 'models\SamlRequest',
+		'auditLog' => false,
+	    ],
+	    'SamlReplay' => [
+		'class' => 'models\SamlReplay',
+		'auditLog' => false,
+	    ],
 
 	];
     }

@@ -17,7 +17,7 @@ It is built on PHP and MongoDB, with plain JavaScript and Bootstrap in the brows
 - **Safe expressions.** `{{ }}` expressions and the Code step use J, a safe JavaScript subset.
 - **Secure by design.** Credentials are kept encrypted (OAuth connections, API keys, passwords) and never appear in a workflow. Roles and permissions are per project. Sign-in supports two-factor codes, LDAP and SAML single sign-on (Entra ID, Okta, Google Workspace, ADFS, Keycloak), and every action goes to an audit log.
 - **Visible runs.** Every execution has its state, a log of what each step did, its variables and its error. Each project has a dashboard of what ran, failed, is running or is waiting.
-- **Multi-account and extensible.** Accounts, projects and members, plans and limits, and a super-admin area. Plugins add sign-in methods, inbound mail, a System AI paid with credits, tool servers and registration, and new step types can be written in PHP.
+- **Multi-account and extensible.** Accounts, projects and members, plans and limits, and a super-admin area. Plugins add inbound mail, a System AI paid with credits, tool servers and registration, and new step types can be written in PHP.
 - **One-command install** on AlmaLinux / Rocky / RHEL 9 (below), or a setup wizard in the browser on any Linux.
 
 The full documentation is in the app, under Docs (`app/data/docs.json`).

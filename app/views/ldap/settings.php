@@ -4,7 +4,7 @@
     value `settings_json`: the groups' rows are an edit grid), Test connection and Try a sign-in (LdapController::test, with the form's values: nothing saved), the LDAP users
     of the account (Unlink). The empty attribute / filter fields show the chosen directory's usual values
 */
-use plugins\Ldap\models\LdapSettings;
+use models\LdapSettings;
 
 $this->pageTitle = 'LDAP sign-in';
 
@@ -28,11 +28,11 @@ foreach((array)$settings->errors() as $key => $messages)
 
 $js = \util\JSON::encode([
     'containerId' => $containerId,
-    'schema' => [ 'id' => $formId, 'action' => \V::app()->createUrl('/Ldap/ldap/settings'), 'method' => 'post', 'fields' => $fields ],
+    'schema' => [ 'id' => $formId, 'action' => \V::app()->createUrl('/ldap/settings'), 'method' => 'post', 'fields' => $fields ],
     'values' => \util\SmartForm::modelValues($settings),
     'errors' => (object)$errors,
     'defaults' => LdapSettings::DEFAULTS,
-    'testUrl' => \V::app()->createUrl('/Ldap/ldap/test'),
+    'testUrl' => \V::app()->createUrl('/ldap/test'),
 ]);
 
 //CLD: 2026-10-21T10:00:00+03:00: nowdoc: the script's text as is
@@ -166,7 +166,7 @@ JS . "}({$js});");
 			<td class="text-break"><?= \V::app()->html->escape($l->dn) ?></td>
 			<td><?= $l->synced_at ? \V::app()->html->escape($l->schema['synced_at']->display()) : '' ?></td>
 			<td class="text-end">
-			    <a class="btn btn-sm btn-outline-danger" href="<?= \V::app()->createUrl('/Ldap/ldap/unlink', [ 'id' => (string)$u->_id ]) ?>" data-method="post"
+			    <a class="btn btn-sm btn-outline-danger" href="<?= \V::app()->createUrl('/ldap/unlink', [ 'id' => (string)$u->_id ]) ?>" data-method="post"
 				data-confirm="<?= \V::app()->html->escape('Unlink ' . $u . '? The user then signs in with a password of this application (set with "Forgot username or password?")') ?>"><i class="bi bi-link-45deg me-1"></i>Unlink</a>
 			</td>
 		    </tr>

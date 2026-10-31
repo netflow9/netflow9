@@ -8,7 +8,7 @@
 //  sign($element, $key, $cert)   an enveloped signature added to $element (after its Issuer): RSA-SHA256, exclusive C14N (the check suite's IdP; signed messages of the SP)
 //  encrypt($element, $certPem)   $element replaced by its encrypted form (the check suite's IdP)
 
-namespace plugins\Saml\util;
+namespace util;
 
 class SamlXml {
     const MAX_SIZE = 1048576;

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-23T12:00:00+03:00: new: the settings pages of the Saml plugin, served at /Saml/saml/<action>, for who may change the account (Account::update, as AccountController::settings):
+    CLD: 2026-10-23T12:00:00+03:00: new: the settings pages of the SAML sign-in, served at /saml/<action>, for who may change the account (Account::update, as AccountController::settings):
 	settings   the account's SAML settings (models\SamlSettings; posted as JSON: `settings_json`, the form's app.smartform data), the service provider's details for the IdP,
 		   the account's SSO users. Made (and saved, off) at the first visit: the SP's key pair and metadata exist before the IdP is set up
 	import     POST, JSON: the IdP's metadata (`url`, read here, or the pasted `xml`) read: { ok, values (the form's IdP fields), lines }; nothing saved
@@ -10,11 +10,11 @@
 	unlink     POST ?id=<user>: the user is no longer an SSO user (signs in with a password of this application: "forgot password" sets one)
 */
 
-namespace plugins\Saml\controllers;
+namespace controllers;
 
-use plugins\Saml\util\SamlAuth;
-use plugins\Saml\util\SamlException;
-use plugins\Saml\util\SamlSp;
+use util\SamlAuth;
+use util\SamlException;
+use util\SamlSp;
 
 class SamlController extends \sys\BaseController {
 
@@ -26,8 +26,6 @@ class SamlController extends \sys\BaseController {
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
-	//CLD: 2026-10-24T09:45:36+03:00: a feature of the account's tier (util\Tiers)
-	\util\Tiers::requireFeature('saml');
     }
 
     //saved, or made now (off) with its key pair
@@ -109,7 +107,7 @@ class SamlController extends \sys\BaseController {
 	    throw new \ErrorException('SAML: the settings were not saved: ' . json_encode($s->errors()));
 	\models\AuditLog::record('saml.renew', $s, 'new service provider certificate');
 	$this->addToast('success', 'OK', 'New certificate: give the IdP the new metadata (or certificate)');
-	$this->redirect('/Saml/saml/settings');
+	$this->redirect('/saml/settings');
     }
 
     public function unlink($req, $resp) {
@@ -124,6 +122,6 @@ class SamlController extends \sys\BaseController {
 	    $l->delete();
 	\models\AuditLog::record('saml.unlink', $user, 'no longer an SSO user');
 	$this->addToast('success', 'OK', \V::app()->html->escape((string)$user) . ' is no longer an SSO user: "Forgot username or password?" sets a password');
-	$this->redirect('/Saml/saml/settings');
+	$this->redirect('/saml/settings');
     }
 }

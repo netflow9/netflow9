@@ -10,7 +10,7 @@ $this->pageTitle = \V::t('Sign in with SSO');
 
     <div class="card w-100" style="max-width:420px">
 	<div class="card-body p-4">
-	    <form method="get" action="<?= \V::app()->createUrl('/Saml/sso/login') ?>">
+	    <form method="get" action="<?= \V::app()->createUrl('/sso/login') ?>">
 		<h5 class="mb-3 text-center"><?= \V::t('Sign in with SSO') ?></h5>
 		<p class="small text-muted text-center"><?= \V::t('Your work email: you sign in at your organization\'s identity provider') ?></p>
 		<input type="email" name="email" class="form-control form-control-lg mt-2<?= $error ? ' is-invalid' : '' ?>" placeholder="<?= \V::t('email') ?>"

@@ -12,13 +12,14 @@
 				  datatable_records    rows in one data table
 				  files_bytes          the size of all the files (bytes)
 				  ai_monthly_credits   the System AI credits of a month (null: the installation's, SYSTEM_AI_MONTHLY_CREDITS)
-		    features    the features of the tier (the plugins name theirs: hook tiers:features), e.g. saml, ldap
+		    features    the features of the tier (the plugins name theirs: hook tiers:features)
 				CLD: 2026-10-24T10:27:54+03:00: + google, microsoft (the GoogleIntegration / MicrosoftIntegration plugins)
 				CLD: 2026-10-25T18:30:00+02:00: + database (the Database plugin), on enterprise as ldap
 				CLD: 2026-10-25T19:00:00+02:00: + ldap_step (the LDAP step and its credential; ldap is the LDAP sign-in only), on enterprise
 				CLD: 2026-10-25T19:30:00+02:00: - ldap_step (the LDAP step and its credential are core, for every tier)
 				CLD: 2026-10-25T20:00:00+02:00: - database (the Database step and its credentials are core, for every tier)
 				CLD: 2026-10-26T23:39:49+02:00: - google, microsoft (the Google and Microsoft credentials and steps are core again, for every tier)
+				- saml, ldap (the SAML and LDAP sign-ins are core, for every tier)
     A super-admin sets an account's tier and changes its limits / features (Administration, the account's page: Tier & limits; ./v tiers::<show | set>)
 */
 
@@ -53,7 +54,7 @@ return [
 		'files_bytes' => null,
 		'ai_monthly_credits' => null,
 	    ],
-	    'features' => [ 'saml', 'ldap' ],
+	    'features' => [],
 	],
     ],
 ];
