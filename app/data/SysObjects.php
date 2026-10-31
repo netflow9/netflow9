@@ -281,6 +281,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialOdbc',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-01T00:30:00+02:00: a Bitdefender GravityZone console (the GravityZone steps and event trigger), core for every account
+	    'CredentialGravityZone' => [
+		'class' => 'models\\credential\\CredentialGravityZone',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-10-25T19:30:00+02:00: an LDAP server (the LDAP step), core for every account (was registered by the Ldap plugin, plan feature ldap_step)
 	    'CredentialLdap' => [
 		'class' => 'models\credential\CredentialLdap',
@@ -415,6 +420,39 @@ class SysObjects {
 	    ],
 	    'NodeAppOdbc' => [
 		'class' => 'models\node\NodeAppOdbc',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-01T00:30:00+02:00: Bitdefender GravityZone (one step per API area, NodeAppGravityZone their base; the event trigger), core for every account
+	    'NodeAppGzEndpoints' => [
+		'class' => 'models\\node\\NodeAppGzEndpoints',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGzIncidents' => [
+		'class' => 'models\\node\\NodeAppGzIncidents',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGzBlocklist' => [
+		'class' => 'models\\node\\NodeAppGzBlocklist',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGzQuarantine' => [
+		'class' => 'models\\node\\NodeAppGzQuarantine',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGzInvestigation' => [
+		'class' => 'models\\node\\NodeAppGzInvestigation',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGzReports' => [
+		'class' => 'models\\node\\NodeAppGzReports',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGzApi' => [
+		'class' => 'models\\node\\NodeAppGzApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerGravityZone' => [
+		'class' => 'models\\node\\NodeTriggerGravityZone',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-10-25T19:30:00+02:00: LDAP (search and change a directory), core for every account (was registered by the Ldap plugin, plan feature ldap_step)

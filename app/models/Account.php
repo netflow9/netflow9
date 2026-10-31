@@ -157,6 +157,17 @@ class Account extends \sys\BaseModel {
 		    '365' => '1 year'
 		],
 	    ],
+	    //CLD: 2026-11-01T00:30:00+02:00: the integration steps whose servers may be on-premises (the GravityZone steps: util\GravityZone) may connect to addresses of a private network
+	    //(util\Http `private`: never this server itself, loopback, link-local); off: public addresses only
+	    [
+		'key' => 'allow_private_addresses',
+		'type' => 'checkbox',
+		'label' => 'Integrations may connect to private network addresses',
+		'help' => false,
+		'perm:read' => 'everybody',
+		'perm:update' => 'everybody',
+		'default' => false,
+	    ],
 	    //CLD: 2026-10-24T16:30:00+03:00: how dates are shown (util\Format::date / datetime, the date fields, the date pickers): date() tokens; empty: the app's
 	    //(app.format.date / app.format.datetime)
 	    [

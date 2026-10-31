@@ -37,6 +37,8 @@ class WfNode extends \sys\NestedModel {
 	'microsoft' => 'Microsoft',
 	//CLD: 2026-10-31T23:30:00+02:00: the database steps (one per database type)
 	'database' => 'Databases',
+	//CLD: 2026-11-01T00:30:00+02:00: the GravityZone steps
+	'security' => 'Security',
 	'ai' => 'AI',
 	'developer' => 'Developer',
     ];
