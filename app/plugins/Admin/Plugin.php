@@ -6,6 +6,7 @@
       controllers/AdminController.php    /Admin/admin/...: the installation, the accounts, an account (suspend / reactivate, "view as"), the plugins' sections
       CLD: 2026-10-31T11:05:39+02:00: the services are the core's (util\Services, controllers\ServicesController: Settings, Services); with this plugin, only super-admins see them
       commands/AdminsCommand.php         ./v Admin::admins::<list | grant | revoke>
+      CLD: 2026-10-31T11:53:38+02:00: tiers.php (tiers.local.php)    the accounts' tiers (util\Tiers, hook tiers:table; was app/tiers.php); commands/TiersCommand.php: ./v Admin::tiers::<show | set>
     Who may: a super-admin with 2FA (require()); every action is in the audit log of the account acted on and of the super-admin's own (audit()).
     "View as": the super-admin is signed in as the account's owner, read-only (any request but GET refused, except a few that only read), at most VIEW_MAX, with a bar to go back;
     the session's `impersonator` keeps who they are (sys\Boot lets a suspended account be viewed so).
@@ -26,6 +27,14 @@ class Plugin {
 
     public function __construct() {
 	//CLD: 2026-10-31T11:05:39+02:00: the workflow daemon's service is the core's (sys\Boot, hook app:services)
+
+	//CLD: 2026-10-31T11:53:38+02:00: the accounts' tiers (util\Tiers): this plugin's tiers.php, or tiers.local.php next to it when present (an installation's own, not in git); in every mode
+	\V::app()->hooks->addHook('tiers:table', function(\ArrayObject $table) {
+	    $f = __DIR__ . '/tiers.local.php';
+	    $t = require(is_file($f) ? $f : __DIR__ . '/tiers.php');
+	    foreach((is_array($t) ? $t : []) as $k => $v)
+		$table[$k] = $v;
+	});
 
 	if (\V::app()->config('app.mode') != 'web')
 	    return;

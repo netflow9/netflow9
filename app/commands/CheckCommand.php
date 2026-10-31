@@ -3669,6 +3669,11 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-24T09:45:36+03:00: new: the accounts' tiers (util\Tiers), on an account made for the checks: its tier (the default, set, the account's own changes), the limits refused at the
     //limit (data tables, rows of a table: one and many, files: a file that does not fit is not kept), SAML / LDAP off without the feature, the System AI allowance, the usage
     private function suiteTiers() {
+	//CLD: 2026-10-31T11:53:38+02:00: the tiers are the Admin plugin's (hook tiers:table): without it, none (no limits, every feature)
+	if (!\util\Tiers::enabled()) {
+	    $this->check('no Admin plugin: no tiers, no limits, every feature', [ [], null, true ], [ \util\Tiers::names(), \util\Tiers::limit(\V::app()->config('rt.account'), 'datatables'), \util\Tiers::has(\V::app()->config('rt.account'), 'chk_a') ]);
+	    return;
+	}
 	$om = \V::app()->om;
 	$T = \util\Tiers::class;
 	$restore = \V::app()->config('rt.account');
