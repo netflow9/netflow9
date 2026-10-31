@@ -20,7 +20,8 @@
 				CLD: 2026-10-25T20:00:00+02:00: - database (the Database step and its credentials are core, for every tier)
 				CLD: 2026-10-26T23:39:49+02:00: - google, microsoft (the Google and Microsoft credentials and steps are core again, for every tier)
 				- saml, ldap (the SAML and LDAP sign-ins are core, for every tier)
-    A super-admin sets an account's tier and changes its limits / features (Administration, the account's page: Tier & limits; ./v tiers::<show | set>)
+    A super-admin sets an account's tier and changes its limits / features (Administration, the account's page: Tier & limits; ./v Admin::tiers::<show | set>)
+    CLD: 2026-10-31T11:53:38+02:00: the Admin plugin's (was app/tiers.php; read by its hook tiers:table); tiers.local.php next to it, when present, instead. Without the plugin: no tiers
 */
 
 return [

@@ -7,8 +7,8 @@
 use util\Tiers;
 
 //CLD: 2026-10-31T11:32:07+02:00: the Usage tab of the account's settings (was the page account/usage; AccountController::settings): no page header of its own;
-//the plan's badge only with the Admin plugin (its super-admins set the plans; without it there is no plan to show)
-$showTier = in_array('Admin', (array)\V::app()->config('modules'), true);
+//the plan's badge only with tiers (the Admin plugin: Tiers::enabled; without it there is no plan to show)
+$showTier = Tiers::enabled();
 
 //the rows of the limits: [ key, label, used, limit, unit ]
 $rows = [];

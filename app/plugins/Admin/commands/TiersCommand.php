@@ -1,11 +1,12 @@
 <?php
 
-namespace commands;
+namespace plugins\Admin\commands;
 
 //CLD: 2026-10-24T09:45:36+03:00: new: the accounts' tiers (util\Tiers, app/tiers.php)
-//  ../v tiers::show                                  the tiers: their limits and features
-//  ../v tiers::show --account=<id>                   an account's tier, its limits and features (with its own changes) and what it uses
-//  ../v tiers::set --account=<id> [--tier=<name>]    the account's tier (without --tier: the default); its own changes are kept
+//CLD: 2026-10-31T11:53:38+02:00: the Admin plugin's (was commands\TiersCommand, ./v tiers::...; the tiers: plugins/Admin/tiers.php)
+//  ../v Admin::tiers::show                                  the tiers: their limits and features
+//  ../v Admin::tiers::show --account=<id>                   an account's tier, its limits and features (with its own changes) and what it uses
+//  ../v Admin::tiers::set --account=<id> [--tier=<name>]    the account's tier (without --tier: the default); its own changes are kept
 class TiersCommand extends \sys\BaseController {
 
     public function show($req = null, $resp = null) {
