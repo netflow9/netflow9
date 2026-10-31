@@ -4,14 +4,13 @@ namespace models;
 
 class Workflow extends \sys\BaseModel {
     protected static $collection = 'workflows';
-    //CLD: 2026-10-12T12:18:11+03:00: lists of a project; published workflows (util\Scheduler) (created by `v setup::indexes`)
     public static $indexes = [
 	[ [ 'aid' => 1, 'project' => 1 ], [] ],
 	[ [ 'status' => 1, 'version' => 1 ], [] ],
     ];
 
 
-    //CLD: 2026-10-11T13:29:36+03:00: `status`: only published workflows are started by their triggers (scheduler, IMAP, webhook); drafts run only by hand (designer Run, wf::run)
+    //`status`: only published workflows are started by their triggers (scheduler, IMAP, webhook); drafts run only by hand (designer Run, wf::run)
     const DRAFT = 'draft';
     const PUBLISHED = 'published';
 
@@ -114,8 +113,6 @@ class Workflow extends \sys\BaseModel {
 	$role = \V::app()->auth->getUserRole();
 
 	//build full permission name
-	//CLD: 2026-10-06T23:06:18+03:00: only when short: AAA::checkAccess passes the full name (e.g. User::update), which was doubled
-	//(User::User::update) and never matched a role permission; field checks pass the short one
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
@@ -124,7 +121,7 @@ class Workflow extends \sys\BaseModel {
 	if ($scope == 'global')
 	    return true;
 
-	//CLD: 2026-10-06T23:07:56+03:00: project scope: the user must be a member of the workflow's project
+	//project scope: the user must be a member of the workflow's project
 	if ($scope == 'project')
 	    return \models\Project::isMember($this->project, $this->aid, $userId);
 
@@ -133,9 +130,8 @@ class Workflow extends \sys\BaseModel {
     }
 
 
-    //CLD: 2026-10-08T08:19:49+03:00: the workflow's own rules, then every step's validates() (rules in the node class, e.g. the webhook token);
+    //the workflow's own rules, then every step's validates() (rules in the node class, e.g. the webhook token);
     //step errors are reported on `nodes`, prefixed with the step title; unknown step types are left to validateFlow()
-    //CLD: 2026-10-19T17:10:00+03:00: the step checks moved to validateSteps(); the designer saves with validatesDraft() (step errors do not stop the save)
     public function validates($options = []) {
 	$valid = parent::validates($options);
 	foreach($this->validateSteps(true) as $issue) {
@@ -145,7 +141,7 @@ class Workflow extends \sys\BaseModel {
 	return $valid;
     }
 
-    //CLD: 2026-10-19T17:10:00+03:00: saving a draft from the designer: the workflow's own rules only; the steps' configs are normalized, their errors are kept in
+    //saving a draft from the designer: the workflow's own rules only; the steps' configs are normalized, their errors are kept in
     //$stepIssues (not errors()): a draft may be saved with them, it cannot be published or run (issues())
     public function validatesDraft($options = []) {
 	$valid = parent::validates($options);
@@ -153,8 +149,8 @@ class Workflow extends \sys\BaseModel {
 	return $valid;
     }
 
-    //CLD: 2026-10-19T17:10:00+03:00: the problems in the steps' settings, as validateFlow() issues: [ [ 'level' => 'error', 'node' => wfid, 'message' => '<step title>: ...' ], ... ]
-    //(was inside validates()); $normalize: each step's config as normalized by its config form goes back into `nodes`
+    //the problems in the steps' settings, as validateFlow() issues: [ [ 'level' => 'error', 'node' => wfid, 'message' => '<step title>: ...' ], ... ]
+    //$normalize: each step's config as normalized by its config form goes back into `nodes`
     public function validateSteps($normalize = false) {
 	$issues = [];
 	$defs = \models\WfNode::getAll();
@@ -193,12 +189,12 @@ class Workflow extends \sys\BaseModel {
 	return $issues;
     }
 
-    //CLD: 2026-10-19T17:10:00+03:00: everything that stops publishing / running: the steps' settings (validateSteps) and the connections (validateFlow)
+    //everything that stops publishing / running: the steps' settings (validateSteps) and the connections (validateFlow)
     public function issues() {
 	return array_merge($this->validateSteps(), $this->validateFlow());
     }
 
-    //CLD: 2026-10-08T07:54:32+03:00: generic save hooks (the webhook token / index logic moved to plugins\Webhook\Plugin);
+    //generic save hooks (the webhook token / index logic moved to plugins\Webhook\Plugin);
     //handlers receive the workflow and may change it in workflow:before-save
     public function beforeSave() {
 	//CLD: 2026-10-11T13:51:42+03:00: a version copy (forVersion) holds a version's steps: saving it would overwrite the draft
@@ -227,14 +223,14 @@ class Workflow extends \sys\BaseModel {
 	}
     }
 
-    //CLD: 2026-10-11T13:51:42+03:00: the version set in `version` (the active one while published), null when never published
+    //the version set in `version` (the active one while published), null when never published
     public function publishedVersion() {
 	if (empty($this->version))
 	    return null;
 	return \V::app()->om->findOne('WfVersion', [ '_id' => $this->version, 'wf' => $this->_id, 'aid' => $this->aid ]);
     }
 
-    //CLD: 2026-10-11T13:51:42+03:00: a copy of this workflow holding the steps of $version (runVersion set): what triggers validate and start, so the
+    //a copy of this workflow holding the steps of $version (runVersion set): what triggers validate and start, so the
     //code that runs a workflow (validateFlow, WfExecution::startFor, ...) needs no version logic; the copy cannot be saved
     public function forVersion($version) {
 	$copy = \V::app()->om->findOne('Workflow', [ '_id' => $this->_id, 'aid' => $this->aid ]);
@@ -245,7 +241,7 @@ class Workflow extends \sys\BaseModel {
 	return $copy;
     }
 
-    //CLD: 2026-10-11T13:51:42+03:00: the published version's copy (forVersion) when the workflow is published, else null: what its triggers run
+    //the published version's copy (forVersion) when the workflow is published, else null: what its triggers run
     public function liveCopy() {
 	if ($this->status !== self::PUBLISHED)
 	    return null;
@@ -276,8 +272,7 @@ class Workflow extends \sys\BaseModel {
 	return \util\JSON::encode(is_array($this->nodes) ? $this->nodes : []) === \util\JSON::encode(is_array($version->nodes) ? $version->nodes : []);
     }
 
-    //CLD: 2026-10-11T13:51:42+03:00: the number of a new version (atomic, so two publishes never get the same number)
-    //CLD: 2026-10-12T12:31:46+03:00: through ObjectManager (om->findOneAndUpdate; was the MongoDB collection directly)
+    //the number of a new version (atomic, so two publishes never get the same number)
     public function nextVersionNumber() {
 	$wf = \V::app()->om->findOneAndUpdate('Workflow', [ '_id' => $this->_id ], [ '$inc' => [ 'version_count' => 1 ] ], [ 'projection' => [ 'version_count' => 1 ] ]);
 	$this->version_count = (int)($wf->version_count ?? 0);

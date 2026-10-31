@@ -22,12 +22,11 @@ class WfNode extends \sys\NestedModel {
     public static $minHeight = 120;
     public static $isNote = false;
     public static $isContainer = false;
-    //CLD: 2026-10-30T15:00:00+02:00: how the designer's step picker presents the step (every step is available to every user): $audience basic / advanced (advanced: listed when
+    //how the designer's step picker presents the step (every step is available to every user): $audience basic / advanced (advanced: listed when
     //the user shows the advanced steps, found by the search always), $category the picker's group (CATEGORIES; null: from $type - triggers, core: flow, app: data)
     public static $audience = 'basic';
     public static $category = null;
 
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker's groups, in their order
     const CATEGORIES = [
 	'trigger' => 'Triggers',
 	'flow' => 'Flow',

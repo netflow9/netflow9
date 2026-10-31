@@ -1,8 +1,11 @@
 <?php
 
-//CLD: 2026-10-28T23:55:00+02:00: new controller: the documentation inside the app, read from app/data/docs.json (the docs site's content: sections > pages > child pages).
-//docs/index?s=<section>&p=<page>[&c=<child page>] shows one page (default: the first one); the pages' links (/<section>/<page>[/<child>]) are turned into this viewer's URLs.
-//For signed-in users
+/*
+    the documentation inside the app, read from app/data/docs.json (the docs site's content: sections > pages > child pages).
+    docs/index?s=<section>&p=<page>[&c=<child page>] shows one page (default: the first one);
+    the pages' links (/<section>/<page>[/<child>]) are turned into this viewer's URLs.
+    For signed-in users
+*/
 
 namespace controllers;
 

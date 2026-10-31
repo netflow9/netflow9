@@ -1,12 +1,14 @@
 <?php
 
-//CLD: 2026-10-17T22:00:00+03:00: new model: an invitation to a project (Members tab: ProjectController::member_invite) for an email address that is not a user of the account yet;
-//the link (valid 7 days, used once) opens SiteController::invite: the person's name and password make the user (account role Member) and a member of the project with the
-//invitation's role (and of the account's other projects the address was invited to). Only a hash of the link's token is kept (the token is in the email); MongoDB removes it
-//when it expires (expires_at, a TTL index). Global: the link is opened before signing in (aid kept)
-//  [ $invite, $token ] = ProjectInvite::start($project, $email, $roleId, $by);   a new one (the address's earlier one for the project replaced)
-//  $invite = ProjectInvite::findByToken($token);                                the valid one of a link, or null
-//  ProjectInvite::pending($project)                                             the project's valid ones
+/*
+    an invitation to a project (Members tab: ProjectController::member_invite) for an email address that is not a user of the account yet;
+    the link (valid 7 days, used once) opens SiteController::invite: the person's name and password make the user (account role Member) and a member of the project with the
+    invitation's role (and of the account's other projects the address was invited to). Only a hash of the link's token is kept (the token is in the email); MongoDB removes it
+    when it expires (expires_at, a TTL index). Global: the link is opened before signing in (aid kept)
+	[ $invite, $token ] = ProjectInvite::start($project, $email, $roleId, $by);   a new one (the address's earlier one for the project replaced)
+    $invite = ProjectInvite::findByToken($token);                                the valid one of a link, or null
+    ProjectInvite::pending($project)                                             the project's valid ones
+*/
 
 namespace models\user;
 

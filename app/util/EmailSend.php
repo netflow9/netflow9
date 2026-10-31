@@ -178,9 +178,21 @@ class EmailSend {
         return true;
     }
 
-    //CLD: 2026-10-16T11:57:41+03:00: a MIME message for send(): $m = { from (address), from_name, to / cc / bcc (addresses), reply_to, subject, html, text, images: [ cid => File ] }
-    //-> [ headers, body ]; with images: multipart/related (the alternative + the images, inline), else multipart/alternative (text, html); quoted-printable bodies, encoded
-    //headers (CR / LF removed: no header injection)
+    /*
+	a MIME message for send():
+	    $m = {
+		from (address),
+		from_name,
+		to / cc / bcc (addresses),
+		reply_to,
+		subject,
+		html,
+		text,
+		images: [ cid => File ]
+	    } -> [ headers, body ];
+	    with images: multipart/related (the alternative + the images, inline),
+	    else multipart/alternative (text, html); quoted-printable bodies, encoded headers (CR / LF removed: no header injection)
+    */
     public static function compose(array $m) {
 	$clean = fn($v) => trim(str_replace([ "\r", "\n" ], ' ', (string)$v));
 	//a display name: quoted when plain ASCII (it may hold , : ; ...), else encoded
@@ -222,8 +234,10 @@ class EmailSend {
 	return [ implode("\r\n", $headers), $body . "--{$rel}--\r\n" ];
     }
 
-    //CLD: 2026-10-16T11:57:41+03:00: the job of a queued email (the Send Email step): { aid, from_name, to, cc, bcc, reply_to, subject, html, text, images: [ cid => file id ] }; sent from
-    //the app's address (config mail.from); an image file gone is left out; throws when the SMTP server does not take it (the daemon tries again)
+    //the job of a queued email (the Send Email step): { aid, from_name, to, cc, bcc, reply_to, subject, html, text, images: [ cid => file id ] }; sent from
+    //the app's address (config mail.from);
+    //an image file gone is left out;
+    //throws when the SMTP server does not take it (the daemon tries again)
     public static function deliver($data) {
 	$data = (array)$data;
 /*
@@ -249,8 +263,9 @@ class EmailSend {
 	    throw new \ErrorException('the email "' . ($data['subject'] ?? '') . '" was not accepted by the SMTP server');
     }
 
-    //CLD: 2026-10-16T12:14:57+03:00: an email of the app (data\SysEmails: sign-up, later invitations) to $to, filled with $vars (+ app: the app's name), queued as the Send Email step's are
-    //(deliver(), run by the daemon); the job's id
+    //an email of the app (data\SysEmails: sign-up, later invitations) to $to,
+    //filled with $vars (+ app: the app's name),
+    //queued as the Send Email step's are (deliver(), run by the daemon); the job's id
     public static function system($name, $to, array $vars = []) {
 	$template = \data\SysEmails::$data[$name] ?? null;
 	if (!$template)

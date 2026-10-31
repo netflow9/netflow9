@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T00:41:28+03:00: new class: the rows and cells of a spreadsheet step, shared by Google Sheets (GoogleIntegration plugin) and Excel (MicrosoftIntegration
+    the rows and cells of a spreadsheet step, shared by Google Sheets (GoogleIntegration plugin) and Excel (MicrosoftIntegration
     plugin); were NodeAppGoogleSheets' own (columnName, headerOf, objectsOf, rowsOf, matrixFor, cellValue), which now call these
 	columnName / columnIndex   A <-> 0, Z <-> 25, AA <-> 26
 	headerOf                   the header of a first row (empty / repeated names: the column name)
