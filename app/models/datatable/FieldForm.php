@@ -1,9 +1,8 @@
 <?php
-//CLD: 2026-10-14T16:01:34+03:00: util\FormSchema and WidgetsUtil::smartFormFields / formValues are util\SmartForm (::showIf, ::modelFields, ::modelValues, ...)
 
-//CLD: 2026-10-05T21:06:21+03:00: new form model for the data table column designer (create/update a column = a Field of the table)
-//CLD: 2026-10-06T09:23:42+03:00: renamed ColumnForm -> FieldForm; all checks are validation rules of the schema (was
-//DatatableController::validateColumn); like Field::afterAttachSchema, an existing field locks key/type/object
+/*
+    util\FormSchema and WidgetsUtil::smartFormFields / formValues are util\SmartForm (::showIf, ::modelFields, ::modelValues, ...)
+*/
 
 namespace models\datatable;
 
@@ -12,7 +11,7 @@ class FieldForm extends \sys\BaseModel {
     protected static $cacheSchema = false;
 
 
-    //CLD: 2026-10-06T09:23:42+03:00: like Field::afterAttachSchema: once the field exists, key, type and target are readonly
+    //like Field::afterAttachSchema: once the field exists, key, type and target are readonly
     //(assign(..., true) skips them, the form shows them disabled)
     public function afterAttachSchema() {
 	$readonly = ($this->exists() ? 'nobody' : 'everybody');
@@ -32,7 +31,7 @@ class FieldForm extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'perm:read' => 'nobody',
 	    ],
-	    //CLD: 2026-10-06T21:07:17+03:00: columns made in the designer can be deleted from the grid (WidgetsUtil::getSchema: perm:delete != nobody);
+	    //columns made in the designer can be deleted from the grid (WidgetsUtil::getSchema: perm:delete != nobody);
 	    //not postable, saved with the field through data()
 	    [
 		'key' => 'perm:delete',
@@ -60,11 +59,8 @@ class FieldForm extends \sys\BaseModel {
 		'validate' => [
 		    [ 'identifier', 'message' => 'Only letters, digits or underscore, not starting with a digit' ],
 		    [ 'fieldKeyNotReserved', 'message' => 'This key is reserved', 'on' => 'create' ],
-		    //CLD: 2026-10-06T21:09:08+03:00: uniqueInObject on objectName (was fieldKeyUnique on a `table` option that was no longer passed);
-		    //runs on update too: the field itself is excluded by its _id, a key changed to an existing one is caught
 		    [ 'uniqueInObject', 'message' => 'This key already exists in the table', 'collection' => \sys\fields\Field::_collection() ],
 		],
-		//CLD: 2026-10-14T14:27:53+03:00: the column form's pattern comes from the `identifier` rule (util\WidgetsUtil; views/datatable/column_form.php makes its fields from this schema)
 	    ],
 	    //type, readonly once created
 	    [
@@ -75,14 +71,11 @@ class FieldForm extends \sys\BaseModel {
 		'required' => true,
 		'default' => 'text',
 		'choices' => \V::app()->om->getFieldTypes(),
-		//CLD: 2026-10-06T21:22:22+03:00: only registered field types (an unknown type crashed: no Field_<type> class)
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 	    ],
 	    //target of `object` fields (objectName), readonly once created
 	    [
 		'key' => 'object',
 		'type' => 'select',
-		//CLD: 2026-10-14T14:18:23+03:00: the label of the column form (was 'Object'; the view said 'Points to')
 		'label' => 'Points to',
 		'help' => false,
 		'default' => '',
@@ -111,12 +104,9 @@ class FieldForm extends \sys\BaseModel {
 		'label' => 'Choices',
 		'help' => 'One choice per line',
 		'default' => '',
-		//CLD: 2026-10-06T21:22:22+03:00: required for select columns, checked at validation time with the posted type (`required` computed here
-		//saw no type yet when the form was created empty, so empty choice lists passed)
-		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule; was the requiredIf rule in `validate`)
+		//required for select columns, checked at validation time with the posted type (`required` computed here
 		'requiredIf' => [ 'if' => 'type', 'in' => [ 'select' ], 'message' => 'Enter at least one choice' ],
-		//CLD: 2026-10-14T14:18:23+03:00: shown for select columns (required there by the rule above: util\WidgetsUtil makes the form's requiredIf from it)
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//shown for select columns (required there by the rule above: util\WidgetsUtil makes the form's requiredIf from it)
 		'ui' => [ 'rows' => 4, 'showIf' => [ 'key' => 'type', 'operator' => 'eq', 'value' => 'select' ] ],
 	    ],
 	];

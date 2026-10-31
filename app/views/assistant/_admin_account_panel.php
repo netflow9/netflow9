@@ -1,5 +1,4 @@
 <?php
-//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number (was number_format)
 /*
     CLD: 2026-10-23T10:00:00+03:00: new: the account's Assistant in the administration (hook admin:account-panels; its System credits: plugins\SystemAI's panel): $settings
     (AssistantSettings|null), $usage (AssistantUsage::current: this month on its own key)

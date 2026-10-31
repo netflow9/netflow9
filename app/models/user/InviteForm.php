@@ -1,7 +1,9 @@
 <?php
 
-//CLD: 2026-10-17T22:00:00+03:00: new form model: the page of a project invitation (SiteController::invite) - the user's name, the password (twice). The password fields and
-//their rules are ChangePasswordForm's (create it with [ 'validateCurrentPassword' => false ]: no current password)
+/*
+    the page of a project invitation (SiteController::invite) - the user's name, the password (twice). The password fields and
+    their rules are ChangePasswordForm's (create it with [ 'validateCurrentPassword' => false ]: no current password)
+*/
 
 namespace models\user;
 
