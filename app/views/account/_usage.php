@@ -1,12 +1,14 @@
 <?php
 //CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number (was number_format)
 /*
-    CLD: 2026-10-24T09:45:36+03:00: new: the account's usage (AccountController::usage): $account, $usage (util\Tiers::usage), $limits (util\Tiers::limits), $projects ([ id => Project ]);
+    CLD: 2026-10-24T09:45:36+03:00: new: the account's usage (AccountController::settings, its Usage tab): $account, $usage (util\Tiers::usage), $limits (util\Tiers::limits), $projects ([ id => Project ]);
     each limit with what is used (yellow from 80%, red at the limit), the tier's features, the usage per project (a breakdown: the limits are the account's)
 */
 use util\Tiers;
 
-$this->pageTitle = 'Account::Usage';
+//CLD: 2026-10-31T11:32:07+02:00: the Usage tab of the account's settings (was the page account/usage; AccountController::settings): no page header of its own;
+//the plan's badge only with the Admin plugin (its super-admins set the plans; without it there is no plan to show)
+$showTier = in_array('Admin', (array)\V::app()->config('modules'), true);
 
 //the rows of the limits: [ key, label, used, limit, unit ]
 $rows = [];
@@ -19,25 +21,11 @@ foreach(Tiers::LIMITS as $key => [ $label, $unit ]) {
 $recordsLimit = $limits['datatable_records'];
 ?>
 
-<div class="main-header py-2 px-3">
-    <?php
-    $exp = new \sys\html\BtnExpandSidebar();
-    echo $exp->render();
-
-    $bc = new \sys\html\Breadcrumbs([ 'items' => [
-	[ 'label' => 'Home', 'href' => '/site/index' ],
-	[ 'label' => 'Usage' ],
-    ]]);
-    echo $bc->render();
-    ?>
-</div>
-
-<div class="main-body p-4">
-    <div class="d-flex align-items-center w-100 mb-4">
-	<div>
-	    <h5>Usage <span class="badge text-bg-primary align-middle fs-6"><?= \V::app()->html->escape(Tiers::labelOf($account)) ?></span></h5>
-	    <span class="text-muted">What the account uses of its plan's limits. The limits are for the whole account.</span>
-	</div>
+    <div class="mb-4">
+	<?php if ($showTier): ?>
+	<span class="badge text-bg-primary align-middle me-1"><?= \V::app()->html->escape(Tiers::labelOf($account)) ?></span>
+	<?php endif; ?>
+	<span class="text-muted">What the account uses of its plan's limits. The limits are for the whole account.</span>
     </div>
 
     <div class="row g-3 mb-4" style="max-width: 960px">
@@ -117,4 +105,3 @@ $recordsLimit = $limits['datatable_records'];
 	    </tbody>
 	</table>
     </div>
-</div>
