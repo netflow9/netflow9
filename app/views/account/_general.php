@@ -2,7 +2,7 @@
 //CLD: 2026-10-31T11:32:07+02:00: the Settings tab of the account's settings (was the whole page: views/account/settings.php)
 ?>
     <?= \V::app()->form->create($account) ?>
-	<div class="pt-2 w-50">
+	<div class="pt-4 w-50">
 	    <h6>MFA</h6>
 	    <?= $account->schema['enforce_mfa']->input([ 'cols' => '0,12' ]) ?>
 	</div>
