@@ -17,6 +17,8 @@ public_html/assets/
 app.env
 # an installation's own settings: plugins.local.php, tiers.local.php
 *.local.php
+# plugins kept in their own repositories, cloned into app/plugins/ (each its own git repository): MultiTenant (netflow9/multitenant)
+/app/plugins/MultiTenant/
 *.key
 *.pem
 /haraka/
