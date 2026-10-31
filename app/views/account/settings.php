@@ -20,9 +20,10 @@ $this->pageTitle = 'Account::Settings';
 </div>
 
 <div class="main-body p-4">
-    <div class="mb-3">
-	<h5>Account settings</h5>
-	<span class="text-muted">Modify per-account settings, and see what the account uses</span>
+    <?php //CLD: 2026-10-31T11:51:30+02:00: as the project's settings (views/project/_header.php): the account's name, then the tabs (was a title and a description) ?>
+    <div class="d-flex align-items-center w-100 align-items-top">
+	<h5 class="mb-0"><i class="bi bi-house-gear"></i> <?= \V::app()->html->escape((string)$account->name !== '' ? (string)$account->name : 'Account settings') ?></h5>
+	<div class="flex-fill"></div>
     </div>
     <?php
     $labels = [ 'general' => 'Settings', 'usage' => 'Usage' ];
@@ -31,7 +32,5 @@ $this->pageTitle = 'Account::Settings';
 	$items[$t] = [ 'label' => $labels[$t], 'href' => \V::app()->createUrl('/account/settings', [ '__tab' => $t ]) ];
     echo (new \sys\html\Nav([ 'items' => $items, 'active' => $tab ]))->render();
     ?>
-    <div class="pt-3">
     <?php require(dirname(__FILE__) . '/_' . $tab . '.php'); ?>
-    </div>
 </div>

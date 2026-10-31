@@ -21,7 +21,7 @@ foreach(Tiers::LIMITS as $key => [ $label, $unit ]) {
 $recordsLimit = $limits['datatable_records'];
 ?>
 
-    <div class="mb-4">
+    <div class="pt-4 mb-4">
 	<?php if ($showTier): ?>
 	<span class="badge text-bg-primary align-middle me-1"><?= \V::app()->html->escape(Tiers::labelOf($account)) ?></span>
 	<?php endif; ?>
