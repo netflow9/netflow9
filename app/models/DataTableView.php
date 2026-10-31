@@ -1,8 +1,10 @@
 <?php
 
-//CLD: 2026-10-30T17:18:20+02:00: new: a saved view of a data table: a named filter (the conditions of the table's Filter: [ { field, op, value } ]), shared by
-//every user who can open the table (controllers\DatatableController views / create_view / delete_view; DataTable::readData on the table). Deleted with
-//its table (DataTableDef::beforeDelete)
+/*
+    a saved view of a data table: a named filter (the conditions of the table's Filter: [ { field, op, value } ]),
+    shared by every user who can open the table (controllers\DatatableController views / create_view / delete_view;
+    DataTable::readData on the table). Deleted with its table (DataTableDef::beforeDelete)
+*/
 namespace models;
 
 class DataTableView extends \sys\BaseModel {

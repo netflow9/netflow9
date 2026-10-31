@@ -6,8 +6,6 @@
     A token acts as the user who made it
 */
 
-//CLD: 2026-10-20T23:40:00+03:00: moved to the SysMCPTools plugin (was controllers\TokenController): /SysMCPTools/token/<action>
-//CLD: 2026-10-26T23:56:07+02:00: moved back to the core (was the SysMCPTools plugin's)
 namespace controllers;
 
 class TokenController extends \sys\BaseController {
@@ -35,7 +33,6 @@ class TokenController extends \sys\BaseController {
 	]);
     }
 
-    //CLD: 2026-10-21T00:45:00+03:00: with ?data=1 the grid's data (was the action data, which answered an empty list without the permission: now 403, as the page)
     public function list($req, $resp) {
 	if (!\V::app()->user->can('McpToken::list', [ 'object' => $this->projectToken() ]))
 	    \V::app()->error(403, 'Unauthorized');

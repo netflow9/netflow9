@@ -1,16 +1,18 @@
 <?php
 
-//CLD: 2026-10-25T19:30:00+02:00: moved from the Ldap plugin to the core (the LDAP step and credential are core, the plugin is the LDAP sign-in): namespace util (was plugins\Ldap\util)
+/*
 
-//CLD: 2026-10-21T10:00:00+03:00: new: the BER encoding of LDAP (RFC 4511: the subset of X.690 it uses: definite lengths, primitive strings) and the search filters
-//(RFC 4515), for the pure-PHP client (LdapPhpClient) and the check suite's test server (tests/LdapTestServer.php).
-//  encode:   LdapBer::seq(LdapBer::int(1), LdapBer::str('x'), ...); tlv($tag, $content) for any tag (0x60 = [APPLICATION 0] constructed, 0x80 = [0] primitive, ...)
-//  decode:   [ $tag, $content ] = LdapBer::read($data, $offset) (one element, $offset moved past it); children($content) = its elements; messageLength($buffer)
-//            = the bytes of the first complete element (null: not complete yet)
-//  filters:  parseFilter('(&(uid=a*)(!(cn=x)))') = a tree [ 'and', [ ... ] ]; filter($text) = its BER; decodeFilter($tag, $content) = the tree of a BER filter
-//            trees: [ 'and'|'or', [ nodes ] ], [ 'not', node ], [ 'eq'|'ge'|'le'|'approx', attr, value ], [ 'present', attr ],
-//            [ 'sub', attr, initial|null, [ any ], final|null ], [ 'ext', rule|null, attr|null, value, dnAttributes ]
-//  Malformed input: \InvalidArgumentException (a filter: its message says where), a broken answer: LdapException (no connection code)
+    the BER encoding of LDAP (RFC 4511: the subset of X.690 it uses: definite lengths, primitive strings) and the search filters
+    (RFC 4515), for the pure-PHP client (LdapPhpClient) and the check suite's test server (tests/LdapTestServer.php).
+
+    encode:   LdapBer::seq(LdapBer::int(1), LdapBer::str('x'), ...); tlv($tag, $content) for any tag (0x60 = [APPLICATION 0] constructed, 0x80 = [0] primitive, ...)
+    decode:   [ $tag, $content ] = LdapBer::read($data, $offset) (one element, $offset moved past it); children($content) = its elements; messageLength($buffer)
+        	= the bytes of the first complete element (null: not complete yet)
+    filters:  parseFilter('(&(uid=a*)(!(cn=x)))') = a tree [ 'and', [ ... ] ]; filter($text) = its BER; decodeFilter($tag, $content) = the tree of a BER filter
+        	trees: [ 'and'|'or', [ nodes ] ], [ 'not', node ], [ 'eq'|'ge'|'le'|'approx', attr, value ], [ 'present', attr ],
+        	[ 'sub', attr, initial|null, [ any ], final|null ], [ 'ext', rule|null, attr|null, value, dnAttributes ]
+    Malformed input: \InvalidArgumentException (a filter: its message says where), a broken answer: LdapException (no connection code)
+*/
 
 namespace util;
 

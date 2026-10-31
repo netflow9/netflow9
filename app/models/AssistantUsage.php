@@ -1,13 +1,12 @@
 <?php
 
 /*
-    CLD: 2026-10-22T14:00:00+03:00: new: what the Assistant spent, per account and calendar month (UTC): one document `<aid>:<YYYY-MM>`, with the cost (USD, counted with the
+    what the Assistant spent, per account and calendar month (UTC): one document `<aid>:<YYYY-MM>`, with the cost (USD, counted with the
     settings' prices: AssistantSettings::pricesOf), the tokens and the requests. Checked against the monthly budget before each request (AssistantController::ask) and by the
     agent loop (WorkflowAssistant::$budget); added to after each request, also a failed one (the tokens were spent).
     Written with an atomic upsert ($inc), not with save(): requests of the same account may end at the same time
 */
 
-//CLD: 2026-10-26T23:49:50+02:00: moved to the core (was the Assistant plugin's); its System provider only while the SystemAI plugin is enabled
 namespace models;
 
 class AssistantUsage extends \sys\BaseModel {

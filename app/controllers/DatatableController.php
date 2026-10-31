@@ -42,7 +42,6 @@ class DatatableController extends \sys\BaseController {
 		];
 	    }
 
-	    //CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON (was write + end: sent as text/html)
 	    $resp->sendJSON($response);
 	}
 

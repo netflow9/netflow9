@@ -15,7 +15,7 @@ namespace models;
 
 class WfSchedule {
 
-    //CLD: 2026-10-29T22:12:26+02:00: one time of `time` (HH:MM, 24 h; H:MM too)
+    //one time of `time` (HH:MM, 24 h; H:MM too)
     const TIME = '([01]?\d|2[0-3]):[0-5]\d';
 
     public static function schema(array $defaults = []) {

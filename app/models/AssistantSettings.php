@@ -3,8 +3,8 @@
 /*
     the Assistant's settings of an account, one document per account;
     read by WorkflowAssistant.
-    //CLD: 2026-10-20T10:00:00+03:00: the Assistant uses only these settings (no longer the projects' credentials): provider, server URL, API key, then the model,
-    //chosen from the ones the server lists (Connect on the settings page: AssistantController::connect). Were model / openai_model / openai_url / openai_key
+
+    the Assistant uses only these settings: provider, server URL, API key, then the model, chosen from the ones the server lists (Connect on the settings page: AssistantController::connect). Were model / openai_model / openai_url / openai_key
     //CLD: 2026-10-22T14:00:00+03:00: bring your own key: the providers System (the installation's server, config assistant.system: no key, URL or model here), Claude, OpenAI, Gemini,
     //Ollama, Lemonade; each speaks one protocol (PROTOCOLS: the Anthropic Messages API or OpenAI chat completions). + a monthly budget (USD; the spending: AssistantUsage) and the prices
     //it is counted with (USD per 1M tokens; empty: PRICES, the known prices of Claude models)
@@ -25,17 +25,22 @@ class AssistantSettings extends \sys\BaseModel {
 
     //CLD: 2026-10-22T14:00:00+03:00: + system, gemini, ollama, lemonade; openai is OpenAI itself (still any OpenAI-compatible server with its Server URL, as the settings saved before)
     const PROVIDERS = [
-	'system' => 'System AI (provided by this installation)', //CLD: 2026-10-23T10:00:00+03:00: (was System)
+	'system' => 'System AI (provided by this installation)',
 	'anthropic' => 'Claude (Anthropic)',
 	'openai' => 'OpenAI (or another OpenAI-compatible server)',
 	'gemini' => 'Google Gemini',
 	'ollama' => 'Ollama',
 	'lemonade' => 'Lemonade server',
     ];
-    //CLD: 2026-10-22T14:00:00+03:00: the API each provider speaks (WorkflowAssistant: turnAnthropic / turnOpenAI); system: the one of the installation's provider
-    const PROTOCOLS = [ 'anthropic' => 'anthropic', 'openai' => 'openai', 'gemini' => 'openai', 'ollama' => 'openai', 'lemonade' => 'openai' ];
+    //the API each provider speaks
+    const PROTOCOLS = [
+	'anthropic' => 'anthropic',
+	'openai' => 'openai',
+	'gemini' => 'openai',
+	'ollama' => 'openai',
+	'lemonade' => 'openai'
+    ];
     const DEFAULT_PROVIDER = 'anthropic';
-    //CLD: 2026-10-22T14:00:00+03:00: + gemini (its OpenAI-compatible API), ollama, lemonade (their OpenAI-compatible APIs, on this machine)
     const DEFAULT_URLS = [
 	'anthropic' => 'https://api.anthropic.com',
 	'openai' => 'https://api.openai.com/v1',
@@ -43,14 +48,12 @@ class AssistantSettings extends \sys\BaseModel {
 	'ollama' => 'http://localhost:11434/v1',
 	'lemonade' => 'http://localhost:8000/api/v1',
     ];
-    //CLD: 2026-10-22T14:00:00+03:00: the providers that cannot work without a key (the others: only when their server asks for one); local ones cost nothing unless prices are set
+    //the providers that cannot work without a key (the others: only when their server asks for one);
+    //local ones cost nothing unless prices are set
     const KEY_REQUIRED = [ 'anthropic', 'openai', 'gemini' ];
-    //CLD: 2026-10-23T10:00:00+03:00: LOCAL: SystemAi::LOCAL (was here)
+
     const DEFAULT_EFFORT = 'high';
     const DEFAULT_MODEL = 'claude-opus-5-5';
-
-    //CLD: 2026-10-22T14:00:00+03:00: the prices of Claude models (Anthropic API, USD per 1M tokens: input, output, cache read), by model id prefix (the first that matches; longer ones first).
-    //CLD: 2026-10-23T10:00:00+03:00: they are SystemAi::PRICES, CACHE_WRITE (were here)
 
     public function getSchema() {
 	$fields = [
@@ -58,7 +61,6 @@ class AssistantSettings extends \sys\BaseModel {
 		'key' => 'provider',
 		'type' => 'select',
 		'label' => 'Provider',
-		//CLD: 2026-10-22T14:00:00+03:00: + System, Gemini, Ollama, Lemonade
 		'help' => 'Who runs the Assistant: the server this installation provides (System), or your own account with a provider (your key, your costs)',
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
@@ -172,7 +174,7 @@ class AssistantSettings extends \sys\BaseModel {
 	$provider = (string)$this->provider;
 	if ($provider === 'system') {
 	    if (!self::systemAvailable()) {
-		$this->errors('provider', [ 'This installation provides no System AI: choose a provider and set your key' ]); //CLD: 2026-10-23T10:00:00+03:00: (was no Assistant server)
+		$this->errors('provider', [ 'This installation provides no System AI: choose a provider and set your key' ]);
 		$ok = false;
 	    }
 	    return $ok;

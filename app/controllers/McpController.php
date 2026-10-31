@@ -8,8 +8,6 @@
     Stateless: no Mcp-Session-Id.
     A request from a browser page of another site (Origin header of another host) is refused (DNS rebinding)
 */
-//CLD: 2026-10-20T23:40:00+03:00: moved to the SysMCPTools plugin (was controllers\McpController); POST /mcp is routed here by the plugin (Plugin: router rule, no session)
-//CLD: 2026-10-26T23:56:07+02:00: moved back to the core (was the SysMCPTools plugin's)
 namespace controllers;
 
 class McpController extends \sys\BaseController {

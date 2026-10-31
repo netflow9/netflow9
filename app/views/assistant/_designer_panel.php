@@ -2,7 +2,7 @@
 
 /*
     the Assistant's panel on the right of the workflow designer,
-    rendered by views/workflow/index.php (CLD: 2026-10-26T23:49:50+02:00: was the Assistant plugin's Plugin::designerPanel); $wf, $viewVersion.
+    rendered by views/workflow/index.php; $wf, $viewVersion.
     Opened / closed by the top-bar button (views/workflow/index.php), as last time + a close button
 */
 use util\WorkflowAssistant;

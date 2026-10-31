@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-23T01:00:00+03:00: new: Markdown as safe HTML, and as plain text (what models answer, e.g. an AI step's text, for an email).
+    Markdown as safe HTML, and as plain text (what models answer, e.g. an AI step's text, for an email).
 	\util\Markdown::toHtml($md)    HTML without styles (util\EmailHtml adds its inline styles in an email)
 	\util\Markdown::toText($md)    readable plain text (no * # | marks; links as "text (address)")
     The text is untrusted (a model's answer may carry what a web page said): every < > & " ' of it is escaped, no HTML passes; links only to http(s) / mailto (others: their text);
