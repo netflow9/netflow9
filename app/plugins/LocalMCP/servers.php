@@ -16,7 +16,8 @@ return [
     'playwright' => [
 	'label' => 'Web browser',
 	'description' => 'A headless Chromium (Playwright): open web pages, read them, click, type, fill in forms, take screenshots. Private network addresses are not reachable',
-	'url' => 'http://localhost:8931/mcp',
+	//CLD: 2026-10-31T18:30:00+02:00: the installation's port (app.env PLAYWRIGHT_MCP_PORT, as scripts/playwright-mcp.sh), else 8931
+	'url' => 'http://localhost:' . (defined('PLAYWRIGHT_MCP_PORT') && (int)PLAYWRIGHT_MCP_PORT > 0 ? (int)PLAYWRIGHT_MCP_PORT : 8931) . '/mcp',
 	'headers' => [],
 	//left out: browser_run_code_unsafe, browser_evaluate (run code), browser_file_upload, browser_drop (read the server's files), browser_network_request(s) (request headers and
 	//bodies), browser_resize, browser_emulate_media, browser_console_messages, browser_handle_dialog (rarely needed: add them in servers.local.php)

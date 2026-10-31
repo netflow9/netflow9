@@ -53,7 +53,8 @@ class Boot {
 	    $services['daemon'] = [
 		'label' => 'Workflow daemon',
 		'description' => 'Runs the queued jobs: scheduled and background workflow runs, emails, timers',
-		'unit' => 'nfn-daemon.service',
+		//CLD: 2026-10-31T18:00:00+02:00: the installation's own unit (util\Services::unit: nfn-daemon-<user>; was nfn-daemon.service)
+		'unit' => \util\Services::unit('daemon'),
 		'pidfile' => BASE . '/run/daemon.pid',
 		'health' => function() {
 		    $sock = BASE . '/run/job-notify.sock';

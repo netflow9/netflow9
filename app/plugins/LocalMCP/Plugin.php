@@ -52,7 +52,8 @@ class Plugin {
 		'label' => 'Web browser (Playwright MCP)',
 		'description' => 'The browser the AI steps use (Tool servers)',
 		//CLD: 2026-10-29T13:00:00+02:00: nfn-playwright (was playwright-mcp), as the app's other units
-		'unit' => 'nfn-playwright.service',
+		//CLD: 2026-10-31T18:30:00+02:00: the installation's own (nfn-playwright-<user>; was nfn-playwright.service)
+		'unit' => \util\Services::unit('playwright'),
 		'pidfile' => null,
 		'health' => function() use ($pw) {
 		    $c = new \util\McpClient((string)$pw['url'], (array)($pw['headers'] ?? []), 5);

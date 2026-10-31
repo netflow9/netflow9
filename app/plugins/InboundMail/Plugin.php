@@ -34,6 +34,9 @@ class Plugin {
 	//CLD: 2026-10-22T23:00:00+03:00: Haraka, a service of the administration (the Admin plugin): its unit (scripts/4_services-install.sh), its PID file before, SMTP answering on port 25
 	//CLD: 2026-10-31T11:05:39+02:00: hook app:services (was admin:services): the core's Services page
 	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
+	    //CLD: 2026-10-31T18:00:00+02:00: not when the server's Haraka is another installation's (e.g. the live one's, seen from development)
+	    if (!\util\Services::ownUnit('nfn-haraka.service'))
+		return;
 	    $services['haraka'] = [
 		'label' => 'Inbound mail (Haraka)',
 		'description' => 'Receives the mail of the Email (inbound) trigger, on port 25',
