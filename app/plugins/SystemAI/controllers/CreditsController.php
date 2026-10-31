@@ -25,6 +25,9 @@ class CreditsController extends \sys\BaseController {
     public function index($req, $resp) {
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
+	//CLD: 2026-10-31T12:04:10+02:00: no page while the System AI is not configured (as the Settings menu)
+	if (!SystemAi::available())
+	    \V::app()->error(404, 'Not found');
 
 	$aid = \V::app()->config('rt.account')->_id;
 	$system = SystemAi::config();
