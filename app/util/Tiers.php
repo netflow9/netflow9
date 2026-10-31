@@ -7,6 +7,8 @@
 	features    the tier's (the plugins name theirs: hook tiers:features ($features: \ArrayObject, key => label)); has(), requireFeature()
 	usage       what the account uses (usage(): also per project), for the owners' usage page (AccountController::usage) and the administration
     $account: an Account, or its id (read again after 30 s: the daemon runs for days)
+    CLD: 2026-10-31T11:53:38+02:00: the tiers are the Admin plugin's (plugins/Admin/tiers.php, hook tiers:table): without it (self-hosting) there are none: no limits, every feature on,
+    the accounts' own changes ignored
 */
 namespace util;
 
@@ -29,12 +31,13 @@ class Tiers {
     // ------------------------------------------------------------------------------------
     //the tiers
 
-    //app/tiers.php (or tiers.local.php): [ default, tiers ]
+    //[ default, tiers ]: the plugins' (hook tiers:table ($table: \ArrayObject): default, tiers; the Admin plugin's plugins/Admin/tiers.php); none: no tiers
+    //CLD: 2026-10-31T11:53:38+02:00: from the hook tiers:table (was app/tiers.php, or tiers.local.php)
     public static function table() {
 	if (self::$table === null) {
-	    $f = dirname(__DIR__) . '/tiers.local.php';
-	    $t = require(is_file($f) ? $f : dirname(__DIR__) . '/tiers.php');
-	    $t = (is_array($t) ? $t : []) + [ 'default' => '', 'tiers' => [] ];
+	    $h = new \ArrayObject();
+	    \V::app()->hooks->applyHook('tiers:table', [ $h ]);
+	    $t = $h->getArrayCopy() + [ 'default' => '', 'tiers' => [] ];
 	    foreach($t['tiers'] as $name => $def)
 		$t['tiers'][$name] = (array)$def + [ 'label' => ucfirst($name), 'limits' => [], 'features' => [] ];
 	    if (!isset($t['tiers'][$t['default']]))
@@ -98,8 +101,15 @@ class Tiers {
 	return self::names()[self::tierOf($account)] ?? self::tierOf($account);
     }
 
+    //CLD: 2026-10-31T11:53:38+02:00: whether there are tiers (the Admin plugin): without them, no limits and every feature
+    public static function enabled() {
+	return !empty(self::table()['tiers']);
+    }
+
     //the account's own changes: [ limits => [ key => n | null ], features => [ key => bool ] ]
     public static function overridesOf($account) {
+	if (!self::enabled())
+	    return [ 'limits' => [], 'features' => [] ];
 	$o = self::account($account)->tier_overrides ?? null;
 	$o = $o ? (json_decode(\util\JSON::encode($o), true) ?: []) : [];
 	return [ 'limits' => (array)($o['limits'] ?? []), 'features' => (array)($o['features'] ?? []) ];
@@ -107,7 +117,7 @@ class Tiers {
 
     //the account's limits: [ key => n | null (no limit) ], the tier's with the account's own
     public static function limits($account) {
-	$tier = self::table()['tiers'][self::tierOf($account)];
+	$tier = self::table()['tiers'][self::tierOf($account)] ?? [ 'limits' => [] ];
 	$o = self::overridesOf($account)['limits'];
 	$limits = [];
 	foreach(array_keys(self::LIMITS) as $key) {
@@ -123,6 +133,8 @@ class Tiers {
 
     //whether the account has $feature: its own change, else the tier's
     public static function has($account, $feature) {
+	if (!self::enabled())
+	    return true;
 	$o = self::overridesOf($account)['features'];
 	if (array_key_exists($feature, $o))
 	    return (bool)$o[$feature];
