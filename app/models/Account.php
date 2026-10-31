@@ -157,6 +157,30 @@ class Account extends \sys\BaseModel {
 		    '365' => '1 year'
 		],
 	    ],
+	    //CLD: 2026-11-01T02:00:00+02:00: the projects whose MCP server is on (ids; McpController, TokenController, the project menu: Account::mcpEnabled); none by default. Set by the owners
+	    //in the account settings' Data access tab (Account::update)
+	    [
+		'key' => 'mcp_projects',
+		'type' => 'array',
+		'label' => 'MCP server',
+		'help' => false,
+		'perm:read' => 'everybody',
+		'perm:update' => 'everybody',
+		'default' => [],
+		'showInForms' => false,
+	    ],
+	    //CLD: 2026-11-01T02:00:00+02:00: what the designer's Assistant may read (util\WorkflowAssistant): structure (tables' columns, workflows, step types, file names, variable names) or
+	    //structure and data (rows, file contents, images, executions, variable values)
+	    [
+		'key' => 'assistant_data',
+		'type' => 'select',
+		'label' => 'The Assistant may read',
+		'help' => false,
+		'perm:read' => 'everybody',
+		'perm:update' => 'everybody',
+		'default' => 'structure',
+		'choices' => self::ASSISTANT_DATA,
+	    ],
 	    //CLD: 2026-11-01T00:30:00+02:00: the integration steps whose servers may be on-premises (the GravityZone steps: util\GravityZone) may connect to addresses of a private network
 	    //(util\Http `private`: never this server itself, loopback, link-local); off: public addresses only
 	    [
@@ -192,6 +216,26 @@ class Account extends \sys\BaseModel {
 	    ],
 	];
 	return array_merge($fields, $this->getSystemSchema());
+    }
+
+    //CLD: 2026-11-01T02:00:00+02:00: Account assistant_data's choices
+    const ASSISTANT_DATA = [
+	'structure' => 'Structure only',
+	'data' => 'Structure and data',
+    ];
+
+    //CLD: 2026-11-01T02:00:00+02:00: whether the MCP server of project $projectId is on in account $account (an Account, or its id)
+    public static function mcpEnabled($account, $projectId) {
+	if (!$account instanceof self)
+	    $account = $account ? \V::app()->om->findById('Account', (string)$account) : null;
+	return $account && $projectId && in_array((string)$projectId, array_map('strval', (array)($account->mcp_projects ?? [])), true);
+    }
+
+    //CLD: 2026-11-01T02:00:00+02:00: whether the Assistant of account $account (an Account, or its id) may read the projects' data (else their structure only)
+    public static function assistantReadsData($account) {
+	if (!$account instanceof self)
+	    $account = $account ? \V::app()->om->findById('Account', (string)$account) : null;
+	return (string)($account->assistant_data ?? 'structure') === 'data';
     }
 
     //CLD: 2026-10-24T16:30:00+03:00: date formats as choices, labeled with an example (a fixed date); '' -> "Default", with the app's format ($config)

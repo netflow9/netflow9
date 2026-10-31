@@ -45,11 +45,12 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-24T10:28:12+03:00: + Google / Microsoft by tier
     //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
     //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
+    //CLD: 2026-11-01T02:00:00+02:00: + access (the account's Data access: the projects' MCP server on / off, what the Assistant may read)
     //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
     //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -4557,6 +4558,102 @@ class CheckCommand extends \sys\BaseController {
 	    foreach(glob("{$dir}/*") as $f)
 		@unlink($f);
 	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-01T02:00:00+02:00: the account's Data access: the MCP server per project (Account::mcpEnabled; /mcp refuses the tokens of a project whose server is off: a POST to this installation's
+    //web server, skipped when it cannot be reached), what the designer's Assistant may read (structure only: the structure tools, a data tool refused, the variables without values,
+    //the system prompt says so; structure and data: every tool)
+    private function suiteAccess() {
+	$om = \V::app()->om;
+	$A = \models\Account::class;
+	$account = $om->findById('Account', (string)$this->account->_id);
+	[ $mcpBefore, $dataBefore ] = [ (array)($account->mcp_projects ?? []), (string)($account->assistant_data ?? 'structure') ];
+	$pid = (string)$this->project->_id;
+	$token = null;
+	$variable = null;
+	try {
+	    $account->mcp_projects = [];
+	    $account->save();
+	    $off = $A::mcpEnabled((string)$account->_id, $pid);
+	    $account->mcp_projects = [ $pid ];
+	    $account->save();
+	    $this->check('access: the MCP server is off unless the account turns it on for the project; only for that project', [ false, true, false, 'structure' ],
+		[ $off, $A::mcpEnabled((string)$account->_id, $pid), $A::mcpEnabled($account, '000000000000000000000000'), (string)$om->create('Account', [])->assistant_data ]);
+
+	    //the /mcp endpoint, with a token of the project
+	    $owner = $om->findOne('Role', [ 'aid' => $account->_id, 'iname' => 'owner' ]);
+	    $user = $owner ? $om->findOne('User', [ 'aid' => $account->_id, 'role' => $owner->_id, 'state' => 'active' ]) : null;
+	    if ($user) {
+		$token = $om->create('McpToken', [ 'aid' => $account->_id, 'project' => $this->project->_id, 'name' => 'Check: access', 'user' => $user->_id ]);
+		$secret = $token->generate();
+		$token->save();
+		$url = \V::app()->createAbsoluteUrl('/mcp');
+		$post = function() use ($url, $secret) {
+		    $host = (string)parse_url($url, PHP_URL_HOST);
+		    $ch = curl_init($url);
+		    curl_setopt_array($ch, [ CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode([ 'jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list' ]), CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_TIMEOUT => 15, CURLOPT_HTTPHEADER => [ 'Content-Type: application/json', 'Authorization: Bearer ' . $secret ], CURLOPT_RESOLVE => [ "{$host}:443:127.0.0.1" ],
+			CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0 ]);
+		    $answer = json_decode((string)curl_exec($ch), true);
+		    $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+		    curl_close($ch);
+		    return [ $status, $answer ];
+		};
+		[ $onStatus, $onAnswer ] = $post();
+		if ($onStatus === 0) {
+		    echo "  skipped: the MCP endpoint (this installation's web server cannot be reached from here)\n";
+		} else {
+		    $account->mcp_projects = [];
+		    $account->save();
+		    [ $offStatus, $offAnswer ] = $post();
+		    $this->check('access: /mcp answers a project\'s token while its server is on, refuses it (403) once off', [ 200, true, 403, true ],
+			[ $onStatus, count((array)($onAnswer['result']['tools'] ?? [])) > 0, $offStatus, str_contains((string)($offAnswer['error']['message'] ?? ''), 'is off') ]);
+		}
+	    }
+
+	    //the Assistant: structure only, then structure and data
+	    $variable = $om->create('CredentialVariable', [ 'aid' => $account->_id, 'project' => $this->project->_id, 'name' => 'check_access_' . uniqid(), 'value' => 'secret-value', 'description' => 'd' ]);
+	    $variable->save();
+	    $settings = (object)[ 'provider' => 'anthropic', 'url' => 'https://api.invalid', 'api_key' => 'test', 'model' => 'claude-opus-5-5' ];
+	    $ask = function() use ($settings) {
+		$sent = [];
+		$a = new \util\WorkflowAssistant($this->workflow('access', []), $this->project, $settings);
+		$turns = [
+		    [ 'tool_use', [ [ 'type' => 'tool_use', 'id' => 'q', 'name' => 'query_table', 'input' => [ 'table' => 'x' ] ], [ 'type' => 'tool_use', 'id' => 'v', 'name' => 'list_variables', 'input' => (object)[] ] ] ],
+		    [ 'end_turn', [ [ 'type' => 'text', 'text' => 'ok' ] ] ],
+		];
+		$a->transport = function($headers, $body, $path = '') use (&$turns, &$sent) {
+		    $sent[] = json_decode(\util\JSON::encode($body), true);
+		    [ $stop, $content ] = array_shift($turns);
+		    return json_decode(\util\JSON::encode([ 'stop_reason' => $stop, 'content' => $content, 'usage' => [ 'input_tokens' => 1, 'output_tokens' => 1 ] ]));
+		};
+		$a->ask([], 'x', []);
+		$results = array_column(end($sent[1]['messages'])['content'], null, 'tool_use_id');
+		return [ array_column($sent[0]['tools'], 'name'), $sent[0]['system'][0]['text'] ?? '', $results ];
+	    };
+	    $account->assistant_data = 'structure';
+	    $account->save();
+	    [ $tools, $system, $results ] = $ask();
+	    $this->check('access: Assistant, structure only: the structure tools (no rows, files, images, runs), a data tool refused, the variables without values, said in the prompt', [
+		true, false, false, false, true, true, true, false, true ], [
+		in_array('list_tables', $tools, true) && in_array('create_workflow', $tools, true) && in_array('list_variables', $tools, true),
+		in_array('query_table', $tools, true), in_array('read_file', $tools, true), in_array('run_workflow', $tools, true),
+		!empty($results['q']['is_error']) && str_contains((string)$results['q']['content'], 'Data access'),
+		str_contains((string)$results['v']['content'], $variable->name), empty($results['v']['is_error']), str_contains((string)$results['v']['content'], 'secret-value'),
+		str_contains($system, 'Privacy: this account lets you see the project\'s structure only') ]);
+	    $account->assistant_data = 'data';
+	    $account->save();
+	    [ $tools, $system, $results ] = $ask();
+	    $this->check('access: Assistant, structure and data: every tool, the variables\' values, no privacy note', [ true, true, true, false ], [
+		in_array('query_table', $tools, true) && in_array('read_file', $tools, true), str_contains((string)$results['v']['content'], 'secret-value'),
+		!str_contains((string)$results['q']['content'], 'Data access'), str_contains($system, 'Privacy:') ]);
+	} finally {
+	    $account->mcp_projects = $mcpBefore;
+	    $account->assistant_data = $dataBefore;
+	    $account->save();
+	    $token?->delete();
+	    $variable?->delete();
 	}
     }
 
