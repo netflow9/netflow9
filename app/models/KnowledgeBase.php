@@ -601,7 +601,7 @@ class KnowledgeBase extends \sys\BaseModel {
 	//by meaning: every chunk's similarity, the best
 	$byMeaning = $coll->aggregate([ [ '$match' => $match ], [ '$project' => $fields + [ 'score' => [ '$similarityCosine' => [ 'vectors' => [ '$embedding', $qv ] ] ] ] ],
 	    [ '$sort' => [ 'score' => -1 ] ], [ '$limit' => $candidates ] ])->toArray();
-	//by words: the text index (diacritics and case ignored); none when the index is missing (`v seed::indexes`)
+	//by words: the text index (diacritics and case ignored); none when the index is missing (`v setup::indexes`)
 	$byWords = [];
 	try {
 	    $byWords = $coll->find($match + [ '$text' => [ '$search' => $query ] ], [ 'projection' => $fields + [ 'embedding' => 1, 'ts' => [ '$meta' => 'textScore' ] ],

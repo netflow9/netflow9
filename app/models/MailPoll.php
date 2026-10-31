@@ -17,7 +17,7 @@ class MailPoll extends \sys\BaseModel {
     protected static $collection = 'mail_polls';
 
     //CLD: 2026-10-18T10:00:00+03:00: unique: two first checks of a step at the same time cannot create two states (each locked by its own check). An existing non-unique
-    //wf_1_node_1 index must be dropped before `v seed::indexes` creates this one
+    //wf_1_node_1 index must be dropped before `v setup::indexes` creates this one
     public static $indexes = [
 	[ [ 'wf' => 1, 'node' => 1 ], [ 'unique' => true ] ],
     ];
