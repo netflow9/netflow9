@@ -9,13 +9,12 @@
     //Ollama, Lemonade; each speaks one protocol (PROTOCOLS: the Anthropic Messages API or OpenAI chat completions). + a monthly budget (USD; the spending: AssistantUsage) and the prices
     //it is counted with (USD per 1M tokens; empty: PRICES, the known prices of Claude models)
     //CLD: 2026-10-22T15:00:00+03:00: System is paid in credits (AssistantWallet), not with the budget: + credit_cap, the most credits the account lets the Assistant use per month
-    //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (plugins\MultiTenant: util\SystemAi, models\SystemAiWallet), shared with the AI steps; the known prices are its own too
+    //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (a plugin's: util\AssistantSystem), shared with the AI steps; the known prices are its own too
 */
 
 //CLD: 2026-10-26T23:49:50+02:00: moved to the core (was the Assistant plugin's); its System provider only while the SystemAI plugin is enabled
 namespace models;
 
-use plugins\MultiTenant\util\SystemAi;
 
 class AssistantSettings extends \sys\BaseModel {
     protected static $collection = 'assistant_settings';
@@ -194,18 +193,21 @@ class AssistantSettings extends \sys\BaseModel {
     //CLD: 2026-10-22T14:00:00+03:00: the server the installation provides (config assistant.system); null when there is none (no provider or model)
     //CLD: 2026-10-23T10:00:00+03:00: the System AI (SystemAi::config: config ai.system)
     //CLD: 2026-10-26T23:49:50+02:00: none without the SystemAI plugin (app/plugins.php): the Assistant is core, the System AI a plugin
+    //CLD: 2026-10-31T22:00:00+02:00: the provider a plugin offers (util\AssistantSystem, hook assistant:system-provider; was SystemAi::config of the MultiTenant plugin)
     public static function system() {
-	return self::systemEnabled() ? SystemAi::config() : null;
+	$p = \util\AssistantSystem::provider();
+	return $p ? $p->config() : null;
     }
 
     public static function systemAvailable() {
-	return self::systemEnabled() && SystemAi::available();
+	return self::system() !== null;
     }
 
     //CLD: 2026-10-26T23:49:50+02:00: new: whether the SystemAI plugin is enabled (its credits and models registered)
     public static function systemEnabled() {
 	//CLD: 2026-10-31T21:00:00+02:00: the MultiTenant plugin with its option system_ai (was the SystemAI plugin)
-	return \plugins\MultiTenant\Plugin::systemAi();
+	//CLD: 2026-10-31T22:00:00+02:00: a plugin offers the provider (util\AssistantSystem; was plugins\MultiTenant\Plugin::systemAi: the core runs without it)
+	return \util\AssistantSystem::provider() !== null;
     }
 
     //CLD: 2026-10-22T14:00:00+03:00: the monthly limit (USD) for the account's settings $settings; null: no limit
@@ -220,8 +222,9 @@ class AssistantSettings extends \sys\BaseModel {
     //CLD: 2026-10-22T14:00:00+03:00: the prices for $settings (resolved: provider, model, price_input, price_output): [ input, output, cache read ] USD per 1M tokens; the settings' when
     //given, else the known ones of the model (PRICES), else nothing for a local server; null: not known
     //CLD: 2026-10-23T10:00:00+03:00: SystemAi::pricesOf (was here)
+    //CLD: 2026-10-31T22:00:00+02:00: util\AiPrices::of, the core's (was the MultiTenant plugin's SystemAi::pricesOf)
     public static function pricesOf($settings) {
-	return SystemAi::pricesOf($settings);
+	return \util\AiPrices::of($settings);
     }
 
 }

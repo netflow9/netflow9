@@ -38,8 +38,9 @@ class Services {
     public static function allowed() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest)
 	    return false;
-	if (self::adminPlugin())
-	    return \plugins\MultiTenant\Plugin::isAdmin();
+	//CLD: 2026-10-31T22:00:00+02:00: the administration's own check (hook services:admin; was plugins\MultiTenant\Plugin::isAdmin)
+	if (($admin = self::admin()) !== null)
+	    return (bool)($admin['allowed'])();
 	return self::ownerSignedIn();
     }
 
@@ -53,8 +54,17 @@ class Services {
 
     //the administration is there: the MultiTenant plugin is enabled (app/plugins.php)
     //CLD: 2026-10-31T21:00:00+02:00: the MultiTenant plugin (was the Admin plugin)
+    //CLD: 2026-10-31T22:00:00+02:00: a plugin manages the services (hook services:admin), so the core runs without the MultiTenant plugin (was plugins\MultiTenant\Plugin::enabled)
     public static function adminPlugin() {
-	return \plugins\MultiTenant\Plugin::enabled();
+	return self::admin() !== null;
+    }
+
+    //CLD: 2026-10-31T22:00:00+02:00: new: the administration that manages the services, as a plugin offers it (hook services:admin ($box: \ArrayObject): `allowed` => fn() => whether the
+    //signed-in user may see them, `require` => fn() => refuses the request otherwise); null: none (the account's owners manage them)
+    public static function admin() {
+	$box = new \ArrayObject();
+	\V::app()->hooks->applyHook('services:admin', [ $box ]);
+	return isset($box['allowed'], $box['require']) ? $box->getArrayCopy() : null;
     }
 
     //CLD: 2026-10-31T18:00:00+02:00: the systemd unit of this installation's service $name (daemon, playwright): nfn-<name>-<the app's user> (the owner of app/, as

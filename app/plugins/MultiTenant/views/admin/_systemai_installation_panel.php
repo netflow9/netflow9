@@ -30,7 +30,7 @@ $num = fn($n) => rtrim(rtrim(number_format($n, 2, '.', ''), '0'), '.');
 	<?php foreach(array_unique($models) as $i => $model):
 	    $s = $system && $model === $system->model ? $system : (object)[ 'model' => $model ];
 	    $r = SystemAiWallet::ratesOf($s, $table);
-	    $p = SystemAi::pricesOf($s);
+	    $p = \util\AiPrices::of($s);
 	    $margin = $r && $p && $p[0] > 0 ? round(($r[0] * $unit / $p[0] - 1) * 100) . '%' : '';
 	?>
 	    <tr>

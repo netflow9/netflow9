@@ -84,6 +84,63 @@ class Plugin {
 	    ],
 	]);
 
+	//CLD: 2026-10-31T22:00:00+02:00: the Assistant's System provider (the core's util\AssistantSystem): the System AI, while the option system_ai is on (asked each time: the check
+	//suite turns it off); the core no longer uses this plugin's classes
+	\V::app()->hooks->addHook('assistant:system-provider', function(\ArrayObject $box) {
+	    if (self::systemAi())
+		$box['provider'] = new util\AssistantProvider();
+	});
+	//CLD: 2026-10-31T22:00:00+02:00: the installation's services (the core's util\Services, Settings → Services) are the super-admins' (with 2FA): who may see them, the page's check
+	\V::app()->hooks->addHook('services:admin', function(\ArrayObject $box) {
+	    $box['allowed'] = fn() => self::isAdmin();
+	    $box['require'] = fn() => self::require();
+	});
+
+	//CLD: 2026-10-31T22:00:00+02:00: the sign-up's system emails, whatever the option (only data; its checks use them)
+	//the system emails of the sign-up (util\EmailSend::system)
+	//  signup_confirm   the link that confirms a sign-up (vars: link)
+	//  signup_exists    a sign-up asked for an address that already has an account (vars: email, login)
+	\data\SysEmails::$data += [
+	    'signup_confirm' => [
+		'subject' => 'Confirm your email for {{ app }}',
+		'email' => [
+		    'preheader' => 'One click and your {{ app }} account is ready',
+		    'blocks' => [
+			[
+			    'type' => 'html',
+			    'html' => '<h1>Welcome to {{ app }}</h1>'
+			    . '<p>Confirm your email address to create your account. The link works once, for 24 hours.</p>'
+			    . '<p><a href="{{ link }}"><strong>Confirm my email address</strong></a></p>'
+			    . '<p style="color: #555555">If the link does not open, copy this address into your browser:<br>{{ link }}</p>'
+			    . '<p style="color: #555555">You did not ask for an account? Ignore this email: nothing is created.</p>'
+			],
+		    ],
+		],
+	    ],
+	    'signup_exists' => [
+		'subject' => 'You already have a {{ app }} account',
+		'email' => [
+		    'preheader' => 'Log in with this address',
+		    'blocks' => [
+			[
+			    'type' => 'html',
+			    'html' => '<h1>You already have an account</h1>'
+			    . '<p>Someone, maybe you, asked to create a {{ app }} account with {{ email }}. This address already has one.</p>'
+			    . '<p><a href="{{ login }}"><strong>Log in</strong></a>. Forgot the password? Use "Forgot username or password?" on the login page.</p>'
+			    . '<p style="color: #555555">It was not you? Ignore this email: nothing changed.</p>'
+			],
+		    ],
+		],
+	    ],
+	];
+
+	//CLD: 2026-10-31T22:00:00+02:00: this plugin's checks in the core's check suite (commands\CheckCommand, hook check:suites: systemai, registration; checks.php)
+	if (\V::app()->config('app.mode') != 'web')
+	    \V::app()->hooks->addHook('check:suites', function(\ArrayObject $suites) {
+		foreach(require(__DIR__ . '/checks.php') as $name => $fn)
+		    $suites[$name] = $fn;
+	    });
+
 	//CLD: 2026-10-31T21:00:00+02:00: the sign-up (was the Registration plugin), with the option
 	if (self::options()['registration'])
 	    $this->initRegistration();
@@ -238,43 +295,6 @@ class Plugin {
     //CLD: 2026-10-31T21:00:00+02:00: the sign-up (was plugins\Registration\Plugin's constructor)
 
     private function initRegistration() {
-	//the system emails of the sign-up (util\EmailSend::system)
-	//  signup_confirm   the link that confirms a sign-up (vars: link)
-	//  signup_exists    a sign-up asked for an address that already has an account (vars: email, login)
-	\data\SysEmails::$data += [
-	    'signup_confirm' => [
-		'subject' => 'Confirm your email for {{ app }}',
-		'email' => [
-		    'preheader' => 'One click and your {{ app }} account is ready',
-		    'blocks' => [
-			[
-			    'type' => 'html',
-			    'html' => '<h1>Welcome to {{ app }}</h1>'
-			    . '<p>Confirm your email address to create your account. The link works once, for 24 hours.</p>'
-			    . '<p><a href="{{ link }}"><strong>Confirm my email address</strong></a></p>'
-			    . '<p style="color: #555555">If the link does not open, copy this address into your browser:<br>{{ link }}</p>'
-			    . '<p style="color: #555555">You did not ask for an account? Ignore this email: nothing is created.</p>'
-			],
-		    ],
-		],
-	    ],
-	    'signup_exists' => [
-		'subject' => 'You already have a {{ app }} account',
-		'email' => [
-		    'preheader' => 'Log in with this address',
-		    'blocks' => [
-			[
-			    'type' => 'html',
-			    'html' => '<h1>You already have an account</h1>'
-			    . '<p>Someone, maybe you, asked to create a {{ app }} account with {{ email }}. This address already has one.</p>'
-			    . '<p><a href="{{ login }}"><strong>Log in</strong></a>. Forgot the password? Use "Forgot username or password?" on the login page.</p>'
-			    . '<p style="color: #555555">It was not you? Ignore this email: nothing changed.</p>'
-			],
-		    ],
-		],
-	    ],
-	];
-
 	if (\V::app()->config('app.mode') != 'web')
 	    return;
 

@@ -15,8 +15,6 @@ use util\WorkflowAssistant;
 use models\AssistantSettings;
 use models\AssistantUsage;
 use models\AssistantChat;
-use plugins\MultiTenant\util\SystemAi;
-use plugins\MultiTenant\models\SystemAiWallet;
 
 class AssistantController extends \sys\BaseController {
 
@@ -64,15 +62,17 @@ class AssistantController extends \sys\BaseController {
 	//the account's monthly limit): they limit the request (WorkflowAssistant::$budget, in credits); settled after it (settle)
 	$hold = null;
 	$rates = null;
-	if (WorkflowAssistant::providerOf($settings) === 'system') {
+	//CLD: 2026-10-31T22:00:00+02:00: the provider of a plugin (util\AssistantSystem: its rates, reserve, settle; was the MultiTenant plugin's SystemAiWallet, SystemAi used here)
+	$system = WorkflowAssistant::providerOf($settings) === 'system' ? \util\AssistantSystem::provider() : null;
+	if ($system !== null) {
 	    //CLD: 2026-10-23T10:00:00+03:00: the System AI's credits (plugins\MultiTenant: SystemAiWallet, SystemAi::maxCreditsPerRequest; were AssistantWallet, config assistant.system)
-	    $rates = SystemAiWallet::ratesOf(WorkflowAssistant::resolve($settings));
+	    $rates = $system->rates(WorkflowAssistant::resolve($settings));
 	    if ($rates === null) {
-		\V::app()->log->error('Assistant: no credit rates for the System AI model: set them in plugins/MultiTenant/credit_rates.php');
+		\V::app()->log->error('Assistant: no credit rates for the System AI model (its plugin\'s credit rates)');
 		$resp->sendJSON([ 'error' => 'The Assistant of this installation is not priced yet: ask its administrator' ], true, 503);
 	    }
 	    try {
-		$hold = SystemAiWallet::reserve($wf->aid, SystemAi::maxCreditsPerRequest(), (int)$settings->credit_cap ?: null);
+		$hold = $system->reserve($wf->aid, (int)$settings->credit_cap ?: null);
 	    } catch (\ErrorException $e) {
 		$resp->sendJSON([ 'error' => $e->getMessage() ], true, 503);
 	    }
@@ -103,13 +103,13 @@ class AssistantController extends \sys\BaseController {
 	} catch (\ErrorException $e) {
 	    //CLD: 2026-10-22T14:00:00+03:00: the tokens of a failed request were spent too
 	    $this->addUsage($wf->aid, $assistant);
-	    $this->settle($wf, $hold, $assistant);
+	    $this->settle($system, $wf, $hold, $assistant);
 	    $resp->sendJSON([ 'error' => $e->getMessage() ], true, 502);
 	}
 	$this->addUsage($wf->aid, $assistant);
 	//CLD: 2026-10-22T15:00:00+03:00: System: the credits it used, and those left
 	if ($hold !== null)
-	    [ $result['credits'], $result['credits_left'] ] = $this->settle($wf, $hold, $assistant);
+	    [ $result['credits'], $result['credits_left'] ] = $this->settle($system, $wf, $hold, $assistant);
 	$resp->sendJSON($result);
     }
 
@@ -137,22 +137,11 @@ class AssistantController extends \sys\BaseController {
 
     //CLD: 2026-10-22T15:00:00+03:00: new: System: reservation $hold of workflow $wf's account settled with what $assistant used (nothing when no model answered: the reservation is
     //freed) => [ credits charged, credits left ]
-    private function settle($wf, $hold, $assistant) {
-	if ($hold === null)
+    //CLD: 2026-10-31T22:00:00+02:00: the System provider's settle (util\AssistantSystem; the ledger entry was built here with SystemAiWallet, SystemAi)
+    private function settle($system, $wf, $hold, $assistant) {
+	if ($hold === null || $system === null)
 	    return [ 0, null ];
-	$used = $assistant !== null && array_sum($assistant->usage) ? SystemAiWallet::charge($assistant->credits) : 0;
-	try {
-	    //CLD: 2026-10-23T10:00:00+03:00: + source, model (the System AI's ledger: SystemAiLedger)
-	    $left = SystemAiWallet::settle($wf->aid, $hold[0], $used, $used ? [
-		'source' => 'assistant', 'model' => (string)(SystemAi::config()->model ?? ''), 'wfid' => (string)$wf->_id, 'uid' => (string)\V::app()->user->_id, 'cost_usd' => round($assistant->cost, 6),
-		'input_tokens' => (int)$assistant->usage['input_tokens'] + (int)$assistant->usage['cache_read_input_tokens'] + (int)$assistant->usage['cache_creation_input_tokens'],
-		'output_tokens' => (int)$assistant->usage['output_tokens'] ] : []);
-	} catch (\Exception $e) {
-	    //the reservation frees itself (SystemAiWallet::HOLD_LEASE); the credits are not taken
-	    \V::app()->log->error("Assistant: {$used} credits of account {$wf->aid} not taken: " . $e->getMessage());
-	    $left = null;
-	}
-	return [ $used, $left ];
+	return $system->settle($wf->aid, $hold, $assistant, (string)$wf->_id);
     }
 
     //CLD: 2026-10-22T14:00:00+03:00: new: what $assistant spent (its last ask()) added to account $aid's month (AssistantUsage); nothing when no model answered
@@ -190,12 +179,10 @@ class AssistantController extends \sys\BaseController {
 	//CLD: 2026-10-22T14:00:00+03:00: + this month's spending, the installation's server (System; null: none)
 	$usage = AssistantUsage::current($settings->aid);
 	$system = AssistantSettings::system();
-	//CLD: 2026-10-22T15:00:00+03:00: System's credits: the wallet, its last entries, the model's rates
-	//CLD: 2026-10-23T10:00:00+03:00: the System AI's (SystemAiWallet); the last entries: on its own page (/MultiTenant/credits/index)
-	//CLD: 2026-10-26T23:49:50+02:00: only when there is a System AI (SystemAiWallet is the SystemAI plugin's)
-	$wallet = $system ? SystemAiWallet::current($settings->aid) : null;
-	$rates = $system ? SystemAiWallet::ratesOf($system) : null;
-	$this->render('settings', compact('settings', 'usage', 'system', 'wallet', 'rates'));
+	//CLD: 2026-10-31T22:00:00+02:00: the System part of the page is the provider's (util\AssistantSystem::settingsHtml: the model, the credits, the monthly limit; was $wallet, $rates
+	//from the MultiTenant plugin's SystemAiWallet)
+	$systemHtml = $system !== null ? \util\AssistantSystem::provider()->settingsHtml($settings) : null;
+	$this->render('settings', compact('settings', 'usage', 'system', 'systemHtml'));
     }
 
     //CLD: 2026-10-20T10:00:00+03:00: the Assistant's settings of the current account; new (not saved) when it has none yet

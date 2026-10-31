@@ -30,7 +30,7 @@ class StepSession {
 	$hold = SystemAiWallet::reserve($aid, SystemAi::maxCreditsPerRequest());
 	if ($hold === null)
 	    throw new \ErrorException('the System AI credits of this account are used up: the monthly allowance comes back on the 1st; ask who manages the account for a top-up');
-	return new self((string)$aid, $hold, $rates, SystemAi::pricesOf($settings), [ 'model' => $model ] + $info);
+	return new self((string)$aid, $hold, $rates, \util\AiPrices::of($settings), [ 'model' => $model ] + $info);
     }
 
     //the credits reserved

@@ -7,7 +7,7 @@
     credit_usd      what 1 credit is worth when sold (USD): top-ups are priced in it, the margins are counted against it
     default_margin  the margin over the provider's price for the models not listed
     models          by model id prefix (the first that matches; longer ones first):
-			margin         over the provider's price (0.30 = 30%): the credits are counted from the price (util\SystemAi::PRICES, or SYSTEM_AI_PRICE_*)
+			margin         over the provider's price (0.30 = 30%): the credits are counted from the price (util\AiPrices::PRICES, or SYSTEM_AI_PRICE_*)
 			in, out, cache_read   or the credits per 1M tokens themselves (when the provider's price is not known, or to keep a model's credits fixed when it changes)
     A cache write is counted as 1.25 x in (as the providers charge it). `./v MultiTenant::credits::rates` shows the rates, their USD value and the margins
 */
