@@ -45,12 +45,13 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-24T10:28:12+03:00: + Google / Microsoft by tier
     //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
     //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
+    //CLD: 2026-11-01T04:00:00+02:00: + veeam (the Veeam credential, steps and event trigger against a fake Veeam Backup & Replication: commands/tests/VeeamTestServer.php)
     //CLD: 2026-11-01T02:00:00+02:00: + access (the account's Data access: the projects' MCP server on / off, what the Assistant may read)
     //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
     //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -4553,6 +4554,208 @@ class CheckCommand extends \sys\BaseController {
 	    foreach($wfs as $wf)
 		foreach($om->find('WfVersion', [ 'wf' => $wf->_id ]) as $v)
 		    $v->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-01T04:00:00+02:00: Veeam Backup & Replication against a fake server (commands/tests/VeeamTestServer.php; util\Veeam::$testing: http, no address guard): the sign-in (x-api-version,
+    //the token kept, renewed after a 401), the credential's test, the steps' requests (a job by name, repeated filters, waiting for a session, the latest restore point, the
+    //repositories low on space, Instant Recovery), the event trigger (its first check notes the time; the sessions ended since then start runs, once; Run: the newest one)
+    private function suiteVeeam() {
+	$V = \util\Veeam::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$this->check('veeam: the server\'s address without an /api path; lists repeated in the query, booleans as text', [ 'https://vbr:9419', 'resultFilter=Failed&resultFilter=Warning&orderAsc=false' ],
+	    [ $V::baseUrl(' https://vbr:9419/api/v1/ '), $V::query([ 'resultFilter' => [ 'Failed', 'Warning' ], 'orderAsc' => false, 'empty' => '' ]) ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-veeam-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('veeam', 'VeeamTestServer.php', $dir, [ 'VEEAM_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$V::$testing = true;
+	$V::forgetTokens();
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$sessions = fn(array $list) => file_put_contents("{$dir}/sessions.json", json_encode($list));
+	$creds = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function($password) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialVeeam', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Veeam ' . uniqid(),
+		    'serverUrl' => "https://127.0.0.1:{$port}", 'username' => 'backup', 'password' => $password ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('veeam: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->serverUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialVeeam', (string)$c->_id);
+	    };
+	    $cred = $make('secret');
+	    $wrong = $make('nope');
+	    if (!$cred || !$wrong)
+		return;
+	    $thrown = function(\Closure $f) {
+		try {
+		    $f();
+		    return 'no error';
+		} catch (\Throwable $e) {
+		    return $e->getMessage();
+		}
+	    };
+	    $bad = $om->create('CredentialVeeam', [ 'name' => 'x', 'serverUrl' => 'https://vbr:9419/api/v1', 'username' => 'u', 'password' => 'p', 'apiVersion' => '13' ]);
+	    $bad->validates();
+	    //CLD: 2026-11-01T05:00:00+02:00: the Veeam version: one of the releases (VBR 13, 12.0 to 12.3)
+	    $this->check('veeam: the form: an https:// address without a path, a Veeam version of the list; VBR 13 (1.3-rev1) by default', [ [ 'serverUrl', 'apiVersion' ], '1.3-rev1' ],
+		[ array_values(array_intersect([ 'serverUrl', 'apiVersion' ], array_keys((array)$bad->errors()))), (string)$om->create('CredentialVeeam', [])->apiVersion ]);
+
+	    //sign-in, the token kept, a 401 signs in again once
+	    $requests();
+	    $test = $cred->test();
+	    $sent = $requests();
+	    $this->check('veeam: Test: signs in (password grant, x-api-version on every request), reads the server', [
+		'connected to VBR01, Veeam Backup & Replication 13.0.1.1071', [ '/api/oauth2/token', '/api/v1/serverInfo' ], [ '1.3-rev1', '1.3-rev1' ], true, 'Bearer a1' ],
+		[ $test, array_column($sent, 'path'), array_column($sent, 'version'), str_contains((string)$sent[0]['body'], 'grant_type=password') && str_contains((string)$sent[0]['body'], 'username=backup'),
+		$sent[1]['auth'] ?? null ]);
+	    $this->check('veeam: a wrong password: Veeam\'s message', true, str_contains($thrown(fn() => $wrong->test()), 'Invalid username or password'));
+	    $requests();
+	    $cred->client($this->account->_id)->request('GET', '/api/v1/serverInfo');
+	    file_put_contents("{$dir}/revoked", "a1\n");
+	    $cred->client($this->account->_id)->request('GET', '/api/v1/serverInfo');
+	    $this->check('veeam: the token kept between requests; a 401: signed in again once', [ [ 'GET /api/v1/serverInfo', 'GET /api/v1/serverInfo', 'POST /api/oauth2/token', 'GET /api/v1/serverInfo' ], 'Bearer a2' ],
+		[ array_map(fn($r) => $r['method'] . ' ' . $r['path'], $sent = $requests()), end($sent)['auth'] ?? null ]);
+	    //CLD: 2026-11-01T05:00:00+02:00: VBR 12: the API version of each build; a 12.2 server: the version chosen sent, Test names the right one when it differs,
+	    //a request the release does not have: said so
+	    $this->check('veeam: the API version of a build (12.0 to 13; older: none)', [ '1.3-rev1', '1.2-rev1', '1.2-rev0', '1.1-rev2', '1.1-rev1', '1.1-rev0', null ],
+		array_map([ $V, 'versionForBuild' ], [ '13.0.1.1071', '12.3.2.3617', '12.3.0.310', '12.2.0.334', '12.1.0.2131', '12.0.0.1420', '11.0.1.1261' ]));
+	    file_put_contents("{$dir}/release.json", json_encode([ 'versions' => [ '1.1-rev2', '1.1-rev1', '1.1-rev0' ], 'build' => '12.2.0.334' ]));
+	    $V::forgetTokens();
+	    $wrongVersion = $thrown(fn() => $cred->test());
+	    $cred12 = $om->findById('CredentialVeeam', (string)$cred->_id);
+	    $cred12->apiVersion = '1.1-rev2';
+	    $V::forgetTokens();
+	    $requests();
+	    $ok12 = $cred12->test();
+	    $sent12 = array_values(array_unique(array_column($requests(), 'version')));
+	    $missing12 = $thrown(fn() => $cred12->client($this->account->_id)->request('GET', '/api/v1/nothing'));
+	    $this->check('veeam: a VBR 12.2 server: with VBR 13 chosen, Test names 12.2; with 12.2 chosen, 1.1-rev2 sent and no advice; a request it lacks: said so', [
+		true, 'connected to VBR01, Veeam Backup & Replication 12.2.0.334', [ '1.1-rev2' ], true ], [
+		str_contains($wrongVersion, 'this server takes Veeam version "Veeam Backup & Replication 12.2"'), $ok12, $sent12,
+		str_contains($missing12, 'with API version 1.1-rev2: the server\'s release may not have this request') ]);
+	    $cred->apiVersion = '1.3-rev1';
+	    $this->check('veeam: Test names the right version also when the server signs in (a 12.2 server, VBR 12.0 chosen)', true,
+		str_contains((function() use ($cred12) { $c = clone $cred12; $c->apiVersion = '1.1-rev0'; return $c->test(); })(), 'choose Veeam version "Veeam Backup & Replication 12.2"'));
+	    @unlink("{$dir}/release.json");
+	    $V::forgetTokens();
+	    $requests();
+	    $this->check('veeam: a path that is not the API refused before any request', 'not an API path: `/../etc`', $thrown(fn() => $cred->client($this->account->_id)->request('GET', '/../etc')));
+
+	    //the steps
+	    $id = (string)$cred->_id;
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $id, $requests) {
+		$requests();
+		$exe = $this->runFlow("veeam {$fq}", [ $n('m', 'trigger::manual'), $n('v', $fq, $cfg + [ 'credential' => $id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'v'), $e('e2', 'v', 'err', 1) ], $vars);
+		return [ $exe, array_values(array_filter($requests(), fn($r) => $r['path'] !== '/api/oauth2/token')) ];
+	    };
+	    [ $exe, $sent ] = $step('app::veeam-jobs', [ 'operation' => 'start', 'job' => '{{ name }}', 'activeFull' => true, 'variable' => 'run' ], [ 'name' => 'daily vms' ]);
+	    [ $dup, ] = $step('app::veeam-jobs', [ 'operation' => 'start', 'job' => 'Copy' ]);
+	    $this->check('veeam: Jobs start: the job by name (any case), an active full; the session started; a name of two jobs: the error output', [
+		[ 'GET /api/v1/jobs', 'POST /api/v1/jobs/11111111-1111-1111-1111-111111111111/start' ], [ 'performActiveFull' => true ], 'aaaaaaaa-0000-0000-0000-111111111111', 'error', true ], [
+		array_map(fn($r) => $r['method'] . ' ' . $r['path'], $sent), json_decode((string)($sent[1]['body'] ?? ''), true), $exe?->getVariable('run')['id'] ?? null, $dup?->getVariable('route'),
+		str_contains((string)self::logLine($dup, 'Veeam Jobs start: '), 'several jobs are named `Copy`') ]);
+	    $sessions([]);
+	    [ $exe, $sent ] = $step('app::veeam-sessions', [ 'operation' => 'list', 'job' => '22222222-2222-2222-2222-222222222222', 'results' => [ 'Failed', 'Warning' ], 'since' => '2026-10-01T00:00:00Z' ]);
+	    $this->check('veeam: Sessions list: newest first, the job, the results (repeated), created since', [ [ 'CreationTime' ], [ 'false' ], [ '22222222-2222-2222-2222-222222222222' ], [ 'Failed', 'Warning' ],
+		[ '2026-10-01T00:00:00Z' ] ], [ $sent[0]['query']['orderColumn'] ?? null, $sent[0]['query']['orderAsc'] ?? null, $sent[0]['query']['jobIdFilter'] ?? null,
+		$sent[0]['query']['resultFilter'] ?? null, $sent[0]['query']['createdAfterFilter'] ?? null ]);
+	    $orig = \models\node\NodeAppVeeamSessions::POLL;
+	    [ $exe, $sent ] = $step('app::veeam-sessions', [ 'operation' => 'wait', 'session' => '{{ run }}', 'timeout' => 40, 'variable' => 'done' ],
+		[ 'run' => [ 'id' => 'eeeeeeee-0000-0000-0000-000000000001' ] ]);
+	    $this->check('veeam: Sessions wait: read until it has stopped (the session from an object\'s id)', [ 'end', 3, 'Stopped', 'Success' ],
+		[ $exe?->state, count($sent), $exe?->getVariable('done')['state'] ?? null, $exe?->getVariable('done')['result']['result'] ?? null ]);
+	    [ $ok, ] = $step('app::veeam-backups', [ 'operation' => 'latest', 'machine' => 'web01', 'maxAgeHours' => 24, 'variable' => 'b' ]);
+	    [ $none, $sent ] = $step('app::veeam-backups', [ 'operation' => 'latest', 'machine' => 'db01', 'variable' => 'b' ]);
+	    $this->check('veeam: Backups latest: a recent restore point (2 h); none: found false, not an error; asked newest first, one', [
+		[ true, 2.0, true ], [ false, false, 'end' ], [ 'web01', 'db01' ][1], [ '1' ] ], [
+		[ $ok?->getVariable('b')['found'] ?? null, $ok?->getVariable('b')['ageHours'] ?? null, $ok?->getVariable('b')['recent'] ?? null ],
+		[ $none?->getVariable('b')['found'] ?? null, $none?->getVariable('b')['recent'] ?? null, $none?->state ], $sent[0]['query']['nameFilter'][0] ?? null, $sent[0]['query']['limit'] ?? null ]);
+	    [ $exe, ] = $step('app::veeam-infrastructure', [ 'operation' => 'repositories', 'lowFree' => 10, 'variable' => 'repos' ]);
+	    $this->check('veeam: Infrastructure repositories: the free percentage, only those under 10%', [ 1, 'Repo A', 5.0 ],
+		[ $exe?->getVariable('repos')['count'] ?? null, $exe?->getVariable('repos')['items'][0]['name'] ?? null, $exe?->getVariable('repos')['items'][0]['freePercent'] ?? null ]);
+	    [ $exe, $sent ] = $step('app::veeam-restore', [ 'operation' => 'instant', 'restorePoint' => '{{ b.restorePoint }}', 'powerUp' => false, 'reason' => 'Restore test',
+		'params' => '{"nicsEnabled": false}', 'variable' => 'mount' ], [ 'b' => [ 'restorePoint' => [ 'id' => 'BBBBBBBB-0000-0000-0000-000000000001' ] ] ]);
+	    $this->check('veeam: Restore instant: the restore point from an object, to its original place, Other parameters in the body; the mount', [
+		[ 'restorePointId' => 'bbbbbbbb-0000-0000-0000-000000000001', 'type' => 'OriginalLocation', 'powerUp' => false, 'reason' => 'Restore test', 'nicsEnabled' => false ],
+		'dddddddd-0000-0000-0000-000000000001' ], [ json_decode((string)($sent[0]['body'] ?? ''), true), $exe?->getVariable('mount')['id'] ?? null ]);
+	    [ $exe, $sent ] = $step('app::veeam-api', [ 'method' => 'GET', 'path' => '/api/v1/jobs', 'query' => '{"nameFilter": "{{ pattern }}"}', 'variable' => 'raw' ], [ 'pattern' => 'Copy*' ]);
+	    [ $err, ] = $step('app::veeam-api', [ 'method' => 'GET', 'path' => '/api/v1/nothing' ]);
+	    $this->check('veeam: API: any path, a query with expressions; Veeam\'s error: the error output with its message', [ 2, 'error', true ],
+		[ count($exe?->getVariable('raw')['data'] ?? []), $err?->getVariable('route'), str_contains((string)self::logLine($err, 'Veeam API request: '), 'No such resource') ]);
+
+	    //the event trigger
+	    $wf = $this->workflow('veeam event', [ $n('t', 'trigger::veeam', [ 'credential' => $id, 'results' => [ 'Failed', 'Warning' ], 'job' => '', 'runs' => 'each', 'variable' => 'ev',
+		'mode' => 'interval', 'every' => 5, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ev.result.result }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('veeam: the event trigger\'s workflow is valid; checked every 5 minutes by default', [ true, true ], [ $wf->validates(),
+		\models\node\NodeTriggerVeeam::matches([ 'mode' => 'interval', 'every' => 5, 'every_unit' => 'minutes' ], new \DateTimeImmutable('2026-11-01 10:05:00')) ]);
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $T = \models\node\NodeTriggerVeeam::class;
+	    $node = $wf->nodes['t'];
+	    [ $data0, $none0 ] = $T::check($wf, $node, []);
+	    $since = $data0['since'] ?? '';
+	    $at = fn($s) => gmdate('Y-m-d\TH:i:s\Z', strtotime($since) + $s);
+	    $sessions([
+		[ 'id' => 'f0000000-0000-0000-0000-000000000000', 'jobId' => '11111111-1111-1111-1111-111111111111', 'name' => 'Before', 'state' => 'Stopped', 'endTime' => $at(-60), 'creationTime' => $at(-120), 'result' => [ 'result' => 'Failed' ] ],
+		[ 'id' => 'f0000000-0000-0000-0000-000000000001', 'jobId' => '11111111-1111-1111-1111-111111111111', 'name' => 'Daily VMs', 'state' => 'Stopped', 'endTime' => $at(60), 'creationTime' => $at(1), 'result' => [ 'result' => 'Failed', 'message' => 'disk full' ] ],
+		[ 'id' => 'f0000000-0000-0000-0000-000000000002', 'jobId' => '22222222-2222-2222-2222-222222222222', 'name' => 'Copy', 'state' => 'Stopped', 'endTime' => $at(120), 'creationTime' => $at(2), 'result' => [ 'result' => 'Warning' ] ],
+		[ 'id' => 'f0000000-0000-0000-0000-000000000003', 'jobId' => '22222222-2222-2222-2222-222222222222', 'name' => 'Copy', 'state' => 'Stopped', 'endTime' => $at(120), 'creationTime' => $at(3), 'result' => [ 'result' => 'Success' ] ],
+		[ 'id' => 'f0000000-0000-0000-0000-000000000004', 'jobId' => '11111111-1111-1111-1111-111111111111', 'name' => 'Daily VMs', 'state' => 'Working', 'creationTime' => $at(4), 'result' => [ 'result' => 'None' ] ],
+	    ]);
+	    $requests();
+	    [ $data1, $first ] = $T::check($wf, $node, $data0);
+	    $started = array_merge($started, $first);
+	    $q = array_values(array_filter($requests(), fn($r) => $r['path'] === '/api/v1/sessions'))[0]['query'] ?? [];
+	    [ $data2, $second ] = $T::check($wf, $node, $data1);
+	    $started = array_merge($started, $second);
+	    $this->check('veeam: event: the first check only notes the time; then the sessions ended since, stopped, Failed / Warning, oldest first: one run each; checked again: none', [
+		[], true, [ 'Failed', 'Warning' ], [ 'Stopped' ], [ 'EndTime' ], [ [ 'Failed', 'Daily VMs' ], [ 'Warning', 'Copy' ] ], $at(120), [ 'f0000000-0000-0000-0000-000000000002' ], [] ], [
+		$none0, $since !== '', $q['resultFilter'] ?? null, $q['stateFilter'] ?? null, $q['orderColumn'] ?? null,
+		array_map(fn($x) => [ $x->getVariable('ev')['result']['result'] ?? null, $x->getVariable('ev')['name'] ?? null ], $first), $data1['since'] ?? null, $data1['seen'] ?? null, $second ]);
+	    $this->check('veeam: event: the runs are queued for the daemon (new, with a job), at the trigger', [ [ 'new', 'veeam', 1 ], [ 'new', 'veeam', 1 ] ],
+		array_map(fn($x) => [ $x->state, $x->trigger, $om->count('Job', [ 'job_spec' => '\util\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) ], $first));
+	    $lock = \models\TriggerState::acquire($wf, 't');
+	    $this->check('veeam: event: a check while another holds the step is skipped', [ true, null ], [ $lock !== null, \models\node\NodeTriggerVeeam::runScheduled($wf, $node, '') ]);
+	    $lock?->release();
+	    $now = $T::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('veeam: event: Run in the designer: the newest matching session', [ 1, 'Copy', 'Warning' ], [ count($now['executions'] ?? []),
+		($now['executions'][0] ?? null)?->getVariable('ev')['name'] ?? null, ($now['executions'][0] ?? null)?->getVariable('ev')['result']['result'] ?? null ]);
+	} finally {
+	    $V::$testing = false;
+	    $V::forgetTokens();
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
 	    proc_terminate($proc);
 	    proc_close($proc);
 	    foreach(glob("{$dir}/*") as $f)

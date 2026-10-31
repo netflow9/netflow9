@@ -35,6 +35,8 @@ class Boot {
 
 	//the FTP / SFTP step's state (files taken) goes with its workflow
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\RemoteFileState::class, 'beforeWorkflowDelete' ]);
+	//CLD: 2026-11-01T04:00:00+02:00: a polling trigger's state (e.g. Veeam event) goes with its workflow
+	\V::app()->hooks->addHook('workflow:before-delete', [ \models\TriggerState::class, 'beforeWorkflowDelete' ]);
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\WfTask::class, 'beforeWorkflowDelete' ]);
 	//CLD: 2026-10-26T23:49:50+02:00: the Assistant's conversation goes with its workflow (was the Assistant plugin's)
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\AssistantChat::class, 'beforeWorkflowDelete' ]);
