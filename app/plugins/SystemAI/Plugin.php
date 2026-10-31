@@ -82,8 +82,9 @@ class Plugin {
 	if (\V::app()->config('app.mode') != 'web')
 	    return;
 
+	//CLD: 2026-10-31T12:04:10+02:00: only when the System AI is configured (util\SystemAi::available: SYSTEM_AI_* in app.env)
 	\V::app()->hooks->addHook('layout:settings-menu', function() {
-	    if (\V::app()->user->can('Account::update'))
+	    if (\V::app()->user->can('Account::update') && util\SystemAi::available())
 		echo '<a href="' . \V::app()->createUrl('/SystemAI/credits/index') . '" class="nav-link"><i class="bi bi-coin"></i> AI credits</a>';
 	});
     }
