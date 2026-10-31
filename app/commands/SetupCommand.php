@@ -2,15 +2,29 @@
 
 namespace commands;
 
-//CLD: 2026-10-29T02:00:00+02:00: new: the initial setup from the command line (install.sh in the app's folder runs it as the app's user), the same as the browser's (controllers\SetupController):
-//only while app.env is missing (app/v.php: get_setup_console_config)
-//  ../v setup::checks      the prerequisites (util\Setup::checks); exits with 1 when a required one fails
-//  ../v setup::validate    checks the answers (JSON on stdin, as setup::install) and the database, installs nothing; exits with 1 when one is not valid
-//  ../v setup::install     reads the answers as JSON on stdin (no secret in the arguments):
-//                            { "server": { base_url, mongo_uri, mongo_db, smtp_host, smtp_port, smtp_secure, smtp_username, smtp_password, mail_from },
-//                              "owner": { account_name, username, email, firstname, lastname, password } }
-//                          checks them as the browser's forms (models\setup\ServerForm, AccountForm), then the prerequisites and the database (it must have no account),
-//                          and installs (util\Setup::install: the indexes, the account and its owner, app.env); exits with 1 when something fails
+/*
+
+    the initial setup from the command line (install.sh in the app's folder runs it as the app's user),
+    the same as the browser's (controllers\SetupController):
+
+    only while app.env is missing (app/v.php: get_setup_console_config)
+	../v setup::checks      the prerequisites (util\Setup::checks); exits with 1 when a required one fails
+	../v setup::validate    checks the answers (JSON on stdin, as setup::install) and the database, installs nothing; exits with 1 when one is not valid
+	../v setup::install     reads the answers as JSON on stdin (no secret in the arguments):
+            {
+        	"server": { base_url, mongo_uri, mongo_db, smtp_host, smtp_port, smtp_secure, smtp_username, smtp_password, mail_from },
+                "owner": { account_name, username, email, firstname, lastname, password }
+            }
+        checks them as the browser's forms (models\setup\ServerForm, AccountForm), then the prerequisites and the database (it must have no account),
+        and installs (util\Setup::install: the indexes, the account and its owner, app.env);
+
+        exits with 1 when something fails
+
+    once set up (app.env exists)
+	../v setup::indexes     creates the indexes every model declares (static $indexes of its class, plugins' models included);
+				creating an index that exists does nothing, so it can be run again (e.g. after an update);
+				the indexes are made by ObjectManager::createIndexes (shared with util\Setup::install); exits with 1 when one fails
+*/
 class SetupCommand extends \sys\BaseController {
 
     public function checks($req = null, $resp = null) {
@@ -44,6 +58,26 @@ class SetupCommand extends \sys\BaseController {
 	    $this->fail((string)$error);
 	echo "set up: account {$owner['account_name']}, owner {$user->username} ({$user->email}); app.env written\n";
 	exit(0);
+    }
+
+    //CLD: 2026-10-31T12:00:00+02:00: moved here from SeedCommand::indexes (was `../v seed::indexes`); only once the app is set up (setup::install creates them itself)
+    public function indexes($req = null, $resp = null) {
+	if (\V::app()->config('app.setup'))
+	    $this->fail('the app is not set up yet (app.env is missing): setup::install creates the indexes');
+	$failed = 0;
+	$collections = [];
+	foreach(\V::app()->om->createIndexes() as $r) {
+	    $collections[strtok($r['label'], ' ')] = true;
+	    if ($r['error'] === null) {
+		echo "ok    {$r['label']} ({$r['name']})\n";
+	    } else {
+		$failed++;
+		echo "FAIL  {$r['label']}: {$r['error']}\n";
+	    }
+	}
+	echo count($collections) . " collections" . ($failed ? ", {$failed} failed" : '') . "\n";
+	if ($failed)
+	    exit(1);
     }
 
     //the answers on stdin, checked as the browser's forms: [ the server's values, the owner ] (util\Setup::install's arguments); stops when they are not valid
