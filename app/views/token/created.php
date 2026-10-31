@@ -5,15 +5,24 @@ $url = \V::app()->createAbsoluteUrl('/mcp');
 $config = json_encode([ 'mcpServers' => [ 'netflow9' => [ 'type' => 'http', 'url' => $url, 'headers' => [ 'Authorization' => 'Bearer ' . $secret ] ] ] ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 $copy = fn($id) => "<button type='button' class='btn btn-sm btn-outline-secondary' onclick=\"navigator.clipboard.writeText(document.getElementById('{$id}').textContent); this.innerHTML='<i class=\\'bi bi-check2\\'></i>'\" title='Copy'><i class='bi bi-clipboard'></i></button>";
 
-$body = "
-<div class='alert alert-warning py-2'><i class='bi bi-exclamation-triangle me-1'></i>Copy the token now: it is not shown again.</div>
-<label class='form-label mb-1'>Token <span class='text-muted'>(" . \V::app()->html->escape($token->name) . ")</span></label>
-<div class='d-flex gap-2 align-items-center mb-3'><code id='mcp-token-value' class='flex-fill p-2 border rounded text-break user-select-all'>" . \V::app()->html->escape($secret) . "</code>" . $copy('mcp-token-value') . "</div>
-<label class='form-label mb-1'>Server URL</label>
-<div class='d-flex gap-2 align-items-center mb-3'><code id='mcp-token-url' class='flex-fill p-2 border rounded'>" . \V::app()->html->escape($url) . "</code>" . $copy('mcp-token-url') . "</div>
-<label class='form-label mb-1'>Client configuration <span class='text-muted'>(e.g. Claude Code <code>.mcp.json</code>)</span></label>
-<div class='d-flex gap-2 align-items-start'><pre id='mcp-token-config' class='flex-fill p-2 border rounded mb-0 small' style='white-space: pre-wrap; word-break: break-all'>" . \V::app()->html->escape($config) . "</pre>" . $copy('mcp-token-config') . "</div>
-";
+$bodyTpl = '
+<div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle me-1"></i>Copy the token now: it is not shown again.</div>
+<label class="form-label mb-1">Token <span class="text-muted">({:name})</span></label>
+<div class="d-flex gap-2 align-items-center mb-3"><code id="mcp-token-value" class="flex-fill p-2 border rounded text-break user-select-all">{:secret}</code>{:copySecret}</div>
+<label class="form-label mb-1">Server URL</label>
+<div class="d-flex gap-2 align-items-center mb-3"><code id="mcp-token-url" class="flex-fill p-2 border rounded">{:url}</code>{:copyUrl}</div>
+<label class="form-label mb-1">Client configuration <span class="text-muted">(e.g. Claude Code <code>.mcp.json</code>)</span></label>
+<div class="d-flex gap-2 align-items-start"><pre id="mcp-token-config" class="flex-fill p-2 border rounded mb-0 small" style="white-space: pre-wrap; word-break: break-all">{:config}</pre>{:copyConfig}</div>
+';
+$body = \util\VString::insert($bodyTpl, [
+    'name' => \V::app()->html->escape($token->name),
+    'secret' => \V::app()->html->escape($secret),
+    'copySecret' => $copy('mcp-token-value'),
+    'url' => \V::app()->html->escape($url),
+    'copyUrl' => $copy('mcp-token-url'),
+    'config' => \V::app()->html->escape($config),
+    'copyConfig' => $copy('mcp-token-config'),
+]);
 
 $modal = new \sys\html\Modal([
     'title' => 'Token created',

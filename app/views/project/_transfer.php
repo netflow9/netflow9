@@ -11,20 +11,51 @@ $tables = array_filter(iterator_to_array($om->find('DataTableDef', $inProject, [
 $formId = 'transfer-export-' . uniqid();
 
 //a group of checkboxes `$name[]`, with one to check them all; $extra($o): more after the label
-$group = function($title, $name, array $items, $label, $extra = null) use ($formId) {
-    $html = "<div class='col-12 col-lg-4'><div class='border rounded p-2 h-100'>"
-	. "<div class='form-check border-bottom pb-1 mb-1'><input class='form-check-input' type='checkbox' id='{$formId}-{$name}-all'"
-	. " onchange=\"this.closest('.border').querySelectorAll('input[name=&quot;{$name}[]&quot;]').forEach(c => c.checked = this.checked)\"" . ($items ? '' : ' disabled') . ">"
-	. "<label class='form-check-label fw-semibold' for='{$formId}-{$name}-all'>{$title} (" . count($items) . ")</label></div>";
-    if (!$items)
-	$html .= "<div class='small text-body-secondary'>None in this project</div>";
-    foreach($items as $o) {
-	$id = "{$formId}-{$name}-" . $o->_id;
-	$html .= "<div class='d-flex align-items-center gap-2'><div class='form-check flex-fill text-truncate'><input class='form-check-input' type='checkbox' name='{$name}[]' value='" . $o->_id . "' id='{$id}'>"
-	    . "<label class='form-check-label' for='{$id}'>" . $label($o) . "</label></div>" . ($extra ? $extra($o) : '') . "</div>";
-    }
-    return $html . '</div></div>';
+$groupTpl = '
+<div class="col-12 col-lg-4"><div class="border rounded p-2 h-100">
+    <div class="form-check border-bottom pb-1 mb-1">
+	<input class="form-check-input" type="checkbox" id="{:formId}-{:name}-all"
+	    onchange="this.closest(\'.border\').querySelectorAll(\'input[name=&quot;{:name}[]&quot;]\').forEach(c => c.checked = this.checked)"{:disabled}>
+	<label class="form-check-label fw-semibold" for="{:formId}-{:name}-all">{:title} ({:count})</label>
+    </div>
+    {:items}
+</div></div>
+';
+$itemTpl = '
+<div class="d-flex align-items-center gap-2">
+    <div class="form-check flex-fill text-truncate">
+	<input class="form-check-input" type="checkbox" name="{:name}[]" value="{:value}" id="{:id}">
+	<label class="form-check-label" for="{:id}">{:label}</label>
+    </div>
+    {:extra}
+</div>
+';
+$group = function($title, $name, array $items, $label, $extra = null) use ($formId, $groupTpl, $itemTpl) {
+    $html = $items ? '' : '<div class="small text-body-secondary">None in this project</div>';
+    foreach($items as $o)
+	$html .= \util\VString::insert($itemTpl, [
+	    'name' => $name,
+	    'value' => (string)$o->_id,
+	    'id' => "{$formId}-{$name}-" . $o->_id,
+	    'label' => $label($o),
+	    'extra' => $extra ? $extra($o) : '',
+	]);
+    return \util\VString::insert($groupTpl, [
+	'formId' => $formId,
+	'name' => $name,
+	'disabled' => $items ? '' : ' disabled',
+	'title' => $title,
+	'count' => count($items),
+	'items' => $html,
+    ]);
 };
+$typeTpl = '{:name} <span class="small text-body-secondary">{:type}</span>';
+$rowsTpl = '
+<div class="form-check form-check-inline small me-0 flex-shrink-0">
+    <input class="form-check-input" type="checkbox" name="rows[]" value="{:value}" id="{:id}">
+    <label class="form-check-label" for="{:id}">with rows</label>
+</div>
+';
 
 echo '<div class="w-100 mt-4"></div>';
 ?>
@@ -36,11 +67,14 @@ echo '<div class="w-100 mt-4"></div>';
     <div class="row g-3 mb-3">
 	<?php
 	echo $group('Workflows', 'workflows', $workflows, fn($o) => $o->schema['icon']->display() . ' ' . \V::app()->html->escape((string)$o->name));
-	echo $group('Credentials & variables', 'credentials', $credentials, fn($o) => \V::app()->html->escape((string)$o->name)
-	    . " <span class='small text-body-secondary'>" . \V::app()->html->escape($o::$label) . '</span>');
-	echo $group('Data tables', 'datatables', $tables, fn($o) => \V::app()->html->escape((string)$o->name), fn($o) => "<div class='form-check form-check-inline small me-0 flex-shrink-0'>"
-	    . "<input class='form-check-input' type='checkbox' name='rows[]' value='" . $o->_id . "' id='{$formId}-rows-" . $o->_id . "'>"
-	    . "<label class='form-check-label' for='{$formId}-rows-" . $o->_id . "'>with rows</label></div>");
+	echo $group('Credentials & variables', 'credentials', $credentials, fn($o) => \util\VString::insert($typeTpl, [
+	    'name' => \V::app()->html->escape((string)$o->name),
+	    'type' => \V::app()->html->escape($o::$label),
+	]));
+	echo $group('Data tables', 'datatables', $tables, fn($o) => \V::app()->html->escape((string)$o->name), fn($o) => \util\VString::insert($rowsTpl, [
+	    'value' => (string)$o->_id,
+	    'id' => "{$formId}-rows-" . $o->_id,
+	]));
 	?>
     </div>
     <div class="form-check mb-3">

@@ -23,7 +23,7 @@ $exportedAt = \util\Format::datetime((string)($bundle['exported_at'] ?? ''));
     <h5 class="mb-1">Import <?= \V::app()->html->escape((string)$meta['name']) ?></h5>
     <p class="small text-body-secondary mb-3">
 	<?= $exportedAt !== '' ? 'Exported ' . \V::app()->html->escape($exportedAt) : 'Export' ?>
-	<?= isset($bundle['source']['project']) ? ' from project <b>' . \V::app()->html->escape((string)$bundle['source']['project']) . '</b>' : '' ?>
+	<?= isset($bundle['source']['project']) ? \util\VString::insert(' from project <b>{:project}</b>', [ 'project' => \V::app()->html->escape((string)$bundle['source']['project']) ]) : '' ?>
 	<?= isset($bundle['source']['url']) ? ' of ' . \V::app()->html->escape((string)$bundle['source']['url']) : '' ?>;
 	<?= !empty($bundle['secrets']) ? 'with the credentials\' secrets.' : 'without the credentials\' secrets.' ?>
 	Items are matched to this project's by name. Nothing changes until you choose <b>Import</b>.

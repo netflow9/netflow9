@@ -12,20 +12,32 @@ $noteInput = '
 
 if ($errors) {
     $title = 'Cannot publish';
-    $items = implode('', array_map(fn($i) => '<li>' . \V::app()->html->escape($i['message']) . '</li>', $errors));
-    $body = "<div class='alert alert-danger mb-0'>The " . ($source ? \V::app()->html->escape($source) : 'saved draft') . " has errors (steps' settings or connections): fix them and save it first.<ul class='mb-0 mt-2'>{$items}</ul></div>";
+    $items = implode('', array_map(fn($i) => \util\VString::insert('<li>{:message}</li>', [ 'message' => \V::app()->html->escape($i['message']) ]), $errors));
+    $body = \util\VString::insert('<div class="alert alert-danger mb-0">The {:what} has errors (steps\' settings or connections): fix them and save it first.<ul class="mb-0 mt-2">{:items}</ul></div>', [
+	'what' => $source ? \V::app()->html->escape($source) : 'saved draft',
+	'items' => $items,
+    ]);
     $footer = "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Close</button>";
 } elseif ($reuse) {
     $title = 'Publish ' . \V::app()->html->escape($active);
-    $body = "<p class='mb-0'>The draft has not changed since <b>" . \V::app()->html->escape($active) . "</b>: it is published again (no new version). Its trigger starts runs of this version.</p>";
+    $body = \util\VString::insert('<p class="mb-0">The draft has not changed since <b>{:active}</b>: it is published again (no new version). Its trigger starts runs of this version.</p>', [
+	'active' => \V::app()->html->escape($active),
+    ]);
     $footer = "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button><button type='submit' class='btn btn-success'>Publish</button>";
 } elseif ($source) {
     $title = 'Publish ' . \V::app()->html->escape($source) . ' again';
-    $body = "<p class='mb-0'>The steps of <b>" . \V::app()->html->escape($source) . "</b> are published as <b>v{$next}</b>, and its trigger starts runs of that version. The draft is not changed.</p>" . $noteInput;
+    $body = \util\VString::insert('<p class="mb-0">The steps of <b>{:source}</b> are published as <b>v{:next}</b>, and its trigger starts runs of that version. The draft is not changed.</p>{:note}', [
+	'source' => \V::app()->html->escape($source),
+	'next' => $next,
+	'note' => $noteInput,
+    ]);
     $footer = "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button><button type='submit' class='btn btn-success'>Publish as v{$next}</button>";
 } else {
     $title = "Publish the draft as v{$next}";
-    $body = "<p class='mb-0'>The saved draft becomes <b>v{$next}</b>, and its trigger starts runs of this version. Later changes to the draft are not live until you publish again.</p>" . $noteInput;
+    $body = \util\VString::insert('<p class="mb-0">The saved draft becomes <b>v{:next}</b>, and its trigger starts runs of this version. Later changes to the draft are not live until you publish again.</p>{:note}', [
+	'next' => $next,
+	'note' => $noteInput,
+    ]);
     $footer = "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button><button type='submit' class='btn btn-success'>Publish v{$next}</button>";
 }
 

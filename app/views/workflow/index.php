@@ -521,26 +521,41 @@ $formOptions = [
 	$versionsUrl = \V::app()->createUrl('/workflow/versions', [ 'id' => $id ]);
 	if ($viewVersion) {
 	    $isActive = $isPublished && (string)$activeVersion->_id === (string)$viewVersion->_id;
-	    echo "<span class='badge text-bg-warning me-2'><i class='bi bi-eye me-1'></i>Viewing " . \V::app()->html->escape($viewVersion) . ($isActive ? ' (published)' : '') . ", read-only</span>";
-	    echo "<a href='" . \V::app()->createUrl('/workflow/index', [ 'id' => $id ]) . "' class='btn btn-sm btn-outline-secondary py-0 me-1'>Back to the draft</a>";
+	    $q = [ 'id' => $id, 'version' => (string)$viewVersion->_id ];
+	    $linkTpl = '<a href="{:href}" class="btn btn-sm {:class} py-0 me-1"{:attrs}>{:label}</a>';
+	    echo \util\VString::insert('<span class="badge text-bg-warning me-2"><i class="bi bi-eye me-1"></i>Viewing {:version}{:active}, read-only</span>', [
+		'version' => \V::app()->html->escape($viewVersion),
+		'active' => $isActive ? ' (published)' : '',
+	    ]);
+	    echo \util\VString::insert($linkTpl, [ 'href' => \V::app()->createUrl('/workflow/index', [ 'id' => $id ]), 'class' => 'btn-outline-secondary', 'attrs' => '', 'label' => 'Back to the draft' ]);
 	    //CLD: 2026-10-11T19:47:51+03:00: Publish again: $canPublish, Copy into the draft: $canUpdate
 	    if ($canPublish && !$isActive)
-		echo "<a href='" . \V::app()->createUrl('/workflow/publish', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-success py-0 me-1'>Publish again</a>";
+		echo \util\VString::insert($linkTpl, [ 'href' => \V::app()->createUrl('/workflow/publish', $q), 'class' => 'btn-outline-success', 'attrs' => '', 'label' => 'Publish again' ]);
 	    if ($canUpdate)
-		echo "<a href='" . \V::app()->createUrl('/workflow/restore', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-primary py-0 me-1' data-method='post' data-confirm='Replace the draft with the steps of " . \V::app()->html->escape($viewVersion) . "?'>Copy into the draft</a>";
+		echo \util\VString::insert($linkTpl, [
+		    'href' => \V::app()->createUrl('/workflow/restore', $q),
+		    'class' => 'btn-outline-primary',
+		    'attrs' => \util\VString::insert(' data-method="post" data-confirm="Replace the draft with the steps of {:v}?"', [ 'v' => \V::app()->html->escape($viewVersion) ]),
+		    'label' => 'Copy into the draft',
+		]);
 	    if ($canDuplicate)
-		echo "<a href='" . \V::app()->createUrl('/workflow/duplicate', [ 'id' => $id, 'version' => (string)$viewVersion->_id ]) . "' class='btn btn-sm btn-outline-secondary py-0 me-1' data-method='post' data-confirm='Create a new workflow from " . \V::app()->html->escape($viewVersion) . "?'>Duplicate</a>";
-	    echo "<a href='{$versionsUrl}' class='btn btn-sm btn-outline-secondary py-0 me-1'>Versions</a>";
+		echo \util\VString::insert($linkTpl, [
+		    'href' => \V::app()->createUrl('/workflow/duplicate', $q),
+		    'class' => 'btn-outline-secondary',
+		    'attrs' => \util\VString::insert(' data-method="post" data-confirm="Create a new workflow from {:v}?"', [ 'v' => \V::app()->html->escape($viewVersion) ]),
+		    'label' => 'Duplicate',
+		]);
+	    echo \util\VString::insert($linkTpl, [ 'href' => $versionsUrl, 'class' => 'btn-outline-secondary', 'attrs' => '', 'label' => 'Versions' ]);
 	} else {
 	    if ($isPublished)
-		[ $btnClass, $label, $tip ] = [ 'btn-success', '<i class="bi bi-broadcast me-1"></i>' . \V::app()->html->escape($activeVersion) . ' published', 'Its trigger starts runs of ' . \V::app()->html->escape($activeVersion) ];
+		[ $btnClass, $label, $tip ] = [ 'btn-success', \util\VString::insert('<i class="bi bi-broadcast me-1"></i>{:v} published', [ 'v' => \V::app()->html->escape($activeVersion) ]), 'Its trigger starts runs of ' . \V::app()->html->escape($activeVersion) ];
 	    elseif ($activeVersion)
-		[ $btnClass, $label, $tip ] = [ 'btn-outline-secondary', '<i class="bi bi-pause-circle me-1"></i>' . \V::app()->html->escape($activeVersion) . ' unpublished', 'Its trigger does not start runs' ];
+		[ $btnClass, $label, $tip ] = [ 'btn-outline-secondary', \util\VString::insert('<i class="bi bi-pause-circle me-1"></i>{:v} unpublished', [ 'v' => \V::app()->html->escape($activeVersion) ]), 'Its trigger does not start runs' ];
 	    else
 		[ $btnClass, $label, $tip ] = [ 'btn-outline-secondary', '<i class="bi bi-pencil-square me-1"></i>Draft', 'Never published: its trigger does not start runs (Run does)' ];
 	    $baseTip = $tip;
 	    if ($activeVersion)
-		$label .= ' <span class="wf-draft-changed' . ($draftChanged ? '' : ' d-none') . '"><i class="bi bi-dot"></i><span class="btn-label">draft changed</span></span>';
+		$label .= \util\VString::insert(' <span class="wf-draft-changed{:hidden}"><i class="bi bi-dot"></i><span class="btn-label">draft changed</span></span>', [ 'hidden' => $draftChanged ? '' : ' d-none' ]);
 	    if ($draftChanged) {
 		$tip .= '; the draft has changes that are not published';
 	    }
@@ -550,28 +565,51 @@ $formOptions = [
 		//CLD: 2026-10-19T18:05:00+03:00: both items: the draft differs from the version (wf-if-changed) or not (wf-if-same); the one not shown is hidden, the autosave switches them (versions.update)
 		$publishUrl = \V::app()->createUrl('/workflow/publish', [ 'id' => $id ]);
 		$differs = !$activeVersion || $draftChanged;
-		$items .= "<li class='wf-if-changed" . ($differs ? '' : ' d-none') . "'><a class='dropdown-item btn-publish-draft' href='{$publishUrl}'><i class='bi bi-broadcast me-2'></i>Publish the draft as v" . ((int)$wf->version_count + 1) . "&hellip;</a></li>";
+		$publishTpl = '<li class="{:class}"><a class="dropdown-item btn-publish-draft" href="{:href}"><i class="bi bi-broadcast me-2"></i>{:label}</a></li>';
+		$items .= \util\VString::insert($publishTpl, [
+		    'class' => 'wf-if-changed' . ($differs ? '' : ' d-none'),
+		    'href' => $publishUrl,
+		    'label' => 'Publish the draft as v' . ((int)$wf->version_count + 1) . '&hellip;',
+		]);
 		if ($activeVersion) {
 		    if ($isPublished)
-			$items .= "<li class='wf-if-same" . ($differs ? ' d-none' : '') . "'><span class='dropdown-item-text text-muted small'>The draft is published</span></li>";
+			$items .= \util\VString::insert('<li class="wf-if-same{:hidden}"><span class="dropdown-item-text text-muted small">The draft is published</span></li>', [ 'hidden' => $differs ? ' d-none' : '' ]);
 		    else
-			$items .= "<li class='wf-if-same" . ($differs ? ' d-none' : '') . "'><a class='dropdown-item btn-publish-draft' href='{$publishUrl}'><i class='bi bi-broadcast me-2'></i>Publish " . \V::app()->html->escape($activeVersion) . " again</a></li>";
+			$items .= \util\VString::insert($publishTpl, [
+			    'class' => 'wf-if-same' . ($differs ? ' d-none' : ''),
+			    'href' => $publishUrl,
+			    'label' => 'Publish ' . \V::app()->html->escape($activeVersion) . ' again',
+			]);
 		}
 		if ($isPublished)
-		    $items .= "<li><a class='dropdown-item' href='" . \V::app()->createUrl('/workflow/unpublish', [ 'id' => $id ]) . "' data-method='post' data-confirm='Unpublish: its trigger stops starting runs?'><i class='bi bi-pause-circle me-2'></i>Unpublish</a></li>";
-		$items .= "<li><hr class='dropdown-divider'></li>";
+		    $items .= \util\VString::insert('<li><a class="dropdown-item" href="{:href}" data-method="post" data-confirm="Unpublish: its trigger stops starting runs?"><i class="bi bi-pause-circle me-2"></i>Unpublish</a></li>', [
+			'href' => \V::app()->createUrl('/workflow/unpublish', [ 'id' => $id ]),
+		    ]);
+		$items .= '<li><hr class="dropdown-divider"></li>';
 	    }
-	    $items .= "<li><a class='dropdown-item' href='{$versionsUrl}'><i class='bi bi-clock me-2'></i>Versions</a></li>";
+	    $items .= \util\VString::insert('<li><a class="dropdown-item" href="{:href}"><i class="bi bi-clock me-2"></i>Versions</a></li>', [ 'href' => $versionsUrl ]);
 	    if ($canDuplicate)
-		$items .= "<li><a class='dropdown-item btn-duplicate-wf' href='" . \V::app()->createUrl('/workflow/duplicate', [ 'id' => $id ]) . "' data-method='post' data-confirm='Create a new workflow from the saved draft?'><i class='bi bi-copy me-2'></i>Duplicate</a></li>";
+		$items .= \util\VString::insert('<li><a class="dropdown-item btn-duplicate-wf" href="{:href}" data-method="post" data-confirm="Create a new workflow from the saved draft?"><i class="bi bi-copy me-2"></i>Duplicate</a></li>', [
+		    'href' => \V::app()->createUrl('/workflow/duplicate', [ 'id' => $id ]),
+		]);
 	    if ($canDelete)
-		$items .= "<li><hr class='dropdown-divider'></li><li><a class='dropdown-item text-danger' href='" . \V::app()->createUrl('/workflow/delete', [ 'id' => $id ]) . "' data-method='post' data-confirm='Delete this workflow with all its versions and executions? This cannot be undone.'><i class='bi bi-trash me-2'></i>Delete</a></li>";
+		$items .= \util\VString::insert('<li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-danger" href="{:href}" data-method="post" data-confirm="Delete this workflow with all its versions and executions? This cannot be undone."><i class="bi bi-trash me-2"></i>Delete</a></li>', [
+		    'href' => \V::app()->createUrl('/workflow/delete', [ 'id' => $id ]),
+		]);
 
-	    echo "
-	    <div class='dropdown d-inline-block me-1'>
-		<button type='button' class='btn btn-sm py-0 px-2 dropdown-toggle wf-versions-btn {$btnClass}' data-bs-toggle='dropdown' aria-expanded='false' title='{$tip}' data-tip='{$baseTip}' data-has-version='" . ($activeVersion ? '1' : '0') . "'>{$label}</button>
-		<ul class='dropdown-menu dropdown-menu-end'>{$items}</ul>
-	    </div>";
+	    $menuTpl = '
+	    <div class="dropdown d-inline-block me-1">
+		<button type="button" class="btn btn-sm py-0 px-2 dropdown-toggle wf-versions-btn {:btnClass}" data-bs-toggle="dropdown" aria-expanded="false" title="{:tip}" data-tip="{:baseTip}" data-has-version="{:hasVersion}">{:label}</button>
+		<ul class="dropdown-menu dropdown-menu-end">{:items}</ul>
+	    </div>';
+	    echo \util\VString::insert($menuTpl, [
+		'btnClass' => $btnClass,
+		'tip' => $tip,
+		'baseTip' => $baseTip,
+		'hasVersion' => $activeVersion ? '1' : '0',
+		'label' => $label,
+		'items' => $items,
+	    ]);
 	}
 	?>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-zoom-out d-inline" title="Zoom out"><i class="bi bi-zoom-out"></i></a>

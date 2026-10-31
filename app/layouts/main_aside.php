@@ -106,7 +106,9 @@ $dd_items = implode('', $dd_items);
 		    );
 		    $openTasks = count(\models\WfTask::openFor(\V::app()->user, $crtProject->aid, null));
 		    echo \V::app()->html->link(
-			'<i class="bi bi-person-check"></i> My tasks' . ($openTasks ? ' <span class="badge rounded-pill text-bg-primary ms-1">' . $openTasks . '</span>' : ''),
+			\util\VString::insert('<i class="bi bi-person-check"></i> My tasks{:badge}', [
+			    'badge' => $openTasks ? \util\VString::insert(' <span class="badge rounded-pill text-bg-primary ms-1">{:n}</span>', [ 'n' => $openTasks ]) : '',
+			]),
 			'/task/list',
 			[ 'class' => 'nav-link ps-2', 'escape' => false ]
 		    );
@@ -194,13 +196,19 @@ $dd_items = implode('', $dd_items);
 		    if (\V::app()->user->can('Workflow::publish', [ 'object' => $wf ])) {
 			$active = $published ? $wf->publishedVersion() : null;
 			if (!$published || !$active || !$wf->draftMatches($active))
-			    $items .= "<a class='dropdown-item px-2' href='" . \V::app()->createUrl('/workflow/publish', [ 'id' => (string)$wf->_id ]) . "'><i class='bi bi-broadcast me-2'></i>Publish&hellip;</a>";
+			    $items .= \util\VString::insert('<a class="dropdown-item px-2" href="{:href}"><i class="bi bi-broadcast me-2"></i>Publish&hellip;</a>', [
+				'href' => \V::app()->createUrl('/workflow/publish', [ 'id' => (string)$wf->_id ]),
+			    ]);
 			if ($published)
-			    $items .= "<a class='dropdown-item px-2' href='" . \V::app()->createUrl('/workflow/unpublish', [ 'id' => (string)$wf->_id ]) . "' data-method='post' data-confirm='Unpublish: its trigger stops starting runs?'><i class='bi bi-pause-circle me-2'></i>Unpublish</a>";
+			    $items .= \util\VString::insert('<a class="dropdown-item px-2" href="{:href}" data-method="post" data-confirm="Unpublish: its trigger stops starting runs?"><i class="bi bi-pause-circle me-2"></i>Unpublish</a>', [
+				'href' => \V::app()->createUrl('/workflow/unpublish', [ 'id' => (string)$wf->_id ]),
+			    ]);
 		    }
 
 		    if (\V::app()->user->can('Workflow::delete', [ 'object' => $wf ]))
-			$items .= "<a class='dropdown-item text-danger px-2' href='" . \V::app()->createUrl('/workflow/delete', [ 'id' => (string)$wf->_id ]) . "' data-method='post' data-confirm='Delete this workflow with all its versions and executions? This cannot be undone.'><i class='bi bi-trash me-2'></i>Delete</a>";
+			$items .= \util\VString::insert('<a class="dropdown-item text-danger px-2" href="{:href}" data-method="post" data-confirm="Delete this workflow with all its versions and executions? This cannot be undone."><i class="bi bi-trash me-2"></i>Delete</a>', [
+			    'href' => \V::app()->createUrl('/workflow/delete', [ 'id' => (string)$wf->_id ]),
+			]);
 		    //the menu opens fixed (popper strategy), so the scrolling list does not clip it
 		    $menu = $items === '' ? '' : "
 			<div class='dropdown flex-shrink-0 sidebar-item-menu'>

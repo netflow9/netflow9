@@ -14,10 +14,18 @@ foreach(\V::app()->om->find('Role', [ 'aid' => $project->aid ], [ 'sort' => [ 'n
     $roles[(string)$r->_id] = (string)$r;
 $members = (array)$project->members;
 $roleSelect = function($name, $selected, $attrs = '') use ($roles) {
-    $html = "<select name='{$name}' class='form-select form-select-sm' {$attrs}>";
+    $options = '';
     foreach($roles as $id => $label)
-	$html .= "<option value='" . \V::app()->html->escape($id) . "'" . ($id === (string)$selected ? ' selected' : '') . ">" . \V::app()->html->escape($label) . "</option>";
-    return $html . '</select>';
+	$options .= \util\VString::insert('<option value="{:value}"{:selected}>{:label}</option>', [
+	    'value' => \V::app()->html->escape($id),
+	    'selected' => $id === (string)$selected ? ' selected' : '',
+	    'label' => \V::app()->html->escape($label),
+	]);
+    return \util\VString::insert('<select name="{:name}" class="form-select form-select-sm" {:attrs}>{:options}</select>', [
+	'name' => $name,
+	'attrs' => $attrs,
+	'options' => $options,
+    ]);
 };
 
 echo '<div class="w-100 mt-4"></div>';
@@ -29,36 +37,73 @@ if ($canManage) {
 	    $candidates[(string)$u->_id] = (string)$u . ($u->email ? ' <' . $u->email . '>' : '');
     }
     $memberRole = (string)(\V::app()->om->findOne('Role', [ 'aid' => $project->aid, 'iname' => 'member' ])->_id ?? '');
-    echo "<form method='post' action='" . \V::app()->createUrl('/project/member_add', [ 'id' => (string)$project->_id ]) . "' class='d-flex flex-wrap gap-2 align-items-end mb-3'>"
-	. "<div><label class='form-label small mb-1'>Add a member</label><select name='user' class='form-select form-select-sm' required style='min-width: 16rem'" . ($candidates ? '' : ' disabled') . ">"
-	. ($candidates ? "<option value=''>Choose a user...</option>" : "<option>All the account's users are members</option>");
+    $addTpl = '
+<form method="post" action="{:action}" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+    <div>
+	<label class="form-label small mb-1">Add a member</label>
+	<select name="user" class="form-select form-select-sm" required style="min-width: 16rem"{:disabled}>{:options}</select>
+    </div>
+    <div><label class="form-label small mb-1">Role</label>{:role}</div>
+    <button type="submit" class="btn btn-sm btn-primary"{:disabled}><i class="bi bi-person-plus me-1"></i>Add</button>
+</form>
+';
+    $options = $candidates ? '<option value="">Choose a user...</option>' : '<option>All the account\'s users are members</option>';
     foreach($candidates as $id => $label)
-	echo "<option value='" . \V::app()->html->escape($id) . "'>" . \V::app()->html->escape($label) . "</option>";
-    echo "</select></div><div><label class='form-label small mb-1'>Role</label>" . $roleSelect('role', $memberRole) . "</div>"
-	. "<button type='submit' class='btn btn-sm btn-primary'" . ($candidates ? '' : ' disabled') . "><i class='bi bi-person-plus me-1'></i>Add</button></form>";
+	$options .= \util\VString::insert('<option value="{:value}">{:label}</option>', [
+	    'value' => \V::app()->html->escape($id),
+	    'label' => \V::app()->html->escape($label),
+	]);
+    echo \util\VString::insert($addTpl, [
+	'action' => \V::app()->createUrl('/project/member_add', [ 'id' => (string)$project->_id ]),
+	'disabled' => $candidates ? '' : ' disabled',
+	'options' => $options,
+	'role' => $roleSelect('role', $memberRole),
+    ]);
 
     //CLD: 2026-10-17T22:00:00+03:00: invite by email (ProjectController::member_invite): a user of the account is added; another address gets a link to join (needs User::create)
     $canInvite = \V::app()->user->can('User::create');
-    echo "<form method='post' action='" . \V::app()->createUrl('/project/member_invite', [ 'id' => (string)$project->_id ]) . "' class='d-flex flex-wrap gap-2 align-items-end mb-1'>"
-	. "<div><label class='form-label small mb-1'>Invite by email</label><input type='email' name='email' class='form-control form-control-sm' required style='min-width: 16rem'"
-	. " placeholder='name@example.com' autocomplete='off'></div><div><label class='form-label small mb-1'>Role</label>" . $roleSelect('role', $memberRole) . "</div>"
-	. "<button type='submit' class='btn btn-sm btn-outline-primary'><i class='bi bi-envelope-plus me-1'></i>Invite</button></form>"
-	. "<div class='form-text mb-3'>" . ($canInvite ? 'A user of the account is added now; anyone else gets an email with a link to join, valid 7 days.'
-	    : 'Users of the account are added now; only who may add users can invite new people.') . "</div>";
+    $inviteTpl = '
+<form method="post" action="{:action}" class="d-flex flex-wrap gap-2 align-items-end mb-1">
+    <div>
+	<label class="form-label small mb-1">Invite by email</label>
+	<input type="email" name="email" class="form-control form-control-sm" required style="min-width: 16rem" placeholder="name@example.com" autocomplete="off">
+    </div>
+    <div><label class="form-label small mb-1">Role</label>{:role}</div>
+    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-envelope-plus me-1"></i>Invite</button>
+</form>
+<div class="form-text mb-3">{:help}</div>
+';
+    echo \util\VString::insert($inviteTpl, [
+	'action' => \V::app()->createUrl('/project/member_invite', [ 'id' => (string)$project->_id ]),
+	'role' => $roleSelect('role', $memberRole),
+	'help' => $canInvite ? 'A user of the account is added now; anyone else gets an email with a link to join, valid 7 days.'
+	    : 'Users of the account are added now; only who may add users can invite new people.',
+    ]);
 }
 
 //CLD: 2026-10-25T21:30:00+02:00: the members as a table (was \sys\widgets\GridView, which no longer exists: the tab failed with "class not found"), as the invitations below
 echo "<div class='table-responsive'><table class='table table-sm align-middle'><thead><tr><th>User</th><th style='width: 16rem'>Role</th><th style='width: 8rem'></th></tr></thead><tbody>";
+$memberTpl = '<tr><td>{:name}</td><td>{:role}</td><td class="text-end">{:remove}</td></tr>';
+$roleFormTpl = '<form method="post" action="{:action}" class="m-0" style="max-width: 14rem">{:select}</form>';
+$removeTpl = '<a class="btn btn-sm btn-outline-danger" href="{:href}" data-method="post" data-confirm="{:confirm}"><i class="bi bi-person-dash me-1"></i>Remove</a>';
 foreach($members as $key => $item) {
     $name = (string)\V::app()->om->findById('User', $key);
-    if ($canManage)
-	$role = "<form method='post' action='" . \V::app()->createUrl('/project/member_role', [ 'id' => (string)$project->_id, 'user' => (string)$key ]) . "' class='m-0' style='max-width: 14rem'>"
-	    . $roleSelect('role', $item['role'] ?? '', "onchange='this.form.requestSubmit()' aria-label='Role'") . "</form>";
-    else
-	$role = \V::app()->html->escape($roles[(string)($item['role'] ?? '')] ?? '');
-    $remove = $canManage ? "<a class='btn btn-sm btn-outline-danger' href='" . \V::app()->createUrl('/project/member_remove', [ 'id' => (string)$project->_id, 'user' => (string)$key ]) . "'"
-	. " data-method='post' data-confirm='" . \V::app()->html->escape('Remove ' . $name . ' from the project?') . "'><i class='bi bi-person-dash me-1'></i>Remove</a>" : '';
-    echo "<tr><td>" . \V::app()->html->escape($name) . "</td><td>{$role}</td><td class='text-end'>{$remove}</td></tr>";
+    $q = [ 'id' => (string)$project->_id, 'user' => (string)$key ];
+    echo \util\VString::insert($memberTpl, [
+	'name' => \V::app()->html->escape($name),
+	'role' => $canManage
+	    ? \util\VString::insert($roleFormTpl, [
+		'action' => \V::app()->createUrl('/project/member_role', $q),
+		'select' => $roleSelect('role', $item['role'] ?? '', "onchange='this.form.requestSubmit()' aria-label='Role'"),
+	    ])
+	    : \V::app()->html->escape($roles[(string)($item['role'] ?? '')] ?? ''),
+	'remove' => $canManage
+	    ? \util\VString::insert($removeTpl, [
+		'href' => \V::app()->createUrl('/project/member_remove', $q),
+		'confirm' => \V::app()->html->escape('Remove ' . $name . ' from the project?'),
+	    ])
+	    : '',
+    ]);
 }
 echo '</tbody></table></div>';
 
@@ -67,17 +112,30 @@ $invites = $canManage ? iterator_to_array(\models\user\ProjectInvite::pending($p
 if ($invites) {
     //CLD: 2026-10-19T22:19:24+03:00: in .table-responsive (scrolls sideways on phones; its fixed-width columns did not fit)
     echo "<h6 class='mt-4 mb-2'>Invited, not joined yet</h6><div class='table-responsive'><table class='table table-sm align-middle'><tbody>";
+    $inviteRowTpl = '
+<tr>
+    <td><i class="bi bi-envelope me-2 text-body-secondary"></i>{:email}</td>
+    <td style="width: 16rem">{:role}</td>
+    <td class="small text-body-secondary">{:by}until {:until}</td>
+    <td class="text-end text-nowrap" style="width: 14rem">
+	<a class="btn btn-sm btn-outline-secondary me-1" href="{:resend}" data-method="post"><i class="bi bi-arrow-repeat me-1"></i>Resend</a>
+	<a class="btn btn-sm btn-outline-danger" href="{:cancel}" data-method="post" data-confirm="{:confirm}"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+    </td>
+</tr>
+';
     foreach($invites as $inv) {
 	$by = $inv->invited_by ? \V::app()->om->findById('User', $inv->invited_by) : null;
 	$q = [ 'id' => (string)$project->_id, 'invite' => (string)$inv->_id ];
 	//CLD: 2026-10-24T16:30:00+03:00: the invitation's end in the account's datetime format (util\Format; was Y-m-d H:i)
-	echo "<tr><td><i class='bi bi-envelope me-2 text-body-secondary'></i>" . \V::app()->html->escape($inv->email) . "</td>"
-	    . "<td style='width: 16rem'>" . \V::app()->html->escape($roles[(string)$inv->role] ?? '') . "</td>"
-	    . "<td class='small text-body-secondary'>" . ($by ? 'by ' . \V::app()->html->escape($by) . ', ' : '') . 'until ' . \V::app()->html->escape(\util\Format::datetime($inv->expires_at)) . "</td>"
-	    . "<td class='text-end text-nowrap' style='width: 14rem'>"
-	    . "<a class='btn btn-sm btn-outline-secondary me-1' href='" . \V::app()->createUrl('/project/member_invite_resend', $q) . "' data-method='post'><i class='bi bi-arrow-repeat me-1'></i>Resend</a>"
-	    . "<a class='btn btn-sm btn-outline-danger' href='" . \V::app()->createUrl('/project/member_invite_cancel', $q) . "' data-method='post' data-confirm='"
-	    . \V::app()->html->escape('Cancel the invitation of ' . $inv->email . '?') . "'><i class='bi bi-x-lg me-1'></i>Cancel</a></td></tr>";
+	echo \util\VString::insert($inviteRowTpl, [
+	    'email' => \V::app()->html->escape($inv->email),
+	    'role' => \V::app()->html->escape($roles[(string)$inv->role] ?? ''),
+	    'by' => $by ? 'by ' . \V::app()->html->escape($by) . ', ' : '',
+	    'until' => \V::app()->html->escape(\util\Format::datetime($inv->expires_at)),
+	    'resend' => \V::app()->createUrl('/project/member_invite_resend', $q),
+	    'cancel' => \V::app()->createUrl('/project/member_invite_cancel', $q),
+	    'confirm' => \V::app()->html->escape('Cancel the invitation of ' . $inv->email . '?'),
+	]);
     }
     echo '</tbody></table></div>';
 }
