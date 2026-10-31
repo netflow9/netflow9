@@ -12947,6 +12947,11 @@ body {
   background-color: var(--bs-list-group-action-hover-bg);
   cursor: pointer;
 }
+.picker .list-group-item-action.active {
+  background-color: var(--bs-list-group-action-active-bg);
+  color: var(--bs-list-group-action-active-color);
+  cursor: pointer;
+}
 
 /* ---------- SIDEBAR ---------- */
 .inspector {
@@ -13943,3 +13948,5 @@ body {
 [data-bs-theme=dark] .picker .btn-toggle::after {
   filter: invert(1);
 }
+
+/*# sourceMappingURL=theme.css.map */
