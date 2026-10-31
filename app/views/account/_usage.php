@@ -21,14 +21,15 @@ foreach(Tiers::LIMITS as $key => [ $label, $unit ]) {
 $recordsLimit = $limits['datatable_records'];
 ?>
 
+    <?php //CLD: 2026-10-31T11:58:40+02:00: the plan and its text only with the Admin plugin (self-hosted without it: no plan to speak of) ?>
+    <?php if ($showTier): ?>
     <div class="pt-4 mb-4">
-	<?php if ($showTier): ?>
 	<span class="badge text-bg-primary align-middle me-1"><?= \V::app()->html->escape(Tiers::labelOf($account)) ?></span>
-	<?php endif; ?>
 	<span class="text-muted">What the account uses of its plan's limits. The limits are for the whole account.</span>
     </div>
+    <?php endif; ?>
 
-    <div class="row g-3 mb-4" style="max-width: 960px">
+    <div class="row g-3 mb-4 <?= $showTier ? '' : 'pt-4' ?>" style="max-width: 960px">
 	<?php foreach($rows as [ $key, $label, $used, $limit, $unit ]):
 	    $pct = $limit === null ? null : ($limit > 0 ? min(100, round($used * 100 / $limit)) : 100);
 	    $color = $pct === null ? 'bg-primary' : ($pct >= 100 ? 'bg-danger' : ($pct >= 80 ? 'bg-warning' : 'bg-success'));
