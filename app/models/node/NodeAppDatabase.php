@@ -11,20 +11,23 @@
 //  Values read: large objects as their content, binary as base64. One statement per step.
 //  On error (the database's, no connection, the driver missing in this PHP): fail the step, or continue on the `error` output ({ error: the message } in the variable)
 
+//CLD: 2026-10-31T23:30:00+02:00: split into one step per database type (NodeAppMysql, NodeAppPostgres, NodeAppMssql, NodeAppOracle, NodeAppFirebird, NodeAppOdbc): this class is
+//their base (abstract, not registered). Each subclass names its util\SqlDb type (TYPE): its credentials are those providing `database:<TYPE>` (one credential class
+//each), it is offered when this PHP has that type's PDO driver; settings, operations and running are the same for all (here)
+
 namespace models\node;
 
 use util\SqlDb;
 
-class NodeAppDatabase extends \models\WfNode {
+abstract class NodeAppDatabase extends \models\WfNode {
     //static data/structure
     public static $type = 'app';
-    public static $name = 'database';
-    public static $label = 'Database';
     public static $icon = 'bi-database';
     public static $color = 'var(--wf-color-app)';
     //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step, in Developer
+    //CLD: 2026-10-31T23:30:00+02:00: in their own group, Databases
     public static $audience = 'advanced';
-    public static $category = 'developer';
+    public static $category = 'database';
     public static $inputs = 1;
     public static $outputs = 1;
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];
@@ -39,13 +42,17 @@ class NodeAppDatabase extends \models\WfNode {
     const MAX_INSERT = 10000;
     const MAX_TIMEOUT = 600;
 
-    //some database type of the plugin has its PDO driver in this PHP
+    //CLD: 2026-10-31T23:30:00+02:00: the key of util\SqlDb::TYPES; the subclass's
+    const TYPE = '';
+
+    //CLD: 2026-10-31T23:30:00+02:00: what the step's credentials provide (models\credential\CredentialDatabase::provides)
+    public static function capability() {
+	return 'database:' . static::TYPE;
+    }
+
+    //CLD: 2026-10-31T23:30:00+02:00: this PHP has the PDO driver of the step's type (was: of some type)
     public static function available() {
-	foreach(array_keys(SqlDb::TYPES) as $type) {
-	    if (SqlDb::driver($type) !== null)
-		return true;
-	}
-	return false;
+	return SqlDb::driver(static::TYPE) !== null;
     }
 
     public static function configSchema() {
@@ -57,9 +64,10 @@ class NodeAppDatabase extends \models\WfNode {
 	    [
 		'key' => 'credential',
 		'type' => 'select',
-		'label' => 'Database',
+		//CLD: 2026-10-31T23:30:00+02:00: the credentials of the step's type
+		'label' => static::$label . ' credential',
 		'choices' => $choices,
-		'help' => 'A database credential of the project (menu: Credentials)',
+		'help' => 'A ' . static::$label . ' credential of the project (menu: Credentials)',
 		'required' => true,
 	    ],
 	    [
@@ -144,15 +152,16 @@ class NodeAppDatabase extends \models\WfNode {
     protected static function credentialChoices() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
-	return \models\Credential::choicesFor('database', \V::app()->config('rt.account')->_id ?? null, \V::app()->user->crtProject);
+	return \models\Credential::choicesFor(static::capability(), \V::app()->config('rt.account')->_id ?? null, \V::app()->user->crtProject);
     }
 
     //the credential: of the workflow's project, a database
     public function validates($options = []) {
 	$valid = parent::validates($options);
 	$cred = (string)$this->cfg('credential', '');
-	if ($cred !== '' && (!$this->workflow || empty(\models\Credential::findFor($this->workflow, $cred, 'database')))) {
-	    $this->errors('config', 'Database: choose a database credential of this project');
+	//CLD: 2026-10-31T23:30:00+02:00: a credential of the step's type
+	if ($cred !== '' && (!$this->workflow || empty(\models\Credential::findFor($this->workflow, $cred, static::capability())))) {
+	    $this->errors('config', static::$label . ': choose a ' . static::$label . ' credential of this project');
 	    $valid = false;
 	}
 	return $valid;
@@ -182,10 +191,11 @@ class NodeAppDatabase extends \models\WfNode {
     public function execute($edgeId = null) {
 	$operation = (string)$this->cfg('operation', 'query');
 	if (!isset(self::OPERATIONS[$operation]))
-	    throw new \ErrorException("Database: unknown operation `{$operation}`");
-	$cred = \models\Credential::findFor($this->exec, (string)$this->cfg('credential', ''), 'database');
+	    throw new \ErrorException(static::$label . ": unknown operation `{$operation}`");
+	//CLD: 2026-10-31T23:30:00+02:00: a credential of the step's type; the messages and the log name the step's type
+	$cred = \models\Credential::findFor($this->exec, (string)$this->cfg('credential', ''), static::capability());
 	if (empty($cred))
-	    throw new \ErrorException('Database: the credential is no longer available');
+	    throw new \ErrorException(static::$label . ': the credential is no longer available');
 
 	$name = (string)$this->cfg('variable', 'db');
 	try {
@@ -196,16 +206,16 @@ class NodeAppDatabase extends \models\WfNode {
 	    //PDOException is one; the message in the variable (for the `error` output)
 	    if (\util\Validator::isIdentifier($name))
 		$this->exec->setVariable($name, [ 'error' => $e->getMessage() ]);
-	    $this->exec->log($this->wfid, "Database {$operation}: " . $e->getMessage());
+	    $this->exec->log($this->wfid, static::$label . " {$operation}: " . $e->getMessage());
 	    if ($this->cfg('onError', 'fail') === 'output')
 		return [ 1 ];
-	    throw new \ErrorException("Database: {$operation}: " . $e->getMessage());
+	    throw new \ErrorException(static::$label . ": {$operation}: " . $e->getMessage());
 	} finally {
 	    $pdo = null;
 	}
 	if (\util\Validator::isIdentifier($name))
 	    $this->exec->setVariable($name, $result);
-	$this->exec->log($this->wfid, "Database {$operation} on " . $cred->describe() . ": {$summary} (" . (int)round((microtime(true) - $start) * 1000) . ' ms)');
+	$this->exec->log($this->wfid, static::$label . " {$operation} on " . $cred->describe() . ": {$summary} (" . (int)round((microtime(true) - $start) * 1000) . ' ms)');
 	return [ 0 ];
     }
 

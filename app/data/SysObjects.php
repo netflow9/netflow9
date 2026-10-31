@@ -392,8 +392,29 @@ class SysObjects {
 	    ],
 	    //CLD: 2026-10-25T20:00:00+02:00: Database (query and change SQL databases), core for every account (was registered by the Database plugin, plan feature database); not in the
 	    //palette when PHP has no PDO driver of its types (WfNode::available())
-	    'NodeAppDatabase' => [
-		'class' => 'models\node\NodeAppDatabase',
+	    //CLD: 2026-10-31T23:30:00+02:00: one step per database type (was NodeAppDatabase, now their base); each not in the palette when PHP has no PDO driver of its type
+	    'NodeAppMysql' => [
+		'class' => 'models\node\NodeAppMysql',
+		'wfNode' => true,
+	    ],
+	    'NodeAppPostgres' => [
+		'class' => 'models\node\NodeAppPostgres',
+		'wfNode' => true,
+	    ],
+	    'NodeAppMssql' => [
+		'class' => 'models\node\NodeAppMssql',
+		'wfNode' => true,
+	    ],
+	    'NodeAppOracle' => [
+		'class' => 'models\node\NodeAppOracle',
+		'wfNode' => true,
+	    ],
+	    'NodeAppFirebird' => [
+		'class' => 'models\node\NodeAppFirebird',
+		'wfNode' => true,
+	    ],
+	    'NodeAppOdbc' => [
+		'class' => 'models\node\NodeAppOdbc',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-10-25T19:30:00+02:00: LDAP (search and change a directory), core for every account (was registered by the Ldap plugin, plan feature ldap_step)

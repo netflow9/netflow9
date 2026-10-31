@@ -7,6 +7,8 @@ namespace models\credential;
 
 class CredentialOracle extends CredentialDatabase {
     public static $label = 'Oracle';
+    //CLD: 2026-10-31T23:30:00+02:00: + database:oracle: the credentials of the Oracle step (models\node\NodeAppOracle)
+    public static $provides = [ 'database', 'database:oracle' ];
 
     const TYPE = 'oracle';
     const PORT = 1521;

@@ -9,6 +9,8 @@ namespace models\credential;
 
 class CredentialMssql extends CredentialDatabase {
     public static $label = 'Microsoft SQL Server';
+    //CLD: 2026-10-31T23:30:00+02:00: + database:mssql: the credentials of the Mssql step (models\node\NodeAppMssql)
+    public static $provides = [ 'database', 'database:mssql' ];
 
     const TYPE = 'mssql';
     const PORT = 1433;

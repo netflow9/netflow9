@@ -9,6 +9,8 @@ namespace models\credential;
 
 class CredentialFirebird extends CredentialDatabase {
     public static $label = 'Firebird';
+    //CLD: 2026-10-31T23:30:00+02:00: + database:firebird: the credentials of the Firebird step (models\node\NodeAppFirebird)
+    public static $provides = [ 'database', 'database:firebird' ];
 
     const TYPE = 'firebird';
     const PORT = 3050;
