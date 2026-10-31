@@ -281,6 +281,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialOdbc',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-01T04:00:00+02:00: a Veeam Backup & Replication server (the Veeam steps and event trigger), core for every account
+	    'CredentialVeeam' => [
+		'class' => 'models\credential\CredentialVeeam',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-01T00:30:00+02:00: a Bitdefender GravityZone console (the GravityZone steps and event trigger), core for every account
 	    'CredentialGravityZone' => [
 		'class' => 'models\\credential\\CredentialGravityZone',
@@ -420,6 +425,35 @@ class SysObjects {
 	    ],
 	    'NodeAppOdbc' => [
 		'class' => 'models\node\NodeAppOdbc',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-01T04:00:00+02:00: Veeam Backup & Replication (one step per area, NodeAppVeeam their base; the event trigger, polling), core for every account
+	    'NodeAppVeeamJobs' => [
+		'class' => 'models\node\NodeAppVeeamJobs',
+		'wfNode' => true,
+	    ],
+	    'NodeAppVeeamSessions' => [
+		'class' => 'models\node\NodeAppVeeamSessions',
+		'wfNode' => true,
+	    ],
+	    'NodeAppVeeamBackups' => [
+		'class' => 'models\node\NodeAppVeeamBackups',
+		'wfNode' => true,
+	    ],
+	    'NodeAppVeeamInfrastructure' => [
+		'class' => 'models\node\NodeAppVeeamInfrastructure',
+		'wfNode' => true,
+	    ],
+	    'NodeAppVeeamRestore' => [
+		'class' => 'models\node\NodeAppVeeamRestore',
+		'wfNode' => true,
+	    ],
+	    'NodeAppVeeamApi' => [
+		'class' => 'models\node\NodeAppVeeamApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerVeeam' => [
+		'class' => 'models\node\NodeTriggerVeeam',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-01T00:30:00+02:00: Bitdefender GravityZone (one step per API area, NodeAppGravityZone their base; the event trigger), core for every account
@@ -569,6 +603,10 @@ class SysObjects {
 	    ],
 	    'AssistantUsage' => [
 		'class' => 'models\AssistantUsage',
+	    ],
+	    //CLD: 2026-11-01T04:00:00+02:00: what a polling trigger remembers between its checks (Veeam event)
+	    'TriggerState' => [
+		'class' => 'models\TriggerState',
 	    ],
 	    //not in the audit log: deleting a workflow would copy its conversation there (SOC2.md gap 11); the workflow's deletion is recorded
 	    'AssistantChat' => [
