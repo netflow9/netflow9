@@ -41,6 +41,8 @@ class WfNode extends \sys\NestedModel {
 	'security' => 'Security',
 	//CLD: 2026-11-01T04:00:00+02:00: the Veeam steps
 	'backup' => 'Backup',
+	//CLD: 2026-11-01T08:00:00+02:00: the Checkmk steps
+	'monitoring' => 'Monitoring',
 	'ai' => 'AI',
 	'developer' => 'Developer',
     ];

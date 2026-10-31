@@ -48,12 +48,13 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-11-01T04:00:00+02:00: + veeam (the Veeam credential, steps and event trigger against a fake Veeam Backup & Replication: commands/tests/VeeamTestServer.php)
     //CLD: 2026-11-01T06:00:00+02:00: + fortigate (the FortiGate credential, steps and event trigger against a fake FortiGate: commands/tests/FortiGateTestServer.php)
     //CLD: 2026-11-01T10:00:00+02:00: + sophos (the Sophos Firewall credential and steps against a fake firewall's XML API: commands/tests/SophosTestServer.php)
+    //CLD: 2026-11-01T08:00:00+02:00: + checkmk (the Checkmk credential, steps and problem trigger against a fake site: commands/tests/CheckmkTestServer.php)
     //CLD: 2026-11-01T02:00:00+02:00: + access (the account's Data access: the projects' MCP server on / off, what the Assistant may read)
     //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
     //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -5061,6 +5062,160 @@ class CheckCommand extends \sys\BaseController {
 		[ $exe?->getVariable('raw')['APIVersion'] ?? null, $exe?->getVariable('raw')['User']['Username'] ?? null, $err?->getVariable('route') ]);
 	} finally {
 	    $S::$testing = false;
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-01T08:00:00+02:00: Checkmk against a fake site (commands/tests/CheckmkTestServer.php; util\Checkmk::$testing: http, no address guard): the client (the API's address, the automation
+    //user's Bearer, Livestatus queries, Checkmk's problems with their fields), the credential's test, the steps (current problems without the acknowledged / in downtime ones,
+    //a host's state, acknowledgements of several services, a downtime's window, a host created and the changes activated with If-Match, nothing pending is fine), the problem
+    //trigger (its first check notes the problems; new ones and state changes start runs, once; acknowledged ones do not; a recovery when chosen)
+    private function suiteCheckmk() {
+	$C = \util\Checkmk::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$this->check('checkmk: the API address (a pasted site path dropped); the query: columns repeated, the filter as JSON; a problem with its fields', [
+	    'https://mon.example/prod/check_mk/api/1.0', 'columns=name&columns=state&query=%7B%22op%22%3A%22%3D%22%2C%22left%22%3A%22name%22%2C%22right%22%3A%22web01%22%7D',
+	    'HTTP status 400: Bad Request; These fields have problems: host_name; host_name: Host exists.' ], [
+	    $C::apiUrl('https://mon.example/old/check_mk/api/1.0/', 'prod'), $C::query([ 'columns' => [ 'name', 'state' ], 'query' => $C::eq('name', 'web01') ]),
+	    $C::errorText([ 'title' => 'Bad Request', 'detail' => 'These fields have problems: host_name', 'fields' => [ 'host_name' => [ 'Host exists.' ] ] ], 400) ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-cmk-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('checkmk', 'CheckmkTestServer.php', $dir, [ 'CMK_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$C::$testing = true;
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$monitor = fn(array $hosts, array $services) => file_put_contents("{$dir}/monitoring.json", json_encode([ 'hosts' => $hosts, 'services' => $services ]));
+	$svc = fn($host, $desc, $state, $ack = 0, $down = 0) => [ 'host_name' => $host, 'description' => $desc, 'state' => $state, 'plugin_output' => "{$desc} output",
+	    'last_state_change' => 1793500000, 'acknowledged' => $ack, 'scheduled_downtime_depth' => $down ];
+	$hst = fn($name, $state, $ack = 0, $down = 0) => [ 'name' => $name, 'state' => $state, 'plugin_output' => "{$name} output", 'last_state_change' => 1793500000,
+	    'acknowledged' => $ack, 'scheduled_downtime_depth' => $down ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $e) {
+		return $e->getMessage();
+	    }
+	};
+	$creds = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function($secret) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialCheckmk', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Checkmk ' . uniqid(),
+		    'serverUrl' => "https://127.0.0.1:{$port}", 'site' => 'mysite', 'username' => 'automation', 'secret' => $secret ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('checkmk: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->serverUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialCheckmk', (string)$c->_id);
+	    };
+	    $cred = $make('s3cret');
+	    $wrong = $make('nope');
+	    if (!$cred || !$wrong)
+		return;
+	    $bad = $om->create('CredentialCheckmk', [ 'name' => 'x', 'serverUrl' => 'https://mon/mysite', 'site' => 'my site', 'username' => 'a', 'secret' => 's' ]);
+	    $bad->validates();
+	    $requests();
+	    $this->check('checkmk: the form (the server without a path, a site name); Test: the site, version and edition, the automation user as Bearer; a wrong secret: said so', [
+		[ 'serverUrl', 'site' ], 'connected to site mysite, Checkmk 2.3.0p20 (cre)', 'Bearer automation s3cret', true ], [
+		array_values(array_intersect([ 'serverUrl', 'site' ], array_keys((array)$bad->errors()))), $cred->test(), $requests()[0]['auth'] ?? null,
+		str_contains($thrown(fn() => $wrong->test()), 'the automation user or its secret is refused') ]);
+
+	    $id = (string)$cred->_id;
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $id, $requests) {
+		$requests();
+		$exe = $this->runFlow("cmk {$fq}", [ $n('m', 'trigger::manual'), $n('c', $fq, $cfg + [ 'credential' => $id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'c'), $e('e2', 'c', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $monitor([ $hst('web01', 0), $hst('db01', 1) ], [ $svc('web01', 'CPU load', 1), $svc('web01', 'Disk /', 2, 1), $svc('db01', 'PING', 2, 0, 1), $svc('web01', 'Uptime', 0) ]);
+	    [ $exe, $sent ] = $step('app::cmk-status', [ 'operation' => 'problems', 'variable' => 'p' ]);
+	    $p = $exe?->getVariable('p');
+	    $this->check('checkmk: Status problems: hosts not UP and services WARN or worse, without the acknowledged and in-downtime ones; each with its state as text', [
+		[ [ 'host', 'db01', null, 'DOWN' ], [ 'service', 'web01', 'CPU load', 'WARN' ] ], '2026-11-01T', true ], [
+		array_map(fn($x) => [ $x['kind'], $x['host_name'], $x['service'], $x['stateText'] ], $p['items'] ?? []), substr((string)($p['items'][0]['since'] ?? ''), 0, 11),
+		str_contains((string)($sent[1]['query']['query'][0] ?? ''), '"left":"acknowledged"') ]);
+	    [ $exe, ] = $step('app::cmk-status', [ 'operation' => 'host', 'host' => 'web01', 'variable' => 'h' ]);
+	    [ $none, ] = $step('app::cmk-status', [ 'operation' => 'host', 'host' => 'ghost' ]);
+	    $this->check('checkmk: Status host: its state and its services; a host Checkmk does not monitor: the error output', [ 'UP', 3, 'error' ],
+		[ $exe?->getVariable('h')['host']['stateText'] ?? null, count($exe?->getVariable('h')['services'] ?? []), $none?->getVariable('route') ]);
+	    [ $exe, $sent ] = $step('app::cmk-ack', [ 'operation' => 'ackService', 'host' => 'web01', 'services' => "CPU load\nDisk /", 'comment' => 'Ticket {{ t }}', 'notify' => true ], [ 't' => 'T-42' ]);
+	    $this->check('checkmk: Acknowledge services: one request per service, the comment with an expression, sticky by default', [
+		[ 'CPU load', 'Disk /' ], 'Ticket T-42', true, true ], [ array_column(array_column($sent, 'body'), 'service_description'), $sent[0]['body']['comment'] ?? null,
+		$sent[0]['body']['sticky'] ?? null, $sent[0]['body']['notify'] ?? null ]);
+	    [ $exe, $sent ] = $step('app::cmk-ack', [ 'operation' => 'downHost', 'host' => 'db01', 'start' => '2026-11-02T22:00:00Z', 'minutes' => 90, 'comment' => 'Patching' ]);
+	    $this->check('checkmk: Schedule a host downtime: from the start, for the minutes', [ 'host', 'db01', '2026-11-02T22:00:00Z', '2026-11-02T23:30:00Z' ],
+		[ $sent[0]['body']['downtime_type'] ?? null, $sent[0]['body']['host_name'] ?? null, $sent[0]['body']['start_time'] ?? null, $sent[0]['body']['end_time'] ?? null ]);
+	    [ $exe, $sent ] = $step('app::cmk-hosts', [ 'operation' => 'create', 'host' => 'app02', 'folder' => '/servers', 'ip' => '10.0.0.9', 'alias' => 'App 2' ]);
+	    [ $dup, ] = $step('app::cmk-hosts', [ 'operation' => 'create', 'host' => 'app02', 'activateAfter' => false ]);
+	    [ $act, ] = $step('app::cmk-hosts', [ 'operation' => 'activate' ]);
+	    $this->check('checkmk: Hosts create: the folder and attributes, then the changes activated (If-Match *); again: the error output with the field\'s message; nothing pending: fine', [
+		[ 'POST', '/servers', [ 'alias' => 'App 2', 'ipaddress' => '10.0.0.9' ] ], [ 'POST', '*' ], 'error', true, 'end' ], [
+		[ $sent[0]['method'] ?? null, $sent[0]['body']['folder'] ?? null, $sent[0]['body']['attributes'] ?? null ], [ $sent[1]['method'] ?? null, $sent[1]['ifMatch'] ?? null ],
+		$dup?->getVariable('route'), str_contains((string)self::logLine($dup, 'Checkmk Hosts create: '), 'host_name: Host "app02" already exists.'), $act?->state ]);
+	    [ $exe, ] = $step('app::cmk-api', [ 'method' => 'GET', 'path' => '/version', 'variable' => 'v' ]);
+	    $this->check('checkmk: API: any request', '2.3.0p20', $exe?->getVariable('v')['versions']['checkmk'] ?? null);
+
+	    //the problem trigger
+	    $wf = $this->workflow('cmk problem', [ $n('t', 'trigger::checkmk', [ 'credential' => $id, 'minState' => '2', 'recoveries' => true, 'runs' => 'each', 'variable' => 'ev',
+		'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ev.event }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('checkmk: the problem trigger\'s workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $T = \models\node\NodeTriggerCheckmk::class;
+	    $node = $wf->nodes['t'];
+	    $monitor([ $hst('web01', 0) ], [ $svc('web01', 'Disk /', 2) ]);
+	    [ $d0, $r0 ] = $T::check($wf, $node, []);
+	    $monitor([ $hst('web01', 0), $hst('db01', 1) ], [ $svc('web01', 'Disk /', 2), $svc('web01', 'CPU load', 1), $svc('web01', 'Memory', 2), $svc('app01', 'HTTP', 2, 1) ]);
+	    [ $d1, $r1 ] = $T::check($wf, $node, $d0);
+	    [ $d2, $r2 ] = $T::check($wf, $node, $d1);
+	    $monitor([ $hst('web01', 0) ], [ $svc('web01', 'Disk /', 2), $svc('web01', 'Memory', 2), $svc('web01', 'CPU load', 2) ]);
+	    [ $d3, $r3 ] = $T::check($wf, $node, $d2);
+	    $started = array_merge($started, $r0, $r1, $r2, $r3);
+	    $show = fn($runs) => array_map(fn($x) => [ $x->getVariable('ev')['event'] ?? null, $x->getVariable('ev')['host_name'] ?? null, $x->getVariable('ev')['service'] ?? null,
+		$x->getVariable('ev')['stateText'] ?? null ], $runs);
+	    $this->check('checkmk: problem trigger: the first check notes what is wrong; then new problems (CRIT and worse, a host DOWN; not WARN, not acknowledged) start runs, once; '
+		. 'a service that turns CRIT, and a recovery', [
+		[], [ [ 'problem', 'db01', null, 'DOWN' ], [ 'problem', 'web01', 'Memory', 'CRIT' ] ], [], [ [ 'problem', 'web01', 'CPU load', 'CRIT' ], [ 'recovery', 'db01', null, 'DOWN' ] ] ],
+		[ $show($r0), $show($r1), $show($r2), $show($r3) ]);
+	    $this->check('checkmk: problem trigger: the runs queued, at the trigger', [ 'new', 'checkmk' ], [ $r1[0]?->state, $r1[0]?->trigger ]);
+	    //a problem noted by the first check (Disk /) that clears: no recovery (it started no run); one that started a run (Memory) and clears: its recovery
+	    $monitor([ $hst('web01', 0) ], [ $svc('web01', 'CPU load', 2) ]);
+	    [ $d4, $r4 ] = $T::check($wf, $node, $d3);
+	    $started = array_merge($started, $r4);
+	    $this->check('checkmk: problem trigger: no recovery for a problem the first check only noted; one for a problem that started a run', [ [ 'recovery', 'web01', 'Memory', 'CRIT' ] ], $show($r4));
+	    $now = $T::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('checkmk: problem trigger: Run in the designer: a current problem', [ 1, 'problem' ], [ count($now['executions'] ?? []), ($now['executions'][0] ?? null)?->getVariable('ev')['event'] ?? null ]);
+	} finally {
+	    $C::$testing = false;
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
 	    foreach($creds as $c)
 		$c->delete();
 	    proc_terminate($proc);
