@@ -296,6 +296,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialSophos',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-01T14:00:00+02:00: a Proxmox VE cluster or server (the Proxmox steps and task trigger), core for every account
+	    'CredentialProxmox' => [
+		'class' => 'models\credential\CredentialProxmox',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-01T12:00:00+02:00: a VMware vCenter Server (the VMware steps and alarm trigger), core for every account
 	    'CredentialVmware' => [
 		'class' => 'models\credential\CredentialVmware',
@@ -520,6 +525,31 @@ class SysObjects {
 	    ],
 	    'NodeAppSfosApi' => [
 		'class' => 'models\node\NodeAppSfosApi',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-01T14:00:00+02:00: Proxmox VE (one step per area, NodeAppProxmox their base; the task trigger, polling), core for every account
+	    'NodeAppProxmoxGuests' => [
+		'class' => 'models\node\NodeAppProxmoxGuests',
+		'wfNode' => true,
+	    ],
+	    'NodeAppProxmoxSnapshots' => [
+		'class' => 'models\node\NodeAppProxmoxSnapshots',
+		'wfNode' => true,
+	    ],
+	    'NodeAppProxmoxBackups' => [
+		'class' => 'models\node\NodeAppProxmoxBackups',
+		'wfNode' => true,
+	    ],
+	    'NodeAppProxmoxCluster' => [
+		'class' => 'models\node\NodeAppProxmoxCluster',
+		'wfNode' => true,
+	    ],
+	    'NodeAppProxmoxApi' => [
+		'class' => 'models\node\NodeAppProxmoxApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerProxmox' => [
+		'class' => 'models\node\NodeTriggerProxmox',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-01T12:00:00+02:00: VMware vCenter (one step per area, NodeAppVmware their base; the alarm trigger, polling), core for every account
