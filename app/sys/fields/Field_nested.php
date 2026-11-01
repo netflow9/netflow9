@@ -32,9 +32,9 @@ namespace sys\fields;
     ]
     created_at / updated_at, left out; `unique` dropped: a value inside a document cannot be checked for uniqueness):
 
-    CLD: 2026-10-18T10:20:00+03:00: 'itemLabel' => one item's label in the error messages of a list ("Condition 1: Test: ..."; default: the field's label)
+    'itemLabel' => one item's label in the error messages of a list ("Condition 1: Test: ..."; default: the field's label)
 
-    CLD: 2026-10-18T10:45:00+03:00: 'validateIf' => [ 'if' => <field>, 'in' => [ values ] ]: the nested object(s) are validated only when field `if` of the model has one of
+    'validateIf' => [ 'if' => <field>, 'in' => [ values ] ]: the nested object(s) are validated only when field `if` of the model has one of
     the values (as `requiredIf`; e.g. the Data Table's filter rows, used by some operations only); they are cast always
 
     The value is cast by the nested fields (unknown keys dropped, defaults set);
@@ -57,10 +57,10 @@ class Field_nested extends Field {
 	$this->_data['fields'] = is_array($this->_data['fields'] ?? null) ? $this->_data['fields'] : [];
     }
 
-    //CLD: 2026-10-18T09:58:40+03:00: the nested fields (resolved once)
+    //the nested fields (resolved once)
     protected $_nestedFields = null;
 
-    //CLD: 2026-10-18T09:58:40+03:00: the nested field definitions: those of object `object` when set, else `fields`
+    //the nested field definitions: those of object `object` when set, else `fields`
     public function nestedFields() {
 	if ($this->_nestedFields !== null)
 	    return $this->_nestedFields;
@@ -135,7 +135,7 @@ class Field_nested extends Field {
 	$value = $this->binding->data()[$this->key] ?? null;
 	if ($value === null || $value === '' || $value === [])
 	    return [];
-	//CLD: 2026-10-18T10:45:00+03:00: `validateIf`: not validated unless field `if` has one of the values `in`
+	//`validateIf`: not validated unless field `if` has one of the values `in`
 	if (!empty($this->validateIf['if']) && !in_array($this->binding->data()[(string)$this->validateIf['if']] ?? null, (array)($this->validateIf['in'] ?? []), true))
 	    return [];
 
@@ -161,7 +161,7 @@ class Field_nested extends Field {
 	return $errors;
     }
 
-    //CLD: 2026-10-18T10:20:00+03:00: the label of an error path: "<label>: <nested label>", a list's item "<itemLabel> <n>: <nested label>" (n from 1)
+    //the label of an error path: "<label>: <nested label>", a list's item "<itemLabel> <n>: <nested label>" (n from 1)
     public function pathLabel(array $parts = []) {
 	$label = (string)$this->label;
 	if ($this->multiple && $parts && ctype_digit((string)$parts[0]))
@@ -169,7 +169,7 @@ class Field_nested extends Field {
 	return $parts ? $label . ': ' . $this->nestedObject()->errorLabel(implode('.', $parts)) : $label;
     }
 
-    //CLD: 2026-10-18T10:20:00+03:00: the label of item $index of a list (from 0): "<itemLabel> <n>"; else the field's label
+    //the label of item $index of a list (from 0): "<itemLabel> <n>"; else the field's label
     public function itemPrefix($index = null) {
 	return ($this->multiple && $index !== null) ? (string)($this->itemLabel ?? $this->label) . ' ' . ($index + 1) : (string)$this->label;
     }

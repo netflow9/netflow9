@@ -37,7 +37,8 @@ class BaseModel {
     public static function _database() {
 	return \V::app()->mongo->database;
     }
-    //CLD: 2026-10-12T12:18:11+03:00: the indexes of this model's collection: [ [ keys, options ], ... ] (e.g. [ [ 'aid' => 1, 'project' => 1 ], [] ]) (created by `v sys::indexes`)
+
+    //the indexes of this model's collection: [ [ keys, options ], ... ] (e.g. [ [ 'aid' => 1, 'project' => 1 ], [] ]) (created by `v sys::indexes`)
     public static $indexes = [];
 
 
@@ -183,7 +184,7 @@ class BaseModel {
 
     //by default it will search for schema in DB
     public function getSchema() {
-	//CLD: 2026-10-26T07:17:30+02:00: the stored fields' definitions cached by the ObjectManager (fieldDefs; were queried for each object made), a new Field each (they are bound to this object)
+	//the stored fields' definitions cached by the ObjectManager, a new Field each (they are bound to this object)
 	$schema = [];
 	foreach(\V::app()->om->fieldDefs($this->getObjectName()) as $fDef)
 	    $schema[] = \sys\fields\Field::create($fDef, [ 'exists' => true, 'objectName' => 'Field' ]);
@@ -196,7 +197,7 @@ class BaseModel {
     public function afterAttachSchema() {
     }
 
-    //CLD: 2026-10-26T07:23:58+02:00: the schema's fields are made once per model class, object name and account (prototypes, unbound) and cloned for each object; making them
+    //the schema's fields are made once per model class, object name and account (prototypes, unbound) and cloned for each object; making them
     //(Field::create for each field of each object) was most of the cost of loading an object (e.g. a Workflow 0.21 ms, of which ~0.14 the fields). A model whose
     //getSchema() differs between its objects, or within a request (e.g. choices read from the registry or the database), sets $cacheSchema = false.
     //Forgotten by resetSchemaCache (ObjectManager::resetCache: a Field / DataTableDef changed, the daemon before each job)
@@ -215,7 +216,7 @@ class BaseModel {
 	    return;
 
 	if (empty($schema) && static::$cacheSchema) {
-	    //CLD: 2026-10-26T07:23:58+02:00: clones of the cached prototypes
+	    //clones of the cached prototypes
 	    $key = static::class . '|' . $this->getObjectName() . '|' . (\V::app()->config('rt.account')->_id ?? '');
 	    if (!isset(self::$schemaPrototypes[$key]))
 		self::$schemaPrototypes[$key] = array_map(fn($fDef) => is_object($fDef) ? $fDef : \sys\fields\Field::create($fDef), $this->getSchema());
@@ -249,7 +250,7 @@ class BaseModel {
      * @return void
      */
 
-    //CLD: 2026-10-06T08:57:32+03:00: default string form of an object: its `name` value, else its id; models override it (User, Project, File, ...)
+    //default string form of an object: its `name` value, else its id; models override it (User, Project, File, ...)
     //read from _data: some subclasses (fields) declare a `$name` property of their own
     public function __toString() {
 	$name = $this->_data['name'] ?? null;
@@ -451,7 +452,7 @@ class BaseModel {
 
 	$errors = \util\Validator::check($this->data(), $rules, $options);
 
-	//CLD: 2026-10-18T09:42:21+03:00: the fields' own validation (e.g. Field_nested: the nested objects, errors keyed `<key>.<nested key>`)
+	//the fields' own validation (e.g. Field_nested: the nested objects, errors keyed `<key>.<nested key>`)
 	foreach($this->schema as $f) {
 	    foreach($f->validateBinding($options['events']) as $key => $messages)
 		$errors[$key] = array_merge($errors[$key] ?? [], (array)$messages);
@@ -500,7 +501,7 @@ class BaseModel {
 	return $value;
     }
 
-    //CLD: 2026-10-18T10:20:00+03:00: the label of an error key of errors(): its field's label; a nested path (Field_nested: `conditions.0.left`) through the nested fields'
+    //the label of an error key of errors(): its field's label; a nested path (Field_nested: `conditions.0.left`) through the nested fields'
     //labels ("Condition 1: Test"); a key without a field: the key itself
     public function errorLabel($key) {
 	$parts = explode('.', (string)$key);
@@ -508,8 +509,8 @@ class BaseModel {
 	return $f ? $f->pathLabel($parts) : (string)$key;
     }
 
-    //CLD: 2026-10-10T18:54:42+03:00: $check_permissions = user input (a posted form): only the form fields (showInForms) the user may update; other keys are ignored
-    //(e.g. a posted `project` or `status`; was assignForm()). Without it: every schema field (internal assignments)
+    //$check_permissions = user input (a posted form): only the form fields (showInForms) the user may update; other keys are ignored
+    //(e.g. a posted `project` or `status`). Without it: every schema field (internal assignments)
     public function assign($data = [], $check_permissions = false) {
 	foreach((is_array($data) ? $data : []) as $key => $user_value) {
 	    //ignore unknown fields
@@ -517,10 +518,9 @@ class BaseModel {
 		continue;
 
 	    $field = $this->schema[$key];
-	    //CLD: 2026-10-10T09:14:41+03:00: an empty input does not clear an encrypted field (forms never show its value: empty = keep)
+	    //an empty input does not clear an encrypted field (forms never show its value: empty = keep)
 	    if (!empty($field->encrypt) && ($user_value === '' || $user_value === null))
 		continue;
-	    //CLD: 2026-10-06T08:35:38+03:00: was $field->user_can('edit'), which no field defines (Field::__call -> 500 "unknown method");
 	    //the field's update permission is what inputs and forms use (perm:update: nobody / everybody / permission)
 	    if ($check_permissions && (!$field->showInForms || !$field->checkAccess(\V::app()->user->_id, 'update')))
 		continue;
@@ -528,8 +528,6 @@ class BaseModel {
 	    $this->$key = $field->cast($user_value);
 	}
     }
-
-    //CLD: 2026-10-10T18:54:42+03:00: removed assignForm(): assign($data, true) does it
 
     public function save($options = [] ) {
 	$options += [ 'fsync' => false ];
@@ -542,8 +540,7 @@ class BaseModel {
 	$this->beforeSave();
 
 	if ($this->exists()) {
-	    //CLD: 2026-10-10T09:21:29+03:00: the arrays changed by reference are added to _updated BEFORE the update set is built (were added after it: such changes were
-	    //saved only when another field changed too)
+	    //the arrays changed by reference are added to _updated BEFORE the update set is built
 	    //foreach key in _by_ref, check if values differ
 	    foreach(array_unique($this->_by_ref) as $key) {
 		if (array_key_exists($key, $this->_data) && !$this->valuesAreIdentical($this->_data[$key], $this->_odata[$key] ?? null))
@@ -560,24 +557,22 @@ class BaseModel {
 	    if (empty($__update))
 		return true;
 
-	    //CLD: 2026-10-11T17:35:22+03:00: the values before the change of the changed keys (model:after-save hook, e.g. the audit log)
+	    //the values before the change of the changed keys (model:after-save hook, e.g. the audit log)
 	    $before = [];
 	    foreach(array_merge(array_keys($__update['$set'] ?? []), array_keys($__update['$unset'] ?? [])) as $key)
 		$before[$key] = $this->_odata[$key] ?? null;
 
 	    $__update['$set']['updated_at'] = new \MongoDB\BSON\UTCDateTime();
-	    //CLD: 2026-10-10T09:14:41+03:00: stored forms of the values (e.g. encrypted fields)
+	    //stored forms of the values (e.g. encrypted fields)
 	    $__update['$set'] = $this->storageDocument($__update['$set']);
 
 	    //update
 	    try {
 		$result = $coll->updateOne(['_id' => $this->_data['_id'] ], $__update, [ 'upsert' => false ]);
 
-		//CLD: 2026-10-10T09:22:59+03:00: matched = saved, also when the stored values were already these (was getModifiedCount: such a save returned null,
-		//without afterSave); the document no longer existing returns false
 		if ($result->getMatchedCount() == 1) {
 		    $this->_updated = [];
-		    //CLD: 2026-10-10T09:21:29+03:00: what is saved is the new original (changes are counted from it; were kept: the same arrays / unsets were sent again)
+		    //what is saved is the new original (changes are counted from it)
 		    $this->savedState();
 		    $this->afterSave();
 		    //after the model's own afterSave: [ $this, values before the change ]
@@ -589,22 +584,22 @@ class BaseModel {
 		\V::app()->log->debug('QModel::save: error: data:' . print_r($this->_updated, true));
 		throw new \ErrorException($e->getMessage());
 	    }
-	    //CLD: 2026-10-10T09:22:59+03:00: the document is gone (was: no return value)
+	    //the document is gone
 	    return false;
 	} else {
 	    //insert
 	    $this->_data['created_at'] = new \MongoDB\BSON\UTCDateTime();
 	    try {
-		//CLD: 2026-10-10T09:14:41+03:00: stored forms of the values (e.g. encrypted fields)
+		//stored forms of the values (e.g. encrypted fields)
 		$result = $coll->insertOne($this->storageDocument($this->_data));
 		if ($result->getInsertedCount() == 1) {
 		    $this->_updated = [];
 		    $this->_data['_id'] = $result->getInsertedId();
 		    $this->_config['exists'] = true;
-		    //CLD: 2026-10-10T09:21:29+03:00: what is saved is the new original
+		    //what is saved is the new original
 		    $this->savedState();
 		    $this->afterSave();
-		    //CLD: 2026-10-11T17:35:22+03:00: after the model's own afterSave: [ $this, null = created ]
+		    //after the model's own afterSave: [ $this, null = created ]
 		    \V::app()->hooks->applyHook('model:after-save', [ $this, null ]);
 		    return true;
 		}
@@ -624,7 +619,7 @@ class BaseModel {
 	}
 
 	//convert id to a MongoId Object
-	//CLD: 2026-10-18T17:15:00+03:00: a string _id that is not an ObjectId is kept (ObjectManager::keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (ObjectManager::keyIdQuery; was refused as invalid)
 	$id = \sys\ObjectManager::keyIdQuery([ '_id' => $this->_data['_id'] ], __METHOD__)['_id'];
 
 	$this->beforeDelete();
@@ -636,7 +631,7 @@ class BaseModel {
 	$result = $coll->deleteOne( [ '_id' => $id ], $options);
 
 	if ($result->getDeletedCount() == 1) {
-	    //CLD: 2026-10-11T17:35:22+03:00: the deleted document for the model:after-delete hook (e.g. the audit log): [ $this, its data ]
+	    //the deleted document for the model:after-delete hook (e.g. the audit log): [ $this, its data ]
 	    $data = $this->_data;
 	    $this->_config['exists'] = false;
 	    $this->_data = [];
@@ -649,7 +644,7 @@ class BaseModel {
 
 
 
-    //CLD: 2026-10-10T09:14:41+03:00: the model hooks call the fields' hooks (Field::afterBindingFind, afterBindingSave, beforeBindingDelete; beforeBindingSave is
+    //the model hooks call the fields' hooks (Field::afterBindingFind, afterBindingSave, beforeBindingDelete; beforeBindingSave is
     //applied by save() to the document it writes, see storageDocument); models overriding them call parent::
     public function afterFind() {
 	foreach($this->schema as $f)
@@ -676,26 +671,26 @@ class BaseModel {
 	return $doc;
     }
 
-    //CLD: 2026-10-10T09:21:29+03:00: after a save: the data is the original, nothing pending (changed arrays, unsets)
+    //after a save: the data is the original, nothing pending (changed arrays, unsets)
     protected function savedState() {
 	$this->_odata = $this->_data;
 	$this->_by_ref = [];
 	$this->_unset = [];
     }
 
-    //CLD: 2026-10-10T09:14:41+03:00: sets a value as loaded from the database (not a change: not saved again); used by Field::afterBindingFind
+    //sets a value as loaded from the database (not a change: not saved again); used by Field::afterBindingFind
     public function loadValue($key, $value) {
 	$this->_data[$key] = $value;
 	$this->_odata[$key] = $value;
     }
 
-    //CLD: 2026-10-11T17:35:22+03:00: the value of `$key` as written to the audit log (models\AuditLog); models override it for values too large or unreadable as such
+    //the value of `$key` as written to the audit log (models\AuditLog); models override it for values too large or unreadable as such
     //(e.g. Workflow `nodes`: a summary)
     public function auditValue($key, $value) {
 	return $value;
     }
 
-    //CLD: 2026-10-10T09:14:41+03:00: keys of the fields stored encrypted ('encrypt' => true)
+    //keys of the fields stored encrypted ('encrypt' => true)
     public function encryptedFields() {
 	return array_keys(array_filter($this->schema, fn($f) => !empty($f->encrypt)));
     }
@@ -737,10 +732,6 @@ class BaseModel {
 
     //override in child classes
     public function checkAccess($userId, $permName, $params = []) {
-	//\V::app()->log->debug('QModel::checkAccess: using default checkAccess method. always true');
-	//\V::app()->log->debug('QModel::checkAccess: userId=' . $userId);
-	//\V::app()->log->debug('QModel::checkAccess: permName=' . $permName);
-	//\V::app()->log->debug('QModel::checkAccess: params=' . print_r($params, true));
 	return false;
     }
 }

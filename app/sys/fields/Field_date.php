@@ -1,7 +1,5 @@
 <?php
 
-//CLD: 2026-10-05T22:02:50+03:00: new field type: date only (no time); a Field_datetime fixed to the `date` format
-
 namespace sys\fields;
 
 class Field_date extends Field_datetime {

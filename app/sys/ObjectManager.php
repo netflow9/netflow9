@@ -21,7 +21,7 @@ class ObjectManager {
 	    return;
 	}
 
-	//CLD: 2026-10-26T07:17:30+02:00: the account whose tables are registered (ensureDataTables loads them once, was at each unknown object name)
+	//the account whose tables are registered (ensureDataTables loads them once)
 	$this->dataTablesFor = (string)$account->_id;
 	$dts = $this->find('DataTableDef', [ 'aid' => $account->_id ], [ 'modelOptions' => [ 'attachSchema' => false ] ]);
 	foreach ($dts as $dt) {
@@ -35,8 +35,7 @@ class ObjectManager {
 	}
     }
 
-    //CLD: 2026-10-26T07:17:30+02:00: the data tables loaded once per account (registerDataTables reloads them; a DataTableDef or Field saved / deleted forgets them: resetCache).
-    //Was: each unknown object name queried them again (e.g. 278 identical queries in a check run)
+    //the data tables loaded once per account (registerDataTables reloads them; a DataTableDef or Field saved / deleted forgets them: resetCache).
     protected $dataTablesFor = null;
 
     public function ensureDataTables() {
@@ -46,8 +45,7 @@ class ObjectManager {
 	$this->registerDataTables();
     }
 
-    //CLD: 2026-10-26T07:17:30+02:00: the stored fields (columns) of $objectName, as data: [ [ key, type, ... ], ... ] (BaseModel::getSchema, e.g. a data table's row model); loaded once
-    //per object and account (were queried for each object made: a list of n rows = n queries)
+    //the stored fields (columns) of $objectName, as data: [ [ key, type, ... ], ... ] (BaseModel::getSchema, e.g. a data table's row model); loaded once
     protected $fieldDefs = [];
 
     public function fieldDefs($objectName) {
@@ -62,7 +60,6 @@ class ObjectManager {
     public function resetCache() {
 	$this->dataTablesFor = null;
 	$this->fieldDefs = [];
-	//CLD: 2026-10-26T07:23:58+02:00: and the models' schema prototypes (a data table's row model is made of its fields)
 	\sys\BaseModel::resetSchemaCache();
     }
 
@@ -80,7 +77,6 @@ class ObjectManager {
 
     //get a list of user-selectable objects; for use in Field_object field
     public function getSelectableObjects() {
-	//CLD: 2026-10-26T07:17:30+02:00: once per account (was a query at each call)
 	$this->ensureDataTables();
 
 	$objects = [];
@@ -99,7 +95,6 @@ class ObjectManager {
 	    return $this->registry[$objectName];
 
 	//if not found, load definitions from db and try again
-	//CLD: 2026-10-26T07:17:30+02:00: once per account (ensureDataTables; was a query at each unknown name)
 	$this->ensureDataTables();
 
 	return $this->registry[$objectName] ?? false;
@@ -117,7 +112,7 @@ class ObjectManager {
 	return $objDef['class'];
     }
 
-    //CLD: 2026-10-10T09:27:09+03:00: a variant is checked (checkVariant)
+    //a variant is checked (checkVariant)
     public function registerObject($objectName, $data = []) {
 	if (empty($data['class']))
 	    throw new \ErrorException("empty class for `$objectName`");
@@ -125,7 +120,7 @@ class ObjectManager {
 	$this->checkVariant($objectName);
     }
 
-    //CLD: 2026-10-10T09:27:09+03:00: the variants are checked after the whole list is registered (a base and its variants may come in any order)
+    //the variants are checked after the whole list is registered (a base and its variants may come in any order)
     public function registerObjects($data = []) {
 	foreach($data as $objectName => $__data) {
 	    if (empty($__data['class']))
@@ -204,7 +199,7 @@ class ObjectManager {
 
 
     // =========================================================================================
-    //the account guard (SOC2.md gap 15): in a web request whose account is known (rt.account), the reads, updates and deletes of the objects
+    //the account guard: in a web request whose account is known (rt.account), the reads, updates and deletes of the objects
     //of an account (models that are not `global`) are limited to that account: a query without `aid` gets the account's, a query for another account is refused. Was: each
     //query had to add its `aid`, and one that did not reached every account's objects. Code that must reach other accounts (e.g. a sign-in, a token of another account)
     //runs inside acrossAccounts(). The console (daemon, checks, commands) is not limited
@@ -615,7 +610,7 @@ class ObjectManager {
 	if (empty($database))
 	    $database = $objectClass::_database();
 
-	//CLD: 2026-10-26T07:17:30+02:00: countDocuments (count() is deprecated, and slower: 34 -> 22 ms on 38k log lines)
+	//countDocuments (count() is deprecated)
 	return \V::app()->mongo->selectCollection($database, $collection)->countDocuments($query, $options);
     }
 

@@ -111,7 +111,7 @@ class User extends \sys\BaseObject {
 
 
     // The user identity information will be saved in session storage
-    //CLD: 2026-10-05T20:02:30+03:00: $persistent (the "remember me" choice) replaces $duration; the session itself is persisted instead of an identity cookie
+    // $persistent (the "remember me" choice) replaces $duration; the session itself is persisted instead of an identity cookie
     public function login($identity, $persistent = false) {
 	$saveReturnUrl = $this->return_url;
 
@@ -176,9 +176,6 @@ class User extends \sys\BaseObject {
 	</svg>
 	";
     }
-
-
-
 
     public function &__get($name) {
 	$data = \V::app()->session->getState('user');

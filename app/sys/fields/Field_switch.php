@@ -7,7 +7,7 @@ class Field_switch extends Field {
     public $icon = 'bi bi-toggles';
     public $name = 'Switch';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type, labels per type; was [ 'eq' => 'Is' ]
+	//the conditions' operators (util\Conditions): one vocabulary for every type, labels per type;
 	'eval' => [ 'eq' => 'Is', 'notEmpty' => 'Is on', 'empty' => 'Is off', ],
 	'set' => [ 'set' => 'Set' ],
     ];

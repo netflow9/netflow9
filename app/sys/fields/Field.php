@@ -3,7 +3,7 @@
 namespace sys\fields;
 
 class Field extends \sys\BaseModel {
-    //CLD: 2026-10-26T07:23:58+02:00: a field's own schema (attached explicitly) has the registry's objects as choices (Field_object): not cached (BaseModel::attachSchema)
+    //a field's own schema (attached explicitly) has the registry's objects as choices (Field_object): not cached (BaseModel::attachSchema)
     protected static $cacheSchema = false;
 
     protected static $collection = 'fields';
@@ -21,7 +21,7 @@ class Field extends \sys\BaseModel {
     public $icon = 'bi bi-question';
     public $name = 'Default field name';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type (eq ne gt gte lt lte contains startsWith in empty notEmpty), labels per type; the base field has them all (conditions on values without a type: If / Switch)
+	//the conditions' operators (util\Conditions): one vocabulary for every type (eq ne gt gte lt lte contains startsWith in empty notEmpty), labels per type; the base field has them all (conditions on values without a type: If / Switch)
 	'eval' => [
 	    'eq' => 'equals',
 	    'ne' => 'not equal',
@@ -73,7 +73,7 @@ class Field extends \sys\BaseModel {
 	$this->_data['translate'] = $this->_data['translate'] ?? true;
     }
 
-    //CLD: 2026-10-26T07:17:30+02:00: a stored field changed: the ObjectManager's cached fields / data tables are forgotten (ObjectManager::fieldDefs)
+    //a stored field changed: the ObjectManager's cached fields / data tables are forgotten (ObjectManager::fieldDefs)
     public function afterSave() {
 	parent::afterSave();
 	\V::app()->om->resetCache();
@@ -171,12 +171,12 @@ class Field extends \sys\BaseModel {
 	return $value;
     }
 
-    //CLD: 2026-10-18T10:20:00+03:00: the label of an error path inside this field's value ($parts: the path's keys after the field's; BaseModel::errorLabel); a plain field has none
+    //the label of an error path inside this field's value ($parts: the path's keys after the field's; BaseModel::errorLabel); a plain field has none
     public function pathLabel(array $parts = []) {
 	return (string)$this->label . ($parts ? ': ' . implode('.', $parts) : '');
     }
 
-    //CLD: 2026-10-18T09:42:21+03:00: the field's own validation of the bound model's value, after the model's rules (BaseModel::validates), on the model's
+    //the field's own validation of the bound model's value, after the model's rules (BaseModel::validates), on the model's
     //$events: [ key => [ messages ] ]; none by default (Field_nested: the nested objects' errors)
     public function validateBinding($events = null) {
 	return [];
@@ -322,8 +322,6 @@ class Field extends \sys\BaseModel {
 		'label' => 'Key',
 		'help' => 'Readonly once created',
 
-		//CLD: 2026-10-22T00:08:07+03:00: uniqueInObject with `collection` (was `unique` with `coll`, an option the validator does not read: it got no
-		//collection; and `unique` checked the key across all the account's objects, not among the fields of the same objectName), as models\datatable\FieldForm
 		'validate' => [
 		    [ 'uniqueInObject', 'message' => 'This key already exists', 'collection' => self::_collection(), 'on' => [ 'create' ] ],
 		    [ 'alphanumeric', 'message' => 'Only letters and numbers' ],
@@ -350,7 +348,6 @@ class Field extends \sys\BaseModel {
 		'key' => 'perm:read',
 		'help' => false,
 		'label' => 'Visible by',
-		//CLD: 2026-10-06T21:05:48+03:00: select (was radio: there is no Field_radio, attachSchema() on a Field failed)
 		'type' => 'select',
 		//field visible/editable only for sysadmins
 		'perm:read' => 'everybody',
@@ -366,7 +363,6 @@ class Field extends \sys\BaseModel {
 		'key' => 'perm:update',
 		'help' => false,
 		'label' => 'Update by',
-		//CLD: 2026-10-06T21:05:48+03:00: select (was radio: there is no Field_radio, attachSchema() on a Field failed)
 		'type' => 'select',
 		//field visible/editable only for sysadmins
 		'perm:read' => 'everybody',
@@ -382,7 +378,6 @@ class Field extends \sys\BaseModel {
 		'key' => 'perm:delete',
 		'help' => false,
 		'label' => 'Delete by',
-		//CLD: 2026-10-06T21:05:48+03:00: select (was radio: there is no Field_radio, attachSchema() on a Field failed)
 		'type' => 'select',
 		//field visible/editable only for sysadmins
 		'perm:read' => 'everybody',

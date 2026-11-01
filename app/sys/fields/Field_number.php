@@ -7,7 +7,7 @@ class Field_number extends Field {
     public $icon = 'bi bi-123';
     public $name = 'Number';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type, labels per type; was [ 'eq' => 'Equals', 'ne' => 'Not equals', 'gt' => 'Greater than', 'lt' => 'Less than', ]
+	//the conditions' operators (util\Conditions): one vocabulary for every type, labels per type;
 	'eval' => [ 'eq' => 'Equals', 'ne' => 'Not equals', 'gt' => 'Greater than', 'gte' => 'Greater or equal', 'lt' => 'Less than', 'lte' => 'Less or equal', 'in' => 'Is one of',
 	    'empty' => 'Is empty', 'notEmpty' => 'Is not empty', ],
 	'set' => [ 'set' => 'Set' ],
@@ -25,7 +25,7 @@ class Field_number extends Field {
 	//add string validation
 	if (empty($object->validates[$this->key]))
 	    $object->validates[$this->key] = [];
-	//CLD: 2026-10-09T08:36:00+03:00: always skips an empty value: a required field's empty value is reported once, by `required` (was also "only numbers")
+	//always skips an empty value: a required field's empty value is reported once, by `required`
 	$object->validates[$this->key][] = [
 	    'numeric',
 	    'message' => 'only numbers',
@@ -38,7 +38,7 @@ class Field_number extends Field {
 	    return '';
 	$value = $this->binding->data($this->key);
 	switch($this->format) {
-	    //CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes: "1.5 MB" (was "1.50M", the unit from the number of digits: 1000 bytes were "0.98K")
+	    //util\Format::bytes: "1.5 MB" (was "1.50M", the unit from the number of digits: 1000 bytes were "0.98K")
 	    case 'bytes-human':
     		return \util\Format::bytes($value, 2);
 	    default:

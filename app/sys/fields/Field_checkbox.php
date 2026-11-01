@@ -6,7 +6,7 @@ class Field_checkbox extends Field {
     public $icon = 'bi bi-check2-square';
     public $name = 'Checkbox';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type, labels per type; was [ 'eq' => 'Is', ]
+	//the conditions' operators (util\Conditions): one vocabulary for every type, labels per type;
 	'eval' => [ 'eq' => 'Is', 'notEmpty' => 'Is checked', 'empty' => 'Is not checked', ],
 	'set' => [ 'set' ],
     ];

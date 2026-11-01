@@ -261,8 +261,8 @@ class V {
 	    }
 
 	    $fqClassName = 'plugins\\' . $mDef['id'] . '\\Plugin';
-	    //CLD: 2026-10-31T23:00:00+02:00: a plugin listed but not installed (e.g. one kept in its own repository, not cloned into app/plugins/ yet) is left out and logged,
-	    //instead of every page failing
+	    //a plugin listed but not installed (e.g. one kept in its own repository, not cloned into app/plugins/ yet)
+	    // is left out and logged, instead of every page failing
 	    if (!class_exists($fqClassName)) {
 		error_log("plugin `{$mDef['id']}` is listed (plugins.json) but app/plugins/{$mDef['id']}/Plugin.php is missing: left out");
 		continue;

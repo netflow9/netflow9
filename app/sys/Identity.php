@@ -6,9 +6,9 @@ class Identity {
 
     public $reason = null;
     public $data = [];
-    //CLD: 2026-10-22T23:00:00+03:00: users of a suspended account may sign in (only a super-admin's "view as": plugins\MultiTenant)
+    //users of a suspended account may sign in (only a super-admin's "view as": plugins\MultiTenant)
     public $allowSuspended = false;
-    //CLD: 2026-10-21T20:10:00+03:00: the users (of several accounts) the name and password of authenticate() fit, when more than one
+    //the users (of several accounts) the name and password of authenticate() fit, when more than one
     public $choices = [];
 
     public function data() {
@@ -23,18 +23,17 @@ class Identity {
     public function __auth($user) {
 	if ($user->state != 'active')
 	    return false;
-	//CLD: 2026-10-22T23:00:00+03:00: the account suspended (models\Account::isSuspended): no sign-in
+	//the account suspended (models\Account::isSuspended): no sign-in
 	if (!$this->allowSuspended && \models\Account::isSuspended($user->aid)) {
 	    $this->reason = \V::t('This account is suspended: contact the administrator');
 	    return false;
 	}
 
 	$this->data = $user->data();
-	//CLD: 2026-10-10T09:14:41+03:00: never the encrypted fields (e.g. tfa_secret): the identity data goes into the session (stored in the database)
+	//never the encrypted fields (e.g. tfa_secret), password or "forgot password" data:
+	//the identity data goes into the session (stored in the database)
 	foreach($user->encryptedFields() as $key)
 	    unset($this->data[$key]);
-	//CLD: 2026-10-21T23:00:00+03:00: nor the password hash and the confirmation code (were kept in every session record)
-	//CLD: 2026-10-24T08:20:00+03:00: nor the "forgot password" link (User reset_*; was conf_code, removed)
 	unset($this->data['password'], $this->data['reset_token_hash'], $this->data['reset_expires_at'], $this->data['reset_ip']);
 	$this->data['name'] = (string)$user;
 	$this->data['id'] = (string)$user->_id;
@@ -48,7 +47,7 @@ class Identity {
 	if (empty($password))
 	    return false;
 
-	//CLD: 2026-10-21T10:00:00+03:00: the plugins' sign-in first (hook identity:authenticate, e.g. the Ldap plugin): a plugin that handles the name sets `handled`, then `user` (the
+	//the plugins' sign-in first (hook identity:authenticate, e.g. the Ldap plugin): a plugin that handles the name sets `handled`, then `user` (the
 	//user signed in) or `reason` (why not: shown on the login page); not handled: the password stored here, below
 	$ctx = new \ArrayObject([ 'login' => (string)$username, 'password' => (string)$password, 'handled' => false, 'user' => null, 'reason' => null ]);
 	\V::app()->hooks->applyHook('identity:authenticate', [ $ctx ]);
@@ -62,9 +61,10 @@ class Identity {
 	    return $this->__auth($ctx['user']);
 	}
 
-	//CLD: 2026-10-21T20:10:00+03:00: usernames and emails are unique within an account only: the password is checked against every active user of that name (was: the first
-	//user found, of any account, so the same email in a second account could not sign in there). One match signs in; several (the same name and password in several
-	//accounts) are left in $choices for the user to pick (SiteController::choose_account), after the password was checked
+	//usernames and emails are unique within an account only:
+	//the password is checked against every active user of that name
+	//One match signs in;
+	//several (the same name and password in several accounts) are left in $choices for the user to pick (SiteController::choose_account), after the password was checked
 	$matched = [];
 	foreach(\V::app()->om->acrossAccounts(fn() => iterator_to_array(\V::app()->om->find('User', [
 	    '$or' => [
@@ -93,8 +93,8 @@ class Identity {
     }
 
 
-    //CLD: 2026-10-21T10:00:00+03:00: the system that keeps user $user's password when it is not this application (hook identity:password-source: e.g. 'LDAP', the Ldap plugin's
-    //users), else null; such a user has no password reset or change here
+    //the system that keeps user $user's password when it is not this application (hook identity:password-source: e.g. 'LDAP', the Ldap plugin's users),
+    //else null; such a user has no password reset or change here
     public static function passwordSource($user) {
 	if (empty($user))
 	    return null;

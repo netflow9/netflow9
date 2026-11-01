@@ -16,7 +16,7 @@ class Session extends BaseObject implements \SessionHandlerInterface, \SessionUp
 
     const KEY_PERSISTENT = '__persistent';
     const KEY_COOKIE_TS = '__cookie_ts';
-    //CLD: 2026-10-21T23:00:00+03:00: when the user signed in and when the session was last used (the account's session limits, sys\Boot::after_user_login)
+    //when the user signed in and when the session was last used (the account's session limits, sys\Boot::after_user_login)
     const KEY_LOGIN_TS = '__login_ts';
     const KEY_ACTIVE_TS = '__active_ts';
 
@@ -82,7 +82,7 @@ class Session extends BaseObject implements \SessionHandlerInterface, \SessionUp
         session_write_close();
     }
 
-    //CLD: 2026-10-05T20:02:30+03:00: make the current session survive browser restarts (or not); call after session_regenerate_id()
+    //make the current session survive browser restarts (or not); call after session_regenerate_id()
     public function setPersistent($persistent) {
 	if ($persistent) {
 	    $_SESSION[self::KEY_PERSISTENT] = true;
@@ -92,13 +92,13 @@ class Session extends BaseObject implements \SessionHandlerInterface, \SessionUp
 	}
     }
 
-    //CLD: 2026-10-21T23:00:00+03:00: the session starts now (sign-in); a session without it (signed in before the limits existed) is signed out
+    //the session starts now (sign-in); a session without it (signed in before the limits existed) is signed out
     public function markLogin() {
 	$_SESSION[self::KEY_LOGIN_TS] = time();
 	$_SESSION[self::KEY_ACTIVE_TS] = time();
     }
 
-    //CLD: 2026-10-05T20:02:30+03:00: (re)send the session cookie with an expiry date; same attributes as in open_session
+    //(re)send the session cookie with an expiry date; same attributes as in open_session
     protected function sendCookie() {
 	if (\V::app()->config('app.mode') != 'web' || headers_sent())
 	    return;

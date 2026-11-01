@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#CLD: 2026-10-29T01:30:00+02:00: new: writes the app's nginx site from scripts/nginx/app.conf (@BASE@: the app's folder, @SERVER_NAME@: the host of BASE_URL in app.env), over
+#writes the app's nginx site from scripts/nginx/app.conf (@BASE@: the app's folder, @SERVER_NAME@: the host of BASE_URL in app.env), over
 #<app>/etc/nginx.conf (a link to /etc/nginx/conf.d/<user>.conf; made when missing), then checks it (nginx -t) and reloads nginx.
 #The file there is kept as <file>.bak-<time> (not loaded by nginx: conf.d/*.conf only) and put back when the check fails; the changes are shown first.
 #Run as root:
@@ -14,7 +14,7 @@ SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 BASE=$(dirname "$SELF_DIR")
 TEMPLATE="$SELF_DIR/nginx/app.conf"
 LINK="$BASE/etc/nginx.conf"
-#CLD: 2026-10-29T04:00:00+02:00: named after the app's user (was app.conf for every app: a second app on the server overwrote it; the user app: app.conf as before)
+#named after the app's user
 APP_USER=$(stat -c %U "$BASE/app")
 DEFAULT_TARGET="/etc/nginx/conf.d/$APP_USER.conf"
 

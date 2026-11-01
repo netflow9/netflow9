@@ -3,8 +3,9 @@
 function get_config($mode = 'web') {
 
     //plugins
-    //CLD: 2026-11-01T17:30:00+02:00: plugins.json, next to app.env (not in git: the installation's own; was app/plugins.php, or plugins.local.php): { "<plugin>": { "enabled", its own
-    //settings (e.g. MultiTenant: config, tiers, credit_rates) }, ... }, loaded in this order; "enabled": false keeps a plugin's settings but leaves it out. No file: no plugins
+    // { "<plugin>": { "enabled", its own settings (e.g. MultiTenant: config, tiers, credit_rates) }, ... },
+    // loaded in this order; "enabled": false keeps a plugin's settings but leaves it out.
+    // No file: no plugins
     $plugins = (function() {
 	$f = dirname(__DIR__) . '/plugins.json';
 	if (!is_file($f))

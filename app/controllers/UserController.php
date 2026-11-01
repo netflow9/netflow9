@@ -49,7 +49,7 @@ class UserController extends \sys\BaseController {
 	$this->render('profile', compact('user'));
     }
 
-    //CLD: 2026-10-25T11:20:00+02:00: edit a user of the account (was empty: the list's links did nothing): name, email, role, state, for who may update users (User::update on it);
+    //edit a user of the account: name, email, role, state, for who may update users (User::update on it);
     //one's own user is the profile (no role / state change on oneself); the account keeps an active Owner (checked on the role and the state); a disabled user's sessions end.
     //A modal (as create), back to the list
     public function update($req, $resp) {
@@ -89,7 +89,7 @@ class UserController extends \sys\BaseController {
 	$this->render('update', [ 'user' => $user, 'canSendLink' => $user->state === 'active' && \sys\Identity::passwordSource($user) === null ]);
     }
 
-    //CLD: 2026-10-25T11:20:00+02:00: email a user of the account a link to choose a password (the welcome email again: e.g. its link expired); POST, User::update on it
+    //email a user of the account a link to choose a password (the welcome email again: e.g. its link expired); POST, User::update on it
     public function send_link($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
@@ -101,7 +101,7 @@ class UserController extends \sys\BaseController {
 	return $this->redirect('/user/list');
     }
 
-    //CLD: 2026-10-25T11:20:00+02:00: the user ?id of the current account, if the current user may update it (404 / 403 otherwise)
+    //the user ?id of the current account, if the current user may update it (404 / 403 otherwise)
     protected function accountUser() {
 	$id = $this->getOidOrError('id');
 	$user = \V::app()->om->findOne('User', [ '_id' => new \MongoDB\BSON\ObjectId($id), 'aid' => \V::app()->config('rt.account')->_id ]);
@@ -112,7 +112,7 @@ class UserController extends \sys\BaseController {
 	return $user;
     }
 
-    //CLD: 2026-10-25T11:20:00+02:00: whether role id $roleId is the account's Owner role and $state is active
+    //whether role id $roleId is the account's Owner role and $state is active
     protected function isActiveOwner($roleId, $state) {
 	if ($state !== 'active' || $roleId === '')
 	    return false;
@@ -120,7 +120,7 @@ class UserController extends \sys\BaseController {
 	return ($role->iname ?? null) === 'owner';
     }
 
-    //CLD: 2026-10-25T11:20:00+02:00: the account's active users with the Owner role, other than $exceptId
+    //the account's active users with the Owner role, other than $exceptId
     protected function activeOwners($exceptId) {
 	$owner = \V::app()->om->findOne('Role', [ 'aid' => \V::app()->config('rt.account')->_id, 'iname' => 'owner' ]);
 	if (empty($owner))
@@ -136,17 +136,15 @@ class UserController extends \sys\BaseController {
 	$user = \V::app()->om->create('User', [ 'aid' => $account->_id ]);
 
 	if ($req->is('post')) {
-	    //CLD: 2026-10-05T20:41:34+03:00: only the fields the create form shows (was the whole POST: password, state, tfa_secret, ...)
-	    //CLD: 2026-10-10T18:54:42+03:00: the form fields the user may update (assign with permissions; was onlyFields firstname, lastname, email, role)
 	    $user->assign($req->data, true);
 
-	    //CLD: 2026-10-05T20:41:34+03:00: the role must belong to this account; roles are looked up by id only when checking permissions
+	    //the role must belong to this account; roles are looked up by id only when checking permissions
 	    if (!empty($user->role) && empty(\V::app()->om->findOne('Role', [ '_id' => $user->role, 'aid' => $account->_id ])))
 		\V::app()->error(400, 'malformed request: unknown role');
 
 	    if ($user->validates()) {
 		$user->save();
-		//CLD: 2026-10-25T11:20:00+02:00: the new user gets a link to choose a password (was: no password, no email: they could not sign in)
+		//the new user gets a link to choose a password (was: no password, no email: they could not sign in)
 		if ($user->sendPasswordLink(\V::app()->user))
 		    $this->addToast('success', 'OK', 'User created. An email with a link to choose a password was sent to ' . $user->email);
 		else
@@ -166,7 +164,7 @@ class UserController extends \sys\BaseController {
 	if ($req->is('post') && !\V::app()->user->can('User::change-password', [ 'object' => $user ]))
 	    \V::app()->error(403, 'Unauthorized');
 
-	//CLD: 2026-10-21T10:00:00+03:00: a password kept elsewhere (e.g. an LDAP user's: the directory's) is changed there
+	//a password kept elsewhere (e.g. an LDAP user's: the directory's) is changed there
 	if (($source = \sys\Identity::passwordSource($user)) !== null) {
 	    $this->addToast('error', 'Not here', "Your password is your {$source} password: change it there");
 	    $this->redirect('/user/profile');
@@ -239,7 +237,7 @@ class UserController extends \sys\BaseController {
 	if (empty($code))
 	    \V::app()->error(400, 'malformed request: missing code');
 
-	//CLD: 2026-10-24T00:20:00+03:00: a code is accepted once (User::useTfaCode; was TOTP::verifyCode)
+	//a code is accepted once (User::useTfaCode)
 	if ($user->useTfaCode($code)) {
 	    $user->tfa_secret = null;
 	    $user->save();
