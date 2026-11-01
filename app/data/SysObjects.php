@@ -286,6 +286,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialCheckmk',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-01T14:00:00+02:00: a Zabbix server (the Zabbix steps and problem trigger), core for every account
+	    'CredentialZabbix' => [
+		'class' => 'models\credential\CredentialZabbix',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-01T06:00:00+02:00: a FortiGate firewall (the FortiGate steps), core for every account
 	    'CredentialFortiGate' => [
 		'class' => 'models\credential\CredentialFortiGate',
@@ -476,6 +481,27 @@ class SysObjects {
 	    ],
 	    'NodeTriggerCheckmk' => [
 		'class' => 'models\node\NodeTriggerCheckmk',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-01T14:00:00+02:00: Zabbix (one step per area, NodeAppZabbix their base; the problem trigger, polling), core for every account
+	    'NodeAppZbxProblems' => [
+		'class' => 'models\node\NodeAppZbxProblems',
+		'wfNode' => true,
+	    ],
+	    'NodeAppZbxAck' => [
+		'class' => 'models\node\NodeAppZbxAck',
+		'wfNode' => true,
+	    ],
+	    'NodeAppZbxHosts' => [
+		'class' => 'models\node\NodeAppZbxHosts',
+		'wfNode' => true,
+	    ],
+	    'NodeAppZbxApi' => [
+		'class' => 'models\node\NodeAppZbxApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerZabbix' => [
+		'class' => 'models\node\NodeTriggerZabbix',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-01T06:00:00+02:00: FortiGate (one step per area, NodeAppFortiGate their base; the event trigger: an automation stitch's webhook), core for every account

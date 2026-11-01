@@ -52,12 +52,13 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-11-01T12:00:00+02:00: + vmware (the VMware vCenter credential, steps and alarm trigger against a fake vCenter: commands/tests/VmwareTestServer.php)
     //CLD: 2026-11-01T14:00:00+02:00: + proxmox (the Proxmox VE credential, steps and task trigger against a fake cluster: commands/tests/ProxmoxTestServer.php)
     //CLD: 2026-11-01T16:00:00+02:00: + hyperV (the Hyper-V credential, steps and VM state trigger against a fake host behind WinRM: commands/tests/HyperVTestServer.php)
+    //CLD: 2026-11-01T14:00:00+02:00: + zabbix (the Zabbix credential, steps and problem trigger against a fake server, 7.0 and 6.0: commands/tests/ZabbixTestServer.php)
     //CLD: 2026-11-01T02:00:00+02:00: + access (the account's Data access: the projects' MCP server on / off, what the Assistant may read)
     //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
     //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -5842,6 +5843,228 @@ class CheckCommand extends \sys\BaseController {
 	    foreach(glob("{$dir}/*") as $f)
 		@unlink($f);
 	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-01T14:00:00+02:00: Zabbix against a fake server (commands/tests/ZabbixTestServer.php; util\Zabbix::$testing: http, no address guard): the client (the API's address,
+    //apiinfo.version without the token, the token as Bearer from 6.4 and as `auth` before, Zabbix's errors), the credential's test, the steps (current problems without the
+    //acknowledged / suppressed ones, by host / tags, with their hosts; an event with its acknowledgements; acknowledgements with a message and a severity change; a maintenance's
+    //window (6.0: hostids, 7.0: hosts); hosts created, disabled, deleted; latest values; any method), the problem trigger (its first check notes the problems; new ones and
+    //severity changes start runs, once; acknowledged ones do not; a recovery when chosen)
+    private function suiteZabbix() {
+	$Z = \util\Zabbix::class;
+	$N = \models\node\NodeAppZabbix::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$this->check('zabbix: the API address (a pasted page dropped); a refused token said so; names, ids and tags of settings', [
+	    'https://zbx.example/zabbix/api_jsonrpc.php', 'https://zbx.example/api_jsonrpc.php', true, [ 'web01', 'db 01' ], [ '101', '102' ],
+	    [ [ 'tag' => 'service', 'value' => 'nginx' ], [ 'tag' => 'env', 'value' => '' ] ] ], [
+	    $Z::apiUrl('https://zbx.example/zabbix/zabbix.php?action=dashboard.view'), $Z::apiUrl('https://zbx.example/'),
+	    str_starts_with($Z::errorText([ 'message' => 'Invalid params.', 'data' => 'Not authorized.' ]), 'the API token is refused'),
+	    $N::names("web01, db 01\nweb01"), $N::ids([ [ 'eventid' => '101' ], '102' ], 'Events'), $N::tags('service=nginx, env') ]);
+
+	$dir = sys_get_temp_dir() . '/netflow9-check-zbx-' . uniqid();
+	$dirOld = $dir . '-60';
+	@mkdir($dir, 0700, true);
+	@mkdir($dirOld, 0700, true);
+	$server = $this->startServer('zabbix', 'ZabbixTestServer.php', $dir, [ 'ZBX_STATE' => $dir, 'ZBX_VERSION' => '7.0.5' ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$old = $this->startServer('zabbix 6.0', 'ZabbixTestServer.php', $dirOld, [ 'ZBX_STATE' => $dirOld, 'ZBX_VERSION' => '6.0.30' ]);
+	if (!$old) {
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    return;
+	}
+	[ $portOld, $procOld ] = $old;
+	$Z::$testing = true;
+	$requests = function($d = null) use ($dir) {
+	    $d ??= $dir;
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$d}/requests.jsonl"))));
+	    @unlink("{$d}/requests.jsonl");
+	    return $list;
+	};
+	$byMethod = fn(array $sent, $m) => array_values(array_filter($sent, fn($r) => $r['method'] === $m));
+	$problems = fn(array $list) => file_put_contents("{$dir}/problems.json", json_encode($list));
+	$pr = fn($id, $host, $sev, $ack = 0, $sup = 0, $tags = []) => [ 'eventid' => (string)$id, 'objectid' => (string)(5000 + $id), 'name' => "Problem {$id} on {$host}", 'severity' => (string)$sev,
+	    'clock' => '1793500000', 'acknowledged' => (string)$ack, 'suppressed' => (string)$sup, 'hostid' => $host === 'web01' ? '10084' : '10085', 'tags' => $tags ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $e) {
+		return $e->getMessage();
+	    }
+	};
+	$creds = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function($token, $p) use ($om, &$creds) {
+		$c = $om->create('CredentialZabbix', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Zabbix ' . uniqid(),
+		    'serverUrl' => "https://127.0.0.1:{$p}/zabbix", 'apiToken' => $token ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('zabbix: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->serverUrl = "http://127.0.0.1:{$p}/zabbix";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialZabbix', (string)$c->_id);
+	    };
+	    $cred = $make('tok3n', $port);
+	    $wrong = $make('nope', $port);
+	    $cred60 = $make('tok3n', $portOld);
+	    if (!$cred || !$wrong || !$cred60)
+		return;
+	    $bad = $om->create('CredentialZabbix', [ 'name' => 'x', 'serverUrl' => 'http://zbx.example', 'apiToken' => 't' ]);
+	    $bad->validates();
+	    $requests();
+	    $test = $cred->test();
+	    $sent = $requests();
+	    $this->check('zabbix: the form (https only); Test: the version and the hosts; apiinfo.version without the token, then the token as Bearer (7.0), no auth member; a wrong token: said so', [
+		[ 'serverUrl' ], 'connected to Zabbix 7.0.5, 2 hosts visible to the token', [ null, null ], [ 'Bearer tok3n', null ], '/zabbix/api_jsonrpc.php', true ], [
+		array_values(array_intersect([ 'serverUrl' ], array_keys((array)$bad->errors()))), $test, [ $sent[0]['authorization'] ?? null, $sent[0]['auth'] ?? null ],
+		[ $sent[1]['authorization'] ?? null, $sent[1]['auth'] ?? null ], $sent[1]['path'] ?? null, str_contains($thrown(fn() => $wrong->test()), 'the API token is refused') ]);
+	    $requests($dirOld);
+	    $test60 = $cred60->test();
+	    $sent = $requests($dirOld);
+	    $this->check('zabbix: 6.0: the token as the auth member, no header', [ 'connected to Zabbix 6.0.30, 2 hosts visible to the token', [ null, 'tok3n' ] ],
+		[ $test60, [ $sent[1]['authorization'] ?? null, $sent[1]['auth'] ?? null ] ]);
+
+	    $step = function($fq, $cfg, $vars = [], $c = null) use ($n, $e, $cred, $requests) {
+		$requests();
+		$exe = $this->runFlow("zbx {$fq}", [ $n('m', 'trigger::manual'), $n('c', $fq, $cfg + [ 'credential' => (string)($c ?? $cred)->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'c'), $e('e2', 'c', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $problems([ $pr(101, 'web01', 4, 0, 0, [ [ 'tag' => 'service', 'value' => 'nginx' ] ]), $pr(102, 'db01', 2, 1), $pr(103, 'db01', 5, 0, 1), $pr(104, 'web01', 1) ]);
+	    [ $exe, $sent ] = $step('app::zbx-problems', [ 'operation' => 'problems', 'variable' => 'p' ]);
+	    $p = $exe?->getVariable('p');
+	    $pg = $byMethod($sent, 'problem.get')[0]['params'] ?? [];
+	    $this->check('zabbix: Problems: Warning and worse, without acknowledged and suppressed ones; each with its host (event.get), severity as text, tags, since', [
+		[ [ '101', 'web01', 'Web server 1', 'High' ] ], [ 'service' => 'nginx' ], '2026-11-01T', [ [ 2, 3, 4, 5 ], false, false, 1001 ] ], [
+		array_map(fn($x) => [ $x['eventid'], $x['host'], $x['hostName'], $x['severityText'] ], $p['items'] ?? []), (array)($p['items'][0]['tags'] ?? []),
+		substr((string)($p['items'][0]['since'] ?? ''), 0, 11), [ $pg['severities'] ?? null, $pg['acknowledged'] ?? null, $pg['suppressed'] ?? null, $pg['limit'] ?? null ] ]);
+	    [ $exe, $sent ] = $step('app::zbx-problems', [ 'operation' => 'problems', 'hosts' => 'db01', 'acknowledged' => true, 'suppressed' => true, 'minSeverity' => 'any', 'variable' => 'p' ]);
+	    [ $tagged, ] = $step('app::zbx-problems', [ 'operation' => 'problems', 'tags' => 'service=ngi', 'variable' => 'p' ]);
+	    [ $ghost, ] = $step('app::zbx-problems', [ 'operation' => 'problems', 'hosts' => 'ghost' ]);
+	    $this->check('zabbix: Problems of a host (its id looked up), with acknowledged and suppressed ones, newest first; by a tag; an unknown host: the error output', [
+		[ '103', '102' ], [ '10085' ], [ '101' ], 'error', true ], [ array_column($exe?->getVariable('p')['items'] ?? [], 'eventid'),
+		$byMethod($sent, 'problem.get')[0]['params']['hostids'] ?? null, array_column($tagged?->getVariable('p')['items'] ?? [], 'eventid'), $ghost?->getVariable('route'),
+		str_contains((string)self::logLine($ghost, 'Zabbix Problems problems: '), 'Zabbix has no host `ghost`') ]);
+	    [ $exe, $sent ] = $step('app::zbx-ack', [ 'operation' => 'acknowledge', 'eventIds' => '{{ items }}', 'message' => 'Ticket {{ t }}', 'severity' => 'disaster' ],
+		[ 'items' => [ [ 'eventid' => '101' ], [ 'eventid' => '104' ] ], 't' => 'T-42' ]);
+	    $ack = $byMethod($sent, 'event.acknowledge')[0]['params'] ?? [];
+	    [ $empty, ] = $step('app::zbx-ack', [ 'operation' => 'message', 'eventIds' => '101', 'message' => '{{ blank }}' ], [ 'blank' => '' ]);
+	    [ $ev, ] = $step('app::zbx-problems', [ 'operation' => 'event', 'eventId' => '101', 'variable' => 'ev' ]);
+	    $this->check('zabbix: Acknowledge: the events of a list, acknowledge + message + severity (action 14), the message with an expression; a message step without one: the error output; '
+		. 'Get an event: with its acknowledgement', [ [ '101', '104' ], 14, 'Ticket T-42', 5, 'error', [ 'Problem 101 on web01', 'Ticket T-42', 'Zabbix Administrator' ] ], [
+		$ack['eventids'] ?? null, $ack['action'] ?? null, $ack['message'] ?? null, $ack['severity'] ?? null, $empty?->getVariable('route'),
+		[ $ev?->getVariable('ev')['name'] ?? null, $ev?->getVariable('ev')['acknowledges'][0]['message'] ?? null, $ev?->getVariable('ev')['acknowledges'][0]['user'] ?? null ] ]);
+	    $win = [ 'operation' => 'maintenanceCreate', 'name' => 'Patching', 'hosts' => 'web01', 'groups' => 'Databases', 'start' => '2026-11-02T22:00:00Z', 'minutes' => 90, 'collectData' => false, 'variable' => 'm' ];
+	    [ $exe, $sent ] = $step('app::zbx-ack', $win);
+	    $mc = $byMethod($sent, 'maintenance.create')[0]['params'] ?? [];
+	    [ $old60, $sent60 ] = [ null, null ];
+	    $requests($dirOld);
+	    [ $old60, ] = $step('app::zbx-ack', $win, [], $cred60);
+	    $mc60 = $byMethod($requests($dirOld), 'maintenance.create')[0]['params'] ?? [];
+	    [ $list, ] = $step('app::zbx-ack', [ 'operation' => 'maintenances', 'variable' => 'l' ]);
+	    [ $del, $sentDel ] = $step('app::zbx-ack', [ 'operation' => 'maintenanceDelete', 'maintenanceIds' => '{{ m.maintenanceids }}' ], [ 'm' => $exe?->getVariable('m') ]);
+	    $start = strtotime('2026-11-02T22:00:00Z');
+	    $this->check('zabbix: a maintenance: from the start for the minutes, without data collection; hosts and groups by id (7.0: objects, 6.0: id lists); listed with its hosts and groups; removed', [
+		[ $start, $start + 5400, 1, [ [ 'hostid' => '10084' ] ], [ [ 'groupid' => '4' ] ], [ [ 'timeperiod_type' => 0, 'start_date' => $start, 'period' => 5400 ] ] ],
+		[ [ '10084' ], [ '4' ], false ], [ 'Patching', [ 'web01' ], [ 'Databases' ] ], 'end', 1 ], [
+		[ $mc['active_since'] ?? null, $mc['active_till'] ?? null, $mc['maintenance_type'] ?? null, $mc['hosts'] ?? null, $mc['groups'] ?? null, $mc['timeperiods'] ?? null ],
+		[ $mc60['hostids'] ?? null, $mc60['groupids'] ?? null, isset($mc60['hosts']) ], [ $list?->getVariable('l')['items'][0]['name'] ?? null,
+		array_column($list?->getVariable('l')['items'][0]['hosts'] ?? [], 'host'), array_column($list?->getVariable('l')['items'][0]['groups'] ?? [], 'name') ],
+		$del?->state, count($byMethod($sentDel, 'maintenance.delete')) ]);
+
+	    [ $exe, $sent ] = $step('app::zbx-hosts', [ 'operation' => 'create', 'host' => 'app02', 'visibleName' => 'App server 2', 'groups' => 'Linux servers', 'templates' => 'Linux by Zabbix agent',
+		'address' => '10.0.0.9', 'tags' => 'env=prod', 'variable' => 'h' ]);
+	    $hc = $byMethod($sent, 'host.create')[0]['params'] ?? [];
+	    [ $dup, ] = $step('app::zbx-hosts', [ 'operation' => 'create', 'host' => 'app02', 'groups' => 'Linux servers', 'interface' => 'none' ]);
+	    [ $dis, $sentDis ] = $step('app::zbx-hosts', [ 'operation' => 'disable', 'host' => 'app02' ]);
+	    [ $lst, $sentList ] = $step('app::zbx-hosts', [ 'operation' => 'list', 'status' => 'enabled', 'variable' => 'l' ]);
+	    $this->check('zabbix: Hosts create: groups and templates by id, the agent interface, tags; again: the error output with Zabbix\'s message; disable; list the enabled ones with their groups (7.0: selectHostGroups)', [
+		[ 'app02', 'App server 2', [ [ 'groupid' => '2' ] ], [ [ 'templateid' => '10001' ] ], [ [ 'type' => 1, 'main' => 1, 'useip' => 1, 'ip' => '10.0.0.9', 'dns' => '', 'port' => '10050' ] ], [ [ 'tag' => 'env', 'value' => 'prod' ] ] ],
+		'error', true, 1, [ 'Web server 1', 'Database 1' ], [ 'Databases' ], true ], [
+		[ $hc['host'] ?? null, $hc['name'] ?? null, $hc['groups'] ?? null, $hc['templates'] ?? null, $hc['interfaces'] ?? null, $hc['tags'] ?? null ],
+		$dup?->getVariable('route'), str_contains((string)self::logLine($dup, 'Zabbix Hosts create: '), 'Host with the same name "app02" already exists.'),
+		$byMethod($sentDis, 'host.update')[0]['params']['status'] ?? null, array_column($lst?->getVariable('l')['items'] ?? [], 'name'),
+		array_column($lst?->getVariable('l')['items'][1]['groups'] ?? [], 'name'), isset($byMethod($sentList, 'host.get')[0]['params']['selectHostGroups']) ]);
+	    [ $get, ] = $step('app::zbx-hosts', [ 'operation' => 'get', 'host' => 'web01', 'variable' => 'g' ]);
+	    [ $items, ] = $step('app::zbx-hosts', [ 'operation' => 'items', 'host' => 'web01', 'search' => 'cpu', 'variable' => 'i' ]);
+	    [ $groups, ] = $step('app::zbx-hosts', [ 'operation' => 'groups', 'search' => 'data', 'variable' => 'gr' ]);
+	    [ $gone, ] = $step('app::zbx-hosts', [ 'operation' => 'delete', 'host' => 'app02' ]);
+	    [ $lst60, ] = [ null ];
+	    $requests($dirOld);
+	    $step('app::zbx-hosts', [ 'operation' => 'list' ], [], $cred60);
+	    $hg60 = $byMethod($requests($dirOld), 'host.get')[0]['params'] ?? [];
+	    $this->check('zabbix: Hosts get: groups, problems; latest values: a key or name containing a text; host groups; delete; 6.0: selectGroups', [
+		[ 'enabled', [ 'Linux servers' ], 2 ], [ [ 'system.cpu.util', '12.5', '%' ] ], [ 'Databases' ], 'end', [ true, false ] ], [
+		[ $get?->getVariable('g')['status'] ?? null, array_column($get?->getVariable('g')['groups'] ?? [], 'name'), $get?->getVariable('g')['problems'] ?? null ],
+		array_map(fn($x) => [ $x['key'], $x['value'], $x['units'] ], $items?->getVariable('i')['items'] ?? []), array_column($groups?->getVariable('gr')['items'] ?? [], 'name'),
+		$gone?->state, [ isset($hg60['selectGroups']), isset($hg60['selectHostGroups']) ] ]);
+	    [ $api, ] = $step('app::zbx-api', [ 'method' => 'host.get', 'apiParams' => '{"output": ["host"]}', 'variable' => 'a' ]);
+	    [ $nope, ] = $step('app::zbx-api', [ 'method' => 'trigger.get' ]);
+	    [ $ver, ] = $step('app::zbx-api', [ 'method' => 'apiinfo.version', 'variable' => 'v' ]);
+	    $this->check('zabbix: API: any method with its parameters; a method the server does not have: the error output with its message; apiinfo.version', [
+		[ 'web01', 'db01' ], 'error', true, '7.0.5' ], [ array_column((array)$api?->getVariable('a'), 'host'), $nope?->getVariable('route'),
+		str_contains((string)self::logLine($nope, 'Zabbix API call: '), 'Method not found.: Incorrect API "trigger.get".'), $ver?->getVariable('v') ]);
+
+	    //the problem trigger
+	    $wf = $this->workflow('zbx problem', [ $n('t', 'trigger::zabbix', [ 'credential' => (string)$cred->_id, 'minSeverity' => '3', 'recoveries' => true, 'runs' => 'each', 'variable' => 'ev',
+		'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ev.event }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('zabbix: the problem trigger\'s workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $T = \models\node\NodeTriggerZabbix::class;
+	    $node = $wf->nodes['t'];
+	    $problems([ $pr(101, 'web01', 4) ]);
+	    [ $d0, $r0 ] = $T::check($wf, $node, []);
+	    $problems([ $pr(101, 'web01', 4), $pr(105, 'db01', 4), $pr(106, 'db01', 2), $pr(107, 'web01', 5, 1) ]);
+	    [ $d1, $r1 ] = $T::check($wf, $node, $d0);
+	    [ $d2, $r2 ] = $T::check($wf, $node, $d1);
+	    $problems([ $pr(105, 'db01', 5), $pr(107, 'web01', 5, 1) ]);
+	    [ $d3, $r3 ] = $T::check($wf, $node, $d2);
+	    $problems([ $pr(107, 'web01', 5, 1) ]);
+	    [ $d4, $r4 ] = $T::check($wf, $node, $d3);
+	    $started = array_merge($started, $r0, $r1, $r2, $r3, $r4);
+	    $show = fn($runs) => array_map(fn($x) => [ $x->getVariable('ev')['event'] ?? null, $x->getVariable('ev')['eventid'] ?? null, $x->getVariable('ev')['host'] ?? null,
+		$x->getVariable('ev')['severityText'] ?? null ], $runs);
+	    $this->check('zabbix: problem trigger: the first check notes what is wrong; then a new problem (Average and worse, not acknowledged) starts a run, once; a severity change '
+		. 'starts another; no recovery for a problem the first check only noted; one for a problem that started a run', [
+		[], [ [ 'problem', '105', 'db01', 'High' ] ], [], [ [ 'problem', '105', 'db01', 'Disaster' ] ], [ [ 'recovery', '105', 'db01', 'Disaster' ] ] ],
+		[ $show($r0), $show($r1), $show($r2), $show($r3), $show($r4) ]);
+	    $this->check('zabbix: problem trigger: the runs queued, at the trigger', [ 'new', 'zabbix' ], [ $r1[0]?->state, $r1[0]?->trigger ]);
+	    $problems([ $pr(108, 'web01', 3) ]);
+	    $now = $T::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('zabbix: problem trigger: Run in the designer: a current problem', [ 1, '108' ], [ count($now['executions'] ?? []), ($now['executions'][0] ?? null)?->getVariable('ev')['eventid'] ?? null ]);
+	} finally {
+	    $Z::$testing = false;
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
+	    foreach([ $proc, $procOld ] as $pp) {
+		proc_terminate($pp);
+		proc_close($pp);
+	    }
+	    foreach([ $dir, $dirOld ] as $d) {
+		foreach(glob("{$d}/*") as $f)
+		    @unlink($f);
+		@rmdir($d);
+	    }
 	}
     }
 
