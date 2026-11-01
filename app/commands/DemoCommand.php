@@ -11,7 +11,7 @@ use MongoDB\BSON\UTCDateTime;
 	../v demo::delete --account=<id>
 
     create: the account (marked `demo`), its roles and five users (nw.maria: owner and approver; nw.daniel, nw.aisha, nw.tom, nw.elena: members), with the password given
-	(asked, hidden, when not: at least 12 characters); the project "Finance operations" with
+	(asked, hidden, when not: at least 12 characters); the project "Finance" with
 	- the data table `expenses` (employee, amount, category, reason, status, decided by, comment) and ten earlier requests, two saved views;
 	- the workflow "Expense approval" (the docs' guide: Form -> Data Table insert -> Human task (3 days) -> Data Table update -> If -> emails; a reminder on the
 	  time limit), published as v1, v2, v3 with notes; five runs started by its form as the members' requests, spread over the last two days: four decided by
@@ -102,7 +102,8 @@ class DemoCommand extends \sys\BaseController {
 	$members = [];
 	foreach($u as $k => $user)
 	    $members[(string)$user->_id] = [ 'role' => $roles[self::PEOPLE[$k][2]]->_id ];
-	$project = $om->create('Project', [ 'aid' => $account->_id, 'name' => 'Finance operations', 'owner' => $u['maria']->_id, 'members' => $members ]);
+	//CLD: 2026-11-01T12:30:00+02:00: "Finance" (was "Finance operations": too long for the sidebar's project switcher, it wrapped under its buttons in the screenshots)
+	$project = $om->create('Project', [ 'aid' => $account->_id, 'name' => 'Finance', 'owner' => $u['maria']->_id, 'members' => $members ]);
 	if (!$project->validates() || !$project->save())
 	    $this->fail('project: ' . json_encode($project->errors()));
 	//Maria opens it when she signs in (her personal project made now, as sys\Boot would)
@@ -200,7 +201,7 @@ class DemoCommand extends \sys\BaseController {
 	if ($settings->ready())
 	    $kbLine = $this->knowledgeBase($account, $project, $settings);
 
-	echo "\ndemo account {$account->_id} ({$name}): project Finance operations, " . ($left ? "{$left} queued emails removed, " : '') . "{$kbLine}\n";
+	echo "\ndemo account {$account->_id} ({$name}): project Finance, " . ($left ? "{$left} queued emails removed, " : '') . "{$kbLine}\n";
 	foreach(self::PEOPLE as $k => [ $first, $last, $role ])
 	    echo "  nw.{$k}  {$first} {$last} ({$role})\n";
     }
