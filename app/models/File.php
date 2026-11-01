@@ -82,15 +82,29 @@ class File extends \sys\BaseModel {
 	'svg' => 'image/svg+xml',
 	'heic' => 'image/heic',
 	'doc' => 'application/msword',
-	'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'odt' => 'application/vnd.oasis.opendocument.text',
-	'rtf' => 'application/rtf', 'ppt' => 'application/vnd.ms-powerpoint', 'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-	'odp' => 'application/vnd.oasis.opendocument.presentation', 'xls' => 'application/vnd.ms-excel', 'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-	'ods' => 'application/vnd.oasis.opendocument.spreadsheet', 'csv' => 'text/csv', 'tsv' => 'text/tab-separated-values', 'txt' => 'text/plain', 'log' => 'text/plain',
-	'md' => 'text/markdown', 'html' => 'text/html', 'htm' => 'text/html', 'json' => 'application/json', 'xml' => 'application/xml', 'yaml' => 'application/yaml', 'yml' => 'application/yaml',
+	'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	'odt' => 'application/vnd.oasis.opendocument.text',
+	'rtf' => 'application/rtf',
+	'ppt' => 'application/vnd.ms-powerpoint',
+	'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+	'odp' => 'application/vnd.oasis.opendocument.presentation',
+	'xls' => 'application/vnd.ms-excel',
+	'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	'ods' => 'application/vnd.oasis.opendocument.spreadsheet',
+	'csv' => 'text/csv',
+	'tsv' => 'text/tab-separated-values',
+	'txt' => 'text/plain',
+	'log' => 'text/plain',
+	'md' => 'text/markdown',
+	'html' => 'text/html',
+	'htm' => 'text/html',
+	'json' => 'application/json',
+	'xml' => 'application/xml',
+	'yaml' => 'application/yaml',
+	'yml' => 'application/yaml',
     ];
 
     //CLD: 2026-10-22T00:35:40+03:00: project file ids of a setting's value: one id, a list, or ids separated by commas; files of objects ({ id } of Download File / Google Drive) too
-    //(was models\node\NodeAppGmail::fileIds, now in the GoogleIntegration plugin)
     public static function idsOf($value) {
 	$list = is_array($value) ? (array_is_list($value) ? $value : [ $value ]) : explode(',', \util\Expression::toText($value));
 	$ids = [];
@@ -103,11 +117,11 @@ class File extends \sys\BaseModel {
     }
 
 
-    //CLD: 2026-10-06T09:09:26+03:00: metadata keys also kept at the top level of the file document (beforeSave, createFromStream)
+    //metadata keys also kept at the top level of the file document (beforeSave, createFromStream)
     const TOP_LEVEL_METADATA = [ 'aid', 'project' ];
 
 
-    //CLD: 2026-10-06T21:33:37+03:00: true if a file with this name may be uploaded (its extension is in $extensions)
+    //true if a file with this name may be uploaded (its extension is in $extensions)
     public static function isAllowedName($filename) {
 	$ext = strtolower(pathinfo((string)$filename, PATHINFO_EXTENSION));
 	return $ext !== '' && isset(self::$extensions[$ext]);
@@ -294,7 +308,6 @@ class File extends \sys\BaseModel {
 	    }
 	}
 
-	//CLD: 2026-10-06T09:09:26+03:00: same for `project` (was aid only)
 	$set = [];
 	foreach(self::TOP_LEVEL_METADATA as $key) {
 	    if (!empty($options['metadata'][$key]))
@@ -309,12 +322,11 @@ class File extends \sys\BaseModel {
 	return $file_id;
     }
 
-    //CLD: 2026-10-06T09:05:51+03:00: keep a top-level `aid` (queried by generic code, e.g. Field_object::objectChoices),
-    //taken from metadata.aid where GridFS uploads store the account
+    //keep a top-level `aid` and `project` (queried by generic code, e.g. Field_object::objectChoices),
+    //taken from metadata.aid, metadata.project where GridFS uploads store the account
     public function beforeSave() {
 	parent::beforeSave();
 
-	//CLD: 2026-10-06T09:09:26+03:00: same for `project` (was aid only)
 	foreach(self::TOP_LEVEL_METADATA as $key) {
 	    if (empty($this->$key) && !empty($this->metadata[$key]))
 		$this->$key = $this->metadata[$key];
@@ -339,7 +351,7 @@ class File extends \sys\BaseModel {
 	return \models\Project::isMember($this->metadata['project'] ?? $this->project, $this->metadata['aid'] ?? $this->aid, $userId);
     }
 
-    //CLD: 2026-10-06T08:53:22+03:00: label of a file (e.g. in object fields)
+    //label of a file (e.g. in object fields)
     public function __toString() {
 	return (string)($this->filename ?? '');
     }
