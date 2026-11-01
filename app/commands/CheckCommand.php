@@ -2030,6 +2030,28 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('kb: the tool\'s answer: the best passage (Search results at most), with its title', [ false, 1, 'Holidays', 'Employees get 21 days of paid holiday every year.' ],
 		[ $isError, count($found), $found[0]['title'] ?? null, $found[0]['text'] ?? null ]);
 
+	    //CLD: 2026-11-01T22:35:00+02:00: the MCP server's tools: list_knowledge_bases, query_knowledge_base (by name or id; a limit; errors)
+	    $M = \util\McpServerTools::class;
+	    $mcp = function($tool, array $args) use ($M) {
+		try {
+		    return $M::call($tool, $args, $this->project, false);
+		} catch (\ErrorException $ex) {
+		    return 'refused: ' . $ex->getMessage();
+		}
+	    };
+	    $listed = array_column($mcp('list_knowledge_bases', [])['knowledge_bases'] ?? [], null, 'name')[$name] ?? [];
+	    $q = $mcp('query_knowledge_base', [ 'knowledge_base' => $name, 'query' => 'paid holiday days', 'limit' => 1 ]);
+	    $byId = $mcp('query_knowledge_base', [ 'knowledge_base' => (string)$kb->_id, 'query' => 'paid holiday days', 'limit' => 50 ]);
+	    $defs = array_column($M::definitions(), null, 'name');
+	    $this->check('kb: MCP server: list_knowledge_bases (id, description, counts, state); query_knowledge_base by name (limit 1: the best passage, its title) and by id (limit at most '
+		. $M::MAX_PASSAGES . '); unknown knowledge base, empty query refused; read-only; the Assistant\'s structure tools list them, not query them',
+		[ (string)$kb->_id, 'HR rules', true, 'ready', [ 1, 'Holidays', 'Employees get 21 days of paid holiday every year.' ], true, 'refused: no knowledge base `Nope` in this project',
+		'refused: query: empty', true, [ true, false ] ],
+		[ $listed['id'] ?? null, $listed['description'] ?? null, ($listed['chunks'] ?? 0) > 0, $listed['state'] ?? null, [ $q['count'] ?? null, $q['results'][0]['title'] ?? null, $q['results'][0]['text'] ?? null ],
+		is_array($byId) && ($byId['count'] ?? 99) <= $M::MAX_PASSAGES, $mcp('query_knowledge_base', [ 'knowledge_base' => 'Nope', 'query' => 'x' ]),
+		$mcp('query_knowledge_base', [ 'knowledge_base' => $name, 'query' => ' ' ]), !empty($defs['query_knowledge_base']['annotations']['readOnlyHint']),
+		[ in_array('list_knowledge_bases', $M::STRUCTURE_TOOLS, true), in_array('query_knowledge_base', $M::STRUCTURE_TOOLS, true) ] ]);
+
 	    //Ollama's /api/embed
 	    $setModel('ollama', "http://127.0.0.1:{$port}", 'bge-m3');
 	    @unlink($log);
