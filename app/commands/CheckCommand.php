@@ -50,12 +50,13 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-11-01T10:00:00+02:00: + sophos (the Sophos Firewall credential and steps against a fake firewall's XML API: commands/tests/SophosTestServer.php)
     //CLD: 2026-11-01T08:00:00+02:00: + checkmk (the Checkmk credential, steps and problem trigger against a fake site: commands/tests/CheckmkTestServer.php)
     //CLD: 2026-11-01T12:00:00+02:00: + vmware (the VMware vCenter credential, steps and alarm trigger against a fake vCenter: commands/tests/VmwareTestServer.php)
+    //CLD: 2026-11-01T14:00:00+02:00: + proxmox (the Proxmox VE credential, steps and task trigger against a fake cluster: commands/tests/ProxmoxTestServer.php)
     //CLD: 2026-11-01T02:00:00+02:00: + access (the account's Data access: the projects' MCP server on / off, what the Assistant may read)
     //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
     //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -5438,6 +5439,207 @@ class CheckCommand extends \sys\BaseController {
 	} finally {
 	    $V::$testing = false;
 	    $V::forgetSessions();
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-01T14:00:00+02:00: Proxmox VE against a fake cluster (commands/tests/ProxmoxTestServer.php; util\Proxmox::$testing: http, no address guard): the client (the address, parameters,
+    //Proxmox's messages from the reason phrase, tasks' nodes), the credential's test, the steps (guests by name or VMID on their own node, filters; start when running is done; shutdown
+    //with its timeout; clone to the next free VMID; delete refused while running; snapshots: list without `current`, a name Proxmox refuses, rollback, delete, prune; backups: vzdump to a
+    //storage, a failed task with its log, the latest backup's age; storage low on space; the API), the task trigger (its first check notes the time; failed backups start runs, once)
+    private function suiteProxmox() {
+	$P = \util\Proxmox::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$upid = 'UPID:pve1:000A1B2C:00F00F00:6724A1B0:vzdump:100:root@pam:';
+	$this->check('proxmox: the address without the web interface\'s #...; parameters (booleans 1 / 0, lists comma separated, empty ones left out); Proxmox\'s messages; a task\'s node', [
+	    'https://pve1:8006', [ 'full' => 1, 'vmid' => '100,101', 'online' => 0 ], 'Parameter verification failed.; snapname: invalid format', 'pve1', null ], [
+	    $P::baseUrl(' https://pve1:8006/#v1:0:=qemu%2F100 '), $P::params([ 'full' => true, 'vmid' => [ 100, 101 ], 'online' => false, 'storage' => '', 'name' => null ]),
+	    $P::message('Parameter verification failed.', [ 'data' => null, 'errors' => [ 'snapname' => 'invalid format' ] ]), $P::taskNode($upid), $P::taskNode('UPID:bad') ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-pve-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('proxmox', 'ProxmoxTestServer.php', $dir, [ 'PVE_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$P::$testing = true;
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$tasks = fn(array $list) => file_put_contents("{$dir}/tasks.json", json_encode($list));
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $e) {
+		return $e->getMessage();
+	    }
+	};
+	$creds = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function($secret) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialProxmox', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Proxmox ' . uniqid(),
+		    'serverUrl' => "https://127.0.0.1:{$port}", 'tokenId' => 'automation@pve!rail22', 'secret' => $secret ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('proxmox: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->serverUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialProxmox', (string)$c->_id);
+	    };
+	    $cred = $make('s3cret');
+	    $wrong = $make('nope');
+	    if (!$cred || !$wrong)
+		return;
+	    $bad = $om->create('CredentialProxmox', [ 'name' => 'x', 'serverUrl' => 'https://pve1:8006/api2/json', 'tokenId' => 'automation@pve', 'secret' => 's' ]);
+	    $bad->validates();
+	    $requests();
+	    $this->check('proxmox: the form (the server without a path, user@realm!token); Test: the version, the cluster, its nodes; the token in the header; a wrong secret: said so', [
+		[ 'serverUrl', 'tokenId' ], 'connected: Proxmox VE 8.2.4, cluster lab, 2 nodes: pve1, pve2 (offline)', 'PVEAPIToken=automation@pve!rail22=s3cret', true ], [
+		array_values(array_intersect([ 'serverUrl', 'tokenId' ], array_keys((array)$bad->errors()))), $cred->test(), $requests()[0]['auth'] ?? null,
+		str_contains($thrown(fn() => $wrong->test()), 'HTTP status 401: authentication failure: check the API token and its secret') ]);
+
+	    $id = (string)$cred->_id;
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $id, $requests) {
+		$requests();
+		$exe = $this->runFlow("proxmox {$fq}", [ $n('m', 'trigger::manual'), $n('c', $fq, $cfg + [ 'credential' => $id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'c'), $e('e2', 'c', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $names = fn($exe, $var) => array_column((array)($exe?->getVariable($var)['items'] ?? []), 'name');
+	    $posted = fn($sent) => array_values(array_filter($sent, fn($r) => $r['method'] !== 'GET'));
+	    $sentTo = fn($sent) => array_values(array_map(fn($r) => "{$r['method']} " . substr($r['path'], 10), array_filter($sent, fn($r) => $r['method'] !== 'GET')));
+
+	    //guests
+	    [ $l1, ] = $step('app::proxmox-guests', [ 'operation' => 'list', 'names' => 'web*', 'variable' => 'g' ]);
+	    [ $l2, ] = $step('app::proxmox-guests', [ 'operation' => 'list', 'kind' => 'lxc', 'variable' => 'g' ]);
+	    [ $l3, ] = $step('app::proxmox-guests', [ 'operation' => 'list', 'tag' => 'prod', 'variable' => 'g' ]);
+	    [ $l4, ] = $step('app::proxmox-guests', [ 'operation' => 'list', 'status' => 'stopped', 'templates' => true, 'variable' => 'g' ]);
+	    $this->check('proxmox: Guests list: a * pattern, containers, a tag; templates only when chosen', [ [ 'web01', 'web02' ], [ 'dns01' ], [ 'web01' ], [ 'web02', 'tpl-debian' ] ],
+		[ $names($l1, 'g'), $names($l2, 'g'), $names($l3, 'g'), $names($l4, 'g') ]);
+	    [ $a1, $s1 ] = $step('app::proxmox-guests', [ 'operation' => 'start', 'guest' => 'web01', 'variable' => 'p' ]);
+	    [ $a2, $s2 ] = $step('app::proxmox-guests', [ 'operation' => 'start', 'guest' => '{{ which }}', 'variable' => 'p' ], [ 'which' => 'web02' ]);
+	    [ $a3, $s3 ] = $step('app::proxmox-guests', [ 'operation' => 'shutdown', 'guest' => 200, 'shutdownTimeout' => 30, 'forceStop' => true, 'variable' => 'p' ]);
+	    $this->check('proxmox: Guests start: running already is done; by name (an expression) on its own node, the task waited for; shutdown of a container with its timeout and forceStop', [
+		[ true, [] ], [ 'running', false, [ 'POST /nodes/pve2/qemu/101/status/start' ], true ], [ 'stopped', [ 'timeout' => '30', 'forceStop' => '1' ], [ 'POST /nodes/pve1/lxc/200/status/shutdown' ] ] ], [
+		[ $a1?->getVariable('p')['already'] ?? null, $sentTo($s1) ],
+		[ $a2?->getVariable('p')['status'] ?? null, $a2?->getVariable('p')['already'] ?? null, $sentTo($s2), str_starts_with((string)($a2?->getVariable('p')['task'] ?? ''), 'UPID:pve2:') ],
+		[ $a3?->getVariable('p')['status'] ?? null, array_intersect_key(end($s3)['params'] ?? [], [ 'timeout' => 1, 'forceStop' => 1 ]) ?: ($s3[count($s3) - 2]['params'] ?? null), $sentTo($s3) ] ]);
+	    [ $if, ] = $step('app::proxmox-guests', [ 'operation' => 'interfaces', 'guest' => 'web01', 'variable' => 'i' ]);
+	    [ $cl, $sc ] = $step('app::proxmox-guests', [ 'operation' => 'clone', 'guest' => 'tpl-debian', 'newName' => 'web03', 'full' => false, 'target' => 'pve1', 'variable' => 'c' ]);
+	    [ $del, ] = $step('app::proxmox-guests', [ 'operation' => 'delete', 'guest' => 'web01' ]);
+	    [ $mg, $sm ] = $step('app::proxmox-guests', [ 'operation' => 'migrate', 'guest' => 'web02', 'target' => 'pve1', 'variable' => 'm' ]);
+	    $this->check('proxmox: Guests interfaces (the guest agent); clone a template to the next free VMID, linked, on another node; delete while running: the error output with Proxmox\'s message; '
+		. 'migrate a running VM online', [ [ '10.0.1.100' ], [ 102, 'pve1', [ 'newid' => '102', 'full' => '0', 'name' => 'web03', 'target' => 'pve1' ] ], [ 'error', true ], [ 'pve1', '1' ] ], [
+		[ $if?->getVariable('i')[1]['ip-addresses'][0]['ip-address'] ?? null ],
+		[ $cl?->getVariable('c')['vmid'] ?? null, $cl?->getVariable('c')['node'] ?? null, array_intersect_key(array_values(array_filter($sc, fn($r) => $r['method'] === 'POST'))[0]['params'] ?? [], [ 'newid' => 1, 'full' => 1, 'name' => 1, 'target' => 1 ]) ],
+		[ $del?->getVariable('route'), str_contains((string)self::logLine($del, 'Proxmox Guests delete: '), 'HTTP status 500: VM 100 is running - destroy failed') ],
+		[ $mg?->getVariable('m')['node'] ?? null, array_values(array_filter($sm, fn($r) => $r['method'] === 'POST'))[0]['params']['online'] ?? null ] ]);
+
+	    //snapshots
+	    [ $ls, ] = $step('app::proxmox-snapshots', [ 'operation' => 'list', 'guest' => 'web01', 'variable' => 's' ]);
+	    [ $badName, ] = $step('app::proxmox-snapshots', [ 'operation' => 'create', 'guest' => 'web01', 'snapName' => 'pre {{ t }}' ], [ 't' => 'T7' ]);
+	    [ $cr, $sc ] = $step('app::proxmox-snapshots', [ 'operation' => 'create', 'guest' => 'web01', 'snapName' => 'pre_{{ t }}', 'vmstate' => true, 'variable' => 's' ], [ 't' => 'T7' ]);
+	    $this->check('proxmox: Snapshots list: without `current`, oldest first, the one the guest runs from marked; a name Proxmox would refuse: the error output; create with the RAM', [
+		[ [ 'base', false ], [ 'before_patch', false ], [ 'recent', true ] ], 'error', [ 'pre_T7', '1' ], 'pre_T7' ], [
+		array_map(fn($s) => [ $s['name'], $s['current'] ], $ls?->getVariable('s')['items'] ?? []), $badName?->getVariable('route'),
+		[ $posted($sc)[0]['params']['snapname'] ?? null, $posted($sc)[0]['params']['vmstate'] ?? null ], $cr?->getVariable('s')['snapshot'] ?? null ]);
+	    [ $rb, $sr ] = $step('app::proxmox-snapshots', [ 'operation' => 'rollback', 'guest' => 'web01', 'snapshot' => 'before_patch', 'variable' => 's' ]);
+	    [ $dl, ] = $step('app::proxmox-snapshots', [ 'operation' => 'delete', 'guest' => 100, 'snapshot' => 'base' ]);
+	    [ $pr, ] = $step('app::proxmox-snapshots', [ 'operation' => 'prune', 'guest' => 100, 'days' => '7', 'variable' => 's' ]);
+	    [ $ls, ] = $step('app::proxmox-snapshots', [ 'operation' => 'list', 'guest' => 'web01', 'variable' => 's' ]);
+	    $this->check('proxmox: Snapshots rollback, delete; prune: only those older than the days; what is left', [ [ 'POST /nodes/pve1/qemu/100/snapshot/before_patch/rollback' ], 'end', [ 'before_patch' ], [ 'recent', 'pre_T7' ] ], [
+		$sentTo($sr), $dl?->state, array_column($pr?->getVariable('s')['removed'] ?? [], 'name'), $names($ls, 's') ]);
+
+	    //backups
+	    [ $bk, $sb ] = $step('app::proxmox-backups', [ 'operation' => 'backup', 'guest' => 'web01', 'storage' => 'pbs', 'notes' => 'Before {{ why }}', 'variable' => 'b' ], [ 'why' => 'the upgrade' ]);
+	    [ $bf, ] = $step('app::proxmox-backups', [ 'operation' => 'backup', 'guest' => 'web02', 'storage' => 'pbs' ]);
+	    [ $lt, ] = $step('app::proxmox-backups', [ 'operation' => 'latest', 'guest' => 'dns01', 'storage' => 'pbs', 'variable' => 'b' ]);
+	    [ $bl, ] = $step('app::proxmox-backups', [ 'operation' => 'list', 'storage' => 'pbs', 'node' => 'pve1', 'variable' => 'b' ]);
+	    $this->check('proxmox: Backups: vzdump on the guest\'s node to a storage with notes, the backup made; a failed task: the error output with its log; the latest backup and its age; '
+		. 'a storage\'s backups newest first', [ [ 'POST /nodes/pve1/vzdump', 'Before the upgrade', 'snapshot', 'zstd' ], true, [ 'error', true ], [ 200, 5.0 ], [ 4, 100 ] ], [
+		[ $sentTo($sb)[0] ?? null, $posted($sb)[0]['params']['notes-template'] ?? null,
+		    array_values(array_filter($sb, fn($r) => $r['method'] === 'POST'))[0]['params']['mode'] ?? null, array_values(array_filter($sb, fn($r) => $r['method'] === 'POST'))[0]['params']['compress'] ?? null ],
+		str_starts_with((string)($bk?->getVariable('b')['backup']['volid'] ?? ''), 'pbs:backup/vm/100/'),
+		[ $bf?->getVariable('route'), str_contains((string)self::logLine($bf, 'Proxmox Backups backup: '), 'failed: job errors (INFO: starting new backup job: vzdump 101 | ERROR: Backup of VM 101 failed - no space left on device)') ],
+		[ $lt?->getVariable('b')['vmid'] ?? null, $lt?->getVariable('b')['ageHours'] ?? null ], [ $bl?->getVariable('b')['count'] ?? null, $bl?->getVariable('b')['items'][0]['vmid'] ?? null ] ]);
+	    [ $bd, $sd ] = $step('app::proxmox-backups', [ 'operation' => 'delete', 'volid' => 'pbs:backup/vm/100/2026-10-30T01:00:00Z', 'node' => 'pve1', 'variable' => 'b' ]);
+	    [ $jb, ] = $step('app::proxmox-backups', [ 'operation' => 'jobs', 'variable' => 'b' ]);
+	    $this->check('proxmox: Backups delete (the volume ID encoded in the path); the backup jobs', [ [ 'DELETE /nodes/pve1/storage/pbs/content/pbs%3Abackup%2Fvm%2F100%2F2026-10-30T01%3A00%3A00Z' ], true, 1 ],
+		[ $sentTo($sd), $bd?->getVariable('b')['deleted'] ?? null, $jb?->getVariable('b')['count'] ?? null ]);
+
+	    //cluster
+	    $now = time();
+	    $tasks([ [ 'upid' => 'UPID:pve1:00000001:00000001:00000001:vzdump:100:root@pam:', 'node' => 'pve1', 'type' => 'vzdump', 'id' => '100', 'user' => 'root@pam',
+		'starttime' => $now - 600, 'endtime' => $now - 500, 'status' => 'job errors' ],
+		[ 'upid' => 'UPID:pve1:00000002:00000002:00000002:qmstart:100:root@pam:', 'node' => 'pve1', 'type' => 'qmstart', 'id' => '100', 'user' => 'root@pam', 'starttime' => $now - 400, 'endtime' => $now - 399, 'status' => 'OK' ],
+		[ 'upid' => 'UPID:pve1:00000003:00000003:00000003:vzdump::root@pam:', 'node' => 'pve1', 'type' => 'vzdump', 'id' => '', 'user' => 'root@pam', 'starttime' => $now - 10 ] ]);
+	    [ $cn, ] = $step('app::proxmox-cluster', [ 'operation' => 'nodes', 'variable' => 'c' ]);
+	    [ $cs, ] = $step('app::proxmox-cluster', [ 'operation' => 'storage', 'node' => 'pve1', 'variable' => 'c' ]);
+	    [ $st, ] = $step('app::proxmox-cluster', [ 'operation' => 'status', 'variable' => 'c' ]);
+	    [ $tk, ] = $step('app::proxmox-cluster', [ 'operation' => 'tasks', 'failed' => true, 'variable' => 'c' ]);
+	    $this->check('proxmox: Cluster nodes with memory in percent; storage of a node with free percent, low on space; the status (an offline node); failed tasks only (not a running one)', [
+		25.0, [ [ 'local', 5.0, true ], [ 'pbs', 60.0, false ] ], [ 'lab', true, 1 ], [ 'vzdump' ] ], [
+		$cn?->getVariable('c')['items'][0]['memPercent'] ?? null, array_map(fn($s) => [ $s['storage'], $s['freePercent'], $s['lowOnSpace'] ], $cs?->getVariable('c')['items'] ?? []),
+		[ $st?->getVariable('c')['cluster'] ?? null, $st?->getVariable('c')['quorate'] ?? null, $st?->getVariable('c')['offline'] ?? null ], array_column($tk?->getVariable('c')['items'] ?? [], 'type') ]);
+
+	    //API
+	    [ $r1, ] = $step('app::proxmox-api', [ 'method' => 'GET', 'path' => '/nodes/pve1/qemu/100/config', 'variable' => 'r' ]);
+	    [ $r2, ] = $step('app::proxmox-api', [ 'method' => 'POST', 'path' => '/api2/json/nodes/pve1/qemu/100/snapshot', 'parameters' => '{"snapname": "api_snap"}', 'wait' => true, 'variable' => 'r' ]);
+	    $this->check('proxmox: API: a GET; a POST whose task is waited for (a path with /api2/json too)', [ '4096', 'OK' ], [ $r1?->getVariable('r')['memory'] ?? null, $r2?->getVariable('r')['exitstatus'] ?? null ]);
+
+	    //the task trigger
+	    $wf = $this->workflow('proxmox task', [ $n('t', 'trigger::proxmox', [ 'credential' => $id, 'results' => 'failed', 'types' => 'vzdump', 'runs' => 'each', 'variable' => 'ev',
+		'mode' => 'interval', 'every' => 5, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ev.type }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('proxmox: the task trigger\'s workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $T = \models\node\NodeTriggerProxmox::class;
+	    $node = $wf->nodes['t'];
+	    [ $d0, $r0 ] = $T::check($wf, $node, []);
+	    $since = (int)$d0['since'];
+	    $base = [ 'node' => 'pve1', 'user' => 'root@pam', 'starttime' => $since - 60 ];
+	    $tasks([ [ 'upid' => 'UPID:pve1:00000001:00000001:00000001:vzdump:100:root@pam:', 'type' => 'vzdump', 'id' => '100', 'endtime' => $since - 500, 'status' => 'job errors' ] + $base,
+		[ 'upid' => 'UPID:pve1:00000004:00000004:00000004:vzdump:101:root@pam:', 'type' => 'vzdump', 'id' => '101', 'endtime' => $since + 5, 'status' => 'job errors' ] + $base,
+		[ 'upid' => 'UPID:pve1:00000005:00000005:00000005:qmstart:101:root@pam:', 'type' => 'qmstart', 'id' => '101', 'endtime' => $since + 6, 'status' => 'start failed' ] + $base,
+		[ 'upid' => 'UPID:pve1:00000006:00000006:00000006:vzdump:200:root@pam:', 'type' => 'vzdump', 'id' => '200', 'endtime' => $since + 7, 'status' => 'OK' ] + $base ]);
+	    [ $d1, $r1 ] = $T::check($wf, $node, $d0);
+	    [ $d2, $r2 ] = $T::check($wf, $node, $d1);
+	    $tasks([ [ 'upid' => 'UPID:pve1:00000004:00000004:00000004:vzdump:101:root@pam:', 'type' => 'vzdump', 'id' => '101', 'endtime' => $since + 5, 'status' => 'job errors' ] + $base,
+		[ 'upid' => 'UPID:pve2:00000007:00000007:00000007:vzdump:102:root@pam:', 'type' => 'vzdump', 'id' => '102', 'endtime' => $since + 5, 'status' => 'job errors', 'node' => 'pve2' ] + $base ]);
+	    [ $d3, $r3 ] = $T::check($wf, $node, $d2);
+	    $started = array_merge($started, $r0, $r1, $r2, $r3);
+	    $show = fn($runs) => array_map(fn($x) => [ $x->getVariable('ev')['type'] ?? null, $x->getVariable('ev')['id'] ?? null, $x->getVariable('ev')['failed'] ?? null ], $runs);
+	    $this->check('proxmox: task trigger: the first check notes the time; then a failed backup that ended since starts a run (not an older one, not another type, not an OK one), once; '
+		. 'another that ended at the same second', [ [], [ [ 'vzdump', '101', true ] ], [], [ [ 'vzdump', '102', true ] ] ], [ $show($r0), $show($r1), $show($r2), $show($r3) ]);
+	    $this->check('proxmox: task trigger: the runs queued, at the trigger', [ 'new', 'proxmox' ], [ $r1[0]?->state, $r1[0]?->trigger ]);
+	    $now2 = $T::startNow($wf, $node);
+	    $started = array_merge($started, $now2['executions'] ?? []);
+	    $this->check('proxmox: task trigger: Run in the designer: the newest matching task', [ 1, '102' ], [ count($now2['executions'] ?? []), ($now2['executions'][0] ?? null)?->getVariable('ev')['id'] ?? null ]);
+	} finally {
+	    $P::$testing = false;
 	    foreach($started as $x) {
 		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
 		    $job->delete();

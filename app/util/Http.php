@@ -27,7 +27,7 @@
 	insecure        the server's TLS certificate is not checked (a self-signed one) (CLD: 2026-11-01T00:30:00+02:00)
 	compressed      accept gzip / deflate / br (decoded)
 
-    The answer: ok (no error, status 1..399), status, error (null when there is an answer), tooLarge, headers [ lower-case name => value ] (the last of a repeated one),
+    The answer: ok (no error, status 1..399), status, reason (the status line's text after the code; CLD: 2026-11-01T14:00:00+02:00), error (null when there is an answer), tooLarge, headers [ lower-case name => value ] (the last of a repeated one),
     headerList [ [ name, value ] ] (all, in order), body, size, contentType (as sent), mime (lower case, no parameters), url (the last address, after redirects), time_ms
 */
 
@@ -63,7 +63,7 @@ class Http {
 	//no "Expect: 100-continue" wait before a body
 	$headers = self::withDefault($headers, 'Expect', '');
 
-	$r = [ 'ok' => false, 'status' => 0, 'error' => null, 'tooLarge' => false, 'headers' => [], 'headerList' => [], 'body' => '', 'size' => 0, 'contentType' => '', 'mime' => '', 'url' => $url, 'time_ms' => 0 ];
+	$r = [ 'ok' => false, 'status' => 0, 'reason' => '', 'error' => null, 'tooLarge' => false, 'headers' => [], 'headerList' => [], 'body' => '', 'size' => 0, 'contentType' => '', 'mime' => '', 'url' => $url, 'time_ms' => 0 ];
 	$start = microtime(true);
 	for ($hop = 0; ; $hop++) {
 	    $left = $timeout * 1000 - (int)((microtime(true) - $start) * 1000);
@@ -205,7 +205,7 @@ class Http {
     //one exchange (no redirect followed): the answer's status, error, tooLarge, headers, headerList, body, size, contentType, mime; $follow: a redirect's body is not kept (it is followed)
     //CLD: 2026-11-01T00:30:00+02:00: $public: false, 'public' or 'private' (private network addresses accepted too); + $insecure: the certificate not checked
     protected static function once($method, $url, array $headers, $body, $upload, $sink, $maxBytes, $https, $public, $compressed, $timeoutMs, $connectTimeout, $follow, $insecure = false) {
-	$r = [ 'status' => 0, 'error' => null, 'tooLarge' => false, 'headers' => [], 'headerList' => [], 'body' => '', 'size' => 0, 'contentType' => '', 'mime' => '' ];
+	$r = [ 'status' => 0, 'reason' => '', 'error' => null, 'tooLarge' => false, 'headers' => [], 'headerList' => [], 'body' => '', 'size' => 0, 'contentType' => '', 'mime' => '' ];
 	$parts = parse_url($url);
 	$scheme = strtolower((string)($parts['scheme'] ?? ''));
 	if (!in_array($scheme, $https ? [ 'https' ] : [ 'http', 'https' ], true) || empty($parts['host'])) {
@@ -259,9 +259,11 @@ class Http {
 	//the headers of the answer; the body of a redirect followed is not kept
 	$redirect = false;
 	$opts[CURLOPT_HEADERFUNCTION] = function($ch, $line) use (&$r) {
-	    if (preg_match('~^HTTP/\S+\s+(\d+)~', $line, $m)) {
+	    if (preg_match('~^HTTP/\S+\s+(\d+)(?:[ \t]+([^\r\n]*))?~', $line, $m)) {
 		//a new answer (e.g. after 100 Continue): its headers only
 		$r['status'] = (int)$m[1];
+		//CLD: 2026-11-01T14:00:00+02:00: + the reason phrase (Proxmox VE puts its error messages there; none in HTTP/2)
+		$r['reason'] = trim((string)($m[2] ?? ''));
 		$r['headers'] = $r['headerList'] = [];
 	    } elseif (($p = strpos($line, ':')) !== false) {
 		$name = trim(substr($line, 0, $p));
