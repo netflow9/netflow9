@@ -1,25 +1,20 @@
 #!/bin/bash
 
-#CLD: 2026-10-22T22:00:00+03:00: new: the Playwright MCP server (a web browser for the AI steps: the LocalMCP plugin, server `playwright`) as a system service:
-#  - its own user (pwmcp), no login, writing only in /var/lib/playwright-mcp
-#  - on 127.0.0.1:8931 only (Streamable HTTP: http://localhost:8931/mcp), headless, a fresh in-memory browser profile per session
-#    CLD: 2026-10-23T00:20:00+03:00: + --allowed-hosts: the Host headers localhost:<port> and 127.0.0.1:<port> (it accepted only localhost: 403 for http://127.0.0.1:...)
-#  - the shared Chromium of scripts/1_playwright-install.sh (CLD: 2026-11-01T11:55:18+02:00: install runs it when it is missing)
-#    CLD: 2026-11-01T13:30:00+02:00: its own: the Chromium of the package's Playwright (playwright-core of @playwright/mcp: the revision it was built for), in the shared
-#    /opt/playwright/browsers, and its system libraries (dnf); 1_playwright-install.sh is no longer used (the @playwright/test CLI and /etc/profile.d were for the tests only)
-#  - a firewall table (nftables) refusing the user's new connections to private, loopback and link-local addresses (the cloud metadata 169.254.169.254 too): the browser reaches
-#    only the public internet (Playwright's own --blocked-origins is not a security boundary: kept as a second layer only)
-#CLD: 2026-11-01T11:55:18+02:00: the tool servers are core (mcp.json, next to app.env; was the LocalMCP plugin): install adds the browser to an installation, at its installation
-#(install.sh) or later: the browser's libraries and its Chromium, the service, the polkit rule written again when the app's services are installed
-#(scripts/4_services-install.sh rule: the Services page controls it), the server in mcp.json (scripts/playwright/mcp-server.json, its url with the port: ./v mcpserver::add; an
-#entry changed by hand is written again), a test (./v mcpserver::test); uninstall takes the server out of mcp.json first
+#the Playwright MCP server (the web browser of the AI steps) as a system service, one per installation (several on one server: e.g. /home/app live,
+#/home/dev development), each with its own:
+#  - unit nfn-playwright-<the app's user>, user pwmcp-<user> (no login), folder /var/lib/playwright-mcp-<user> (the only one it writes)
+#  - port: --port, else PLAYWRIGHT_MCP_PORT of app.env, else 8931; on 127.0.0.1 only (Streamable HTTP: http://localhost:<port>/mcp), headless,
+#    a fresh in-memory browser profile per session; --allowed-hosts takes localhost:<port> and 127.0.0.1:<port> (otherwise 403 for 127.0.0.1)
+#  - firewall table playwright_mcp_<user> (nftables, /etc/playwright-mcp/egress-<user>.nft): the user's new connections to private, loopback and
+#    link-local addresses (169.254.169.254 too) are refused, the browser reaches only the public internet (Playwright's --blocked-origins is not
+#    a security boundary: a second layer only)
+#Shared by the installations: the @playwright/mcp package and the Chromium its Playwright was built for (in /opt/playwright/browsers), with its system libraries.
+#install also: the polkit rule again when the app's services are installed (scripts/daemon.sh rule) (the Services page controls the unit), the server in mcp.json
+#(scripts/playwright/mcp-server.json, its url with the port; an entry changed by hand is written again), a test; uninstall takes it out of mcp.json first.
 #Run as root:
 #   sudo scripts/playwright-mcp.sh install [--version=<x.y.z>] [--port=<n>]   install / update, start at boot, start now
 #   sudo scripts/playwright-mcp.sh start | stop | restart | status | uninstall
 #Then the accounts that may use it: Settings > Tool servers (or ./v mcpserver::enable --account=<id> --server=playwright)
-#CLD: 2026-10-31T18:30:00+02:00: one per installation (several on one server: e.g. /home/app live, /home/dev development), as the daemon: the unit nfn-playwright-<the app's user>
-#(was nfn-playwright), its own user pwmcp-<user>, folder /var/lib/playwright-mcp-<user>, firewall table playwright_mcp_<user> (/etc/playwright-mcp/egress-<user>.nft) and port:
-#--port, else PLAYWRIGHT_MCP_PORT of app.env (CLD: 2026-11-01T11:55:18+02:00: then written into mcp.json's url), else 8931. The @playwright/mcp package and the Chromium are the server's (shared)
 
 set -euo pipefail
 
@@ -27,13 +22,12 @@ SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}
 BASE=$(cd "$(dirname "$SELF")/.." && pwd)
 APP_USER=$(stat -c %U "$BASE/app")
 
-#the @playwright/mcp version (Playwright 1.64; CLD: 2026-11-01T13:30:00+02:00: its Chromium is installed with it)
+#the @playwright/mcp version (Playwright 1.64; its Chromium is installed with it)
 VERSION="0.0.83"
-#CLD: 2026-10-31T18:30:00+02:00: the port of app.env (PLAYWRIGHT_MCP_PORT), else 8931; --port before both
+#the port of app.env (PLAYWRIGHT_MCP_PORT), else 8931; --port before both
 PORT=$(sed -n "s/^PLAYWRIGHT_MCP_PORT=['\"]\{0,1\}\([0-9]*\).*/\1/p" "$BASE/app.env" 2>/dev/null | tail -1 || true)
 PORT=${PORT:-8931}
-#CLD: 2026-10-29T13:00:00+02:00: the unit nfn-playwright, as the app's other units (nfn-daemon, nfn-haraka; was playwright-mcp: removed by install / uninstall when there)
-#CLD: 2026-10-31T18:30:00+02:00: the installation's: nfn-playwright-<user> and its user, folder, table (was nfn-playwright, pwmcp, /var/lib/playwright-mcp, playwright_mcp)
+#the installation's unit, user, folder and table
 SERVICE=nfn-playwright-$APP_USER
 #its former names: removed by install / uninstall when this installation wrote them (playwright-mcp: any)
 OLD_SERVICES="playwright-mcp nfn-playwright"
@@ -65,7 +59,7 @@ need_root() {
     [ "$(id -u)" -eq 0 ] || { echo "run it as root: sudo $0 $command"; exit 1; }
 }
 
-#CLD: 2026-11-01T11:55:18+02:00: the app's console as the app's user (mcp.json is its file); the server's entry in mcp.json
+#the app's console as the app's user (mcp.json is its file); the server's entry in mcp.json
 MCP_ENTRY="$BASE/scripts/playwright/mcp-server.json"
 as_app() {
     (cd "$BASE/app" && runuser -u "$APP_USER" -- env -i PATH="/usr/local/bin:/usr/bin:/bin" HOME="$BASE" "$BASE/app/v" "$@")
@@ -81,12 +75,12 @@ system_node() {
     esac
 }
 
-#CLD: 2026-11-01T13:30:00+02:00: the package's Playwright (playwright-core of @playwright/mcp): its folder
+#the package's Playwright (playwright-core of @playwright/mcp): its folder
 playwright_core() {
     node -e 'console.log(require("path").dirname(require.resolve("playwright-core/package.json", { paths: [ process.argv[1] ] })))' "$(npm root -g)/@playwright/mcp"
 }
 
-#CLD: 2026-11-01T13:30:00+02:00: the Chromium the package's Playwright was built for (its revision in browsers.json; was the newest of the shared folder)
+#the Chromium the package's Playwright was built for (its revision in browsers.json)
 chromium_path() {
     local rev
     rev=$(node -e 'const b = require(process.argv[1] + "/browsers.json").browsers.find((x) => x.name === "chromium"); console.log(b ? b.revision : "")' "$(playwright_core)") || return 0
@@ -94,7 +88,7 @@ chromium_path() {
     return 0
 }
 
-#CLD: 2026-11-01T13:30:00+02:00: Chromium's system libraries (was in scripts/1_playwright-install.sh; Playwright's own --with-deps knows only apt)
+#Chromium's system libraries (Playwright's own install-deps knows only apt)
 install_browser_libs() {
     if command -v dnf >/dev/null; then
         dnf install -y --setopt=install_weak_deps=False nss nspr atk at-spi2-atk at-spi2-core cups-libs libdrm libxkbcommon libXcomposite libXdamage libXfixes \
@@ -134,8 +128,7 @@ write_nft() {
     chmod 644 "$NFT_FILE"
 }
 
-#CLD: 2026-10-29T13:00:00+02:00: the unit of its former name (playwright-mcp.service) stopped and removed: it holds the same port
-#CLD: 2026-10-31T18:30:00+02:00: + nfn-playwright.service, only when this installation wrote it (another's is left alone)
+#the units of its former names stopped and removed (they hold the same port): playwright-mcp always, nfn-playwright only when this installation wrote it
 remove_old_unit() {
     local name old
     for name in $OLD_SERVICES; do
@@ -149,7 +142,7 @@ remove_old_unit() {
     done
 }
 
-#CLD: 2026-10-31T18:30:00+02:00: another installation's browser unit (they share the package)
+#the other installations' browser units (they share the package)
 other_units() {
     ls /etc/systemd/system/nfn-playwright-*.service 2>/dev/null | grep -v -x "$UNIT" || true
 }
@@ -200,8 +193,7 @@ case "$command" in
     install)
         need_root
         system_node
-        #CLD: 2026-11-01T13:30:00+02:00: the package first, then the Chromium of its Playwright and the browser's libraries (were scripts/1_playwright-install.sh's: Playwright's
-        #CLI, the newest shared Chromium)
+        #the package first, then the Chromium of its Playwright and the browser's libraries
         npm install -g "@playwright/mcp@$VERSION"
         install_browser_libs
         chrome=$(chromium_path)
@@ -226,9 +218,9 @@ case "$command" in
         systemctl restart "$SERVICE"
         sleep 3
         systemctl --no-pager --lines=5 status "$SERVICE" || true
-        #CLD: 2026-11-01T11:55:18+02:00: the Services page controls it (the rule of this installation's units, when they are installed), the server in mcp.json, a test
+        #the Services page controls it (the rule of this installation's units, when they are installed), the server in mcp.json, a test
         if [ -f "/etc/polkit-1/rules.d/49-rail22-services-$APP_USER.rules" ]; then
-            "$BASE/scripts/4_services-install.sh" rule
+            "$BASE/scripts/daemon.sh" rule
         fi
         if [ -f "$BASE/app.env" ]; then
             as_app mcpserver::add --id=playwright --file="$MCP_ENTRY" --url="http://localhost:$PORT/mcp"
@@ -249,7 +241,7 @@ case "$command" in
         ;;
     uninstall)
         need_root
-        #CLD: 2026-11-01T11:55:18+02:00: the server out of mcp.json first (the AI steps no longer open sessions)
+        #the server out of mcp.json first (the AI steps no longer open sessions)
         if [ -f "$BASE/app.env" ]; then
             as_app mcpserver::remove --id=playwright --managed-by=scripts/playwright-mcp.sh || true
         fi
@@ -259,7 +251,7 @@ case "$command" in
         systemctl daemon-reload
         remove_old_unit
         /usr/sbin/nft delete table inet "$NFT_TABLE" 2>/dev/null || true
-        #CLD: 2026-10-31T18:30:00+02:00: the package only when no other installation's browser uses it
+        #the package only when no other installation's browser uses it
         if [ -z "$(other_units)" ]; then
             npm uninstall -g @playwright/mcp || true
             echo "Removed the service and the package; kept: user $SVC_USER, $HOME_DIR, $NFT_FILE (remove them by hand when no longer needed)"

@@ -9,7 +9,7 @@ the Rail22 plugin: mail for the Email (inbound) triggers of workflows.
     hook_queue	for each accepted recipient: the raw message stored as a Rail22 project File (GridFS bucket `filestore`, as models\File stores files: metadata aid / project
 		/ owner / source / wf / created_at, aid and project also at the top level),
 		then a job (collection jobs: \models\node\NodeTriggerEmail::deliver { file, token, rcpt, mail_from }),
-		and the daemon woken (NEWJOB on 127.0.0.1:<nfn.ini job_port>)
+		and the daemon woken (NEWJOB on <nfn.ini job_host, default 127.0.0.1>:<job_port>)
 
 		+ aliases to external addresses (e.g. admin@<domain> -> someone@gmail.com),
 		with Haraka's `aliases` plugin and its config/aliases, listed BEFORE nfn in config/plugins:
@@ -33,7 +33,6 @@ const fs = require('fs').promises;
 const path = require('path');
 const { Readable } = require('stream');
 
-// CLD: 2026-11-01T16:11:37+02:00: the step is in the core (was \\plugins\\InboundMail\\models\\NodeTriggerEmail)
 const JOB_SPEC = '\\models\\node\\NodeTriggerEmail::deliver';
 const LOCAL_PART = /^([a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?)-([a-z0-9]{8})$/;
 
@@ -221,7 +220,8 @@ exports.store = async function (txn, raw, targets) {
     // wake the daemon; when it does not run, it finds the jobs when it starts
     // CLD: 2026-11-01T16:00:27+02:00: on 127.0.0.1:<job_port> (nfn.ini [nfn] job_port = Rail22's DAEMON_PORT, default 9000; was the unix socket job_socket)
     const port = parseInt(cfg.nfn.job_port, 10) || 9000;
-    const s = net.createConnection({ host: '127.0.0.1', port: port }, () => s.end('NEWJOB\n'));
+    // CLD: 2026-11-01T19:00:00+02:00: on nfn.ini [nfn] job_host (Rail22's DAEMON_HOST; Docker: daemon), default 127.0.0.1 (was always 127.0.0.1)
+    const s = net.createConnection({ host: String(cfg.nfn.job_host || '127.0.0.1'), port: port }, () => s.end('NEWJOB\n'));
     s.on('error', () => {});
     return true;
 };

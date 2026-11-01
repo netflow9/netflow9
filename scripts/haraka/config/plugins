@@ -1,26 +1,23 @@
-# CUSTOM
+# Rail22's Haraka: the plugins, in this order
+# aliases before nfn: nfn accepts an inbound address that aliases rewrote to an outside address (config/aliases) and forwards it
 aliases
 nfn
 
-# CONNECT
+# CONNECT: relaying (outbound) only for the hosts of relay_acl_allow (the app's own mail)
 relay
 
 # HELO
 early_talker
 helo.checks
-#tls
 
 # MAIL FROM
 mail_from.is_resolvable
 spf
 
-# RCPT TO
-rcpt_to.in_host_list
-#aliases
+# RCPT TO: nfn above decides every address of the inbound domain; other domains are refused unless relaying
 
 # DATA
 bounce
 headers
 dkim
 limit
-

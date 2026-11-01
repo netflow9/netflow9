@@ -471,6 +471,22 @@ class V {
         return false;
     }
 
+    //where the installation's own files are (app.env, plugins.json, mcp.json)
+    //NFN_CONFIG_DIR of the environment (Docker: the config volume), else the app's folder.
+    //Read before app.env (it says where app.env is)
+    public static function configDir() {
+	$d = getenv('NFN_CONFIG_DIR');
+	return is_string($d) && $d !== '' ? rtrim($d, '/') : dirname(__DIR__, 2);
+    }
+
+    //a setting of app.env (a constant), else of the environment (Docker: compose.yaml), else $default
+    public static function env($name, $default = null) {
+	if (defined($name))
+	    return constant($name);
+	$v = getenv($name);
+	return $v === false ? $default : $v;
+    }
+
     public static function parse_env($filename) {
 	$content = file_get_contents($filename);
 	if (!$content)

@@ -4,10 +4,10 @@
 # It asks the initial data (the public address, the database, the outgoing email, the first account)
 # the options (nginx, the web browser of the AI steps, inbound email, MongoDB's users and sign-in),
 # checks everything it needs first, then runs the parts in order:
-#  - the nginx site (0_nginx-install.sh; a self-signed certificate when there is none),
+#  - the nginx site (nginx.sh; a self-signed certificate when there is none),
 #  - the app's setup (app/v sys::install as the app's user: the account, its owner, app.env),
 #  - Haraka (2_),
-#  - MongoDB's users (3_) and authorization (/etc/mongod.conf, mongod restarted),
+#  - MongoDB's users and authorization (mongo.sh secure),
 #  - the background services (4_)
 #  - the web browser of the AI steps after the background services:
 #    scripts/playwright-mcp.sh install (its Chromium, its service, its server in mcp.json), which also adds it later;
@@ -597,9 +597,8 @@ if [ ! -e "$BASE/ssl/ssl.crt" ]; then
     chown -h "$APP_USER:$APP_USER" "$BASE/ssl/selfsigned.key" "$BASE/ssl/selfsigned.crt" "$BASE/ssl/ssl.crt" "$BASE/ssl/ssl.key"
     echo "+ a self-signed certificate for $DOMAIN"
 fi
-"$SCRIPTS/0_nginx-install.sh" --server-name="$DOMAIN"
-systemctl enable nginx >/dev/null 2>&1
-systemctl is-active --quiet nginx || systemctl start nginx
+#CLD: 2026-11-01T20:00:00+02:00: its install command: the site, nginx started at boot and now (was done here)
+"$SCRIPTS/nginx.sh" install --server-name="$DOMAIN"
 if [ "$OPT_LE" -eq 1 ]; then
     #http-01 through the site (port 80 redirects to https, which serves .well-known/acme-challenge from the web root)
     if certbot certonly --webroot -w "$BASE/public_html" -d "$DOMAIN" --non-interactive --agree-tos \
@@ -712,45 +711,22 @@ fi
 
 if [ "$OPT_MAIL" -eq 1 ]; then
     step "Inbound email (Haraka)"
-    "$SCRIPTS/2_haraka-install.sh" --domain="$MAIL_DOMAIN"
+    #CLD: 2026-11-01T21:30:00+02:00: scripts/haraka.sh install: the files and its unit, started (was 2_haraka-install.sh, the unit by 4_services-install.sh)
+    "$SCRIPTS/haraka.sh" install --domain="$MAIL_DOMAIN"
 fi
 
 MONGO_CHANGED=0
 if [ "$OPT_MONGO" -eq 1 ] && mongo_auth_off; then
     step "MongoDB: users and sign-in"
-    "$SCRIPTS/3_mongo-auth-setup.sh" --no-next-steps
+    #CLD: 2026-11-01T20:30:00+02:00: scripts/mongo.sh secure: the users, authorization in mongod.conf, mongod restarted and checked (was 3_mongo-auth-setup.sh, then done here)
+    "$SCRIPTS/mongo.sh" secure || echo "! MongoDB was not secured (above): sudo $SCRIPTS/mongo.sh status, then secure (or users, auth) once fixed"
     MONGO_CHANGED=1
-    if grep -qE '^[[:space:]]*authorization:[[:space:]]*enabled' "$MONGOD_CONF"; then
-        echo "$MONGOD_CONF: authorization is enabled already"
-    elif grep -qE '^[[:space:]]*authorization:[[:space:]]*disabled' "$MONGOD_CONF"; then
-        #CLD: 2026-10-29T08:00:00+02:00: turned off above (an emptied data folder) or by hand: enabled in its place (was: a second authorization: key)
-        sed -i -E 's/^([[:space:]]*authorization:[[:space:]]*)disabled/\1enabled/' "$MONGOD_CONF"
-        echo "+ $MONGOD_CONF: authorization enabled"
-    else
-        backup="$MONGOD_CONF.bak-$(date +%Y%m%dT%H%M%S)"
-        cp -p "$MONGOD_CONF" "$backup"
-        mongod_conf_security "$backup" "authorization: enabled"
-        echo "+ $MONGOD_CONF: authorization enabled (the old one: $backup)"
-    fi
-    systemctl restart mongod
-    APP_MONGO_URI=$(env_value MONGO_URI)
-    for _ in $(seq 1 30); do
-        mongosh --quiet "$APP_MONGO_URI" --eval 'db.runCommand({ ping: 1 }).ok' >/dev/null 2>&1 && break
-        sleep 1
-    done
-    if mongo_auth_off; then
-        echo "! MongoDB still answers without signing in: check $MONGOD_CONF"
-    elif mongosh --quiet "$APP_MONGO_URI" --eval 'db.runCommand({ ping: 1 }).ok' >/dev/null 2>&1; then
-        echo "MongoDB requires sign-in; the app signs in with its user"
-    else
-        echo "! the app cannot sign in to MongoDB: check mongod (journalctl -u mongod) and MONGO_URI in app.env"
-    fi
 fi
 
 step "The background services"
-#CLD: 2026-10-31T18:00:00+02:00: no Haraka without inbound email (one server may hold several installations: Haraka is one's); the daemon's unit is the installation's: nfn-daemon-<user>
-#CLD: 2026-11-01T11:55:18+02:00: no --no-playwright: the browser is installed below (scripts/playwright-mcp.sh install)
-"$SCRIPTS/4_services-install.sh" install $([ "$OPT_MAIL" -eq 1 ] || echo --no-haraka)
+#CLD: 2026-11-01T22:00:00+02:00: the daemon's unit (nfn-daemon-<user>) and the polkit rule: scripts/daemon.sh install (was 4_services-install.sh); Haraka's unit is
+#haraka.sh's (above), the web browser's playwright-mcp.sh's (below)
+"$SCRIPTS/daemon.sh" install
 #the services running before reconnect with the new MongoDB users
 [ "$MONGO_CHANGED" -eq 0 ] || systemctl try-restart "nfn-daemon-$APP_USER.service" $([ "$OPT_MAIL" -eq 1 ] && echo nfn-haraka.service) || true
 
@@ -774,7 +750,7 @@ fi
 [ "$RESETUP" -eq 0 ] || echo "The app was set up again; the old app.env is $RESETUP_BACKUP: copy from it what the setup does not ask (System AI, sign-in with Microsoft / Google, ...), then delete it."
 [ "$MONGO_CHANGED" -eq 1 ] && echo "MongoDB's operators' account (nfn_admin) is in $BASE/.mongodb-admin (root's): move it to a password manager, then delete the file."
 if [ "$OPT_MAIL" -eq 1 ]; then
-    echo "Inbound email: point the MX record of $MAIL_DOMAIN to this server; DKIM keys: cd $BASE/haraka/dkim && ./dkim_key_gen.sh $MAIL_DOMAIN"
+    echo "Inbound email: point the MX record of $MAIL_DOMAIN to this server; DKIM keys: cd $BASE/haraka/config/dkim && ../../dkim/dkim_key_gen.sh <domain> (the domains mail is sent from)"
 fi
 echo "The firewall was not changed: open 80 and 443$([ "$OPT_MAIL" -eq 1 ] && echo ", and 25 for inbound email") if it is on."
 echo "The installer is also in $BASE/install.sh: run it again to add an option later."

@@ -5,7 +5,12 @@
 */
 $csrf = '<input type="hidden" name="' . \V::app()->csrf->csrf_key . '" value="' . \V::app()->html->escape(\V::app()->csrf->getToken(false)) . '">';
 ?>
-    <p class="text-muted small mb-3">The background services of this installation. Start, stop and restart need them installed as system services (<code>scripts/4_services-install.sh</code>, as root).</p>
+<?php //CLD: 2026-11-01T19:00:00+02:00: in Docker (util\Services::docker): read-only, managed with docker compose on the host ?>
+<?php if (\util\Services::docker()): ?>
+    <p class="text-muted small mb-3">The background services of this installation run in Docker: their state is their check's. Start, stop and restart them on the host, with <code>docker compose</code> (e.g. <code>docker compose restart daemon</code>).</p>
+<?php else: ?>
+    <p class="text-muted small mb-3">The background services of this installation. Start, stop and restart need them installed as system services (as root: <code>scripts/daemon.sh install</code>, <code>haraka.sh install</code>, <code>playwright-mcp.sh install</code>).</p>
+<?php endif; ?>
     <div class="table-responsive mb-4">
 	<table class="table table-sm align-middle small">
 	    <thead><tr><th>Service</th><th>State</th><th>Check</th><th class="text-end">Actions</th></tr></thead>
@@ -19,7 +24,9 @@ $csrf = '<input type="hidden" name="' . \V::app()->csrf->csrf_key . '" value="' 
 		    <td>
 			<div class="fw-semibold"><?= \V::app()->html->escape($s['label']) ?></div>
 			<div class="text-muted"><?= \V::app()->html->escape($s['description'] ?? '') ?></div>
+			<?php if (empty($st['docker'])): ?>
 			<div class="text-muted"><code><?= \V::app()->html->escape($s['unit'] ?? '') ?></code><?= $st['unit'] ? '' : ' &middot; <span class="text-warning-emphasis">not a system service yet</span>' ?></div>
+			<?php endif; ?>
 		    </td>
 		    <td class="text-nowrap">
 			<span class="badge <?= $badge ?>"><?= \V::app()->html->escape($st['running'] === true ? 'running' : ($st['running'] === false ? 'stopped' : 'unknown')) ?></span>
@@ -40,8 +47,10 @@ $csrf = '<input type="hidden" name="' . \V::app()->csrf->csrf_key . '" value="' 
 			    <button type="submit" class="btn btn-sm btn-outline-<?= $verb === 'stop' ? 'danger' : 'secondary' ?>"><i class="bi <?= $icon ?> me-1"></i><?= ucfirst($verb) ?></button>
 			</form>
 			<?php endforeach; ?>
+			<?php elseif (!empty($st['docker'])): ?>
+			<code class="text-muted"><?= \V::app()->html->escape(\util\VString::insert('docker compose restart {:id}', [ 'id' => $id ])) ?></code>
 			<?php else: ?>
-			<span class="text-muted" title="Run scripts/4_services-install.sh as root to manage it here">scripts/4_services-install.sh</span>
+			<span class="text-muted" title="Install it as a system service (its script in scripts/, as root) to manage it here">not a system service</span>
 			<?php endif; ?>
 		    </td>
 		</tr>

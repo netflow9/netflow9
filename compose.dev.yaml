@@ -1,0 +1,29 @@
+# CLD: 2026-11-01T19:00:00+02:00: development: docker compose -f compose.yaml -f compose.dev.yaml up -d
+#   the working tree's code mounted over the image's (a change is live without a build; NFN_UID / NFN_GID in .env: your user's, so the files stay readable),
+#   mailpit catches the outgoing mail (http://127.0.0.1:8025), the site on http://127.0.0.1:8080 (a server's nginx keeps 80 / 443).
+#   The database is the mongo container's own (not a server's: its daemon would run these jobs)
+services:
+  app:
+    volumes:
+      - ./app:/srv/rail22/app:ro
+      - ./public_html:/srv/rail22/public_html:ro
+      - ./scripts:/srv/rail22/scripts:ro
+    environment:
+      NFN_SETUP_SMTP_HOST: mailpit
+      NFN_SETUP_SMTP_PORT: "1025"
+  daemon:
+    volumes:
+      - ./app:/srv/rail22/app:ro
+      - ./public_html:/srv/rail22/public_html:ro
+      - ./scripts:/srv/rail22/scripts:ro
+  web:
+    ports: !override
+      - "127.0.0.1:${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./public_html:/srv/rail22/public_html:ro
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+    networks: [ backend ]

@@ -11,6 +11,12 @@
 !/install.sh
 !/README.md
 !/LICENSE
+# CLD: 2026-11-01T19:00:00+02:00: Docker Compose (.env, the settings, is not whitelisted)
+!/docker/
+!/compose.yaml
+!/compose.dev.yaml
+!/compose.tls.yaml
+!/.dockerignore
 
 # --- never commit (secrets / runtime) ---
 public_html/assets/

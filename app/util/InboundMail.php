@@ -18,7 +18,7 @@ class InboundMail {
     //the Haraka plugin of Rail22 (plugins/nfn.js, config/nfn.ini)
     const HARAKA_PLUGIN = 'nfn';
 
-    //where Haraka is installed: app.env HARAKA_DIR, else <app>/haraka (as scripts/2_haraka-install.sh installs it)
+    //where Haraka is installed: app.env HARAKA_DIR, else <app>/haraka (as scripts/haraka.sh installs it)
     public static function dir() {
 	return defined('HARAKA_DIR') && HARAKA_DIR !== '' ? rtrim(HARAKA_DIR, '/') : BASE . '/haraka';
     }
@@ -36,8 +36,18 @@ class InboundMail {
 	return self::$found;
     }
 
+    //CLD: 2026-11-01T19:00:00+02:00: where Haraka listens: HARAKA_HOST (app.env or the environment: Docker, its own container, e.g. haraka), else this machine
+    public static function host() {
+	return (string)\V::env('HARAKA_HOST', '') ?: '127.0.0.1';
+    }
+
     //the parts found() checks, for the settings pages
+    //CLD: 2026-11-01T19:00:00+02:00: in Docker (util\Services::docker) Haraka is another container: found when HARAKA_HOST is set (compose.yaml, with the mail profile), no files to check
     public static function status() {
+	if (Services::docker()) {
+	    $set = (string)\V::env('HARAKA_HOST', '') !== '';
+	    return [ 'dir' => '', 'installed' => $set, 'plugin' => $set, 'listed' => $set, 'domain' => self::domain(), 'found' => $set ];
+	}
 	$dir = self::dir();
 	$installed = is_file($dir . '/node_modules/haraka/bin/haraka');
 	$plugin = is_file($dir . '/plugins/' . self::HARAKA_PLUGIN . '.js');
@@ -48,7 +58,8 @@ class InboundMail {
 
     //Haraka's service for the Services page (hook app:services, sys\Boot): when found and its unit is this installation's (not another installation's on this server)
     public static function service() {
-	if (!self::found() || !Services::ownUnit('nfn-haraka.service'))
+	//CLD: 2026-11-01T19:00:00+02:00: in Docker no unit to own (the haraka container)
+	if (!self::found() || (!Services::docker() && !Services::ownUnit('nfn-haraka.service')))
 	    return null;
 	return [
 	    'label' => 'Inbound mail (Haraka)',
@@ -56,7 +67,8 @@ class InboundMail {
 	    'unit' => 'nfn-haraka.service',
 	    'pidfile' => BASE . '/run/haraka.pid',
 	    'health' => function() {
-		$s = @stream_socket_client('tcp://127.0.0.1:25', $errno, $errstr, 2);
+		//CLD: 2026-11-01T19:00:00+02:00: on HARAKA_HOST (was 127.0.0.1)
+		$s = @stream_socket_client('tcp://' . self::host() . ':25', $errno, $errstr, 2);
 		if (!$s)
 		    return [ false, 'port 25 does not answer' . ($errstr ? ": {$errstr}" : '') ];
 		stream_set_timeout($s, 3);

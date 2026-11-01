@@ -3,8 +3,9 @@
 /*
     CLD: 2026-10-31T11:05:39+02:00: moved to the core from the Admin plugin (was plugins\MultiTenant\util\Services): the Services page of the Settings (controllers\ServicesController);
     the list (services(): hook app:services, was admin:services) and who may see / manage them (allowed())
+    CLD: 2026-11-01T19:00:00+02:00: in Docker (docker()): read-only, the status from each service's check, start / stop / restart with docker compose on the host
     the installation's services: their status (systemd: `systemctl show`, which any user may read; a service not yet made a unit:
-    its script's PID file) and start / stop / restart (`systemctl`, allowed to this app's user for these units only by the polkit rule of scripts/4_services-install.sh)
+    its script's PID file) and start / stop / restart (`systemctl`, allowed to this app's user for these units only by the polkit rule of scripts/daemon.sh)
 */
 
 namespace util;
@@ -68,14 +69,15 @@ class Services {
     }
 
     //CLD: 2026-10-31T18:00:00+02:00: the systemd unit of this installation's service $name (daemon, playwright): nfn-<name>-<the app's user> (the owner of app/, as
-    //scripts/4_services-install.sh and scripts/playwright-mcp.sh name them), so that several installations on one server (live, development) each have theirs; was nfn-<name>.service
+    //scripts/daemon.sh and scripts/playwright-mcp.sh name them), so that several installations on one server (live, development) each have theirs; was nfn-<name>.service
     public static function unit($name) {
 	$owner = @fileowner(BASE . '/app');
 	$user = $owner !== false && function_exists('posix_getpwuid') ? (posix_getpwuid($owner)['name'] ?? '') : '';
 	return "nfn-{$name}-" . ($user !== '' ? $user : basename(BASE)) . '.service';
     }
 
-    //CLD: 2026-10-31T18:00:00+02:00: unit $unit was written by this installation's scripts/4_services-install.sh (its first line), or is not there yet: a server's Haraka is one installation's
+    //unit $unit was written by one of this installation's scripts (its first line: #written by <app>/scripts/...), or is not there yet: a server's Haraka is one installation's
+    //CLD: 2026-11-01T21:30:00+02:00: any script of the installation (Haraka's unit: scripts/haraka.sh; was only 4_services-install.sh, now daemon.sh)
     public static function ownUnit($unit) {
 	$file = '/etc/systemd/system/' . $unit;
 	if (!is_file($file))
@@ -84,13 +86,19 @@ class Services {
 	$first = $f ? trim((string)fgets($f, 4096)) : '';
 	if ($f)
 	    fclose($f);
-	return $first === '#written by ' . BASE . '/scripts/4_services-install.sh';
+	return str_starts_with($first, '#written by ' . BASE . '/scripts/');
+    }
+
+    //CLD: 2026-11-01T19:00:00+02:00: the app runs in Docker (NFN_RUNTIME=docker, compose.yaml): no systemd; the services are compose's, shown from their checks only (read-only)
+    public static function docker() {
+	return (string)\V::env('NFN_RUNTIME', '') === 'docker';
     }
 
     //the status of service $s: [ unit (installed as a systemd unit), running (bool|null: unknown), state (text), pid, since (unix s|null), health: [ ok, text ]|null ]
+    //CLD: 2026-11-01T19:00:00+02:00: + docker (bool): in Docker running is the check's result (no systemctl, no PID files: another container's)
     public static function status(array $s) {
-	$r = [ 'unit' => false, 'running' => null, 'state' => 'unknown', 'pid' => null, 'since' => null, 'health' => null ];
-	$unit = (string)($s['unit'] ?? '');
+	$r = [ 'unit' => false, 'running' => null, 'state' => 'unknown', 'pid' => null, 'since' => null, 'health' => null, 'docker' => self::docker() ];
+	$unit = $r['docker'] ? '' : (string)($s['unit'] ?? '');
 	if ($unit !== '') {
 	    [ $code, $out ] = self::run([ 'systemctl', 'show', $unit, '--property=LoadState,ActiveState,SubState,MainPID,ActiveEnterTimestamp' ]);
 	    $p = [];
@@ -110,7 +118,7 @@ class Services {
 	    }
 	}
 	//before the unit: the script's PID file
-	if (!$r['unit'] && !empty($s['pidfile'])) {
+	if (!$r['docker'] && !$r['unit'] && !empty($s['pidfile'])) {
 	    $pid = is_readable($s['pidfile']) ? (int)trim((string)file_get_contents($s['pidfile'])) : 0;
 	    $r['pid'] = $pid ?: null;
 	    $r['running'] = $pid > 0 && is_dir("/proc/{$pid}");
@@ -124,6 +132,10 @@ class Services {
 		$r['health'] = [ false, $e->getMessage() ];
 	    }
 	}
+	if ($r['docker'] && $r['health'] !== null) {
+	    $r['running'] = (bool)$r['health'][0];
+	    $r['state'] = $r['running'] ? 'answers (Docker)' : 'does not answer (Docker)';
+	}
 	return $r;
     }
 
@@ -131,9 +143,13 @@ class Services {
     public static function control(array $s, $verb) {
 	if (!in_array($verb, self::VERBS, true))
 	    return [ false, 'unknown action' ];
+	//CLD: 2026-11-01T19:00:00+02:00: Docker's services are managed by compose, on the host
+	if (self::docker())
+	    return [ false, 'managed by Docker: docker compose ' . $verb . ' <service>, on the host' ];
 	$unit = (string)($s['unit'] ?? '');
 	if ($unit === '' || !self::status([ 'unit' => $unit ])['unit'])
-	    return [ false, 'not a system service yet: run scripts/4_services-install.sh (as root) first' ];
+	    //CLD: 2026-11-01T22:00:00+02:00: the service's own script (was scripts/4_services-install.sh for all)
+	    return [ false, 'not a system service yet: run its script as root first (scripts/daemon.sh, haraka.sh or playwright-mcp.sh install)' ];
 	[ $code, $out ] = self::run([ 'systemctl', '--no-ask-password', $verb, $unit ], 60);
 	if ($code !== 0)
 	    return [ false, trim($out) ?: "systemctl {$verb} failed ({$code})" ];

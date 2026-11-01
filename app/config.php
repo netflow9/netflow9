@@ -7,7 +7,8 @@ function get_config($mode = 'web') {
     // loaded in this order; "enabled": false keeps a plugin's settings but leaves it out.
     // No file: no plugins
     $plugins = (function() {
-	$f = dirname(__DIR__) . '/plugins.json';
+	//CLD: 2026-11-01T19:00:00+02:00: in V::configDir() (NFN_CONFIG_DIR, else the app's folder; was always the app's folder)
+	$f = \V::configDir() . '/plugins.json';
 	if (!is_file($f))
 	    return [];
 	$p = json_decode((string)file_get_contents($f), true);
@@ -46,6 +47,10 @@ function get_config($mode = 'web') {
 	//CLD: 2026-11-01T16:00:27+02:00: the daemon's port for its commands (NEWJOB, KILLJOB), on 127.0.0.1 only: DAEMON_PORT of app.env, default 9000 (was the unix socket
 	//app.job_socket_path, run/job-notify.sock). Several installations on one server: a port each
 	'app.daemon_port' => defined('DAEMON_PORT') && (int)DAEMON_PORT > 0 ? (int)DAEMON_PORT : 9000,
+	//CLD: 2026-11-01T19:00:00+02:00: where the daemon listens (DAEMON_LISTEN, default 127.0.0.1; Docker: 0.0.0.0, the containers' private network only) and where the app finds
+	//it (DAEMON_HOST, default 127.0.0.1; Docker: daemon), from app.env or the environment (compose.yaml)
+	'app.daemon_listen' => (string)\V::env('DAEMON_LISTEN', '') ?: '127.0.0.1',
+	'app.daemon_host' => (string)\V::env('DAEMON_HOST', '') ?: '127.0.0.1',
 
 	//plugins(modules) configuration
 	//CLD: 2026-11-01T17:30:00+02:00: the enabled ones of plugins.json; 'plugins': every plugin's settings (\V::app()->config('plugins')['<plugin>'])
