@@ -32,6 +32,9 @@ ARGS=("$@")
 TEMPLATES="$SELF_DIR/haraka"
 REPO="haraka/Haraka"
 MONGODB_DRIVER="mongodb@^3.5.5"
+#CLD: 2026-11-01T23:00:00+02:00: Haraka's default configuration files that Haraka's core and the plugins of config/plugins read; the others (of plugins not
+#loaded: auth, delay_deny, rcpt_to.in_host_list, lmtp, smtp_forward / bridge / proxy, tarpit, watch, xclient) are not copied, and removed when unchanged
+HARAKA_DEFAULTS="aliases connection.ini http.ini log.ini outbound.ini outbound.bounce_message outbound.bounce_message_html outbound.bounce_message_image plugins smtp.ini tls.ini"
 SERVICE=nfn-haraka
 UNIT=/etc/systemd/system/$SERVICE.service
 POLKIT_RULE=/etc/polkit-1/rules.d/49-rail22-services-$APP_USER.rules
@@ -182,6 +185,7 @@ install_files() {
     CREATED=()
     KEPT=()
     UPDATED=()
+    REMOVED=()
 
     #the folders
     for d in "$DIR" "$DIR/config" "$DIR/config/dkim" "$DIR/plugins" "$DIR/queue" "$DIR/dkim"; do
@@ -250,7 +254,19 @@ EOF
     #the DKIM keys generator (dkim/dkim_key_gen.sh), as it is
     put_tree "$TEMPLATES/dkim" "$DIR/dkim" 0
     if [ -d "$DIR/node_modules/haraka/config" ]; then
-        put_tree "$DIR/node_modules/haraka/config" "$DIR/config" 0 1
+        for f in $HARAKA_DEFAULTS; do
+            [ ! -f "$DIR/node_modules/haraka/config/$f" ] || put "$DIR/node_modules/haraka/config/$f" "$DIR/config/$f" 0 1
+        done
+        #the other defaults: removed when unchanged (a file edited by hand is kept)
+        for f in "$DIR"/node_modules/haraka/config/*; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f")
+            [[ " $HARAKA_DEFAULTS " == *" $name "* ]] && continue
+            if [ -f "$DIR/config/$name" ] && cmp -s "$f" "$DIR/config/$name"; then
+                REMOVED+=("config/$name")
+                run rm -f "$DIR/config/$name"
+            fi
+        done
     elif [ "$DRY_RUN" -eq 0 ]; then
         echo "warning: $DIR/node_modules/haraka/config not found: Haraka's default configuration not copied"
     fi
@@ -279,6 +295,10 @@ EOF
     for f in "${UPDATED[@]}"; do echo "  $f"; done
     echo "kept, already there (${#KEPT[@]}):"
     for f in "${KEPT[@]}"; do echo "  $f"; done
+    if [ "${#REMOVED[@]}" -gt 0 ]; then
+        echo "removed, Haraka's defaults of plugins not loaded (${#REMOVED[@]}):"
+        for f in "${REMOVED[@]}"; do echo "  $f"; done
+    fi
 }
 
 write_unit() {
