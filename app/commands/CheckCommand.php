@@ -1,63 +1,19 @@
 <?php
-//CLD: 2026-10-14T16:01:34+03:00: util\FormSchema and WidgetsUtil::smartFormFields / formValues are util\SmartForm (::showIf, ::modelFields, ::modelValues, ...)
 
-//CLD: 2026-10-13T13:49:22+03:00: new command: the checks of the workflow engine and its expressions, as assertions (were scratch scripts): each prints OK / FAIL, the exit code is
-//the number of failures (0 = all passed). Workflows needed are created in a project, run, and deleted with their executions (through ObjectManager)
-//  ../v check::run                        all suites except the slow one
-//  ../v check::run --only=loop,if         some suites: j, expr, types, if, switch, loop, mcp, vars, code, forms, email, urls, steps (slow: big loops and endless cycles, ~1 min)
-//CLD: 2026-10-21T10:00:00+03:00: + ldap (the Ldap plugin; its test LDAP server is started for the checks)
-//CLD: 2026-10-23T15:00:00+03:00: + http
-//  ../v check::run --project=<id>         where the workflows are created (default: the first project of the first account)
-//  ../v check::run --verbose              also the passed checks
+/*
+    the checks of the workflow engine and its expressions, as assertions:
+	each prints OK / FAIL, the exit code is the number of failures (0 = all passed).
+	Workflows needed are created in a project, run, and deleted with their executions (through ObjectManager)
+
+    ../v check::run                        all suites except the slow one
+    ../v check::run --only=loop,if         some suites: j, expr, types, if, switch, loop, mcp, vars, code, forms, email, urls, steps (slow: big loops and endless cycles, ~1 min)
+    ../v check::run --project=<id>         where the workflows are created (default: the first project of the first account)
+    ../v check::run --verbose              also the passed checks
+*/
 
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    //CLD: 2026-10-13T15:17:12+03:00: + mcp (the MCP tools that build workflows: util\McpTools, util\WorkflowSpec)
-    //CLD: 2026-10-20T23:40:00+03:00: the MCP tools are the SysMCPTools plugin's (plugins\SysMCPTools\util\McpTools): mcp is skipped without it
-    //CLD: 2026-10-26T23:56:07+02:00: core again (util\McpServerTools): mcp always run
-    //CLD: 2026-10-13T15:24:28+03:00: + vars (the project variables in expressions)
-    //CLD: 2026-10-13T15:34:38+03:00: + code (the Code step)
-    //CLD: 2026-10-13T18:34:40+03:00: + forms (form designer schemas, Form trigger, Human task)
-    //CLD: 2026-10-16T12:02:51+03:00: + email (models\EmailBlocks, util\EmailHtml, util\EmailSend::compose, the Send Email step)
-    //CLD: 2026-10-17T20:40:00+03:00: + file (the File upload trigger)
-    //CLD: 2026-10-17T21:00:54+03:00: + images (images for the AI steps)
-    //CLD: 2026-10-18T12:00:00+03:00: + select (sys\fields\Field_select accepts only values among its choices)
-    //CLD: 2026-10-18T14:00:00+03:00: + json (util\JSON::json_decode, tolerant of people's typos)
-    //CLD: 2026-10-18T09:42:21+03:00: + nested (sys\fields\Field_nested: cast by the nested fields, validated with the model)
-    //CLD: 2026-10-18T23:35:30+03:00: + urls (V::createAbsoluteUrl: app.env BASE_URL, always https://; the links built with it)
-    //CLD: 2026-10-19T15:26:28+03:00: + assistant (the designer's Assistant, util\WorkflowAssistant, with a scripted model: no API call)
-    //CLD: 2026-10-20T10:00:00+03:00: + gdrive (the Google Drive step)
-    //CLD: 2026-10-20T11:00:00+03:00: + gsheets (the Google Sheets step)
-    //CLD: 2026-10-20T12:00:00+03:00: + gmail (the Gmail step)
-    //CLD: 2026-10-20T13:00:00+03:00: + gcalendar (the Google Calendar step)
-    //CLD: 2026-10-20T15:00:00+03:00: + gdocs (the Google Docs step)
-    //CLD: 2026-10-20T16:00:00+03:00: + ftp (the FTP / SFTP step, util\FtpClient, util\FileDecrypt; real servers with CHECK_FTP_SERVERS: see suiteFtp)
-    //CLD: 2026-10-21T10:00:00+03:00: + ldap (the Ldap plugin: its clients against a test server, the LDAP sign-in, the LDAP step; skipped without the plugin)
-    //CLD: 2026-10-23T12:00:00+03:00: + saml (the Saml plugin: the SP's request and metadata, the responses checked and refused, the SAML sign-in; skipped without the plugin)
-    //CLD: 2026-10-21T20:10:00+03:00: + tenant (the account guard of sys\ObjectManager; the sign-in of a name used in two accounts)
-    //CLD: 2026-10-22T00:41:28+03:00: + microsoft (the MicrosoftIntegration plugin: its credentials and steps; skipped without the plugin)
-    //CLD: 2026-10-22T01:36:46+03:00: + localai (the Lemonade AI and Ollama steps and credentials, against a fake server: commands/tests/AiTestServer.php)
-    //CLD: 2026-10-23T10:00:00+03:00: + systemai (the AI steps on the System AI: plugins\MultiTenant, its credits)
-    //CLD: 2026-10-23T15:00:00+03:00: + http (util\Http against a local server; the HTTP steps' private-address option)
-    //CLD: 2026-10-24T09:45:36+03:00: + tiers (util\Tiers: the tier, the account's own changes, the limits of data tables / rows / files refused at the limit, SAML / LDAP off without the
-    //feature, the System AI allowance of the tier, the usage)
-    //CLD: 2026-10-24T10:28:12+03:00: + Google / Microsoft by tier
-    //CLD: 2026-10-24T16:30:00+03:00: + format (util\Format: numbers, sizes, dates in the account's formats, timeago, durations)
-    //CLD: 2026-10-25T17:40:00+02:00: + database (the Database plugin: types by driver, DSNs, parameters, the step's operations on SQLite, the `error` output)
-    //CLD: 2026-11-01T04:00:00+02:00: + veeam (the Veeam credential, steps and event trigger against a fake Veeam Backup & Replication: commands/tests/VeeamTestServer.php)
-    //CLD: 2026-11-01T06:00:00+02:00: + fortigate (the FortiGate credential, steps and event trigger against a fake FortiGate: commands/tests/FortiGateTestServer.php)
-    //CLD: 2026-11-01T10:00:00+02:00: + sophos (the Sophos Firewall credential and steps against a fake firewall's XML API: commands/tests/SophosTestServer.php)
-    //CLD: 2026-11-01T08:00:00+02:00: + checkmk (the Checkmk credential, steps and problem trigger against a fake site: commands/tests/CheckmkTestServer.php)
-    //CLD: 2026-11-01T12:00:00+02:00: + vmware (the VMware vCenter credential, steps and alarm trigger against a fake vCenter: commands/tests/VmwareTestServer.php)
-    //CLD: 2026-11-01T14:00:00+02:00: + proxmox (the Proxmox VE credential, steps and task trigger against a fake cluster: commands/tests/ProxmoxTestServer.php)
-    //CLD: 2026-11-01T16:00:00+02:00: + hyperV (the Hyper-V credential, steps and VM state trigger against a fake host behind WinRM: commands/tests/HyperVTestServer.php)
-    //CLD: 2026-11-01T14:00:00+02:00: + zabbix (the Zabbix credential, steps and problem trigger against a fake server, 7.0 and 6.0: commands/tests/ZabbixTestServer.php)
-    //CLD: 2026-11-01T02:00:00+02:00: + access (the account's Data access: the projects' MCP server on / off, what the Assistant may read)
-    //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
-    //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
-    //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
-    //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
     const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];

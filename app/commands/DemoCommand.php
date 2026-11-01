@@ -6,7 +6,7 @@ use MongoDB\BSON\ObjectId;
 use MongoDB\BSON\UTCDateTime;
 
 /*
-    CLD: 2026-11-01T11:00:00+02:00: new: a demo account with realistic data, for a demo site and for the netflow9.io screenshots (made the same way on 2026-11-01):
+    a demo account with realistic data, for a demo site
 	../v demo::create [--name="Northwind Supplies"] [--password=<the users' password>] [--ai-from=<account id>]
 	../v demo::delete --account=<id>
 
@@ -24,6 +24,7 @@ use MongoDB\BSON\UTCDateTime;
 	Prints the account id and the users.
     delete: an account made by demo::create (its `demo` mark), with everything of its id (its data tables' collections too)
 */
+
 class DemoCommand extends \sys\BaseController {
 
     const PEOPLE = [
