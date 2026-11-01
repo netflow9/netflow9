@@ -56,7 +56,7 @@ Then it shows what it will do, asks to go on, and:
 4. sets up the app: it asks the database, the outgoing email and the first account (company or team, its owner); the app checks the answers itself (`app/v sys::validate`) and asks again when one is wrong
 5. installs the options and the background services (the parts below)
 
-The firewall is not changed: open 80 and 443 (and 25 for inbound email). Run it again, e.g. `sudo bash /home/<user>/install.sh`, to add an option later: the app's settings and account are kept, and what is done is left as it is.
+The firewall is not changed: open 80 and 443 (and 25 for inbound email). Run it again, e.g. `sudo bash /home/<user>/install.sh`, to add an option later or to update: the app's settings and account are kept, and what is done is left as it is. It first offers to update the app's code from git (`<n> new commits`), when its working tree has no local changes and its branch can fast-forward, then starts again from the new code; the parts below then update what they install.
 
 The setup in the browser (every address of the site while `app.env` is missing) does step 4 instead; run `install.sh` after it for the options and the services.
 

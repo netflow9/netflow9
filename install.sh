@@ -6,14 +6,15 @@
 # checks everything it needs first, then runs the parts in order:
 #  - the nginx site (nginx.sh; a self-signed certificate when there is none),
 #  - the app's setup (app/v sys::install as the app's user: the account, its owner, app.env),
-#  - Haraka (2_),
+#  - Haraka (haraka.sh install),
 #  - MongoDB's users and authorization (mongo.sh secure),
-#  - the background services (4_)
+#  - the background services (daemon.sh install)
 #  - the web browser of the AI steps after the background services:
 #    scripts/playwright-mcp.sh install (its Chromium, its service, its server in mcp.json), which also adds it later;
 #
 # Run again: an app already set up keeps its settings and account (only the options are asked);
-#   what is already done is left as it is
+#   what is already done is left as it is. Its code is updated from git first, when asked (only a clean working tree on its branch, fast-forward),
+#   then the installer starts again from the new code
 #
 # it sets up the server too, run from anywhere:
 #  - on AlmaLinux / RHEL 9:
@@ -194,6 +195,42 @@ step() {
     echo "=== $*"
 }
 
+#CLD: 2026-11-01T22:30:00+02:00: an installed app's code updated from git (asked): only a working tree without local changes, on its branch, fast-forward (never a
+#reset or a stash); then this installer starts again from the new code (bash reads a script as it runs), with the answers so far
+update_app() {
+    local branch dirty behind
+    branch=$(as_user git symbolic-ref -q --short HEAD || true)
+    if [ -z "$branch" ]; then
+        echo "  The app's code is not on a branch (detached): not updated"
+        return
+    fi
+    dirty=$(as_user git status --porcelain --untracked-files=no | wc -l)
+    if [ "$dirty" -gt 0 ]; then
+        echo "  The app's code has local changes ($dirty files, git status in $BASE): not updated"
+        return
+    fi
+    if ! as_user git fetch -q origin "$branch"; then
+        echo "  The app's code: origin/$branch could not be fetched (above): not updated"
+        return
+    fi
+    behind=$(as_user git rev-list --count "HEAD..origin/$branch")
+    if [ "$behind" -eq 0 ]; then
+        echo "  The app's code is up to date ($branch, $(as_user git rev-parse --short HEAD))"
+        return
+    fi
+    if ! as_user git merge-base --is-ancestor HEAD "origin/$branch"; then
+        echo "  The app's code has commits that are not on origin/$branch: not updated (git pull in $BASE)"
+        return
+    fi
+    ask_yes OPT_UPDATE "Update the app's code: $behind new commit(s) on $branch" y
+    [ "$OPT_UPDATE" -eq 1 ] || return 0
+    as_user git merge -q --ff-only "origin/$branch"
+    as_user git submodule update -q --init --recursive
+    echo "+ $branch at $(as_user git log -1 --format='%h %s' | cut -c1-100)"
+    echo "  the installer starts again, from the new code"
+    exec env NFN_INSTALL_UPDATED=1 NFN_INSTALL_DOMAIN="$DOMAIN" NFN_INSTALL_USER="$APP_USER" bash "$BASE/install.sh"
+}
+
 # ---------------------------------------------------------------------------------------------------------------
 . /etc/os-release
 if ! command -v dnf >/dev/null 2>&1 || [ "${VERSION_ID%%.*}" != "9" ] || ! [[ " ${ID:-} ${ID_LIKE:-} " == *" rhel "* || " ${ID:-} ${ID_LIKE:-} " == *" centos "* ]]; then
@@ -252,7 +289,13 @@ fi
 
 echo
 echo "The server (Enter keeps the answer in brackets)"
-ask DOMAIN "The site's domain (its DNS record points to this server)" "$DOMAIN_DEFAULT"
+#the answers given before an update of the code (update_app) are kept
+if [ -n "${NFN_INSTALL_DOMAIN:-}" ]; then
+    DOMAIN="$NFN_INSTALL_DOMAIN"
+    echo "  The site's domain: $DOMAIN"
+else
+    ask DOMAIN "The site's domain (its DNS record points to this server)" "$DOMAIN_DEFAULT"
+fi
 DOMAIN="${DOMAIN#*://}"
 DOMAIN="${DOMAIN%%/*}"
 [[ $DOMAIN =~ ^[A-Za-z0-9.-]+$ ]] || { echo "not a domain: $DOMAIN"; exit 1; }
@@ -260,9 +303,15 @@ if [ -z "$USER_DEFAULT" ]; then
     USER_DEFAULT=$(echo "${DOMAIN%%.*}" | tr -cd 'a-z0-9_-')
 fi
 while true; do
-    ask APP_USER "The system user Rail22 runs as (its home holds the app)" "$USER_DEFAULT"
+    if [ -n "${NFN_INSTALL_USER:-}" ]; then
+        APP_USER="$NFN_INSTALL_USER"
+        echo "  The system user: $APP_USER"
+    else
+        ask APP_USER "The system user Rail22 runs as (its home holds the app)" "$USER_DEFAULT"
+    fi
     [[ $APP_USER =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && [ "$APP_USER" != "root" ] && break
     echo "  lowercase letters, digits, - and _ (not root)"
+    NFN_INSTALL_USER=""
 done
 #CLD: 2026-10-29T04:30:00+02:00: || true: a new user is not found by getent (exit 2: with pipefail it stopped the script, silently)
 BASE=$(getent passwd "$APP_USER" | cut -d: -f6 || true)
@@ -279,6 +328,8 @@ if [ ! -d "$BASE/.git" ]; then
     CLONE=1
     ask REPO "The Rail22 repository" "$REPO"
     ask BRANCH "Its branch" "$BRANCH"
+elif [ -z "${NFN_INSTALL_UPDATED:-}" ]; then
+    update_app
 fi
 
 echo
@@ -554,7 +605,7 @@ if [ "$CLONE" -eq 1 ]; then
     as_user git submodule update -q --init --recursive
     echo "+ $REPO ($BRANCH) in $BASE"
 else
-    echo "the app's files are there already ($BASE/.git): not changed (update them with git pull)"
+    echo "the app's files are there already ($BASE/.git): kept (updated from git at the start, when asked)"
 fi
 for d in logs tmp run var var/php/session var/php/wsdlcache var/php/opcache etc ssl; do
     [ -d "$BASE/$d" ] || install -d -o "$APP_USER" -g "$APP_USER" -m 750 "$BASE/$d"
