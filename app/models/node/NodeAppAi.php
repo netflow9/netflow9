@@ -17,6 +17,14 @@
 	//administrator enabled for the account (hook ai:mcp-servers, localServers()); one session each per run, closed after it
 	//CLD: 2026-11-01T11:55:18+02:00: the tool servers are core (util\ToolServers: mcp.json, e.g. the web browser of scripts/playwright-mcp.sh), those enabled for the
 	//account by its owners or the super-admins
+	//CLD: 2026-11-01T21:50:00+02:00: + NetFlow9's own steps and workflows (util\AgentTools): in the section Integrations, a credential per integration family (`<family>Credential`: GravityZone,
+	//FortiGate, ..., a database, Gmail, ...) and the operations the model may use (`<family>Tools`; default: those that only read); Workflows (`workflows`): the project's workflows
+	//that start with Called by a workflow, run as tools
+	//CLD: 2026-11-01T23:30:00+02:00: approvals: a tool that asks for approval (util\AgentTools: per operation / workflow) is not run when the model calls it; the calls of that round that
+	//ask are sent in one task (WfTask kind ai-approval: the approvers, a time limit, Approve / Reject for each, a comment), the conversation and the round saved (saveBlob:
+	//GridFS, nothing in memory: a restart of the daemon loses nothing; node `agentWait`: { task, file }) and the step sleeps. When the task is decided (or its time limit
+	//passes), the step resumes the same conversation: the approved calls run, the others are tool errors ("rejected by Maria Lopez: wrong address", "not approved in time").
+	//Waiting does not count in the timeout (per call to the model); System AI credits: charged before the wait, reserved again on resume. Killing the run cancels the task
 	rounds, max tokens, timeout, the variable, on error (fail | the `error` output).
 	//CLD: 2026-10-17T21:00:54+03:00: + images: project image files sent with the prompt; images in tool results (read_image, MCP servers' image content) go to the model as images too
 	//CLD: 2026-10-27T23:11:38+02:00: images -> files (`files`; a saved step's `images` is still read, moved on save): images, PDF, text and Office files sent with the prompt
@@ -79,6 +87,10 @@ abstract class NodeAppAi extends \models\WfNode {
     //CLD: 2026-10-27T23:11:38+02:00: setting PDFs as; PDF_PARTS: the provider can be sent a PDF itself (false: as text only, `document` not offered)
     const PDFS = [ 'auto' => 'Auto', 'document' => 'Documents', 'text' => 'Text and images' ];
     const PDF_PARTS = true;
+    //CLD: 2026-11-01T23:30:00+02:00: approvals: the decisions of the task's form, the task's kind, the longest value shown of an argument
+    const DECISIONS = [ 'approve' => 'Approve', 'reject' => 'Reject' ];
+    const APPROVAL_KIND = 'ai-approval';
+    const MAX_ARGUMENT_SHOWN = 500;
 
     public static function projectTools() {
 	return \util\MCPTools::all();
@@ -383,6 +395,8 @@ abstract class NodeAppAi extends \models\WfNode {
 		'help' => 'The model searches them when it needs to',
 		'ui' => [ 'placeholder' => 'None', 'width' => 6, 'newRow' => true ],
 	    ],
+	    //CLD: 2026-11-01T21:50:00+02:00: new: the workflows of the project the model may run (util\AgentTools: wf_<name> tools)
+	    \util\AgentTools::workflowsField(),
 	    [
 		'key' => 'knowledgeResults',
 		'type' => 'number',
@@ -441,7 +455,9 @@ abstract class NodeAppAi extends \models\WfNode {
 		'help' => 'Unreachable, declined, cut off, bad JSON',
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 	    ],
-	]);
+	//CLD: 2026-11-01T21:50:00+02:00: + the integrations the model may use (section Integrations; in the designer, the families with a credential in the project: util\AgentTools)
+	//CLD: 2026-11-01T23:30:00+02:00: + the approvals (section Approvals)
+	], \util\AgentTools::familyFields(static::designerAccount(), static::designerAccount() ? \V::app()->user->crtProject : null), \util\AgentTools::approvalFields());
     }
 
     //CLD: 2026-10-22T01:58:24+03:00: the models each credential of the current project (providing static::CAPABILITY) recorded: [ credential id => [ model ] ], for the designer
@@ -537,6 +553,11 @@ abstract class NodeAppAi extends \models\WfNode {
 		$valid = false;
 	    }
 	}
+	//CLD: 2026-11-01T21:50:00+02:00: the integrations (a credential of the project, known operations) and the workflows (of the project, called by a workflow)
+	foreach(\util\AgentTools::errors($this) as $message) {
+	    $this->errors('config', $message);
+	    $valid = false;
+	}
 	if ($this->cfg('output') === 'json' && trim((string)$this->cfg('jsonSchema', '')) !== '' && !is_object(json_decode((string)$this->cfg('jsonSchema'))))
 	{
 	    $this->errors('config', 'JSON schema: not a JSON object');
@@ -568,12 +589,17 @@ abstract class NodeAppAi extends \models\WfNode {
     public function execute($edgeId = null) {
 	$name = (string)$this->cfg('variable', 'ai');
 	$label = static::$label;
+	//CLD: 2026-11-01T23:30:00+02:00: waiting for an approval: the task still open (in its time limit), the step sleeps on
+	if (!empty($this->agentWait) && $this->stillWaiting())
+	    return self::SLEEP;
 	$clients = [];
 	try {
 	    $result = $this->run($clients);
 	} catch (\Exception $e) {
 	    foreach($clients as $c)
 		$this->closeClient($c);
+	    //CLD: 2026-11-01T23:30:00+02:00: a resumed step that fails: its saved conversation removed
+	    $this->dropWait();
 	    $message = $e->getMessage();
 	    if (\util\Validator::isIdentifier($name))
 		$this->exec->setVariable($name, [ 'error' => $message ]);
@@ -584,6 +610,9 @@ abstract class NodeAppAi extends \models\WfNode {
 	}
 	foreach($clients as $c)
 	    $this->closeClient($c);
+	//CLD: 2026-11-01T23:30:00+02:00: waiting for an approval
+	if ($result === self::SLEEP)
+	    return self::SLEEP;
 	if (\util\Validator::isIdentifier($name))
 	    $this->exec->setVariable($name, $result);
 	return [ 0 ];
@@ -604,6 +633,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	if (empty($cred))
 	    throw new \ErrorException('the credential is no longer available');
 	$project = \V::app()->om->findOne('Project', [ '_id' => $this->exec->project, 'aid' => $this->exec->aid ]);
+	//CLD: 2026-11-01T23:30:00+02:00: resumed after an approval: the saved conversation (no files again: they are in it)
+	$resume = !empty($this->agentWait) ? $this->loadWait() : null;
 
 	$systemPrompt = trim(\util\Expression::toText($this->expr('system', ''))); //CLD: 2026-10-23T10:00:00+03:00: $systemPrompt (was $system: now the System AI)
 	$prompt = trim(\util\Expression::toText($this->expr('prompt', '')));
@@ -613,16 +644,16 @@ abstract class NodeAppAi extends \models\WfNode {
 	$schema = $json && trim((string)$this->cfg('jsonSchema', '')) !== '' ? json_decode((string)$this->cfg('jsonSchema')) : null;
 	//CLD: 2026-10-17T21:00:54+03:00: the images sent with the prompt
 	//CLD: 2026-10-27T23:11:38+02:00: the files (promptFiles; was promptImages)
-	$files = $this->promptFiles($project, $cred);
+	$files = $resume ? [] : $this->promptFiles($project, $cred);
 
 	//CLD: 2026-10-22T22:00:00+03:00: collectTools() (was here)
 	$tools = $this->collectTools($clients, $project);
 
-	$state = $this->startConversation($cred, $systemPrompt, $prompt, $json ? ($schema ?: true) : null, $files);
+	$state = $resume ? $resume['state'] : $this->startConversation($cred, $systemPrompt, $prompt, $json ? ($schema ?: true) : null, $files);
 	//CLD: 2026-10-23T10:00:00+03:00: System AI: the credits reserved for the run (refused: not priced, none left); charged what it used when it ends, also on failure
 	$session = $system ? ($system['start'])(trim((string)$this->cfg('model', '')), [ 'wfid' => (string)($this->exec->wf ?? ''), 'exid' => (string)($this->exec->_id ?? '') ]) : null;
 	try {
-	    return $this->loop($cred, $state, $tools, $json, $schema, $session);
+	    return $this->loop($cred, $state, $tools, $json, $schema, $session, $resume);
 	} finally {
 	    if ($session) {
 		[ $charged, $left ] = $session->finish();
@@ -633,12 +664,20 @@ abstract class NodeAppAi extends \models\WfNode {
 
     //CLD: 2026-10-23T10:00:00+03:00: new (was in run()): the calls to the model and the tool calls, until it answers => the variable's value. $session: the System AI's (null: a credential
     //of the project): each call's tokens counted, no call once its credits are used up
-    protected function loop($cred, array $state, array $tools, $json, $schema, $session) {
+    //CLD: 2026-11-01T23:30:00+02:00: + $resume (loadWait: a round waiting for an approval, decided): its results completed (decided()) and sent, then the next rounds; a round with calls that
+    //ask for approval: saved, the task made, self::SLEEP (askApproval)
+    protected function loop($cred, array $state, array $tools, $json, $schema, $session, $resume = null) {
 	$maxRounds = max(1, min(self::MAX_ROUNDS, (int)$this->cfg('maxRounds', 10)));
 	$usage = [ 'input_tokens' => 0, 'output_tokens' => 0 ];
 	$calls = [];
 	$answer = null;
-	for($round = 1; $round <= $maxRounds; $round++) {
+	$round = 1;
+	if ($resume) {
+	    [ $usage, $calls, $answer ] = [ $resume['usage'], $resume['calls'], $resume['answer'] ];
+	    $this->addToolResults($state, $this->decided($resume, $tools, $calls));
+	    $round = $resume['round'] + 1;
+	}
+	for(; $round <= $maxRounds; $round++) {
 	    if ($session && $round > 1 && $session->exhausted())
 		throw new \ErrorException('the System AI credits reserved for this step (' . $session->reserved() . ') are used up before the model finished');
 	    $answer = $this->callModel($cred, $state, $tools, $json ? ($schema ?: true) : null);
@@ -653,6 +692,7 @@ abstract class NodeAppAi extends \models\WfNode {
 	    if ($round === $maxRounds)
 		throw new \ErrorException("the model still wanted to use tools after {$maxRounds} round(s) (raise Rounds)");
 	    $results = [];
+	    $pending = [];
 	    foreach($answer['calls'] as [ $id, $tool, $args ]) {
 		//CLD: 2026-10-17T21:00:54+03:00: + the images of the result
 		$toolImages = [];
@@ -660,6 +700,15 @@ abstract class NodeAppAi extends \models\WfNode {
 		    [ $text, $isError ] = [ "unknown tool `{$tool}`", true ];
 		} elseif (!is_array($args)) {
 		    [ $text, $isError ] = [ 'the arguments are not a JSON object', true ];
+		} elseif (!empty($tools[$tool]['approval']) && ($wrong = ($tools[$tool]['check'])($args)) !== null) {
+		    //CLD: 2026-11-01T23:30:00+02:00: a call that asks for approval with wrong arguments: a tool error, not sent for approval
+		    [ $text, $isError ] = [ $wrong, true ];
+		} elseif (!empty($tools[$tool]['approval'])) {
+		    //CLD: 2026-11-01T23:30:00+02:00: asks for approval: not run now (its place kept in the results)
+		    $pending[] = [ 'index' => count($results), 'call' => count($calls), 'id' => $id, 'tool' => $tool, 'args' => $args ];
+		    $calls[] = [ 'tool' => $tool, 'arguments' => $args, 'error' => false, 'approval' => 'asked' ];
+		    $results[] = null;
+		    continue;
 		} else {
 		    try {
 			[ $text, $isError, $toolImages ] = ($tools[$tool]['run'])($args);
@@ -667,12 +716,11 @@ abstract class NodeAppAi extends \models\WfNode {
 			[ $text, $isError ] = [ 'the tool failed: ' . $e->getMessage(), true ];
 		    }
 		}
-		if (mb_strlen($text) > self::MAX_TOOL_RESULT)
-		    $text = mb_substr($text, 0, self::MAX_TOOL_RESULT) . "\n[cut: the result was longer than " . self::MAX_TOOL_RESULT . ' characters]';
-		$this->exec->log($this->wfid, static::$label . ": tool {$tool}" . ($isError ? ' -> error: ' . mb_substr($text, 0, 200) : '') . ($toolImages ? ', ' . count($toolImages) . ' image(s)' : ''));
-		$calls[] = [ 'tool' => $tool, 'arguments' => $args, 'error' => $isError ];
-		$results[] = [ $id, $text, $isError, $toolImages ];
+		//CLD: 2026-11-01T23:30:00+02:00: toolResult() (was here)
+		$results[] = $this->toolResult($id, $tool, $args, $text, $isError, (array)$toolImages, $calls);
 	    }
+	    if ($pending)
+		return $this->askApproval($state, $round, $answer, $results, $pending, $calls, $usage, $tools);
 	    $this->addToolResults($state, $results);
 	}
 	if (!empty($answer['continue']))
@@ -696,6 +744,7 @@ abstract class NodeAppAi extends \models\WfNode {
     //CLD: 2026-10-22T22:00:00+03:00: new (was in run()): the tools the model may use: [ name => [ name, description, schema (object), run: fn(args) => [ text, isError, images ] ] ];
     //$clients gets the MCP sessions opened (closed by execute()). The project's tools, the MCP server credentials' tools (mcp<n>_<tool>), the installation's tool servers' tools
     //(<server>_<tool>: only those the server allows)
+    //CLD: 2026-11-01T21:50:00+02:00: + the integrations' operations (<prefix>_<step>_<operation>) and the workflows (wf_<name>): util\AgentTools
     protected function collectTools(array &$clients, $project) {
 	//the tools: [ name => [ name, description, schema (object), run: fn(args) => [ text, isError ] ] ]
 	//CLD: 2026-10-17T21:00:54+03:00: run: fn(args) => [ text, isError, images: [ [ mimeType, data ] ] ]
@@ -721,6 +770,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	$timeout = (int)$this->cfg('timeout', static::DEFAULT_TIMEOUT);
 	//CLD: 2026-10-30T23:30:00+02:00: the knowledge bases: one tool searching them (knowledgeTool)
 	$tools += $this->knowledgeTool($project, $timeout);
+	//CLD: 2026-11-01T21:50:00+02:00: the operations of the integrations and the workflows the step names (util\AgentTools: run in this execution, as steps / Run a workflow)
+	$tools += \util\AgentTools::tools($this);
 	foreach((array)$this->cfg('mcp', []) as $i => $id) {
 	    $mcp = \models\Credential::findFor($this->exec, (string)$id, 'mcp');
 	    if (empty($mcp))
@@ -915,6 +966,224 @@ abstract class NodeAppAi extends \models\WfNode {
 	};
 	$collect($value);
 	return array_keys($ids);
+    }
+
+    //CLD: 2026-11-01T23:30:00+02:00: new (was in loop()): a tool's result as sent to the model: cut at MAX_TOOL_RESULT, logged ($note after the tool's name), listed in $calls =>
+    //[ id, text, isError, images ]
+    protected function toolResult($id, $tool, $args, $text, $isError, array $images, array &$calls, $note = '') {
+	if (mb_strlen($text) > self::MAX_TOOL_RESULT)
+	    $text = mb_substr($text, 0, self::MAX_TOOL_RESULT) . "\n[cut: the result was longer than " . self::MAX_TOOL_RESULT . ' characters]';
+	$this->exec->log($this->wfid, static::$label . ": tool {$tool}" . $note . ($isError ? ' -> error: ' . mb_substr($text, 0, 200) : '') . ($images ? ', ' . count($images) . ' image(s)' : ''));
+	$calls[] = [ 'tool' => $tool, 'arguments' => $args, 'error' => $isError ];
+	return [ $id, $text, $isError, $images ];
+    }
+
+    // ------------------------------------------------------------------------------------
+    //CLD: 2026-11-01T23:30:00+02:00: approvals
+
+    //the calls $pending of round $round ask for approval: the conversation saved, one task for them all (its title, the agent's reasons, the arguments, Approve / Reject each and a
+    //comment; the approvers and the time limit of the settings), the step sleeps => self::SLEEP
+    protected function askApproval(array $state, $round, array $answer, array $results, array $pending, array $calls, array $usage, array $tools) {
+	$items = [];
+	foreach($pending as $p) {
+	    $meta = $tools[$p['tool']]['approval'];
+	    $args = \util\AgentTools::withoutReason($p['args'], $meta['reason']);
+	    $reason = trim(\util\Expression::toText($p['args'][$meta['reason']] ?? ''));
+	    $items[] = [ 'tool' => $p['tool'], 'label' => $meta['label'], 'title' => self::approvalTitle($meta, $args), 'arguments' => $args,
+		'reason' => mb_substr($reason !== '' ? $reason : trim((string)($answer['text'] ?? '')), 0, 2000) ];
+	}
+	$exec = $this->exec;
+	$file = self::saveBlob($exec, [ 'state' => $state, 'round' => $round, 'answer' => [ 'text' => (string)($answer['text'] ?? ''), 'model' => (string)($answer['model'] ?? ''),
+	    'stop_reason' => (string)($answer['stop_reason'] ?? '') ], 'results' => $results, 'pending' => $pending, 'calls' => $calls, 'usage' => $usage ]);
+	$several = count($items) > 1;
+	$fields = [];
+	$lines = [ (string)($this->title ?: static::$label) . ' (an AI step) asks to do ' . ($several ? 'these actions' : 'this') . ':' ];
+	foreach($items as $i => $it) {
+	    $n = $several ? ($i + 1) . '. ' : '';
+	    $lines[] = '';
+	    $lines[] = $n . $it['title'];
+	    if ($it['reason'] !== '')
+		$lines[] = 'Why: ' . $it['reason'];
+	    $lines[] = 'Tool: ' . $it['tool'] . ' (' . $it['label'] . ')';
+	    foreach(self::argumentLines($it['arguments']) as $l)
+		$lines[] = '- ' . $l;
+	    $fields[] = [ 'type' => 'select', 'key' => "call{$i}", 'label' => mb_substr($n . $it['title'], 0, 200), 'required' => true,
+		'choices' => array_map(fn($v, $l) => [ 'value' => $v, 'label' => $l ], array_keys(self::DECISIONS), self::DECISIONS) ];
+	}
+	$fields[] = [ 'type' => 'textarea', 'key' => 'comment', 'label' => 'Comment', 'helpText' => 'Optional: the agent reads it with a rejection', 'rows' => 2 ];
+	$unit = (string)$this->cfg('approvalTimeoutUnit', 'none');
+	$due = isset(NodeAppTask::UNIT_SECONDS[$unit]) ? new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('approvalTimeout', 1)) * NodeAppTask::UNIT_SECONDS[$unit]) * 1000) : null;
+	$task = \V::app()->om->create('WfTask', [
+	    'aid' => $exec->aid,
+	    'project' => $exec->project,
+	    'wf' => $exec->wf,
+	    'execution' => $exec->_id,
+	    'node' => $this->wfid,
+	    'kind' => self::APPROVAL_KIND,
+	    'calls' => array_map(fn($it) => [ 'tool' => $it['tool'], 'label' => $it['label'], 'title' => $it['title'], 'arguments' => $it['arguments'], 'reason' => $it['reason'] ], $items),
+	    'title' => mb_substr($several ? 'Approve ' . count($items) . ' actions: ' . implode('; ', array_column($items, 'title')) : 'Approve: ' . $items[0]['title'], 0, 300),
+	    'instructions' => mb_substr(implode("\n", $lines), 0, 10000),
+	    'form' => \util\SmartForm::normalize([ 'direction' => 'vertical', 'fields' => $fields ]),
+	    'submitLabel' => 'Send',
+	    'users' => array_values(array_map('strval', (array)$this->cfg('approvalUsers', []))),
+	    'roles' => array_values(array_map('strval', (array)$this->cfg('approvalRoles', []))),
+	    'state' => 'open',
+	    'due_at' => $due,
+	]);
+	if (!$task->save()) {
+	    self::dropBlob($file);
+	    throw new \ErrorException('the approval task could not be saved: ' . json_encode($task->errors(), JSON_UNESCAPED_UNICODE));
+	}
+	$this->agentWait = [ 'task' => (string)$task->_id, 'file' => (string)$file ];
+	$this->resume_at = $due;
+	$this->exec->log($this->wfid, static::$label . ': waiting for approval: ' . $task->title);
+	\models\ExecutionLog::record('ai.approval.ask', null, $task->title . ' - ' . self::callsText($items));
+	return self::SLEEP;
+    }
+
+    //whether the step still waits: its task open and in its time limit (passed: the task expires)
+    protected function stillWaiting() {
+	$task = \V::app()->om->findOne('WfTask', [ '_id' => (string)($this->agentWait['task'] ?? ''), 'aid' => $this->exec->aid ]);
+	if (!$task || $task->state !== 'open')
+	    return false;
+	if ($task->due_at instanceof \MongoDB\BSON\UTCDateTime && (int)(string)$task->due_at <= (int)(microtime(true) * 1000)) {
+	    if (\V::app()->om->updateMany('WfTask', [ '_id' => $task->_id, 'state' => 'open' ], [ '$set' => [ 'state' => 'expired' ] ]) > 0)
+		return false;
+	    return \V::app()->om->findById('WfTask', (string)$task->_id)?->state === 'open';
+	}
+	return true;
+    }
+
+    //the saved round (saveBlob) and its task => [ state, round, answer, results, pending, calls, usage, task ]
+    protected function loadWait() {
+	$saved = self::loadBlob((string)($this->agentWait['file'] ?? ''));
+	if (!is_array($saved))
+	    throw new \ErrorException('the conversation saved while waiting for approval is gone');
+	$saved['task'] = \V::app()->om->findOne('WfTask', [ '_id' => (string)($this->agentWait['task'] ?? ''), 'aid' => $this->exec->aid ]);
+	return $saved;
+    }
+
+    //the results of the round that waited: the approved calls run, the others tool errors (rejected by whom and why, not in time); each decision logged and in the execution
+    //log (who, when, the arguments); the saved conversation removed
+    protected function decided(array $resume, array $tools, array &$calls) {
+	$task = $resume['task'];
+	$user = $task && $task->completed_by ? \V::app()->om->findById('User', (string)$task->completed_by) : null;
+	$who = $user ? (string)$user : 'someone';
+	$answers = $task && is_array($task->answers) ? $task->answers : [];
+	$comment = trim((string)($answers['comment'] ?? ''));
+	$done = $task && $task->state === 'done';
+	$results = $resume['results'];
+	foreach($resume['pending'] as $k => $p) {
+	    $images = [];
+	    if ($done && ($answers["call{$k}"] ?? '') === 'approve') {
+		$decision = "approved by {$who}";
+		if (!isset($tools[$p['tool']])) {
+		    [ $text, $isError ] = [ "the tool `{$p['tool']}` is no longer offered", true ];
+		} else {
+		    try {
+			[ $text, $isError, $images ] = ($tools[$p['tool']]['run'])($p['args']);
+		    } catch (\Exception $e) {
+			[ $text, $isError ] = [ 'the tool failed: ' . $e->getMessage(), true ];
+		    }
+		}
+		$outcome = 'approved';
+	    } else {
+		$decision = $done ? "rejected by {$who}" . ($comment !== '' ? ": {$comment}" : '') : ($task && $task->state === 'expired' ? 'not approved in time (the time limit passed)'
+		    : 'not approved (the approval task is no longer there)');
+		[ $text, $isError ] = [ $decision, true ];
+		$outcome = $done ? 'rejected' : 'expired';
+	    }
+	    $one = [];
+	    $results[$p['index']] = $this->toolResult($p['id'], $p['tool'], $p['args'], $text, $isError, (array)$images, $one, " ({$decision})");
+	    //the call listed when it was asked: its outcome
+	    $calls[$p['call']] = [ 'tool' => $p['tool'], 'arguments' => $p['args'], 'error' => $isError, 'approval' => $outcome ] + ($done ? [ 'by' => $who ] : []);
+	    \models\ExecutionLog::record('ai.approval', null, "{$p['tool']} " . \util\JSON::encode($p['args']) . ": {$decision}"
+		. ($done && $task->completed_at instanceof \MongoDB\BSON\UTCDateTime ? ' at ' . $task->completed_at->toDateTime()->format('c') : ''));
+	}
+	$this->dropWait();
+	return $results;
+    }
+
+    //the waiting state cleared, the saved conversation removed
+    protected function dropWait() {
+	if (empty($this->agentWait))
+	    return;
+	self::dropBlob((string)($this->agentWait['file'] ?? ''));
+	$this->agentWait = null;
+	$this->resume_at = null;
+    }
+
+    //a task's title for a call: what, its main arguments, on what (Block IPs 203.0.113.7, Blocked on FortiGate FGT-HQ)
+    public static function approvalTitle(array $meta, array $args) {
+	$values = [];
+	foreach((array)$meta['main'] as $k)
+	    if (isset($args[$k]) && $args[$k] !== '' && $args[$k] !== [])
+		$values[] = mb_substr(is_array($args[$k]) && array_is_list($args[$k]) ? implode(', ', array_map(fn($v) => \util\Expression::toText($v), $args[$k])) : \util\Expression::toText($args[$k]), 0, 80);
+	return trim($meta['what'] . ($values ? ' ' . implode(', ', $values) : '') . ((string)$meta['on'] !== '' ? ' on ' . $meta['on'] : ''));
+    }
+
+    //the arguments readably: `key: value` (a list joined by commas, an object as JSON; long values cut)
+    public static function argumentLines(array $args) {
+	$lines = [];
+	foreach($args as $k => $v) {
+	    $text = is_array($v) && array_is_list($v) && !array_filter($v, 'is_array') ? implode(', ', array_map(fn($x) => \util\Expression::toText($x), $v)) : \util\Expression::toText($v);
+	    $lines[] = "{$k}: " . (mb_strlen($text) > self::MAX_ARGUMENT_SHOWN ? mb_substr($text, 0, self::MAX_ARGUMENT_SHOWN) . '…' : $text);
+	}
+	return $lines ?: [ '(no arguments)' ];
+    }
+
+    //calls as one line for the logs: tool {arguments}; ...
+    protected static function callsText(array $items) {
+	return implode('; ', array_map(fn($it) => $it['tool'] . ' ' . \util\JSON::encode($it['arguments']), $items));
+    }
+
+    //an approval task's decisions as text (the audit log): approved / rejected: title (tool, arguments); the comment
+    public static function decisionsText($task) {
+	$answers = is_array($task->answers) ? $task->answers : [];
+	$parts = [];
+	foreach(array_values((array)$task->calls) as $i => $c)
+	    $parts[] = (($answers["call{$i}"] ?? '') === 'approve' ? 'approved' : 'rejected') . ': ' . ($c['title'] ?? '') . ' (' . ($c['tool'] ?? '') . ' ' . \util\JSON::encode($c['arguments'] ?? []) . ')';
+	$comment = trim((string)($answers['comment'] ?? ''));
+	return implode('; ', $parts) . ($comment !== '' ? "; comment: {$comment}" : '');
+    }
+
+    //the conversation of a round waiting for approval, kept apart from the execution (it may be large: files, images): GridFS (models\File's bucket; metadata kind ai-approval and
+    //the execution, no account / project: not a file of the project), serialized (the providers' state holds objects) and compressed => its id
+    public static function saveBlob($exec, array $data) {
+	$stream = fopen('php://temp', 'r+');
+	fwrite($stream, gzcompress(serialize($data), 6));
+	rewind($stream);
+	$id = \models\File::_bucket()->uploadFromStream(self::APPROVAL_KIND . '-' . (string)$exec->_id . '.bin', $stream,
+	    [ 'metadata' => [ 'kind' => self::APPROVAL_KIND, 'execution' => (string)$exec->_id ] ]);
+	fclose($stream);
+	return $id;
+    }
+
+    public static function loadBlob($id) {
+	if (!\util\Validator::rule('oid', (string)$id))
+	    return null;
+	try {
+	    $raw = stream_get_contents(\models\File::_bucket()->openDownloadStream(new \MongoDB\BSON\ObjectId((string)$id)));
+	} catch (\Exception $e) {
+	    return null;
+	}
+	$raw = $raw === false ? false : @gzuncompress($raw);
+	return $raw === false ? null : unserialize($raw, [ 'allowed_classes' => [ 'stdClass' ] ]);
+    }
+
+    public static function dropBlob($id) {
+	if (!\util\Validator::rule('oid', (string)$id))
+	    return;
+	try {
+	    \models\File::_bucket()->delete(new \MongoDB\BSON\ObjectId((string)$id));
+	} catch (\Exception $e) {
+	}
+    }
+
+    //the conversations saved by the AI steps of execution $exec (killed: WfExecution::kill)
+    public static function dropSaved($exec) {
+	foreach(\models\File::_bucket()->find([ 'metadata.kind' => self::APPROVAL_KIND, 'metadata.execution' => (string)$exec->_id ], [ 'projection' => [ '_id' => 1 ] ]) as $f)
+	    self::dropBlob((string)$f['_id']);
     }
 
     protected function closeClient($client) {

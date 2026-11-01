@@ -15,6 +15,9 @@
 namespace models\node;
 
 abstract class NodeAppFortiGate extends \models\WfNode {
+    //CLD: 2026-11-01T21:50:00+02:00: its operations can be an AI step's tools (util\AgentTools: settingValue, setResult)
+    use AgentToolTrait;
+
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-bricks';
@@ -166,8 +169,9 @@ abstract class NodeAppFortiGate extends \models\WfNode {
     //running
 
     public function execute($edgeId = null) {
-	$vars = $this->exec->expressionVariables();
-	$value = fn($key) => \util\Expression::render((string)$this->cfg($key, ''), $vars);
+	//CLD: 2026-11-01T21:50:00+02:00: the settings through settingValue() (as they are when the step runs as a tool: AgentToolTrait)
+	$vars = $this->varsForSettings();
+	$value = fn($key) => $this->settingValue($this->cfg($key, ''), $vars);
 	$text = fn($key) => trim(\util\Expression::toText($value($key)));
 	$operation = (string)$this->cfg('operation', static::$defaultOperation);
 	if (!isset(static::OPERATIONS[$operation]))
@@ -182,15 +186,14 @@ abstract class NodeAppFortiGate extends \models\WfNode {
 	    $start = microtime(true);
 	    [ $result, $summary ] = $this->runOperation($operation, $text, $value);
 	} catch (\RuntimeException $e) {
-	    if (\util\Validator::isIdentifier($name))
-		$this->exec->setVariable($name, null);
+	    $this->setResult($name, null);
 	    $this->exec->log($this->wfid, static::$label . " {$operation}: " . $e->getMessage());
 	    if ($this->cfg('onError', 'fail') === 'output')
 		return [ 1 ];
 	    throw new \ErrorException(static::$label . ": {$operation}: " . $e->getMessage());
 	}
-	if (\util\Validator::isIdentifier($name))
-	    $this->exec->setVariable($name, $result);
+	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it; was the variable only)
+	$this->setResult($name, $result);
 	$this->exec->log($this->wfid, static::$label . " {$operation}: {$summary} (" . (int)round((microtime(true) - $start) * 1000) . ' ms)');
 	return [ 0 ];
     }

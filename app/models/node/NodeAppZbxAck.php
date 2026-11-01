@@ -31,6 +31,8 @@ class NodeAppZbxAck extends NodeAppZabbix {
 	'maintenances' => 'List maintenances',
 	'maintenanceDelete' => 'Remove maintenances',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'acknowledge', 'unacknowledge', 'message', 'maintenanceCreate', 'maintenanceDelete' ];
     const LISTS = [ 'maintenances' ];
     //by name: a select keeps no '0'
     const SEVERITY = [ '' => 'Keep it', 'not_classified' => 'Not classified', 'information' => 'Information', 'warning' => 'Warning', 'average' => 'Average', 'high' => 'High', 'disaster' => 'Disaster' ];

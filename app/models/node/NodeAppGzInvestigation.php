@@ -27,6 +27,8 @@ class NodeAppGzInvestigation extends NodeAppGravityZone {
 	'fileUrl' => 'Get a retrieved file\'s address',
 	'kill' => 'Kill a process',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'command', 'package', 'retrieve', 'kill' ];
     const AREA = 'investigation';
 
     protected static function operationFields() {

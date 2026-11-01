@@ -42,6 +42,8 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 	'freeBusy' => 'Find busy times',
 	'calendars' => 'List the calendars',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'create', 'update', 'delete', 'quickAdd' ];
 
     //the operations on an existing event, the ones writing an event's settings, the ones on a period
     const ON_EVENT = [ 'get', 'update', 'delete' ];
@@ -475,7 +477,8 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 
     //the calendar of the step in a path: /calendars/<id>
     protected function calendarPath() {
-	$id = trim(\util\Expression::toText(\util\Expression::render((string)$this->cfg('calendarId', 'primary'), $this->exec->expressionVariables())));
+	//CLD: 2026-11-01T21:50:00+02:00: settingValue() (as it is when the step runs as an AI step's tool)
+	$id = trim(\util\Expression::toText($this->settingValue($this->cfg('calendarId', 'primary'), $this->varsForSettings())));
 	return '/calendars/' . rawurlencode($id !== '' ? $id : 'primary');
     }
 

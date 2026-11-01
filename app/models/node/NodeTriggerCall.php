@@ -54,6 +54,16 @@ class NodeTriggerCall extends \models\WfNode {
 		],
 		'ui' => [ 'addLabel' => 'Add output', 'compact' => true, 'maxRows' => 50 ],
 	    ],
+	    //CLD: 2026-11-01T21:50:00+02:00: new: what the workflow does, for the AI steps that may use it as a tool (util\AgentTools: the tool's description)
+	    [
+		'key' => 'agentDescription',
+		'type' => 'textarea',
+		'label' => 'Description for agents',
+		'default' => '',
+		'help' => 'Optional: what it does and when to use it, for the AI steps that may run it as a tool',
+		'validate' => [ [ 'lengthBetween', 'min' => 0, 'max' => 2000, 'skipEmpty' => true, 'message' => 'At most 2000 characters' ] ],
+		'ui' => [ 'rows' => 2 ],
+	    ],
 	];
     }
 
@@ -85,11 +95,13 @@ class NodeTriggerCall extends \models\WfNode {
     }
 
     //the input rows of a workflow's steps ($nodes): its Called by a workflow trigger's config, null when it has none
+    //(CLD: 2026-11-01T21:50:00+02:00: [ wfid, inputs, outputs, description ])
     public static function contractOf($nodes) {
 	foreach((is_array($nodes) ? $nodes : []) as $n) {
 	    if (is_array($n) && !empty($n['isNode']) && ($n['fqname'] ?? '') === self::$type . '::' . self::$name)
+		//CLD: 2026-11-01T21:50:00+02:00: + description (Description for agents)
 		return [ 'wfid' => (string)$n['wfid'], 'inputs' => array_values((array)($n['config']['inputs'] ?? [])), 'outputs' => array_values(array_filter(array_map(fn($r) => (string)($r['name'] ?? ''),
-		    (array)($n['config']['outputs'] ?? [])), fn($v) => $v !== '')) ];
+		    (array)($n['config']['outputs'] ?? [])), fn($v) => $v !== '')), 'description' => trim((string)($n['config']['agentDescription'] ?? '')) ];
 	}
 	return null;
     }

@@ -38,6 +38,8 @@ class NodeAppGzEndpoints extends NodeAppGravityZone {
 	'policies' => 'List policies',
 	'assignPolicy' => 'Assign a policy',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'scan', 'move', 'label', 'assignPolicy' ];
     const LISTS = [ 'list', 'inventory', 'scanTasks', 'policies' ];
     const MANAGED = [ 'all' => 'All', 'managed' => 'Managed only', 'unmanaged' => 'Unmanaged only' ];
     const SCAN_TYPES = [ '1' => 'Quick scan', '2' => 'Full scan', '3' => 'Memory scan', '4' => 'Custom scan' ];

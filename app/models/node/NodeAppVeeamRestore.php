@@ -24,6 +24,8 @@ class NodeAppVeeamRestore extends NodeAppVeeam {
 	'mounts' => 'List Instant Recovery mounts',
 	'unmount' => 'Stop an Instant Recovery',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'instant', 'unmount' ];
     const LISTS = [ 'mounts' ];
     const PATH = '/api/v1/restore/instantRecovery/vSphere/vm';
 

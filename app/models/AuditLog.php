@@ -52,6 +52,8 @@ class AuditLog extends \sys\BaseModel {
 	'workflow.executions.delete' => 'Delete executions',
 	//CLD: 2026-10-26T10:06:24+02:00: a running execution killed (WorkflowController::execution_kill, the Overview)
 	'workflow.execution.kill' => 'Kill execution',
+	//CLD: 2026-11-01T23:30:00+02:00: an AI step's tool calls approved / rejected in My tasks (TaskController)
+	'ai.approval' => 'Approve agent action',
     ];
 
     public function getSchema() {

@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -3334,6 +3334,441 @@ class CheckCommand extends \sys\BaseController {
 	$exe->run();
 	$this->check('Run a workflow: no loops (a workflow already in the chain)', [ 'end', true ],
 	    [ $exe->state, str_contains((string)($exe->getVariable('result')['error'] ?? ''), 'already running in this chain of workflows') ]);
+    }
+
+    //CLD: 2026-11-01T21:50:00+02:00: NetFlow9's own steps and workflows as an AI step's tools (util\AgentTools): the families, the tools' names, read / write, the input schemas, the arguments
+    //checked; the AI step's settings; a Lemonade AI step against the fake AI server (a scripted chat) using a GravityZone tool that reads, a FortiGate tool that changes (their fake
+    //servers) and a workflow tool with typed inputs and outputs; wrong arguments, a tool not chosen, a workflow's bad input: tool errors, the step goes on
+    private function suiteAgenttools() {
+	$A = \util\AgentTools::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+
+	//every integration step says which operations change something, the operations it names are its own
+	$problems = [];
+	$count = 0;
+	foreach(array_keys($A::FAMILIES) as $key) {
+	    foreach(array_keys($A::steps($key)) as $class) {
+		$count++;
+		if (!defined("{$class}::WRITES") || !is_array($class::WRITES))
+		    $problems[] = "{$class}: no WRITES";
+		elseif ($extra = array_diff($class::WRITES, array_keys($class::OPERATIONS)))
+		    $problems[] = "{$class}: " . implode(', ', $extra);
+	    }
+	}
+	$this->check('agent tools: every integration step (of every family) declares WRITES, of its own operations', [ true, [] ], [ $count > 50, $problems ]);
+
+	$gz = $A::operations('gravityzone');
+	$fgt = $A::operations('fortigate');
+	$this->check('agent tools: names <prefix>_<step>_<operation> (one step or alternatives: <prefix>_<operation>); read / write; the API and PowerShell steps write', [
+	    [ false, true, true, true, true, false ], [ 'models\node\NodeAppGzEndpoints', 'taskStatus' ], [ 'db_query', 'db_execute', 'db_insert' ], true, true ], [
+	    [ $gz['gz_endpoints_list']['writes'] ?? null, $gz['gz_incidents_isolate']['writes'] ?? null, $gz['gz_api_call']['writes'] ?? null, $fgt['fgt_addresses_block']['writes'] ?? null,
+		$A::operations('hyperv')['hyperv_powershell_run']['writes'] ?? null, $A::operations('gmail')['gmail_search']['writes'] ?? null ],
+	    [ $gz['gz_endpoints_task_status']['class'] ?? null, $gz['gz_endpoints_task_status']['op'] ?? null ], array_values(array_diff(array_keys($A::operations('database')), $A::readTools('database'))),
+	    !array_filter(array_keys($A::readTools('gravityzone')), fn($t) => !empty($gz[$t]['writes'])), isset($A::operations('teams')['teams_send_channel']) ]);
+
+	[ $schema, $fields ] = $A::inputSchema(\models\node\NodeAppGzEndpoints::class, 'list');
+	[ $block, $blockFields ] = $A::inputSchema(\models\node\NodeAppFgtAddresses::class, 'block');
+	$this->check('agent tools: the input schema of an operation: its own settings (not the credential, operation, timeout, variable, On error), types, enums, a smaller default limit, required',
+	    [ [ 'groupId', 'managed', 'recursive', 'maxItems' ], [ 'all', 'managed', 'unmanaged' ], 'boolean', 100, null, [ 'ips', 'group' ], 'nf9-block-' ],
+	    [ array_keys((array)$schema['properties']), $schema['properties']->managed['enum'] ?? null, $schema['properties']->recursive['type'] ?? null,
+	    $schema['properties']->maxItems['default'] ?? null, $schema['required'] ?? null, $block['required'] ?? null, $block['properties']->prefix['default'] ?? null ]);
+	$arg = fn($a) => $A::arguments($fields, $a)[1] ?? 'ok';
+	$this->check('agent tools: arguments checked: unknown, not a number, out of range, not a choice, not true / false, not an object; defaults for those not given; text from a number',
+	    [ 'unknown argument `nope` (the arguments: groupId, managed, recursive, maxItems)', '`maxItems`: a number is expected', '`maxItems`: from 1 to 10000', '`managed`: one of all, managed, unmanaged',
+	    '`recursive`: true or false is expected', 'the arguments are not a JSON object', [ 'groupId' => '42', 'managed' => 'all', 'recursive' => false, 'maxItems' => 5 ], '`ips` is required' ],
+	    [ $arg([ 'nope' => 1 ]), $arg([ 'maxItems' => 'x' ]), $arg([ 'maxItems' => 0 ]), $arg([ 'managed' => 'some' ]), $arg([ 'recursive' => 'maybe' ]), $arg([ 1, 2 ]),
+	    $A::arguments($fields, [ 'groupId' => 42, 'recursive' => 'false', 'maxItems' => '5' ])[0], $A::arguments($blockFields, [ 'group' => 'B' ])[1] ]);
+
+	$ai = array_column(\models\node\NodeAppLemonade::configSchema(), null, 'key');
+	$this->check('agent tools: the AI step\'s settings: a credential and the operations per family (section Integrations; the read ones by default), Workflows',
+	    [ 'Integrations', 'Integrations', $A::readTools('gravityzone'), true, 'gravityzoneCredential', true ],
+	    [ $ai['gravityzoneCredential']['ui']['section'] ?? null, $ai['gravityzoneTools']['ui']['section'] ?? null, $ai['gravityzoneTools']['default'] ?? null,
+	    isset($ai['gmailTools'], $ai['databaseCredential'], $ai['workflows']), $ai['gravityzoneTools']['ui']['showIf']['key'] ?? null,
+	    isset($ai['gravityzoneTools']['choices']['gz_incidents_isolate']) && str_ends_with($ai['gravityzoneTools']['choices']['gz_incidents_isolate'], '(changes)') ]);
+
+	//the servers: AI, GravityZone, FortiGate
+	$aiServer = $this->startAiServer('agent tools');
+	if (!$aiServer)
+	    return;
+	$dir = sys_get_temp_dir() . '/netflow9-check-agent-' . uniqid();
+	@mkdir("{$dir}/gz", 0700, true);
+	@mkdir("{$dir}/fgt", 0700, true);
+	$gzServer = $this->startServer('agent tools: GravityZone', 'GravityZoneTestServer.php', "{$dir}/gz", [ 'GZ_STATE' => "{$dir}/gz" ]);
+	$fgtServer = $this->startServer('agent tools: FortiGate', 'FortiGateTestServer.php', "{$dir}/fgt", [ 'FGT_STATE' => "{$dir}/fgt" ]);
+	$creds = [];
+	[ $gzTesting, $fgtTesting ] = [ \util\GravityZone::$testing, \util\FortiGate::$testing ];
+	try {
+	    if (!$gzServer || !$fgtServer)
+		return;
+	    \util\GravityZone::$testing = true;
+	    \util\FortiGate::$testing = true;
+	    $make = function($variant, array $fields, array $http = []) use ($om, &$creds) {
+		$c = $om->create($variant, [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => "Check: agent {$variant} " . uniqid() ] + $fields);
+		if (!$c->validates() || !$c->save())
+		    throw new \ErrorException("{$variant}: " . json_encode($c->errors()));
+		$creds[] = $c;
+		//the fake servers are http (the forms take https only)
+		if ($http) {
+		    foreach($http as $k => $v)
+			$c->$k = $v;
+		    $c->save([ 'validate' => false ]);
+		}
+		return $om->findById($variant, (string)$c->_id);
+	    };
+	    $lem = $make('CredentialLemonade', [ 'baseUrl' => "http://127.0.0.1:{$aiServer['port']}/api/v1", 'apiKey' => 'check-key' ]);
+	    $gzCred = $make('CredentialGravityZone', [ 'accessUrl' => "https://127.0.0.1:{$gzServer[0]}/api", 'keyType' => 'personal', 'apiKey' => 'pkey' ],
+		[ 'accessUrl' => "http://127.0.0.1:{$gzServer[0]}/api" ]);
+	    $fgtCred = $make('CredentialFortiGate', [ 'serverUrl' => "https://127.0.0.1:{$fgtServer[0]}", 'apiToken' => 'fgtoken', 'vdom' => 'root' ], [ 'serverUrl' => "http://127.0.0.1:{$fgtServer[0]}" ]);
+
+	    //the workflow the agent may run
+	    $child = $this->workflow('agent child', [ $n('c', 'trigger::call', [ 'inputs' => [ [ 'name' => 'who', 'type' => 'text', 'required' => true ], [ 'name' => 'n', 'type' => 'number', 'default' => '2' ],
+		[ 'name' => 'tags', 'type' => 'list' ] ], 'outputs' => [ [ 'name' => 'greeting' ] ], 'agentDescription' => 'Greets someone, n times' ]),
+		$n('s', 'app::set', [ 'variable' => 'greeting', 'value' => 'Hi {{ who }} x{{ n + 1 }} {{ tags.length }} from {{ caller.name }}' ]), $e('e1', 'c', 's') ]);
+	    $child->save();
+	    $this->created[] = $child->_id;
+	    $wfTool = 'wf_check_agent_child';
+
+	    $script = [
+		[ [ 'gz_endpoints_list', [ 'maxItems' => 3, 'managed' => 'managed' ] ], [ 'fgt_addresses_block', [ 'ips' => [ '198.51.100.7' ], 'group' => 'Blocked', 'comment' => 'agent' ] ],
+		    [ $wfTool, [ 'who' => 'Ana', 'n' => '4', 'tags' => [ 'x', 'y' ] ] ] ],
+		[ [ 'gz_endpoints_list', [ 'maxItems' => 'many' ] ], [ 'gz_endpoints_list', [ 'nope' => 1 ] ], [ 'fgt_addresses_block', [ 'group' => 'Blocked' ] ], [ 'gz_incidents_isolate', [] ],
+		    [ $wfTool, [ 'n' => 'four' ] ], [ $wfTool, [ 'who' => 'Ion', 'n' => 'four' ] ], [ 'gz_endpoints_list', [ 1, 2 ] ], [ 'fgt_addresses_block', [ 'ips' => 'not-an-ip', 'group' => 'Blocked' ] ] ],
+	    ];
+	    $config = [ 'credential' => (string)$lem->_id, 'model' => 'Qwen3-8B-GGUF', 'prompt' => "Investigate the incident\nSCRIPT: " . json_encode($script), 'tools' => [], 'mcp' => [],
+		'gravityzoneCredential' => (string)$gzCred->_id, 'gravityzoneTools' => [ 'gz_endpoints_list' ], 'fortigateCredential' => (string)$fgtCred->_id,
+		//CLD: 2026-11-01T23:30:00+02:00: the write tool without approval (asked by default: suiteAgentapproval)
+		'fortigateTools' => [ 'fgt_addresses_block' ], 'fortigateApprovalMode' => 'none', 'workflows' => [ (string)$child->_id ], 'maxRounds' => 5, 'onError' => 'output', 'timeout' => 20 ];
+	    $flow = fn($cfg) => [ $n('m', 'trigger::manual'), $n('s', 'app::lemonade', $cfg), $n('ok', 'app::set', [ 'variable' => 'route', 'value' => 'success' ]),
+		$n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'ok', 0), $e('e3', 's', 'err', 1) ];
+
+	    //the settings checked
+	    $errs = json_encode($this->errorsOf('agent bad', $flow(array_merge($config, [ 'gravityzoneCredential' => (string)$fgtCred->_id,
+		'workflows' => [ (string)new \MongoDB\BSON\ObjectId() ] ]))), JSON_UNESCAPED_UNICODE);
+	    $bad = $om->create('NodeAppLemonade', [ 'wfid' => 's', 'fqname' => 'app::lemonade', 'title' => 's', 'config' => [ 'fortigateCredential' => (string)$fgtCred->_id, 'fortigateTools' => [ 'fgt_nope' ] ] ]);
+	    $bad->workflow = $this->workflow('agent bad', []);
+	    $this->check('agent tools: settings refused: a credential of another kind, an unknown operation (a step not saved by the form), a workflow not of the project / not called by a workflow',
+		[ true, [ 'FortiGate: unknown operation `fgt_nope`' ], true ], [ str_contains($errs, 'Bitdefender GravityZone: choose a credential of this project'), $A::errors($bad),
+		str_contains($errs, 'Workflows: choose workflows of this project that start with Called by a workflow') ]);
+
+	    @unlink($aiServer['log']);
+	    @unlink("{$dir}/gz/requests.jsonl");
+	    $exe = $this->runFlow('agent run', $flow($config));
+	    $ai = $exe?->getVariable('ai');
+	    $sent = ($aiServer['requests'])('/api/v1/chat/completions');
+	    $offered = array_column(array_column($sent[0]['tools'] ?? [], 'function'), null, 'name');
+	    $toolsJson = json_encode($sent[0]['tools'] ?? []);
+	    $this->check('agent tools: the tools offered: those chosen, the workflow\'s (its description, inputs typed, required); no credential, no secret',
+		[ [ 'gz_endpoints_list', 'fgt_addresses_block', $wfTool ], true, [ 'string', 'number', 'array' ], [ 'who' ], false, false, true ],
+		[ array_keys($offered), str_contains((string)($offered[$wfTool]['description'] ?? ''), 'Greets someone, n times'),
+		array_column(array_values((array)($offered[$wfTool]['parameters']['properties'] ?? [])), 'type'), $offered[$wfTool]['parameters']['required'] ?? null,
+		str_contains($toolsJson, '"credential"'), str_contains($toolsJson, 'pkey') || str_contains($toolsJson, 'fgtoken'),
+		str_contains((string)($offered['fgt_addresses_block']['description'] ?? ''), 'changes it') ]);
+
+	    $results = json_decode(substr((string)($ai['text'] ?? ''), strlen('RESULTS: ')), true) ?: [];
+	    //the tool errors as the OpenAI requests send them (ERROR: before the text)
+	    $content = array_map(fn($r) => preg_replace('/^ERROR: /', '', (string)($r['content'] ?? '')), $results);
+	    $list = json_decode($content[0] ?? '', true);
+	    $gzSent = array_values(array_filter(array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/gz/requests.jsonl")))),
+		fn($r) => ($r['request']['method'] ?? '') === 'getEndpointsList'));
+	    $this->check('agent tools: the run: 3 rounds, 11 tool calls (the first 3 fine, the others tool errors), the step on success',
+		[ 'end', 'success', 3, [ false, false, false, true, true, true, true, true, true, true, true ] ],
+		[ $exe?->state, $exe?->getVariable('route'), $ai['rounds'] ?? null, array_column($ai['tool_calls'] ?? [], 'error') ]);
+	    $this->check('agent tools: GravityZone read tool: the step\'s operation (At most 3, managed), its result; logged as the step logs it, under the AI step',
+		[ [ 3, 250, true, 'ep0002' ], true, true, true ],
+		[ [ $list['count'] ?? null, $list['total'] ?? null, $list['truncated'] ?? null, $list['items'][2]['id'] ?? null ], ($gzSent[0]['request']['params']['isManaged'] ?? null) === true,
+		(bool)self::logLine($exe, 'GravityZone Endpoints list: 3 endpoints of 250 (truncated)'),
+		(bool)array_filter((array)$exe?->log, fn($l) => ($l['node'] ?? null) === 's' && str_starts_with((string)$l['message'], 'GravityZone Endpoints list:')) ]);
+	    $objects = json_decode((string)@file_get_contents("{$dir}/fgt/objects.json"), true);
+	    $this->check('agent tools: FortiGate write tool: the address made and put in the group (the IPs as a list)', [ true, true, 'agent' ],
+		[ isset($objects['address']['nf9-block-198.51.100.7']), in_array('nf9-block-198.51.100.7', (array)($objects['addrgrp']['Blocked'] ?? []), true),
+		$objects['address']['nf9-block-198.51.100.7']['comment'] ?? null ]);
+	    $wfResult = json_decode($content[2] ?? '', true);
+	    $childExe = $om->findOne('WfExecution', [ '_id' => $om->to_oid((string)($wfResult['execution'] ?? '000000000000000000000000')) ]);
+	    $this->check('agent tools: the workflow tool: run nested, the inputs cast (n "4" => 4), its outputs; started by the AI step\'s execution',
+		[ true, 'end', [ 'greeting' => 'Hi Ana x5 2 from Check: agent run' ], 'call', (string)$exe?->_id, 's' ],
+		[ $wfResult['ok'] ?? null, $wfResult['state'] ?? null, $wfResult['outputs'] ?? null, $childExe?->trigger, (string)($childExe?->input['caller']['execution'] ?? ''),
+		(string)($childExe?->input['caller']['node'] ?? '') ]);
+	    $this->check('agent tools: tool errors: not a number, unknown argument, required missing, a tool not chosen, a workflow input missing / of another type, not an object, the step\'s own',
+		[ '`maxItems`: a number is expected', 'unknown argument `nope`', '`ips` is required', 'unknown tool `gz_incidents_isolate`', '`who` is required', '`n`: a number is expected',
+		'the arguments are not a JSON object', 'FortiGate Addresses: block: IP addresses: not an IP address: `not-an-ip`' ],
+		[ $content[3] ?? null, explode(' (', (string)($content[4] ?? ''))[0], $content[5] ?? null, $content[6] ?? null, $content[7] ?? null, $content[8] ?? null, $content[9] ?? null,
+		$content[10] ?? null ]);
+	    $this->check('agent tools: no secret in the results sent to the model', false, str_contains(json_encode($content), 'pkey') || str_contains(json_encode($content), 'fgtoken'));
+
+	    //agents calling agents: A's AI step runs B, whose AI step runs A: refused (A is already in the chain), a tool error, B's agent goes on; a workflow cannot be its own AI step's tool
+	    $agent = fn($name, $target) => [ $n('c', 'trigger::call'), $n('s', 'app::lemonade', [ 'credential' => (string)$lem->_id, 'model' => 'Qwen3-8B-GGUF', 'tools' => [], 'mcp' => [],
+		'onError' => 'output', 'timeout' => 20, 'maxRounds' => 3, 'workflows' => $target ? [ (string)$target->_id ] : [],
+		'prompt' => 'SCRIPT: ' . json_encode([ [ [ $target ? 'wf_check_' . $name : 'none', [] ] ] ]) ]), $n('o', 'app::set', [ 'variable' => 'seen', 'value' => '{{ ai.text }}' ]),
+		$e('e1', 'c', 's'), $e('e2', 's', 'o') ];
+	    $wfA = $this->workflow('agent a', [ $n('c', 'trigger::call') ]);
+	    $wfA->save();
+	    $this->created[] = $wfA->_id;
+	    $wfB = $this->workflow('agent b', $agent('agent_a', $wfA));
+	    $wfB->save();
+	    $this->created[] = $wfB->_id;
+	    $map = [];
+	    foreach($agent('agent_b', $wfB) as $el)
+		$map[$el['wfid']] = $el;
+	    $wfA->nodes = $map;
+	    $wfA->save();
+	    $exeA = \models\WfExecution::startFor($wfA, 'console', []);
+	    $exeA->run();
+	    $aiA = $exeA->getVariable('ai');
+	    $exeB = $om->findOne('WfExecution', [ 'input.caller.execution' => (string)$exeA->_id ]);
+	    $aiB = $exeB?->getVariable('ai');
+	    $this->check('agent tools: an agent runs a workflow whose agent runs the first one: refused there (a loop), a tool error; both end', [ 'end', [ false ], 'end', [ true ], true ],
+		[ $exeA->state, array_column($aiA['tool_calls'] ?? [], 'error'), $exeB?->state, array_column($aiB['tool_calls'] ?? [], 'error'),
+		str_contains((string)($aiB['text'] ?? ''), 'already running in this chain of workflows') ]);
+	    $self = $this->workflow('agent self', $agent('agent_self', null));
+	    $nodes = $self->nodes;
+	    $self->save();
+	    $this->created[] = $self->_id;
+	    $nodes['s']['config']['workflows'] = [ (string)$self->_id ];
+	    $self->nodes = $nodes;
+	    $self->validates();
+	    $this->check('agent tools: a workflow cannot be its own AI step\'s tool', true, str_contains(json_encode($self->errors()), 'a workflow cannot run itself'));
+	} finally {
+	    \util\GravityZone::$testing = $gzTesting;
+	    \util\FortiGate::$testing = $fgtTesting;
+	    foreach($creds as $c)
+		$c->delete();
+	    foreach([ $gzServer ?? null, $fgtServer ?? null ] as $srv) {
+		if ($srv) {
+		    proc_terminate($srv[1]);
+		    proc_close($srv[1]);
+		}
+	    }
+	    foreach([ 'gz', 'fgt' ] as $sub) {
+		foreach(glob("{$dir}/{$sub}/*") ?: [] as $f)
+		    @unlink($f);
+		@rmdir("{$dir}/{$sub}");
+	    }
+	    @rmdir($dir);
+	    $this->stopAiServer($aiServer);
+	}
+    }
+
+    //CLD: 2026-11-01T23:30:00+02:00: an AI step's tool calls waiting for a person's approval (models\node\NodeAppAi::askApproval / decided, util\AgentTools): against the fake AI server (a scripted
+    //chat, in each provider's API) and the fake FortiGate: approved (every provider resumes its saved conversation, also after a "restart": a fresh execution from the
+    //database, the caches reset), rejected, not decided in time, several calls in one task, killed while waiting; the System AI's credits charged before the wait and reserved
+    //again after; the decisions in the execution log
+    private function suiteAgentapproval() {
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$A = \models\node\NodeAppAi::class;
+	$this->check('agent approval: the task\'s title from the call (what, its main arguments, on what); the arguments readably', [
+	    'Block IPs 203.0.113.7, Blocked on FortiGate FGT-HQ', [ 'ips: 203.0.113.7, 198.51.100.1', 'group: Blocked', 'opts: {"a":1}' ] ], [
+	    $A::approvalTitle([ 'what' => 'Block IPs', 'on' => 'FortiGate FGT-HQ', 'main' => [ 'ips', 'group' ] ], [ 'ips' => [ '203.0.113.7' ], 'group' => 'Blocked', 'comment' => 'x' ]),
+	    $A::argumentLines([ 'ips' => [ '203.0.113.7', '198.51.100.1' ], 'group' => 'Blocked', 'opts' => [ 'a' => 1 ] ]) ]);
+
+	$aiServer = $this->startAiServer('agent approval');
+	if (!$aiServer)
+	    return;
+	$dir = sys_get_temp_dir() . '/netflow9-check-approval-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$fgtServer = $this->startServer('agent approval: FortiGate', 'FortiGateTestServer.php', $dir, [ 'FGT_STATE' => $dir ]);
+	$creds = [];
+	$user = null;
+	$fgtTesting = \util\FortiGate::$testing;
+	try {
+	    if (!$fgtServer)
+		return;
+	    \util\FortiGate::$testing = true;
+	    $make = function($variant, array $fields, array $http = []) use ($om, &$creds) {
+		$c = $om->create($variant, [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => "Check: approval {$variant} " . uniqid() ] + $fields);
+		if (!$c->validates() || !$c->save())
+		    throw new \ErrorException("{$variant}: " . json_encode($c->errors()));
+		$creds[] = $c;
+		if ($http) {
+		    foreach($http as $k => $v)
+			$c->$k = $v;
+		    $c->save([ 'validate' => false ]);
+		}
+		return $om->findById($variant, (string)$c->_id);
+	    };
+	    $ai = "http://127.0.0.1:{$aiServer['port']}";
+	    $providers = [
+		'lemonade' => [ 'app::lemonade', $make('CredentialLemonade', [ 'baseUrl' => "{$ai}/api/v1", 'apiKey' => 'check-key' ]), 'Qwen3-8B-GGUF' ],
+		'openai' => [ 'app::openai', $make('CredentialOpenAI', [ 'baseUrl' => "{$ai}/api/v1", 'apiKey' => 'check-key' ]), 'gpt-check' ],
+		'claude' => [ 'app::claude', $make('CredentialAnthropic', [ 'baseUrl' => $ai, 'apiKey' => 'check-key' ]), 'claude-check' ],
+		'gemini' => [ 'app::gemini', $make('CredentialGemini', [ 'baseUrl' => "{$ai}/v1beta", 'apiKey' => 'check-key' ]), 'gemini-check' ],
+		'ollama' => [ 'app::ollama', $make('CredentialOllama', [ 'baseUrl' => $ai, 'apiKey' => 'check-key' ]), 'qwen3:8b' ],
+	    ];
+	    $fgt = $make('CredentialFortiGate', [ 'serverUrl' => "https://127.0.0.1:{$fgtServer[0]}", 'apiToken' => 'fgtoken', 'vdom' => 'root' ], [ 'serverUrl' => "http://127.0.0.1:{$fgtServer[0]}" ]);
+	    $user = $om->create('User', [ 'aid' => $this->account->_id, 'username' => 'chk_approver_' . uniqid(), 'email' => 'chk_approver_' . uniqid() . '@example.invalid', 'firstname' => 'Maria',
+		'lastname' => 'Lopez', 'state' => 'active' ]);
+	    $user->save();
+	    $objects = fn() => json_decode((string)@file_get_contents("{$dir}/objects.json"), true) ?: [];
+	    $blocked = fn($ip) => isset($objects()['address']["nf9-block-{$ip}"]);
+
+	    //the workflow the agent may run, after approval
+	    $child = $this->workflow('approval child', [ $n('c', 'trigger::call', [ 'inputs' => [ [ 'name' => 'who', 'type' => 'text', 'required' => true ] ], 'outputs' => [ [ 'name' => 'greeting' ] ] ]),
+		$n('s', 'app::set', [ 'variable' => 'greeting', 'value' => 'Hi {{ who }}' ]), $e('e1', 'c', 's') ]);
+	    $child->save();
+	    $this->created[] = $child->_id;
+
+	    //a run of provider $p with the chat $script; more settings $more
+	    $start = function($p, array $script, array $more = []) use ($n, $e, $providers, $fgt, $child) {
+		[ $type, $cred, $model ] = $providers[$p];
+		$cfg = $more + [ 'credential' => (string)$cred->_id, 'model' => $model, 'prompt' => "Handle the incident\nSCRIPT: " . json_encode($script), 'tools' => [], 'mcp' => [],
+		    'fortigateCredential' => (string)$fgt->_id, 'fortigateTools' => [ 'fgt_addresses_block', 'fgt_addresses_list' ], 'workflows' => [ (string)$child->_id ],
+		    'workflowsApproval' => [ (string)$child->_id ], 'maxRounds' => 6, 'onError' => 'output', 'timeout' => 20 ];
+		return $this->runFlow("approval {$p}", [ $n('m', 'trigger::manual'), $n('s', $type, $cfg), $n('ok', 'app::set', [ 'variable' => 'route', 'value' => 'success' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'ok', 0), $e('e3', 's', 'err', 1) ]);
+	    };
+	    $taskOf = fn($exe) => $exe ? $om->findOne('WfTask', [ 'execution' => $exe->_id ], [ 'sort' => [ '_id' => -1 ] ]) : null;
+	    //the task decided as My tasks does it (TaskController), the run resumed from the database
+	    $decide = function($exe, array $answers) use ($om, $user, $taskOf) {
+		$task = $taskOf($exe);
+		$om->updateMany('WfTask', [ '_id' => $task->_id, 'state' => 'open' ], [ '$set' => [ 'state' => 'done', 'answers' => $answers, 'completed_by' => $user->_id,
+		    'completed_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
+		$exe = $om->findById('WfExecution', (string)$exe->_id);
+		$exe->run();
+		return $exe;
+	    };
+	    $results = fn($exe) => array_map(fn($r) => (string)($r['content'] ?? ''), json_decode(substr((string)($exe?->getVariable('ai')['text'] ?? ''), strlen('RESULTS: ')), true) ?: []);
+	    $saved = fn($exe) => $exe ? iterator_count(\models\File::_bucket()->find([ 'metadata.kind' => 'ai-approval', 'metadata.execution' => (string)$exe->_id ])) : -1;
+	    $chats = fn() => count(($aiServer['requests'])('/api/v1/chat/completions')) + count(($aiServer['requests'])('/v1/messages')) + count(($aiServer['requests'])('/api/chat'))
+		+ count(array_filter(array_map(fn($l) => json_decode($l, true)['path'] ?? '', file($aiServer['log'], FILE_IGNORE_NEW_LINES) ?: []), fn($p) => str_ends_with($p, ':generateContent')));
+
+	    //approved, for every provider: a read call runs at once, the write call waits; a "restart" (a fresh execution, the caches reset) while waiting: still waits, the model not
+	    //called; approved: the call runs, the same conversation goes on (one more round), the end
+	    $ips = [ 'lemonade' => '203.0.113.11', 'openai' => '203.0.113.12', 'claude' => '203.0.113.13', 'gemini' => '203.0.113.14', 'ollama' => '203.0.113.15' ];
+	    foreach($ips as $p => $ip) {
+		@unlink($aiServer['log']);
+		$exe = $start($p, [ [ 'The attacker comes from ' . $ip, [ 'fgt_addresses_list', [] ], [ 'fgt_addresses_block', [ 'ips' => [ $ip ], 'group' => 'Blocked', 'reason' => "incident 42: attacks from {$ip}" ] ] ],
+		    [ [ 'fgt_addresses_list', [ 'contains' => $ip ] ] ] ]);
+		$task = $taskOf($exe);
+		$waiting = [ $exe?->state, $task?->state, $task?->kind, $task?->title, str_contains((string)$task?->instructions, "Why: incident 42: attacks from {$ip}"),
+		    str_contains((string)$task?->instructions, "ips: {$ip}"), count($task?->form['fields'] ?? []), $blocked($ip), $saved($exe), (bool)array_filter((array)$exe?->log, fn($l) => str_contains((string)$l['message'], ': tool fgt_addresses_list')) ];
+		$this->check("agent approval ({$p}): the write call waits (the read one ran): a task with its title, the reason, the arguments, a decision and a comment; the conversation saved",
+		    [ 'sleep', 'open', 'ai-approval', "Approve: Block IPs {$ip}, Blocked on FortiGate {$fgt->name}", true, true, 2, false, 1, true ], $waiting);
+		if (!$exe || !$task)
+		    continue;
+		$before = $chats();
+		\models\WfNode::resetCache();
+		$again = $om->findById('WfExecution', (string)$exe->_id);
+		$again->run();
+		$this->check("agent approval ({$p}): a restart while waiting: still waiting, the model not called", [ 'sleep', 0, 'open' ],
+		    [ $again->state, $chats() - $before, $om->findById('WfTask', (string)$task->_id)?->state ]);
+		$exe = $decide($exe, [ 'call0' => 'approve', 'comment' => '' ]);
+		$aiVar = $exe->getVariable('ai');
+		$res = $results($exe);
+		$this->check("agent approval ({$p}): approved: the call runs, the conversation goes on (3 rounds), the call listed as approved by whom; nothing saved left",
+		    [ 'end', 'success', true, 3, [ false, false, false ], [ 'approved', 'Maria Lopez' ], 3, false, 0 ],
+		    [ $exe->state, $exe->getVariable('route'), $blocked($ip), $aiVar['rounds'] ?? null, array_column($aiVar['tool_calls'] ?? [], 'error'),
+		    [ $aiVar['tool_calls'][1]['approval'] ?? null, $aiVar['tool_calls'][1]['by'] ?? null ], count($res), str_starts_with($res[1] ?? '', 'ERROR'), $saved($exe) ]);
+	    }
+
+	    foreach([ 'claude', 'openai' ] as $p) {
+		//rejected: a tool error naming who and why; nothing changed
+		$exe = $start($p, [ [ [ 'fgt_addresses_block', [ 'ips' => '198.51.100.20', 'group' => 'Blocked' ] ] ] ]);
+		$exe = $decide($exe, [ 'call0' => 'reject', 'comment' => 'wrong address' ]);
+		$aiVar = $exe->getVariable('ai');
+		$this->check("agent approval ({$p}): rejected: a tool error \"rejected by <who>: <comment>\", the agent goes on; nothing blocked",
+		    [ 'end', [ 'ERROR: rejected by Maria Lopez: wrong address' ], false, 'rejected' ],
+		    [ $exe->state, $results($exe), $blocked('198.51.100.20'), $aiVar['tool_calls'][0]['approval'] ?? null ]);
+
+		//not decided in time: refused
+		$exe = $start($p, [ [ [ 'fgt_addresses_block', [ 'ips' => '198.51.100.21', 'group' => 'Blocked' ] ] ] ], [ 'approvalTimeoutUnit' => 'minutes', 'approvalTimeout' => 5 ]);
+		$task = $taskOf($exe);
+		$due = $task?->due_at instanceof \MongoDB\BSON\UTCDateTime;
+		$om->updateMany('WfTask', [ '_id' => $task?->_id ], [ '$set' => [ 'due_at' => new \MongoDB\BSON\UTCDateTime((time() - 60) * 1000) ] ]);
+		$exe = $om->findById('WfExecution', (string)$exe->_id);
+		$exe->run();
+		$this->check("agent approval ({$p}): a time limit: the run wakes then; past it: refused (\"not approved in time\"), the task expired", [ true, 'end',
+		    [ 'ERROR: not approved in time (the time limit passed)' ], 'expired', false ],
+		    [ $due, $exe->state, $results($exe), $om->findById('WfTask', (string)$task?->_id)?->state, $blocked('198.51.100.21') ]);
+
+		//several calls in one round: one task, a decision each
+		$exe = $start($p, [ [ 'Containing the attack', [ 'fgt_addresses_block', [ 'ips' => '198.51.100.30', 'group' => 'Blocked' ] ],
+		    [ 'fgt_addresses_block', [ 'ips' => '198.51.100.31', 'group' => 'Blocked' ] ], [ 'wf_check_approval_child', [ 'who' => 'SOC', 'reason' => 'tell the team' ] ] ] ]);
+		$task = $taskOf($exe);
+		$tasks = $exe ? $om->count('WfTask', [ 'execution' => $exe->_id ]) : 0;
+		$exe = $decide($exe, [ 'call0' => 'approve', 'call1' => 'reject', 'call2' => 'approve', 'comment' => 'only the first' ]);
+		$res = $results($exe);
+		$this->check("agent approval ({$p}): several calls in one round: one task (a decision each, a comment), each applied: approved ones run, the rejected one refused",
+		    [ 1, 4, 'Approve 3 actions: ', true, false, 'ERROR: rejected by Maria Lopez: only the first', [ 'greeting' => 'Hi SOC' ], 'Why: Containing the attack' ],
+		    [ $tasks, count($task?->form['fields'] ?? []), mb_substr((string)$task?->title, 0, 19), $blocked('198.51.100.30'), $blocked('198.51.100.31'), $res[1] ?? null,
+		    json_decode($res[2] ?? '', true)['outputs'] ?? null, str_contains((string)$task?->instructions, 'Why: tell the team') ? 'Why: Containing the attack' : 'no reason' ]);
+
+		//killed while waiting: the task cancelled, the conversation removed
+		$exe = $start($p, [ [ [ 'fgt_addresses_block', [ 'ips' => '198.51.100.40', 'group' => 'Blocked' ] ] ] ]);
+		$task = $taskOf($exe);
+		$before = $saved($exe);
+		$exe?->kill('check');
+		$this->check("agent approval ({$p}): killed while waiting: the run cancelled, its task cancelled, the saved conversation removed", [ 1, 'cancel', 'cancelled', 0 ],
+		    [ $before, $om->findById('WfExecution', (string)$exe?->_id)?->state, $om->findById('WfTask', (string)$task?->_id)?->state, $saved($exe) ]);
+	    }
+
+	    //wrong arguments are not sent for approval; a call not asking runs at once
+	    $exe = $start('lemonade', [ [ [ 'fgt_addresses_block', [ 'group' => 'Blocked' ] ], [ 'wf_check_approval_child', [ 'who' => 'x' ] ] ] ], [ 'workflowsApproval' => [] ]);
+	    $this->check('agent approval: wrong arguments: a tool error, no task; a tool not asking runs at once', [ 'end', 0, [ 'ERROR: `ips` is required', true ] ],
+		[ $exe?->state, $exe ? $om->count('WfTask', [ 'execution' => $exe->_id ]) : -1, [ $results($exe)[0] ?? null, str_contains($results($exe)[1] ?? '', 'Hi x') ] ]);
+
+	    //the modes: every operation asks (a read one too); those chosen ask, the others not
+	    $all = $start('lemonade', [ [ [ 'fgt_addresses_list', [] ] ] ], [ 'fortigateApprovalMode' => 'all' ]);
+	    $chosen = $start('lemonade', [ [ [ 'fgt_addresses_list', [] ], [ 'fgt_addresses_block', [ 'ips' => '198.51.100.70', 'group' => 'Blocked' ] ] ] ],
+		[ 'fortigateApprovalMode' => 'chosen', 'fortigateApproval' => [ 'fgt_addresses_list' ] ]);
+	    $this->check('agent approval: Ask for approval: every operation (a read one waits); those chosen (the chosen read one waits, the write one not chosen runs)',
+		[ 'sleep', 'sleep', [ 'fgt_addresses_list' ], true ], [ $all?->state, $chosen?->state, array_column((array)$taskOf($chosen)?->calls, 'tool'), $blocked('198.51.100.70') ]);
+	    $all?->kill('check');
+	    $chosen?->kill('check');
+
+	    //the decisions in the execution log: who, what, the arguments
+	    $exe = $start('lemonade', [ [ [ 'fgt_addresses_block', [ 'ips' => '198.51.100.50', 'group' => 'Blocked' ] ] ] ]);
+	    $exe = $decide($exe, [ 'call0' => 'approve' ]);
+	    $entries = array_map(fn($l) => [ $l->action, (string)$l->details ], iterator_to_array($om->find('ExecutionLog', [ 'execution' => (string)$exe->_id, 'action' => [ '$in' => [ 'ai.approval.ask', 'ai.approval' ] ] ],
+		[ 'sort' => [ '_id' => 1 ] ]), false));
+	    $this->check('agent approval: the execution log: the call asked (the task, the arguments), then decided (by whom, the arguments, when)', [ 'ai.approval.ask', true, 'ai.approval', true ],
+		[ $entries[0][0] ?? null, str_contains($entries[0][1] ?? '', 'fgt_addresses_block {"ips":"198.51.100.50","group":"Blocked"}'), $entries[1][0] ?? null,
+		str_contains($entries[1][1] ?? '', 'approved by Maria Lopez at 20') ]);
+	    $task = $taskOf($exe);
+	    $this->check('agent approval: the audit log\'s text of a decision (My tasks)', 'approved: Block IPs 198.51.100.50, Blocked on FortiGate ' . $fgt->name . ' (fgt_addresses_block {"ips":"198.51.100.50","group":"Blocked"})',
+		$task ? $A::decisionsText($task) : null);
+
+	    //the System AI: the credits of the run before the wait charged, reserved again when it resumes
+	    $sessions = [];
+	    //only during this check (hooks stay for the process: the systemai suite has its own)
+	    $fakeSystem = true;
+	    \V::app()->hooks->addHook('ai:system-provider', function(\ArrayObject $box, $aid) use (&$sessions, &$fakeSystem, $providers) {
+		if (!$fakeSystem || $aid !== (string)$this->account->_id)
+		    return;
+		$box['provider'] = [ 'provider' => 'lemonade', 'model' => 'Qwen3-8B-GGUF', 'label' => 'System AI (check)', 'credential' => fn() => $providers['lemonade'][1],
+		    'start' => function($model, array $info) use (&$sessions) {
+			return $sessions[] = new class {
+			    public $tokens = 0;
+			    public $finished = 0;
+			    public function add(array $t) { $this->tokens += array_sum($t); }
+			    public function exhausted() { return false; }
+			    public function reserved() { return 100; }
+			    public function finish() { $this->finished++; return [ 1, 99 ]; }
+			};
+		    } ];
+	    });
+	    $exe = $start('lemonade', [ [ [ 'fgt_addresses_block', [ 'ips' => '198.51.100.60', 'group' => 'Blocked' ] ] ] ], [ 'credential' => 'system' ]);
+	    $first = [ count($sessions), $sessions[0]->finished ?? null ];
+	    $exe = $decide($exe, [ 'call0' => 'approve' ]);
+	    $this->check('agent approval: System AI: the session charged before the wait (nothing held while waiting), a new one after it', [ [ 1, 1 ], 'end', 2, 1, true ],
+		[ $first, $exe->state, count($sessions), $sessions[1]->finished ?? null, ($sessions[1]->tokens ?? 0) > 0 ]);
+	} finally {
+	    $fakeSystem = false;
+	    \util\FortiGate::$testing = $fgtTesting;
+	    foreach($creds as $c)
+		$c->delete();
+	    $user?->delete();
+	    if ($fgtServer ?? null) {
+		proc_terminate($fgtServer[1]);
+		proc_close($fgtServer[1]);
+	    }
+	    foreach(glob("{$dir}/*") ?: [] as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	    $this->stopAiServer($aiServer);
+	}
     }
 
     private function suiteSuspend() {

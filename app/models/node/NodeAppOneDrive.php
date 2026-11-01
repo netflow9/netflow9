@@ -45,6 +45,8 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	'share' => 'Share a file',
 	'delete' => 'Delete a file',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'download', 'upload', 'createFolder', 'move', 'share', 'delete' ];
 
     //the operations working on one existing item (itemId), the ones in a folder
     const ON_ITEM = [ 'get', 'download', 'move', 'share', 'delete' ];

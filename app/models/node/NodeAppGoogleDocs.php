@@ -35,6 +35,8 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 	'replace' => 'Replace texts (fill a template)',
 	'copy' => 'Copy a document (a template)',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'create', 'append', 'replace', 'copy' ];
 
     //the operations on an existing document, the ones writing content
     const ON_DOCUMENT = [ 'read', 'append', 'replace', 'copy' ];
@@ -111,7 +113,9 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'label' => 'Placeholders',
 		'default' => '',
 		'help' => 'Optional: {{ ... }} giving an object: each {{key}} in the document gets its value',
-		'ui' => [ 'width' => 9, 'newRow' => true, 'placeholder' => '{{ row }}', 'expression' => true, 'showIf' => $op([ 'replace' ]) ],
+		//CLD: 2026-11-01T21:50:00+02:00: + agent: as an AI step's tool, an object (util\AgentTools)
+		'ui' => [ 'width' => 9, 'newRow' => true, 'placeholder' => '{{ row }}', 'expression' => true, 'showIf' => $op([ 'replace' ]),
+		    'agent' => [ 'type' => 'object', 'help' => 'Optional: each {{key}} in the document gets its value' ] ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
@@ -213,7 +217,8 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 	    $find = (string)($row['find'] ?? '');
 	    if ($find === '')
 		continue;
-	    $replace = \util\Expression::render((string)($row['replace'] ?? ''), $this->exec->expressionVariables());
+	    //CLD: 2026-11-01T21:50:00+02:00: settingValue() (as it is when the step runs as an AI step's tool)
+	    $replace = $this->settingValue($row['replace'] ?? '', $this->varsForSettings());
 	    $pairs[$find] = self::cellText($replace);
 	}
 	$object = trim((string)$this->cfg('placeholders', '')) !== '' ? $value('placeholders') : null;

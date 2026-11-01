@@ -31,6 +31,8 @@ class NodeAppFgtUsers extends NodeAppFortiGate {
 	'sslvpn' => 'List SSL VPN sessions',
 	'ipsec' => 'List IPsec tunnels',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'enable', 'disable', 'deauth' ];
     const LISTS = [ 'users', 'signedIn', 'sslvpn', 'ipsec' ];
 
     protected static function operationFields() {

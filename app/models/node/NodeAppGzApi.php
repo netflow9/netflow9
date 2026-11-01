@@ -17,6 +17,8 @@ class NodeAppGzApi extends NodeAppGravityZone {
     public static $defaultVariable = 'gz';
 
     const OPERATIONS = [ 'call' => 'Call a method' ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'call' ];
 
     protected static function operationFields() {
 	return [
