@@ -133,12 +133,12 @@ class File extends \sys\BaseModel {
     }
 
 
-    //CLD: 2026-10-06T21:29:27+03:00: lower-case extension of the file name ('' if none)
+    //lower-case extension of the file name ('' if none)
     public function extension() {
 	return strtolower(pathinfo((string)$this->filename, PATHINFO_EXTENSION));
     }
 
-    //CLD: 2026-10-06T21:29:27+03:00: the image MIME type when the file can be previewed, else null
+    //the image MIME type when the file can be previewed, else null
     public function imageMimeType() {
 	return self::$imageMimeTypes[$this->extension()] ?? null;
     }
@@ -148,7 +148,6 @@ class File extends \sys\BaseModel {
 	$this->_config['global'] = true;
 
 	if (!empty($this->filename)) {
-	    //CLD: 2026-10-06T21:33:37+03:00: case-insensitive extension (was: "PHOTO.PNG" -> Unknown)
 	    $this->type = self::$extensions[$this->extension()] ?? 'Unknown';
 	}
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-#CLD: 2026-11-01T15:00:00+02:00: the installation's commands from the shell (were AuditCommand.sh, WfCommand.sh); the others: ../v sys::<action> (SysCommand.php)
+
 #  ./SysCommand.sh audit [<account id>]      check the audit log's seal
 #  ./SysCommand.sh run <workflow id>         run a workflow's draft
 #  ./SysCommand.sh resume <execution id>     run a sleeping execution again

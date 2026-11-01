@@ -1,9 +1,11 @@
 <?php
 
-//CLD: 2026-10-23T12:00:00+03:00: new: a user of an account who is an SSO user (signs in at the account's IdP only; util\SamlAuth): the user, the subject (the NameID, or the email
+/*
+    a user of an account who is an SSO user (signs in at the account's IdP only; util\SamlAuth): the user, the subject (the NameID, or the email
 //with a transient NameID format) and its format, the last sign-in. Made on a first SAML sign-in (a user created, or an existing one linked); removed with the user, or by the
 //settings page (Unlink: the user signs in with a password of this application again)
 
+*/
 namespace models;
 
 class SamlLink extends \sys\BaseModel {
