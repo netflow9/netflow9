@@ -8,7 +8,7 @@ class Field extends \sys\BaseModel {
 
     protected static $collection = 'fields';
 
-    //the fields (columns) of an object / data table (created by `v setup::indexes`)
+    //the fields (columns) of an object / data table (created by `v sys::indexes`)
     public static $indexes = [
 	[ [ 'objectName' => 1 ], [] ],
     ];

@@ -6,10 +6,11 @@ $__base = dirname(__FILE__, 2);
 require("$__base/app/sys/V.php");
 require("$__base/app/config.php");
 
-//CLD: 2026-10-29T02:00:00+02:00: no app.env yet: the setup's console (get_setup_console_config), as public_html/index.php does for the browser; ../v setup::install sets the app up
+//CLD: 2026-10-29T02:00:00+02:00: no app.env yet: the setup's console (get_setup_console_config), as public_html/index.php does for the browser; ../v sys::install sets the app up
 if (!is_file("$__base/app.env")) {
     //only the setup's commands: the others need the app's settings
-    if (strpos((string)($argv[1] ?? ''), 'setup::') !== 0) {
+    //CLD: 2026-11-01T15:00:00+02:00: sys::checks / validate / install / indexes (were setup::*: commands\SysCommand)
+    if (!in_array((string)($argv[1] ?? ''), [ 'sys::checks', 'sys::validate', 'sys::install', 'sys::indexes' ], true)) {
 	fwrite(STDERR, "the app is not set up yet (no app.env): sudo $__base/install.sh, or open the site in a browser\n");
 	exit(1);
     }

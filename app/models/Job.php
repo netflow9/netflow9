@@ -125,7 +125,7 @@ class Job extends \sys\BaseModel {
 	$coll = \V::app()->mongo->selectCollection(self::_database(), self::_collection());
 	if (!empty($options['key'])) {
 	    $doc['key'] = (string)$options['key'];
-	    //CLD: 2026-10-12T12:20:20+03:00: the unique `key` index (one job per key) comes from `v setup::indexes` (was created here before the first keyed insert)
+	    //CLD: 2026-10-12T12:20:20+03:00: the unique `key` index (one job per key) comes from `v sys::indexes` (was created here before the first keyed insert)
 	}
 	try {
 	    $id = $coll->insertOne($doc)->getInsertedId();

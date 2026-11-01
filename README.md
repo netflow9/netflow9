@@ -53,7 +53,7 @@ Then it shows what it will do, asks to go on, and:
 1. installs the packages that are missing: EPEL, Remi's PHP 8.5 with the app's extensions, nginx, MongoDB 8.3, Redis, certbot, Node.js (the newest stream of the distribution; for the web browser and inbound email)
 2. creates the user and its home, and clones the repository there (with its submodules)
 3. writes php.ini, the app's PHP-FPM pool and logrotate (`scripts/system/`), the certificate and the nginx site
-4. sets up the app: it asks the database, the outgoing email and the first account (company or team, its owner); the app checks the answers itself (`app/v setup::validate`) and asks again when one is wrong
+4. sets up the app: it asks the database, the outgoing email and the first account (company or team, its owner); the app checks the answers itself (`app/v sys::validate`) and asks again when one is wrong
 5. installs the options and the background services (the parts below)
 
 The firewall is not changed: open 80 and 443 (and 25 for inbound email). Run it again, e.g. `sudo bash /home/<user>/install.sh`, to add an option later: the app's settings and account are kept, and what is done is left as it is.
@@ -67,7 +67,7 @@ The setup in the browser (every address of the site while `app.env` is missing) 
 | # | Script | Installs | Needs |
 |---|--------|----------|-------|
 | 0 | `sudo scripts/0_nginx-install.sh` | The app's nginx site (`scripts/nginx/app.conf`, filled in) over `<app>/etc/nginx.conf` (`/etc/nginx/conf.d/<user>.conf`); checked with `nginx -t`, then nginx reloaded | nginx; `BASE_URL` in `app.env` (or `--server-name=`); the certificate in `<app>/ssl/` |
-| | `app/v setup::install` (as the app's user) | The app: the database indexes, the first account and its owner, `app.env` (the answers as JSON on stdin) | no `app.env` yet |
+| | `app/v sys::install` (as the app's user) | The app: the database indexes, the first account and its owner, `app.env` (the answers as JSON on stdin) | no `app.env` yet |
 | 1 | `sudo scripts/1_playwright-install.sh` | Playwright and a shared Chromium (`/opt/playwright/browsers`), for the AI steps' web browser | system-wide Node.js and npm |
 | 2 | `sudo scripts/2_haraka-install.sh` | Haraka, for inbound mail, into `<app>/haraka` (its files stay the app's user's) | `app.env`; `MAIL_INBOUND_DOMAIN` there (or `--domain=`); system-wide Node.js |
 | 3 | `sudo scripts/3_mongo-auth-setup.sh` | MongoDB users `nfn_admin`, `nfn_app`, `nfn_haraka`; their passwords into `app.env` (`MONGO_URI`, `HARAKA_MONGO_URI`) and, with Haraka, `haraka/config/nfn.ini` | `app.env`; MongoDB on this machine with authorization still off |
@@ -110,4 +110,4 @@ Open the site. While there is no `app.env`, every address shows the setup wizard
 
 - Keep a copy of `app.env` in a safe place. Its `APP_SECRET` encrypts the stored credentials, and they cannot be read without it.
 - Check the installation with the check suite: `cd app/commands && ./CheckCommand.sh`.
-- Upgrade: back up, run `git pull` and `git submodule update --init`, then create any new indexes with `cd app/commands && ../v setup::indexes`, and restart PHP-FPM and the daemon with `sudo systemctl restart php-fpm nfn-daemon`.
+- Upgrade: back up, run `git pull` and `git submodule update --init`, then create any new indexes with `cd app/commands && ../v sys::indexes`, and restart PHP-FPM and the daemon with `sudo systemctl restart php-fpm nfn-daemon`.

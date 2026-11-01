@@ -37,7 +37,7 @@ class BaseModel {
     public static function _database() {
 	return \V::app()->mongo->database;
     }
-    //CLD: 2026-10-12T12:18:11+03:00: the indexes of this model's collection: [ [ keys, options ], ... ] (e.g. [ [ 'aid' => 1, 'project' => 1 ], [] ]) (created by `v setup::indexes`)
+    //CLD: 2026-10-12T12:18:11+03:00: the indexes of this model's collection: [ [ keys, options ], ... ] (e.g. [ [ 'aid' => 1, 'project' => 1 ], [] ]) (created by `v sys::indexes`)
     public static $indexes = [];
 
 

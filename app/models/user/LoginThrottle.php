@@ -1,7 +1,7 @@
 <?php
 
 //CLD: 2026-10-21T18:00:00+03:00: new model: the sign-in throttle (SOC2.md gap 8). Failed attempts are counted per key in a window; at the key's limit, the key is locked for a while.
-//MongoDB removes a record when its window and lock are over (expires_at, a TTL index; created by `v setup::indexes`)
+//MongoDB removes a record when its window and lock are over (expires_at, a TTL index; created by `v sys::indexes`)
 //  keys:   name:<sign-in name>   the user or email typed (lower case; counted whether or not such a user exists: a lock tells nothing about the accounts)
 //          ip:<address>           the connection's address (REMOTE_ADDR: X-Forwarded-For is sent by the client); a success does not clear it
 //          tfa:<user id>          wrong 2FA codes; cleared only by a complete sign-in (the password alone does not give more code guesses)

@@ -10,7 +10,7 @@ class Workflow extends \sys\BaseModel {
     ];
 
 
-    //`status`: only published workflows are started by their triggers (scheduler, IMAP, webhook); drafts run only by hand (designer Run, wf::run)
+    //`status`: only published workflows are started by their triggers (scheduler, IMAP, webhook); drafts run only by hand (designer Run, sys::run)
     const DRAFT = 'draft';
     const PUBLISHED = 'published';
 

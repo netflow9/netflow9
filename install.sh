@@ -2,7 +2,7 @@
 
 #CLD: 2026-10-29T03:00:00+02:00: new: Rail22's installer, as root. It asks the initial data (the public address, the database, the outgoing email, the first account) and
 #the options (nginx, the web browser of the AI steps, inbound email, MongoDB's users and sign-in), checks everything it needs first, then runs the parts in order:
-#  the nginx site (0_nginx-install.sh; a self-signed certificate when there is none), the app's setup (app/v setup::install as the app's user: the account, its owner,
+#  the nginx site (0_nginx-install.sh; a self-signed certificate when there is none), the app's setup (app/v sys::install as the app's user: the account, its owner,
 #  app.env), Playwright (1_), Haraka (2_), MongoDB's users (3_) and authorization (/etc/mongod.conf, mongod restarted), the background services (4_)
 #Run again: an app already set up keeps its settings and account (only the options are asked); what is already done is left as it is
 #CLD: 2026-10-29T04:00:00+02:00: it sets up the server too (was qsm_scripts: nfn_install_alma9.sh, nfn_create_vhost.v1.sh, nfn_install_node.sh), from anywhere (was: from the
@@ -104,7 +104,7 @@ as_app() {
     as_user "$BASE/app/v" "$@"
 }
 
-#the answers of the setup as JSON (setup::validate / setup::install read it on stdin); the secrets only in this process' environment
+#the answers of the setup as JSON (sys::validate / sys::install read it on stdin); the secrets only in this process' environment
 answers_json() {
     env A_URL="$URL" A_MONGO_URI="$MONGO_URI" A_MONGO_DB="$MONGO_DB" A_SMTP_HOST="$SMTP_HOST" A_SMTP_PORT="$SMTP_PORT" A_SMTP_SECURE="$SMTP_SECURE" \
         A_SMTP_USER="$SMTP_USER" A_SMTP_PASSWORD="$SMTP_PASSWORD" A_MAIL_FROM="$MAIL_FROM" A_ACCOUNT="$ACCOUNT_NAME" A_USER="$OWNER_USER" A_EMAIL="$OWNER_EMAIL" \
@@ -617,7 +617,7 @@ if [ "$SET_UP" -eq 0 ]; then
         mv "$ENV_FILE" "$RESETUP_BACKUP"
         echo "+ $ENV_FILE moved to $RESETUP_BACKUP"
     fi
-    as_app setup::checks || { echo "a required prerequisite is missing (above, marked !): fix it, then run this again"; exit 1; }
+    as_app sys::checks || { echo "a required prerequisite is missing (above, marked !): fix it, then run this again"; exit 1; }
     URL="https://$DOMAIN"
     MONGO_URI="$LOCAL_MONGO/"
     MONGO_DB="rail22-db"
@@ -689,12 +689,12 @@ if [ "$SET_UP" -eq 0 ]; then
         ask_secret OWNER_PASSWORD "Password (letters, capitals, digits and special characters)"
         echo
         echo "Checking the answers and the database..."
-        if answers_json | as_app setup::validate; then
+        if answers_json | as_app sys::validate; then
             break
         fi
         echo "Once more: Enter keeps an answer."
     done
-    answers_json | as_app setup::install
+    answers_json | as_app sys::install
 fi
 URL=$(env_value BASE_URL)
 
