@@ -17,7 +17,7 @@ class AuditLog extends \sys\BaseModel {
 
     protected static $collection = 'audit_log';
 
-    //CLD: 2026-10-12T12:18:11+03:00: removal after the retention (TTL); the account's / a project's entries, newest first (created by `v setup::indexes`)
+    //CLD: 2026-10-12T12:18:11+03:00: removal after the retention (TTL); the account's / a project's entries, newest first (created by `v sys::indexes`)
     public static $indexes = [
 	[ [ 'aid' => 1, 'created_at' => -1 ], [] ],
 	[ [ 'aid' => 1, 'project' => 1, 'created_at' => -1 ], [] ],

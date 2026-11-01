@@ -100,7 +100,7 @@ class WfExecution extends \sys\BaseModel {
 	    'nodes' => is_array($wf->nodes) ? array_values($wf->nodes) : [],
 	    'trigger' => $trigger,
 	    'input' => $input,
-	    //CLD: 2026-10-11T13:51:42+03:00: the published version it runs (a Workflow::forVersion copy), null = the draft (designer Run, wf::run)
+	    //CLD: 2026-10-11T13:51:42+03:00: the published version it runs (a Workflow::forVersion copy), null = the draft (designer Run, sys::run)
 	    'version' => $wf->runVersion ? (int)$wf->runVersion->number : null,
 	];
 	if ($startNode !== null)

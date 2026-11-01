@@ -11,7 +11,7 @@ namespace models;
 class McpToken extends \sys\BaseModel {
     protected static $collection = 'mcp_tokens';
 
-    //tokens of a project; a token by its hash (created by `v setup::indexes`)
+    //tokens of a project; a token by its hash (created by `v sys::indexes`)
     public static $indexes = [
 	[ [ 'aid' => 1, 'project' => 1 ], [] ],
 	[ [ 'token_hash' => 1 ], [ 'unique' => true ] ],

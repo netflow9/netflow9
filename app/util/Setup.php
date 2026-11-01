@@ -11,7 +11,7 @@
 //  Setup::ready($checks)           true when every required check passes
 //  Setup::envContent($values)      the text of app.env (values single-quoted: literal, see V::parse_env)
 //  Setup::writeEnv($content)       writes BASE/app.env (a temporary file renamed into place); false when it cannot
-//CLD: 2026-10-29T02:00:00+02:00: + the install itself (was controllers\SetupController's), shared by the browser setup and the command-line one (commands\SetupCommand):
+//CLD: 2026-10-29T02:00:00+02:00: + the install itself (was controllers\SetupController's), shared by the browser setup and the command-line one (commands\SysCommand):
 //  Setup::database($server)        connects to the database of $server and makes it the app's: null, or [ field, message ] (it has accounts, cannot connect)
 //  Setup::install($server, $owner, &$error)   the indexes, the first account and its owner, app.env: the owner (a User), or null
 */
@@ -276,7 +276,7 @@ class Setup {
 	return implode("\n", $lines);
     }
 
-    //CLD: 2026-10-29T02:00:00+02:00: moved here from controllers\SetupController (the browser setup), shared with the command-line setup (commands\SetupCommand)
+    //CLD: 2026-10-29T02:00:00+02:00: moved here from controllers\SetupController (the browser setup), shared with the command-line setup (commands\SysCommand)
     //connects to the server's database ($server: ServerForm::values()) and makes it the app's; it must have no account yet. Returns null, or [ field, message ]
     public static function database(array $server) {
 	try {

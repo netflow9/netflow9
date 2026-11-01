@@ -13,7 +13,7 @@ if (app.getRole('nfnHaraka')) app.dropRole('nfnHaraka');
 // operators: everything
 admin.createUser({ user: 'nfn_admin', pwd: process.env.NFN_ADMIN_PW, roles: [ { role: 'root', db: 'admin' } ] });
 
-// the PHP app (web, daemon, console, ./v setup::indexes): its own database only
+// the PHP app (web, daemon, console, ./v sys::indexes): its own database only
 app.createUser({ user: 'nfn_app', pwd: process.env.NFN_APP_PW, roles: [ { role: 'readWrite', db: DB } ] });
 
 // Haraka (haraka/plugins/nfn.js): looks up the address, stores the message (GridFS filestore) and queues a job

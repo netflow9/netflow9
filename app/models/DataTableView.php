@@ -10,7 +10,7 @@ namespace models;
 class DataTableView extends \sys\BaseModel {
     protected static $collection = 'data-tables-views';
 
-    //the views of a table (created by `v setup::indexes`)
+    //the views of a table (created by `v sys::indexes`)
     public static $indexes = [
 	[ [ 'aid' => 1, 'table' => 1 ], [] ],
     ];

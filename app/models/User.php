@@ -4,7 +4,7 @@ namespace models;
 
 class User extends \sys\BaseModel {
     protected static $collection = 'users';
-    //login by username or email; users of an account (created by `v setup::indexes`)
+    //login by username or email; users of an account (created by `v sys::indexes`)
     public static $indexes = [
 	[ [ 'username' => 1 ], [] ],
 	[ [ 'email' => 1 ], [] ],

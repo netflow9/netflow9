@@ -49,7 +49,7 @@ class SetupController extends \sys\BaseController {
 	    if ($passwordKept && (string)$form->smtp_password === '')
 		$form->smtp_password = $_SESSION['setup']['server']['smtp_password'];
 	    if ($form->validates()) {
-		//CLD: 2026-10-29T02:00:00+02:00: util\Setup::database (was this controller's; shared with the command-line setup: commands\SetupCommand)
+		//CLD: 2026-10-29T02:00:00+02:00: util\Setup::database (was this controller's; shared with the command-line setup: commands\SysCommand)
 		$problem = \util\Setup::database($form->values());
 		if ($problem) {
 		    $form->errors($problem[0], $problem[1]);
@@ -76,7 +76,7 @@ class SetupController extends \sys\BaseController {
 	if ($req->is('post')) {
 	    $form->assign($req->data);
 	    if ($form->validates()) {
-		//CLD: 2026-10-29T02:00:00+02:00: util\Setup::install (was this controller's; shared with the command-line setup: commands\SetupCommand)
+		//CLD: 2026-10-29T02:00:00+02:00: util\Setup::install (was this controller's; shared with the command-line setup: commands\SysCommand)
 		$user = \util\Setup::install($server, [ 'account_name' => $form->account_name, 'username' => $form->username, 'email' => $form->email,
 		    'firstname' => $form->firstname, 'lastname' => $form->lastname, 'password' => $form->new_password ], $error);
 		if ($user) {

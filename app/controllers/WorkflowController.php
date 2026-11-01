@@ -168,7 +168,7 @@ class WorkflowController extends \sys\BaseController {
     }
 
     //CLD: 2026-10-10T19:08:46+03:00: manual run from the designer: an execution started at the workflow's trigger, which must be a Manual trigger (trigger
-    //`manual`; CLD: 2026-10-12T20:33:47+03:00: now any trigger with startNow(), see below; nothing started -> { execution: null, message }); POST, the user must be allowed to update the workflow; refused when the saved workflow has connection errors (as `wf::run`). Answers { execution } and
+    //`manual`; CLD: 2026-10-12T20:33:47+03:00: now any trigger with startNow(), see below; nothing started -> { execution: null, message }); POST, the user must be allowed to update the workflow; refused when the saved workflow has connection errors (as `sys::run`). Answers { execution } and
     //runs it after the answer is sent (as the webhook endpoint): the designer follows it through executions / execution. CLD: 2026-10-30T15:00:00+02:00: run by the daemon (queued). Named `start`:
     //BaseController::run() is the request dispatcher
     public function start($req, $resp) {
