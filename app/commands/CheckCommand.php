@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -3777,36 +3777,55 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-10-22T22:00:00+03:00: the LocalMCP plugin: its servers (the browser's unsafe tools left out), the accounts enabled, the sessions' limits (per account, in all), the AI step's
     //tools of a tool server (only those allowed, named <server>_<tool>, images passed on; a server not enabled refused); with the browser service running: a page opened, a private
     //address refused. Skipped when the plugin is not enabled (app/plugins.php)
-    private function suiteLocalmcp() {
-	if (!class_exists(\plugins\LocalMCP\Plugin::class) || !isset(\plugins\LocalMCP\Plugin::servers()['playwright'])) {
-	    echo "  (skipped: the LocalMCP plugin is not enabled)\n";
-	    return;
-	}
-	$P = \plugins\LocalMCP\Plugin::class;
-	$A = \plugins\LocalMCP\models\LocalMcpAccess::class;
-	$pw = $P::servers()['playwright'];
-	$this->check('servers: the browser, without the tools that run code or read files', [ true, false, false, false, false ],
-	    [ in_array('browser_navigate', $pw['tools'], true), in_array('browser_run_code_unsafe', $pw['tools'], true), in_array('browser_evaluate', $pw['tools'], true),
-	    in_array('browser_file_upload', $pw['tools'], true), !in_array(parse_url($pw['url'], PHP_URL_HOST), [ 'localhost', '127.0.0.1' ], true) ]);
+    //CLD: 2026-11-01T11:55:18+02:00: toolservers (was localmcp): the core's tool servers (util\ToolServers): mcp.json (a check file in its place: the entries checked, written and removed,
+    //the other keys kept, an invalid file), the accounts enabled, the sessions' limits, the AI step's tools; the web browser's entry (scripts/playwright/mcp-server.json) and, when it
+    //is in the installation's mcp.json and runs, a page opened, a private address refused
+    private function suiteToolservers() {
+	$T = \util\ToolServers::class;
+	$A = \models\ToolServerAccess::class;
 
+	//the entries
+	$entry = fn($id, $in) => $T::validate($id, $in + [ 'url' => 'http://localhost:9/mcp', 'label' => 'Check' ]);
+	$problem = fn($r) => $r[1] === null ? null : explode(':', $r[1])[0];
+	$ok = $entry('chk', [ 'tools' => "look\nfind, read", 'headers' => "Authorization: Bearer x\nX-A: 1", 'maxSessions' => '3', 'service' => 'chk' ])[0];
+	$this->check('mcp.json entries: tools and headers as lines, the limits, a service; refused: an id, a command, a URL, the limits, a header, a service', [
+	    [ [ 'look', 'find', 'read' ], [ 'Authorization' => 'Bearer x', 'X-A' => '1' ], 3, 2, 'chk', 'http' ],
+	    'Id', 'Only HTTP servers (Streamable HTTP', 'URL', 'Sessions', 'Headers', 'Service', null, 'Label' ], [
+	    [ $ok['tools'], $ok['headers'], $ok['maxSessions'], $ok['maxSessionsPerAccount'], $ok['service'], $ok['type'] ],
+	    $problem($entry('Chk', [])), substr((string)$entry('chk', [ 'command' => 'npx' ])[1], 0, 34), $problem($entry('chk', [ 'url' => 'file:///etc/passwd' ])),
+	    $problem($entry('chk', [ 'maxSessions' => 2, 'maxSessionsPerAccount' => 3 ])), $problem($entry('chk', [ 'headers' => [ 'X' => "a\r\nY: b" ] ])),
+	    $problem($entry('chk', [ 'service' => 'nfn-x.service' ])), $problem($entry('chk', [ 'tools' => [] ])), $problem($entry('chk', [ 'label' => '' ])) ]);
+
+	//the file: a check file in place of mcp.json
+	$file = sys_get_temp_dir() . '/nfn-check-mcp-' . getmypid() . '.json';
+	$T::$file = $file;
 	$aid = (string)new \MongoDB\BSON\ObjectId();
 	$other = (string)new \MongoDB\BSON\ObjectId();
 	$slots = [];
 	try {
-	    $before = array_keys(\models\node\NodeAppAi::localServers($aid));
-	    $A::set($aid, 'playwright', true);
-	    $A::set($aid, 'playwright', true);
-	    $on = \models\node\NodeAppAi::localServers($aid);
-	    $A::set($aid, 'playwright', false);
-	    $this->check('access: none, enabled (once), offered to the AI steps with its tools; disabled', [ [], [ 'playwright' ], [ 'playwright' ], 'Web browser', $pw['tools'], [], [] ],
-		[ $before, $A::serversOf($aid) ?: [ 'playwright' ], array_keys($on), $on['playwright']['label'] ?? null, $on['playwright']['tools'] ?? null, $A::serversOf($aid),
-		array_keys(\models\node\NodeAppAi::localServers($other)) ]);
+	    file_put_contents($file, json_encode([ 'mine' => 1, 'mcpServers' => [ 'bad' => [ 'command' => 'npx' ] ] ]));
+	    $before = array_keys($T::all());
+	    $T::put('chk', $entry('chk', [ 'tools' => [ 'look' ], 'maxSessions' => 3, 'maxSessionsPerAccount' => 2, 'managedBy' => 'check' ])[0]);
+	    $raw = json_decode((string)file_get_contents($file), true);
+	    $raw2 = (string)file_get_contents($file);
+	    $all = $T::all();
+	    $this->check('mcp.json: one not supported left out; written: kept the other keys, headers {}, 0640; read again', [ [], 1, true, '640', [ 'bad', 'chk' ], [ 'look' ], 'check' ],
+		[ $before, $raw['mine'] ?? null, str_contains($raw2, '"headers": {}'), substr(sprintf('%o', fileperms($file)), -3), array_keys($raw['mcpServers']), $all['chk']['tools'] ?? null,
+		$all['chk']['managed_by'] ?? null ]);
 
-	    //the limits: 2 per account, 3 in all (a server of the check: the real one's slots untouched)
-	    $def = [ 'url' => 'http://127.0.0.1:1/mcp', 'max_sessions' => 3, 'max_sessions_per_account' => 2 ];
+	    //the accounts
+	    $none = array_keys(\models\node\NodeAppAi::localServers($aid));
+	    $A::set($aid, 'chk', true);
+	    $A::set($aid, 'chk', true);
+	    $on = \models\node\NodeAppAi::localServers($aid);
+	    $this->check('access: none, enabled (once), offered to the AI steps with its tools; another account: none', [ [], [ 'chk' ], [ 'chk' ], 'Check', [ 'look' ], [] ],
+		[ $none, $A::serversOf($aid), array_keys($on), $on['chk']['label'] ?? null, $on['chk']['tools'] ?? null, array_keys(\models\node\NodeAppAi::localServers($other)) ]);
+
+	    //the limits: 2 per account, 3 in all (the check server: nothing listens; the slots only)
+	    $def = $T::get('chk');
 	    $open = function($acct) use ($def, &$slots) {
 		try {
-		    return $slots[] = \plugins\LocalMCP\util\SessionClient::open('chk', $def, $acct, 5);
+		    return $slots[] = \util\ToolServerSession::open('chk', $def, $acct, 5);
 		} catch (\ErrorException $e) {
 		    return $e->getMessage();
 		}
@@ -3818,14 +3837,34 @@ class CheckCommand extends \sys\BaseController {
 	    $r[0]->close();
 	    $again = $open($other);
 	    $this->check('sessions: a closed one frees its slots', true, is_object($again));
+	    foreach($slots as $c)
+		if (is_object($c))
+		    $c->close();
+	    $slots = [];
+	    $this->check('sessions: none left after closing', 0, \V::app()->om->count('ToolServerSlot', [ '_id' => [ '$regex' => '^chk:' ] ]));
+
+	    //removed; an invalid file: none offered, not written
+	    $removed = [ $T::remove('chk'), $T::remove('chk') ];
+	    file_put_contents($file, '{ "mcpServers": ');
+	    try {
+		$T::put('x', $entry('x', [])[0]);
+		$refused = 'written';
+	    } catch (\ErrorException $e) {
+		$refused = 'refused';
+	    }
+	    $this->check('mcp.json: removed (once); an invalid file: none, an error, not written', [ [ true, false ], [], true, 'refused' ],
+		[ $removed, array_keys($T::all()), $T::fileError() !== null, $refused ]);
 	} finally {
 	    foreach($slots as $c)
 		if (is_object($c))
 		    $c->close();
-	    \V::app()->om->deleteOne('LocalMcpAccess', [ '_id' => $aid, 'aid' => \V::app()->om->to_oid($aid) ]);
+	    $A::set($aid, 'chk', false);
+	    foreach([ $aid, $other ] as $a)
+		\V::app()->om->deleteOne('ToolServerAccess', [ '_id' => $a, 'aid' => \V::app()->om->to_oid($a) ]);
+	    @unlink($file);
+	    @unlink($file . '.lock');
+	    $T::$file = null;
 	}
-	$left = \V::app()->om->count('LocalMcpSlot', [ '_id' => [ '$regex' => '^chk:' ] ]);
-	$this->check('sessions: none left after closing', 0, $left);
 
 	//the AI step's tools of a tool server: a server of the check (for this account only) answering in memory
 	$fake = new class {
@@ -3871,12 +3910,25 @@ class CheckCommand extends \sys\BaseController {
 	}
 	$this->check('AI step: a tool server not enabled for the account is refused', 'the tool server `chk` is not enabled for this account', $refused);
 
-	//the browser service, when it runs (scripts/playwright-mcp.sh install)
+	//the web browser's entry (scripts/playwright-mcp.sh writes it into mcp.json)
+	[ $pwEntry, $pwProblem ] = $T::validate('playwright', (array)json_decode((string)file_get_contents(BASE . '/scripts/playwright/mcp-server.json'), true));
+	$pwTools = $pwEntry['tools'] ?? [];
+	$this->check('web browser entry: valid, without the tools that run code or read files, on this machine, its service', [ null, true, false, false, false, true, 'playwright' ],
+	    [ $pwProblem, in_array('browser_navigate', $pwTools, true), in_array('browser_run_code_unsafe', $pwTools, true), in_array('browser_evaluate', $pwTools, true),
+	    in_array('browser_file_upload', $pwTools, true), in_array(parse_url((string)($pwEntry['url'] ?? ''), PHP_URL_HOST), [ 'localhost', '127.0.0.1' ], true),
+	    $pwEntry['service'] ?? null ]);
+
+	//the installation's browser, when it is there and runs
+	$pw = $T::get('playwright');
+	if (!$pw) {
+	    echo "  (no web browser in mcp.json: sudo scripts/playwright-mcp.sh install)\n";
+	    return;
+	}
 	$c = new \util\McpClient($pw['url'], (array)($pw['headers'] ?? []), 90);
 	try {
 	    $c->initialize();
 	} catch (\Exception $e) {
-	    echo "  (the browser service is not running: scripts/playwright-mcp.sh install)\n";
+	    echo "  (the browser service is not running: sudo scripts/playwright-mcp.sh status)\n";
 	    return;
 	}
 	try {

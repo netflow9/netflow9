@@ -68,6 +68,23 @@ class Boot {
 		},
 	    ];
 	}, 5);
+	//CLD: 2026-11-01T11:55:18+02:00: the tool servers' services (util\ToolServers: an mcp.json entry's `service`, e.g. the web browser's nfn-playwright-<user>; was the LocalMCP plugin's)
+	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
+	    foreach(\util\ToolServers::all() as $id => $s) {
+		if (empty($s['service']) || isset($services[$s['service']]))
+		    continue;
+		$services[$s['service']] = [
+		    'label' => $s['label'] . ' (tool server)',
+		    'description' => 'The MCP server `' . $id . '` the AI steps use (Tool servers)',
+		    'unit' => \util\Services::unit($s['service']),
+		    'pidfile' => null,
+		    'health' => function() use ($s) {
+			[ $ok, $text ] = \util\ToolServers::ping($s, 5);
+			return $ok ? [ true, 'MCP answers: ' . $text ] : [ false, 'MCP does not answer' ];
+		    },
+		];
+	    }
+	}, 6);
 
 	if (\V::app()->config('app.mode') != 'web')
 	    return;

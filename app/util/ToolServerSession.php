@@ -1,15 +1,16 @@
 <?php
 
 /*
-    CLD: 2026-10-22T22:00:00+03:00: new: an AI step's session on a tool server (Plugin::servers): an MCP client (util\McpClient) holding a slot of the account and one of the installation
-    (models\LocalMcpSlot) from open() until close(); the slots are renewed while tools are called, and freed also when the process ends without close()
+    CLD: 2026-10-22T22:00:00+03:00: new: an AI step's session on a tool server (util\ToolServers): an MCP client (util\McpClient) holding a slot of the account and one of the installation
+    (models\ToolServerSlot) from open() until close(); the slots are renewed while tools are called, and freed also when the process ends without close()
+    CLD: 2026-11-01T11:55:18+02:00: core (was plugins\LocalMCP\util\SessionClient)
 */
 
-namespace plugins\LocalMCP\util;
+namespace util;
 
-use plugins\LocalMCP\models\LocalMcpSlot;
+use models\ToolServerSlot;
 
-class SessionClient extends \util\McpClient {
+class ToolServerSession extends McpClient {
     //how often the slots are renewed while the session is used (s)
     const RENEW = 60;
 
@@ -20,12 +21,12 @@ class SessionClient extends \util\McpClient {
     public static function open($id, array $s, $aid, $timeout) {
 	$perAccount = max(1, (int)($s['max_sessions_per_account'] ?? 1));
 	$all = max(1, (int)($s['max_sessions'] ?? $perAccount));
-	$mine = LocalMcpSlot::take("{$id}:{$aid}", $perAccount, $id, $aid);
+	$mine = ToolServerSlot::take("{$id}:{$aid}", $perAccount, $id, $aid);
 	if ($mine === null)
 	    throw new \ErrorException("this account already has {$perAccount} session(s) open, the most at once: try again when one finishes");
-	$shared = LocalMcpSlot::take($id, $all, $id, '');
+	$shared = ToolServerSlot::take($id, $all, $id, '');
 	if ($shared === null) {
-	    LocalMcpSlot::free([ $mine ]);
+	    ToolServerSlot::free([ $mine ]);
 	    throw new \ErrorException("the server is busy ({$all} session(s) open): try again later");
 	}
 	$c = new static((string)$s['url'], (array)($s['headers'] ?? []), $timeout);
@@ -39,7 +40,7 @@ class SessionClient extends \util\McpClient {
     public function callTool($name, array $arguments = []) {
 	if ($this->slots && time() - $this->renewed >= self::RENEW) {
 	    $this->renewed = time();
-	    LocalMcpSlot::renew($this->slots);
+	    ToolServerSlot::renew($this->slots);
 	}
 	return parent::callTool($name, $arguments);
     }
@@ -58,6 +59,6 @@ class SessionClient extends \util\McpClient {
 	    return;
 	$slots = $this->slots;
 	$this->slots = [];
-	LocalMcpSlot::free($slots);
+	ToolServerSlot::free($slots);
     }
 }

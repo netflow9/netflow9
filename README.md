@@ -17,7 +17,7 @@ It is built on PHP and MongoDB, with plain JavaScript and Bootstrap in the brows
 - **Safe expressions.** `{{ }}` expressions and the Code step use J, a safe JavaScript subset.
 - **Secure by design.** Credentials are kept encrypted (OAuth connections, API keys, passwords) and never appear in a workflow. Roles and permissions are per project. Sign-in supports two-factor codes, LDAP and SAML single sign-on (Entra ID, Okta, Google Workspace, ADFS, Keycloak), and every action goes to an audit log.
 - **Visible runs.** Every execution has its state, a log of what each step did, its variables and its error. Each project has a dashboard of what ran, failed, is running or is waiting.
-- **Multi-account and extensible.** Accounts, projects and members, plans and limits, and a super-admin area. Plugins add inbound mail, a System AI paid with credits, tool servers and registration, and new step types can be written in PHP.
+- **Multi-account and extensible.** Accounts, projects and members, plans and limits, and a super-admin area. Tool servers (MCP servers of the installation, such as a web browser, in `mcp.json`) are offered to the AI steps. Plugins add inbound mail, a System AI paid with credits and registration, and new step types can be written in PHP.
 - **One-command install** on AlmaLinux / Rocky / RHEL 9 (below), or a setup wizard in the browser on any Linux.
 
 The full documentation is in the app, under Docs (`app/data/docs.json`).
@@ -68,10 +68,10 @@ The setup in the browser (every address of the site while `app.env` is missing) 
 |---|--------|----------|-------|
 | 0 | `sudo scripts/0_nginx-install.sh` | The app's nginx site (`scripts/nginx/app.conf`, filled in) over `<app>/etc/nginx.conf` (`/etc/nginx/conf.d/<user>.conf`); checked with `nginx -t`, then nginx reloaded | nginx; `BASE_URL` in `app.env` (or `--server-name=`); the certificate in `<app>/ssl/` |
 | | `app/v sys::install` (as the app's user) | The app: the database indexes, the first account and its owner, `app.env` (the answers as JSON on stdin) | no `app.env` yet |
-| 1 | `sudo scripts/1_playwright-install.sh` | Playwright and a shared Chromium (`/opt/playwright/browsers`), for the AI steps' web browser | system-wide Node.js and npm |
+| 1 | `sudo scripts/1_playwright-install.sh` | Playwright and a shared Chromium (`/opt/playwright/browsers`), for the AI steps' web browser (`playwright-mcp.sh install` runs it when they are missing) | system-wide Node.js and npm |
 | 2 | `sudo scripts/2_haraka-install.sh` | Haraka, for inbound mail, into `<app>/haraka` (its files stay the app's user's) | `app.env`; `MAIL_INBOUND_DOMAIN` there (or `--domain=`); system-wide Node.js |
 | 3 | `sudo scripts/3_mongo-auth-setup.sh` | MongoDB users `nfn_admin`, `nfn_app`, `nfn_haraka`; their passwords into `app.env` (`MONGO_URI`, `HARAKA_MONGO_URI`) and, with Haraka, `haraka/config/nfn.ini` | `app.env`; MongoDB on this machine with authorization still off |
-| 4 | `sudo scripts/4_services-install.sh` | systemd units: `nfn-daemon`, `nfn-haraka` (when Haraka is installed), `nfn-playwright` (when Chromium is), and the polkit rule that lets the administration start / stop them | polkit |
+| 4 | `sudo scripts/4_services-install.sh` | systemd units: `nfn-daemon`, `nfn-haraka` (when Haraka is installed), and the polkit rule that lets the administration start / stop the installation's `nfn-<name>-<user>` units (the web browser's too) | polkit |
 
 Steps 0, 1, 2 and 4 can be run again (nothing already installed is overwritten). Step 3 too, while MongoDB does not require sign-in: it creates its users again with new passwords; once authorization is on, it stops.
 After step 3, `install.sh` turns on authorization in `/etc/mongod.conf`, restarts `mongod` and the services (alone, step 3 prints these steps).
@@ -88,7 +88,7 @@ It shows the changes first (`--dry-run`: only that), keeps the old file as `<use
 
 ### Other files in `scripts/`
 
-- `playwright-mcp.sh`: the web browser server (Playwright MCP) as a service; step 4 runs it, or run it alone: `sudo scripts/playwright-mcp.sh install | status | restart | uninstall`
+- `playwright-mcp.sh`: the AI steps' web browser (Playwright MCP) as a service, and its entry in `mcp.json` (the tool servers, next to `app.env`; `./v mcpserver::list`); `install.sh` runs it, or run it alone, also later to add the browser: `sudo scripts/playwright-mcp.sh install | status | restart | uninstall`
 - `mongo_users.js`: the users and roles created by step 3
 - `haraka/`: Rail22's Haraka plugin and configuration, copied by step 2 into `<app>/haraka` (`dkim/dkim_key_gen.sh`: DKIM keys)
 - `nginx/`: the app's nginx site, written by step 0 (see above)

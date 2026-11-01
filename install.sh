@@ -4,6 +4,8 @@
 #the options (nginx, the web browser of the AI steps, inbound email, MongoDB's users and sign-in), checks everything it needs first, then runs the parts in order:
 #  the nginx site (0_nginx-install.sh; a self-signed certificate when there is none), the app's setup (app/v sys::install as the app's user: the account, its owner,
 #  app.env), Playwright (1_), Haraka (2_), MongoDB's users (3_) and authorization (/etc/mongod.conf, mongod restarted), the background services (4_)
+#CLD: 2026-11-01T11:55:18+02:00: the web browser of the AI steps after the background services: scripts/playwright-mcp.sh install (Playwright and Chromium with 1_, its service,
+#its server in mcp.json), which also adds it later (was: 1_ here, its service with 4_)
 #Run again: an app already set up keeps its settings and account (only the options are asked); what is already done is left as it is
 #CLD: 2026-10-29T04:00:00+02:00: it sets up the server too (was qsm_scripts: nfn_install_alma9.sh, nfn_create_vhost.v1.sh, nfn_install_node.sh), from anywhere (was: from the
 #app's folder): on AlmaLinux / RHEL 9 it installs the packages that are missing (EPEL; Remi's PHP 8.5 with the app's extensions; nginx; MongoDB 8.3; Redis; certbot; Node.js:
@@ -702,15 +704,6 @@ if [ "$OPT_MAIL" -eq 1 ]; then
     set_env MAIL_INBOUND_DOMAIN "$MAIL_DOMAIN"
 fi
 
-if [ "$OPT_BROWSER" -eq 1 ]; then
-    step "The web browser for the AI steps"
-    if chromium_installed; then
-        echo "Playwright and Chromium are installed already"
-    else
-        "$SCRIPTS/1_playwright-install.sh"
-    fi
-fi
-
 if [ "$OPT_MAIL" -eq 1 ]; then
     step "Inbound email (Haraka)"
     "$SCRIPTS/2_haraka-install.sh" --domain="$MAIL_DOMAIN"
@@ -750,9 +743,16 @@ fi
 
 step "The background services"
 #CLD: 2026-10-31T18:00:00+02:00: no Haraka without inbound email (one server may hold several installations: Haraka is one's); the daemon's unit is the installation's: nfn-daemon-<user>
-"$SCRIPTS/4_services-install.sh" install $([ "$OPT_BROWSER" -eq 1 ] || echo --no-playwright) $([ "$OPT_MAIL" -eq 1 ] || echo --no-haraka)
+#CLD: 2026-11-01T11:55:18+02:00: no --no-playwright: the browser is installed below (scripts/playwright-mcp.sh install)
+"$SCRIPTS/4_services-install.sh" install $([ "$OPT_MAIL" -eq 1 ] || echo --no-haraka)
 #the services running before reconnect with the new MongoDB users
 [ "$MONGO_CHANGED" -eq 0 ] || systemctl try-restart "nfn-daemon-$APP_USER.service" $([ "$OPT_MAIL" -eq 1 ] && echo nfn-haraka.service) || true
+
+#CLD: 2026-11-01T11:55:18+02:00: the web browser: Playwright and Chromium, its service, its server in mcp.json (scripts/playwright-mcp.sh install; was 1_ above and 4_)
+if [ "$OPT_BROWSER" -eq 1 ]; then
+    step "The web browser for the AI steps"
+    "$SCRIPTS/playwright-mcp.sh" install || echo "! the web browser was not installed (above): sudo $SCRIPTS/playwright-mcp.sh install, once fixed"
+fi
 
 # ---------------------------------------------------------------------------------------------------------------
 step "Done"

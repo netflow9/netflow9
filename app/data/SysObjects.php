@@ -806,6 +806,13 @@ class SysObjects {
 	    'AssistantUsage' => [
 		'class' => 'models\AssistantUsage',
 	    ],
+	    //CLD: 2026-11-01T11:55:18+02:00: the tool servers (util\ToolServers): the servers an account may use, the sessions open (were registered by the LocalMCP plugin)
+	    'ToolServerAccess' => [
+		'class' => 'models\ToolServerAccess',
+	    ],
+	    'ToolServerSlot' => [
+		'class' => 'models\ToolServerSlot',
+	    ],
 	    //CLD: 2026-11-01T04:00:00+02:00: what a polling trigger remembers between its checks (Veeam event)
 	    'TriggerState' => [
 		'class' => 'models\TriggerState',

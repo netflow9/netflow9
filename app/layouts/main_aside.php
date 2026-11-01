@@ -305,6 +305,10 @@ $dd_items = implode('', $dd_items);
 	    <a href="<?= \V::app()->createUrl('/services/index') ?>" class="nav-link">
 		<i class="bi bi-gear-wide-connected"></i> Services
 	    </a>
+	    <?php //CLD: 2026-11-01T11:55:18+02:00: the installation's tool servers (util\ToolServers: mcp.json), the super-admins' page; without the plugin a tab of the account's settings ?>
+	    <a href="<?= \V::app()->createUrl('/toolservers/index') ?>" class="nav-link">
+		<i class="bi bi-plug"></i> Tool servers
+	    </a>
 	    <?php endif; ?>
 	    <?php \V::app()->hooks->applyHook('layout:settings-menu'); ?>
 	    <?php
