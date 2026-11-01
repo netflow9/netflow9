@@ -13,12 +13,13 @@ RUN npm init -y >/dev/null \
  && npm install --omit=dev --no-audit --no-fund "https://github.com/haraka/Haraka/archive/refs/tags/${HARAKA_VERSION}.tar.gz" "${MONGODB_DRIVER}" \
  && npm cache clean --force
 
-# NetFlow9's plugin and configuration first, then Haraka's defaults for what they do not set (as scripts/haraka.sh: its own win)
+# NetFlow9's plugin and configuration first, then Haraka's defaults for what they do not set, only those Haraka and the loaded plugins read (as scripts/haraka.sh: its own win)
 COPY scripts/haraka/plugins /srv/haraka/plugins
 COPY scripts/haraka/config /srv/haraka/config.nfn
 COPY scripts/haraka/dkim /srv/haraka/dkim
 COPY docker/haraka/entrypoint.sh /usr/local/bin/haraka-entrypoint
-RUN cp -rn node_modules/haraka/config/. config.nfn/ \
+RUN for f in aliases connection.ini http.ini log.ini outbound.ini outbound.bounce_message outbound.bounce_message_html outbound.bounce_message_image plugins smtp.ini tls.ini; do \
+      cp -n "node_modules/haraka/config/$f" config.nfn/ 2>/dev/null || true; done \
  && mkdir -p config/dkim queue bounces config.nfn/dkim \
  && chmod 755 /usr/local/bin/haraka-entrypoint dkim/dkim_key_gen.sh \
  && chown -R node:node /srv/haraka
