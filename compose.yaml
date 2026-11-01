@@ -1,0 +1,168 @@
+# CLD: 2026-11-01T19:00:00+02:00: NetFlow9 with Docker Compose (next to install.sh, the servers' way). Settings: .env (copy docker/env.example); then
+#   docker compose build && docker compose up -d       and open the site (/setup, unless NFN_SETUP_JSON set it up)
+# Profiles (COMPOSE_PROFILES in .env): browser (the AI steps' web browser), mail (Haraka, inbound mail on port 25).
+# Upgrade: git pull && docker compose build && docker compose up -d (the app adds the new indexes at its start).
+# Development (the working tree mounted, mailpit, a database of its own): docker compose -f compose.yaml -f compose.dev.yaml up -d
+# HTTPS here (not behind a proxy): -f compose.tls.yaml
+
+name: ${COMPOSE_PROJECT_NAME:-netflow9}
+
+x-app: &app
+  image: netflow9-app:local
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    args:
+      NFN_UID: ${NFN_UID:-1000}
+      NFN_GID: ${NFN_GID:-1000}
+      TZ: ${TZ:-UTC}
+  restart: unless-stopped
+  environment: &app-env
+    NFN_RUNTIME: docker
+    NFN_CONFIG_DIR: /srv/netflow9/config
+    DAEMON_LISTEN: 0.0.0.0
+    DAEMON_HOST: daemon
+    DAEMON_PORT: ${DAEMON_PORT:-9000}
+    # set with the mail profile (haraka): the Email (inbound) step and the Inbound mail tab
+    HARAKA_HOST: ${HARAKA_HOST:-}
+    # the setup's defaults (/setup): the database of the mongo container, its app user
+    NFN_SETUP_MONGO_URI: mongodb://nfn_app:${NFN_APP_PW:?NFN_APP_PW is not set (.env)}@mongo:27017/?authSource=${MONGO_DB:-netflow9-db}
+    NFN_SETUP_MONGO_DB: ${MONGO_DB:-netflow9-db}
+    NFN_SETUP_SMTP_HOST: ${SMTP_HOST:-}
+    NFN_SETUP_SMTP_PORT: ${SMTP_PORT:-}
+    NFN_SETUP_BASE_URL: ${BASE_URL:-}
+  volumes: &app-volumes
+    - config:/srv/netflow9/config
+    - logs:/srv/netflow9/logs
+    - var:/srv/netflow9/var
+    - tmp:/srv/netflow9/tmp
+    - bounces:/srv/netflow9/bounces
+    - assets:/srv/netflow9/public_html/assets
+  depends_on:
+    mongo:
+      condition: service_healthy
+
+services:
+  mongo:
+    image: mongo:8.3
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PW:?MONGO_ROOT_PW is not set (.env)}
+      # scripts/mongo_users.js, at the first start only (an empty database): nfn_admin, nfn_app, nfn_haraka and the role nfnHaraka
+      NFN_DB: ${MONGO_DB:-netflow9-db}
+      NFN_ADMIN_PW: ${MONGO_ROOT_PW}
+      NFN_APP_PW: ${NFN_APP_PW}
+      NFN_HARAKA_PW: ${NFN_HARAKA_PW:?NFN_HARAKA_PW is not set (.env)}
+    volumes:
+      - mongo-data:/data/db
+      - ./scripts/mongo_users.js:/docker-entrypoint-initdb.d/10-nfn-users.js:ro
+    networks: [ backend ]
+    healthcheck:
+      test: [ "CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok" ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  app:
+    <<: *app
+    environment:
+      <<: *app-env
+      # the web browser's entry in mcp.json (browser profile)
+      NFN_BROWSER_URL: ${NFN_BROWSER_URL:-}
+      # optional: set up without the browser (sys::install's JSON, or a file's path in the container)
+      NFN_SETUP_JSON: ${NFN_SETUP_JSON:-}
+    command: [ "php-fpm" ]
+    networks: [ backend, browser ]
+    healthcheck:
+      test: [ "CMD", "pgrep", "-f", "php-fpm: master" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  daemon:
+    <<: *app
+    command: [ "daemon" ]
+    # as the server's unit (TimeoutStopSec): the workers finish their step
+    stop_grace_period: 60s
+    networks: [ backend, browser ]
+    depends_on:
+      mongo:
+        condition: service_healthy
+      app:
+        condition: service_started
+
+  web:
+    image: netflow9-web:local
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    restart: unless-stopped
+    environment:
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
+    ports:
+      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80"
+    volumes:
+      - assets:/srv/netflow9/public_html/assets:ro
+    networks: [ backend ]
+    depends_on: [ app ]
+
+  playwright:
+    profiles: [ browser ]
+    image: netflow9-playwright:local
+    build:
+      context: .
+      dockerfile: docker/playwright/Dockerfile
+    restart: unless-stopped
+    environment:
+      PLAYWRIGHT_MCP_PORT: 8931
+      PLAYWRIGHT_MCP_HOST: playwright
+    # the firewall table only (its entrypoint drops every capability before the browser)
+    cap_add: [ NET_ADMIN ]
+    shm_size: 1gb
+    networks: [ browser ]
+
+  haraka:
+    profiles: [ mail ]
+    image: netflow9-haraka:local
+    build:
+      context: .
+      dockerfile: docker/haraka/Dockerfile
+    restart: unless-stopped
+    environment:
+      MAIL_INBOUND_DOMAIN: ${MAIL_INBOUND_DOMAIN:-}
+      MONGO_DB: ${MONGO_DB:-netflow9-db}
+      NFN_HARAKA_PW: ${NFN_HARAKA_PW}
+      DAEMON_HOST: daemon
+      DAEMON_PORT: ${DAEMON_PORT:-9000}
+    # port 25 as the image's user node
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 25
+    ports:
+      - "${SMTP_BIND:-0.0.0.0}:25:25"
+    volumes:
+      - haraka-queue:/srv/haraka/queue
+      - haraka-dkim:/srv/haraka/config/dkim
+      - bounces:/srv/haraka/bounces
+    networks: [ backend ]
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+networks:
+  # the database, the app, the daemon, nginx, Haraka
+  backend:
+  # the app and the daemon reach the browser; the browser's own firewall refuses every private address (the containers too)
+  browser:
+
+volumes:
+  config:
+  logs:
+  var:
+  tmp:
+  bounces:
+  assets:
+  mongo-data:
+  haraka-queue:
+  haraka-dkim:

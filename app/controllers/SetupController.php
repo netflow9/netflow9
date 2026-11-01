@@ -31,12 +31,14 @@ class SetupController extends \sys\BaseController {
 
 	$form = \models\setup\ServerForm::create();
 	$host = (string)(\V::app()->request->httpHost ?? 'localhost');
+	//CLD: 2026-11-01T19:00:00+02:00: the database's and SMTP's defaults from the environment when set (Docker: compose.yaml's NFN_SETUP_*: the mongo container, its app user)
+	$env = fn($k, $d) => (string)getenv('NFN_SETUP_' . $k) ?: $d;
 	$form->assign($_SESSION['setup']['server'] ?? [
-	    'base_url' => 'https://' . $host,
-	    'mongo_uri' => 'mongodb://127.0.0.1:27017/',
-	    'mongo_db' => 'netflow9-db',
-	    'smtp_host' => '127.0.0.1',
-	    'smtp_port' => '25',
+	    'base_url' => $env('BASE_URL', 'https://' . $host),
+	    'mongo_uri' => $env('MONGO_URI', 'mongodb://127.0.0.1:27017/'),
+	    'mongo_db' => $env('MONGO_DB', 'netflow9-db'),
+	    'smtp_host' => $env('SMTP_HOST', '127.0.0.1'),
+	    'smtp_port' => $env('SMTP_PORT', '25'),
 	    'smtp_secure' => '',
 	    //CLD: 2026-10-19T14:20:35+03:00: noreply@ the request's domain (without the port)
 	    'mail_from' => 'noreply@' . preg_replace('/:\d+$/', '', $host),

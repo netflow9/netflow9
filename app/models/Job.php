@@ -140,8 +140,10 @@ class Job extends \sys\BaseModel {
     }
 
     //CLD: 2026-11-01T16:00:27+02:00: new: where the daemon takes its commands: tcp://127.0.0.1:<app.daemon_port> (DAEMON_PORT of app.env; was the unix socket run/job-notify.sock)
-    public static function daemonAddress() {
-	return 'tcp://127.0.0.1:' . (int)\V::app()->config('app.daemon_port');
+    //CLD: 2026-11-01T19:00:00+02:00: $listen: the daemon's own address (app.daemon_listen), else where others reach it (app.daemon_host); both 127.0.0.1 unless set (Docker)
+    public static function daemonAddress($listen = false) {
+	$host = (string)\V::app()->config($listen ? 'app.daemon_listen' : 'app.daemon_host');
+	return 'tcp://' . (str_contains($host, ':') ? "[{$host}]" : $host) . ':' . (int)\V::app()->config('app.daemon_port');
     }
 
     //wake the daemon (NEWJOB on its local port); nothing happens when it does not run

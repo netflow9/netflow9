@@ -38,7 +38,8 @@ class ToolServers {
     private static $cacheKey = null;
 
     public static function file() {
-	return self::$file ?? BASE . '/mcp.json';
+	//CLD: 2026-11-01T19:00:00+02:00: in V::configDir() (NFN_CONFIG_DIR, else BASE; was BASE)
+	return self::$file ?? \V::configDir() . '/mcp.json';
     }
 
     //the servers: [ id => definition: label, description, url, headers, tools (null: all), max_sessions, max_sessions_per_account, service, managed_by ]; the file is read again

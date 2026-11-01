@@ -13,7 +13,7 @@ $this->pageTitle = \V::t('Setup');
 	<div class="card-body p-4">
 	    <?= $this->renderFile('setup/_steps', [ 'crt' => 'done' ]) ?>
 	    <h5 class="mb-3 text-center"><i class="bi bi-check-circle text-success me-1"></i><?= \V::t('Setup complete') ?></h5>
-	    <p class="mb-2"><?= \V::t('The account and its owner were created, and the settings were saved in') ?> <code><?= \V::app()->html->escape(BASE . '/app.env') ?></code>.</p>
+	    <p class="mb-2"><?= \V::t('The account and its owner were created, and the settings were saved in') ?> <code><?= \V::app()->html->escape(\V::configDir() . '/app.env') ?></code>.</p>
 	    <p class="text-muted small mb-3"><?= \V::t('Sign in as') ?> <strong><?= \V::app()->html->escape($user->username) ?></strong> <?= \V::t('(or with') ?> <?= \V::app()->html->escape($user->email) ?>).
 		<?= \V::t('Start the daemon (app/v daemon) so scheduled and queued work runs.') ?></p>
 	    <div class="text-center"><a class="btn btn-primary" href="/site/login"><?= \V::t('Sign in') ?></a></div>

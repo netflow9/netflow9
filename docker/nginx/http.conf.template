@@ -1,0 +1,9 @@
+# CLD: 2026-11-01T19:00:00+02:00: the site on plain HTTP (port 80): behind the host's reverse proxy or a TLS terminator (Caddy, Traefik, ...), which sets X-Forwarded-*.
+# TLS here instead: compose.tls.yaml (tls.conf.template, ssl/ssl.crt and ssl/ssl.key)
+server {
+    server_name ${NGINX_SERVER_NAME};
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    include /etc/nginx/nfn/locations.conf;
+}

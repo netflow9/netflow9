@@ -10,7 +10,7 @@
 //  Setup::checks()                 [ [ 'name', 'ok' => bool, 'value' => what was found, 'need' => what is needed, 'required' => bool ], ... ]
 //  Setup::ready($checks)           true when every required check passes
 //  Setup::envContent($values)      the text of app.env (values single-quoted: literal, see V::parse_env)
-//  Setup::writeEnv($content)       writes BASE/app.env (a temporary file renamed into place); false when it cannot
+//  Setup::writeEnv($content)       writes <V::configDir()>/app.env (a temporary file renamed into place); false when it cannot
 //CLD: 2026-10-29T02:00:00+02:00: + the install itself (was controllers\SetupController's), shared by the browser setup and the command-line one (commands\SysCommand):
 //  Setup::database($server)        connects to the database of $server and makes it the app's: null, or [ field, message ] (it has accounts, cannot connect)
 //  Setup::install($server, $owner, &$error)   the indexes, the first account and its owner, app.env: the owner (a User), or null
@@ -105,8 +105,9 @@ class Setup {
 	}
 
 	foreach(self::WRITABLE as $dir => $why) {
-	    $path = rtrim(BASE . '/' . $dir, '/');
-	    $checks[] = [ 'name' => 'Writable: ' . ($dir === '' ? BASE : $dir . '/'), 'ok' => is_dir($path) && is_writable($path), 'value' => !is_dir($path) ? 'missing' : (is_writable($path) ? 'writable' : 'not writable'),
+	    //CLD: 2026-11-01T19:00:00+02:00: '' is the folder of app.env (V::configDir: NFN_CONFIG_DIR, else BASE)
+	    $path = $dir === '' ? \V::configDir() : rtrim(BASE . '/' . $dir, '/');
+	    $checks[] = [ 'name' => 'Writable: ' . ($dir === '' ? $path : $dir . '/'), 'ok' => is_dir($path) && is_writable($path), 'value' => !is_dir($path) ? 'missing' : (is_writable($path) ? 'writable' : 'not writable'),
 		'need' => $why, 'required' => true ];
 	}
 
@@ -257,7 +258,7 @@ class Setup {
 	    '#application secret used by \sys\Security encrypt/decrypt',
 	    'APP_SECRET=' . $q(bin2hex(random_bytes(32))),
 	    '',
-	    '#the domain of the inbound email addresses (Email inbound trigger; Haraka receives it: haraka/config/host_list)',
+	    '#the domain of the inbound email addresses (Email inbound trigger; Haraka receives it: haraka/config/nfn.ini domain)',
 	    "#MAIL_INBOUND_DOMAIN='" . ((string)parse_url($v['BASE_URL'], PHP_URL_HOST) ?: 'example.com') . "'",
 	    '',
 	    //CLD: 2026-10-30T15:00:00+02:00: MAX_SYNC_EXECUTIONS and SYNC_EXECUTION_TIMEOUT removed (every execution runs in the daemon)
@@ -302,7 +303,8 @@ class Setup {
 	    return null;
 	}
 	try {
-	    if (is_file(BASE . '/app.env')) {
+	    //CLD: 2026-11-01T19:00:00+02:00: app.env in V::configDir() (was BASE)
+	    if (is_file(\V::configDir() . '/app.env')) {
 		$error = 'The app is already set up (app.env exists): reload the page';
 		return null;
 	    }
@@ -348,7 +350,7 @@ class Setup {
 		    'ERRORS_EMAIL' => (string)$owner['email'],
 		]);
 		if (!\util\Setup::writeEnv($content))
-		    throw new \ErrorException('app.env could not be written in ' . BASE);
+		    throw new \ErrorException('app.env could not be written in ' . \V::configDir());
 	    } catch (\Throwable $e) {
 		//no half-made account
 		foreach($om->find('User', [ 'aid' => $account->_id ]) as $u)
@@ -368,7 +370,8 @@ class Setup {
     }
 
     public static function writeEnv($content) {
-	$file = BASE . '/app.env';
+	//CLD: 2026-11-01T19:00:00+02:00: in V::configDir() (NFN_CONFIG_DIR, else BASE; was BASE)
+	$file = \V::configDir() . '/app.env';
 	$tmp = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
 	if (@file_put_contents($tmp, $content, LOCK_EX) !== strlen($content)) {
 	    @unlink($tmp);

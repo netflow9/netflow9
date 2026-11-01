@@ -62,37 +62,53 @@ The setup in the browser (every address of the site while `app.env` is missing) 
 
 ### The parts
 
-`install.sh` runs them in this order; each can also be run alone, as root, from anywhere (each finds the app's folder from its own place).
+`install.sh` runs them in this order; each can also be run alone, as root, from anywhere (each finds the app's folder from its own place). Each takes a command, and `status` shows its state:
 
-| # | Script | Installs | Needs |
-|---|--------|----------|-------|
-| 0 | `sudo scripts/0_nginx-install.sh` | The app's nginx site (`scripts/nginx/app.conf`, filled in) over `<app>/etc/nginx.conf` (`/etc/nginx/conf.d/<user>.conf`); checked with `nginx -t`, then nginx reloaded | nginx; `BASE_URL` in `app.env` (or `--server-name=`); the certificate in `<app>/ssl/` |
-| | `app/v sys::install` (as the app's user) | The app: the database indexes, the first account and its owner, `app.env` (the answers as JSON on stdin) | no `app.env` yet |
-| 2 | `sudo scripts/2_haraka-install.sh` | Haraka, for inbound mail, into `<app>/haraka` (its files stay the app's user's) | `app.env`; `MAIL_INBOUND_DOMAIN` there (or `--domain=`); system-wide Node.js |
-| 3 | `sudo scripts/3_mongo-auth-setup.sh` | MongoDB users `nfn_admin`, `nfn_app`, `nfn_haraka`; their passwords into `app.env` (`MONGO_URI`, `HARAKA_MONGO_URI`) and, with Haraka, `haraka/config/nfn.ini` | `app.env`; MongoDB on this machine with authorization still off |
-| 4 | `sudo scripts/4_services-install.sh` | systemd units: `nfn-daemon`, `nfn-haraka` (when Haraka is installed), and the polkit rule that lets the administration start / stop the installation's `nfn-<name>-<user>` units (the web browser's too) | polkit |
+| Script | Does | Needs |
+|--------|------|-------|
+| `sudo scripts/nginx.sh install` | nginx (when missing) and the app's site (the template in the script, filled in) over `<app>/etc/nginx.conf` (`/etc/nginx/conf.d/<user>.conf`); checked with `nginx -t`, then nginx reloaded. Also `setup` (the site only, `--dry-run`), `start`, `stop`, `restart`, `reload`, `status`, `test`, `uninstall` (the site out) | nginx; `BASE_URL` in `app.env` (or `--server-name=`); the certificate in `<app>/ssl/` |
+| `app/v sys::install` (as the app's user) | The app: the database indexes, the first account and its owner, `app.env` (the answers as JSON on stdin) | no `app.env` yet |
+| `sudo scripts/haraka.sh install` | Haraka, for inbound mail, into `<app>/haraka` (its files stay the app's user's), and its unit `nfn-haraka` (one per server: port 25), started. Also `start`, `stop`, `restart`, `status`, `uninstall` (the unit; the files stay) | `app.env`; `MAIL_INBOUND_DOMAIN` there (or `--domain=`); system-wide Node.js |
+| `sudo scripts/mongo.sh secure` | MongoDB users `nfn_admin`, `nfn_app`, `nfn_haraka`; their passwords into `app.env` (`MONGO_URI`, `HARAKA_MONGO_URI`) and, with Haraka, `haraka/config/nfn.ini`; then sign-in required (`/etc/mongod.conf`, mongod restarted) and the app's services restarted. Also `users`, `auth` (the two halves), `start`, `stop`, `restart`, `status` | `app.env`; MongoDB on this machine with authorization still off |
+| `sudo scripts/daemon.sh install` | The workflow daemon's unit `nfn-daemon-<user>`, started, and the polkit rule that lets the Services page start / stop / restart the installation's units (`nfn-<name>-<user>`, and `nfn-haraka` when the installation has it). Also `start`, `stop`, `restart`, `status` (all the installation's services), `rule`, `uninstall` | polkit |
+| `sudo scripts/playwright-mcp.sh install` | The AI steps' web browser (Playwright MCP, its Chromium) as the unit `nfn-playwright-<user>`, and its entry in `mcp.json`. Also `start`, `stop`, `restart`, `status`, `uninstall` | system-wide Node.js |
 
-Steps 0, 2 and 4 can be run again (nothing already installed is overwritten). Step 3 too, while MongoDB does not require sign-in: it creates its users again with new passwords; once authorization is on, it stops.
-After step 3, `install.sh` turns on authorization in `/etc/mongod.conf`, restarts `mongod` and the services (alone, step 3 prints these steps).
+They can be run again: nothing already installed is overwritten (`haraka.sh` updates NetFlow9's plugin). `mongo.sh secure` too, while MongoDB does not require sign-in: it creates its users again with new passwords; once authorization is on, it stops.
 The operators' MongoDB password is left in `<app>/.mongodb-admin` (root's): move it to a password manager and delete the file.
 
-Options: `--dry-run` (steps 0 and 2) prints what would be done; `--help` lists the others.
-Check the services with `scripts/4_services-install.sh status`.
+Options: `--dry-run` (`nginx.sh setup`, `haraka.sh install`) prints what would be done; `--help` lists the others.
+Check the services with `scripts/daemon.sh status`.
 
 ### Web server (nginx)
 
-`scripts/nginx/app.conf` is the app's nginx site, a template: step 0 fills in the app's folder (`@BASE@`) and the host of `BASE_URL` (`@SERVER_NAME@`) and writes it where `<app>/etc/nginx.conf` points (`/etc/nginx/conf.d/<user>.conf`; the link is made when missing).
+The app's nginx site is a template inside `scripts/nginx.sh`: it fills in the app's folder (`@BASE@`) and the host of `BASE_URL` (`@SERVER_NAME@`) and writes it where `<app>/etc/nginx.conf` points (`/etc/nginx/conf.d/<user>.conf`; the link is made when missing).
 It shows the changes first (`--dry-run`: only that), keeps the old file as `<user>.conf.bak-<time>`, and puts it back when `nginx -t` fails.
 `/etc/nginx/nginx.conf` stays as the system installed it (it loads `conf.d/*.conf`). The certificate goes in `<app>/ssl/ssl.crt` and `ssl.key`.
 
 ### Other files in `scripts/`
 
-- `playwright-mcp.sh`: the AI steps' web browser (Playwright MCP) as a service, and its entry in `mcp.json` (the tool servers, next to `app.env`; `./v mcpserver::list`); `install.sh` runs it, or run it alone, also later to add the browser: `sudo scripts/playwright-mcp.sh install | status | restart | uninstall`
-- `mongo_users.js`: the users and roles created by step 3
-- `haraka/`: NetFlow9's Haraka plugin and configuration, copied by step 2 into `<app>/haraka` (`dkim/dkim_key_gen.sh`: DKIM keys)
-- `nginx/`: the app's nginx site, written by step 0 (see above)
+- `playwright/`: the web browser's entry in `mcp.json` (`mcp-server.json`; the tool servers, next to `app.env`: `./v mcpserver::list`)
+
+- `mongo_users.js`: the users and roles created by `mongo.sh users`, and by the Docker `mongo` container at its first start
+- `haraka/`: NetFlow9's Haraka plugin and configuration, copied by `haraka.sh install` into `<app>/haraka` (`dkim/dkim_key_gen.sh`: DKIM keys)
 - `system/`: `php.ini`, the PHP-FPM pool (`fpm-pool.conf`) and `logrotate.conf`, written by `install.sh`
-- `daemon.sh`, `haraka.sh`: the old start / stop scripts, for an installation without the systemd units of step 4 (run them from `scripts/`)
+
+### With Docker Compose
+
+On any Linux host with Docker Engine and its Compose plugin (2.24 or later); the images are built locally from the repository:
+
+```bash
+git clone --recurse-submodules https://github.com/netflow9/netflow9.git && cd netflow9
+cp docker/env.example .env && chmod 600 .env      # the database's passwords, the port, the profiles
+docker compose build && docker compose up -d       # then open the site: /setup
+```
+
+- Containers: `mongo` (8.3, sign-in required; its users from `scripts/mongo_users.js`), `app` (PHP-FPM, AlmaLinux 9 + Remi, the installer's packages), `daemon`, `web` (nginx, port 80); profiles `browser` (`playwright`: the AI steps' web browser, with its own firewall table) and `mail` (`haraka`, port 25), in `COMPOSE_PROFILES`
+- `app.env`, `plugins.json` and `mcp.json` live in the `config` volume (`NFN_CONFIG_DIR`); keep a copy of `app.env` (`APP_SECRET`)
+- The Services page is read-only there: `docker compose restart daemon`; the console: `docker compose exec app app/v <command>`
+- Upgrade: `git pull && git submodule update --init && docker compose build && docker compose up -d` (the app adds the new indexes at its start)
+- HTTPS in the container: `-f compose.tls.yaml` (`ssl/ssl.crt`, `ssl/ssl.key`); development: `-f compose.dev.yaml` (the working tree mounted, mailpit, the site on `127.0.0.1:8080`)
+- Files: `compose*.yaml`, `docker/` (the images, `env.example`), `.dockerignore`. More: the docs, Self-hosting > Docker Compose
 
 ### By hand (other systems)
 
@@ -100,7 +116,7 @@ Install PHP, its extensions, MongoDB, nginx with a PHP-FPM pool running as the a
 
 ```sh
 git clone --recurse-submodules https://github.com/netflow9/netflow9.git /home/app
-sudo /home/app/scripts/0_nginx-install.sh --server-name=netflow.example.com
+sudo /home/app/scripts/nginx.sh install --server-name=netflow.example.com
 ```
 
 Open the site. While there is no `app.env`, every address shows the setup wizard. It checks the prerequisites, then asks for the server settings (public address, MongoDB, outgoing email) and the first account with its owner. After that, install the options and the services with the scripts in `scripts/` (see *The parts* above).

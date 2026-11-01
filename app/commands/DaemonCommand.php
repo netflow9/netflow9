@@ -396,7 +396,8 @@ class DaemonCommand extends \sys\BaseController {
 	if (!empty($this->job_listener))
 	    return;
 
-	$address = \models\Job::daemonAddress();
+	//CLD: 2026-11-01T19:00:00+02:00: its listening address (app.daemon_listen: 127.0.0.1 unless set; Docker: 0.0.0.0)
+	$address = \models\Job::daemonAddress(true);
 	$server = @stream_socket_server($address, $errno, $errstr);
 	if (!$server) {
 	    \V::app()->log->error("WMGR: cannot listen on {$address}: {$errstr}");
