@@ -9,6 +9,8 @@
     workflows: list, run (Manual trigger; the published version, else the draft),
 	an execution's result; files: list, read (text);
     project variables: list.
+    CLD: 2026-11-01T22:35:00+02:00: knowledge bases: list, query (models\KnowledgeBase::search: by meaning and by words; KnowledgeBase::read). query_knowledge_base, not search_knowledge_base: that is
+	the AI steps' own tool (their Knowledge bases setting), offered next to these
 
     definitions() = the MCP tool list (name, title, description, inputSchema, annotations);
     call() = the result (plain array) or \ErrorException for the caller
@@ -22,8 +24,9 @@ class McpServerTools {
 
     //CLD: 2026-11-01T02:00:00+02:00: the tools that read or change only the project's structure (tables and their columns, workflows, step types, file names, variable names: list_variables
     //without the values, see structureOnly): the ones the designer's Assistant gets when the account lets it read the structure only (AssistantSettings::readsData)
+    //CLD: 2026-11-01T22:35:00+02:00: + list_knowledge_bases (their names and descriptions; query_knowledge_base reads their content: data)
     const STRUCTURE_TOOLS = [ 'list_tables', 'create_table', 'update_table', 'add_column', 'update_column', 'delete_column', 'list_workflows', 'get_workflow', 'create_workflow',
-	'update_workflow', 'list_step_types', 'list_files', 'list_variables' ];
+	'update_workflow', 'list_step_types', 'list_files', 'list_variables', 'list_knowledge_bases' ];
 
     //CLD: 2026-11-01T02:00:00+02:00: the result of tool $name with the data left out (a structure tool's: list_variables without the values)
     public static function structureOnly($name, $result) {
@@ -37,6 +40,8 @@ class McpServerTools {
 
     //most rows a query returns
     const MAX_ROWS = 200;
+    //CLD: 2026-11-01T22:35:00+02:00: most passages query_knowledge_base returns
+    const MAX_PASSAGES = 20;
     //most rows inserted at once
     const MAX_INSERT = 100;
     //CLD: 2026-10-22T01:11:17+03:00: most columns create_table makes at once; column keys refused here besides the reserved ones (FieldForm): `id` is the row id in the rows these tools give
@@ -216,6 +221,19 @@ class McpServerTools {
 		    'name' => [ 'type' => 'string', 'description' => 'A new name' ],
 		    'relayout' => [ 'type' => 'boolean', 'default' => false ],
 		] + \util\WorkflowSpec::schema(), 'required' => [ 'workflow' ] ], 'annotations' => [ 'readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false ] ],
+	    //CLD: 2026-11-01T22:35:00+02:00: the knowledge bases
+	    [ 'name' => 'list_knowledge_bases', 'title' => 'List knowledge bases',
+		'description' => 'The knowledge bases of the project: id, name, description (what their documents are about), documents, chunks, state (ready; reindexing: not searchable meanwhile).',
+		'inputSchema' => [ 'type' => 'object', 'properties' => (object)[] ], 'annotations' => $ro ],
+	    [ 'name' => 'query_knowledge_base', 'title' => 'Search a knowledge base',
+		'description' => 'Searches a knowledge base of the project by meaning and by words, and returns the passages that best match the query (best first): text, the document\'s title and key, page, '
+		    . 'score (similarity, -1..1), match (both, meaning, words), meta. Ask a question or give keywords in the documents\' language; search again with other words when the passages do not answer.',
+		'inputSchema' => [ 'type' => 'object', 'properties' => [
+		    'knowledge_base' => [ 'type' => 'string', 'description' => 'The knowledge base: its name or id (list_knowledge_bases)' ],
+		    'query' => [ 'type' => 'string', 'description' => 'What to look for: a question or keywords' ],
+		    'limit' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_PASSAGES, 'default' => 5, 'description' => 'How many passages' ],
+		    'filter' => [ 'type' => 'object', 'description' => 'Optional: { meta name: value or a list of values } the passages must have, e.g. {"category": "hr"}' ],
+		], 'required' => [ 'knowledge_base', 'query' ] ], 'annotations' => $ro ],
 	    [ 'name' => 'list_variables', 'title' => 'List project variables',
 		//CLD: 2026-10-22T00:28:13+03:00: they are the credentials of type Variable
 		'description' => 'The variables of the project (credentials of type Variable): name, value, description.',
@@ -510,6 +528,27 @@ class McpServerTools {
 		return [ 'execution' => (string)$exe->_id, 'workflow' => (string)$wf->name, 'state' => (string)$exe->state, 'error' => $exe->error ?: null,
 		    'trigger' => (string)$exe->trigger, 'version' => $exe->version, 'start_at' => \util\Expression::hostValue($exe->start_at),
 		    'end_at' => \util\Expression::hostValue($exe->end_at), 'variables' => \util\Expression::hostValue($exe->variables ?: []), 'log' => $log ];
+
+	    //CLD: 2026-11-01T22:35:00+02:00: the knowledge bases (KnowledgeBase::read)
+	    case 'list_knowledge_bases':
+		$list = [];
+		foreach($om->find('KnowledgeBase', [ 'aid' => $aid, 'project' => $project->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $kb) {
+		    if (!$can('KnowledgeBase::read', $kb))
+			continue;
+		    $list[] = [ 'id' => (string)$kb->_id, 'name' => (string)$kb->name, 'description' => (string)$kb->description, 'documents' => (int)$kb->documents,
+			'chunks' => (int)$kb->chunks, 'state' => (string)($kb->state ?: 'ready') ];
+		}
+		return [ 'knowledge_bases' => $list ];
+
+	    case 'query_knowledge_base':
+		$kb = self::findIn('KnowledgeBase', $args['knowledge_base'] ?? '', $project, 'knowledge base');
+		if (!$can('KnowledgeBase::read', $kb))
+		    throw new \ErrorException("you may not read knowledge base `{$kb->name}`");
+		$query = trim((string)($args['query'] ?? ''));
+		if ($query === '')
+		    throw new \ErrorException('query: empty');
+		$results = $kb->search($query, max(1, min(self::MAX_PASSAGES, (int)($args['limit'] ?? 5))), $args['filter'] ?? []);
+		return [ 'knowledge_base' => (string)$kb->name, 'results' => $results, 'count' => count($results) ];
 
 	    case 'list_files':
 		$query = [ 'metadata.project' => $project->_id ];
