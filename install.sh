@@ -204,9 +204,11 @@ update_app() {
         echo "  The app's code is not on a branch (detached): not updated"
         return
     fi
-    dirty=$(as_user git status --porcelain --untracked-files=no | wc -l)
-    if [ "$dirty" -gt 0 ]; then
-        echo "  The app's code has local changes ($dirty files, git status in $BASE): not updated"
+    #CLD: 2026-11-01T22:45:00+02:00: the files with local changes listed (was: their number)
+    dirty=$(as_user git status --porcelain --untracked-files=no)
+    if [ -n "$dirty" ]; then
+        echo "  The app's code has local changes: not updated (commit or discard them in $BASE, then run this again):"
+        printf '%s\n' "$dirty" | sed 's/^/    /'
         return
     fi
     if ! as_user git fetch -q origin "$branch"; then
