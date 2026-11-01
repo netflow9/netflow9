@@ -23,7 +23,7 @@ class Response extends \sys\BaseObject {
     public function __construct() {
 	$this->headers = [
 	    'Content-Type' => 'text/html',
-	    //CLD: 2026-10-21T18:45:00+03:00: see CSP above
+	    //see CSP above
 	    'Content-Security-Policy' => self::CSP,
 	    'X-Frame-Options' => 'SAMEORIGIN',
 	    'Permissions-Policy' => 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',

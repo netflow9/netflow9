@@ -8,7 +8,6 @@
 	connect  the models of a server (the settings page's Connect)
 */
 
-//CLD: 2026-10-26T23:49:50+02:00: moved to the core (was the Assistant plugin's); its System provider only while the SystemAI plugin is enabled; served at /assistant/<action> (was /assistant/<action>)
 namespace controllers;
 
 use util\WorkflowAssistant;
@@ -40,7 +39,6 @@ class AssistantController extends \sys\BaseController {
 
     //the designer's Assistant (POST, JSON) on workflow ?id: `message` (the request), `history` (the earlier turns, JSON [ { role, text } ]), `nodes` (the designer's current steps,
     //JSON). Answers WorkflowAssistant::ask() (the new steps for the canvas: the designer applies them, its autosave saves them), or { error }. Workflow::update
-    //CLD: 2026-10-20T10:00:00+03:00: the server, key and model of Assistant settings only (no `credential`: was one of the workflow's project, or the account's server)
     public function ask($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
@@ -48,24 +46,24 @@ class AssistantController extends \sys\BaseController {
 	$wf = $this->findWorkflow('Workflow::update');
 	$data = is_array($req->data) ? $req->data : [];
 
-	//CLD: 2026-10-19T20:40:00+03:00: the Assistant's settings (models\AssistantSettings; were the account's fields)
+	//the Assistant's settings (models\AssistantSettings)
 	$settings = \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
 
 	if (!WorkflowAssistant::isReady($settings))
 	    $resp->sendJSON([ 'error' => 'The Assistant is not set up: connect to a server and choose a model in Assistant settings (Settings menu)' ], true, 400);
-	//CLD: 2026-10-22T14:00:00+03:00: the monthly budget (AssistantSettings::budgetOf): refused once it is spent, else what is left limits the request (WorkflowAssistant::$budget)
+	//the monthly budget (AssistantSettings::budgetOf): refused once it is spent, else what is left limits the request (WorkflowAssistant::$budget)
 	$budget = AssistantSettings::budgetOf($settings);
 	$left = $budget !== null ? $budget - AssistantUsage::current($wf->aid)->cost : null;
 	if ($left !== null && $left <= 0)
 	    $resp->sendJSON([ 'error' => sprintf('The Assistant\'s monthly budget (%.2f USD) is spent: it is available again next month, or raise the budget in Assistant settings (Settings menu)', $budget) ], true, 429);
-	//CLD: 2026-10-22T15:00:00+03:00: System: paid in credits. The model's rates (AssistantWallet::ratesOf), then credits reserved (at most the installation's per-request limit, within
+	//System: paid in credits. The model's rates (AssistantWallet::ratesOf), then credits reserved (at most the installation's per-request limit, within
 	//the account's monthly limit): they limit the request (WorkflowAssistant::$budget, in credits); settled after it (settle)
 	$hold = null;
 	$rates = null;
-	//CLD: 2026-10-31T22:00:00+02:00: the provider of a plugin (util\AssistantSystem: its rates, reserve, settle; was the MultiTenant plugin's SystemAiWallet, SystemAi used here)
+	//the provider of a plugin (util\AssistantSystem: its rates, reserve, settle)
 	$system = WorkflowAssistant::providerOf($settings) === 'system' ? \util\AssistantSystem::provider() : null;
 	if ($system !== null) {
-	    //CLD: 2026-10-23T10:00:00+03:00: the System AI's credits (plugins\MultiTenant: SystemAiWallet, SystemAi::maxCreditsPerRequest; were AssistantWallet, config assistant.system)
+	    //System AI's credits (plugins\MultiTenant: SystemAiWallet, SystemAi::maxCreditsPerRequest)
 	    $rates = $system->rates(WorkflowAssistant::resolve($settings));
 	    if ($rates === null) {
 		\V::app()->log->error('Assistant: no credit rates for the System AI model (its plugin\'s credit rates)');
@@ -101,20 +99,20 @@ class AssistantController extends \sys\BaseController {
 	    $assistant->rates = $rates;
 	    $result = $assistant->ask(is_array($history) ? $history : [], (string)($data['message'] ?? ''), $nodes);
 	} catch (\ErrorException $e) {
-	    //CLD: 2026-10-22T14:00:00+03:00: the tokens of a failed request were spent too
+	    //the tokens of a failed request were spent too
 	    $this->addUsage($wf->aid, $assistant);
 	    $this->settle($system, $wf, $hold, $assistant);
 	    $resp->sendJSON([ 'error' => $e->getMessage() ], true, 502);
 	}
 	$this->addUsage($wf->aid, $assistant);
-	//CLD: 2026-10-22T15:00:00+03:00: System: the credits it used, and those left
+	//System: the credits it used, and those left
 	if ($hold !== null)
 	    [ $result['credits'], $result['credits_left'] ] = $this->settle($system, $wf, $hold, $assistant);
 	$resp->sendJSON($result);
     }
 
-    //CLD: 2026-10-23T23:45:00+03:00: new: a message of the panel added to the conversation of workflow ?id (POST: `message`, JSON: AssistantChat::clean) => { message }
-    //(as kept: + uid, by, at). Workflow::update (as ask)
+    //a message of the panel added to the conversation of workflow ?id (POST: `message`, JSON: AssistantChat::clean) => { message }
+    //(as kept: + uid, by, at).
     public function chat_add($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
@@ -126,7 +124,7 @@ class AssistantController extends \sys\BaseController {
 	$resp->sendJSON([ 'message' => AssistantChat::add($wf, $m) ]);
     }
 
-    //CLD: 2026-10-23T23:45:00+03:00: new: a new conversation of workflow ?id (POST) => { cleared: true }. Workflow::update
+    //a new conversation of workflow ?id (POST) => { cleared: true }. Workflow::update
     public function chat_clear($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
@@ -135,16 +133,16 @@ class AssistantController extends \sys\BaseController {
 	$resp->sendJSON([ 'cleared' => true ]);
     }
 
-    //CLD: 2026-10-22T15:00:00+03:00: new: System: reservation $hold of workflow $wf's account settled with what $assistant used (nothing when no model answered: the reservation is
+    //System: reservation $hold of workflow $wf's account settled with what $assistant used (nothing when no model answered: the reservation is
     //freed) => [ credits charged, credits left ]
-    //CLD: 2026-10-31T22:00:00+02:00: the System provider's settle (util\AssistantSystem; the ledger entry was built here with SystemAiWallet, SystemAi)
+    // the System provider's settle (util\AssistantSystem)
     private function settle($system, $wf, $hold, $assistant) {
 	if ($hold === null || $system === null)
 	    return [ 0, null ];
 	return $system->settle($wf->aid, $hold, $assistant, (string)$wf->_id);
     }
 
-    //CLD: 2026-10-22T14:00:00+03:00: new: what $assistant spent (its last ask()) added to account $aid's month (AssistantUsage); nothing when no model answered
+    //what $assistant spent (its last ask()) added to account $aid's month (AssistantUsage); nothing when no model answered
     private function addUsage($aid, $assistant) {
 	if ($assistant === null || !array_sum($assistant->usage))
 	    return;
@@ -164,7 +162,7 @@ class AssistantController extends \sys\BaseController {
 	$settings = $this->findSettings();
 
 	if ($req->is('post')) {
-	    //CLD: 2026-10-22T14:00:00+03:00: the saved key belongs to the saved provider and Server URL: another one without a new key starts without it (never sent to another server)
+	    //the saved key belongs to the saved provider and Server URL: another one without a new key starts without it (never sent to another server)
 	    $before = [ (string)$settings->provider, trim((string)$settings->url) ];
 	    //the form's fields the user may update (an empty API key keeps the stored one: BaseModel::assign)
 	    $settings->assign($req->data, true);
@@ -176,22 +174,22 @@ class AssistantController extends \sys\BaseController {
 		$this->addToast('error', 'Not saved', 'Check the settings marked in the form');
 	}
 
-	//CLD: 2026-10-22T14:00:00+03:00: + this month's spending, the installation's server (System; null: none)
+	//this month's spending, the installation's server (System; null: none)
 	$usage = AssistantUsage::current($settings->aid);
 	$system = AssistantSettings::system();
-	//CLD: 2026-10-31T22:00:00+02:00: the System part of the page is the provider's (util\AssistantSystem::settingsHtml: the model, the credits, the monthly limit; was $wallet, $rates
+	//the System part of the page is the provider's (util\AssistantSystem::settingsHtml: the model, the credits, the monthly limit; was $wallet, $rates
 	//from the MultiTenant plugin's SystemAiWallet)
 	$systemHtml = $system !== null ? \util\AssistantSystem::provider()->settingsHtml($settings) : null;
 	$this->render('settings', compact('settings', 'usage', 'system', 'systemHtml'));
     }
 
-    //CLD: 2026-10-20T10:00:00+03:00: the Assistant's settings of the current account; new (not saved) when it has none yet
+    //the Assistant's settings of the current account; new (not saved) when it has none yet
     private function findSettings() {
 	$aid = \V::app()->config('rt.account')->_id;
 	return \V::app()->om->findOne('AssistantSettings', [ 'aid' => $aid ]) ?: \V::app()->om->create('AssistantSettings', [ 'aid' => $aid ]);
     }
 
-    //CLD: 2026-10-20T10:00:00+03:00: new: Connect on the settings page (POST, JSON): `provider`, `url`, `api_key` as in the form (not saved yet) => { models: [ { id, label } ] }
+    //Connect on the settings page (POST, JSON): `provider`, `url`, `api_key` as in the form (not saved yet) => { models: [ { id, label } ] }
     //(WorkflowAssistant::models), or { error }. An empty API key is the saved one, but only for the saved provider and Server URL: never sent to another server
     public function connect($req, $resp) {
 	if (!$req->is('post'))
@@ -202,10 +200,10 @@ class AssistantController extends \sys\BaseController {
 	$data = is_array($req->data) ? $req->data : [];
 	$saved = $this->findSettings();
 	$provider = (string)($data['provider'] ?? '');
-	//CLD: 2026-10-20T10:30:00+03:00: AssistantSettings::PROVIDERS (was WorkflowAssistant::)
+	//AssistantSettings::PROVIDERS
 	if (!array_key_exists($provider, \models\AssistantSettings::PROVIDERS))
 	    $resp->sendJSON([ 'error' => 'Choose a provider' ], true, 400);
-	//CLD: 2026-10-22T14:00:00+03:00: System: the installation's model, nothing to connect to (its server and key are never used from here)
+	//System: the installation's model, nothing to connect to (its server and key are never used from here)
 	if ($provider === 'system')
 	    $resp->sendJSON([ 'error' => 'System uses the model of this installation: nothing to connect' ], true, 400);
 	$url = trim((string)($data['url'] ?? ''));

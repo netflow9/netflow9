@@ -6,7 +6,7 @@ class Field_select extends Field {
     public $icon = 'bi bi-menu-button-wide';
     public $name = 'Select';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type, labels per type; was [ 'is' => 'Is', 'in' => 'In', ]
+	//the conditions' operators (util\Conditions): one vocabulary for every type, labels per type;
 	'eval' => [ 'eq' => 'Is', 'ne' => 'Is not', 'in' => 'Is one of', 'contains' => 'Contains', 'empty' => 'Is empty', 'notEmpty' => 'Is not empty', ],
 	'set' => [ 'set' => 'Set' ],
     ];
@@ -18,7 +18,7 @@ class Field_select extends Field {
 	    if (empty($value))
 		return null;
 
-	    //CLD: 2026-10-18T11:20:00+03:00: kept when there are no choices (e.g. depending on the user, outside a web request), as the multiple select (was dropped: null)
+	    //kept when there are no choices (e.g. depending on the user, outside a web request), as the multiple select (was dropped: null)
 	    $choices = $this->choicesToArray();
 	    if (!empty($choices) && !isset($choices[$value]))
 		return null;
@@ -40,7 +40,7 @@ class Field_select extends Field {
 	    'choices' => [ $this, 'choicesToArray' ],
 	    'message' => 'Not one of the choices',
 	    'skipEmpty' => true,
-	    //CLD: 2026-10-18T14:40:00+03:00: `choicesOn` (e.g. 'create'): checked on these events only (a locked value whose choice may go away)
+	    //`choicesOn` (e.g. 'create'): checked on these events only (a locked value whose choice may go away)
 	    'on' => $this->choicesOn ?? null,
 	];
     }
@@ -68,7 +68,7 @@ class Field_select extends Field {
 	if (empty($choices) || !is_array($choices))
 	    return [];
 
-	//CLD: 2026-10-18T12:30:00+03:00: a plain list of values (e.g. [ 'GET', 'POST' ]) is value => value; its indexes were taken as the values
+	//a plain list of values (e.g. [ 'GET', 'POST' ]) is value => value; its indexes were taken as the values
 	if (array_is_list($choices) && count(array_filter($choices, 'is_scalar')) === count($choices)) {
 	    $choices = array_values(array_unique(array_map('strval', $choices)));
 	    return array_combine($choices, $choices);
@@ -105,7 +105,6 @@ class Field_select extends Field {
 	$inputOptions['multiple'] = !empty($this->multiple) ? 'multiple' : null;
 
 	//choices
-	//CLD: 2026-10-05T21:06:21+03:00: via choices() (list support)
 	$choices = $this->choicesToArray();
 
 	\V::app()->cs->addPageScript("new app.SelectPlus('#{$fieldId}');");
@@ -136,7 +135,7 @@ class Field_select extends Field {
 
 	$choices = $this->choicesToArray();
 
-	//CLD: 2026-10-25T21:30:00+02:00: escaped (display() is HTML, as Field_text's; the label, or a value not in the choices, was as is)
+	//escaped (display() is HTML, as Field_text's; the label, or a value not in the choices, was as is)
 	if (!$this->multiple)
 	    return \V::app()->html->escape($choices[$value] ?? $value);
 

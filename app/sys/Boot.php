@@ -35,13 +35,15 @@ class Boot {
 
 	//the FTP / SFTP step's state (files taken) goes with its workflow
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\RemoteFileState::class, 'beforeWorkflowDelete' ]);
-	//CLD: 2026-11-01T04:00:00+02:00: a polling trigger's state (e.g. Veeam event) goes with its workflow
+
+	//a polling trigger's state (e.g. Veeam event) goes with its workflow
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\TriggerState::class, 'beforeWorkflowDelete' ]);
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\WfTask::class, 'beforeWorkflowDelete' ]);
-	//CLD: 2026-10-26T23:49:50+02:00: the Assistant's conversation goes with its workflow (was the Assistant plugin's)
+
+	//the Assistant's conversation goes with its workflow (was the Assistant plugin's)
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\AssistantChat::class, 'beforeWorkflowDelete' ]);
 
-	//CLD: 2026-11-01T16:11:37+02:00: a completed Email (inbound) run deletes its raw message, in every mode: the daemon runs them (was the InboundMail plugin's)
+	//a completed Email (inbound) run deletes its raw message, in every mode: the daemon runs them (was the InboundMail plugin's)
 	\V::app()->hooks->addHook('execution:end', [ \models\node\NodeTriggerEmail::class, 'afterExecutionEnd' ]);
 
 	//the LDAP and SAML sign-ins: a deleted user's link; the sign-in (sys\Identity::authenticate) and who keeps a password here (password reset / change);
@@ -53,15 +55,15 @@ class Boot {
 	\V::app()->hooks->addHook('identity:authenticate', [ \util\SamlAuth::class, 'onAuthenticate' ]);
 	\V::app()->hooks->addHook('identity:password-source', [ \util\SamlAuth::class, 'onPasswordSource' ]);
 
-	//CLD: 2026-10-31T11:05:39+02:00: the workflow daemon, a service of the Services page (util\Services; was the Admin plugin's); the plugins add theirs
+	//the workflow daemon, a service of the Services page (util\Services; was the Admin plugin's); the plugins add theirs
 	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
 	    $services['daemon'] = [
 		'label' => 'Workflow daemon',
 		'description' => 'Runs the queued jobs: scheduled and background workflow runs, emails, timers',
-		//CLD: 2026-10-31T18:00:00+02:00: the installation's own unit (util\Services::unit: nfn-daemon-<user>; was nfn-daemon.service)
+		//the installation's own unit (util\Services::unit: nfn-daemon-<user>; was nfn-daemon.service)
 		'unit' => \util\Services::unit('daemon'),
 		'pidfile' => BASE . '/run/daemon.pid',
-		//CLD: 2026-11-01T16:00:27+02:00: on its port, 127.0.0.1:<DAEMON_PORT> (was the unix socket run/job-notify.sock)
+		//on its port, 127.0.0.1:<DAEMON_PORT>
 		'health' => function() {
 		    $address = \models\Job::daemonAddress();
 		    $port = parse_url($address, PHP_URL_PORT);
@@ -73,7 +75,8 @@ class Boot {
 		},
 	    ];
 	}, 5);
-	//CLD: 2026-11-01T11:55:18+02:00: the tool servers' services (util\ToolServers: an mcp.json entry's `service`, e.g. the web browser's nfn-playwright-<user>; was the LocalMCP plugin's)
+
+	//the tool servers' services (util\ToolServers: an mcp.json entry's `service`, e.g. the web browser's nfn-playwright-<user>)
 	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
 	    foreach(\util\ToolServers::all() as $id => $s) {
 		if (empty($s['service']) || isset($services[$s['service']]))
@@ -90,7 +93,8 @@ class Boot {
 		];
 	    }
 	}, 6);
-	//CLD: 2026-11-01T16:11:37+02:00: Haraka, inbound mail (util\InboundMail::service: when found and its unit is this installation's; was the InboundMail plugin's)
+
+	//Haraka, inbound mail (util\InboundMail::service: when found and its unit is this installation's; was the InboundMail plugin's)
 	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
 	    if (($s = \util\InboundMail::service()) !== null)
 		$services['haraka'] = $s;
@@ -100,25 +104,28 @@ class Boot {
 	    return;
 
     	\V::app()->hooks->addHook('on:after-user-login', [ $this, 'after_user_login' ]);
-	//CLD: 2026-10-21T16:30:00+03:00: the account's "Enforce MFA": before the action (the sign-in's own request, still a guest then, completes and writes its audit entry)
+	//the account's "Enforce MFA": before the action (the sign-in's own request, still a guest then, completes and writes its audit entry)
 	\V::app()->hooks->addHook('on:before-action', [ $this, 'enforce_mfa' ]);
 
 	//the Webhook trigger's endpoint: `/hook/<32 hex token>` -> HookController::receive; callers are not users: no session
 	\V::app()->session->noSessionFor('/hook/');
 	\V::app()->router->add_rule('hook/<id:[a-f0-9]{32}>', 'hook/receive', true);
-	//CLD: 2026-11-01T00:30:00+02:00: the GravityZone event trigger's endpoint: `/gravityzone/<32 hex token>` -> GravityzoneController::receive (GravityZone's push service; no session)
+
+	//the GravityZone event trigger's endpoint: `/gravityzone/<32 hex token>` -> GravityzoneController::receive (GravityZone's push service; no session)
 	\V::app()->session->noSessionFor('/gravityzone/');
 	\V::app()->router->add_rule('gravityzone/<id:[a-f0-9]{32}>', 'gravityzone/receive', true);
-	//CLD: 2026-11-01T06:00:00+02:00: the FortiGate event trigger's endpoint: `/fortigate/<32 hex token>` -> FortigateController::receive (an automation stitch's webhook; no session)
+
+	//the FortiGate event trigger's endpoint: `/fortigate/<32 hex token>` -> FortigateController::receive (an automation stitch's webhook; no session)
 	\V::app()->session->noSessionFor('/fortigate/');
 	\V::app()->router->add_rule('fortigate/<id:[a-f0-9]{32}>', 'fortigate/receive', true);
 	\V::app()->router->add_rule('form/<id:[a-f0-9]{32}>', 'form/open', true);
 	\V::app()->router->add_rule('task/<id:[a-f0-9]{24}>', 'task/open', true);
-	//CLD: 2026-10-26T23:56:07+02:00: POST /mcp -> McpController::serve (was the SysMCPTools plugin's); its callers are tokens, not browser users: no session
+
+	//POST /mcp -> McpController::serve; its callers are tokens, not browser users: no session
 	\V::app()->router->add_rule('mcp', 'mcp/serve', true);
 	\V::app()->session->noSessionFor('/mcp');
 
-	//CLD: 2026-10-26T23:49:50+02:00: the account's Assistant in the administration (the Admin plugin's account page; was the Assistant plugin's): its provider, its spending on its own key
+	//the account's Assistant in the administration (the Admin plugin's account page): its provider, its spending on its own key
 	\V::app()->hooks->addHook('admin:account-panels', function($account) {
 	    $om = \V::app()->om;
 	    $data = $om->acrossAccounts(fn() => [
@@ -130,7 +137,7 @@ class Boot {
     }
 
     public function after_user_login() {
-	//CLD: 2026-10-21T16:30:00+03:00: the session keeps the user's data from the sign-in: check the stored user at each request, so that a user deleted, disabled or moved to
+	//the session keeps the user's data from the sign-in: check the stored user at each request, so that a user deleted, disabled or moved to
 	//another account is signed out at once (was: kept the access until the session expired, up to 30 days with "remember me")
 	$user = \V::app()->om->findById('User', \V::app()->user->_id);
 	if (empty($user) || $user->state != 'active' || (string)$user->aid !== (string)\V::app()->user->aid) {
@@ -138,13 +145,14 @@ class Boot {
 	    \V::app()->user->logout();
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
 	}
-	//CLD: 2026-10-21T16:30:00+03:00: a changed account role applies at once (AAA reads the role id from the session; was: the role of the sign-in)
+	//a changed account role applies at once (AAA reads the role id from the session)
 	if ((string)$user->role !== (string)\V::app()->user->role) {
 	    \V::app()->user->role = $user->role;
 	    \V::app()->auth->userRole = null;
 	}
 	$this->user = $user;
-	//CLD: 2026-10-30T12:00:00+02:00: the stored user, for the layout (its UI state: sidebar_width, sidebar_collapsed)
+
+	//the stored user, for the layout (its UI state: sidebar_width, sidebar_collapsed)
 	\V::app()->config('rt.user', $user);
 
 	$account = \V::app()->om->findById('Account', \V::app()->user->aid);
@@ -153,7 +161,7 @@ class Boot {
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
 	}
 
-	//CLD: 2026-10-22T23:00:00+03:00: a suspended account (state `disabled`) is signed out at once, unless a super-admin is viewing it (session `impersonator`: plugins\MultiTenant)
+	//a suspended account (state `disabled`) is signed out at once, unless a super-admin is viewing it (session `impersonator`: plugins\MultiTenant)
 	if ($account->state === 'disabled' && empty($_SESSION['impersonator'])) {
 	    \V::app()->log->info('Boot: signed out user ' . \V::app()->user->_id . ': the account is suspended');
 	    \V::app()->user->logout();
@@ -162,7 +170,7 @@ class Boot {
 
 	\V::app()->config('rt.account', $account);
 
-	//CLD: 2026-10-21T23:00:00+03:00: the account's session limits (Account `session_idle`, minutes, and `session_max`, hours), for every session, "remember me" too
+	//the account's session limits (Account `session_idle`, minutes, and `session_max`, hours), for every session, "remember me" too
 	//(that one only survives closing the browser): a session unused for longer, or signed in longer ago, is signed out (was: 24 hours idle, 30 days with "remember me")
 	$now = time();
 	$loginTs = (int)\V::app()->session->getState(Session::KEY_LOGIN_TS);
@@ -177,7 +185,7 @@ class Boot {
 	\V::app()->session->setState(Session::KEY_ACTIVE_TS, $now);
 
 	//set a project in session
-	//CLD: 2026-10-30T12:00:00+02:00: the project last opened (User last_project), if the user still owns it or is a member,
+	//the project last opened (User last_project), if the user still owns it or is a member,
 	//	else the personal project,
 	//	else the first project the user is a member of (e.g. a Participant),
 	//	else a personal project created now (as the seed command does);

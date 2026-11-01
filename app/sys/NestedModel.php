@@ -12,7 +12,7 @@
 namespace sys;
 
 class NestedModel extends BaseModel {
-    //CLD: 2026-10-26T07:23:58+02:00: the schema is the nested field's (the nestedSchema option): not cached per class (BaseModel::attachSchema)
+    //the schema is the nested field's (the nestedSchema option): not cached per class (BaseModel::attachSchema)
     protected static $cacheSchema = false;
 
     //not an object of an account (no aid check)
@@ -33,7 +33,7 @@ class NestedModel extends BaseModel {
 	if ($cast) {
 	    $o->assign($data);
 	} else {
-	    //CLD: 2026-10-18T10:20:00+03:00: the values given stay as they are (binding the schema set a field's default over a given null: e.g. an
+	    //the values given stay as they are (binding the schema set a field's default over a given null: e.g. an
 	    //operator cast to null, not among the choices, was validated as the default `eq`); missing keys keep their defaults
 	    foreach($data as $key => $value)
 		$o->loadValue($key, $value);

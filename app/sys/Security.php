@@ -47,13 +47,13 @@ class Security extends BaseObject {
     }
 
 
-    //CLD: 2026-10-05T20:06:50+03:00: fail loudly instead of encrypting with an empty or guessable key
+    //fail loudly instead of encrypting with an empty or guessable key
     protected function requireSecret() {
 	if (!is_string($this->secret) || strlen($this->secret) < 32)
 	    throw new \ErrorException('Security: APP_SECRET is missing or shorter than 32 characters (see app.env)');
     }
 
-    //CLD: 2026-10-22T00:00:00+03:00: a key of its own for $purpose, derived from the secret (HMAC-SHA256), e.g. the audit log's seal (models\AuditLog)
+    //a key of its own for $purpose, derived from the secret (HMAC-SHA256), e.g. the audit log's seal (models\AuditLog)
     public function deriveKey($purpose) {
 	$this->requireSecret();
 	return hash_hmac('sha256', 'rail22:' . $purpose, $this->secret, true);
@@ -61,7 +61,7 @@ class Security extends BaseObject {
 
     // * Encrypts data.
     public function encrypt($cleardata) {
-	//CLD: 2026-10-05T20:06:50+03:00: require a configured secret
+	//require a configured secret
 	$this->requireSecret();
 	$ivlen = openssl_cipher_iv_length($this->cipher);
 	$iv = openssl_random_pseudo_bytes($ivlen);
@@ -72,7 +72,7 @@ class Security extends BaseObject {
 
     // * Decrypts data.
     public function decrypt($cipherdata) {
-	//CLD: 2026-10-05T20:06:50+03:00: require a configured secret (outside the try: a missing secret is a configuration error, not bad data)
+	//require a configured secret
 	$this->requireSecret();
 	try {
 	    $c = base64_decode($cipherdata);

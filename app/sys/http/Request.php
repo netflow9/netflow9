@@ -18,7 +18,7 @@ class Request {
     
 
 
-    //CLD: 2026-10-22T00:00:00+03:00: $config['trusted_proxies'] (config app.trusted_proxies): see userIP below
+    //$config['trusted_proxies'] (config app.trusted_proxies): see userIP below
     public function __construct($config = []) {
 	$this->query = $_GET;
 	$this->data = $_POST;
@@ -44,8 +44,7 @@ class Request {
 	if (str_contains($this->contentType, 'application/json'))
 	    $this->data = json_decode(file_get_contents('php://input'), true);
 
-	//CLD: 2026-10-22T00:00:00+03:00: the client's address is the connection's (was X-Forwarded-For first: any client could write any address into the audit log,
-	//password resets and webhook logs); X-Forwarded-For only when the connection comes from a trusted proxy: its last address that is not one of them
+	//the client's address is the connection's; X-Forwarded-For only when the connection comes from a trusted proxy: its last address that is not one of them
 	if (isset($_SERVER['REMOTE_ADDR']))
 	    $this->userIP = $_SERVER['REMOTE_ADDR'];
 	$proxies = $config['trusted_proxies'] ?? [];
@@ -66,7 +65,7 @@ class Request {
 	$this->uri = parse_url($this->requestUri);
     }
 
-    //CLD: 2026-10-22T00:00:00+03:00: whether address $ip is one of $list (addresses or CIDR ranges, IPv4 or IPv6)
+    //whether address $ip is one of $list (addresses or CIDR ranges, IPv4 or IPv6)
     public static function ipIn($ip, array $list) {
 	$bin = @inet_pton((string)$ip);
 	if ($bin === false)

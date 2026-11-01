@@ -6,7 +6,7 @@ class Field_object extends Field {
     public $icon = 'bi bi-box';
     public $name = 'Object';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type, labels per type; was [ 'is' => 'Is', 'in' => 'In', ]
+	//the conditions' operators (util\Conditions): one vocabulary for every type, labels per type;
 	'eval' => [ 'eq' => 'Is', 'ne' => 'Is not', 'in' => 'Is one of', 'empty' => 'Is empty', 'notEmpty' => 'Is not empty', ],
 	'set' => [ 'set' => 'Set' ],
     ];
@@ -22,7 +22,7 @@ class Field_object extends Field {
 	return $this->__cast_oid($value, $this->{'data:multiple'});
     }
 
-    //CLD: 2026-10-05T21:59:39+03:00: [ id => label ] of the objects this field can point to: `choices` if given, else all `object` objects of the account
+    //[ id => label ] of the objects this field can point to: `choices` if given, else all `object` objects of the account
     public function objectChoices() {
 	$choices = $this->choices;
 	if (is_callable($choices))
@@ -40,17 +40,17 @@ class Field_object extends Field {
 	return $choices;
     }
 
-    //CLD: 2026-10-11T22:16:09+03:00: a form lists all target objects up to this many; with more, it searches them on the server (searchChoices)
+    //a form lists all target objects up to this many; with more, it searches them on the server (searchChoices)
     const CHOICES_MAX = 100;
 
-    //CLD: 2026-10-11T22:16:09+03:00: how many objects of the account this field can point to (no `choices` given)
+    //how many objects of the account this field can point to (no `choices` given)
     public function objectCount() {
 	if (empty($this->object) || empty(\V::app()->om->getObjectDef($this->object)))
 	    return 0;
 	return \V::app()->om->count($this->object, [ 'aid' => \V::app()->config('rt.account')->_id ]);
     }
 
-    //CLD: 2026-10-11T22:16:09+03:00: one page of the objects this field can point to whose text fields contain $term (case-insensitive; an id finds that object), ordered by
+    //one page of the objects this field can point to whose text fields contain $term (case-insensitive; an id finds that object), ordered by
     //name when the target has one: [ [ [ id, text ], ... ], more ]. For a select that searches on the server (app.SelectPlus ajax)
     public function searchChoices($term, $page = 1, $limit = 20) {
 	if (empty($this->object) || empty(\V::app()->om->getObjectDef($this->object)))
@@ -128,10 +128,8 @@ class Field_object extends Field {
 	$inputOptions['multiple'] = !empty($this->multiple) ? 'multiple' : null;
 
 	//choices
-	//CLD: 2026-10-05T21:59:39+03:00: shared with the row editor (objectChoices); labels also work for data table rows
+	//shared with the row editor (objectChoices); labels also work for data table rows
 	$choices = $this->objectChoices();
-
-	//\V::app()->cs->addPageScript("new TomSelect('#{$fieldId}', {});");
 
 	return \V::app()->form->field($this->key, [
 	    'id' => $fieldId,
@@ -170,8 +168,8 @@ class Field_object extends Field {
 	foreach($value as $oid) {
 	    if (!empty($oid)) {
 		if (!empty($o = \V::app()->om->findbyId($objectName, $oid))) {
-		    //CLD: 2026-10-06T09:12:58+03:00: cast to string (objectLabel removed)
-		    //CLD: 2026-10-25T21:30:00+02:00: escaped (display() is HTML, as Field_text's; a name was as is: e.g. a workflow's in the audit log entry)
+		    //cast to string (objectLabel removed)
+		    //escaped (display() is HTML, as Field_text's; a name was as is: e.g. a workflow's in the audit log entry)
 		    $out[] = \V::app()->html->escape((string)$o);
 		} else {
 		    $out[] = '???';

@@ -7,7 +7,7 @@ class Field_text extends Field {
     public $icon = 'bi bi-input-cursor-text';
     public $name = 'Text line';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type (eq ne gt gte lt lte contains startsWith in empty notEmpty), labels per type; was [ 'is' => 'Is', '!is' => 'Is Not', 'contains' => 'Contains', ]
+	//the conditions' operators (util\Conditions): one vocabulary for every type (eq ne gt gte lt lte contains startsWith in empty notEmpty), labels per type;
 	'eval' => [ 'eq' => 'Is', 'ne' => 'Is not', 'contains' => 'Contains', 'startsWith' => 'Starts with', 'in' => 'Is one of', 'empty' => 'Is empty', 'notEmpty' => 'Is not empty', ],
 	'set' => [ 'set' => 'Set' ],
     ];
@@ -28,7 +28,6 @@ class Field_text extends Field {
 	    case 'toupper':
 		$value = strtoupper($value);
 		break;
-	    //CLD: 2026-10-18T10:45:00+03:00: surrounding spaces removed (e.g. names and labels in nested rows: Switch outputs, HTTP header names)
 	    case 'trim':
 		$value = trim($value);
 		break;

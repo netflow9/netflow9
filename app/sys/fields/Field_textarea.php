@@ -6,7 +6,7 @@ class Field_textarea extends Field {
     public $icon = 'bi bi-card-text';
     public $name = 'Multi line';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type (eq ne gt gte lt lte contains startsWith in empty notEmpty), labels per type; was [ 'is' => 'Is', '!is' => 'Is Not', 'contains' => 'Contains', ]
+	//the conditions' operators (util\Conditions): one vocabulary for every type (eq ne gt gte lt lte contains startsWith in empty notEmpty), labels per type;
 	'eval' => [ 'eq' => 'Is', 'ne' => 'Is not', 'contains' => 'Contains', 'startsWith' => 'Starts with', 'in' => 'Is one of', 'empty' => 'Is empty', 'notEmpty' => 'Is not empty', ],
 	'set' => [ 'set' => 'Set' ],
     ];

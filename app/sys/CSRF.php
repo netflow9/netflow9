@@ -29,7 +29,7 @@ class CSRF {
 	return hash_equals($expected, $token);
     }
 
-    //CLD: 2026-10-05T20:20:40+03:00: a token is 64 hex chars (see getToken)
+    //a token is 64 hex chars (see getToken)
     protected function isWellFormed($token) {
 	return is_string($token) && strlen($token) === 64 && ctype_xdigit($token);
     }

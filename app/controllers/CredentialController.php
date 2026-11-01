@@ -46,7 +46,7 @@ class CredentialController extends \sys\BaseController {
 	return $cred;
     }
 
-    //CLD: 2026-10-24T10:27:54+03:00: a credential of a feature the account's tier does not have (util\Tiers): not changed, tested nor connected (it may be deleted)
+    //a credential of a feature the account's tier does not have (util\Tiers): not changed, tested nor connected (it may be deleted)
     private function requireFeatureOf($cred) {
 	$account = \V::app()->config('rt.account');
 	if (!\util\Tiers::allows($account, $cred->getObjectName()))
@@ -59,7 +59,6 @@ class CredentialController extends \sys\BaseController {
 
 	if (!empty($req->query['data'])) {
 	    $response = $this->__data('Credential', [ 'project' => $this->project->_id ]);
-	    //CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON (was write + end: sent as text/html)
 	    $resp->sendJSON($response);
 	}
 
@@ -70,10 +69,10 @@ class CredentialController extends \sys\BaseController {
 	$type = (string)($req->query['type'] ?? '');
 	if (!\V::app()->om->isDefined($type))
 	    \V::app()->error(400, 'Unknown credential type');
-	//CLD: 2026-10-24T09:45:36+03:00: a type of a feature the account's tier does not have (util\Tiers)
+	//a type of a feature the account's tier does not have (util\Tiers)
 	if (!\util\Tiers::allows(\V::app()->config('rt.account'), $type))
 	    \V::app()->error(403, \util\Tiers::featureMessage(\V::app()->config('rt.account'), \V::app()->om->registry[$type]['feature']));
-	//CLD: 2026-10-25T17:40:00+02:00: a type this PHP cannot use (Credential::available(): e.g. a database type without its PDO driver)
+	//a type this PHP cannot use (Credential::available(): e.g. a database type without its PDO driver)
 	$class = \models\Credential::classFor($type);
 	if ($class !== null && !$class::available())
 	    \V::app()->error(409, 'This credential type is not available: the server lacks the PHP extension it needs');
@@ -219,7 +218,7 @@ class CredentialController extends \sys\BaseController {
     }
 
     //back to the list with a toast
-    //CLD: 2026-10-24T09:06:00+03:00: a toast (addToast, kept across the redirect by BaseController::redirect) and redirect() (was the message in the list's URL, ?error / ?message)
+    //a toast (addToast, kept across the redirect by BaseController::redirect) and redirect()
     private function back($type, $title, $message) {
 	$this->addToast($type, $title, \V::app()->html->escape($message));
 	$this->redirect('/credential/list');

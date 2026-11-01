@@ -6,7 +6,7 @@ class Field_datetime extends Field {
     public $name = 'DateTime';
     public $icon = 'bi bi-calendar-event';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type, labels per type; was [ 'before' => 'Before', 'after' => 'After', ]
+	//the conditions' operators (util\Conditions): one vocabulary for every type, labels per type;
 	'eval' => [ 'lt' => 'Before', 'gt' => 'After', 'lte' => 'On or before', 'gte' => 'On or after', 'empty' => 'Is empty', 'notEmpty' => 'Is not empty', ],
 	'set' => [ 'OpTimeSetCrt', 'OpTimeAdd', 'OpTimeSub', 'OpSet', 'OpUnset'],
     ];
@@ -71,7 +71,7 @@ class Field_datetime extends Field {
 	if (!$this->checkAccess(\V::app()->user->_id, 'read'))
 	    return '';
 
-	//CLD: 2026-10-24T16:30:00+03:00: util\Format::date / datetime: the account's format (Account `date_format` / `datetime_format`; was app.format.date / app.format.datetime), in the app timezone
+	//util\Format::date / datetime: the account's format (Account `date_format` / `datetime_format`)
 	$format = $options['format'] ?? null;
 	if (empty($value = $this->binding->data($this->key)))
 	    return '';
@@ -88,7 +88,7 @@ class Field_datetime extends Field {
 	$fieldId = ($options['id'] ?? "field-{$this->key}-" . uniqid());
 	$inputOptions['id'] = $fieldId;
 
-	//CLD: 2026-10-24T16:30:00+03:00: the date picker shows the account's format (util\Format; was the picker's own, M j, Y)
+	//the date picker shows the account's format
 	$pickerFormat = json_encode($this->format == 'date' ? \util\Format::dateFormat() : \util\Format::datetimeFormat());
 	\V::app()->cs->addPageScript("new app.DatePicker('#{$fieldId}', { mode: '{$this->format}', format: {$pickerFormat} });");
 

@@ -7,7 +7,7 @@ class Field_oid extends Field {
     public $icon = 'bi bi-input-cursor-text';
     public $name = 'Object ID';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type, labels per type; was []
+	//the conditions' operators (util\Conditions): one vocabulary for every type, labels per type;
 	'eval' => [ 'eq' => 'Is', 'ne' => 'Is not', 'in' => 'Is one of', ],
 	'set' => [ 'set' => 'Set' ],
     ];

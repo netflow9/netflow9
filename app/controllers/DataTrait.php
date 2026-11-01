@@ -4,7 +4,7 @@ namespace controllers;
 
 trait DataTrait {
 
-    //CLD: 2026-10-05T20:56:43+03:00: the field `$key` of $o if it exists and the current user may read it, else null;
+    //the field `$key` of $o if it exists and the current user may read it, else null;
     //filtering/sorting/searching on unreadable fields (e.g. User password, tfa_secret) leaked their values through nRecords
     private function __readableField($o, $key) {
 	if (!is_string($key) || !isset($o->schema[$key]))
@@ -21,8 +21,7 @@ trait DataTrait {
 	$query = [];
 	$conditions = [];
 
-	//CLD: 2026-10-05T20:56:43+03:00: ignore malformed rows, unknown/unreadable fields, non-scalar values and unknown operators
-	//(was: any schema field, and an unknown op or field raised an error)
+	//ignore malformed rows, unknown/unreadable fields, non-scalar values and unknown operators
 	if (!is_array($filter))
 	    return $query;
 
@@ -39,7 +38,7 @@ trait DataTrait {
 	    if (empty($f))
 		continue;
 
-	    //CLD: 2026-10-14T20:17:14+03:00: a condition of util\Conditions with the field's operators (was its own list: is / !is / before / after / ... here); an operator the field
+	    //a condition of util\Conditions with the field's operators (was its own list: is / !is / before / after / ... here); an operator the field
 	    //does not have is ignored, as an unknown one was
 	    $op = (string)($fRow['op'] ?? '');
 	    if (!isset($f->ops['eval'][$op]))
@@ -68,7 +67,7 @@ trait DataTrait {
 	$sort = [ '_id' => 1];
 	$sortField = $req->query['__sortField'] ?? null;
 	$sortDir = $req->query['__sortDir'] ?? null;
-	//CLD: 2026-10-05T20:56:43+03:00: sort only by _id or a readable field (sort order also reveals values)
+	//sort only by _id or a readable field (sort order also reveals values)
 	if ($sortField !== null && $sortDir !== null && ($sortField === '_id' || $this->__readableField($o, $sortField)))
 	    $options['sort'] = [ $sortField => $sortDir == 'asc' ? 1 : -1 ];
 
@@ -77,9 +76,9 @@ trait DataTrait {
 	    $query['aid'] = $account->_id;
 
 	$search = $req->query['__search'] ?? '';
-	//CLD: 2026-10-05T20:56:43+03:00: search only readable fields, as literal text (was every text field, e.g. tfa_secret, with a client-supplied regex)
+	//search only readable fields, as literal text (was every text field, e.g. tfa_secret, with a client-supplied regex)
 	if (is_string($search) && $search !== '') {
-	    //CLD: 2026-10-14T20:17:14+03:00: `contains` conditions on the fields, any of them (util\Conditions; was the regex written here); a field without `contains` is not searched
+	    //`contains` conditions on the fields, any of them (util\Conditions; was the regex written here); a field without `contains` is not searched
 	    $sq = [];
 	    foreach($o->schema as $f) {
 		if (!in_array($f->type, [ 'text', 'textarea', 'email', 'select' ]) || !isset($f->ops['eval']['contains']))
@@ -101,18 +100,16 @@ trait DataTrait {
 	//add system query
 	$query = array_merge($query, $sys_query);
 
-	//\V::app()->log->debug('DataTrait::query=' . print_r($query, true));
-
 	$response['nRecords'] = \V::app()->om->count($objectName, $query);
 	$objs = \V::app()->om->find($objectName, $query, $options);
 
 	foreach($objs as $o) {
 	    $record = [];
-	    //CLD: 2026-10-10T09:14:41+03:00: only the readable fields (were all: e.g. Credential secrets went to the browser)
+	    //only the readable fields (were all: e.g. Credential secrets went to the browser)
 	    foreach($o->schema as $key => $field) {
 		if ($field->checkAccess(\V::app()->user->_id, 'read')) {
 		    $record[$key] = $field->display();
-		    //CLD: 2026-10-24T17:30:00+03:00: the dates also as ISO 8601 (_iso.<key>), for the browser to read (app.formatter.timeAgo): the shown text is in the account's format
+		    //the dates also as ISO 8601 (_iso.<key>), for the browser to read (app.formatter.timeAgo): the shown text is in the account's format
 		    if ($field instanceof \sys\fields\Field_datetime)
 			$record['_iso'][$key] = \util\Format::datetime($o->$key, DATE_ATOM);
 		}

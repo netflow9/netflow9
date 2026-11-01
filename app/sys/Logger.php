@@ -1,6 +1,7 @@
 <?php
 
 namespace sys;
+
 /**
  * Log
  *
@@ -9,6 +10,7 @@ namespace sys;
  * level - the logging level (DEBUG, INFO, WARN, ERROR)
  * log.writer - name of the class that will perform the actual logging
  */
+
 class Logger extends BaseObject {
     protected static $levels = [
         'ERROR'	=> 1,
@@ -112,14 +114,15 @@ class Logger extends BaseObject {
             return false;
 
 
-	//CLD: 2026-10-18T00:00:00+03:00: accept any number of params; facility is always the configured one (see setFacility)
+	//accept any number of params; facility is always the configured one (see setFacility)
+
 	//called without any argument
 	if (!count($params))
 	    return false;
 
 	$facility = $this->_config['facility'];
 
-	//CLD: 2026-10-18T00:00:00+03:00: build message from all params, space separated; non-scalars are dumped with print_r
+	//build message from all params, space separated; non-scalars are dumped with print_r
 	$parts = [];
 	foreach ($params as $p) {
 	    if (is_null($p))

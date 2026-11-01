@@ -6,7 +6,7 @@ class Field_array extends Field {
     public $icon = 'bi bi-code-square';
     public $name = 'Array';
     public $ops = [
-	//CLD: 2026-10-14T20:17:14+03:00: the conditions' operators (util\Conditions): one vocabulary for every type, labels per type; was [ 'OpIsEmpty', 'OpIsNotEmpty' ]
+	//the conditions' operators (util\Conditions): one vocabulary for every type, labels per type;
 	'eval' => [ 'contains' => 'Contains', 'empty' => 'Is empty', 'notEmpty' => 'Is not empty', ],
 	'set' => [ 'OpSet' ],
     ];
@@ -26,7 +26,6 @@ class Field_array extends Field {
     public function __display(&$options = []) {
 	if (!$this->checkAccess(\V::app()->user->_id, 'read'))
 	    return '';
-	//CLD: 2026-10-25T21:30:00+02:00: escaped (display() is HTML, as Field_text's; was print_r as is)
 	return \V::app()->html->escape(print_r($this->binding->data($this->key), true));
     }
 
