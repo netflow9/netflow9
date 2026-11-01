@@ -33,6 +33,8 @@ class NodeAppZbxHosts extends NodeAppZabbix {
 	'items' => 'Latest values of a host',
 	'groups' => 'List host groups',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'create', 'enable', 'disable', 'delete' ];
     const LISTS = [ 'list', 'items', 'groups' ];
     const STATUS = [ 'all' => 'All', 'enabled' => 'Enabled', 'disabled' => 'Disabled' ];
     const INTERFACES = [ '1' => 'Zabbix agent (10050)', '2' => 'SNMP (161)', 'none' => 'None' ];

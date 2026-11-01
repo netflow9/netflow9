@@ -28,6 +28,8 @@ class NodeAppHyperVCheckpoints extends NodeAppHyperV {
 	'removeAll' => 'Remove all checkpoints',
 	'prune' => 'Remove old checkpoints',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'create', 'restore', 'remove', 'removeAll', 'prune' ];
     const LISTS = [ 'list' ];
 
     //r22cp <checkpoint> <the VM's current checkpoint ID>: a checkpoint as JSON; r22snap <VM> <name or ID>: a checkpoint of the VM

@@ -41,6 +41,9 @@ class ExecutionLog extends \sys\BaseModel {
 	//CLD: 2026-11-01T06:00:00+02:00: a FortiGate event refused (FortigateController)
 	'fortigate.refused' => 'FortiGate event refused',
 	'job.failed' => 'Job failed',
+	//CLD: 2026-11-01T23:30:00+02:00: an AI step's tool calls sent for approval; the decisions applied (approved, rejected, not decided in time)
+	'ai.approval.ask' => 'Agent action awaiting approval',
+	'ai.approval' => 'Agent action decided',
     ];
 
     //the execution running now (WfExecution::run), its current step's title, and what acts outside executions (e.g. daemon; default: by app mode)

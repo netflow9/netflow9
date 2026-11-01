@@ -40,6 +40,8 @@ class NodeAppProxmoxGuests extends NodeAppProxmox {
 	'migrate' => 'Migrate to another node',
 	'delete' => 'Delete',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'start', 'shutdown', 'reboot', 'stop', 'suspend', 'resume', 'reset', 'clone', 'migrate', 'delete' ];
     const LISTS = [ 'list' ];
     const POWER = [ 'start', 'shutdown', 'reboot', 'stop', 'suspend', 'resume', 'reset' ];
     //what each action leaves, and the status in which it is done already

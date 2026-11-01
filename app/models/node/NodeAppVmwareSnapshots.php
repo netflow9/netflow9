@@ -29,6 +29,8 @@ class NodeAppVmwareSnapshots extends NodeAppVmware {
 	'removeAll' => 'Remove all snapshots',
 	'prune' => 'Remove old snapshots',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'create', 'revert', 'remove', 'removeAll', 'prune' ];
     const LISTS = [ 'list' ];
     const WAITED = [ 'create', 'revert', 'remove', 'removeAll' ];
 

@@ -39,6 +39,8 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 	'freeBusy' => 'Find busy times',
 	'calendars' => 'List the calendars',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'create', 'update', 'delete' ];
 
     //the operations on an existing event, the ones writing an event's settings, the ones on a period
     const ON_EVENT = [ 'get', 'update', 'delete' ];

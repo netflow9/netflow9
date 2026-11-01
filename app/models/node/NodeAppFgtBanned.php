@@ -24,6 +24,8 @@ class NodeAppFgtBanned extends NodeAppFortiGate {
 	'unban' => 'Unban IPs',
 	'clear' => 'Unban every IP',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'ban', 'unban', 'clear' ];
     const LISTS = [ 'list' ];
     const MAX_IPS = 1000;
 

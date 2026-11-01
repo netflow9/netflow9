@@ -20,6 +20,9 @@ namespace models\node;
 use util\SqlDb;
 
 abstract class NodeAppDatabase extends \models\WfNode {
+    //CLD: 2026-11-01T21:50:00+02:00: its operations can be an AI step's tools (util\AgentTools: varsForSettings, setResult)
+    use AgentToolTrait;
+
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-database';
@@ -37,6 +40,8 @@ abstract class NodeAppDatabase extends \models\WfNode {
 	'execute' => 'Execute a statement',
 	'insert' => 'Insert rows',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (a query too: its SQL may change data); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'query', 'execute', 'insert' ];
     const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     const MAX_ROWS = 10000;
     const MAX_INSERT = 10000;
@@ -104,7 +109,8 @@ abstract class NodeAppDatabase extends \models\WfNode {
 		'default' => '',
 		'help' => 'An expression giving a list of objects keyed by column, e.g. {{ response.body.items }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'insert' ] ],
-		'ui' => [ 'rows' => 3, 'width' => 8, 'expression' => true, 'showIf' => $op([ 'insert' ]) ],
+		//CLD: 2026-11-01T21:50:00+02:00: + agent: as an AI step's tool, a list (util\AgentTools)
+		'ui' => [ 'rows' => 3, 'width' => 8, 'expression' => true, 'showIf' => $op([ 'insert' ]), 'agent' => [ 'type' => 'list', 'help' => 'A list of objects keyed by column' ] ],
 	    ],
 	    [
 		'key' => 'maxRows',
@@ -201,11 +207,11 @@ abstract class NodeAppDatabase extends \models\WfNode {
 	try {
 	    $start = microtime(true);
 	    $pdo = $cred->connect(max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 60))));
-	    [ $result, $summary ] = self::run($operation, $pdo, $cred->driver(), (array)$this->config, $this->exec->expressionVariables());
+	    //CLD: 2026-11-01T21:50:00+02:00: varsForSettings() (none when the step runs as a tool: a {{ }} in the model's SQL reaches no variable)
+	    [ $result, $summary ] = self::run($operation, $pdo, $cred->driver(), (array)$this->config, $this->varsForSettings());
 	} catch (\RuntimeException $e) {
 	    //PDOException is one; the message in the variable (for the `error` output)
-	    if (\util\Validator::isIdentifier($name))
-		$this->exec->setVariable($name, [ 'error' => $e->getMessage() ]);
+	    $this->setResult($name, [ 'error' => $e->getMessage() ]);
 	    $this->exec->log($this->wfid, static::$label . " {$operation}: " . $e->getMessage());
 	    if ($this->cfg('onError', 'fail') === 'output')
 		return [ 1 ];
@@ -213,8 +219,8 @@ abstract class NodeAppDatabase extends \models\WfNode {
 	} finally {
 	    $pdo = null;
 	}
-	if (\util\Validator::isIdentifier($name))
-	    $this->exec->setVariable($name, $result);
+	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it; was the variable only)
+	$this->setResult($name, $result);
 	$this->exec->log($this->wfid, static::$label . " {$operation} on " . $cred->describe() . ": {$summary} (" . (int)round((microtime(true) - $start) * 1000) . ' ms)');
 	return [ 0 ];
     }
@@ -272,7 +278,8 @@ abstract class NodeAppDatabase extends \models\WfNode {
 		$table = trim((string)($cfg['table'] ?? ''));
 		if (!SqlDb::isIdentifier($table, 3))
 		    throw new \RuntimeException("not a table name: `{$table}`");
-		$list = \util\Expression::render((string)($cfg['rows'] ?? ''), $vars);
+		//CLD: 2026-11-01T21:50:00+02:00: a list as it is (an AI step's tool: the model's argument); the setting's text rendered (was always rendered)
+		$list = is_array($cfg['rows'] ?? null) ? $cfg['rows'] : \util\Expression::render((string)($cfg['rows'] ?? ''), $vars);
 		if ($list === null || $list === '' || $list === [])
 		    return [ [ 'affected' => 0 ], 'no rows to insert' ];
 		if (!is_array($list) || !array_is_list($list))

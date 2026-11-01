@@ -1740,14 +1740,20 @@ window.app.Workflow = (function() {
 		fields.push(Object.assign(credential, { width: operation ? 6 : (credential.width || 6) }));
 	    if (operation)
 		fields.push(Object.assign(operation, { width: 6 }));
-	    own.filter((f) => !f.limit && !f.advanced).forEach((f) => fields.push(f));
+	    own.filter((f) => !f.limit && !f.advanced && !f.section).forEach((f) => fields.push(f));
+	    //CLD: 2026-11-01T21:50:00+02:00: the fields of a named section (`section`, e.g. the AI steps' Integrations) in a section of that name after the step's own settings, closed
+	    //(opened when one of them is not at its default, or is invalid)
+	    const sections = {};
+	    own.filter((f) => f.section && !f.limit && !f.advanced).forEach((f) => (sections[f.section] = sections[f.section] || []).push(f));
+	    Object.keys(sections).forEach((name) => fields.push({ type: 'section', label: name + '…', collapsed: true, openIfChanged: true, fields: sections[name] }));
 	    const advanced = own.filter((f) => f.advanced && !f.limit);
 	    const last = [ onError, ...own.filter((f) => f.limit), timeout ].filter((f) => f).map((f) => Object.assign(f, { width: 3 }));
 	    last.forEach((f, i) => advanced.push(Object.assign(f, { newRow: i === 0 })));
 	    if (advanced.length)
 		fields.push({ type: 'section', label: 'Advanced…', collapsed: true, openIfChanged: true, fields: advanced });
 	    if (readonly)
-		advanced.concat(fields).forEach(f => f.editable = false);
+		//CLD: 2026-11-01T21:50:00+02:00: + the named sections' fields
+		advanced.concat(fields, ...Object.values(sections)).forEach(f => f.editable = false);
 
 	    const el = document.createElement('div');
 	    el.className = 'modal fade wf-editor';

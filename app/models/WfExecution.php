@@ -388,6 +388,10 @@ class WfExecution extends \sys\BaseModel {
 	\models\ExecutionLog::record('execution.cancel', null, $message);
 	\models\ExecutionLog::$execution = $outer;
 
+	//CLD: 2026-11-01T23:30:00+02:00: its open tasks (Human task, an AI step's approval) are cancelled; an AI step's saved conversation is removed
+	\V::app()->om->updateMany('WfTask', [ 'aid' => $this->aid, 'execution' => $this->_id, 'state' => 'open' ], [ '$set' => [ 'state' => 'cancelled' ] ]);
+	\models\node\NodeAppAi::dropSaved($this);
+
 	//CLD: 2026-10-30T19:00:00+02:00: the workflows it waits for (Run a workflow) are cancelled too; the workflow waiting for it is resumed (its step: cancelled)
 	foreach(\V::app()->om->find('WfExecution', [ 'aid' => $this->aid, 'input.caller.execution' => (string)$this->_id, 'input.caller.wait' => true,
 	    'state' => [ '$in' => [ 'new', 'run', 'sleep' ] ] ]) as $child)

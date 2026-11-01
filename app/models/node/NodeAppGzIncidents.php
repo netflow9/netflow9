@@ -32,6 +32,8 @@ class NodeAppGzIncidents extends NodeAppGravityZone {
 	'isolate' => 'Isolate an endpoint',
 	'restore' => 'Restore an endpoint from isolation',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'status', 'priority', 'assign', 'note', 'isolate', 'restore' ];
     const LISTS = [ 'list' ];
     const KINDS = [ 'incidents' => 'Incidents', 'extendedIncidents' => 'Extended incidents (XDR)' ];
     const STATUSES = [ '1' => 'Open', '2' => 'Investigating', '3' => 'False positive', '4' => 'Closed' ];

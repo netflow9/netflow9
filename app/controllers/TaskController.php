@@ -72,6 +72,10 @@ class TaskController extends \sys\BaseController {
 	$task->completed_at = new \MongoDB\BSON\UTCDateTime();
 	$task->save();
 
+	//CLD: 2026-11-01T23:30:00+02:00: an AI step's approval: who decided what, with the arguments (the audit log)
+	if ((string)$task->kind === 'ai-approval')
+	    \models\AuditLog::record('ai.approval', $task, \models\node\NodeAppAi::decisionsText($task));
+
 	//CLD: 2026-10-30T15:00:00+02:00: the run resumed by the daemon (queued; was resumed here after the answer: runSync)
 	$exe = \V::app()->om->findOne('WfExecution', [ '_id' => $task->execution, 'aid' => $task->aid ]);
 	if ($exe && $exe->canRun())

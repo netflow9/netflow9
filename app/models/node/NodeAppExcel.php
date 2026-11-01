@@ -41,6 +41,8 @@ class NodeAppExcel extends NodeAppMicrosoft {
 	'info' => 'Get workbook information',
 	'addSheet' => 'Add a worksheet',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'append', 'update', 'clear', 'addSheet' ];
 
     //the operations on the cells of a worksheet
     const ON_CELLS = [ 'read', 'append', 'update', 'clear' ];

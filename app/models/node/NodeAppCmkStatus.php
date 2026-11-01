@@ -26,6 +26,8 @@ class NodeAppCmkStatus extends NodeAppCheckmk {
 	'services' => 'List services',
 	'query' => 'Livestatus query',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [];
     const LISTS = [ 'problems', 'services', 'query' ];
     const SERVICE_STATES = [ 0 => 'OK', 1 => 'WARN', 2 => 'CRIT', 3 => 'UNKNOWN' ];
     const HOST_STATES = [ 0 => 'UP', 1 => 'DOWN', 2 => 'UNREACH' ];

@@ -28,6 +28,8 @@ class NodeAppFgtSystem extends NodeAppFortiGate {
 	'licenses' => 'Get licenses',
 	'backup' => 'Back up the configuration into Files',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'backup' ];
     const MAX_BACKUP = 50 * 1024 * 1024;
 
     public static function outputVariables($config) {

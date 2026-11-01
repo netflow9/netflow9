@@ -40,7 +40,8 @@ class NodeAppTask extends \models\WfNode {
     const UNIT_SECONDS = [ 'minutes' => 60, 'hours' => 3600, 'days' => 86400 ];
 
     //the choices of the current project (the designer's user): its members, the account's roles
-    protected static function memberChoices() {
+    //CLD: 2026-11-01T23:30:00+02:00: public (the AI steps' approvers: util\AgentTools::approvalFields)
+    public static function memberChoices() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
 	$account = \V::app()->config('rt.account');
@@ -55,7 +56,7 @@ class NodeAppTask extends \models\WfNode {
 	return $choices;
     }
 
-    protected static function roleChoices() {
+    public static function roleChoices() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest)
 	    return [];
 	$choices = [];

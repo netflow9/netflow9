@@ -34,7 +34,8 @@ class NodeAppWorkflow extends \models\WfNode {
     const CHECK_EVERY = 3600;
 
     //the workflows of the current project (the designer's user) that start with Called by a workflow: [ id => [ name, contract ] ]
-    protected static function callable() {
+    //CLD: 2026-11-01T21:50:00+02:00: public (the AI steps' Workflows setting: util\AgentTools)
+    public static function callable() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
 	$list = [];
@@ -136,7 +137,8 @@ class NodeAppWorkflow extends \models\WfNode {
     }
 
     //the workflow called by a step of $config, in $aid (default: the current account); null when missing
-    protected static function findWorkflow($id, $aid = null, $project = null) {
+    //CLD: 2026-11-01T21:50:00+02:00: public (util\AgentTools: the workflows of an AI step's tools)
+    public static function findWorkflow($id, $aid = null, $project = null) {
 	$id = (string)$id;
 	if ($id === '' || !\util\Validator::rule('oid', $id))
 	    return null;
@@ -208,32 +210,17 @@ class NodeAppWorkflow extends \models\WfNode {
 	$wf = static::findWorkflow($this->cfg('workflow', ''), $exec->aid, $exec->project);
 	if (!$wf)
 	    return $this->failed('the workflow is no longer in this project');
-	$live = $wf->liveCopy() ?: $wf;
-	$contract = NodeTriggerCall::contractOf($live->nodes);
-	if ($contract === null)
-	    return $this->failed("{$wf->name} does not start with Called by a workflow");
-	if (array_filter($live->issues(), fn($i) => $i['level'] == 'error'))
-	    return $this->failed("{$wf->name} has errors (steps' settings or connections)");
-
-	//no loops, not too deep
-	$chain = array_map('strval', (array)($exec->input['caller']['chain'] ?? []));
-	$chain[] = (string)$exec->wf;
-	if (in_array((string)$wf->_id, $chain, true))
-	    return $this->failed("{$wf->name} is already running in this chain of workflows (a loop)");
-	if (count($chain) >= self::MAX_DEPTH)
-	    return $this->failed('workflows nested too deep (at most ' . self::MAX_DEPTH . ')');
-
 	$vars = $exec->expressionVariables();
 	$inputs = [];
 	foreach((array)$this->cfg('inputs', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
 		$inputs[(string)$row['name']] = \util\Expression::render((string)($row['value'] ?? ''), $vars);
 	}
-	$caller = \V::app()->om->findOne('Workflow', [ '_id' => $exec->wf, 'aid' => $exec->aid ]);
 	$wait = $this->cfg('mode', 'wait') !== 'start';
-	$child = \models\WfExecution::startFor($live, 'call', [ 'vars' => $inputs, 'caller' => [ 'wf' => (string)$exec->wf, 'name' => (string)($caller->name ?? ''),
-	    'execution' => (string)$exec->_id, 'node' => (string)$this->wfid, 'chain' => $chain, 'wait' => $wait ] ], $contract['wfid']);
-	$child->log(null, 'started by the workflow ' . (string)($caller->name ?? $exec->wf) . ' (execution ' . (string)$exec->_id . ')');
+	//CLD: 2026-11-01T21:50:00+02:00: the checks and the new execution in startChild() (was here: the AI steps' workflow tools start them the same way)
+	[ $child, $error ] = static::startChild($exec, $wf, $inputs, $wait, (string)$this->wfid);
+	if ($child === null)
+	    return $this->failed($error);
 
 	if (!$wait) {
 	    $child->queue();
@@ -251,6 +238,41 @@ class NodeAppWorkflow extends \models\WfNode {
 	    return $this->pause();
 	}
 	return $this->finish($child);
+    }
+
+    //CLD: 2026-11-01T21:50:00+02:00: new (was in execute()): workflow $wf started by execution $exec (its step $nodeId) with $inputs (the inputs' values, cast by its trigger), $wait: the caller waits
+    //for it (it is queued when the workflow ends: WfExecution::notifyCaller). The checks: it starts with Called by a workflow, has no errors, is not already in the chain of callers,
+    //not too deep (MAX_DEPTH). [ the new execution (not saved), null ] or [ null, why it cannot start ]
+    public static function startChild($exec, $wf, array $inputs, $wait, $nodeId) {
+	$live = $wf->liveCopy() ?: $wf;
+	$contract = NodeTriggerCall::contractOf($live->nodes);
+	if ($contract === null)
+	    return [ null, "{$wf->name} does not start with Called by a workflow" ];
+	if (array_filter($live->issues(), fn($i) => $i['level'] == 'error'))
+	    return [ null, "{$wf->name} has errors (steps' settings or connections)" ];
+
+	//no loops, not too deep
+	$chain = array_map('strval', (array)($exec->input['caller']['chain'] ?? []));
+	$chain[] = (string)$exec->wf;
+	if (in_array((string)$wf->_id, $chain, true))
+	    return [ null, "{$wf->name} is already running in this chain of workflows (a loop)" ];
+	if (count($chain) >= self::MAX_DEPTH)
+	    return [ null, 'workflows nested too deep (at most ' . self::MAX_DEPTH . ')' ];
+
+	$caller = \V::app()->om->findOne('Workflow', [ '_id' => $exec->wf, 'aid' => $exec->aid ]);
+	$child = \models\WfExecution::startFor($live, 'call', [ 'vars' => $inputs, 'caller' => [ 'wf' => (string)$exec->wf, 'name' => (string)($caller->name ?? ''),
+	    'execution' => (string)$exec->_id, 'node' => (string)$nodeId, 'chain' => $chain, 'wait' => (bool)$wait ] ], $contract['wfid']);
+	$child->log(null, 'started by the workflow ' . (string)($caller->name ?? $exec->wf) . ' (execution ' . (string)$exec->_id . ')');
+	return [ $child, null ];
+    }
+
+    //CLD: 2026-11-01T21:50:00+02:00: new (was in finish()): the outputs of ended execution $child (its trigger's outputs: [ name => value ], null when it did not set one)
+    public static function outputsOf($child) {
+	$outputs = [];
+	$variables = is_array($child->variables) ? $child->variables : [];
+	foreach((NodeTriggerCall::contractOf($child->nodes)['outputs'] ?? []) as $name)
+	    $outputs[$name] = $variables[$name] ?? null;
+	return $outputs;
     }
 
     //a workflow started earlier: still running (paused: this step too, until it ends or the time limit), or ended
@@ -284,10 +306,7 @@ class NodeAppWorkflow extends \models\WfNode {
 	$this->child = null;
 	$this->deadline = null;
 	$this->resume_at = null;
-	$outputs = [];
-	$variables = is_array($child->variables) ? $child->variables : [];
-	foreach((NodeTriggerCall::contractOf($child->nodes)['outputs'] ?? []) as $name)
-	    $outputs[$name] = $variables[$name] ?? null;
+	$outputs = static::outputsOf($child);
 	if ($child->state !== 'end')
 	    return $this->failed((string)($child->error ?: $child->state), (string)$child->_id, (string)$child->state, $outputs);
 	$this->exec->log($this->wfid, "execution {$child->_id} ended");

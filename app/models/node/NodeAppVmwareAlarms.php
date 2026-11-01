@@ -22,6 +22,8 @@ class NodeAppVmwareAlarms extends NodeAppVmware {
 	'list' => 'List triggered alarms',
 	'acknowledge' => 'Acknowledge an alarm',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'acknowledge' ];
     const LISTS = [ 'list' ];
     const STATUS = [ 'yellow' => 'Yellow (warning) and red', 'red' => 'Red (alert) only' ];
     const ENTITIES = [ 'any' => 'Any object', 'VirtualMachine' => 'VMs', 'HostSystem' => 'Hosts', 'Datastore' => 'Datastores', 'ClusterComputeResource' => 'Clusters',

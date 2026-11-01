@@ -22,6 +22,8 @@ class NodeAppZbxProblems extends NodeAppZabbix {
 	'problems' => 'List current problems',
 	'event' => 'Get an event',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [];
     const LISTS = [ 'problems' ];
     //not 0: a select keeps no '0' (and keys 0..5 would be a list, read as labels)
     const MIN = [ 'any' => 'All severities', '1' => 'Information and worse', '2' => 'Warning and worse', '3' => 'Average and worse', '4' => 'High and worse', '5' => 'Disaster' ];

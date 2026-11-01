@@ -27,6 +27,8 @@ class NodeAppVeeamSessions extends NodeAppVeeam {
 	'stop' => 'Stop a session',
 	'wait' => 'Wait for a session to finish',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'stop' ];
     const LISTS = [ 'list', 'tasks' ];
     const RESULTS = [ 'Success' => 'Success', 'Warning' => 'Warning', 'Failed' => 'Failed', 'None' => 'None (still running)' ];
     const STATES = [ '' => 'Any', 'Working' => 'Working', 'Stopped' => 'Stopped', 'Starting' => 'Starting', 'Stopping' => 'Stopping', 'Idle' => 'Idle', 'Postprocessing' => 'Postprocessing' ];

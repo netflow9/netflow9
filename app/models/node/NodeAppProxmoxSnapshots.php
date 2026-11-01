@@ -26,6 +26,8 @@ class NodeAppProxmoxSnapshots extends NodeAppProxmox {
 	'delete' => 'Delete a snapshot',
 	'prune' => 'Delete old snapshots',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'create', 'rollback', 'delete', 'prune' ];
     const LISTS = [ 'list' ];
     //Proxmox's snapshot names (pve-configid)
     const NAME = '/^[A-Za-z][A-Za-z0-9_-]{1,39}$/';

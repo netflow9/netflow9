@@ -6,6 +6,8 @@
 	the run waiting for it (execution + step), its state (open, done, expired) and, when done, the answers and who gave them.
 
     Completed in "My tasks" (plugins\Forms\controllers\TaskController); completing resumes the run
+    CLD: 2026-11-01T23:30:00+02:00: + kind: `ai-approval` (an AI step's tool calls waiting for approval: models\node\NodeAppAi::askApproval), calls (the calls it decides: [ { tool, label,
+    arguments } ]); state `cancelled`: its run was killed (WfExecution::kill)
 */
 
 namespace models;
@@ -21,7 +23,9 @@ class WfTask extends \sys\BaseModel {
     const STATES = [
 	'open' => 'Open',
 	'done' => 'Done',
-	'expired' => 'Expired'
+	'expired' => 'Expired',
+	//CLD: 2026-11-01T23:30:00+02:00: its run was killed
+	'cancelled' => 'Cancelled',
     ];
 
     public function getSchema() {
@@ -101,6 +105,17 @@ class WfTask extends \sys\BaseModel {
 		'key' => 'node',
 		'type' => 'text',
 		'label' => 'Step'
+	    ],
+	    //CLD: 2026-11-01T23:30:00+02:00: new: what the task is for (empty: a Human task; ai-approval: an AI step's tool calls), the calls it decides
+	    [
+		'key' => 'kind',
+		'type' => 'text',
+		'label' => 'Kind'
+	    ],
+	    [
+		'key' => 'calls',
+		'type' => 'array',
+		'label' => 'Calls'
 	    ],
 	    [
 		'key' => 'project',

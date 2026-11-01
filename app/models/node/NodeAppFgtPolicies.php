@@ -25,6 +25,8 @@ class NodeAppFgtPolicies extends NodeAppFortiGate {
 	'disable' => 'Disable a policy',
 	'stats' => 'Policy hit counts',
     ];
+    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    const WRITES = [ 'enable', 'disable' ];
     const LISTS = [ 'list', 'stats' ];
 
     protected static function operationFields() {
