@@ -49,12 +49,13 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-11-01T06:00:00+02:00: + fortigate (the FortiGate credential, steps and event trigger against a fake FortiGate: commands/tests/FortiGateTestServer.php)
     //CLD: 2026-11-01T10:00:00+02:00: + sophos (the Sophos Firewall credential and steps against a fake firewall's XML API: commands/tests/SophosTestServer.php)
     //CLD: 2026-11-01T08:00:00+02:00: + checkmk (the Checkmk credential, steps and problem trigger against a fake site: commands/tests/CheckmkTestServer.php)
+    //CLD: 2026-11-01T12:00:00+02:00: + vmware (the VMware vCenter credential, steps and alarm trigger against a fake vCenter: commands/tests/VmwareTestServer.php)
     //CLD: 2026-11-01T02:00:00+02:00: + access (the account's Data access: the projects' MCP server on / off, what the Assistant may read)
     //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
     //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -5209,6 +5210,234 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('checkmk: problem trigger: Run in the designer: a current problem', [ 1, 'problem' ], [ count($now['executions'] ?? []), ($now['executions'][0] ?? null)?->getVariable('ev')['event'] ?? null ]);
 	} finally {
 	    $C::$testing = false;
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-01T12:00:00+02:00: VMware vCenter against a fake vCenter 8.0 U3 (commands/tests/VmwareTestServer.php; util\VSphere::$testing: http, no address guard): the client (the address,
+    //the ids' types, vCenter's messages, a new sign-in after a 401), the credential's test (both APIs), the steps (VMs by name, * patterns, filters by name; power already so; a guest
+    //shutdown waited for, powered off when stuck; clone into a folder; snapshots: the tree, create, a failed task, remove, prune; datastores low on space; maintenance mode;
+    //alarms named, acknowledged; the API), the alarm trigger (its first check notes the alarms; new ones and status changes start runs, once; acknowledged ones do not; a recovery)
+    private function suiteVmware() {
+	$V = \util\VSphere::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$this->check('vmware: the address without a pasted path; the types of vCenter\'s ids; lists repeated in the query; vCenter\'s messages (REST, VI/JSON); an alarm\'s key', [
+	    'https://vc.example', [ 'VirtualMachine', 'Folder', 'StoragePod', 'ClusterComputeResource', 'VirtualApp', 'ResourcePool', null ], 'names=a&names=b&power_states=POWERED_ON',
+	    'Virtual machine is already in the desired state. (ALREADY_IN_DESIRED_STATE)', 'Cannot complete login. (InvalidLogin)', [ 'alarm-7', 'vm-42', 'VirtualMachine' ] ], [
+	    $V::baseUrl(' https://vc.example/ui/ '), array_map([ $V, 'typeOf' ], [ 'vm-42', 'group-v4', 'group-p3', 'domain-c8', 'resgroup-v12', 'resgroup-9', 'web01' ]),
+	    $V::query([ 'names' => [ 'a', 'b' ], 'power_states' => 'POWERED_ON', 'empty' => '' ]),
+	    $V::message([ 'error_type' => 'ALREADY_IN_DESIRED_STATE', 'messages' => [ [ 'default_message' => 'Virtual machine is already in the desired state.' ] ] ]),
+	    $V::message([ '_typeName' => 'InvalidLogin', 'faultMessage' => [ [ 'message' => 'Cannot complete login.' ] ] ]), \models\node\NodeAppVmwareAlarms::keyOf('alarm-7.vm-42') ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-vmware-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('vmware', 'VmwareTestServer.php', $dir, [ 'VC_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$V::$testing = true;
+	$V::forgetSessions();
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$alarms = fn(array $list) => file_put_contents("{$dir}/alarms.json", json_encode($list));
+	$alarm = fn($id, $entity, $type, $status, $ack = false) => [ 'alarm' => $id, 'entity' => $entity, 'type' => $type, 'status' => $status, 'ack' => $ack ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $e) {
+		return $e->getMessage();
+	    }
+	};
+	$creds = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function($password) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialVmware', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: VMware ' . uniqid(),
+		    'serverUrl' => "https://127.0.0.1:{$port}", 'username' => 'automation@vsphere.local', 'password' => $password ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('vmware: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->serverUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialVmware', (string)$c->_id);
+	    };
+	    $cred = $make('s3cret');
+	    $wrong = $make('nope');
+	    if (!$cred || !$wrong)
+		return;
+	    $bad = $om->create('CredentialVmware', [ 'name' => 'x', 'serverUrl' => 'https://vc/ui', 'username' => 'a', 'password' => 's' ]);
+	    $bad->validates();
+	    $requests();
+	    $this->check('vmware: the form (the server without a path); Test: the product, the datacenters, VI/JSON there; the user as Basic; a wrong password: said so', [
+		[ 'serverUrl' ], 'connected to 127.0.0.1, VMware vCenter Server 8.0.3 build-24322831, 1 datacenter; snapshots, alarms and maintenance mode available',
+		'POST /api/session', true ], [
+		array_values(array_intersect([ 'serverUrl' ], array_keys((array)$bad->errors()))), $cred->test(), ($requests()[0]['method'] ?? '') . ' /api/session',
+		str_contains($thrown(fn() => $wrong->test()), 'sign-in refused: Authentication required. (UNAUTHENTICATED): check the user and password') ]);
+
+	    $id = (string)$cred->_id;
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $id, $requests) {
+		$requests();
+		$exe = $this->runFlow("vmware {$fq}", [ $n('m', 'trigger::manual'), $n('c', $fq, $cfg + [ 'credential' => $id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'c'), $e('e2', 'c', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $names = fn($exe, $var) => array_column((array)($exe?->getVariable($var)['items'] ?? []), 'name');
+
+	    //VMs
+	    [ $exe, ] = $step('app::vmware-vms', [ 'operation' => 'list', 'names' => 'web*', 'variable' => 'v' ]);
+	    [ $on, $sent ] = $step('app::vmware-vms', [ 'operation' => 'list', 'state' => 'POWERED_ON', 'cluster' => 'Prod', 'variable' => 'v' ]);
+	    $this->check('vmware: VMs list: a * pattern matched here; a power state and a cluster by name (its id sent)', [ [ 'web01', 'web02' ], [ 'db01', 'web01' ], [ 'domain-c8' ] ],
+		[ $names($exe, 'v'), $names($on, 'v'), end($sent)['query']['clusters'] ?? null ]);
+	    [ $exe, ] = $step('app::vmware-vms', [ 'operation' => 'get', 'vm' => '{{ which }}', 'variable' => 'v' ], [ 'which' => 'web01' ]);
+	    [ $none, ] = $step('app::vmware-vms', [ 'operation' => 'get', 'vm' => 'ghost' ]);
+	    $this->check('vmware: VMs get: by name (an expression), its id added; a name no VM has: the error output', [ 'vm-42', 'POWERED_ON', 'error', true ], [
+		$exe?->getVariable('v')['vm'] ?? null, $exe?->getVariable('v')['power_state'] ?? null, $none?->getVariable('route'),
+		str_contains((string)self::logLine($none, 'VMware VMs get: '), 'VM: none named `ghost`') ]);
+	    [ $a1, ] = $step('app::vmware-vms', [ 'operation' => 'start', 'vm' => 'web01', 'variable' => 'p' ]);
+	    [ $a2, $sent ] = $step('app::vmware-vms', [ 'operation' => 'start', 'vm' => 'vm-43', 'variable' => 'p' ]);
+	    $this->check('vmware: VMs power on: on already is done (already); an id used as it is', [ [ 'POWERED_ON', true ], [ 'POWERED_ON', false ], [ 'start' ] ], [
+		[ $a1?->getVariable('p')['state'] ?? null, $a1?->getVariable('p')['already'] ?? null ], [ $a2?->getVariable('p')['state'] ?? null, $a2?->getVariable('p')['already'] ?? null ],
+		$sent[0]['query']['action'] ?? null ]);
+	    [ $sd, ] = $step('app::vmware-vms', [ 'operation' => 'shutdown', 'vm' => 'web01', 'variable' => 'p' ]);
+	    [ $stuck, ] = $step('app::vmware-vms', [ 'operation' => 'shutdown', 'vm' => 'db01', 'force' => true, 'timeout' => 12, 'variable' => 'p' ]);
+	    [ $gst, ] = $step('app::vmware-vms', [ 'operation' => 'guest', 'vm' => 'web02', 'variable' => 'g' ]);
+	    [ $start, ] = $step('app::vmware-vms', [ 'operation' => 'start', 'vm' => 'web01' ]);
+	    [ $gst2, ] = $step('app::vmware-vms', [ 'operation' => 'guest', 'vm' => 'web01', 'variable' => 'g' ]);
+	    $this->check('vmware: VMs shut down: waited for until off; a guest that does not stop, powered off at the timeout; guest information: without VMware Tools the error output, '
+		. 'with them the identity and interfaces', [ 'POWERED_OFF', [ 'POWERED_OFF', true ], [ 'error', true ], [ '10.0.0.42', 1 ] ], [ $sd?->getVariable('p')['state'] ?? null,
+		[ $stuck?->getVariable('p')['state'] ?? null, $stuck?->getVariable('p')['forced'] ?? null ],
+		[ $gst?->getVariable('route'), str_contains((string)self::logLine($gst, 'VMware VMs guest: '), 'VMware Tools is not running in the guest.') ],
+		[ $gst2?->getVariable('g')['identity']['ip_address'] ?? null, count($gst2?->getVariable('g')['interfaces'] ?? []) ] ]);
+	    [ $cl, $sent ] = $step('app::vmware-vms', [ 'operation' => 'clone', 'vm' => 'web01', 'newName' => 'web03', 'cloneFolder' => 'Databases', 'powerOn' => true, 'variable' => 'c' ]);
+	    [ $del, ] = $step('app::vmware-vms', [ 'operation' => 'delete', 'vm' => 'web03' ]);
+	    $this->check('vmware: VMs clone: the source, the new name, the folder by name, powered on; deleting a VM that is on: the error output with vCenter\'s message', [
+		[ 'vm-42', 'web03', [ 'folder' => 'group-v5' ], true ], 'web03', 'error', true ], [
+		[ end($sent)['body']['source'] ?? null, end($sent)['body']['name'] ?? null, end($sent)['body']['placement'] ?? null, end($sent)['body']['power_on'] ?? null ],
+		$cl?->getVariable('c')['name'] ?? null, $del?->getVariable('route'), str_contains((string)self::logLine($del, 'VMware VMs delete: '), '(NOT_ALLOWED_IN_CURRENT_STATE)') ]);
+
+	    //sessions dropped by vCenter: a new sign-in, once
+	    $st = json_decode((string)file_get_contents("{$dir}/state.json"), true);
+	    $st['sessions'] = [];
+	    file_put_contents("{$dir}/state.json", json_encode($st));
+	    [ $exe, $sent ] = $step('app::vmware-vms', [ 'operation' => 'power', 'vm' => 'vm-42', 'variable' => 'p' ]);
+	    $this->check('vmware: a session vCenter dropped (401): signed in again, the request repeated', [ 'POWERED_ON', [ 'GET /api/vcenter/vm/vm-42/power', 'POST /api/session', 'GET /api/vcenter/vm/vm-42/power' ] ],
+		[ $exe?->getVariable('p')['state'] ?? null, array_map(fn($r) => "{$r['method']} {$r['path']}", $sent) ]);
+
+	    //snapshots
+	    [ $ls, ] = $step('app::vmware-snapshots', [ 'operation' => 'list', 'vm' => 'web01', 'variable' => 's' ]);
+	    $items = $ls?->getVariable('s')['items'] ?? [];
+	    $this->check('vmware: Snapshots list: the tree flattened, parents first, with depth and the current one', [
+		[ [ 'Base', 0, null, false ], [ 'Before patch', 1, 'snapshot-1', false ], [ 'broken', 2, 'snapshot-2', true ] ] ],
+		[ array_map(fn($s) => [ $s['name'], $s['depth'], $s['parent'], $s['current'] ], $items) ]);
+	    [ $cr, $sent ] = $step('app::vmware-snapshots', [ 'operation' => 'create', 'vm' => 'web01', 'snapName' => 'Pre {{ t }}', 'quiesce' => true, 'variable' => 's' ], [ 't' => 'T-7' ]);
+	    [ $bad, ] = $step('app::vmware-snapshots', [ 'operation' => 'revert', 'vm' => 'web01', 'snapshot' => 'broken' ]);
+	    [ $rv, ] = $step('app::vmware-snapshots', [ 'operation' => 'revert', 'vm' => 'web01', 'snapshot' => 'Before patch', 'variable' => 's' ]);
+	    $this->check('vmware: Snapshots create: the name (an expression), quiesced; the task waited for: the snapshot\'s id; a revert whose task fails: the error output with the task\'s message; '
+		. 'a revert by name', [ [ 'Pre T-7', true, false ], true, 'error', true, 'snapshot-2' ], [
+		[ $sent[1]['body']['name'] ?? null, $sent[1]['body']['quiesce'] ?? null, $sent[1]['body']['memory'] ?? null ], str_starts_with((string)($cr?->getVariable('s')['snapshot'] ?? ''), 'snapshot-'),
+		$bad?->getVariable('route'), str_contains((string)self::logLine($bad, 'VMware Snapshots revert: '), 'failed: The snapshot\'s disk is damaged.'), $rv?->getVariable('s')['snapshot'] ?? null ]);
+	    [ $rm, $sent ] = $step('app::vmware-snapshots', [ 'operation' => 'remove', 'vm' => 'web01', 'snapshot' => 'Base', 'variable' => 's' ]);
+	    [ $pr, ] = $step('app::vmware-snapshots', [ 'operation' => 'prune', 'vm' => 'web01', 'days' => '7', 'variable' => 's' ]);
+	    [ $ls, ] = $step('app::vmware-snapshots', [ 'operation' => 'list', 'vm' => 'web01', 'variable' => 's' ]);
+	    $this->check('vmware: Snapshots remove: consolidated, its children kept; prune: only those older than the days; what is left', [ [ false, true ], [ 'Before patch' ], [ 'broken', 'Pre T-7' ] ], [
+		[ $sent[2]['body']['removeChildren'] ?? null, $sent[2]['body']['consolidate'] ?? null ], array_column($pr?->getVariable('s')['removed'] ?? [], 'name'), $names($ls, 's') ]);
+	    [ $all, ] = $step('app::vmware-snapshots', [ 'operation' => 'removeAll', 'vm' => 'web01', 'variable' => 's' ]);
+	    [ $ls, ] = $step('app::vmware-snapshots', [ 'operation' => 'list', 'vm' => 'web01', 'variable' => 's' ]);
+	    $this->check('vmware: Snapshots remove all; a VM without snapshots: an empty list', [ 'end', 0 ], [ $all?->state, $ls?->getVariable('s')['count'] ?? null ]);
+
+	    //inventory
+	    [ $ds, ] = $step('app::vmware-inventory', [ 'operation' => 'datastores', 'lowPercent' => 10, 'variable' => 'i' ]);
+	    [ $hs, $sent ] = $step('app::vmware-inventory', [ 'operation' => 'hosts', 'cluster' => 'Prod', 'variable' => 'i' ]);
+	    $this->check('vmware: Inventory datastores: free percent, low on space; hosts of a cluster by name', [ [ [ 'ds-ssd', 5.0, true ], [ 'ds-nfs', 50.0, false ] ], [ 'esx01.lab', 'esx02.lab' ], [ 'domain-c8' ] ], [
+		array_map(fn($d) => [ $d['name'], $d['freePercent'], $d['lowOnSpace'] ], $ds?->getVariable('i')['items'] ?? []), $names($hs, 'i'), end($sent)['query']['clusters'] ?? null ]);
+	    [ $m1, $sent ] = $step('app::vmware-inventory', [ 'operation' => 'enterMaintenance', 'host' => 'esx01.lab', 'variable' => 'm' ]);
+	    [ $m2, ] = $step('app::vmware-inventory', [ 'operation' => 'enterMaintenance', 'host' => 'host-10', 'variable' => 'm' ]);
+	    [ $m3, ] = $step('app::vmware-inventory', [ 'operation' => 'exitMaintenance', 'host' => 'host-11', 'variable' => 'm' ]);
+	    [ $ver, ] = $step('app::vmware-inventory', [ 'operation' => 'version', 'variable' => 'v' ]);
+	    $this->check('vmware: Inventory maintenance mode: entered (the task waited for), in it already: done; exited; vCenter\'s version', [
+		[ true, false, 0 ], [ true, true ], [ false, false ], '8.0.3.00400' ], [
+		[ $m1?->getVariable('m')['inMaintenance'] ?? null, $m1?->getVariable('m')['already'] ?? null, $sent[2]['body']['timeout'] ?? null ],
+		[ $m2?->getVariable('m')['inMaintenance'] ?? null, $m2?->getVariable('m')['already'] ?? null ], [ $m3?->getVariable('m')['inMaintenance'] ?? null, $m3?->getVariable('m')['already'] ?? null ],
+		$ver?->getVariable('v')['version'] ?? null ]);
+
+	    //alarms
+	    $alarms([ $alarm('alarm-8', 'datastore-20', 'Datastore', 'yellow'), $alarm('alarm-7', 'vm-42', 'VirtualMachine', 'red'), $alarm('alarm-9', 'host-11', 'HostSystem', 'red', true) ]);
+	    [ $al, ] = $step('app::vmware-alarms', [ 'operation' => 'list', 'status' => 'yellow', 'variable' => 'a' ]);
+	    [ $ack, $sent ] = $step('app::vmware-alarms', [ 'operation' => 'acknowledge', 'alarm' => '{{ a.items[0] }}' ], [ 'a' => $al?->getVariable('a') ]);
+	    [ $al2, ] = $step('app::vmware-alarms', [ 'operation' => 'list', 'status' => 'red', 'acknowledged' => true, 'entityType' => 'VirtualMachine', 'variable' => 'a' ]);
+	    $this->check('vmware: Alarms list: red first, acknowledged ones left out, named (the alarm, the object); acknowledge an alarm of the list; acknowledged ones when chosen, of VMs', [
+		[ [ 'alarm-7|vm-42', 'Virtual machine CPU usage', 'web01', 'red' ], [ 'alarm-8|datastore-20', 'Datastore usage on disk', 'ds-ssd', 'yellow' ] ],
+		[ 'Alarm', 'VirtualMachine', 'vm-42' ], [ [ 'alarm-7|vm-42', true ] ] ], [
+		array_map(fn($a) => [ $a['key'], $a['alarm']['name'], $a['entity']['name'], $a['status'] ], $al?->getVariable('a')['items'] ?? []),
+		[ end($sent)['body']['alarm']['type'] ?? null, end($sent)['body']['entity']['type'] ?? null, end($sent)['body']['entity']['value'] ?? null ],
+		array_map(fn($a) => [ $a['key'], $a['acknowledged'] ], $al2?->getVariable('a')['items'] ?? []) ]);
+
+	    //API
+	    [ $r1, ] = $step('app::vmware-api', [ 'operation' => 'rest', 'method' => 'GET', 'path' => '/api/vcenter/vm', 'query' => '{"names": "db01"}', 'variable' => 'r' ]);
+	    [ $r2, ] = $step('app::vmware-api', [ 'operation' => 'vim', 'method' => 'GET', 'vimPath' => 'VirtualMachine/vm-42/name', 'variable' => 'r' ]);
+	    [ $r3, ] = $step('app::vmware-api', [ 'operation' => 'vim', 'method' => 'POST', 'vimPath' => 'VirtualMachine/vm-42/CreateSnapshot_Task', 'body' => '{"name": "x", "memory": false, "quiesce": false}',
+		'waitTask' => true, 'variable' => 'r' ]);
+	    $this->check('vmware: API: a REST request with a query; a VI/JSON property; a VI/JSON method whose task is waited for', [ 'vm-44', 'web01', 'success' ],
+		[ $r1?->getVariable('r')[0]['vm'] ?? null, $r2?->getVariable('r'), $r3?->getVariable('r')['state'] ?? null ]);
+
+	    //the alarm trigger
+	    $wf = $this->workflow('vmware alarm', [ $n('t', 'trigger::vmware', [ 'credential' => $id, 'status' => 'red', 'recoveries' => true, 'runs' => 'each', 'variable' => 'ev',
+		'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ev.event }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('vmware: the alarm trigger\'s workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $T = \models\node\NodeTriggerVmware::class;
+	    $node = $wf->nodes['t'];
+	    $alarms([ $alarm('alarm-7', 'vm-42', 'VirtualMachine', 'red') ]);
+	    [ $d0, $r0 ] = $T::check($wf, $node, []);
+	    $alarms([ $alarm('alarm-7', 'vm-42', 'VirtualMachine', 'red'), $alarm('alarm-9', 'host-10', 'HostSystem', 'red'), $alarm('alarm-8', 'datastore-20', 'Datastore', 'yellow'),
+		$alarm('alarm-7', 'vm-44', 'VirtualMachine', 'red', true) ]);
+	    [ $d1, $r1 ] = $T::check($wf, $node, $d0);
+	    [ $d2, $r2 ] = $T::check($wf, $node, $d1);
+	    $alarms([ $alarm('alarm-7', 'vm-42', 'VirtualMachine', 'red'), $alarm('alarm-8', 'datastore-20', 'Datastore', 'red') ]);
+	    [ $d3, $r3 ] = $T::check($wf, $node, $d2);
+	    $started = array_merge($started, $r0, $r1, $r2, $r3);
+	    $show = fn($runs) => array_map(fn($x) => [ $x->getVariable('ev')['event'] ?? null, $x->getVariable('ev')['alarm']['name'] ?? null, $x->getVariable('ev')['entity']['name'] ?? null,
+		$x->getVariable('ev')['status'] ?? null ], $runs);
+	    $this->check('vmware: alarm trigger: the first check notes what is triggered; then new red alarms (not yellow, not acknowledged) start runs, once; one that turns red, and a recovery', [
+		[], [ [ 'alarm', 'Host connection and power state', 'esx01.lab', 'red' ] ], [], [ [ 'alarm', 'Datastore usage on disk', 'ds-ssd', 'red' ], [ 'recovery', 'Host connection and power state', 'esx01.lab', 'red' ] ] ],
+		[ $show($r0), $show($r1), $show($r2), $show($r3) ]);
+	    $this->check('vmware: alarm trigger: the runs queued, at the trigger', [ 'new', 'vmware' ], [ $r1[0]?->state, $r1[0]?->trigger ]);
+	    //an alarm noted by the first check (alarm-7 on vm-42) that clears: no recovery
+	    $alarms([ $alarm('alarm-8', 'datastore-20', 'Datastore', 'red') ]);
+	    [ $d4, $r4 ] = $T::check($wf, $node, $d3);
+	    $started = array_merge($started, $r4);
+	    $this->check('vmware: alarm trigger: no recovery for an alarm the first check only noted', [], $show($r4));
+	    $now = $T::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('vmware: alarm trigger: Run in the designer: an alarm triggered now', [ 1, 'alarm', 'ds-ssd' ], [ count($now['executions'] ?? []),
+		($now['executions'][0] ?? null)?->getVariable('ev')['event'] ?? null, ($now['executions'][0] ?? null)?->getVariable('ev')['entity']['name'] ?? null ]);
+	} finally {
+	    $V::$testing = false;
+	    $V::forgetSessions();
 	    foreach($started as $x) {
 		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
 		    $job->delete();
