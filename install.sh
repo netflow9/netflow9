@@ -1,18 +1,31 @@
 #!/bin/bash
 
-#CLD: 2026-10-29T03:00:00+02:00: new: NetFlow9's installer, as root. It asks the initial data (the public address, the database, the outgoing email, the first account) and
-#the options (nginx, the web browser of the AI steps, inbound email, MongoDB's users and sign-in), checks everything it needs first, then runs the parts in order:
-#  the nginx site (0_nginx-install.sh; a self-signed certificate when there is none), the app's setup (app/v sys::install as the app's user: the account, its owner,
-#  app.env), Haraka (2_), MongoDB's users (3_) and authorization (/etc/mongod.conf, mongod restarted), the background services (4_)
-#CLD: 2026-11-01T11:55:18+02:00: the web browser of the AI steps after the background services: scripts/playwright-mcp.sh install (its Chromium, its service, its server in
-#mcp.json), which also adds it later (was: 1_ here, its service with 4_; CLD: 2026-11-01T13:30:00+02:00: no 1_ any more)
-#Run again: an app already set up keeps its settings and account (only the options are asked); what is already done is left as it is
-#CLD: 2026-10-29T04:00:00+02:00: it sets up the server too (was qsm_scripts: nfn_install_alma9.sh, nfn_create_vhost.v1.sh, nfn_install_node.sh), from anywhere (was: from the
-#app's folder): on AlmaLinux / RHEL 9 it installs the packages that are missing (EPEL; Remi's PHP 8.5 with the app's extensions; nginx; MongoDB 8.3; Redis; certbot; Node.js:
-#the newest stream of the distribution), creates the app's user and its home, clones the app (the repository, with its submodules) there, writes the PHP-FPM pool, php.ini
-#and logrotate (scripts/system/), the certificate (Let's Encrypt, else self-signed), then the steps above. The firewall is not touched; SELinux enforcing: set to permissive
-#when allowed (nginx and PHP-FPM serve the home folder)
-#   sudo bash install.sh        (e.g. curl -fsSLO https://raw.githubusercontent.com/netflow9/netflow9/main/install.sh)
+# NetFlow9's installer, as root.
+# It asks the initial data (the public address, the database, the outgoing email, the first account)
+# the options (nginx, the web browser of the AI steps, inbound email, MongoDB's users and sign-in),
+# checks everything it needs first, then runs the parts in order:
+#  - the nginx site (0_nginx-install.sh; a self-signed certificate when there is none),
+#  - the app's setup (app/v sys::install as the app's user: the account, its owner, app.env),
+#  - Haraka (2_),
+#  - MongoDB's users (3_) and authorization (/etc/mongod.conf, mongod restarted),
+#  - the background services (4_)
+#  - the web browser of the AI steps after the background services:
+#    scripts/playwright-mcp.sh install (its Chromium, its service, its server in mcp.json), which also adds it later;
+#
+# Run again: an app already set up keeps its settings and account (only the options are asked);
+#   what is already done is left as it is
+#
+# it sets up the server too, run from anywhere:
+#  - on AlmaLinux / RHEL 9:
+#    it installs the packages that are missing (EPEL; Remi's PHP 8.5 with the app's extensions; nginx; MongoDB 8.3; Redis; certbot; Node.js: the newest stream of the distribution),
+#    creates the app's user and its home, clones the app (the repository, with its submodules) there,
+#    writes the PHP-FPM pool, php.ini and logrotate (scripts/system/),
+#    the certificate (Let's Encrypt, else self-signed),
+#    then the steps above.
+#  The firewall is not touched;
+#  SELinux enforcing: set to permissive when allowed (nginx and PHP-FPM serve the home folder)
+#
+# sudo bash install.sh        (e.g. curl -fsSLO https://raw.githubusercontent.com/netflow9/netflow9/main/install.sh)
 
 set -euo pipefail
 
