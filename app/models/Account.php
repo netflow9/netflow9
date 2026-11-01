@@ -12,7 +12,7 @@ class Account extends \sys\BaseModel {
 
     public function getSchema() {
 	$fields = [
-	    //CLD: 2026-10-16T12:14:57+03:00: the account's name (a company, a team; asked at sign-up)
+	    //the account's name (a company, a team; asked at sign-up)
 	    [
 		'key' => 'name',
 		'type' => 'text',
@@ -36,7 +36,6 @@ class Account extends \sys\BaseModel {
 		'default' => 'acc-' . uniqid(),
 		'perm:read' => 'everybody',
 		'perm:update' => 'nobody',
-		//CLD: 2026-10-10T18:57:33+03:00: not a form field (assign with permissions ignores it)
 		'showInForms' => false,
 	    ],
 	    //state

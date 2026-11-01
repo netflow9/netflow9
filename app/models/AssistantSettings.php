@@ -1,30 +1,32 @@
 <?php
 
 /*
-    the Assistant's settings of an account, one document per account;
-    read by WorkflowAssistant.
+    the Assistant's settings of an account, one document per account; read by WorkflowAssistant.
 
-    the Assistant uses only these settings: provider, server URL, API key, then the model, chosen from the ones the server lists (Connect on the settings page: AssistantController::connect). Were model / openai_model / openai_url / openai_key
-    //CLD: 2026-10-22T14:00:00+03:00: bring your own key: the providers System (the installation's server, config assistant.system: no key, URL or model here), Claude, OpenAI, Gemini,
-    //Ollama, Lemonade; each speaks one protocol (PROTOCOLS: the Anthropic Messages API or OpenAI chat completions). + a monthly budget (USD; the spending: AssistantUsage) and the prices
-    //it is counted with (USD per 1M tokens; empty: PRICES, the known prices of Claude models)
-    //CLD: 2026-10-22T15:00:00+03:00: System is paid in credits (AssistantWallet), not with the budget: + credit_cap, the most credits the account lets the Assistant use per month
-    //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (a plugin's: util\AssistantSystem), shared with the AI steps; the known prices are its own too
+    the Assistant uses only these settings:
+	provider, server URL, API key, then the model, chosen from the ones the server lists (Connect on the settings page: AssistantController::connect).
+
+    bring your own key:
+	the providers System (the installation's server, config assistant.system: no key, URL or model here),
+	Claude, OpenAI, Gemini, Ollama, Lemonade;
+	each speaks one protocol (PROTOCOLS: the Anthropic Messages API or OpenAI chat completions).
+	+ a monthly budget (USD; the spending: AssistantUsage) and the prices it is counted with (USD per 1M tokens;
+	    empty: PRICES, the known prices of Claude models)
+
+    System is paid in credits (AssistantWallet), not with the budget: + credit_cap, the most credits the account lets the Assistant use per month
 */
 
-//CLD: 2026-10-26T23:49:50+02:00: moved to the core (was the Assistant plugin's); its System provider only while the SystemAI plugin is enabled
 namespace models;
 
 
 class AssistantSettings extends \sys\BaseModel {
 
-    //CLD: 2026-11-01T03:00:00+02:00: data_access's choices
     const DATA_ACCESS = [
 	'structure' => 'Structure only',
 	'data' => 'Structure and data',
     ];
 
-    //CLD: 2026-11-01T03:00:00+02:00: whether the Assistant of account $aid may read the projects' data (its saved settings' data_access), else their structure only (also without settings)
+    //whether the Assistant of account $aid may read the projects' data (its saved settings' data_access), else their structure only (also without settings)
     public static function readsData($aid) {
 	$s = $aid ? \V::app()->om->findOne('AssistantSettings', [ 'aid' => \V::app()->om->to_oid((string)$aid) ]) : null;
 	return (string)($s->data_access ?? 'structure') === 'data';
@@ -35,7 +37,6 @@ class AssistantSettings extends \sys\BaseModel {
 	[ [ 'aid' => 1 ], [ 'unique' => true ] ],
     ];
 
-    //CLD: 2026-10-22T14:00:00+03:00: + system, gemini, ollama, lemonade; openai is OpenAI itself (still any OpenAI-compatible server with its Server URL, as the settings saved before)
     const PROVIDERS = [
 	'system' => 'System AI (provided by this installation)',
 	'anthropic' => 'Claude (Anthropic)',

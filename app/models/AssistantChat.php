@@ -1,13 +1,16 @@
 <?php
 
 /*
-    CLD: 2026-10-23T23:45:00+03:00: new: the Assistant's conversation of a workflow, one document per workflow (the draft's), shared by the people who may change it: it is
-    there again on their next visit / login (was the browser tab's sessionStorage). `messages`: the panel's messages (js/app.wfassistant.js), the newest MAX_KEPT, each with
-    who wrote it (uid, by) and when (at). Written by the designer (AssistantController::chat_add / chat_clear) with atomic updates ($push / $slice): two people may write at once.
+    the Assistant's conversation of a workflow, one document per workflow (the draft's),
+	shared by the people who may change it: it is there again on their next visit / login.
+	`messages`: the panel's messages (js/app.wfassistant.js),
+	    the newest MAX_KEPT, each with who wrote it (uid, by) and when (at).
+    Written by the designer (AssistantController::chat_add / chat_clear) with atomic updates ($push / $slice):
+	two people may write at once.
+
     Removed with its workflow (hook workflow:before-delete, sys\Boot)
 */
 
-//CLD: 2026-10-26T23:49:50+02:00: moved to the core (was the Assistant plugin's); its System provider only while the SystemAI plugin is enabled
 namespace models;
 
 class AssistantChat extends \sys\BaseModel {

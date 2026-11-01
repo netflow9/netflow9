@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-23T12:00:00+03:00: new: a sign-in request sent to an account's IdP, waiting for its response (SsoController::start, ::acs): its ID (the response's InResponseTo),
+//a sign-in request sent to an account's IdP, waiting for its response (SsoController::start, ::acs): its ID (the response's InResponseTo),
 //a hash of the token of the browser that sent it (a cookie: the session cookie does not come with the IdP's cross-site POST), a test of the settings page (who tests:
 //the result is shown, nobody is signed in). Used once; MongoDB removes it when it expires (expires_at, a TTL index)
 

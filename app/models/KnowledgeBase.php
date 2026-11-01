@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-30T23:30:00+02:00: new: a knowledge base of a project - documents cut into chunks (util\TextChunks), each chunk's embedding (util\Embeddings) kept with its text, searched
+    a knowledge base of a project - documents cut into chunks (util\TextChunks), each chunk's embedding (util\Embeddings) kept with its text, searched
     by meaning (the cosine similarity of the query's embedding, computed by MongoDB: $similarityCosine, exact, no vector index) and by words (the chunks' text index), the two lists
     merged (reciprocal rank fusion). Searched by the Knowledge base step and by the AI steps (their Knowledge bases setting: the search_knowledge_base tool).
 	- chunkSize / overlap: how the documents are cut (characters)

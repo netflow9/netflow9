@@ -3,8 +3,9 @@
 namespace commands;
 
 /*
-    CLD: 2026-11-01T15:00:00+02:00: new: the installation's commands in one (were SetupCommand, AuditCommand, WfCommand: setup::*, audit::verify, wf::*); run as the app's user,
-    in app/commands (or app/v from the app's folder). SysCommand.sh: the audit and runs from the shell.
+    run as the app's user, in app/commands (or app/v from the app's folder).
+
+    SysCommand.sh: the audit and runs from the shell.
 
     setup, only while app.env is missing (app/v.php: get_setup_console_config; the other actions need the app's settings)
 	../v sys::checks      the prerequisites (util\Setup::checks); exits with 1 when a required one fails
