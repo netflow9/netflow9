@@ -29,14 +29,12 @@ window.app.DocxViewer = (function() {
 	},
     };
 
-    //CLD: 2026-10-13T16:48:57+03:00: JSZip (window.JSZip) and docx-preview (window.docx) are loaded by app/layouts/_webpage.php (were <script> tags added here on first use)
+    //JSZip (window.JSZip) and docx-preview (window.docx) are loaded by app/layouts/_webpage.php
     async function loadLib() {
 	if (!window.JSZip || !window.docx || typeof window.docx.renderAsync !== 'function')
 	    throw new Error('docx-preview (window.docx) or JSZip (window.JSZip) is not loaded');
 	return window.docx;
     }
-
-    //CLD: 2026-10-14T08:35:56+03:00: removed the local el() helper: DOM elements are made with the framework's app.utils.el()
 
     class DocxViewer {
 	constructor(container, options = {}) {
@@ -218,7 +216,6 @@ window.app.PdfViewer = (function() {
 
     const DEFAULTS = {
 	url: null,                                      // PDF url (same origin; cookies are sent)
-	//CLD: 2026-10-06T21:46:14+03:00: file names of the local build (were the .min.mjs names)
 	workerSrc: '/js/vendor/pdfjs/pdf.worker.mjs',   // pdf.js worker module
 	zoom: 'fit',                                    // 'fit' (page width) or a number (1 = 100%)
 	minZoom: 0.25,
@@ -245,8 +242,6 @@ window.app.PdfViewer = (function() {
 	    return Promise.reject(new Error('pdf.js is not loaded'));
 	return new Promise((resolve, reject) => window.addEventListener('load', () => window.pdfjsLib ? resolve(ready(window.pdfjsLib)) : reject(new Error('pdf.js is not loaded')), { once: true }));
     }
-
-    //CLD: 2026-10-14T08:35:56+03:00: removed the local el() helper: DOM elements are made with the framework's app.utils.el()
 
     class PdfViewer {
 	constructor(container, options = {}) {
@@ -526,8 +521,6 @@ window.app.PdfViewer = (function() {
  *
  *   new app.XlsxViewer(containerEl | '#selector', { url: '/file/content/<id>' })
  *
- * - SheetJS (UMD build, global `XLSX`) is loaded on first use by adding a <script> tag
- *   CLD: 2026-10-13T16:48:57+03:00: now loaded by app/layouts/_webpage.php; `libSrc` is gone
  * - cells show their formatted value (as in the spreadsheet); every value is set with textContent (never as HTML)
  * - large sheets are cut to `maxRows` x `maxCols` (a note says so); formulas, styles, merged cells and charts are not shown
  * - the file is fetched by the viewer (fetch + ArrayBuffer), so the server keeps sending it as an attachment
@@ -548,12 +541,10 @@ window.app.XlsxViewer = (function() {
 	},
     };
 
-    //CLD: 2026-10-13T16:48:57+03:00: SheetJS is window.XLSX, loaded by app/layouts/_webpage.php (was a <script> added here on first use)
+    //SheetJS is window.XLSX, loaded by app/layouts/_webpage.php
     function loadLib() {
 	return window.XLSX && typeof window.XLSX.read === 'function' ? Promise.resolve(window.XLSX) : Promise.reject(new Error('SheetJS (window.XLSX) is not loaded'));
     }
-
-    //CLD: 2026-10-14T08:35:56+03:00: removed the local el() helper: DOM elements are made with the framework's app.utils.el()
 
     class XlsxViewer {
 	constructor(container, options = {}) {

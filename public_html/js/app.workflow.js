@@ -1,23 +1,36 @@
 if (!window.app)
     window.app = {};
 
-//CLD: 2026-10-19T22:00:00+03:00: a class, as app.CodeEditor / app.WfAssistant (was the app.workflow module: mount() and functions):
-//
-//   const designer = new app.Workflow('canvas-wrap', options);     (the canvas element, or its id)
-//
-//CLD: 2026-10-24T00:30:00+03:00: + zoomBy(factor)
-//methods: fitView(), zoomBy(factor), showNode(id), getNodes(), setNodes(nodes), undo(), redo(), commitNow(), hasPendingChange(), applySaved(sent, nodes), setStepIssues(issues), destroy();
-//CLD: 2026-10-29T21:30:00+02:00: + setRun(run): an execution shown on the canvas (WorkflowController::runStatus; null: none)
+/*
+    const designer = new app.Workflow('canvas-wrap', options);     (the canvas element, or its id)
+
+    methods:
+	fitView(),
+	zoomBy(factor),
+	showNode(id),
+	getNodes(),
+	setNodes(nodes),
+	undo(),
+	redo(),
+	commitNow(),
+	hasPendingChange(),
+	applySaved(sent, nodes),
+	setStepIssues(issues),
+	destroy(),
+	setRun(run): an execution shown on the canvas (WorkflowController::runStatus; null: none)
 //app.Workflow.current: the designer of the page (e.g. for the Assistant plugin). A new one destroys the previous one: its listeners on the document removed, its editor / picker closed
 //CLD: 2026-10-19T22:30:00+03:00: the designer's state and functions are the class's fields and methods (were the variables and functions of a closure run once per designer,
 //designer()); the steps / connections (WfNode, WfEdge) reach their designer through `d` (not enumerable: not in their JSON, the saved steps); the helpers without state
 //(curves, the picker's markup and placement, the drag preview) stay functions of the module
+
+*/
+
 window.app.Workflow = (function() {
 
     /* ---------------- Node type definitions (Bootstrap Icons classes) ---------------- */
     const LOOP_HEADER = 40;   // vertical space reserved for the loop's header/label
 
-    //CLD: 2026-10-19T18:05:00+03:00: undo / redo and autosave: each state of the steps and connections (data only: not the selection or the view) is kept as a snapshot; a change is
+    //undo / redo and autosave: each state of the steps and connections (data only: not the selection or the view) is kept as a snapshot; a change is
     //committed once the canvas is still for HISTORY_DELAY ms and no pointer is held (dragging, resizing, connecting): history[historyAt] is the current state, and
     //options.onCommit(snapshot) is told of each new current state (the page saves it); options.onHistoryChange({ canUndo, canRedo }) for the buttons
     const HISTORY_DELAY = 400;
@@ -26,7 +39,7 @@ window.app.Workflow = (function() {
     //the designer of the page
     let current = null;
 
-    //CLD: 2026-10-29T21:30:00+02:00: the badges of the steps in the execution shown (setRun), by status (WorkflowController::runStatus); not reached: none
+    //the badges of the steps in the execution shown (setRun), by status (WorkflowController::runStatus); not reached: none
     const RUN_STATUS = {
 	done: { icon: 'bi-check-lg', title: 'Done' },
 	current: { icon: 'bi-play-fill', title: 'Running' },

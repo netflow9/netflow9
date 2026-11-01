@@ -15,9 +15,9 @@ if (!window.app)
  *   const d = new app.FormDesigner(el, { value: { direction, fields }, readonly: false, onChange: (value) => ... });
  *   d.getValue(); d.setValue(value); d.problem();   // problem(): the first error (a key used twice, ...) or null
  *
- * CLD: 2026-10-13T20:36:03+03:00: d.setStepPanel(el): the settings of the step around the form (user's choice: as the prototype's form settings) - shown in the right panel when no
+ * d.setStepPanel(el): the settings of the step around the form (user's choice: as the prototype's form settings) - shown in the right panel when no
  * field is selected (clicking the empty canvas, or "Step settings" above a field's settings); the element is moved there, never drawn again; d.select(null)
- * CLD: 2026-10-13T20:45:56+03:00: option `fill`: the designer fills its container's height (the step dialog), the palette, the canvas and the settings each scroll on their own
+ * option `fill`: the designer fills its container's height (the step dialog), the palette, the canvas and the settings each scroll on their own
  * (else each is at most 70% of the window high)
  */
 window.app.FormDesigner = (function() {
