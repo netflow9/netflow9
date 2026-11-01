@@ -33,8 +33,9 @@ function get_config($mode = 'web') {
 	//ntp
 	'app.ntp.server' => 'local', // or 'time.google.com:123'
 
-	//used for communication to Job Server
-	'app.job_socket_path' => BASE . '/run/job-notify.sock',
+	//CLD: 2026-11-01T16:00:27+02:00: the daemon's port for its commands (NEWJOB, KILLJOB), on 127.0.0.1 only: DAEMON_PORT of app.env, default 9000 (was the unix socket
+	//app.job_socket_path, run/job-notify.sock). Several installations on one server: a port each
+	'app.daemon_port' => defined('DAEMON_PORT') && (int)DAEMON_PORT > 0 ? (int)DAEMON_PORT : 9000,
 
 	//plugins(modules) configuration
 	'modules' => is_readable($plugins_fn) ? require($plugins_fn) : [],

@@ -200,6 +200,7 @@ case "$command" in
         fi
         if ! systemctl is-active --quiet "$DAEMON_UNIT"; then
             stop_pidfile "$BASE/run/daemon.pid" "the workflow daemon"
+            #CLD: 2026-11-01T16:00:27+02:00: the socket file of the former daemons (the daemon now listens on 127.0.0.1:DAEMON_PORT)
             rm -f "$BASE/run/job-notify.sock"
         fi
         chown "$APP_USER:$APP_USER" "$BASE/logs/daemon.log" 2>/dev/null || true

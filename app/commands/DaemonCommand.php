@@ -44,7 +44,7 @@ class DaemonCommand extends \sys\BaseController {
     //for alerting
     public $prev_jobs_count = 0;
 
-    //the job socket (stream server) and its connections (id => [ stream, buffer ])
+    //the job listener (a TCP stream server on 127.0.0.1, CLD: 2026-11-01T16:00:27+02:00: was a unix socket) and its connections (id => [ stream, buffer ])
     public $job_listener = null;
     public $job_conns = [];
 
@@ -388,25 +388,21 @@ class DaemonCommand extends \sys\BaseController {
     	}
     }
 
-    //the job socket is a plain unix stream server watched by the loop
+    //the job listener is a plain TCP stream server on 127.0.0.1 watched by the loop
     //one command per line: NEWJOB, KILLJOB:<event id>
+    //CLD: 2026-11-01T16:00:27+02:00: a TCP port on 127.0.0.1 only (app.daemon_port: DAEMON_PORT of app.env, default 9000), so that Haraka (another user) and other local
+    //processes reach it without the unix socket's file (was run/job-notify.sock, mode 0777); a port taken (e.g. by another installation): logged, tried again at the next check
     public function setup_job_listener() {
-	//create the local unix-domain socket for job commands
-	$job_socket = \V::app()->config('app.job_socket_path');
-
-	//if file exists and job_listener
-	if (file_exists($job_socket) && !empty($this->job_listener))
+	if (!empty($this->job_listener))
 	    return;
 
-	if (!empty($this->job_listener))
-	    $this->close_job_listener();
-
-	@unlink($job_socket);
-	$server = @stream_socket_server('unix://' . $job_socket, $errno, $errstr);
+	$address = \models\Job::daemonAddress();
+	$server = @stream_socket_server($address, $errno, $errstr);
 	if (!$server) {
-	    \V::app()->log->error("WMGR: cannot listen on {$job_socket}: {$errstr}");
+	    \V::app()->log->error("WMGR: cannot listen on {$address}: {$errstr}");
 	    return;
 	}
+	\V::app()->log->info("WMGR: listening on {$address}");
 	stream_set_blocking($server, false);
 	$this->job_listener = $server;
 
@@ -439,8 +435,6 @@ class DaemonCommand extends \sys\BaseController {
 		}
 	    });
 	});
-	//change mode so that anyone can connect
-	chmod($job_socket, 0777);
     }
 
     //one command from the job
@@ -482,10 +476,7 @@ class DaemonCommand extends \sys\BaseController {
 	    @fclose($this->job_listener);
 	    $this->job_listener = null;
 	}
-
-	//create the local unix-domain socket for job commands
-	$job_socket = \V::app()->config('app.job_socket_path');
-	@unlink($job_socket);
+	//CLD: 2026-11-01T16:00:27+02:00: no socket file to remove (a TCP port)
     }
 
     //number of CPUs (for the --max-workers default)

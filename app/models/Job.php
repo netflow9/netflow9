@@ -139,12 +139,15 @@ class Job extends \sys\BaseModel {
 	return $id;
     }
 
-    //wake the daemon (NEWJOB on its local socket); nothing happens when it does not run
+    //CLD: 2026-11-01T16:00:27+02:00: new: where the daemon takes its commands: tcp://127.0.0.1:<app.daemon_port> (DAEMON_PORT of app.env; was the unix socket run/job-notify.sock)
+    public static function daemonAddress() {
+	return 'tcp://127.0.0.1:' . (int)\V::app()->config('app.daemon_port');
+    }
+
+    //wake the daemon (NEWJOB on its local port); nothing happens when it does not run
+    //CLD: 2026-11-01T16:00:27+02:00: on 127.0.0.1:<app.daemon_port> (was the unix socket app.job_socket_path)
     public static function notify() {
-	$path = \V::app()->config('app.job_socket_path');
-	if (empty($path) || !file_exists($path))
-	    return false;
-	$conn = @stream_socket_client('unix://' . $path, $errno, $errstr, 1);
+	$conn = @stream_socket_client(self::daemonAddress(), $errno, $errstr, 1);
 	if (!$conn)
 	    return false;
 	fwrite($conn, "NEWJOB\n");
@@ -152,12 +155,10 @@ class Job extends \sys\BaseModel {
 	return true;
     }
 
-    //CLD: 2026-10-26T10:06:24+02:00: stop the worker running job $jid (KILLJOB on the daemon's socket); nothing happens when the daemon does not run
+    //CLD: 2026-10-26T10:06:24+02:00: stop the worker running job $jid (KILLJOB on the daemon's port); nothing happens when the daemon does not run
+    //CLD: 2026-11-01T16:00:27+02:00: on 127.0.0.1:<app.daemon_port> (was the unix socket app.job_socket_path)
     public static function kill($jid) {
-	$path = \V::app()->config('app.job_socket_path');
-	if (empty($path) || !file_exists($path))
-	    return false;
-	$conn = @stream_socket_client('unix://' . $path, $errno, $errstr, 1);
+	$conn = @stream_socket_client(self::daemonAddress(), $errno, $errstr, 1);
 	if (!$conn)
 	    return false;
 	fwrite($conn, "KILLJOB:{$jid}\n");

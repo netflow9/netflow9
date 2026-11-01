@@ -69,7 +69,8 @@ class Setup {
 	'' => 'app.env is written here',
 	'logs' => 'logs',
 	'tmp' => 'temporary files',
-	'run' => 'the daemon socket',
+	//CLD: 2026-11-01T16:00:27+02:00: PID files (the daemon's socket is now a port: DAEMON_PORT)
+	'run' => 'PID files',
 	'var' => 'stored files'
     ];
 

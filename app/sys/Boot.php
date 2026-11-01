@@ -58,13 +58,15 @@ class Boot {
 		//CLD: 2026-10-31T18:00:00+02:00: the installation's own unit (util\Services::unit: nfn-daemon-<user>; was nfn-daemon.service)
 		'unit' => \util\Services::unit('daemon'),
 		'pidfile' => BASE . '/run/daemon.pid',
+		//CLD: 2026-11-01T16:00:27+02:00: on its port, 127.0.0.1:<DAEMON_PORT> (was the unix socket run/job-notify.sock)
 		'health' => function() {
-		    $sock = BASE . '/run/job-notify.sock';
-		    $s = @stream_socket_client('unix://' . $sock, $errno, $errstr, 1);
+		    $address = \models\Job::daemonAddress();
+		    $port = parse_url($address, PHP_URL_PORT);
+		    $s = @stream_socket_client($address, $errno, $errstr, 1);
 		    if (!$s)
-			return [ false, 'does not answer on ' . basename($sock) . ($errstr ? ": {$errstr}" : '') ];
+			return [ false, "does not answer on port {$port}" . ($errstr ? ": {$errstr}" : '') ];
 		    fclose($s);
-		    return [ true, 'answers on ' . basename($sock) ];
+		    return [ true, "answers on port {$port}" ];
 		},
 	    ];
 	}, 5);
