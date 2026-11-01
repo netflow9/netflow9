@@ -3,9 +3,9 @@
 #CLD: 2026-10-29T03:00:00+02:00: new: NetFlow9's installer, as root. It asks the initial data (the public address, the database, the outgoing email, the first account) and
 #the options (nginx, the web browser of the AI steps, inbound email, MongoDB's users and sign-in), checks everything it needs first, then runs the parts in order:
 #  the nginx site (0_nginx-install.sh; a self-signed certificate when there is none), the app's setup (app/v sys::install as the app's user: the account, its owner,
-#  app.env), Playwright (1_), Haraka (2_), MongoDB's users (3_) and authorization (/etc/mongod.conf, mongod restarted), the background services (4_)
-#CLD: 2026-11-01T11:55:18+02:00: the web browser of the AI steps after the background services: scripts/playwright-mcp.sh install (Playwright and Chromium with 1_, its service,
-#its server in mcp.json), which also adds it later (was: 1_ here, its service with 4_)
+#  app.env), Haraka (2_), MongoDB's users (3_) and authorization (/etc/mongod.conf, mongod restarted), the background services (4_)
+#CLD: 2026-11-01T11:55:18+02:00: the web browser of the AI steps after the background services: scripts/playwright-mcp.sh install (its Chromium, its service, its server in
+#mcp.json), which also adds it later (was: 1_ here, its service with 4_; CLD: 2026-11-01T13:30:00+02:00: no 1_ any more)
 #Run again: an app already set up keeps its settings and account (only the options are asked); what is already done is left as it is
 #CLD: 2026-10-29T04:00:00+02:00: it sets up the server too (was qsm_scripts: nfn_install_alma9.sh, nfn_create_vhost.v1.sh, nfn_install_node.sh), from anywhere (was: from the
 #app's folder): on AlmaLinux / RHEL 9 it installs the packages that are missing (EPEL; Remi's PHP 8.5 with the app's extensions; nginx; MongoDB 8.3; Redis; certbot; Node.js:
@@ -131,10 +131,6 @@ url_host() {
 #MongoDB on this machine (127.0.0.1:27017) without sign-in: its users can be listed without signing in
 mongo_auth_off() {
     mongosh --quiet "$LOCAL_MONGO/admin" --eval 'db.getUsers()' >/dev/null 2>&1
-}
-
-chromium_installed() {
-    ls -d /opt/playwright/browsers/chromium-[0-9]*/chrome-linux64/chrome >/dev/null 2>&1
 }
 
 #CLD: 2026-10-29T07:00:00+02:00: the lines of $@ under security: in $MONGOD_CONF (as indented as its other keys), or a new security: section; $1: the copy it is made from
@@ -296,11 +292,8 @@ if [ ! -e "$BASE/ssl/ssl.crt" ] || [ "$(readlink "$BASE/ssl/ssl.crt" 2>/dev/null
     [ "$OPT_LE" -eq 0 ] || ask LE_EMAIL "Email for Let's Encrypt's notices" ""
 fi
 
-if chromium_installed; then
-    ask_yes OPT_BROWSER "The web browser for the AI steps (installed: its service)" y
-else
-    ask_yes OPT_BROWSER "The web browser for the AI steps (Playwright and Chromium, about 500 MB)" y
-fi
+#CLD: 2026-11-01T13:30:00+02:00: one question (was: installed or not, by the shared Chromium of 1_playwright-install.sh); scripts/playwright-mcp.sh install updates it when it is there
+ask_yes OPT_BROWSER "The web browser for the AI steps (Playwright MCP and its Chromium, about 500 MB)" y
 
 MAIL_DOMAIN=""
 [ "$SET_UP" -eq 1 ] && MAIL_DOMAIN=$(env_value MAIL_INBOUND_DOMAIN)
@@ -748,7 +741,7 @@ step "The background services"
 #the services running before reconnect with the new MongoDB users
 [ "$MONGO_CHANGED" -eq 0 ] || systemctl try-restart "nfn-daemon-$APP_USER.service" $([ "$OPT_MAIL" -eq 1 ] && echo nfn-haraka.service) || true
 
-#CLD: 2026-11-01T11:55:18+02:00: the web browser: Playwright and Chromium, its service, its server in mcp.json (scripts/playwright-mcp.sh install; was 1_ above and 4_)
+#CLD: 2026-11-01T11:55:18+02:00: the web browser: its Chromium, its service, its server in mcp.json (scripts/playwright-mcp.sh install; was 1_ above and 4_)
 if [ "$OPT_BROWSER" -eq 1 ]; then
     step "The web browser for the AI steps"
     "$SCRIPTS/playwright-mcp.sh" install || echo "! the web browser was not installed (above): sudo $SCRIPTS/playwright-mcp.sh install, once fixed"

@@ -5,10 +5,12 @@
 #  - on 127.0.0.1:8931 only (Streamable HTTP: http://localhost:8931/mcp), headless, a fresh in-memory browser profile per session
 #    CLD: 2026-10-23T00:20:00+03:00: + --allowed-hosts: the Host headers localhost:<port> and 127.0.0.1:<port> (it accepted only localhost: 403 for http://127.0.0.1:...)
 #  - the shared Chromium of scripts/1_playwright-install.sh (CLD: 2026-11-01T11:55:18+02:00: install runs it when it is missing)
+#    CLD: 2026-11-01T13:30:00+02:00: its own: the Chromium of the package's Playwright (playwright-core of @playwright/mcp: the revision it was built for), in the shared
+#    /opt/playwright/browsers, and its system libraries (dnf); 1_playwright-install.sh is no longer used (the @playwright/test CLI and /etc/profile.d were for the tests only)
 #  - a firewall table (nftables) refusing the user's new connections to private, loopback and link-local addresses (the cloud metadata 169.254.169.254 too): the browser reaches
 #    only the public internet (Playwright's own --blocked-origins is not a security boundary: kept as a second layer only)
 #CLD: 2026-11-01T11:55:18+02:00: the tool servers are core (mcp.json, next to app.env; was the LocalMCP plugin): install adds the browser to an installation, at its installation
-#(install.sh) or later: Playwright and Chromium when they are missing (scripts/1_playwright-install.sh), the service, the polkit rule written again when the app's services are installed
+#(install.sh) or later: the browser's libraries and its Chromium, the service, the polkit rule written again when the app's services are installed
 #(scripts/4_services-install.sh rule: the Services page controls it), the server in mcp.json (scripts/playwright/mcp-server.json, its url with the port: ./v mcpserver::add; an
 #entry changed by hand is written again), a test (./v mcpserver::test); uninstall takes the server out of mcp.json first
 #Run as root:
@@ -25,7 +27,7 @@ SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}
 BASE=$(cd "$(dirname "$SELF")/.." && pwd)
 APP_USER=$(stat -c %U "$BASE/app")
 
-#the @playwright/mcp version: tested with the shared Chromium (scripts/1_playwright-install.sh: Playwright 1.64)
+#the @playwright/mcp version (Playwright 1.64; CLD: 2026-11-01T13:30:00+02:00: its Chromium is installed with it)
 VERSION="0.0.83"
 #CLD: 2026-10-31T18:30:00+02:00: the port of app.env (PLAYWRIGHT_MCP_PORT), else 8931; --port before both
 PORT=$(sed -n "s/^PLAYWRIGHT_MCP_PORT=['\"]\{0,1\}\([0-9]*\).*/\1/p" "$BASE/app.env" 2>/dev/null | tail -1 || true)
@@ -79,9 +81,30 @@ system_node() {
     esac
 }
 
-#the newest shared Chromium
+#CLD: 2026-11-01T13:30:00+02:00: the package's Playwright (playwright-core of @playwright/mcp): its folder
+playwright_core() {
+    node -e 'console.log(require("path").dirname(require.resolve("playwright-core/package.json", { paths: [ process.argv[1] ] })))' "$(npm root -g)/@playwright/mcp"
+}
+
+#CLD: 2026-11-01T13:30:00+02:00: the Chromium the package's Playwright was built for (its revision in browsers.json; was the newest of the shared folder)
 chromium_path() {
-    ls -d "$BROWSERS_PATH"/chromium-[0-9]*/chrome-linux64/chrome 2>/dev/null | sort -V | tail -1
+    local rev
+    rev=$(node -e 'const b = require(process.argv[1] + "/browsers.json").browsers.find((x) => x.name === "chromium"); console.log(b ? b.revision : "")' "$(playwright_core)") || return 0
+    [ -n "$rev" ] && [ -x "$BROWSERS_PATH/chromium-$rev/chrome-linux64/chrome" ] && echo "$BROWSERS_PATH/chromium-$rev/chrome-linux64/chrome"
+    return 0
+}
+
+#CLD: 2026-11-01T13:30:00+02:00: Chromium's system libraries (was in scripts/1_playwright-install.sh; Playwright's own --with-deps knows only apt)
+install_browser_libs() {
+    if command -v dnf >/dev/null; then
+        dnf install -y --setopt=install_weak_deps=False nss nspr atk at-spi2-atk at-spi2-core cups-libs libdrm libxkbcommon libXcomposite libXdamage libXfixes \
+            libXrandr libXext libX11 libxcb libxshmfence mesa-libgbm pango cairo alsa-lib dbus-libs expat glib2 libgcc \
+            liberation-fonts dejavu-sans-fonts google-noto-emoji-color-fonts
+    elif command -v apt-get >/dev/null; then
+        node "$(playwright_core)/cli.js" install-deps chromium
+    else
+        echo "! neither dnf nor apt-get: install Chromium's libraries yourself"
+    fi
 }
 
 #the firewall table: the service user's NEW connections to these addresses are refused (answers to the clients of the server are not new: they pass).
@@ -177,19 +200,23 @@ case "$command" in
     install)
         need_root
         system_node
+        #CLD: 2026-11-01T13:30:00+02:00: the package first, then the Chromium of its Playwright and the browser's libraries (were scripts/1_playwright-install.sh's: Playwright's
+        #CLI, the newest shared Chromium)
+        npm install -g "@playwright/mcp@$VERSION"
+        install_browser_libs
         chrome=$(chromium_path)
-        #CLD: 2026-11-01T11:55:18+02:00: Playwright and Chromium installed when missing (was: run 1_playwright-install.sh first)
         if [ -z "$chrome" ]; then
-            "$BASE/scripts/1_playwright-install.sh"
+            install -d -m 755 "$BROWSERS_PATH"
+            PLAYWRIGHT_BROWSERS_PATH="$BROWSERS_PATH" node "$(playwright_core)/cli.js" install chromium
+            chmod -R a+rX "$BROWSERS_PATH"
             chrome=$(chromium_path)
         fi
-        [ -n "$chrome" ] || { echo "no shared Chromium in $BROWSERS_PATH after $BASE/scripts/1_playwright-install.sh"; exit 1; }
+        [ -n "$chrome" ] || { echo "no Chromium for @playwright/mcp $VERSION in $BROWSERS_PATH"; exit 1; }
         echo "+ @playwright/mcp $VERSION, Chromium $chrome, port $PORT"
         command -v nft >/dev/null || dnf install -y nftables
         id "$SVC_USER" >/dev/null 2>&1 || useradd --system --home-dir "$HOME_DIR" --shell /sbin/nologin --comment "Playwright MCP server of $BASE" "$SVC_USER"
         install -d -o "$SVC_USER" -g "$SVC_USER" -m 750 "$HOME_DIR" "$HOME_DIR/output"
         install -d -m 755 "$CONF_DIR"
-        npm install -g "@playwright/mcp@$VERSION"
         write_nft
         /usr/sbin/nft -c -f "$NFT_FILE"
         remove_old_unit
