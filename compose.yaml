@@ -1,6 +1,6 @@
 # CLD: 2026-11-01T19:00:00+02:00: NetFlow9 with Docker Compose (next to install.sh, the servers' way). Settings: .env (copy docker/env.example); then
 #   docker compose build && docker compose up -d       and open the site (/setup, unless NFN_SETUP_JSON set it up)
-# Profiles (COMPOSE_PROFILES in .env): browser (the AI steps' web browser), mail (Haraka, inbound mail on port 25).
+# Profiles (COMPOSE_PROFILES in .env; both on in docker/env.example and scripts/docker.sh setup): browser (the AI steps' web browser), mail (Haraka, inbound mail on port 25).
 # Upgrade: git pull && docker compose build && docker compose up -d (the app adds the new indexes at its start).
 # Development (the working tree mounted, mailpit, a database of its own): docker compose -f compose.yaml -f compose.dev.yaml up -d
 # HTTPS here (not behind a proxy): -f compose.tls.yaml

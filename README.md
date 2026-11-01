@@ -10,7 +10,7 @@ It is built on PHP and MongoDB, with plain JavaScript and Bootstrap in the brows
 - **Triggers for every start:** Manual, Schedule, Webhook (signed requests, answers, retries), Form, File upload and Email (inbound, through Haraka).
 - **Logic and data steps:** If, Switch, Loop, Merge, Set, Wait, Code, HTTP Request, emails, FTP / SFTP (with PGP and S/MIME), data tables and SQL databases (MySQL, PostgreSQL, SQL Server, Oracle, Firebird, ODBC).
 - **People in the loop.** Forms start workflows, and *Human tasks* assign approvals and decisions to people, who answer them under *My tasks*.
-- **AI built in.** AI steps work with Claude, OpenAI, Gemini, or models you run yourself (Ollama, Lemonade). They take files (images, PDF, Office), give JSON answers, use tools (MCP servers such as a sandboxed web browser) and answer from your own content.
+- **AI built in.** AI steps work with Claude, OpenAI, Gemini, or models you run yourself (Ollama, Lemonade). They take files (images, PDF, Office), give JSON answers, use tools (MCP servers such as a sandboxed web browser) and answer from your own content. As agents, they use the integrations' operations (read ones by default) and other workflows as tools, and wait for a person's approval (My tasks) before they change something.
 - **Knowledge bases (RAG).** Files, web pages and texts are cut into chunks, embedded and searched by meaning and by words, from workflows and AI steps.
 - **The Assistant** builds and changes workflows from a description in your own words. An **MCP server** lets AI assistants such as Claude Desktop and Claude Code work with a project.
 - **Integrations** for Google (Drive, Sheets, Gmail, Calendar), Microsoft 365 (Outlook, OneDrive / SharePoint, Excel, Teams), LDAP directories and any HTTP API.
@@ -99,16 +99,17 @@ On any Linux host with Docker Engine and its Compose plugin (2.24 or later); the
 
 ```bash
 git clone --recurse-submodules https://github.com/netflow9/netflow9.git && cd netflow9
-cp docker/env.example .env && chmod 600 .env      # the database's passwords, the port, the profiles
-docker compose build && docker compose up -d       # then open the site: /setup
+scripts/docker.sh install                         # .env (random passwords, your uid / gid), build, start; then open the site: /setup
 ```
 
-- Containers: `mongo` (8.3, sign-in required; its users from `scripts/mongo_users.js`), `app` (PHP-FPM, AlmaLinux 9 + Remi, the installer's packages), `daemon`, `web` (nginx, port 80); profiles `browser` (`playwright`: the AI steps' web browser, with its own firewall table) and `mail` (`haraka`, port 25), in `COMPOSE_PROFILES`
+Or step by step: `scripts/docker.sh setup [--dev] [--tls] [--no-browser] [--no-mail]` writes `.env` (the web browser and inbound mail are on unless left out; `MAIL_INBOUND_DOMAIN` defaults to this host's name) (an existing one keeps its passwords; the compose files go in `COMPOSE_FILE`, so plain `docker compose` uses the same ones), then `build`, `start`; also `stop`, `restart`, `status`, `logs`, `check`, `uninstall` (volumes kept), `purge` (all data). By hand: `cp docker/env.example .env`, fill it in, `docker compose build && docker compose up -d`.
+
+- Containers: `mongo` (8.3, sign-in required; its users from `scripts/mongo_users.js`), `app` (PHP-FPM, AlmaLinux 9 + Remi, the installer's packages), `daemon`, `web` (nginx, port 80); profiles `browser` (`playwright`: the AI steps' web browser, with its own firewall table) and `mail` (`haraka`, port 25; `127.0.0.1:2525` with `compose.dev.yaml`), in `COMPOSE_PROFILES`: both on by default
 - `app.env`, `plugins.json` and `mcp.json` live in the `config` volume (`NFN_CONFIG_DIR`); keep a copy of `app.env` (`APP_SECRET`)
 - The Services page is read-only there: `docker compose restart daemon`; the console: `docker compose exec app app/v <command>`
 - Upgrade: `git pull && git submodule update --init && docker compose build && docker compose up -d` (the app adds the new indexes at its start)
 - HTTPS in the container: `-f compose.tls.yaml` (`ssl/ssl.crt`, `ssl/ssl.key`); development: `-f compose.dev.yaml` (the working tree mounted, mailpit, the site on `127.0.0.1:8080`)
-- Files: `compose*.yaml`, `docker/` (the images, `env.example`), `.dockerignore`. More: the docs, Self-hosting > Docker Compose
+- Files: `compose*.yaml`, `docker/` (the images, `env.example`), `.dockerignore`, `scripts/docker.sh`. More: the docs, Self-hosting > Docker Compose
 
 ### By hand (other systems)
 
