@@ -296,6 +296,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialSophos',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-01T16:00:00+02:00: a Hyper-V host (the Hyper-V steps and VM state trigger; PowerShell over WinRM), core for every account
+	    'CredentialHyperV' => [
+		'class' => 'models\credential\CredentialHyperV',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-01T14:00:00+02:00: a Proxmox VE cluster or server (the Proxmox steps and task trigger), core for every account
 	    'CredentialProxmox' => [
 		'class' => 'models\credential\CredentialProxmox',
@@ -525,6 +530,27 @@ class SysObjects {
 	    ],
 	    'NodeAppSfosApi' => [
 		'class' => 'models\node\NodeAppSfosApi',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-01T16:00:00+02:00: Hyper-V (one step per area, NodeAppHyperV their base; the VM state trigger, polling), core for every account
+	    'NodeAppHyperVVms' => [
+		'class' => 'models\node\NodeAppHyperVVms',
+		'wfNode' => true,
+	    ],
+	    'NodeAppHyperVCheckpoints' => [
+		'class' => 'models\node\NodeAppHyperVCheckpoints',
+		'wfNode' => true,
+	    ],
+	    'NodeAppHyperVHost' => [
+		'class' => 'models\node\NodeAppHyperVHost',
+		'wfNode' => true,
+	    ],
+	    'NodeAppHyperVPowerShell' => [
+		'class' => 'models\node\NodeAppHyperVPowerShell',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerHyperV' => [
+		'class' => 'models\node\NodeTriggerHyperV',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-01T14:00:00+02:00: Proxmox VE (one step per area, NodeAppProxmox their base; the task trigger, polling), core for every account

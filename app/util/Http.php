@@ -25,6 +25,8 @@
 	private         with `public`: addresses of a private network (10/8, 172.16/12, 192.168/16, 100.64/10, fc00::/7) are accepted too; never this machine (its own
 	                addresses, loopback), link-local or reserved ones (CLD: 2026-11-01T00:30:00+02:00: on-premises servers, e.g. a GravityZone console: the account's allow_private_addresses)
 	insecure        the server's TLS certificate is not checked (a self-signed one) (CLD: 2026-11-01T00:30:00+02:00)
+	auth            [ 'ntlm' | 'basic', user, password ]: curl signs in (NTLM: its challenge / response, e.g. Windows Remote Management); not sent to another host after a redirect
+	                (CLD: 2026-11-01T16:00:00+02:00)
 	compressed      accept gzip / deflate / br (decoded)
 
     The answer: ok (no error, status 1..399), status, reason (the status line's text after the code; CLD: 2026-11-01T14:00:00+02:00), error (null when there is an answer), tooLarge, headers [ lower-case name => value ] (the last of a repeated one),
@@ -74,7 +76,9 @@ class Http {
 	    $follow = $hop < $redirects && $upload === null;
 	    //CLD: 2026-11-01T00:30:00+02:00: + private, insecure
 	    $answer = self::once($method, $r['url'], $headers, $body, $upload, $sink, $maxBytes, $https, !empty($o['public']) ? (!empty($o['private']) ? 'private' : 'public') : false,
-		!empty($o['compressed']), $left, $connectTimeout, $follow, !empty($o['insecure']));
+		!empty($o['compressed']), $left, $connectTimeout, $follow, !empty($o['insecure']),
+		//CLD: 2026-11-01T16:00:00+02:00: + auth, for the first host only
+		isset($o['auth']) && $hop > 0 && parse_url($r['url'], PHP_URL_HOST) !== parse_url($url, PHP_URL_HOST) ? null : ($o['auth'] ?? null));
 	    $location = $answer['headers']['location'] ?? null;
 	    $r = array_merge($r, $answer);
 	    if ($answer['error'] !== null || $location === null || !in_array($answer['status'], self::REDIRECT_STATUSES, true) || !$follow)
@@ -204,7 +208,8 @@ class Http {
 
     //one exchange (no redirect followed): the answer's status, error, tooLarge, headers, headerList, body, size, contentType, mime; $follow: a redirect's body is not kept (it is followed)
     //CLD: 2026-11-01T00:30:00+02:00: $public: false, 'public' or 'private' (private network addresses accepted too); + $insecure: the certificate not checked
-    protected static function once($method, $url, array $headers, $body, $upload, $sink, $maxBytes, $https, $public, $compressed, $timeoutMs, $connectTimeout, $follow, $insecure = false) {
+    //CLD: 2026-11-01T16:00:00+02:00: + $auth: [ ntlm | basic, user, password ] or null
+    protected static function once($method, $url, array $headers, $body, $upload, $sink, $maxBytes, $https, $public, $compressed, $timeoutMs, $connectTimeout, $follow, $insecure = false, $auth = null) {
 	$r = [ 'status' => 0, 'reason' => '', 'error' => null, 'tooLarge' => false, 'headers' => [], 'headerList' => [], 'body' => '', 'size' => 0, 'contentType' => '', 'mime' => '' ];
 	$parts = parse_url($url);
 	$scheme = strtolower((string)($parts['scheme'] ?? ''));
@@ -238,6 +243,11 @@ class Http {
 	if ($insecure) {
 	    $opts[CURLOPT_SSL_VERIFYPEER] = false;
 	    $opts[CURLOPT_SSL_VERIFYHOST] = 0;
+	}
+	//CLD: 2026-11-01T16:00:00+02:00: curl signs in
+	if (is_array($auth) && count($auth) === 3) {
+	    $opts[CURLOPT_HTTPAUTH] = $auth[0] === 'ntlm' ? CURLAUTH_NTLM : CURLAUTH_BASIC;
+	    $opts[CURLOPT_USERPWD] = (string)$auth[1] . ':' . (string)$auth[2];
 	}
 
 	if ($method === 'GET')

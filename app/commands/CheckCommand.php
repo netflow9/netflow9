@@ -51,12 +51,13 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-11-01T08:00:00+02:00: + checkmk (the Checkmk credential, steps and problem trigger against a fake site: commands/tests/CheckmkTestServer.php)
     //CLD: 2026-11-01T12:00:00+02:00: + vmware (the VMware vCenter credential, steps and alarm trigger against a fake vCenter: commands/tests/VmwareTestServer.php)
     //CLD: 2026-11-01T14:00:00+02:00: + proxmox (the Proxmox VE credential, steps and task trigger against a fake cluster: commands/tests/ProxmoxTestServer.php)
+    //CLD: 2026-11-01T16:00:00+02:00: + hyperV (the Hyper-V credential, steps and VM state trigger against a fake host behind WinRM: commands/tests/HyperVTestServer.php)
     //CLD: 2026-11-01T02:00:00+02:00: + access (the account's Data access: the projects' MCP server on / off, what the Assistant may read)
     //CLD: 2026-11-01T00:30:00+02:00: + gravityzone (the GravityZone credential, steps and event trigger against a fake console: commands/tests/GravityZoneTestServer.php; util\Http's private addresses)
     //CLD: 2026-10-26T23:39:49+02:00: gdrive, gsheets, gmail, gcalendar, gdocs, microsoft: core again, always run (were skipped without the GoogleIntegration / MicrosoftIntegration plugin)
     //CLD: 2026-10-28T10:00:00+02:00: + transfer (util\Transfer: export / import of workflows, credentials, data tables)
     //CLD: 2026-10-30T23:30:00+02:00: + kb (the knowledge bases: the Knowledge base step, the AI steps' search tool; against the fake AI server's embeddings)
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'localmcp', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -5640,6 +5641,193 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('proxmox: task trigger: Run in the designer: the newest matching task', [ 1, '102' ], [ count($now2['executions'] ?? []), ($now2['executions'][0] ?? null)?->getVariable('ev')['id'] ?? null ]);
 	} finally {
 	    $P::$testing = false;
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-01T16:00:00+02:00: Hyper-V against a fake host behind WinRM (commands/tests/HyperVTestServer.php; util\WinRM::$testing: http, no address guard): the client (the WS-Management
+    //address, PowerShell quoting, the script's wrapper with $P as data, PowerShell's errors from CLIXML; a shell made, the command run without cmd.exe, a Receive that timed out received
+    //again, the output in parts, the shell deleted), the credential's test, the steps (VMs by name, * patterns; start when running is done; a shutdown that does not end: an error, or
+    //turned off; delete refused while running; checkpoints: list, create, restore, remove, prune; volumes low on space; events; PowerShell with parameters, its error), the VM state
+    //trigger (its first check notes the VMs; a VM that stops starts a run, once; passing states are no change; replication health; a recovery)
+    private function suiteHyperV() {
+	$W = \util\WinRM::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$wrapped = $W::wrap('x', 'Get-VM', [ 'name' => "it's {{ x }}; Remove-VM" ]);
+	$this->check('hyperv: the WS-Management address; a PowerShell string literal (quotes doubled, smart quotes too); the parameters as data in the wrapper; PowerShell\'s errors from CLIXML', [
+	    'https://hv01:5986/wsman', 'https://hv01:5986/wsman', "'it''s ‘‘x’’'", true, "The term 'Get-Thing' is not recognized as the name of a cmdlet." ], [
+	    $W::endpoint('https://hv01:5986/'), $W::endpoint('https://hv01:5986/wsman'), $W::quote("it's ‘x’"),
+	    str_contains($wrapped, "\$P = ConvertFrom-Json '{\"name\":\"it''s {{ x }}; Remove-VM\"}'\n"),
+	    $W::errorText("#< CLIXML\r\n<Objs><S S=\"Error\">The term 'Get-Thing' is not recognized_x000D__x000A_</S><S S=\"Error\">as the name of a cmdlet.</S></Objs>") ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-hv-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('hyperv', 'HyperVTestServer.php', $dir, [ 'HV_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$W::$testing = true;
+	$scripts = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/scripts.jsonl"))));
+	    @unlink("{$dir}/scripts.jsonl");
+	    return $list;
+	};
+	$setVm = function($name, array $set) use ($dir) {
+	    $st = json_decode((string)file_get_contents("{$dir}/state.json"), true);
+	    foreach($st['vms'] as &$v)
+		if ($v['name'] === $name)
+		    $v = $set + $v;
+	    unset($v);
+	    file_put_contents("{$dir}/state.json", json_encode($st));
+	};
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $e) {
+		return $e->getMessage();
+	    }
+	};
+	$creds = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function($password) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialHyperV', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Hyper-V ' . uniqid(),
+		    'serverUrl' => "https://127.0.0.1:{$port}", 'username' => 'hv\\automation', 'password' => $password, 'authMethod' => 'basic' ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('hyperv: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->serverUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialHyperV', (string)$c->_id);
+	    };
+	    $cred = $make('s3cret');
+	    $wrong = $make('nope');
+	    if (!$cred || !$wrong)
+		return;
+	    $bad = $om->create('CredentialHyperV', [ 'name' => 'x', 'serverUrl' => 'http://hv01:5985', 'username' => 'a', 'password' => 's' ]);
+	    $bad->validates();
+	    $scripts();
+	    $test = $cred->test();
+	    $sent = $scripts();
+	    $state = json_decode((string)file_get_contents("{$dir}/state.json"), true);
+	    $this->check('hyperv: the form (an https address); Test: the host, its Windows, its VMs; powershell.exe without cmd.exe, UTF-8; the shell deleted after; a wrong password: said so', [
+		[ 'serverUrl' ], 'connected to HV01, Microsoft Windows Server 2022 Datacenter (10.0.20348), 3 VMs', [ 'test', 'powershell.exe', 'TRUE', '65001' ], [], true ], [
+		array_values(array_intersect([ 'serverUrl' ], array_keys((array)$bad->errors()))), $test,
+		[ $sent[0]['name'] ?? null, $sent[0]['command'] ?? null, $sent[0]['options']['WINRS_SKIP_CMD_SHELL'] ?? null, $sent[0]['shell']['WINRS_CODEPAGE'] ?? null ],
+		array_keys((array)($state['shells'] ?? [])), str_contains($thrown(fn() => $wrong->test()), 'sign-in refused (HTTP status 401)') ]);
+
+	    $id = (string)$cred->_id;
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $id, $scripts) {
+		$scripts();
+		$exe = $this->runFlow("hyperv {$fq}", [ $n('m', 'trigger::manual'), $n('c', $fq, $cfg + [ 'credential' => $id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'c'), $e('e2', 'c', 'err', 1) ], $vars);
+		return [ $exe, $scripts() ];
+	    };
+	    $names = fn($exe, $var) => array_column((array)($exe?->getVariable($var)['items'] ?? []), 'name');
+
+	    //VMs
+	    [ $l1, $s1 ] = $step('app::hyperv-vms', [ 'operation' => 'list', 'names' => "web*\n", 'variable' => 'v' ]);
+	    [ $l2, ] = $step('app::hyperv-vms', [ 'operation' => 'list', 'state' => 'Running', 'variable' => 'v' ]);
+	    [ $g1, $sg ] = $step('app::hyperv-vms', [ 'operation' => 'get', 'vm' => '{{ which }}', 'variable' => 'v' ], [ 'which' => "web01'; Stop-Computer; '" ]);
+	    $this->check('hyperv: VMs list: patterns and a state, the names given as $P; a name from an expression stays data: no VM of that name (the error output)', [
+		[ 'web01', 'web02' ], [ 'db01', 'web01' ], [ 'web*' ], [ 'error', "web01'; Stop-Computer; '" ], true ], [
+		$names($l1, 'v'), $names($l2, 'v'), $s1[0]['params']['names'] ?? null, [ $g1?->getVariable('route'), $sg[0]['params']['vm'] ?? null ], $sg[0]['helpers'] ?? null ]);
+	    [ $a1, ] = $step('app::hyperv-vms', [ 'operation' => 'start', 'vm' => 'web01', 'variable' => 'p' ]);
+	    [ $a2, ] = $step('app::hyperv-vms', [ 'operation' => 'start', 'vm' => '22222222-2222-2222-2222-222222222222', 'variable' => 'p' ]);
+	    [ $sd1, ] = $step('app::hyperv-vms', [ 'operation' => 'shutdown', 'vm' => 'db01', 'wait' => 30 ]);
+	    [ $sd2, $ss ] = $step('app::hyperv-vms', [ 'operation' => 'shutdown', 'vm' => 'db01', 'wait' => 30, 'turnOff' => true, 'variable' => 'p' ]);
+	    $this->check('hyperv: VMs start: running already is done; by ID; a shutdown that does not end: the error output, or turned off when chosen', [
+		[ true, 'Running' ], [ false, 'Running' ], [ 'error', true ], [ 'Off', true, 30, true ] ], [
+		[ $a1?->getVariable('p')['already'] ?? null, $a1?->getVariable('p')['state'] ?? null ], [ $a2?->getVariable('p')['already'] ?? null, $a2?->getVariable('p')['state'] ?? null ],
+		[ $sd1?->getVariable('route'), str_contains((string)self::logLine($sd1, 'Hyper-V VMs shutdown: '), 'the guest OS did not shut down within 30 s') ],
+		[ $sd2?->getVariable('p')['state'] ?? null, $sd2?->getVariable('p')['forced'] ?? null, $ss[0]['params']['wait'] ?? null, $ss[0]['params']['turnOff'] ?? null ] ]);
+	    [ $nw, ] = $step('app::hyperv-vms', [ 'operation' => 'network', 'vm' => 'web01', 'variable' => 'i' ]);
+	    [ $d1, ] = $step('app::hyperv-vms', [ 'operation' => 'delete', 'vm' => 'web01' ]);
+	    [ $d2, ] = $step('app::hyperv-vms', [ 'operation' => 'delete', 'vm' => 'db01', 'disks' => true, 'variable' => 'd' ]);
+	    $this->check('hyperv: VMs network adapters with their addresses; delete a running VM: the error output; delete an off VM with its disks', [
+		[ '10.0.2.10', 'fe80::1' ], [ 'error', true ], [ true, [ 'D:\\Hyper-V\\Disks\\db01.vhdx' ] ] ], [
+		$nw?->getVariable('i')[0]['ipAddresses'] ?? null, [ $d1?->getVariable('route'), str_contains((string)self::logLine($d1, 'Hyper-V VMs delete: '), "VM 'web01' is Running: turn it off first") ],
+		[ $d2?->getVariable('d')['deleted'] ?? null, $d2?->getVariable('d')['disksDeleted'] ?? null ] ]);
+
+	    //checkpoints
+	    [ $cl, ] = $step('app::hyperv-checkpoints', [ 'operation' => 'list', 'vm' => 'web01', 'variable' => 'c' ]);
+	    [ $cc, $sc ] = $step('app::hyperv-checkpoints', [ 'operation' => 'create', 'vm' => 'web01', 'cpName' => 'Before {{ t }}', 'variable' => 'c' ], [ 't' => 'T-9' ]);
+	    [ $cr, ] = $step('app::hyperv-checkpoints', [ 'operation' => 'restore', 'vm' => 'web01', 'checkpoint' => 'Before patch', 'variable' => 'c' ]);
+	    [ $cm, ] = $step('app::hyperv-checkpoints', [ 'operation' => 'remove', 'vm' => 'web01', 'checkpoint' => 'Base', 'variable' => 'c' ]);
+	    [ $cx, ] = $step('app::hyperv-checkpoints', [ 'operation' => 'remove', 'vm' => 'web01', 'checkpoint' => 'Nope' ]);
+	    [ $cp, ] = $step('app::hyperv-checkpoints', [ 'operation' => 'prune', 'vm' => 'web01', 'days' => '7', 'pattern' => 'Before*', 'variable' => 'c' ]);
+	    [ $cl2, ] = $step('app::hyperv-checkpoints', [ 'operation' => 'list', 'vm' => 'web01', 'variable' => 'c' ]);
+	    $this->check('hyperv: Checkpoints list (the current one marked); create with an expression; restore; remove; one that does not exist: the error output; prune: old ones named so; what is left', [
+		[ [ 'Base', false ], [ 'Before patch', false ], [ 'Recent', true ] ], [ 'Before T-9', true ], 'Before patch', 'Base', 'error', [ 'Before patch' ], [ 'Recent', 'Before T-9' ] ], [
+		array_map(fn($c) => [ $c['name'], $c['current'] ], $cl?->getVariable('c')['items'] ?? []), [ $cc?->getVariable('c')['name'] ?? null, $cc?->getVariable('c')['current'] ?? null ],
+		$cr?->getVariable('c')['name'] ?? null, $cm?->getVariable('c')['name'] ?? null, $cx?->getVariable('route'), array_column($cp?->getVariable('c')['removed'] ?? [], 'name'),
+		$names($cl2, 'c') ]);
+
+	    //host
+	    [ $h1, ] = $step('app::hyperv-host', [ 'operation' => 'host', 'variable' => 'h' ]);
+	    [ $h2, ] = $step('app::hyperv-host', [ 'operation' => 'volumes', 'lowPercent' => 10, 'variable' => 'h' ]);
+	    [ $h3, $sh ] = $step('app::hyperv-host', [ 'operation' => 'events', 'hours' => 12, 'level' => 'errors', 'maxItems' => 1, 'variable' => 'h' ]);
+	    $this->check('hyperv: Host: memory free in percent; volumes low on space; events of the last hours, at most N (truncated)', [
+		25.0, [ [ 'C:', 30.0, false ], [ 'D:', 5.0, true ] ], [ 1, true, 12, 'errors', 2 ] ], [
+		$h1?->getVariable('h')['memoryFreePercent'] ?? null, array_map(fn($d) => [ $d['drive'], $d['freePercent'], $d['lowOnSpace'] ], $h2?->getVariable('h')['items'] ?? []),
+		[ $h3?->getVariable('h')['count'] ?? null, $h3?->getVariable('h')['truncated'] ?? null, $sh[0]['params']['hours'] ?? null, $sh[0]['params']['level'] ?? null, $sh[0]['params']['max'] ?? null ] ]);
+
+	    //PowerShell
+	    [ $p1, ] = $step('app::hyperv-powershell', [ 'script' => 'Get-VM', 'parameters' => '{"name": "{{ who }}"}', 'variable' => 'r' ], [ 'who' => 'web01' ]);
+	    [ $p2, ] = $step('app::hyperv-powershell', [ 'script' => 'Get-Thing', 'parameters' => '{"fail": true}' ]);
+	    $this->check('hyperv: PowerShell: the parameters (an expression) as $P; a script whose output is not JSON: the error output with PowerShell\'s message', [ [ 'name' => 'web01' ], 'error', true ], [
+		$p1?->getVariable('r')['echo'] ?? null, $p2?->getVariable('route'), str_contains((string)self::logLine($p2, 'Hyper-V PowerShell run: '), "PowerShell: The term 'Get-Thing' is not recognized") ]);
+
+	    //the VM state trigger
+	    $wf = $this->workflow('hyperv state', [ $n('t', 'trigger::hyperv', [ 'credential' => $id, 'when' => 'stops', 'replication' => true, 'recoveries' => true, 'runs' => 'each', 'variable' => 'ev',
+		'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ev.event }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('hyperv: the VM state trigger\'s workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $T = \models\node\NodeTriggerHyperV::class;
+	    $node = $wf->nodes['t'];
+	    //now: web01 Running, web02 Running (started above); db01 deleted
+	    [ $d0, $r0 ] = $T::check($wf, $node, []);
+	    $setVm('web01', [ 'state' => 'Stopping' ]);
+	    $setVm('web02', [ 'state' => 'Off' ]);
+	    [ $d1, $r1 ] = $T::check($wf, $node, $d0);
+	    $setVm('web01', [ 'state' => 'Off', 'health' => 'Critical' ]);
+	    [ $d2, $r2 ] = $T::check($wf, $node, $d1);
+	    [ $d3, $r3 ] = $T::check($wf, $node, $d2);
+	    $setVm('web01', [ 'state' => 'Running', 'health' => 'Normal' ]);
+	    [ $d4, $r4 ] = $T::check($wf, $node, $d3);
+	    $started = array_merge($started, $r0, $r1, $r2, $r3, $r4);
+	    $show = fn($runs) => array_map(fn($x) => [ $x->getVariable('ev')['event'] ?? null, $x->getVariable('ev')['vm']['name'] ?? null, $x->getVariable('ev')['from'] ?? null, $x->getVariable('ev')['to'] ?? null ], $runs);
+	    $this->check('hyperv: VM state trigger: the first check notes the VMs; a VM that stops starts a run (Stopping is no change yet); then off with replication Critical; once; '
+		. 'running again and Normal: recoveries', [ [], [ [ 'stopped', 'web02', 'Running', 'Off' ] ], [ [ 'stopped', 'web01', 'Running', 'Off' ], [ 'replication', 'web01', 'Normal', 'Critical' ] ], [],
+		[ [ 'recovery', 'web01', 'Off', 'Running' ], [ 'recovery', 'web01', 'Critical', 'Normal' ] ] ], [ $show($r0), $show($r1), $show($r2), $show($r3), $show($r4) ]);
+	    $this->check('hyperv: VM state trigger: the runs queued, at the trigger', [ 'new', 'hyperv' ], [ $r1[0]?->state, $r1[0]?->trigger ]);
+	    $now = $T::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('hyperv: VM state trigger: Run in the designer: a VM that is not running', [ 1, 'web02', 'stopped' ], [ count($now['executions'] ?? []),
+		($now['executions'][0] ?? null)?->getVariable('ev')['vm']['name'] ?? null, ($now['executions'][0] ?? null)?->getVariable('ev')['event'] ?? null ]);
+	} finally {
+	    $W::$testing = false;
 	    foreach($started as $x) {
 		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
 		    $job->delete();
