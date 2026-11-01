@@ -1,12 +1,13 @@
 #!/bin/bash
 
-#installs Haraka (inbound mail: the Email (inbound) trigger, plugins\InboundMail) into <app>/haraka (app.env HARAKA_DIR, when set), as
-#scripts/haraka.sh and the InboundMail plugin expect it:
+#installs Haraka (inbound mail: the Email (inbound) trigger, util\InboundMail) into <app>/haraka (app.env HARAKA_DIR, when set), as
+#scripts/haraka.sh and the app (util\InboundMail::found) expect it:
 #  node_modules/haraka      Haraka itself, downloaded from GitHub (github.com/haraka/Haraka: a release, the latest by default), its dependencies by npm
 #  node_modules/mongodb     the MongoDB driver of Rail22's plugin (3.x: plugins/nfn.js uses its API)
 #  plugins/nfn.js, config/  Rail22's plugin and configuration (scripts/haraka/: @BASE@, @DOMAIN@, @MONGO_DB@ filled from app.env), then Haraka's default configuration
 #  queue/, dkim/            empty folders (dkim/: + dkim_key_gen.sh, from scripts/haraka/dkim/)
 #Nothing that is there is overwritten: a file / package already installed is kept (and listed as such); package.json / package-lock.json are not changed when they exist.
+#CLD: 2026-11-01T16:11:37+02:00: except Rail22's plugin code (plugins/: nfn.js), replaced when it differs, so that running the script again updates it (its configuration, config/nfn.ini, is kept)
 #CLD: 2026-10-28T21:30:00+02:00: run as root (was: as the app's user); it runs itself again as the app's user (the owner of <app>/app), with the system's Node.js: Haraka's files are that user's
 #Run as root:
 #   sudo scripts/2_haraka-install.sh [--version=<vX.Y.Z>] [--domain=<inbound domain>] [--dir=<folder>] [--dry-run]
@@ -93,6 +94,8 @@ ENV_DOMAIN=$(set +u; . "$BASE/app.env" >/dev/null 2>&1; echo "${MAIL_INBOUND_DOM
 ENV_MONGO_DB=$(set +u; . "$BASE/app.env" >/dev/null 2>&1; echo "${MONGO_DB:-}")
 #CLD: 2026-10-29T02:30:00+02:00: Haraka's MongoDB user, when 3_mongo-auth-setup.sh has made it (HARAKA_MONGO_URI): written into a new config/nfn.ini
 ENV_HARAKA_URI=$(set +u; . "$BASE/app.env" >/dev/null 2>&1; echo "${HARAKA_MONGO_URI:-}")
+#CLD: 2026-11-01T17:05:00+02:00: the daemon's port (DAEMON_PORT, default 9000): nfn.ini job_port
+DAEMON_PORT=$(set +u; . "$BASE/app.env" >/dev/null 2>&1; echo "${DAEMON_PORT:-9000}")
 DIR="${DIR:-${ENV_HARAKA_DIR:-$BASE/haraka}}"
 DIR="${DIR%/}"
 DOMAIN="${DOMAIN:-$ENV_DOMAIN}"
@@ -119,11 +122,27 @@ echo "Haraka $VERSION into $DIR (domain $DOMAIN, database $MONGO_DB)"
 
 CREATED=()
 KEPT=()
+UPDATED=()
 
-#copies $1 to $2 when $2 is not there ($3: fill the @...@ of Rail22's templates; $4: a kept file is not listed)
+#copies $1 to $2 when $2 is not there ($3: fill the @...@ of Rail22's templates; $4: a kept file is not listed;
+#CLD: 2026-11-01T16:11:37+02:00: $5: replace $2 when it differs, listed as updated)
 put() {
-    local src=$1 dest=$2 fill=${3:-0} quiet=${4:-0}
+    local src=$1 dest=$2 fill=${3:-0} quiet=${4:-0} replace=${5:-0}
     if [ -e "$dest" ]; then
+        if [ "$replace" -eq 1 ]; then
+            local new
+            if [ "$fill" -eq 1 ]; then
+                new=$(sed -e "s|@BASE@|$BASE|g" -e "s|@DOMAIN@|$DOMAIN|g" -e "s|@MONGO_DB@|$MONGO_DB|g" -e "s|@DAEMON_PORT@|$DAEMON_PORT|g" "$src"; echo x)
+            else
+                new=$(cat "$src"; echo x)
+            fi
+            if [ "$new" != "$(cat "$dest"; echo x)" ]; then
+                UPDATED+=("${dest#$DIR/}")
+                echo "+ update $dest"
+                [ "$DRY_RUN" -eq 1 ] || printf '%s' "${new%x}" > "$dest"
+                return
+            fi
+        fi
         [ "$quiet" -eq 1 ] || KEPT+=("${dest#$DIR/}")
         return
     fi
@@ -131,7 +150,7 @@ put() {
     if [ "$fill" -eq 1 ]; then
         echo "+ fill $src > $dest"
         if [ "$DRY_RUN" -eq 0 ]; then
-            sed -e "s|@BASE@|$BASE|g" -e "s|@DOMAIN@|$DOMAIN|g" -e "s|@MONGO_DB@|$MONGO_DB|g" "$src" > "$dest"
+            sed -e "s|@BASE@|$BASE|g" -e "s|@DOMAIN@|$DOMAIN|g" -e "s|@MONGO_DB@|$MONGO_DB|g" -e "s|@DAEMON_PORT@|$DAEMON_PORT|g" "$src" > "$dest"
             chmod --reference="$src" "$dest"
         fi
     else
@@ -139,15 +158,15 @@ put() {
     fi
 }
 
-#copies the files of folder $1 into folder $2, the missing ones only ($3: fill, $4: quiet)
+#copies the files of folder $1 into folder $2, the missing ones only ($3: fill, $4: quiet; CLD: 2026-11-01T16:11:37+02:00: $5: replace those that differ)
 put_tree() {
-    local src=$1 dest=$2 fill=${3:-0} quiet=${4:-0} f rel
+    local src=$1 dest=$2 fill=${3:-0} quiet=${4:-0} replace=${5:-0} f rel
     while IFS= read -r -d '' f; do
         rel=${f#$src/}
         if [ -d "$f" ]; then
             [ -d "$dest/$rel" ] || run mkdir -p "$dest/$rel"
         else
-            put "$f" "$dest/$rel" "$fill" "$quiet"
+            put "$f" "$dest/$rel" "$fill" "$quiet" "$replace"
         fi
     done < <(find "$src" -mindepth 1 -print0 | sort -z)
 }
@@ -213,7 +232,8 @@ if [ "${#SPECS[@]}" -gt 0 ]; then
 fi
 
 #Rail22's plugin and configuration first (they win over Haraka's defaults of the same name), then Haraka's defaults (those already there not listed)
-put_tree "$TEMPLATES/plugins" "$DIR/plugins" 1
+#CLD: 2026-11-01T16:11:37+02:00: the plugin's code replaced when it differs (an update of the app brings a new nfn.js)
+put_tree "$TEMPLATES/plugins" "$DIR/plugins" 1 0 1
 put_tree "$TEMPLATES/config" "$DIR/config" 1
 #CLD: 2026-10-29T01:00:00+02:00: + the DKIM keys generator (dkim/dkim_key_gen.sh), as it is
 put_tree "$TEMPLATES/dkim" "$DIR/dkim" 0
@@ -240,9 +260,31 @@ if [[ " ${CREATED[*]} " == *" config/nfn.ini "* ]]; then
     fi
 fi
 
+#CLD: 2026-11-01T17:05:00+02:00: a kept nfn.ini of before the daemon's port: its job_socket line becomes job_port=<DAEMON_PORT>
+if [[ " ${CREATED[*]} " != *" config/nfn.ini "* ]] && grep -q '^job_socket=' "$DIR/config/nfn.ini" 2>/dev/null; then
+    UPDATED+=("config/nfn.ini (job_socket > job_port=$DAEMON_PORT)")
+    echo "+ $DIR/config/nfn.ini: job_socket > job_port=$DAEMON_PORT"
+    if [ "$DRY_RUN" -eq 0 ]; then
+        out=""
+        while IFS= read -r line || [ -n "$line" ]; do
+            if [[ $line == job_socket=* ]]; then
+                line="job_port=$DAEMON_PORT"
+            elif [[ $line == *job_socket_path* ]]; then
+                continue
+            fi
+            out+="$line"$'\n'
+        done < "$DIR/config/nfn.ini"
+        printf '%s' "$out" > "$DIR/config/nfn.ini"
+    fi
+fi
+
 echo
 echo "created (${#CREATED[@]}):"
 for f in "${CREATED[@]}"; do echo "  $f"; done
+#CLD: 2026-11-01T16:11:37+02:00: + updated (Rail22's plugin code); restart Haraka to load it
+echo "updated (${#UPDATED[@]}):"
+for f in "${UPDATED[@]}"; do echo "  $f"; done
+[ "${#UPDATED[@]}" -gt 0 ] && echo "  (restart Haraka to load them: systemctl restart nfn-haraka)"
 echo "kept, already there (${#KEPT[@]}):"
 for f in "${KEPT[@]}"; do echo "  $f"; done
 echo

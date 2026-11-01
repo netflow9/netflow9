@@ -3,10 +3,12 @@
 //CLD: 2026-10-19T21:10:00+03:00: new: the inbound mail settings of an account, one document per account: `prefix`, the start of its addresses <prefix>-<code>@MAIL_INBOUND_DOMAIN
 //(was the account field mail_prefix). Read by the Email (inbound) step (its address) and by Haraka (haraka/plugins/nfn.js, collection inbound_mail_settings, by aid);
 //changed on the plugin's page (InboundController::settings, linked from the Settings menu).
+//CLD: 2026-11-01T16:11:37+02:00: in the core (was plugins\InboundMail\models\InboundMailSettings), per account (with or without the MultiTenant plugin); changed on the Inbound mail tab of the
+//account's settings (AccountController::settings; was the plugin's page)
 //  $prefix = InboundMailSettings::prefixOf($aid);   the account's; the first time its settings are saved (Haraka reads them), with defaultPrefixFor($aid)
 //  CLD: 2026-10-21T11:30:00+03:00: forAccount() removed from the comment (it was never defined: prefixOf() called it); the settings are found with om->findOne
 
-namespace plugins\InboundMail\models;
+namespace models;
 
 class InboundMailSettings extends \sys\BaseModel {
     protected static $collection = 'inbound_mail_settings';
@@ -24,7 +26,7 @@ class InboundMailSettings extends \sys\BaseModel {
 		'key' => 'prefix',
 		'type' => 'text',
 		'label' => 'Email prefix',
-		'help' => 'The start of your inbound email addresses (prefix-xxxxxxxx@' . (\V::app()->config('mail.inbound_domain') ?: 'domain') . '); changing it changes them all',
+		'help' => 'The start of your inbound email addresses (prefix-xxxxxxxx@' . (\util\InboundMail::domain() ?: 'domain') . '); changing it changes them all',
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
 		'required' => true,

@@ -33,7 +33,8 @@ const fs = require('fs').promises;
 const path = require('path');
 const { Readable } = require('stream');
 
-const JOB_SPEC = '\\plugins\\InboundMail\\models\\NodeTriggerEmail::deliver';
+// CLD: 2026-11-01T16:11:37+02:00: the step is in the core (was \\plugins\\InboundMail\\models\\NodeTriggerEmail)
+const JOB_SPEC = '\\models\\node\\NodeTriggerEmail::deliver';
 const LOCAL_PART = /^([a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?)-([a-z0-9]{8})$/;
 
 let cfg = null;

@@ -52,7 +52,7 @@ class Services {
 	return $role && (string)$role->iname === 'owner';
     }
 
-    //the administration is there: the MultiTenant plugin is enabled (app/plugins.php)
+    //the administration is there: the MultiTenant plugin is enabled (plugins.json)
     //CLD: 2026-10-31T21:00:00+02:00: the MultiTenant plugin (was the Admin plugin)
     //CLD: 2026-10-31T22:00:00+02:00: a plugin manages the services (hook services:admin), so the core runs without the MultiTenant plugin (was plugins\MultiTenant\Plugin::enabled)
     public static function adminPlugin() {

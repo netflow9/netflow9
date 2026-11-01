@@ -3,10 +3,19 @@
 function get_config($mode = 'web') {
 
     //plugins
-    //CLD: 2026-10-31T11:22:13+02:00: plugins.local.php, when present, is read instead of plugins.php: an installation's own list (not in git: never blocks an update), as tiers.local.php
-    $plugins_fn = dirname(__FILE__) . '/plugins.local.php';
-    if (!is_readable($plugins_fn))
-	$plugins_fn = dirname(__FILE__) . '/plugins.php';
+    //CLD: 2026-11-01T17:30:00+02:00: plugins.json, next to app.env (not in git: the installation's own; was app/plugins.php, or plugins.local.php): { "<plugin>": { "enabled", its own
+    //settings (e.g. MultiTenant: config, tiers, credit_rates) }, ... }, loaded in this order; "enabled": false keeps a plugin's settings but leaves it out. No file: no plugins
+    $plugins = (function() {
+	$f = dirname(__DIR__) . '/plugins.json';
+	if (!is_file($f))
+	    return [];
+	$p = json_decode((string)file_get_contents($f), true);
+	if (!is_array($p) || array_is_list($p) && $p !== []) {
+	    error_log("$f: not a JSON object of the plugins (" . json_last_error_msg() . "): no plugins loaded");
+	    return [];
+	}
+	return array_map(fn($v) => is_array($v) ? $v : [], $p);
+    })();
 
     $_config = [
 	//development switch; also enables development-only endpoints (DataController / data/get) - set false outside development
@@ -38,7 +47,9 @@ function get_config($mode = 'web') {
 	'app.daemon_port' => defined('DAEMON_PORT') && (int)DAEMON_PORT > 0 ? (int)DAEMON_PORT : 9000,
 
 	//plugins(modules) configuration
-	'modules' => is_readable($plugins_fn) ? require($plugins_fn) : [],
+	//CLD: 2026-11-01T17:30:00+02:00: the enabled ones of plugins.json; 'plugins': every plugin's settings (\V::app()->config('plugins')['<plugin>'])
+	'modules' => array_keys(array_filter($plugins, fn($p) => ($p['enabled'] ?? true) !== false)),
+	'plugins' => $plugins,
 
 	'module.namespace' => $mode == 'web' ? 'controllers' : 'commands',
 	'module.classSuffix' => $mode == 'web' ? 'Controller' : 'Command',
@@ -74,7 +85,7 @@ function get_config($mode = 'web') {
 		    and the prices (USD per 1M tokens; empty: the known prices of Claude models)
 	    the credits each account gets per month (no rollover), the most one request may reserve (0: no limit)
 	    SYSTEM_AI_* in app.env.
-	    The credits per model and the margin: plugins/MultiTenant/credit_rates.php
+	    The credits per model and the margin: plugins.json (MultiTenant: credit_rates)
 	*/
 	'ai.system' => (function() {
 	    $env = fn($name, $default = '') => defined('SYSTEM_AI_' . $name) ? constant('SYSTEM_AI_' . $name) : $default;

@@ -6,7 +6,10 @@
     Haraka (haraka/plugins/nfn.js) accepts only the addresses of the token index (TriggerToken) whose account prefix matches, stores the raw message as a project File
     and submits a job: deliver() (run by the daemon) starts the run like the IMAP trigger (models\MailPoll::startMessage: one variable, default `mail`, attachments as project files); the raw message File is deleted when the run completes, kept when it fails (afterExecutionEnd below;
 */
-namespace plugins\InboundMail\models;
+//CLD: 2026-11-01T16:11:37+02:00: in the core (was plugins\InboundMail\models\NodeTriggerEmail, registered only when Haraka was found): always registered, available() when Haraka is found
+namespace models\node;
+
+use models\InboundMailSettings;
 
 //CLD: 2026-10-17T15:20:00+03:00: renamed NodeTriggerInbound -> NodeTriggerEmail
 class NodeTriggerEmail extends \models\WfNode {
@@ -22,6 +25,18 @@ class NodeTriggerEmail extends \models\WfNode {
     //CLD: 2026-10-21T11:30:00+03:00: its token format for the token index (TriggerToken::syncForWorkflow; without it, `hex`: the Email inbound steps were never indexed)
     const TOKEN_FORMAT = 'code';
 
+    //CLD: 2026-11-01T16:11:37+02:00: only where Haraka is installed with Rail22's plugin (util\InboundMail::found): else not in the palette, and a workflow with it cannot run (Workflow::validateFlow)
+    public static function available() {
+	return \util\InboundMail::found();
+    }
+
+    //CLD: 2026-11-01T16:11:37+02:00: new: the address of the step's code, from its account's current prefix ('' without a domain or a prefix)
+    public static function addressFor($aid, $token) {
+	$prefix = InboundMailSettings::prefixOf($aid);
+	$domain = \util\InboundMail::domain();
+	return $prefix !== '' && $domain !== '' && (string)$token !== '' ? "{$prefix}-{$token}@{$domain}" : '';
+    }
+
     //an entry in the token index (TriggerToken), no extra data
     public static function tokenData(array $node) {
 	return [];
@@ -32,12 +47,8 @@ class NodeTriggerEmail extends \models\WfNode {
     public static function initConfig() {
 	$token = \models\TriggerToken::newToken('code');
 
-	//CLD: 2026-10-21T11:30:00+03:00: InboundMailSettings::prefixOf (was findOne(...)->prefix: an error for an account without settings yet)
-	$prefix = InboundMailSettings::prefixOf(\V::app()->config('rt.account')->_id);
-	$domain = \V::app()->config('mail.inbound_domain');
-
-	$address = "{$prefix}-{$token}@{$domain}";
-	return [ 'token' => $token, 'address' => $address ];
+	//CLD: 2026-11-01T16:11:37+02:00: addressFor (was built here; no address without a domain, was `<prefix>-<code>@`)
+	return [ 'token' => $token, 'address' => self::addressFor(\V::app()->config('rt.account')->_id, $token) ];
     }
 
     public static function configSchema() {
@@ -48,8 +59,9 @@ class NodeTriggerEmail extends \models\WfNode {
 		'label' => 'Address',
 		'perm:update' => 'nobody',
 		//CLD: 2026-10-19T21:10:00+03:00: the prefix is in Inbound mail settings (was Account settings)
-		'help' => 'Mail sent here starts the workflow once it is published (the start is your account\'s email prefix: Settings, Inbound mail)',
-		'ui' => [ 'placeholder' => 'Set the email prefix in Inbound mail settings' ],
+		//CLD: 2026-11-01T16:11:37+02:00: the prefix is on the Inbound mail tab of Account settings (was the plugin's page)
+		'help' => 'Mail sent here starts the workflow once it is published (the start is your account\'s email prefix: Account settings, Inbound mail)',
+		'ui' => [ 'placeholder' => 'Set the email prefix in Account settings, Inbound mail' ],
 	    ],
 	    [
 		'key' => 'senders',
@@ -87,11 +99,14 @@ class NodeTriggerEmail extends \models\WfNode {
 	//CLD: 2026-10-18T14:40:00+03:00: the token checks are TriggerToken::checkToken (were here); no address without a valid code
 	$valid = \models\TriggerToken::checkToken($this, 'code') && $valid;
 
+	//CLD: 2026-11-01T16:11:37+02:00: the address again from the account's current prefix (was kept as it was built: changing the prefix left every step showing its old address)
 	$wf = $this->workflow;
-	$account = $wf ? \V::app()->om->findById('Account', $wf->aid) : null;
+	if ($wf && !empty($config['token']))
+	    $config['address'] = self::addressFor($wf->aid, $config['token']);
 	$this->config = $config;
 	if (empty($config['address'])) {
-	    $this->errors('config', 'Address: set the email prefix in Inbound mail settings first');
+	    $this->errors('config', \util\InboundMail::domain() === '' ? 'Address: the inbound domain is not set (MAIL_INBOUND_DOMAIN in app.env)'
+		: 'Address: set the email prefix in Account settings, Inbound mail first');
 	    $valid = false;
 	}
 	return $valid;
@@ -112,7 +127,7 @@ class NodeTriggerEmail extends \models\WfNode {
 	return $vars;
     }
 
-    //CLD: 2026-10-19T21:10:00+03:00: the job is \plugins\InboundMail\models\NodeTriggerEmail::deliver (haraka/plugins/nfn.js JOB_SPEC; was \models\node\NodeTriggerEmail::deliver)
+    //CLD: 2026-11-01T16:11:37+02:00: the job is \models\node\NodeTriggerEmail::deliver (haraka/plugins/nfn.js JOB_SPEC; was \plugins\InboundMail\models\NodeTriggerEmail::deliver)
     //a message Haraka received (a daemon job submitted by haraka/plugins/nfn.js): { file (the raw message, a project File), token, rcpt, mail_from }; starts and runs the
     //workflow's published version. Failing here fails the job (the File stays, as for a failed run); a sender the step does not accept: logged, the File deleted
     public static function deliver($data) {
