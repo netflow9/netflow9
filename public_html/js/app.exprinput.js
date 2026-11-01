@@ -2,7 +2,7 @@ if (!window.app)
     window.app = {};
 
 /*!
- * CLD: 2026-10-11T22:38:36+03:00: new component: live help for a text input / textarea that may hold expressions between {{ and }} (the J language).
+ * live help for a text input / textarea that may hold expressions between {{ and }} (the J language).
  * The server does the work: each change posts the text (debounced) and gets its problems back; typing a name, a `.` or Ctrl+Space inside {{ }} also
  * posts the text before the cursor and gets suggestions, shown in a menu at the cursor (arrows, Enter / Tab, Escape).
  *
@@ -12,10 +12,10 @@ if (!window.app)
  *   completion: { replace, items: [ { label, kind, detail } ] } | null }
  * The problems are listed below the input (line:column, message); nothing blocks the form.
  *
- * CLD: 2026-10-11T23:02:07+03:00: options.mode `name`: a field holding a variable name (no {{ }}): suggestions of the available variables as the user types or focuses it,
+ * options.mode `name`: a field holding a variable name (no {{ }}): suggestions of the available variables as the user types or focuses it,
  * options.usage `read` also warns about a name no step before sets (POST adds mode, usage)
  *
- * CLD: 2026-10-13T12:17:47+03:00: options.syntax (POST `syntax`): text (default: text with any {{ }} parts) | reference (only {{ variable }} / {{ variable.field }}): the server checks
+ * options.syntax (POST `syntax`): text (default: text with any {{ }} parts) | reference (only {{ variable }} / {{ variable.field }}): the server checks
  * and suggests in it; a reference field is checked whatever it holds (plain text is an error there)
  */
 window.app.ExprInput = (function() {
@@ -115,12 +115,12 @@ window.app.ExprInput = (function() {
 	    }
 	}
 
-	//CLD: 2026-10-13T12:17:47+03:00: whether the value is checked on the server: a name read (non-empty); a reference (non-empty: plain text is an error); text with {{
+	//whether the value is checked on the server: a name read (non-empty); a reference (non-empty: plain text is an error); text with {{
 	_wantsCheck() {
 	    const v = this.input.value;
 	    if (this.mode === 'name')
 		return this.usage === 'read' && v !== '';
-	    //CLD: 2026-10-13T12:43:20+03:00: + syntax value (one {{ }}): checked whatever it holds, as a reference
+	    //syntax value (one {{ }}): checked whatever it holds, as a reference
 	    return this.syntax !== 'text' ? v.trim() !== '' : v.includes('{{');
 	}
 
@@ -157,7 +157,7 @@ window.app.ExprInput = (function() {
 	    return seq === this.seq[kind] ? resp : null;
 	}
 
-	//CLD: 2026-10-13T15:32:41+03:00: one request to the live-help server (also used by app.CodeEditor): POST fields -> the JSON answer, or null (failed, aborted)
+	//one request to the live-help server (also used by app.CodeEditor): POST fields -> the JSON answer, or null (failed, aborted)
 	static async request(url, fields, signal) {
 	    const body = new URLSearchParams();
 	    Object.keys(fields).forEach((k) => body.set(k, fields[k]));
@@ -221,7 +221,7 @@ window.app.ExprInput = (function() {
 	    }
 	    const esc = app.utils.escapeHtml;
 	    //in a table cell (e.g. an edit grid row) only the icons, the message as their tooltip
-	    //CLD: 2026-10-13T09:52:24+03:00: also in a row of an edit grid with layout `rows` (.edit-grid-row)
+	    //also in a row of an edit grid with layout `rows` (.edit-grid-row)
 	    const compact = !!this.input.closest('td, .edit-grid-row');
 	    this.panel.innerHTML = problems.map((p) => {
 		const icon = p.severity === 'error' ? 'bi-x-circle text-danger' : 'bi-exclamation-triangle text-warning';

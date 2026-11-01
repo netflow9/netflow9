@@ -65,7 +65,7 @@ window.app.DatePicker = (function() {
 
 	    this.popup = document.createElement('div');
 	    this.popup.className = 'dp-popup card p-2';
-	    //CLD: 2026-10-05T22:37:58+03:00: kept next to the input while closed; while open it is moved out of any clipping container (see open)
+	    //kept next to the input while closed; while open it is moved out of any clipping container (see open)
 	    this.input.parentElement.appendChild(this.popup);
 	    this._onReposition = () => this._place();
 
@@ -79,7 +79,7 @@ window.app.DatePicker = (function() {
 	    // check fires immediately, closing the popup right after navigating.
 	    this.popup.addEventListener('click', (e) => {
 		e.stopPropagation();
-		//CLD: 2026-10-05T22:37:58+03:00: navigating changes the popup height: keep it placed
+		//navigating changes the popup height: keep it placed
 		if (this.popup.classList.contains('show'))
 		    this._place();
 	    });
@@ -97,9 +97,6 @@ window.app.DatePicker = (function() {
 	    });
 	}
 
-	//CLD: 2026-10-05T22:37:58+03:00: the popup was absolutely positioned inside the input's parent, so scrollable/overflow containers
-	//(e.g. a scrollable modal body) clipped it. While open it now lives in the closest .modal (stays inside Bootstrap's
-	//focus trap, so the time selects keep working) or in <body>, positioned `fixed` next to the input
 	open() {
 	    this.viewDate = this.value ? new Date(this.value) : new Date();
 	    this.viewMode = 'days';
@@ -108,7 +105,6 @@ window.app.DatePicker = (function() {
 	    const host = this.input.closest('.modal') || document.body;
 	    if (this.popup.parentElement !== host)
 		host.appendChild(this.popup);
-	    //CLD: 2026-10-05T22:43:18+03:00: `position: fixed` now comes from the theme (.dp-popup, _date_picker.scss); inline style removed
 
 	    this.popup.classList.add('show');
 	    this._place();
@@ -131,7 +127,7 @@ window.app.DatePicker = (function() {
 		this.input.parentElement.appendChild(this.popup);
 	}
 
-	//CLD: 2026-10-05T22:37:58+03:00: place the open popup under the input, or above it when there is no room below; kept inside the viewport
+	//place the open popup under the input, or above it when there is no room below; kept inside the viewport
 	_place() {
 	    const margin = 4;
 	    const r = this.input.getBoundingClientRect();
@@ -301,7 +297,7 @@ window.app.DatePicker = (function() {
 	    return `${y}-${m}-${day}`;
 	}
 
-	//CLD: 2026-10-05T22:32:08+03:00: set the value from code (no onChange): a Date, a local 'Y-m-d' / 'Y-m-dTH:i' string
+	//set the value from code (no onChange): a Date, a local 'Y-m-d' / 'Y-m-dTH:i' string
 	//(the format of the hidden input), or empty to clear
 	setValue(value) {
 	    let d = null;
@@ -1103,7 +1099,6 @@ window.app.SelectPlus = (function() {
         		'data-index': this.rows.length,
         	    });
         	    this._fill(node, item, this.o.templateResult);
-        	    //CLD: 2026-10-13T08:19:08+03:00: the tick of a selected item: a Bootstrap icon (was the ✓ character, \2713, of the .sp-selected::after CSS rule)
         	    if (sel)
         		node.appendChild(app.utils.el('i', 'bi bi-check-lg float-end ms-2 text-primary', { 'aria-hidden': 'true' }));
         	    this.list.appendChild(node);
@@ -1593,7 +1588,7 @@ window.app.FileUpload = (function() {
         	    item.loaded = item.size;
     		} else {
         	    item.status = 'error';
-		    //CLD: 2026-10-06T21:33:37+03:00: show the server's message when it sends { error }
+		    //show the server's message when it sends { error }
         	    const serverMessage = (item.response && typeof item.response === 'object' && item.response.error) ? item.response.error : null;
         	    item.error = { code: 'http', status: xhr.status, message: serverMessage || `Server responded with ${xhr.status}` };
     		}
