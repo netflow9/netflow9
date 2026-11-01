@@ -43,6 +43,8 @@ class WfNode extends \sys\NestedModel {
 	'backup' => 'Backup',
 	//CLD: 2026-11-01T08:00:00+02:00: the Checkmk steps
 	'monitoring' => 'Monitoring',
+	//CLD: 2026-11-01T12:00:00+02:00: the VMware steps
+	'virtualization' => 'Virtualization',
 	'ai' => 'AI',
 	'developer' => 'Developer',
     ];

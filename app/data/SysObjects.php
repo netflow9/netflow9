@@ -296,6 +296,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialSophos',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-01T12:00:00+02:00: a VMware vCenter Server (the VMware steps and alarm trigger), core for every account
+	    'CredentialVmware' => [
+		'class' => 'models\credential\CredentialVmware',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-01T04:00:00+02:00: a Veeam Backup & Replication server (the Veeam steps and event trigger), core for every account
 	    'CredentialVeeam' => [
 		'class' => 'models\credential\CredentialVeeam',
@@ -515,6 +520,31 @@ class SysObjects {
 	    ],
 	    'NodeAppSfosApi' => [
 		'class' => 'models\node\NodeAppSfosApi',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-01T12:00:00+02:00: VMware vCenter (one step per area, NodeAppVmware their base; the alarm trigger, polling), core for every account
+	    'NodeAppVmwareVms' => [
+		'class' => 'models\node\NodeAppVmwareVms',
+		'wfNode' => true,
+	    ],
+	    'NodeAppVmwareSnapshots' => [
+		'class' => 'models\node\NodeAppVmwareSnapshots',
+		'wfNode' => true,
+	    ],
+	    'NodeAppVmwareInventory' => [
+		'class' => 'models\node\NodeAppVmwareInventory',
+		'wfNode' => true,
+	    ],
+	    'NodeAppVmwareAlarms' => [
+		'class' => 'models\node\NodeAppVmwareAlarms',
+		'wfNode' => true,
+	    ],
+	    'NodeAppVmwareApi' => [
+		'class' => 'models\node\NodeAppVmwareApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerVmware' => [
+		'class' => 'models\node\NodeTriggerVmware',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-01T04:00:00+02:00: Veeam Backup & Replication (one step per area, NodeAppVeeam their base; the event trigger, polling), core for every account
