@@ -7,7 +7,7 @@
 	state           new -> run -> done | fail
 	run_count, worker_pid, start_run_at, delete_on_done, error
 
-    \models\Job::submit('\plugins\InboundMail\models\NodeTriggerEmail::deliver', [ 'aid' => $aid, 'project' => $project, ... ]);
+    \models\Job::submit('\models\node\NodeTriggerEmail::deliver', [ 'aid' => $aid, 'project' => $project, ... ]);
     //CLD: 2026-10-18T10:00:00+03:00: example: an existing method (util\MailPoller::pollStep is gone)
 */
 namespace models;

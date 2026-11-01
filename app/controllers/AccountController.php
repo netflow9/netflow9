@@ -16,7 +16,9 @@ class AccountController extends \sys\BaseController {
     public function settings($req, $resp) {
 	//CLD: 2026-11-01T02:00:00+02:00: + access (Data access: the projects' MCP server, what the Assistant may read; Account::update, the owners)
 	//CLD: 2026-11-01T03:00:00+02:00: the MCP server only (what the Assistant may read: its settings)
-	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'access' => \V::app()->user->can('Account::update'), 'usage' => \V::app()->user->can('Account::usage'),
+	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'access' => \V::app()->user->can('Account::update'),
+	    //CLD: 2026-11-01T16:11:37+02:00: + inbound (the account's inbound mail prefix, InboundMailSettings; was the InboundMail plugin's page): for who may change the account, where Haraka is found
+	    'inbound' => \V::app()->user->can('Account::update') && \util\InboundMail::found(), 'usage' => \V::app()->user->can('Account::usage'),
 	    'services' => !\util\Services::adminPlugin() && \util\Services::allowed(),
 	    //CLD: 2026-11-01T11:55:18+02:00: + tools (the installation's tool servers, util\ToolServers): without the MultiTenant plugin, for the owners (with it: /toolservers/index)
 	    'tools' => !\util\Services::adminPlugin() && \util\Services::allowed() ]));
@@ -27,6 +29,23 @@ class AccountController extends \sys\BaseController {
 	    $tab = $tabs[0];
 
 	$account = \V::app()->config('rt.account');
+
+	//CLD: 2026-11-01T16:11:37+02:00: Inbound mail: the prefix of the account's Email (inbound) addresses (was plugins\InboundMail\controllers\InboundController::settings)
+	if ($tab === 'inbound') {
+	    //new settings (not saved yet) for an account without them
+	    $settings = \V::app()->om->findOne('InboundMailSettings', [ 'aid' => $account->_id ])
+		?: \V::app()->om->create('InboundMailSettings', [ 'aid' => $account->_id, 'prefix' => \models\InboundMailSettings::defaultPrefixFor($account->_id) ]);
+	    if ($req->is('post')) {
+		$settings->assign($req->data, true);
+		if ($settings->validates() && $settings->save())
+		    $this->addToast('success', 'OK', 'Inbound mail settings saved!');
+		else
+		    $this->addToast('error', 'Not saved', 'Check the settings marked in the form');
+	    }
+	    $domain = \util\InboundMail::domain();
+	    $this->render('settings', compact('account', 'tab', 'tabs', 'settings', 'domain'));
+	    return;
+	}
 
 	if ($tab === 'tools') {
 	    $servers = \util\ToolServers::all();

@@ -31,7 +31,7 @@ class Tiers {
     // ------------------------------------------------------------------------------------
     //the tiers
 
-    //[ default, tiers ]: the plugins' (hook tiers:table ($table: \ArrayObject): default, tiers; the MultiTenant plugin's plugins/MultiTenant/tiers.php); none: no tiers
+    //[ default, tiers ]: the plugins' (hook tiers:table ($table: \ArrayObject): default, tiers; the MultiTenant plugin's, from plugins.json); none: no tiers
     //CLD: 2026-10-31T11:53:38+02:00: from the hook tiers:table (was app/tiers.php, or tiers.local.php)
     public static function table() {
 	if (self::$table === null) {

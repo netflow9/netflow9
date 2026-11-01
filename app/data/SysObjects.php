@@ -388,7 +388,11 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerWebhook',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-19T21:10:00+03:00: NodeTriggerEmail is registered by the InboundMail plugin (when Haraka is found)
+	    //CLD: 2026-11-01T16:11:37+02:00: Email (inbound) in the core (was registered by the InboundMail plugin, only when Haraka was found); available() when Haraka is found
+	    'NodeTriggerEmail' => [
+		'class' => 'models\node\NodeTriggerEmail',
+		'wfNode' => true,
+	    ],
 	    //CLD: 2026-10-17T20:40:00+03:00: File upload trigger
 	    'NodeTriggerFile' => [
 		'class' => 'models\node\NodeTriggerFile',
@@ -814,6 +818,10 @@ class SysObjects {
 		'class' => 'models\ToolServerSlot',
 	    ],
 	    //CLD: 2026-11-01T04:00:00+02:00: what a polling trigger remembers between its checks (Veeam event)
+	    //CLD: 2026-11-01T16:11:37+02:00: an account's inbound mail prefix (the Email inbound addresses; was the InboundMail plugin's)
+	    'InboundMailSettings' => [
+		'class' => 'models\InboundMailSettings',
+	    ],
 	    'TriggerState' => [
 		'class' => 'models\TriggerState',
 	    ],

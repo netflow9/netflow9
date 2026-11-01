@@ -380,6 +380,9 @@ class Workflow extends \sys\BaseModel {
 		$add('error', $id, 'Unknown step type');
 		continue;
 	    }
+	    //CLD: 2026-11-01T16:11:37+02:00: a step this server cannot run (WfNode::available: e.g. Email (inbound) without Haraka, a database without its PDO driver): the workflow cannot be published or run
+	    if (!\V::app()->om->getObjectClass($d['objectName'])::available())
+		$add('error', $id, "{$d['label']} is not available on this server");
 	    //CLD: 2026-10-11T20:24:33+03:00: the step's own outputs when they follow its config (e.g. Switch cases; keep in sync with outPortsOf() in app.workflow.js)
 	    if (!empty($d['outPorts'])) {
 		$class = \V::app()->om->getObjectClass($d['objectName']);

@@ -41,6 +41,9 @@ class Boot {
 	//CLD: 2026-10-26T23:49:50+02:00: the Assistant's conversation goes with its workflow (was the Assistant plugin's)
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\AssistantChat::class, 'beforeWorkflowDelete' ]);
 
+	//CLD: 2026-11-01T16:11:37+02:00: a completed Email (inbound) run deletes its raw message, in every mode: the daemon runs them (was the InboundMail plugin's)
+	\V::app()->hooks->addHook('execution:end', [ \models\node\NodeTriggerEmail::class, 'afterExecutionEnd' ]);
+
 	//the LDAP and SAML sign-ins: a deleted user's link; the sign-in (sys\Identity::authenticate) and who keeps a password here (password reset / change);
 	//in every mode: the check suite signs in from the console
 	\V::app()->hooks->addHook('model:after-delete', [ \models\LdapLink::class, 'afterModelDelete' ]);
@@ -87,6 +90,11 @@ class Boot {
 		];
 	    }
 	}, 6);
+	//CLD: 2026-11-01T16:11:37+02:00: Haraka, inbound mail (util\InboundMail::service: when found and its unit is this installation's; was the InboundMail plugin's)
+	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
+	    if (($s = \util\InboundMail::service()) !== null)
+		$services['haraka'] = $s;
+	}, 7);
 
 	if (\V::app()->config('app.mode') != 'web')
 	    return;

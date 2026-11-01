@@ -29,7 +29,8 @@ $this->pageTitle = 'Account::Settings';
     //CLD: 2026-10-31T19:30:00+02:00: + Services (_services.php: $services; without the Admin plugin)
     //CLD: 2026-11-01T02:00:00+02:00: + Data access (_access.php: $projects)
     //CLD: 2026-11-01T11:55:18+02:00: + Tool servers (_tools.php: $servers, $open, $enabled; without the MultiTenant plugin)
-    $labels = [ 'general' => 'Settings', 'access' => 'Data access', 'usage' => 'Usage', 'services' => 'Services', 'tools' => 'Tool servers' ];
+    //CLD: 2026-11-01T16:11:37+02:00: + Inbound mail (_inbound.php: $settings, $domain; where Haraka is found)
+    $labels = [ 'general' => 'Settings', 'access' => 'Data access', 'inbound' => 'Inbound mail', 'usage' => 'Usage', 'services' => 'Services', 'tools' => 'Tool servers' ];
     $items = [];
     foreach($tabs as $t)
 	$items[$t] = [ 'label' => $labels[$t], 'href' => \V::app()->createUrl('/account/settings', [ '__tab' => $t ]) ];

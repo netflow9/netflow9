@@ -243,11 +243,7 @@ class CheckCommand extends \sys\BaseController {
 
     //variable types: the steps' declared fields, Set / Loop inference, suggestions along paths
     private function suiteTypes() {
-	//CLD: 2026-10-19T21:10:00+03:00: built on the Email (inbound) step's message: only with the InboundMail plugin active (Haraka found)
-	if (!isset(\models\WfNode::getAll()['trigger::email'])) {
-	    echo "  (skipped: the Email (inbound) step needs the InboundMail plugin, active when Haraka is found)\n";
-	    return;
-	}
+	//CLD: 2026-11-01T16:11:37+02:00: built on the Email (inbound) step's message: the step is in the core, always registered (was skipped without the InboundMail plugin active)
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
 	//CLD: 2026-10-17T15:35:00+03:00: trigger::email (was trigger::inbound)
@@ -819,18 +815,36 @@ class CheckCommand extends \sys\BaseController {
 	    [ str_starts_with($prefixed, 'wh_'), $T::isToken($prefixed, 'hex', 'wh_'), $T::isToken($prefixed, 'hex'), $T::isToken($prefixed, 'hex', 'xx_') ]);
 	//CLD: 2026-10-18T23:45:00+03:00: the account mail prefix is a field (default `inbound`, lower-cased, letters / digits, at most 30); was Account::newMailPrefix() (removed), a random `code`
 	//CLD: 2026-10-19T21:10:00+03:00: the prefix is the InboundMail plugin's setting (InboundMailSettings: prefix; was the account field mail_prefix): only with the plugin active
-	if (!empty(\V::app()->om->registry['InboundMailSettings'])) {
-	    $prefixError = function($prefix) {
-		//set as the settings form does (assign: the field's transform), the default when not set
-		$a = \V::app()->om->create('InboundMailSettings', [ 'aid' => $this->account->_id ]);
-		if ($prefix !== null)
-		    $a->assign([ 'prefix' => $prefix ]);
-		$a->validates();
-		return [ (string)$a->prefix, isset($a->errors()['prefix']) ];
-	    };
-	    $this->check('mail prefix: the default, lower-cased, refused (not letters / digits, too long)', [ [ 'inbound', false ], [ 'sales2', false ], true, true ],
-		[ $prefixError(null), $prefixError('Sales2'), $prefixError('sales-2')[1], $prefixError(str_repeat('a', 31))[1] ]);
+	//CLD: 2026-11-01T16:11:37+02:00: in the core: always (was only with the InboundMail plugin active)
+	$prefixError = function($prefix) {
+	    //set as the settings form does (assign: the field's transform), the default when not set
+	    $a = \V::app()->om->create('InboundMailSettings', [ 'aid' => $this->account->_id ]);
+	    if ($prefix !== null)
+		$a->assign([ 'prefix' => $prefix ]);
+	    $a->validates();
+	    return [ (string)$a->prefix, isset($a->errors()['prefix']) ];
+	};
+	$this->check('mail prefix: the default, lower-cased, refused (not letters / digits, too long)', [ [ 'inbound', false ], [ 'sales2', false ], true, true ],
+	    [ $prefixError(null), $prefixError('Sales2'), $prefixError('sales-2')[1], $prefixError(str_repeat('a', 31))[1] ]);
+
+	//CLD: 2026-11-01T16:11:37+02:00: Email (inbound) in the core: available only where Haraka is found (util\InboundMail::found): else unavailable in the designer, an error of the workflow
+	//(cannot be published); its address follows the account's current prefix
+	$found = new \ReflectionProperty(\util\InboundMail::class, 'found');
+	$wasFound = $found->getValue();
+	$emailWf = \V::app()->om->create('Workflow', [ 'aid' => $this->account->_id, 'nodes' => [ 't' => self::node('t', 'trigger::email', [ 'token' => 'abcd1234' ]) ] ]);
+	$unavailable = fn() => in_array('Email (inbound) is not available on this server', array_column(array_filter($emailWf->validateFlow(), fn($i) => $i['level'] == 'error'), 'message'), true);
+	$results = [];
+	foreach([ false, true ] as $f) {
+	    $found->setValue(null, $f);
+	    $results[] = [ \models\node\NodeTriggerEmail::available(), !empty(\models\WfNode::designerDefs($this->account)['defs']['trigger::email']['unavailable']), $unavailable() ];
 	}
+	$found->setValue(null, $wasFound);
+	$step = \V::app()->om->create('NodeTriggerEmail', [ 'wfid' => 't', 'fqname' => 'trigger::email', 'config' => [ 'token' => 'abcd1234', 'address' => 'old-abcd1234@example.com', 'variable' => 'mail' ] ]);
+	$step->workflow = $emailWf;
+	$step->validates();
+	$this->check('Email (inbound): without Haraka not available (designer, workflow error), with it available; the address from the account\'s prefix', [
+	    [ false, true, true ], [ true, false, false ], \models\node\NodeTriggerEmail::addressFor($this->account->_id, 'abcd1234'), \util\InboundMail::domain() !== '' ],
+	    [ $results[0], $results[1], $step->config['address'] ?? null, str_ends_with((string)($step->config['address'] ?? ''), '-abcd1234@' . \util\InboundMail::domain()) ]);
 	//CLD: 2026-10-18T13:00:00+03:00: sys\NestedModel (was models\WfNodeConfig; option nestedSchema, was configSchema)
 	$urlModel = \sys\NestedModel::create([], [ 'objectName' => 'NestedModel', 'nestedSchema' => [ [ 'key' => 'site', 'type' => 'url', 'label' => 'Site' ] ] ]);
 	//CLD: 2026-10-14T19:59:06+03:00: refuses what is not an address (was: refuses other schemes than http(s))
@@ -3776,7 +3790,7 @@ class CheckCommand extends \sys\BaseController {
 
     //CLD: 2026-10-22T22:00:00+03:00: the LocalMCP plugin: its servers (the browser's unsafe tools left out), the accounts enabled, the sessions' limits (per account, in all), the AI step's
     //tools of a tool server (only those allowed, named <server>_<tool>, images passed on; a server not enabled refused); with the browser service running: a page opened, a private
-    //address refused. Skipped when the plugin is not enabled (app/plugins.php)
+    //address refused. Skipped when the plugin is not enabled (plugins.json)
     //CLD: 2026-11-01T11:55:18+02:00: toolservers (was localmcp): the core's tool servers (util\ToolServers): mcp.json (a check file in its place: the entries checked, written and removed,
     //the other keys kept, an invalid file), the accounts enabled, the sessions' limits, the AI step's tools; the web browser's entry (scripts/playwright/mcp-server.json) and, when it
     //is in the installation's mcp.json and runs, a page opened, a private address refused

@@ -44,7 +44,7 @@
 	    </div>
 	</div>
 
-	<?php //CLD: 2026-10-19T21:10:00+03:00: the inbound mail prefix moved into the InboundMail plugin (Settings menu: Inbound mail) ?>
+	<?php //CLD: 2026-11-01T16:11:37+02:00: the inbound mail prefix is on the Inbound mail tab (_inbound.php; was the InboundMail plugin's page) ?>
 
 	<div class="pt-4">
 	    <button type="submit" class="btn btn-primary">Save</button>
