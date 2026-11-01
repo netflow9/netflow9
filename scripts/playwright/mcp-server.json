@@ -1,0 +1,28 @@
+{
+    "type": "http",
+    "url": "http://localhost:8931/mcp",
+    "headers": {},
+    "label": "Web browser",
+    "description": "A headless Chromium (Playwright): open web pages, read them, click, type, fill in forms, take screenshots. Private network addresses are not reachable",
+    "tools": [
+        "browser_navigate",
+        "browser_navigate_back",
+        "browser_snapshot",
+        "browser_find",
+        "browser_click",
+        "browser_hover",
+        "browser_type",
+        "browser_press_key",
+        "browser_fill_form",
+        "browser_select_option",
+        "browser_drag",
+        "browser_wait_for",
+        "browser_take_screenshot",
+        "browser_tabs",
+        "browser_close"
+    ],
+    "maxSessions": 4,
+    "maxSessionsPerAccount": 2,
+    "managedBy": "scripts/playwright-mcp.sh",
+    "service": "playwright"
+}

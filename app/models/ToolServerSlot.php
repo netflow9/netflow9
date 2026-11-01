@@ -3,13 +3,15 @@
 /*
     a session of a tool server held by a running AI step: at most `max_sessions` at once on the installation (documents `<server>:<n>`) and
     `max_sessions_per_account` per account (`<server>:<aid>:<n>`). Taking one is an atomic upsert on the _id (a free one is missing or expired), leased until
-    `until`, renewed while the session is used (SessionClient), freed when it is closed or, when the process died, after LEASE. Global: the installation's slots are shared by the accounts
+    `until`, renewed while the session is used (util\ToolServerSession), freed when it is closed or, when the process died, after LEASE. Global: the installation's slots are shared by the accounts
+    CLD: 2026-11-01T11:55:18+02:00: core (was plugins\LocalMCP\models\LocalMcpSlot, collection localmcp_slots)
 */
 
-namespace plugins\LocalMCP\models;
+namespace models;
 
-class LocalMcpSlot extends \sys\BaseModel {
-    protected static $collection = 'localmcp_slots';
+class ToolServerSlot extends \sys\BaseModel {
+    //CLD: 2026-11-01T11:55:18+02:00: toolserver_slots (was localmcp_slots)
+    protected static $collection = 'toolserver_slots';
 
     //seconds a slot is held without being renewed
     const LEASE = 900;
@@ -36,7 +38,7 @@ class LocalMcpSlot extends \sys\BaseModel {
 	    $id = "{$prefix}:{$n}";
 	    try {
 		//a free slot is a missing or expired document; a held one fails the upsert (duplicate _id)
-		\V::app()->om->updateOne('LocalMcpSlot', [ '_id' => $id, 'until' => [ '$lt' => new \MongoDB\BSON\UTCDateTime($now * 1000) ] ],
+		\V::app()->om->updateOne('ToolServerSlot', [ '_id' => $id, 'until' => [ '$lt' => new \MongoDB\BSON\UTCDateTime($now * 1000) ] ],
 		    [ '$set' => [ 'server' => (string)$server, 'account' => (string)$aid, 'pid' => getmypid(), 'since' => new \MongoDB\BSON\UTCDateTime($now * 1000),
 			'until' => new \MongoDB\BSON\UTCDateTime(($now + self::LEASE) * 1000) ] ], [ 'upsert' => true ]);
 	    } catch (\MongoDB\Driver\Exception\BulkWriteException | \MongoDB\Driver\Exception\CommandException $e) {
@@ -52,19 +54,19 @@ class LocalMcpSlot extends \sys\BaseModel {
     //extends the lease of slots $ids
     public static function renew(array $ids) {
 	foreach($ids as $id)
-	    \V::app()->om->updateOne('LocalMcpSlot', [ '_id' => $id, 'pid' => getmypid() ], [ '$set' => [ 'until' => new \MongoDB\BSON\UTCDateTime((time() + self::LEASE) * 1000) ] ]);
+	    \V::app()->om->updateOne('ToolServerSlot', [ '_id' => $id, 'pid' => getmypid() ], [ '$set' => [ 'until' => new \MongoDB\BSON\UTCDateTime((time() + self::LEASE) * 1000) ] ]);
     }
 
     //frees slots $ids
     public static function free(array $ids) {
 	foreach($ids as $id)
-	    \V::app()->om->deleteOne('LocalMcpSlot', [ '_id' => $id, 'pid' => getmypid() ]);
+	    \V::app()->om->deleteOne('ToolServerSlot', [ '_id' => $id, 'pid' => getmypid() ]);
     }
 
     //the sessions open now: [ server => [ account => n ] ]
     public static function open() {
 	$open = [];
-	foreach(\V::app()->om->find('LocalMcpSlot', [ 'until' => [ '$gte' => new \MongoDB\BSON\UTCDateTime(time() * 1000) ], 'account' => [ '$ne' => '' ] ]) as $s) {
+	foreach(\V::app()->om->find('ToolServerSlot', [ 'until' => [ '$gte' => new \MongoDB\BSON\UTCDateTime(time() * 1000) ], 'account' => [ '$ne' => '' ] ]) as $s) {
 	    if (substr_count((string)$s->_id, ':') === 2)
 		$open[(string)$s->server][(string)$s->account] = ($open[(string)$s->server][(string)$s->account] ?? 0) + 1;
 	}

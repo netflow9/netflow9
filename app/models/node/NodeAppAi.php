@@ -15,6 +15,8 @@
 	//CLD: 2026-10-20T23:40:00+03:00: this project's tools come from the plugins (util\MCPTools; the SysMCPTools plugin gives its MCP server's tools), none without them
 	//CLD: 2026-10-22T22:00:00+03:00: + the installation's tool servers (`servers`: MCP servers the plugins run on this machine, e.g. a web browser - the LocalMCP plugin), those the
 	//administrator enabled for the account (hook ai:mcp-servers, localServers()); one session each per run, closed after it
+	//CLD: 2026-11-01T11:55:18+02:00: the tool servers are core (util\ToolServers: mcp.json, e.g. the web browser of scripts/playwright-mcp.sh), those enabled for the
+	//account by its owners or the super-admins
 	rounds, max tokens, timeout, the variable, on error (fail | the `error` output).
 	//CLD: 2026-10-17T21:00:54+03:00: + images: project image files sent with the prompt; images in tool results (read_image, MCP servers' image content) go to the model as images too
 	//CLD: 2026-10-27T23:11:38+02:00: images -> files (`files`; a saved step's `images` is still read, moved on save): images, PDF, text and Office files sent with the prompt
@@ -82,13 +84,14 @@ abstract class NodeAppAi extends \models\WfNode {
 	return \util\MCPTools::all();
     }
 
-    //CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers account $aid may use, given by the plugins (hook `ai:mcp-servers`: its arguments are an \ArrayObject the
-    //plugin adds them to, and $aid): [ id => [ id, label, description, open: fn(int $timeout) => an MCP client (initialize, listTools, callTool, close: as util\McpClient),
-    //tools: the tool names the model may use (null: all the server lists) ] ]. $aid null: none (outside an account)
+    //CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers account $aid may use: [ id => [ id, label, description, open: fn(int $timeout) => an MCP client (initialize,
+    //listTools, callTool, close: as util\McpClient), tools: the tool names the model may use (null: all the server lists) ] ]. $aid null: none (outside an account)
+    //CLD: 2026-11-01T11:55:18+02:00: the core's (util\ToolServers::ofAccount; was given by the LocalMCP plugin through the hook), then the hook `ai:mcp-servers` (its arguments
+    //are an \ArrayObject the servers are added to, and $aid; e.g. the check suite's server)
     public static function localServers($aid) {
 	if (empty($aid))
 	    return [];
-	$servers = new \ArrayObject();
+	$servers = new \ArrayObject(\util\ToolServers::ofAccount($aid));
 	\V::app()->hooks->applyHook('ai:mcp-servers', [ $servers, (string)$aid ]);
 	return $servers->getArrayCopy();
     }

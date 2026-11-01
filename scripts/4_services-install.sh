@@ -5,15 +5,19 @@
 #  nfn-daemon-<user>.service  the workflow daemon (app/v.php daemon::run), as the app's user (was started as root by scripts/daemon.sh)
 #  nfn-haraka.service         Haraka, inbound mail (as root: port 25; it forks, its PID file as before), only when Haraka is installed, one per server
 #  nfn-playwright-<user>.service  the AI steps' web browser (scripts/playwright-mcp.sh; was nfn-playwright.service, before playwright-mcp.service: it renames them)
+#  CLD: 2026-11-01T11:55:18+02:00: (the web browser's unit: scripts/playwright-mcp.sh install, run apart (install.sh runs it); not this script's any more)
 #  + a polkit rule: the app's user (the web server's PHP) may start / stop / restart these units
+#  CLD: 2026-11-01T11:55:18+02:00: the rule allows this installation's units by their name, nfn-<name>-<user>.service (and Haraka's when it has it), so that another service
+#  installed later (e.g. the web browser's nfn-playwright-<user>) is managed too, without writing the rule again (was: the units named in the rule)
 #CLD: 2026-10-31T18:00:00+02:00: several installations on one server (e.g. /home/app live, /home/dev development): each its own daemon, nfn-daemon-<the app's user> (was nfn-daemon),
 #its own web browser, nfn-playwright-<user> (2026-10-31T18:30:00+02:00; its port: PLAYWRIGHT_MCP_PORT of app.env), and its own polkit rule (49-netflow9-services-<user>.rules);
 #Haraka (port 25) is the server's: one installation has it, the others are installed with --no-haraka; Haraka's unit written by another installation is left alone
 
 #The processes started by scripts/daemon.sh and scripts/haraka.sh (their PID files) are stopped first; those scripts are no longer needed after this.
 #Run as root:
-#   sudo scripts/4_services-install.sh [install] [--no-haraka] [--no-playwright]   write the units and the rule, move the running services to them, start at boot
-#   sudo scripts/4_services-install.sh uninstall [--no-playwright]                 stop and remove the units and the rule (start the old scripts again by hand if needed)
+#   sudo scripts/4_services-install.sh [install] [--no-haraka]   write the units and the rule, move the running services to them, start at boot
+#   sudo scripts/4_services-install.sh uninstall                 stop and remove the units and the rule (start the old scripts again by hand if needed; another service (the web browser): its own script)
+#   sudo scripts/4_services-install.sh rule                      write the polkit rule again (e.g. the rule of an older version, which named its units)
 #   scripts/4_services-install.sh status
 
 set -euo pipefail
@@ -25,26 +29,21 @@ UNIT_DIR=/etc/systemd/system
 POLKIT_RULE=/etc/polkit-1/rules.d/49-netflow9-services-$APP_USER.rules
 DAEMON_UNIT=nfn-daemon-$APP_USER.service
 HARAKA_UNIT=nfn-haraka.service
-#CLD: 2026-10-29T13:00:00+02:00: nfn-playwright (was playwright-mcp), as the other units
-#CLD: 2026-10-31T18:30:00+02:00: the installation's (was nfn-playwright.service)
-PLAYWRIGHT_UNIT=nfn-playwright-$APP_USER.service
 #CLD: 2026-10-31T18:30:00+02:00: the daemon's unit before (nfn-daemon.service): removed by install when this installation wrote it
 OLD_DAEMON_UNIT=nfn-daemon.service
 #CLD: 2026-10-31T18:00:00+02:00: the first line of the units this script writes: which installation wrote them
 WRITTEN_BY="#written by $SELF"
 
-#CLD: 2026-10-28T23:30:00+02:00: install when no command is given (as the other install scripts: sudo scripts/4_services-install.sh [--no-playwright]); was: the usage
+#CLD: 2026-10-28T23:30:00+02:00: install when no command is given (as the other install scripts: sudo scripts/4_services-install.sh [--no-haraka]); was: the usage
 command="install"
 case "${1:-}" in
     ""|--*) ;;
     *) command="$1"; shift ;;
 esac
-#CLD: 2026-10-22T23:30:00+03:00: the browser service too (scripts/playwright-mcp.sh), unless --no-playwright
-PLAYWRIGHT=1
+#CLD: 2026-11-01T11:55:18+02:00: no --no-playwright: the browser is installed apart (scripts/playwright-mcp.sh install)
 HARAKA=1
 while [ "$#" -gt 0 ]; do
     case $1 in
-        --no-playwright) PLAYWRIGHT=0 ;;
         --no-haraka) HARAKA=0 ;;
         *) echo "unknown option: $1"; exit 1 ;;
     esac
@@ -58,6 +57,19 @@ need_root() {
 #CLD: 2026-10-31T18:00:00+02:00: unit $1 was written by this installation (or is not there)
 own_unit() {
     [ ! -f "$UNIT_DIR/$1" ] || [ "$(head -n1 "$UNIT_DIR/$1")" = "$WRITTEN_BY" ]
+}
+
+#CLD: 2026-11-01T11:55:18+02:00: this installation's other units (nfn-<name>-<user>.service, not the daemon): the other services (e.g. the web browser's nfn-playwright-<user>)
+other_units() {
+    local f
+    for f in "$UNIT_DIR"/nfn-*-"$APP_USER".service; do
+        [ -f "$f" ] || continue
+        f=$(basename "$f")
+        if [[ "$f" =~ ^nfn-[a-z0-9]+-"$APP_USER"\.service$ ]] && [ "$f" != "$DAEMON_UNIT" ]; then
+            echo "$f"
+        fi
+    done
+    return 0
 }
 
 #stops the process of PID file $1 (started by the old scripts), waiting for it to end
@@ -140,19 +152,21 @@ need_polkit() {
 }
 
 #CLD: 2026-10-31T18:00:00+02:00: the units of this installation: its daemon, Haraka when it has it, the web browser unless --no-playwright (was all three)
+#CLD: 2026-11-01T11:55:18+02:00: this installation's units by name (nfn-<name>-<user>.service: the daemon, another service, e.g. installed later), and Haraka's when it has it ($1: 1)
 write_polkit_rule() {
-    local units="" managed="$DAEMON_UNIT"
-    [ "$1" -eq 1 ] && managed="$managed $HARAKA_UNIT"
-    [ "$PLAYWRIGHT" -eq 1 ] && managed="$managed $PLAYWRIGHT_UNIT"
-    for u in $managed; do units="$units${units:+, }\"$u\""; done
+    local units="" user_re
+    [ "$1" -eq 1 ] && units="\"$HARAKA_UNIT\""
+    #the user's name in a regular expression
+    user_re=$(printf '%s' "$APP_USER" | sed 's/[][\.*^$()+?{}|/-]/\\&/g')
     cat > "$POLKIT_RULE" <<EOF
 // written by $SELF
-// the app's user (the web server's PHP: the administration) may start / stop / restart the app's services, and nothing else
+// the app's user (the web server's PHP: the administration) may start / stop / restart the app's services, and nothing else: its units (nfn-<name>-$APP_USER.service)
 polkit.addRule(function(action, subject) {
     if (action.id == "org.freedesktop.systemd1.manage-units" && subject.user == "$APP_USER") {
+        var unit = action.lookup("unit") || "";
         var units = [ $units ];
         var verbs = [ "start", "stop", "restart" ];
-        if (units.indexOf(action.lookup("unit")) >= 0 && verbs.indexOf(action.lookup("verb")) >= 0)
+        if ((/^nfn-[a-z0-9]+-$user_re\.service\$/.test(unit) || units.indexOf(unit) >= 0) && verbs.indexOf(action.lookup("verb")) >= 0)
             return polkit.Result.YES;
     }
 });
@@ -197,14 +211,7 @@ case "$command" in
             systemctl enable --now "$HARAKA_UNIT"
         fi
 
-        #CLD: 2026-10-22T23:30:00+03:00: the AI steps' web browser (its own script: user, firewall, unit), when the shared Chromium is there
-        if [ "$PLAYWRIGHT" -eq 1 ]; then
-            if ls -d /opt/playwright/browsers/chromium-[0-9]*/chrome-linux64/chrome >/dev/null 2>&1; then
-                "$BASE/scripts/playwright-mcp.sh" install
-            else
-                echo "! the web browser for the AI steps is not installed: no shared Chromium; run scripts/1_playwright-install.sh first, then this again (or scripts/playwright-mcp.sh install)"
-            fi
-        fi
+        #CLD: 2026-11-01T11:55:18+02:00: (the AI steps' web browser: scripts/playwright-mcp.sh install, run apart; was installed here)
         sleep 2
         systemctl --no-pager --lines=3 status $DAEMON_UNIT $([ "$haraka" -eq 1 ] && echo $HARAKA_UNIT) || true
         echo "Done: Administration > Installation shows them; check that $APP_USER may control them: sudo -u $APP_USER systemctl --no-ask-password restart $DAEMON_UNIT"
@@ -220,15 +227,28 @@ case "$command" in
         done
         rm -f "$POLKIT_RULE"
         systemctl daemon-reload
-        #CLD: 2026-10-29T13:00:00+02:00: the unit of either name (playwright-mcp.service before the rename)
-        if [ "$PLAYWRIGHT" -eq 1 ] && { [ -f "$UNIT_DIR/$PLAYWRIGHT_UNIT" ] || [ -f "$UNIT_DIR/playwright-mcp.service" ] || [ -f "$UNIT_DIR/nfn-playwright.service" ]; }; then
-            "$BASE/scripts/playwright-mcp.sh" uninstall
-        fi
+        #CLD: 2026-11-01T11:55:18+02:00: the other services are their scripts' to remove (was: the web browser's removed here)
+        for u in $(other_units); do
+            echo "- $u: left (its own script removes it, e.g. scripts/playwright-mcp.sh uninstall; without the rule the app no longer controls it)"
+        done
         echo "Removed; start the services with scripts/daemon.sh and scripts/haraka.sh if needed"
+        ;;
+    rule)
+        #CLD: 2026-11-01T11:55:18+02:00: new: the rule written again (Haraka's unit when it is this installation's)
+        need_root
+        need_polkit
+        haraka=0
+        if [ -f "$UNIT_DIR/$HARAKA_UNIT" ] && own_unit "$HARAKA_UNIT"; then
+            haraka=1
+        fi
+        write_polkit_rule "$haraka"
+        systemctl try-reload-or-restart polkit.service || true
+        echo "+ $POLKIT_RULE"
         ;;
     status)
         #CLD: 2026-10-22T23:30:00+03:00: a unit not installed says so (was: inactive); the polkit rule: unknown when its folder cannot be read (only root may)
-        for u in $DAEMON_UNIT $HARAKA_UNIT $PLAYWRIGHT_UNIT; do
+        #CLD: 2026-11-01T11:55:18+02:00: + this installation's other services (was: the web browser's)
+        for u in $DAEMON_UNIT $HARAKA_UNIT $(other_units); do
             if [ "$(systemctl show "$u" -p LoadState --value 2>/dev/null)" = "loaded" ]; then
                 printf '%-28s %s\n' "$u" "$(systemctl is-active "$u" 2>/dev/null || true)"
             else
@@ -242,7 +262,7 @@ case "$command" in
         fi
         ;;
     *)
-        echo "usage: sudo $0 [install | uninstall | status] [--no-haraka] [--no-playwright]   (install when none is given)"
+        echo "usage: sudo $0 [install | uninstall | rule | status] [--no-haraka]   (install when none is given)"
         exit 1
         ;;
 esac

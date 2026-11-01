@@ -4,16 +4,20 @@
 #  - its own user (pwmcp), no login, writing only in /var/lib/playwright-mcp
 #  - on 127.0.0.1:8931 only (Streamable HTTP: http://localhost:8931/mcp), headless, a fresh in-memory browser profile per session
 #    CLD: 2026-10-23T00:20:00+03:00: + --allowed-hosts: the Host headers localhost:<port> and 127.0.0.1:<port> (it accepted only localhost: 403 for http://127.0.0.1:...)
-#  - the shared Chromium of scripts/1_playwright-install.sh (run that first)
+#  - the shared Chromium of scripts/1_playwright-install.sh (CLD: 2026-11-01T11:55:18+02:00: install runs it when it is missing)
 #  - a firewall table (nftables) refusing the user's new connections to private, loopback and link-local addresses (the cloud metadata 169.254.169.254 too): the browser reaches
 #    only the public internet (Playwright's own --blocked-origins is not a security boundary: kept as a second layer only)
+#CLD: 2026-11-01T11:55:18+02:00: the tool servers are core (mcp.json, next to app.env; was the LocalMCP plugin): install adds the browser to an installation, at its installation
+#(install.sh) or later: Playwright and Chromium when they are missing (scripts/1_playwright-install.sh), the service, the polkit rule written again when the app's services are installed
+#(scripts/4_services-install.sh rule: the Services page controls it), the server in mcp.json (scripts/playwright/mcp-server.json, its url with the port: ./v mcpserver::add; an
+#entry changed by hand is written again), a test (./v mcpserver::test); uninstall takes the server out of mcp.json first
 #Run as root:
 #   sudo scripts/playwright-mcp.sh install [--version=<x.y.z>] [--port=<n>]   install / update, start at boot, start now
 #   sudo scripts/playwright-mcp.sh start | stop | restart | status | uninstall
-#Then: ./v LocalMCP::servers::test, and ./v LocalMCP::servers::enable --account=<id> --server=playwright
+#Then the accounts that may use it: Settings > Tool servers (or ./v mcpserver::enable --account=<id> --server=playwright)
 #CLD: 2026-10-31T18:30:00+02:00: one per installation (several on one server: e.g. /home/app live, /home/dev development), as the daemon: the unit nfn-playwright-<the app's user>
 #(was nfn-playwright), its own user pwmcp-<user>, folder /var/lib/playwright-mcp-<user>, firewall table playwright_mcp_<user> (/etc/playwright-mcp/egress-<user>.nft) and port:
-#--port, else PLAYWRIGHT_MCP_PORT of app.env (the app's servers.php uses it too), else 8931. The @playwright/mcp package and the Chromium are the server's (shared)
+#--port, else PLAYWRIGHT_MCP_PORT of app.env (CLD: 2026-11-01T11:55:18+02:00: then written into mcp.json's url), else 8931. The @playwright/mcp package and the Chromium are the server's (shared)
 
 set -euo pipefail
 
@@ -57,6 +61,12 @@ usage() {
 
 need_root() {
     [ "$(id -u)" -eq 0 ] || { echo "run it as root: sudo $0 $command"; exit 1; }
+}
+
+#CLD: 2026-11-01T11:55:18+02:00: the app's console as the app's user (mcp.json is its file); the server's entry in mcp.json
+MCP_ENTRY="$BASE/scripts/playwright/mcp-server.json"
+as_app() {
+    (cd "$BASE/app" && runuser -u "$APP_USER" -- env -i PATH="/usr/local/bin:/usr/bin:/bin" HOME="$BASE" "$BASE/app/v" "$@")
 }
 
 #the system's Node.js (not root's own nvm: the package must be readable by the service's user)
@@ -168,7 +178,12 @@ case "$command" in
         need_root
         system_node
         chrome=$(chromium_path)
-        [ -n "$chrome" ] || { echo "no shared Chromium in $BROWSERS_PATH: run scripts/1_playwright-install.sh first"; exit 1; }
+        #CLD: 2026-11-01T11:55:18+02:00: Playwright and Chromium installed when missing (was: run 1_playwright-install.sh first)
+        if [ -z "$chrome" ]; then
+            "$BASE/scripts/1_playwright-install.sh"
+            chrome=$(chromium_path)
+        fi
+        [ -n "$chrome" ] || { echo "no shared Chromium in $BROWSERS_PATH after $BASE/scripts/1_playwright-install.sh"; exit 1; }
         echo "+ @playwright/mcp $VERSION, Chromium $chrome, port $PORT"
         command -v nft >/dev/null || dnf install -y nftables
         id "$SVC_USER" >/dev/null 2>&1 || useradd --system --home-dir "$HOME_DIR" --shell /sbin/nologin --comment "Playwright MCP server of $BASE" "$SVC_USER"
@@ -184,7 +199,17 @@ case "$command" in
         systemctl restart "$SERVICE"
         sleep 3
         systemctl --no-pager --lines=5 status "$SERVICE" || true
-        echo "Done: http://127.0.0.1:$PORT/mcp. Check it: ./v LocalMCP::servers::test (from $(dirname "$SELF")/../app)"
+        #CLD: 2026-11-01T11:55:18+02:00: the Services page controls it (the rule of this installation's units, when they are installed), the server in mcp.json, a test
+        if [ -f "/etc/polkit-1/rules.d/49-netflow9-services-$APP_USER.rules" ]; then
+            "$BASE/scripts/4_services-install.sh" rule
+        fi
+        if [ -f "$BASE/app.env" ]; then
+            as_app mcpserver::add --id=playwright --file="$MCP_ENTRY" --url="http://localhost:$PORT/mcp"
+            as_app mcpserver::test --server=playwright || echo "! the test failed: sudo $SELF status"
+            echo "Done: http://127.0.0.1:$PORT/mcp, in mcp.json as \`playwright\`. The accounts that may use it: Settings > Tool servers (or ./v mcpserver::enable --account=<id> --server=playwright)"
+        else
+            echo "Done: http://127.0.0.1:$PORT/mcp. The app is not set up yet ($BASE/app.env): run this again after it, to add the server to mcp.json"
+        fi
         ;;
     start|stop|restart)
         need_root
@@ -197,6 +222,10 @@ case "$command" in
         ;;
     uninstall)
         need_root
+        #CLD: 2026-11-01T11:55:18+02:00: the server out of mcp.json first (the AI steps no longer open sessions)
+        if [ -f "$BASE/app.env" ]; then
+            as_app mcpserver::remove --id=playwright --managed-by=scripts/playwright-mcp.sh || true
+        fi
         system_node
         systemctl disable --now "$SERVICE" 2>/dev/null || true
         rm -f "$UNIT"

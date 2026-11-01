@@ -17,7 +17,9 @@ class AccountController extends \sys\BaseController {
 	//CLD: 2026-11-01T02:00:00+02:00: + access (Data access: the projects' MCP server, what the Assistant may read; Account::update, the owners)
 	//CLD: 2026-11-01T03:00:00+02:00: the MCP server only (what the Assistant may read: its settings)
 	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'access' => \V::app()->user->can('Account::update'), 'usage' => \V::app()->user->can('Account::usage'),
-	    'services' => !\util\Services::adminPlugin() && \util\Services::allowed() ]));
+	    'services' => !\util\Services::adminPlugin() && \util\Services::allowed(),
+	    //CLD: 2026-11-01T11:55:18+02:00: + tools (the installation's tool servers, util\ToolServers): without the MultiTenant plugin, for the owners (with it: /toolservers/index)
+	    'tools' => !\util\Services::adminPlugin() && \util\Services::allowed() ]));
 	if (!$tabs)
 	    \V::app()->error(403, 'Unauthorized');
 	$tab = (string)($req->query['__tab'] ?? '');
@@ -25,6 +27,14 @@ class AccountController extends \sys\BaseController {
 	    $tab = $tabs[0];
 
 	$account = \V::app()->config('rt.account');
+
+	if ($tab === 'tools') {
+	    $servers = \util\ToolServers::all();
+	    $open = \models\ToolServerSlot::open();
+	    $enabled = \models\ToolServerAccess::serversOf($account->_id);
+	    $this->render('settings', compact('account', 'tab', 'tabs', 'servers', 'open', 'enabled'));
+	    return;
+	}
 
 	if ($tab === 'services') {
 	    $services = \util\Services::withStatus();
