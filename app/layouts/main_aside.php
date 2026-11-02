@@ -243,7 +243,9 @@ $dd_items = implode('', $dd_items);
 
 	<!-- two-level menu, pinned to the bottom of the sidebar -->
 	<div class="sidebar-bottom-menu">
-	    <div class="d-flex align-items-center justify-content-end px-2 pt-2 pb-1">
+	    <div class="d-flex align-items-center justify-content-between px-2 pt-2 pb-1">
+		<?php //CLD: 2026-11-02T21:30:00+02:00: the app's version, left of the theme switch (was the switch alone, on the right) ?>
+		<span class="small text-muted">v<?= \V::app()->html->escape(\data\Version::NUMBER) ?></span>
 		<div class="btn-group btn-group-sm" role="group" aria-label="Theme">
 		    <button type="button" class="btn btn-outline-secondary py-0" data-theme-value="light" title="Light" aria-pressed="false"><i class="bi bi-sun" aria-hidden="true"></i><span class="visually-hidden">Light</span></button>
 		    <button type="button" class="btn btn-outline-secondary py-0" data-theme-value="dark" title="Dark" aria-pressed="false"><i class="bi bi-moon-stars" aria-hidden="true"></i><span class="visually-hidden">Dark</span></button>

@@ -47,6 +47,11 @@ fpm_unit() {
     systemctl list-units --type=service --state=running --no-legend --plain '*php*fpm*' | awk 'NR==1 { print $1 }'
 }
 
+#the app's version in this installation (app/data/Version.php)
+version() {
+    sed -n "s/.*const NUMBER = '\(.*\)';.*/\1/p" "$BASE/app/data/Version.php" 2>/dev/null || true
+}
+
 show_commit() {
     as_user git -C "$1" log -1 --format='%h %s' "$2" | cut -c1-100
 }
@@ -93,6 +98,7 @@ status() {
         echo "  remote: $(show_commit "$repo" '@{u}')"
         local_commits "$repo"
     done < <(repos)
+    echo "version: $(version)"
     echo "$DAEMON: $(systemctl is-active "$DAEMON" || true)"
 }
 
@@ -128,7 +134,7 @@ run() {
     echo "== restart: $fpm $DAEMON"
     systemctl restart "$fpm" "$DAEMON"
     systemctl is-active --quiet "$fpm" "$DAEMON" || { echo "not running after the restart: systemctl status $fpm $DAEMON"; exit 1; }
-    echo "Done."
+    echo "Done: version $(version)"
 }
 
 main() {

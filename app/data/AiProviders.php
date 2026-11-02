@@ -62,8 +62,15 @@ class AiProviders {
     ];
 
     //Claude's effort levels: the AI step's, the Assistant's, the System AI's
-    const EFFORT = [ 'low' => 'Low', 'medium' => 'Medium', 'high' => 'High', 'xhigh' => 'Extra high', 'max' => 'Max' ];
+    const EFFORT = [
+	'low' => 'Low',
+	'medium' => 'Medium',
+	'high' => 'High',
+	'xhigh' => 'Extra high',
+	'max' => 'Max'
+    ];
     const DEFAULT_EFFORT = 'high';
+
     //Claude's model when none is chosen
     const DEFAULT_MODEL = 'claude-opus-5-5';
 

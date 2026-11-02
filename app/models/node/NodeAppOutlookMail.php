@@ -46,6 +46,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
     //the operations composing a message, the ones on an existing message
     const COMPOSE = [ 'send', 'draft' ];
     const ON_MESSAGE = [ 'get', 'modify', 'delete' ];
+    const BODY_TYPES = [ 'text' => 'Text', 'html' => 'HTML' ];
 
     const MARK = [ 'none' => 'Leave as it is', 'read' => 'Read', 'unread' => 'Unread' ];
 
@@ -117,7 +118,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'Body',
 		'required' => true,
 		'default' => 'text',
-		'choices' => \data\Mail::BODY_TYPES,
+		'choices' => self::BODY_TYPES,
 		'ui' => [ 'width' => 3, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    //send / draft

@@ -14,7 +14,14 @@ class NodeTriggerWebhook extends \models\WfNode {
     public static $outputs = 1;
 
     //accepted HTTP methods (ANY = all of them)
-    const METHODS = [ 'ANY' => 'Any method' ] + \data\Http::METHODS_PATCH;
+    const METHODS = [
+	'ANY' => 'Any method',
+	'GET' => 'GET',
+	'POST' => 'POST',
+	'PUT' => 'PUT',
+	'PATCH' => 'PATCH',
+	'DELETE' => 'DELETE',
+    ];
 
     //accepted content types of the request body => label
     const CONTENT_TYPES = [
