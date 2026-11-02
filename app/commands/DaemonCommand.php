@@ -114,8 +114,7 @@ class DaemonCommand extends \sys\BaseController {
 	\V::app()->log->info("WMGR: create new worker...");
 	$process = new \React\ChildProcess\Process($this->worker_cmd);
 
-	//start the process
-	//CLD: 2026-10-08T21:36:05+03:00: stop here when it cannot start (the pipes below did not exist)
+	//start the process or stop here when it cannot start (the pipes below did not exist)
 	try {
 	    $process->start($this->loop);
 	} catch (\RuntimeException $e) {
@@ -388,10 +387,10 @@ class DaemonCommand extends \sys\BaseController {
     	}
     }
 
-    //the job listener is a plain TCP stream server on 127.0.0.1 watched by the loop
+    //the job listener is a plain TCP stream server on 127.0.0.1 (app.daemon_port: DAEMON_PORT of app.env, default 9000) watched by the loop,
+    // so that Haraka (another user) and other local processes reach it
+    // a port taken (e.g. by another installation): logged, tried again at the next check
     //one command per line: NEWJOB, KILLJOB:<event id>
-    //CLD: 2026-11-01T16:00:27+02:00: a TCP port on 127.0.0.1 only (app.daemon_port: DAEMON_PORT of app.env, default 9000), so that Haraka (another user) and other local
-    //processes reach it without the unix socket's file (was run/job-notify.sock, mode 0777); a port taken (e.g. by another installation): logged, tried again at the next check
     public function setup_job_listener() {
 	if (!empty($this->job_listener))
 	    return;
@@ -477,7 +476,6 @@ class DaemonCommand extends \sys\BaseController {
 	    @fclose($this->job_listener);
 	    $this->job_listener = null;
 	}
-	//CLD: 2026-11-01T16:00:27+02:00: no socket file to remove (a TCP port)
     }
 
     //number of CPUs (for the --max-workers default)
@@ -587,7 +585,6 @@ class DaemonCommand extends \sys\BaseController {
 	    $this->ensure_workers();
 	    $this->check_workers();
 
-	    //CLD: 2026-10-08T21:36:05+03:00: countDocuments (count() is deprecated)
 	    $this->new_jobs_count = $this->jobs_coll->countDocuments([ 'state' => 'new' ]);
 
 	    $d_delta = time() - $this->last_dispatch_time;
@@ -615,15 +612,16 @@ class DaemonCommand extends \sys\BaseController {
 
 	    //SC: 2024-11-20: added
 	    //re-run failed jobs no more than 3 times
-	    //CLD: 2026-10-08T21:36:05+03:00: by run_count (was `counter`, a field nothing sets: nothing was ever re-run), all events (no `mode`)
 	    $result = $this->jobs_coll->updateMany(
 		[ 'state' => 'fail', 'run_count' => [ '$lt' => 3 ] ],
 		[ '$set' => [ 'state' => 'new', 'worker_pid' => null ] ],
 		[ 'writeConcern' => new \MongoDB\Driver\WriteConcern(\MongoDB\Driver\WriteConcern::MAJORITY) ]
 	    );
-	    \V::app()->log->info("re-run failed jobs count: " . $result->getModifiedCount());
-	    if ($result->getModifiedCount() > 0)
+	    //CLD: 2026-11-02T21:50:00+02:00: logged only when there are some (was every 5 minutes, mostly 0)
+	    if ($result->getModifiedCount() > 0) {
+		\V::app()->log->info("re-run failed jobs count: " . $result->getModifiedCount());
 		$this->dispatch_jobs();
+	    }
     	});
 
 	//add a 2-hour periodic timer: cleanup AuditLog and ExecutionLog
@@ -633,7 +631,7 @@ class DaemonCommand extends \sys\BaseController {
 	    $accounts = \V::app()->om->find('Account');
 	    foreach($accounts as $acct) {
 		//audit log
-		//CLD: 2026-10-22T00:00:00+03:00: AuditLog::prune: at least 1 year (AuditLog::MIN_RETENTION_DAYS), the seal keeps what the retention removed, and its state
+		//AuditLog::prune: at least 1 year (AuditLog::MIN_RETENTION_DAYS), the seal keeps what the retention removed, and its state
 		//is logged (was: the account's setting, as short as 30 days, applied here)
 		\models\AuditLog::prune($acct);
 		//execution log
@@ -641,9 +639,9 @@ class DaemonCommand extends \sys\BaseController {
 		    $time_limit = new \MongoDB\BSON\UTCDateTime((time() - $acct->execution_log_retention * 60*60*24) * 1000);
 		    $exe_log_coll->deleteMany([ 'aid' => $acct->_id, 'created_at' => [ '$lte' => $time_limit ] ]);
 		}
-		//CLD: 2026-11-02T14:00:00+02:00: the AI steps' traces: the same setting
+		//the AI steps' traces: the same setting
 		\models\AgentTrace::prune($acct);
-		//CLD: 2026-11-02T18:00:00+02:00: the conversations with agents and the runs that hold their text: the same setting
+		//the conversations with agents and the runs that hold their text: the same setting
 		\models\AgentConversation::prune($acct);
 	    }
 	});
@@ -704,7 +702,7 @@ class DaemonCommand extends \sys\BaseController {
 	if (!is_object($job_data))
 	    $job_data = new \stdClass();
 
-	//CLD: 2026-10-08T21:36:05+03:00: the account is the event's (aid at the top level), else job_data's
+	//the account is the event's (aid at the top level), else job_data's
 	if (empty($job_data->aid) && !empty($job->aid))
 	    $job_data->aid = $job->aid;
 
@@ -741,7 +739,7 @@ class DaemonCommand extends \sys\BaseController {
 	//ok, run it
 	//each job starts without the step definitions cached by an earlier one (models\WfNode::getAll: per request)
 	\models\WfNode::resetCache();
-	//CLD: 2026-10-26T07:17:30+02:00: and without the data tables / columns cached by an earlier one (another process may have changed them)
+	//...and without the data tables / columns cached by an earlier one (another process may have changed them)
 	\V::app()->om->resetCache();
 	$job_class::$job_method($job_data);
     }
