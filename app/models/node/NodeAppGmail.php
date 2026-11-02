@@ -48,6 +48,7 @@ class NodeAppGmail extends NodeAppGoogle {
     //the operations composing a message, the ones on an existing message
     const COMPOSE = [ 'send', 'draft' ];
     const ON_MESSAGE = [ 'get', 'modify', 'trash' ];
+    const BODY_TYPES = [ 'text' => 'Text', 'html' => 'HTML' ];
 
     const MARK = [ 'none' => 'Leave as it is', 'read' => 'Read', 'unread' => 'Unread' ];
 
@@ -132,7 +133,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'label' => 'Body',
 		'required' => true,
 		'default' => 'text',
-		'choices' => \data\Mail::BODY_TYPES,
+		'choices' => self::BODY_TYPES,
 		'help' => 'HTML: a text version is made from it too',
 		'ui' => [ 'width' => 3, 'showIf' => $op(self::COMPOSE) ],
 	    ],

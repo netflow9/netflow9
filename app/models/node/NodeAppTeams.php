@@ -41,6 +41,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
     //the operations sending a message, the ones in a channel
     const SEND = [ 'sendChannel', 'reply', 'sendChat' ];
     const IN_CHANNEL = [ 'sendChannel', 'reply' ];
+    const BODY_TYPES = [ 'text' => 'Text', 'html' => 'HTML' ];
 
     const IMPORTANCE = [ 'normal' => 'Normal', 'high' => 'Important', 'urgent' => 'Urgent' ];
 
@@ -110,7 +111,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'label' => 'Message as',
 		'required' => true,
 		'default' => 'text',
-		'choices' => \data\Mail::BODY_TYPES,
+		'choices' => self::BODY_TYPES,
 		'ui' => [ 'width' => 3, 'showIf' => $op(self::SEND) ],
 	    ],
 	    [

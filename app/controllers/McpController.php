@@ -102,7 +102,7 @@ class McpController extends \sys\BaseController {
 		return $this->ok($id, [
 		    'protocolVersion' => in_array($asked, self::PROTOCOL_VERSIONS, true) ? $asked : self::PROTOCOL_VERSIONS[0],
 		    'capabilities' => [ 'tools' => [ 'listChanged' => false ] ],
-		    'serverInfo' => [ 'name' => 'netflow9', 'title' => 'NetFlow9 workflows', 'version' => '1.0' ],
+		    'serverInfo' => [ 'name' => 'netflow9', 'title' => 'NetFlow9 workflows', 'version' => \data\Version::NUMBER ], //CLD: 2026-11-02T21:30:00+02:00: the app's version (was 1.0)
 		    'instructions' => "Tools of the NetFlow9 project `{$project->name}`: its data tables (list, query, insert / update / delete rows), workflows (list, run, executions), files (list, read) and variables. Use list_tables / list_workflows first to learn the names.",
 		]);
 

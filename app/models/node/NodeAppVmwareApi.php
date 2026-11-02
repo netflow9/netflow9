@@ -20,10 +20,11 @@ class NodeAppVmwareApi extends NodeAppVmware {
     const OPERATIONS = [ 'rest' => 'REST API request', 'vim' => 'VI/JSON request' ];
     //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'rest', 'vim' ];
+    const METHODS = [ 'GET' => 'GET', 'POST' => 'POST', 'PUT' => 'PUT', 'PATCH' => 'PATCH', 'DELETE' => 'DELETE' ];
 
     protected static function operationFields() {
 	return [
-	    self::field('method', 'Method', [ 'rest', 'vim' ], [ 'type' => 'select', 'required' => true, 'default' => 'GET', 'choices' => \data\Http::METHODS_PATCH, 'help' => 'VI/JSON: GET a property, POST a method',
+	    self::field('method', 'Method', [ 'rest', 'vim' ], [ 'type' => 'select', 'required' => true, 'default' => 'GET', 'choices' => self::METHODS, 'help' => 'VI/JSON: GET a property, POST a method',
 		'ui' => [ 'width' => 3 ] ]),
 	    self::field('path', 'Path', [ 'rest' ], [ 'required' => true, 'help' => 'e.g. /api/vcenter/vm/vm-42/hardware ({{ }} allowed)', 'ui' => [ 'expression' => 'text', 'width' => 9, 'placeholder' => '/api/...' ] ]),
 	    self::field('vimPath', 'Path', [ 'vim' ], [ 'required' => true, 'help' => '<type>/<id>/<property or method>, e.g. VirtualMachine/vm-42/runtime', 'ui' => [ 'expression' => 'text', 'width' => 9,
@@ -51,7 +52,7 @@ class NodeAppVmwareApi extends NodeAppVmware {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$method = isset(\data\Http::METHODS_PATCH[(string)$this->cfg('method', 'GET')]) ? (string)$this->cfg('method', 'GET') : 'GET';
+	$method = isset(self::METHODS[(string)$this->cfg('method', 'GET')]) ? (string)$this->cfg('method', 'GET') : 'GET';
 	$body = trim((string)$this->cfg('body', '')) === '' ? null : self::object($value('body'), 'Body');
 	if ($operation === 'vim') {
 	    $path = $text('vimPath');

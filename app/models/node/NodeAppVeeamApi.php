@@ -19,10 +19,11 @@ class NodeAppVeeamApi extends NodeAppVeeam {
     const OPERATIONS = [ 'request' => 'Send a request' ];
     //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'request' ];
+    const METHODS = [ 'GET' => 'GET', 'POST' => 'POST', 'PUT' => 'PUT', 'DELETE' => 'DELETE' ];
 
     protected static function operationFields() {
 	return [
-	    self::field('method', 'Method', [ 'request' ], [ 'type' => 'select', 'required' => true, 'default' => 'GET', 'choices' => \data\Http::METHODS, 'ui' => [ 'width' => 3 ] ]),
+	    self::field('method', 'Method', [ 'request' ], [ 'type' => 'select', 'required' => true, 'default' => 'GET', 'choices' => self::METHODS, 'ui' => [ 'width' => 3 ] ]),
 	    self::field('path', 'Path', [ 'request' ], [ 'required' => true, 'help' => 'e.g. /api/v1/backupInfrastructure/repositories ({{ }} allowed)',
 		'ui' => [ 'expression' => 'text', 'width' => 9, 'placeholder' => '/api/v1/...' ] ]),
 	    self::field('query', 'Query', [ 'request' ], [ 'type' => 'textarea', 'help' => 'A JSON object (empty: none), e.g. {"limit": 50}', 'ui' => [ 'rows' => 2, 'expression' => true, 'code' => true ] ]),
@@ -47,7 +48,7 @@ class NodeAppVeeamApi extends NodeAppVeeam {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$method = isset(\data\Http::METHODS[(string)$this->cfg('method', 'GET')]) ? (string)$this->cfg('method', 'GET') : 'GET';
+	$method = isset(self::METHODS[(string)$this->cfg('method', 'GET')]) ? (string)$this->cfg('method', 'GET') : 'GET';
 	$path = $text('path');
 	$body = trim((string)$this->cfg('body', '')) === '' ? null : self::object($value('body'), 'Body');
 	$r = $this->vbr->request($method, $path, self::object($value('query'), 'Query'), $body);
