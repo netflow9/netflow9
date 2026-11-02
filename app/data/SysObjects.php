@@ -810,6 +810,14 @@ class SysObjects {
 	    'AssistantUsage' => [
 		'class' => 'models\AssistantUsage',
 	    ],
+	    //CLD: 2026-11-02T10:00:00+02:00: what an account's agents may do (Account settings > AI), what its AI steps spent this month (own keys)
+	    'AgentPolicy' => [
+		'class' => 'models\AgentPolicy',
+		'name' => 'AI policy',
+	    ],
+	    'AgentUsage' => [
+		'class' => 'models\AgentUsage',
+	    ],
 	    //CLD: 2026-11-01T11:55:18+02:00: the tool servers (util\ToolServers): the servers an account may use, the sessions open (were registered by the LocalMCP plugin)
 	    'ToolServerAccess' => [
 		'class' => 'models\ToolServerAccess',

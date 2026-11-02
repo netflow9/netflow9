@@ -62,7 +62,9 @@ class McpClient {
 	    foreach((array)($result->tools ?? []) as $t) {
 		if (is_object($t) && isset($t->name) && is_string($t->name))
 		    $tools[] = [ 'name' => $t->name, 'title' => isset($t->title) ? (string)$t->title : null, 'description' => isset($t->description) ? (string)$t->description : '',
-			'inputSchema' => is_object($t->inputSchema ?? null) ? $t->inputSchema : (object)[ 'type' => 'object', 'properties' => (object)[] ] ];
+			'inputSchema' => is_object($t->inputSchema ?? null) ? $t->inputSchema : (object)[ 'type' => 'object', 'properties' => (object)[] ],
+			//CLD: 2026-11-02T10:00:00+02:00: + annotations (readOnlyHint: util\AgentGuard, a tool not marked read-only counts as one that changes something)
+			'annotations' => is_object($t->annotations ?? null) ? (array)$t->annotations : [] ];
 	    }
 	    $cursor = $result->nextCursor ?? null;
 	    if (!is_string($cursor) || $cursor === '')

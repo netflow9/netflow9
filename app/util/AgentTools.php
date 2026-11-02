@@ -61,6 +61,9 @@ class AgentTools {
     //CLD: 2026-11-01T23:30:00+02:00: the AI step's settings of the approvals (section Approvals), the argument the model gives its reason in
     const APPROVALS = 'Approvals';
     const WORKFLOWS_APPROVAL = 'workflowsApproval';
+    //CLD: 2026-11-02T11:00:00+02:00: the project's tools, MCP servers' and tool servers' tools: those that change something ask (default), or none do
+    const TOOLS_APPROVAL = 'toolsApprovalMode';
+    const TOOLS_APPROVAL_MODES = [ 'writes' => 'Those that change something', 'none' => 'None: run without' ];
     const REASON = 'reason';
     const REASON_DESCRIPTION = 'Why you do this, in one line: shown to the person who approves it';
     const APPROVAL_MODES = [ 'writes' => 'Write operations', 'all' => 'Every operation', 'none' => 'None: run without', 'chosen' => 'Those chosen' ];
@@ -261,6 +264,17 @@ class AgentTools {
     //CLD: 2026-11-01T23:30:00+02:00: new: the AI step's settings of the approvals (section Approvals): the workflows that ask, who approves (as a Human task), the time limit
     public static function approvalFields() {
 	return [
+	    //CLD: 2026-11-02T11:00:00+02:00: new: Use these tools, MCP servers, Tool servers: they have no choice per operation (util\AgentGuard::govern)
+	    [
+		'key' => self::TOOLS_APPROVAL,
+		'type' => 'select',
+		'label' => 'Project and MCP tools: ask for approval',
+		'required' => true,
+		'choices' => self::TOOLS_APPROVAL_MODES,
+		'default' => 'writes',
+		'help' => 'Those not marked read-only change something',
+		'ui' => [ 'section' => self::APPROVALS, 'width' => 12 ],
+	    ],
 	    [
 		'key' => self::WORKFLOWS_APPROVAL,
 		'type' => 'select',
@@ -384,12 +398,14 @@ class AgentTools {
 		$ask = match((string)$ai->cfg("{$key}ApprovalMode", 'writes')) { 'all' => true, 'none' => false, 'chosen' => in_array($name, array_map('strval', (array)$ai->cfg("{$key}Approval", [])), true),
 		    default => $o['writes'] };
 		[ $schema, $reason ] = $ask ? self::withReason($schema) : [ $schema, null ];
-		$tools[$name] = [ 'name' => $name,
+		//CLD: 2026-11-02T10:00:00+02:00: + kind, family, writes, askMeta (util\AgentGuard: the account's policy, the limits, approval when the policy or a lockdown asks for it)
+		$meta = [ 'what' => trim(preg_replace('/\s*\([^)]*\)\s*$/', '', (string)$class::OPERATIONS[$o['op']])), 'on' => "{$fam['label']} {$cred->name}",
+		    'label' => $o['label'], 'main' => array_keys(array_filter($fields, fn($f) => $f['required'])) ];
+		$tools[$name] = [ 'name' => $name, 'kind' => 'integration', 'family' => $key, 'writes' => (bool)$o['writes'], 'askMeta' => $meta,
 		    'description' => "[{$fam['label']}] {$o['label']}" . ($o['writes'] ? ' - changes it' : ' - reads only')
 			. ($isList ? '. Result: { items, count, total, truncated } (truncated: more than maxItems)' : '') . ($ask ? '. A person approves it first' : '') . '.',
 		    'schema' => json_decode(JSON::encode($schema)),
-		    'approval' => $ask ? [ 'what' => trim(preg_replace('/\s*\([^)]*\)\s*$/', '', (string)$class::OPERATIONS[$o['op']])), 'on' => "{$fam['label']} {$cred->name}",
-			'label' => $o['label'], 'main' => array_keys(array_filter($fields, fn($f) => $f['required'])), 'reason' => $reason ] : null,
+		    'approval' => $ask ? $meta + [ 'reason' => $reason ] : null,
 		    'check' => fn(array $args) => self::arguments($fields, self::withoutReason($args, $reason))[1],
 		    'run' => fn(array $args) => self::runStep($ai, self::steps($key)[$class][0], $class, $o['op'], $cred, $fields, self::withoutReason($args, $reason)) ];
 	    }
@@ -406,12 +422,13 @@ class AgentTools {
 	    //CLD: 2026-11-01T23:30:00+02:00: + approval (asks: those of `workflowsApproval`), the reason argument, check
 	    $ask = in_array((string)$wf->_id, array_map('strval', (array)$ai->cfg(self::WORKFLOWS_APPROVAL, [])), true);
 	    [ $schema, $reason ] = $ask ? self::withReason($schema) : [ $schema, null ];
-	    $tools[$name] = [ 'name' => $name,
+	    //CLD: 2026-11-02T10:00:00+02:00: + kind, writes (a workflow may do anything: it counts as a write), askMeta
+	    $meta = [ 'what' => 'Run the workflow', 'on' => (string)$wf->name, 'label' => "Workflow {$wf->name}", 'main' => array_keys(array_filter($inputs, fn($i) => $i['required'])) ];
+	    $tools[$name] = [ 'name' => $name, 'kind' => 'workflow', 'writes' => true, 'askMeta' => $meta,
 		'description' => "[Workflow {$wf->name}] " . ($contract['description'] !== '' ? $contract['description'] : "Runs the workflow {$wf->name}.")
 		    . " Result: { ok, state, execution, outputs: { {$outputs} }, error }." . ($ask ? ' A person approves it first.' : ''),
 		'schema' => json_decode(JSON::encode($schema)),
-		'approval' => $ask ? [ 'what' => 'Run the workflow', 'on' => (string)$wf->name, 'label' => "Workflow {$wf->name}",
-		    'main' => array_keys(array_filter($inputs, fn($i) => $i['required'])), 'reason' => $reason ] : null,
+		'approval' => $ask ? $meta + [ 'reason' => $reason ] : null,
 		'check' => fn(array $args) => self::workflowInputs($inputs, self::withoutReason($args, $reason))[1],
 		'run' => fn(array $args) => self::runWorkflow($ai, $wf, $inputs, self::withoutReason($args, $reason)) ];
 	}

@@ -253,6 +253,12 @@ class Expression {
 
     //CLD: 2026-10-26T22:34:16+02:00: [ name => true ] of the names $parsed refers to (property names are not; names it declares itself may be: a superset is enough for render()),
     //computed once per parse result
+    //CLD: 2026-11-02T10:00:00+02:00: new: the names template $text uses (util\AgentGuard: which values come from the workflow's variables); none when it does not parse
+    public static function namesIn($text) {
+	$parsed = self::parse($text);
+	return $parsed->hasErrors() ? [] : array_map('strval', array_keys(self::usedNames($parsed)));
+    }
+
     private static function usedNames(\sys\J\ParseResult $parsed) {
 	self::$used ??= new \WeakMap();
 	if (!isset(self::$used[$parsed])) {

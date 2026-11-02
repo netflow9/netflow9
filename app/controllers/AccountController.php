@@ -18,8 +18,9 @@ class AccountController extends \sys\BaseController {
     //     the MCP server only (what the Assistant may read: its settings)
     // inbound (the account's inbound mail prefix, InboundMailSettings; was the InboundMail plugin's page): for who may change the account, where Haraka is found
     // tools (the installation's tool servers, util\ToolServers): without the MultiTenant plugin, for the owners (with it: /toolservers/index)
+    // ai (what the agents may do: models\AgentPolicy): for the owners (util\Services::ownerSignedIn: the role `owner`)
     public function settings($req, $resp) {
-	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'access' => \V::app()->user->can('Account::update'),
+	$tabs = array_keys(array_filter([ 'general' => \V::app()->user->can('Account::update'), 'access' => \V::app()->user->can('Account::update'), 'ai' => \util\Services::ownerSignedIn(),
 	    'inbound' => \V::app()->user->can('Account::update') && \util\InboundMail::found(), 'usage' => \V::app()->user->can('Account::usage'),
 	    'services' => !\util\Services::adminPlugin() && \util\Services::allowed(),
 	    'tools' => !\util\Services::adminPlugin() && \util\Services::allowed() ]));
@@ -44,6 +45,26 @@ class AccountController extends \sys\BaseController {
 	    }
 	    $domain = \util\InboundMail::domain();
 	    $this->render('settings', compact('account', 'tab', 'tabs', 'settings', 'domain'));
+	    return;
+	}
+
+	//CLD: 2026-11-02T10:00:00+02:00: the AI policy: the switches name the families allowed (denied_families: the others); a new document saved only when something is posted
+	if ($tab === 'ai') {
+	    $policy = \models\AgentPolicy::ofAccount($account->_id);
+	    if ($req->is('post')) {
+		$data = $req->data;
+		$data['denied_families'] = array_values(array_diff(array_keys(\util\AgentTools::FAMILIES), array_map('strval', (array)($data['allowed_families'] ?? []))));
+		$data['allowed_writes'] = array_map('strval', (array)($data['allowed_writes'] ?? []));
+		unset($data['allowed_families']);
+		$policy->assign($data, true);
+		$policy->aid = $account->_id;
+		if ($policy->validates() && $policy->save())
+		    $this->addToast('success', 'OK', 'AI policy saved');
+		else
+		    $this->addToast('error', 'Not saved', 'Check the settings marked in the form');
+	    }
+	    $spent = \models\AgentUsage::spent($account->_id);
+	    $this->render('settings', compact('account', 'tab', 'tabs', 'policy', 'spent'));
 	    return;
 	}
 

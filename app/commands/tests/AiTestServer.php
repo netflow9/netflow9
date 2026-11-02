@@ -12,6 +12,8 @@
     CLD: 2026-11-01T21:50:00+02:00: + a scripted chat (CheckCommand::suiteAgenttools; the OpenAI requests): a message with a line `SCRIPT: <JSON>` - a list of rounds, each a list of tool calls
     [ name, arguments ] - asks, in round N (the assistant turns with tool calls so far), for the calls of round N; after the last round it answers `RESULTS: ` and the JSON list of
     every tool result sent ({ tool_call_id, content }, in order)
+    CLD: 2026-11-02T10:00:00+02:00: in a script's arguments @@EMAIL@@ / @@PHONE@@ / @@IBAN@@ is the first such placeholder (util\PersonalData) in the request: a model passing on what it was given (CheckCommand::suiteAgentguard)
+    CLD: 2026-11-02T10:00:00+02:00: tool results are sent between untrusted marks (util\AgentGuard): what this server answers quotes them without the marks; the requests in the log have them
     CLD: 2026-11-01T23:30:00+02:00: the scripted chat in each API's form (CheckCommand::suiteAgentapproval: every AI step resumes a saved conversation): OpenAI (POST .../chat/completions),
     Claude (POST /v1/messages, key in x-api-key), Gemini (POST .../models/<model>:generateContent, key in x-goog-api-key), Ollama (POST /api/chat). A round may start with a text
     (what the model says with its calls). The results: each tool result sent, an error as `ERROR: <text>` (Claude is_error, Gemini `error`), with the call's id
@@ -42,11 +44,13 @@ $given = [ $_SERVER['HTTP_AUTHORIZATION'] ?? '', 'Bearer ' . ($_SERVER['HTTP_X_A
 if ($key !== '' && !in_array("Bearer {$key}", $given, true))
     $send(401, $ollama ? [ 'error' => 'unauthorized' ] : [ 'error' => [ 'message' => 'Invalid API key', 'type' => 'invalid_request_error' ] ]);
 
+//CLD: 2026-11-02T10:00:00+02:00: a tool result without its untrusted marks
+$unmark = fn($t) => preg_replace('~<untrusted_[0-9a-f]+ source="[^"]*">\n|\n</untrusted_[0-9a-f]+>~', '', (string)$t);
 //the result of the last tool message, and the tool asked for
 $toolResult = null;
 foreach((array)($body['messages'] ?? []) as $m) {
     if (($m['role'] ?? '') === 'tool')
-	$toolResult = (string)($m['content'] ?? '');
+	$toolResult = $unmark($m['content'] ?? '');
 }
 $firstTool = (string)($body['tools'][0]['function']['name'] ?? '');
 //the API of the request
@@ -73,7 +77,7 @@ foreach((array)($body['messages'] ?? $body['contents'] ?? []) as $m) {
 	foreach(is_array($m['content'] ?? null) ? $m['content'] : [] as $b) {
 	    if (($b['type'] ?? '') === 'tool_result') {
 		$c = $b['content'] ?? '';
-		$results[] = [ 'tool_call_id' => (string)($b['tool_use_id'] ?? ''), 'content' => (!empty($b['is_error']) ? 'ERROR: ' : '') . (is_string($c) ? $c : implode('', array_map(fn($x) => (string)($x['text'] ?? ''), (array)$c))) ];
+		$results[] = [ 'tool_call_id' => (string)($b['tool_use_id'] ?? ''), 'content' => (!empty($b['is_error']) ? 'ERROR: ' : '') . $unmark(is_string($c) ? $c : implode('', array_map(fn($x) => (string)($x['text'] ?? ''), (array)$c))) ];
 	    }
 	}
 	if ($role === 'assistant' && array_filter((array)($m['content'] ?? []), fn($b) => is_array($b) && ($b['type'] ?? '') === 'tool_use'))
@@ -82,7 +86,7 @@ foreach((array)($body['messages'] ?? $body['contents'] ?? []) as $m) {
 	foreach((array)($m['parts'] ?? []) as $part) {
 	    if (isset($part['functionResponse'])) {
 		$r = (array)($part['functionResponse']['response'] ?? []);
-		$results[] = [ 'tool_call_id' => (string)($part['functionResponse']['id'] ?? $part['functionResponse']['name'] ?? ''), 'content' => isset($r['error']) ? 'ERROR: ' . $r['error'] : (string)($r['result'] ?? '') ];
+		$results[] = [ 'tool_call_id' => (string)($part['functionResponse']['id'] ?? $part['functionResponse']['name'] ?? ''), 'content' => isset($r['error']) ? 'ERROR: ' . $unmark($r['error']) : $unmark($r['result'] ?? '') ];
 	    }
 	}
 	if ($role === 'model' && array_filter((array)($m['parts'] ?? []), fn($x) => isset($x['functionCall'])))
@@ -91,7 +95,7 @@ foreach((array)($body['messages'] ?? $body['contents'] ?? []) as $m) {
 	if ($role === 'assistant' && !empty($m['tool_calls']))
 	    $round++;
 	if ($role === 'tool')
-	    $results[] = [ 'tool_call_id' => (string)($m['tool_call_id'] ?? $m['tool_name'] ?? ''), 'content' => (string)($m['content'] ?? '') ];
+	    $results[] = [ 'tool_call_id' => (string)($m['tool_call_id'] ?? $m['tool_name'] ?? ''), 'content' => $unmark($m['content'] ?? '') ];
     }
 }
 //a scripted chat: the calls of this round (a text first: said with them), else the results
@@ -100,7 +104,12 @@ if (is_array($script) && $api !== '') {
     $calls = $round < count($script) ? $script[$round] : null;
     $said = is_array($calls) && is_string($calls[0] ?? null) ? array_shift($calls) : '';
     $final = 'RESULTS: ' . json_encode($results, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $argsOf = fn($c) => ($c[1] ?? []) === [] ? (object)[] : $c[1];
+    //CLD: 2026-11-02T10:00:00+02:00: + @@EMAIL@@ ...: the placeholders seen in the request
+    $seen = [];
+    foreach([ 'EMAIL', 'PHONE', 'IBAN' ] as $kind)
+	if (preg_match('/\[' . $kind . '_[0-9a-f]+_\d+\]/', (string)$raw, $pm))
+	    $seen["@@{$kind}@@"] = $pm[0];
+    $argsOf = fn($c) => ($c[1] ?? []) === [] ? (object)[] : json_decode(strtr(json_encode($c[1]), $seen), true);
     switch($api) {
 	case 'openai':
 	    if ($calls !== null)

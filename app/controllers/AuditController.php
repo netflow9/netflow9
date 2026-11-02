@@ -18,6 +18,9 @@ class AuditController extends \sys\BaseController {
     //?scope=system: the system log (every entry of the account; global scope only); else the current project's log (its entries only, also for global scope)
     private $system = false;
 
+    //CLD: 2026-11-02T10:00:00+02:00: ?agent=1: only the tool calls of the agents (the audit log)
+    private $agent = false;
+
     public function _init() {
 	parent::_init();
 
@@ -28,6 +31,7 @@ class AuditController extends \sys\BaseController {
 	if ((\V::app()->request->query['log'] ?? '') === 'execution')
 	    $this->log = 'ExecutionLog';
 	$this->system = (\V::app()->request->query['scope'] ?? '') === 'system';
+	$this->agent = $this->log === 'AuditLog' && !empty(\V::app()->request->query['agent']);
     }
 
     //an unsaved entry of the current project: the object for the list check (project scope = membership)
@@ -41,7 +45,7 @@ class AuditController extends \sys\BaseController {
 
     //the system log: the whole account; the project log: only the current project's entries (was: the whole account for global scope)
     private function scopeQuery() {
-	return $this->system ? [] : [ 'project' => $this->project->_id ?? null ];
+	return ($this->system ? [] : [ 'project' => $this->project->_id ?? null ]) + ($this->agent ? [ 'action' => \models\AuditLog::AGENT_ACTION ] : []);
     }
 
     //the query string of this log's URLs (log, scope)
@@ -63,8 +67,11 @@ class AuditController extends \sys\BaseController {
 
 	$system = $this->system;
 	$log = $this->log;
+	$agent = $this->agent;
+	//CLD: 2026-11-02T10:00:00+02:00: the same log with / without the agents' filter (logQuery: without it)
 	$q = $this->logQuery();
-	$this->render('list', compact('system', 'log', 'q'));
+	$qData = $agent ? ($q === '' ? '?agent=1' : "{$q}&agent=1") : $q;
+	$this->render('list', compact('system', 'log', 'q', 'qData', 'agent'));
     }
 
     //one entry (dialog): who / what acted, when, what, and the changed values

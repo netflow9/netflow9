@@ -54,7 +54,18 @@ class AuditLog extends \sys\BaseModel {
 	'workflow.execution.kill' => 'Kill execution',
 	//CLD: 2026-11-01T23:30:00+02:00: an AI step's tool calls approved / rejected in My tasks (TaskController)
 	'ai.approval' => 'Approve agent action',
+	//CLD: 2026-11-02T10:00:00+02:00: a tool call an AI step's agent made (agentCall)
+	self::AGENT_ACTION => 'Agent action',
     ];
+
+    const AGENT_ACTION = 'ai.tool';
+    //CLD: 2026-11-02T10:00:00+02:00: the arguments kept: a value that names a secret is removed (the key: withoutSecrets), the longest value, all of them
+    const SECRET_KEYS = '/(pass(word|wd|phrase)|(^|[_-])pass$|secret|(^|[_-])tokens?$|^token|api[_-]?key|authorization|credential|private[_-]?key|cookie|session[_-]?id|(^|[_-])otp($|[_-]))/i';
+    const SECRET_VALUES = '/(\bBearer\s+[\w.~+\/=-]+|\beyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]*|-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(-----END [A-Z ]*PRIVATE KEY-----|$)|\b(sk|pk|rk|xox[abprs])-[\w-]{16,}|\bAKIA[0-9A-Z]{16}\b|(?<=:\/\/)[^\s\/:@]+:[^\s\/@]+(?=@))/s';
+    const REMOVED = '[removed]';
+    const MAX_ARGUMENTS = 20000;
+    //set off by the check suite for its other suites (the entries of a real account are sealed: they could not be taken out again)
+    public static $recordAgentCalls = true;
 
     public function getSchema() {
 	return $this->logFields([
@@ -87,6 +98,44 @@ class AuditLog extends \sys\BaseModel {
 		'key' => 'user_agent',
 		'type' => 'text',
 		'label' => 'Browser',
+		'help' => false,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false
+	    ],
+	    //CLD: 2026-11-02T10:00:00+02:00: an agent's tool call (agentCall): its workflow, execution, step; agent: { tool, access: read | write | unknown, status, arguments, approved_by, approved_by_id }
+	    [
+		'key' => 'workflow',
+		'type' => 'object',
+		'object' => 'Workflow',
+		'label' => 'Workflow',
+		'help' => false,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false
+	    ],
+	    [
+		'key' => 'execution',
+		'type' => 'text',
+		'label' => 'Execution',
+		'help' => false,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false
+	    ],
+	    [
+		'key' => 'step',
+		'type' => 'text',
+		'label' => 'Step',
+		'help' => false,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false
+	    ],
+	    [
+		'key' => 'agent',
+		'type' => 'array',
+		'label' => 'Agent',
 		'help' => false,
 		'perm:read' => 'nobody',
 		'perm:update' => 'nobody',
@@ -142,6 +191,43 @@ class AuditLog extends \sys\BaseModel {
 	    'changes' => $changes,
 	    'details' => $details,
 	]);
+    }
+
+    //CLD: 2026-11-02T10:00:00+02:00: new: a tool call of the agent of step $stepTitle ($wfid) in execution $exec: what it called, with which arguments (secrets removed), read or write, how it ended
+    //($status), who approved it ($by: a user). Not a person's action (the daemon runs it, record() would not write it): user_name names the step
+    public static function agentCall($exec, $stepTitle, $wfid, $tool, $args, $access, $status, $by = null) {
+	if (!static::$recordAgentCalls)
+	    return;
+	$arguments = static::withoutSecrets(is_array($args) ? $args : [ 'value' => $args ]);
+	if (mb_strlen(\util\JSON::encode($arguments)) > self::MAX_ARGUMENTS)
+	    $arguments = [ 'note' => 'the arguments are longer than ' . self::MAX_ARGUMENTS . ' characters: not kept' ];
+	static::write(self::AGENT_ACTION, null, [], [
+	    'aid' => $exec->aid,
+	    'project' => $exec->project,
+	    'user_name' => "Agent: {$stepTitle}",
+	    'type' => 'Agent tool call',
+	    'name' => mb_substr($tool, 0, 300),
+	    'workflow' => $exec->wf,
+	    'execution' => (string)$exec->_id,
+	    'step' => mb_substr($stepTitle, 0, 300),
+	    'agent' => [ 'tool' => mb_substr($tool, 0, 300), 'access' => $access, 'status' => $status, 'node' => $wfid, 'arguments' => $arguments ]
+		+ ($by ? [ 'approved_by' => (string)$by, 'approved_by_id' => (string)$by->_id ] : []),
+	    'details' => "{$tool} ({$access}): {$status}" . ($by ? ', approved by ' . (string)$by : ''),
+	]);
+    }
+
+    //$value with what looks like a secret removed: the values of keys that name one (numbers and yes / no are kept: max_tokens), and secrets inside texts; long texts shortened
+    public static function withoutSecrets($value, $key = '') {
+	if (is_array($value)) {
+	    $out = [];
+	    foreach($value as $k => $v)
+		$out[$k] = is_string($k) && preg_match(self::SECRET_KEYS, $k) && !is_int($v) && !is_float($v) && !is_bool($v) && $v !== null ? self::REMOVED : static::withoutSecrets($v, (string)$k);
+	    return $out;
+	}
+	if (!is_string($value))
+	    return is_object($value) ? static::withoutSecrets((array)$value, $key) : $value;
+	$text = preg_replace(self::SECRET_VALUES, self::REMOVED, $value) ?? self::REMOVED;
+	return mb_strlen($text) > self::MAX_VALUE ? mb_substr($text, 0, self::MAX_VALUE) . '…' : $text;
     }
 
     //recorded: a logged-in user's change outside a workflow run (those go to the execution log), of an object the logs record
