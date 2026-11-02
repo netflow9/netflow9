@@ -40,7 +40,7 @@ class AgentGuard {
     private $maxCost;
     private $access = [];
 
-    //the guard of AI step $step's run: $system: on the System AI; $saved: a resumed run's save(). \ErrorException when the account has a budget and the model's price is not known
+    //the guard of AI step $step's run: $system: on the System AI; $saved: a resumed run's save(). A model whose price is not known runs, not counted (priceWarning)
     public function __construct($step, $system, ?array $saved = null) {
 	$this->step = $step;
 	$this->aid = $step->exec->aid ?? null;
@@ -59,9 +59,7 @@ class AgentGuard {
 	if (self::on($step->cfg('maskPersonalData', false)) && $step->isCloud())
 	    $this->mask = new PersonalData((array)($saved['mask'] ?? []));
 	if (!$this->system) {
-	    $this->prices = self::pricesFor($step, $this->policy);
-	    if ($this->prices === null && $this->policy->budget() !== null)
-		throw new \ErrorException('the price of the model `' . trim((string)$step->cfg('model', '')) . '` is not known, so the account\'s monthly AI budget cannot be counted: set Input price and Output price on the step, or in Account settings > AI');
+	    $this->prices = self::pricesFor($step);
 	}
     }
 
@@ -92,13 +90,20 @@ class AgentGuard {
 	return $this->tainted;
     }
 
-    //a step's prices [ input, output, cache read ] (USD per 1M tokens): its own, else the model's known ones (local servers: nothing), else the account's; null: not known
-    //CLD: 2026-11-02T14:00:00+02:00: the account's price table (Account settings > AI: a provider, a model) before the known ones: that is what the table is for; the step's own still first
-    public static function pricesFor($step, $policy) {
-	if ((float)$step->cfg('priceInput', 0) <= 0 && (float)$step->cfg('priceOutput', 0) <= 0 && ($row = $policy->priceOf($step::CAPABILITY, trim((string)$step->cfg('model', '')))) !== null)
-	    return $row;
-	$known = AiPrices::of((object)[ 'provider' => $step::CAPABILITY, 'model' => trim((string)$step->cfg('model', '')), 'price_input' => $step->cfg('priceInput', ''), 'price_output' => $step->cfg('priceOutput', '') ]);
-	return $known ?? $policy->prices();
+    //a step's prices [ input, output, cache read ] (USD per 1M tokens): the model's list prices (local servers: nothing); null: not known
+    public static function pricesFor($step) {
+	return AiPrices::of((object)[ 'provider' => $step::CAPABILITY, 'model' => trim((string)$step->cfg('model', '')) ]);
+    }
+
+    //the warning for an AI step of provider $capability with settings $config in account $aid: a Cost limit or the account's budget it cannot be counted in; null: none.
+    //The step runs: with no price field to fill, a new model must not stop a workflow, and the owner sees that its spending is not limited
+    public static function priceWarning($capability, array $config, $aid) {
+	$limited = (float)($config['maxCost'] ?? 0) > 0;
+	if ((string)($config['credential'] ?? '') === \models\node\NodeAppAi::SYSTEM || (!$limited && \models\AgentPolicy::ofAccount($aid)->budget() === null))
+	    return null;
+	if (AiPrices::of((object)[ 'provider' => $capability, 'model' => trim((string)($config['model'] ?? '')) ]) !== null)
+	    return null;
+	return 'Rail22 does not know the price of this model: what it spends is not counted in the ' . ($limited ? 'Cost limit or the monthly AI budget' : 'monthly AI budget');
     }
 
     private static function positive($v) {
@@ -122,8 +127,6 @@ class AgentGuard {
 	    $limit('maxToolCalls', 'Most tool calls per run', 'Then the agent stops. Empty: no limit'),
 	    $limit('maxWriteCalls', 'Most write calls per run', 'Of those that change something. Empty: no limit'),
 	    $limit('maxCost', 'Cost limit per run', 'USD from the tokens; credits on System AI. Empty: no limit'),
-	    $limit('priceInput', 'Input price', 'USD per 1M tokens, when the model\'s is not known', [ 'width' => 3, 'newRow' => true ]),
-	    $limit('priceOutput', 'Output price', 'USD per 1M tokens', [ 'width' => 3 ]),
 	    [
 		'key' => 'trustedVariables',
 		'type' => 'text',
@@ -156,16 +159,6 @@ class AgentGuard {
 	foreach(self::trustedVariables($step) as $name)
 	    if (!Validator::isIdentifier($name))
 		$errors[] = "Trusted variables: `{$name}` is not a variable's name";
-	//a limit or a budget needs a price (System AI: credits)
-	if ((string)$step->cfg('credential', '') !== \models\node\NodeAppAi::SYSTEM && !empty($step->workflow->aid)) {
-	    $policy = \models\AgentPolicy::ofAccount($step->workflow->aid);
-	    if (self::pricesFor($step, $policy) === null) {
-		if ((float)$step->cfg('maxCost', 0) > 0)
-		    $errors[] = 'Cost limit: the price of this model is not known: set Input price and Output price';
-		elseif ($policy->budget() !== null)
-		    $errors[] = 'The price of this model is not known, so the account\'s monthly AI budget cannot be counted: set Input price and Output price, or the prices in Account settings > AI';
-	    }
-	}
 	return $errors;
     }
 

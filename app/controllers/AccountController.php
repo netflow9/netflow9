@@ -56,8 +56,6 @@ class AccountController extends \sys\BaseController {
 		$data['denied_families'] = array_values(array_diff(array_keys(\util\AgentTools::FAMILIES), array_map('strval', (array)($data['allowed_families'] ?? []))));
 		$data['allowed_writes'] = array_map('strval', (array)($data['allowed_writes'] ?? []));
 		unset($data['allowed_families']);
-		//CLD: 2026-11-02T14:00:00+02:00: the price table's rows
-		$data['price_table'] = \models\AgentPolicy::priceRows($data['price_table'] ?? []);
 		$policy->assign($data, true);
 		$policy->aid = $account->_id;
 		if ($policy->validates() && $policy->save())

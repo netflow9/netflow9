@@ -10,8 +10,7 @@
 	the providers System (the installation's server, config assistant.system: no key, URL or model here),
 	Claude, OpenAI, Gemini, Ollama, Lemonade;
 	each speaks one protocol (data\AiProviders: the Anthropic Messages API or OpenAI chat completions).
-	+ a monthly budget (USD; the spending: AssistantUsage) and the prices it is counted with (USD per 1M tokens;
-	    empty: PRICES, the known prices of Claude models)
+	+ a monthly budget (USD; the spending: AssistantUsage), counted at the list prices (data\AiProviders)
 
     System is paid in credits (AssistantWallet), not with the budget: + credit_cap, the most credits the account lets the Assistant use per month
 */
@@ -115,12 +114,12 @@ class AssistantSettings extends \sys\BaseModel {
 		'default' => 'structure',
 		'choices' => self::DATA_ACCESS,
 	    ],
-	    //CLD: 2026-10-22T14:00:00+03:00: the monthly budget and the prices it is counted with
+	    //CLD: 2026-10-22T14:00:00+03:00: the monthly budget
 	    [
 		'key' => 'budget',
 		'type' => 'number',
 		'label' => 'Monthly budget (USD)',
-		'help' => 'The most the Assistant may spend per calendar month (UTC); a request that reaches it stops. Empty or 0: no limit',
+		'help' => 'The most the Assistant may spend per calendar month (UTC), at the provider\'s list prices; a request that reaches it stops. A model whose price is not known is not counted. Empty or 0: no limit',
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
 		'default' => '',
@@ -135,30 +134,6 @@ class AssistantSettings extends \sys\BaseModel {
 		'label' => 'Monthly credit limit',
 		//CLD: 2026-10-23T10:00:00+03:00: the month's credits are the account's (the AI steps' too)
 		'help' => 'The Assistant stops once the credits the account used this calendar month (UTC: the Assistant and the AI steps on the System AI) reach it. Empty or 0: no limit',
-		'perm:read' => 'everybody',
-		'perm:update' => 'everybody',
-		'default' => '',
-		'validate' => [
-		    [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => 'must be 0 or more' ],
-		],
-	    ],
-	    [
-		'key' => 'price_input',
-		'type' => 'number',
-		'label' => 'Input price',
-		'help' => 'USD per 1M input tokens. Empty: the known price of Claude models (other models: set it, or the budget cannot be counted)',
-		'perm:read' => 'everybody',
-		'perm:update' => 'everybody',
-		'default' => '',
-		'validate' => [
-		    [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => 'must be 0 or more' ],
-		],
-	    ],
-	    [
-		'key' => 'price_output',
-		'type' => 'number',
-		'label' => 'Output price',
-		'help' => 'USD per 1M output tokens (as Input price)',
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
 		'default' => '',
@@ -184,10 +159,6 @@ class AssistantSettings extends \sys\BaseModel {
 	//OpenAI with a Server URL: another OpenAI-compatible server, maybe without keys (as saved before)
 	if (\data\AiProviders::isCloud($provider) && !($provider === 'openai' && trim((string)$this->url) !== '') && trim((string)$this->api_key) === '') {
 	    $this->errors('api_key', [ 'Required for ' . \data\AiProviders::label($provider) ]);
-	    $ok = false;
-	}
-	if ((float)$this->budget > 0 && self::pricesOf($this) === null) {
-	    $this->errors('price_input', [ 'The price of this model is not known: set Input price and Output price, or the budget cannot be counted' ]);
 	    $ok = false;
 	}
 	return $ok;
@@ -222,12 +193,10 @@ class AssistantSettings extends \sys\BaseModel {
 	return $budget > 0 ? $budget : null;
     }
 
-    //CLD: 2026-10-22T14:00:00+03:00: the prices for $settings (resolved: provider, model, price_input, price_output): [ input, output, cache read ] USD per 1M tokens; the settings' when
-    //given, else the known ones of the model (PRICES), else nothing for a local server; null: not known
-    //CLD: 2026-10-23T10:00:00+03:00: SystemAi::pricesOf (was here)
-    //CLD: 2026-10-31T22:00:00+02:00: util\AiPrices::of, the core's (was the MultiTenant plugin's SystemAi::pricesOf)
+    //the prices for $settings (resolved: provider, model; the System AI's: its own price_input, price_output): [ input, output, cache read ] USD per 1M tokens; null: not known.
+    //Settings of this model have no prices of their own: a price saved earlier is not used
     public static function pricesOf($settings) {
-	return \util\AiPrices::of($settings);
+	return \util\AiPrices::of($settings instanceof self ? (object)[ 'provider' => $settings->provider, 'model' => $settings->model ] : $settings);
     }
 
 }

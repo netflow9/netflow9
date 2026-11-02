@@ -766,6 +766,9 @@ abstract class NodeAppAi extends \models\WfNode {
 	$resume = !empty($this->agentWait) ? $this->loadWait() : null;
 	//CLD: 2026-11-02T10:00:00+02:00: the guard of this run (resumed: as it was saved)
 	$this->guard = new \util\AgentGuard($this, $system !== null, $resume['guard'] ?? null);
+	//CLD: 2026-11-02T23:00:00+02:00: a limit or budget this model's spending is not counted in: said in the run's log
+	if ($system === null && !$resume && ($warning = \util\AgentGuard::priceWarning(static::CAPABILITY, [ 'model' => $this->cfg('model', ''), 'maxCost' => $this->cfg('maxCost', '') ], $this->exec->aid)))
+	    $this->exec->log($this->wfid, static::$label . ': ' . $warning);
 	$this->tracer->addSecrets($cred);
 	$this->tracer->attach($this->guard);
 
