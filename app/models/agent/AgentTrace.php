@@ -9,7 +9,7 @@
     Written directly to the collection, not through save(): never in the audit or execution logs. Read as arrays
 */
 
-namespace models;
+namespace models\agent;
 
 class AgentTrace extends \sys\BaseModel {
     protected static $collection = 'agent_traces';

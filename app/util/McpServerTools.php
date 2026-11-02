@@ -4,12 +4,12 @@
     the tools of NetFlow9's MCP server (controllers\McpController) - also meant for the AI steps, which call them directly.
     Every tool works on one project ($project) as the current user (\V::app()->user):
 	each object is checked with the user's permissions (user->can), as the pages do.
-    Data tables: list / query / insert / update / delete rows (rules and casts of the table's columns: models\DataTableDef);
+    Data tables: list / query / insert / update / delete rows (rules and casts of the table's columns: models\datatable\DataTableDef);
 	CLD: 2026-10-22T01:11:17+03:00: + their structure: create_table, update_table (rename), add_column, update_column, delete_column (the rules of the column designer: models\datatable\FieldForm);
     workflows: list, run (Manual trigger; the published version, else the draft),
 	an execution's result; files: list, read (text);
     project variables: list.
-    CLD: 2026-11-01T22:35:00+02:00: knowledge bases: list, query (models\KnowledgeBase::search: by meaning and by words; KnowledgeBase::read). query_knowledge_base, not search_knowledge_base: that is
+    CLD: 2026-11-01T22:35:00+02:00: knowledge bases: list, query (models\kb\KnowledgeBase::search: by meaning and by words; KnowledgeBase::read). query_knowledge_base, not search_knowledge_base: that is
 	the AI steps' own tool (their Knowledge bases setting), offered next to these
 
     definitions() = the MCP tool list (name, title, description, inputSchema, annotations);
@@ -309,7 +309,7 @@ class McpServerTools {
 	    case 'query_table':
 		$t = self::table($args, $project, 'DataTable::readData', $can);
 		$columns = $t->columns();
-		$query = \models\DataTableDef::conditionsQuery(self::listArg($args, 'conditions'), (string)($args['match'] ?? 'all'), $columns, fn($v) => $v, $aid);
+		$query = \models\datatable\DataTableDef::conditionsQuery(self::listArg($args, 'conditions'), (string)($args['match'] ?? 'all'), $columns, fn($v) => $v, $aid);
 		$options = [ 'skip' => max(0, (int)($args['offset'] ?? 0)), 'limit' => max(1, min(self::MAX_ROWS, (int)($args['limit'] ?? 50))) ];
 		$sortBy = trim((string)($args['sort_by'] ?? ''));
 		if ($sortBy !== '') {
@@ -320,7 +320,7 @@ class McpServerTools {
 		}
 		$rows = [];
 		foreach($om->find($t->iname, $query, $options) as $row)
-		    $rows[] = \models\DataTableDef::rowValue($row, $columns);
+		    $rows[] = \models\datatable\DataTableDef::rowValue($row, $columns);
 		return [ 'rows' => $rows, 'count' => count($rows), 'total' => $om->count($t->iname, $query) ];
 
 	    case 'insert_rows':
@@ -349,7 +349,7 @@ class McpServerTools {
 		$columns = $t->columns();
 		$row = self::rowFrom($t, $columns, $args['values'] ?? null, self::rowById($t, $args['id'] ?? ''), 'values: ');
 		$row->save();
-		return [ 'row' => \models\DataTableDef::rowValue($row, $columns) ];
+		return [ 'row' => \models\datatable\DataTableDef::rowValue($row, $columns) ];
 
 	    case 'delete_row':
 		$t = self::table($args, $project, 'DataTable::writeData', $can);
@@ -481,14 +481,14 @@ class McpServerTools {
 		//CLD: 2026-10-30T15:00:00+02:00: the caller waits for the result. Called by an AI step of a running execution (a daemon worker): run here, nested (waiting for another
 		//worker could wait for ever when the account's are all busy); over MCP (a web request): queued for the daemon, waited for (WfExecution::waitFor, at most
 		//WAIT_RESULT s; were run here, in a sync slot: models\ExecutionSlot, removed)
-		$exe = \models\WfExecution::startFor($live, $asUser ? 'mcp' : 'ai', [ 'user' => $user ? (string)$user->_id : null, 'vars' => $vars ], (string)$trigger['wfid']);
+		$exe = \models\wf\WfExecution::startFor($live, $asUser ? 'mcp' : 'ai', [ 'user' => $user ? (string)$user->_id : null, 'vars' => $vars ], (string)$trigger['wfid']);
 		$exe->log(null, $asUser ? 'started by ' . (string)$user->name . ' over MCP' : 'started by an AI step');
 		$exe->save();
 		if ($asUser)
 		    \models\AuditLog::record('workflow.run', $wf, 'execution ' . (string)$exe->_id . ' (MCP)');
 		if (\models\ExecutionLog::$execution === null) {
 		    $exe->queue();
-		    $state = $exe->waitFor(\models\WfExecution::WAIT_RESULT);
+		    $state = $exe->waitFor(\models\wf\WfExecution::WAIT_RESULT);
 		} else {
 		    self::$depth++;
 		    try {
@@ -544,10 +544,10 @@ class McpServerTools {
 		[ $run, $new ] = \util\AgentEval::start($wf, $user ? (string)$user->name . ' (MCP)' : 'MCP');
 		if ($new && $asUser)
 		    \models\AuditLog::record('workflow.test.run', $wf, 'test run ' . (string)$run['_id'] . ' (MCP)');
-		$until = microtime(true) + \models\WfExecution::WAIT_RESULT;
-		while (in_array((string)$run['state'], \models\WfTestRun::ACTIVE, true) && microtime(true) < $until) {
-		    usleep(\models\WfExecution::WAIT_POLL * 1000);
-		    $run = \models\WfTestRun::read((string)$run['_id'], $wf);
+		$until = microtime(true) + \models\wf\WfExecution::WAIT_RESULT;
+		while (in_array((string)$run['state'], \models\wf\WfTestRun::ACTIVE, true) && microtime(true) < $until) {
+		    usleep(\models\wf\WfExecution::WAIT_POLL * 1000);
+		    $run = \models\wf\WfTestRun::read((string)$run['_id'], $wf);
 		}
 		return self::testRun($run);
 
@@ -557,11 +557,11 @@ class McpServerTools {
 		    throw new \ErrorException('you may not read this workflow');
 		$id = trim((string)($args['id'] ?? ''));
 		if ($id === '')
-		    $id = (string)(\models\WfTestRun::latest($wf)['_id'] ?? '');
-		$run = \models\WfTestRun::read($id, $wf);
+		    $id = (string)(\models\wf\WfTestRun::latest($wf)['_id'] ?? '');
+		$run = \models\wf\WfTestRun::read($id, $wf);
 		if (!$run)
 		    throw new \ErrorException($id === '' ? 'this workflow has no test runs' : "no test run `{$id}` of this workflow");
-		return self::testRun($run) + [ 'changes' => \util\AgentEval::diff($run, \models\WfTestRun::previous($run)) ];
+		return self::testRun($run) + [ 'changes' => \util\AgentEval::diff($run, \models\wf\WfTestRun::previous($run)) ];
 
 	    case 'get_execution':
 		$id = (string)($args['id'] ?? '');
@@ -685,7 +685,7 @@ class McpServerTools {
 		throw new \ErrorException($prefix . "the table has no column `{$c}`");
 	}
 	$row = $row ?: \V::app()->om->create($t->iname, [ 'aid' => $t->aid ]);
-	\models\DataTableDef::assignRow($row, $item, $prefix);
+	\models\datatable\DataTableDef::assignRow($row, $item, $prefix);
 	return $row;
     }
 

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new: the public endpoint of the GravityZone event triggers (/gravityzone/<token>, NodeTriggerGravityZone): GravityZone's Event Push Service
+    the public endpoint of the GravityZone event triggers (/gravityzone/<token>, NodeTriggerGravityZone): GravityZone's Event Push Service
     POSTs batches of events (JSON-RPC 2.0: params.events; a list, or { events }, accepted too) with `Authorization: Bearer <the step's secret>`. The events of the types the step
     chose start runs of the published version: one per event, or one per batch (at most MAX_RUNS runs per request: the others are logged as left out). Answered 200 with a
     JSON-RPC result (GravityZone counts any other answer as an error); refusals (unknown token, secret, not published, errors) as HookController's, logged for the workflow
@@ -55,7 +55,7 @@ class GravityzoneController extends \sys\APIController {
 	$left = max(0, count($runs) - self::MAX_RUNS);
 	$started = [];
 	foreach(array_slice($runs, 0, self::MAX_RUNS) as $value) {
-	    $exe = \models\WfExecution::startFor($live, 'gravityzone', [ 'received_at' => $received, 'vars' => [ $name => $value ] ], $entry->node);
+	    $exe = \models\wf\WfExecution::startFor($live, 'gravityzone', [ 'received_at' => $received, 'vars' => [ $name => $value ] ], $entry->node);
 	    $exe->log($entry->node, 'GravityZone ' . (isset($value['events']) ? \util\Format::plural($value['count'], 'event') : 'event ' . ($value['module'] ?? '?')) . ' received');
 	    $exe->queue();
 	    $started[] = (string)$exe->_id;

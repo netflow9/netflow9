@@ -2,7 +2,7 @@
 
 namespace models\node;
 
-class NodeCoreMerge extends \models\WfNode {
+class NodeCoreMerge extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'core';
     public static $name = 'merge';

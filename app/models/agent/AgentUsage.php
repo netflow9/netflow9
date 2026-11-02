@@ -2,11 +2,11 @@
 
 /*
     CLD: 2026-11-02T10:00:00+02:00: new: what the AI steps with the account's own keys spent, per account and calendar month (UTC): one document `<aid>:<YYYY-MM>`, the estimated cost (USD, from the
-    tokens: util\AgentGuard), the tokens, the calls. Checked against the account's monthly AI budget before each call to a model (models\AgentPolicy budget); the System AI is paid in credits, not
-    counted here. Written with an atomic upsert ($inc), as models\AssistantUsage: steps of an account run at the same time, so a budget may be passed by the calls under way
+    tokens: util\AgentGuard), the tokens, the calls. Checked against the account's monthly AI budget before each call to a model (models\agent\AgentPolicy budget); the System AI is paid in credits, not
+    counted here. Written with an atomic upsert ($inc), as models\assistant\AssistantUsage: steps of an account run at the same time, so a budget may be passed by the calls under way
 */
 
-namespace models;
+namespace models\agent;
 
 class AgentUsage extends \sys\BaseModel {
     protected static $collection = 'agent_usage';

@@ -1,6 +1,6 @@
 <?php
 
-namespace models;
+namespace models\wf;
 
 class WfVersion extends \sys\BaseModel {
     protected static $collection = 'wf_versions';

@@ -2,7 +2,7 @@
 
 /*
     CLD: 2026-11-01T14:00:00+02:00: new trigger: Proxmox task - starts the workflow when tasks of a Proxmox VE cluster end: failed ones (a backup, a migration, a replication, ...)
-    or every one, of the types chosen (vzdump, ...) and of a node or any. Proxmox calls no webhook: the step checks it on its schedule (models\WfSchedule, every 5 minutes by default;
+    or every one, of the types chosen (vzdump, ...) and of a node or any. Proxmox calls no webhook: the step checks it on its schedule (models\wf\WfSchedule, every 5 minutes by default;
     util\Scheduler runs runScheduled), reading the cluster's recent tasks (GET /cluster/tasks) that ended since its last check. What it has read is kept in models\TriggerState
     (the last end time, and the tasks that ended at that time), locked during a check, as the Veeam event trigger. Its first check only notes the time. Runs: one per task (the
     variable: the task + failed + log, its last lines) or one per check with tasks ({ tasks, count }); at most MAX_RUNS per check
@@ -10,7 +10,7 @@
 
 namespace models\node;
 
-class NodeTriggerProxmox extends \models\WfNode {
+class NodeTriggerProxmox extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'trigger';
     public static $name = 'proxmox';
@@ -86,16 +86,16 @@ class NodeTriggerProxmox extends \models\WfNode {
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
-	], \models\WfSchedule::schema([ 'mode' => 'interval', 'every' => 5, 'every_unit' => 'minutes' ]));
+	], \models\wf\WfSchedule::schema([ 'mode' => 'interval', 'every' => 5, 'every_unit' => 'minutes' ]));
     }
 
     public static function matches(array $cfg, \DateTimeInterface $t) {
-	return \models\WfSchedule::matches($cfg, $t);
+	return \models\wf\WfSchedule::matches($cfg, $t);
     }
 
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$error = \models\WfSchedule::validate(is_array($this->config) ? $this->config : []);
+	$error = \models\wf\WfSchedule::validate(is_array($this->config) ? $this->config : []);
 	if ($error !== null) {
 	    $this->errors('config', $error);
 	    $valid = false;
@@ -207,7 +207,7 @@ class NodeTriggerProxmox extends \models\WfNode {
 	$values = !$tasks ? [] : (($cfg['runs'] ?? 'each') === 'batch' ? [ [ 'tasks' => $tasks, 'count' => count($tasks) ] ] : $tasks);
 	$started = [];
 	foreach($values as $v) {
-	    $exe = \models\WfExecution::startFor($wf, 'proxmox', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $v ] ], $node['wfid']);
+	    $exe = \models\wf\WfExecution::startFor($wf, 'proxmox', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $v ] ], $node['wfid']);
 	    $exe->log($node['wfid'], isset($v['tasks']) ? 'Proxmox: ' . \util\Format::plural($v['count'], 'task') . ' ended' : 'Proxmox: ' . self::describe($v));
 	    $exe->queue();
 	    $started[] = $exe;
@@ -231,7 +231,7 @@ class NodeTriggerProxmox extends \models\WfNode {
 	if (!$t)
 	    return [ 'executions' => [], 'message' => 'Proxmox task: no recent task matches' ];
 	$name = \util\Validator::isIdentifier((string)($cfg['variable'] ?? '')) ? (string)$cfg['variable'] : 'task';
-	$exe = \models\WfExecution::startFor($wf, 'proxmox', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => ($cfg['runs'] ?? 'each') === 'batch' ? [ 'tasks' => [ $t ], 'count' => 1 ] : $t ] ], (string)$node['wfid']);
+	$exe = \models\wf\WfExecution::startFor($wf, 'proxmox', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => ($cfg['runs'] ?? 'each') === 'batch' ? [ 'tasks' => [ $t ], 'count' => 1 ] : $t ] ], (string)$node['wfid']);
 	$exe->save();
 	return [ 'executions' => [ $exe ], 'message' => 'Run with the newest matching task: ' . self::describe($t) ];
     }

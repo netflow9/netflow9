@@ -555,7 +555,7 @@ class DatatableController extends \sys\BaseController {
     }
 
     //---------------------------------------------------------------------------------------------------------------
-    //CLD: 2026-10-30T17:18:20+02:00: saved views (models\DataTableView: a named filter of the table), shared by the users with DataTable::readData on the table; JSON answers
+    //CLD: 2026-10-30T17:18:20+02:00: saved views (models\datatable\DataTableView: a named filter of the table), shared by the users with DataTable::readData on the table; JSON answers
     //for the grid's Filter (app.dataview.js), errors as { error }
 
     //a view as the grid uses it

@@ -6,13 +6,13 @@
 	    message       what the person wrote (or the value of the button chosen)
 	    conversation  { id, channel, turn, title, history: [ { role, text, at } ] (the newest turns), summary }
 	    user          { id, name, email } (a guest on the embedded page: no id, no email)
-	The workflow answers with Reply to chat (NodeAppChatReply); an AI step with Continue the conversation reads the earlier turns (models\AgentConversation).
+	The workflow answers with Reply to chat (NodeAppChatReply); an AI step with Continue the conversation reads the earlier turns (models\agent\AgentConversation).
     The embed token is apart from the page's: the page's address is seen by everyone who may open it. It can be replaced: turn Embed off, save, turn it on, save, publish
 */
 
 namespace models\node;
 
-class NodeTriggerChat extends \models\WfNode {
+class NodeTriggerChat extends \models\wf\WfNode {
     public static $type = 'trigger';
     public static $name = 'chat';
     public static $label = 'Chat';
@@ -174,7 +174,7 @@ class NodeTriggerChat extends \models\WfNode {
 	    'message' => [ 'type' => 'string', 'info' => 'what the person wrote, or the value of the button chosen' ],
 	    'conversation' => [ 'type' => 'object', 'info' => 'the conversation: { id, channel, turn, title, history, summary }', 'fields' => [
 		'id' => [ 'type' => 'string' ], 'channel' => [ 'type' => 'string', 'info' => 'app, embed, email or teams' ], 'turn' => [ 'type' => 'number', 'info' => 'the number of this message' ], 'title' => [ 'type' => 'string' ],
-		'history' => [ 'type' => 'array', 'info' => 'the earlier turns, newest ' . \models\AgentConversation::HISTORY_TURNS, 'items' => [ 'type' => 'object', 'fields' => [ 'role' => [ 'type' => 'string' ], 'text' => [ 'type' => 'string' ], 'at' => [ 'type' => 'string' ] ] ] ],
+		'history' => [ 'type' => 'array', 'info' => 'the earlier turns, newest ' . \models\agent\AgentConversation::HISTORY_TURNS, 'items' => [ 'type' => 'object', 'fields' => [ 'role' => [ 'type' => 'string' ], 'text' => [ 'type' => 'string' ], 'at' => [ 'type' => 'string' ] ] ] ],
 		'summary' => [ 'type' => 'string', 'info' => 'the older turns summarized (an AI step with Continue the conversation does it)' ] ] ],
 	    'user' => [ 'type' => 'object', 'info' => 'who wrote it (a guest: no id, no email)', 'fields' => [ 'id' => [ 'type' => 'string' ], 'name' => [ 'type' => 'string' ], 'email' => [ 'type' => 'string' ] ] ],
 	];
@@ -183,7 +183,7 @@ class NodeTriggerChat extends \models\WfNode {
     //Run in the designer: the test message, no conversation
     public static function startNow($wf, array $node) {
 	$user = \V::app()->user;
-	$exe = \models\WfExecution::startFor($wf, 'manual', [ 'vars' => [ 'message' => (string)($node['config']['testMessage'] ?? 'Hello') ?: 'Hello',
+	$exe = \models\wf\WfExecution::startFor($wf, 'manual', [ 'vars' => [ 'message' => (string)($node['config']['testMessage'] ?? 'Hello') ?: 'Hello',
 	    'conversation' => [ 'id' => null, 'channel' => 'test', 'turn' => null, 'title' => '', 'history' => [], 'summary' => '' ],
 	    'user' => [ 'id' => (string)($user->_id ?? ''), 'name' => (string)($user->name ?? ''), 'email' => (string)($user->email ?? '') ] ] ], (string)$node['wfid']);
 	$exe->save();
@@ -193,7 +193,7 @@ class NodeTriggerChat extends \models\WfNode {
     // ------------------------------------------------------------------------------------
     //who, and what runs
 
-    //whether user $user may talk to the agent of index entry $link: a member of its project, among its users and roles (none: any member). As a Human task's assignment (models\WfTask::isFor)
+    //whether user $user may talk to the agent of index entry $link: a member of its project, among its users and roles (none: any member). As a Human task's assignment (models\wf\WfTask::isFor)
     public static function allows($user, $link) {
 	if (empty($user) || empty($user->_id))
 	    return false;

@@ -17,7 +17,7 @@
 //CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
-abstract class NodeAppMicrosoft extends \models\WfNode {
+abstract class NodeAppMicrosoft extends \models\wf\WfNode {
     //CLD: 2026-11-01T21:50:00+02:00: its operations can be an AI step's tools (util\AgentTools: settingValue, setResult)
     use AgentToolTrait;
 

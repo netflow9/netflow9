@@ -80,7 +80,7 @@ class AgentTools {
 	if (self::$steps === null) {
 	    self::$steps = [];
 	    $registered = [];
-	    foreach(\models\WfNode::nodeClasses() as $objectName) {
+	    foreach(\models\wf\WfNode::nodeClasses() as $objectName) {
 		$class = ltrim(\V::app()->om->getObjectClass($objectName), '\\');
 		$registered[$class] = $objectName;
 	    }

@@ -1,17 +1,17 @@
 <?php
 
 /*
-    a chunk of a knowledge base's document (models\KnowledgeBase):
+    a chunk of a knowledge base's document (models\kb\KnowledgeBase):
 	its text,
 	the document's key and title,
 	its position (seq) and page,
 	the document's meta,
 	and its embedding (a float32 BSON vector: \MongoDB\BSON\Binary::fromVector).
 
-    Written and read in bulk through the collection by models\KnowledgeBase;
+    Written and read in bulk through the collection by models\kb\KnowledgeBase;
     registered for its indexes: the chunks of a document, and the text index of the search by words (within a knowledge base: kb first; language none: no stemming, any language)
 */
-namespace models;
+namespace models\kb;
 
 class KbChunk extends \sys\BaseModel {
     protected static $collection = 'kb-chunks';

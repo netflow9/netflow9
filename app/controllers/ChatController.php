@@ -11,7 +11,7 @@
 
 namespace controllers;
 
-use \models\AgentConversation;
+use \models\agent\AgentConversation;
 use \models\node\NodeTriggerChat;
 
 class ChatController extends \sys\APIController {

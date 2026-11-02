@@ -97,7 +97,7 @@ class WorkflowController extends \sys\BaseController {
     //CLD: 2026-10-25T20:00:00+02:00: the step definitions of the designer (WfNode::designerDefs), asked once per browser tab and kept there (were in each designer page,
     //~85 KB and more): { nodeDefs, version }
     public function node_defs($req, $resp) {
-	$d = \models\WfNode::designerDefs(\V::app()->config('rt.account'));
+	$d = \models\wf\WfNode::designerDefs(\V::app()->config('rt.account'));
 	$resp->sendJSON([ 'nodeDefs' => (object)$d['defs'], 'version' => $d['version'] ]);
     }
 
@@ -159,7 +159,7 @@ class WorkflowController extends \sys\BaseController {
 	if (!\V::app()->user->can('Workflow::update', [ 'object' => $wf ]))
 	    \V::app()->error(403, 'Unauthorized');
 
-	$def = \models\WfNode::getAll()[(string)($req->query['fqname'] ?? '')] ?? null;
+	$def = \models\wf\WfNode::getAll()[(string)($req->query['fqname'] ?? '')] ?? null;
 	if (empty($def))
 	    \V::app()->error(404, 'Unknown step type');
 
@@ -181,7 +181,7 @@ class WorkflowController extends \sys\BaseController {
 	//checks the mailbox now (one execution per message); the trigger's class makes the executions, they run after the answer
 	$start = null;
 	$class = null;
-	$defs = \models\WfNode::getAll();
+	$defs = \models\wf\WfNode::getAll();
 	foreach((is_array($wf->nodes) ? $wf->nodes : []) as $n) {
 	    if (empty($n['isNode']) || empty($n['wfid']))
 		continue;
@@ -221,7 +221,7 @@ class WorkflowController extends \sys\BaseController {
     }
 
     //CLD: 2026-10-11T13:51:42+03:00: publish (was a JSON draft/published switch, 2026-10-11T13:29:36+03:00): GET shows the dialog, POST publishes. The saved draft
-    //becomes a new version (models\WfVersion, v<n>, optional note), or ?version=<id> publishes an older version again as a new number; when the draft has
+    //becomes a new version (models\wf\WfVersion, v<n>, optional note), or ?version=<id> publishes an older version again as a new number; when the draft has
     //not changed since the version in `version`, that version is made active again (no new number). The workflow's triggers then run that version.
     //Refused while the steps to publish have connection errors. Workflow::update
     //CLD: 2026-10-11T19:47:51+03:00: Workflow::publish (was Workflow::update)
@@ -310,7 +310,7 @@ class WorkflowController extends \sys\BaseController {
     //onUnpublish($wf, $node), called; their messages (an error stops nothing: the workflow is published / unpublished already)
     private static function publishHooks($wf, $new, $old) {
 	$classOf = function($n) {
-	    $def = empty($n['isNode']) ? null : (\models\WfNode::getAll()[$n['fqname'] ?? ''] ?? null);
+	    $def = empty($n['isNode']) ? null : (\models\wf\WfNode::getAll()[$n['fqname'] ?? ''] ?? null);
 	    return $def ? \V::app()->om->getObjectClass($def['objectName']) : null;
 	};
 	$messages = [];
@@ -356,7 +356,7 @@ class WorkflowController extends \sys\BaseController {
 	$wf = $this->findWorkflow('Workflow::read');
 	$source = isset($req->query['version']) ? $this->findVersion($wf) : null;
 
-	$defs = \models\WfNode::getAll();
+	$defs = \models\wf\WfNode::getAll();
 	$from = $source ? $source->nodes : $wf->nodes;
 	$nodes = [];
 	foreach((is_array($from) ? $from : []) as $key => $n) {
@@ -466,7 +466,7 @@ class WorkflowController extends \sys\BaseController {
 	//CLD: 2026-10-18T12:49:28+03:00: $resp->sendJSON (was $this->json, removed)
 	//CLD: 2026-10-29T21:30:00+02:00: + run: where each step and connection is (the designer shows it on the canvas: runStatus)
 	//CLD: 2026-11-02T14:00:00+02:00: + traces: its AI steps' visits without their rounds (execution_trace), traces_total
-	[ $traces, $tracesTotal ] = \models\AgentTrace::ofExecution($exe);
+	[ $traces, $tracesTotal ] = \models\agent\AgentTrace::ofExecution($exe);
 	$resp->sendJSON([ 'execution' => $this->executionSummary($exe) + [ 'variables' => (object)(is_array($exe->variables) ? $exe->variables : []), 'log' => $log, 'run' => $this->runStatus($exe),
 	    'traces' => array_map(fn($t) => $this->traceSummary($t, $exe), $traces), 'traces_total' => $tracesTotal ] ]);
     }
@@ -478,7 +478,7 @@ class WorkflowController extends \sys\BaseController {
 	if (!\util\Validator::rule('oid', $eid))
 	    \V::app()->error(400, 'malformed request: not oid');
 	$exe = \V::app()->om->findOne('WfExecution', [ '_id' => $eid, 'wf' => $wf->_id, 'aid' => $wf->aid ], [ 'projection' => [ '_id' => 1, 'aid' => 1, 'state' => 1 ] ]);
-	$trace = $exe ? \models\AgentTrace::read((string)($req->query['trace'] ?? ''), $wf->aid, $exe) : null;
+	$trace = $exe ? \models\agent\AgentTrace::read((string)($req->query['trace'] ?? ''), $wf->aid, $exe) : null;
 	if (!$trace)
 	    \V::app()->error(404, 'Not found');
 	$rounds = array_map(function($round) {
@@ -494,7 +494,7 @@ class WorkflowController extends \sys\BaseController {
 
     //CLD: 2026-11-02T14:00:00+02:00: new: a link to a trace (?id=<trace_id>, e.g. from the variable of the AI step in a later step's message): the designer, its Executions panel on it. Workflow::read
     public function trace($req, $resp) {
-	$trace = \models\AgentTrace::read((string)($req->query['id'] ?? ''), \V::app()->config('rt.account')->_id);
+	$trace = \models\agent\AgentTrace::read((string)($req->query['id'] ?? ''), \V::app()->config('rt.account')->_id);
 	if (!$trace)
 	    \V::app()->error(404, 'This agent trace is no longer kept');
 	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $trace['wf'], 'aid' => $trace['aid'] ]);
@@ -508,7 +508,7 @@ class WorkflowController extends \sys\BaseController {
     //CLD: 2026-11-02T14:00:00+02:00: new: a trace as the panel shows it: an open one of an execution that no longer runs (its process died) is stopped
     private function traceSummary(array $t, $exe) {
 	$state = (string)($t['state'] ?? '');
-	if (in_array($state, \models\AgentTrace::OPEN, true) && !$exe->canRun())
+	if (in_array($state, \models\agent\AgentTrace::OPEN, true) && !$exe->canRun())
 	    $state = 'stopped';
 	$start = $t['started_at'] ?? null;
 	$end = $t['ended_at'] ?? null;

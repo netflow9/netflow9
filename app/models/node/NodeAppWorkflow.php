@@ -13,7 +13,7 @@
 
 namespace models\node;
 
-class NodeAppWorkflow extends \models\WfNode {
+class NodeAppWorkflow extends \models\wf\WfNode {
     public static $type = 'app';
     public static $name = 'workflow';
     public static $label = 'Run a workflow';
@@ -257,7 +257,7 @@ class NodeAppWorkflow extends \models\WfNode {
 	    return [ null, 'workflows nested too deep (at most ' . self::MAX_DEPTH . ')' ];
 
 	$caller = \V::app()->om->findOne('Workflow', [ '_id' => $exec->wf, 'aid' => $exec->aid ]);
-	$child = \models\WfExecution::startFor($live, 'call', [ 'vars' => $inputs, 'caller' => [ 'wf' => (string)$exec->wf, 'name' => (string)($caller->name ?? ''),
+	$child = \models\wf\WfExecution::startFor($live, 'call', [ 'vars' => $inputs, 'caller' => [ 'wf' => (string)$exec->wf, 'name' => (string)($caller->name ?? ''),
 	    'execution' => (string)$exec->_id, 'node' => (string)$nodeId, 'chain' => $chain, 'wait' => (bool)$wait ] ], $contract['wfid']);
 	$child->log(null, 'started by the workflow ' . (string)($caller->name ?? $exec->wf) . ' (execution ' . (string)$exec->_id . ')');
 	return [ $child, null ];

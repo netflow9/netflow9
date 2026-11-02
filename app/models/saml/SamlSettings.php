@@ -10,7 +10,7 @@
 //  - who: an SSO user of the account (SamlLink) signs in only with the IdP; provision = people get a user on their first sign-in; linkExisting = a user of the account with
 //    the person's email becomes an SSO user; domains = the email domains whose people "Sign in with SSO" sends to this IdP; askTfa = this application's 2FA after the IdP's
 
-namespace models;
+namespace models\saml;
 
 use util\SamlXml;
 

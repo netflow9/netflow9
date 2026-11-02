@@ -3,7 +3,7 @@
 //the assertions already used for a sign-in (their ID, by account), until they expire: an assertion is accepted once (util\SamlAuth::useOnce).
 //MongoDB removes them when they expire (expires_at, a TTL index)
 
-namespace models;
+namespace models\saml;
 
 class SamlReplay extends \sys\BaseModel {
     protected static $collection = 'saml_replays';

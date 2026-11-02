@@ -6,15 +6,15 @@
     merged (reciprocal rank fusion). Searched by the Knowledge base step and by the AI steps (their Knowledge bases setting: the search_knowledge_base tool).
 	- chunkSize / overlap: how the documents are cut (characters)
 	- documents / chunks: the counts (updated after each change)
-    The documents: models\KbDocument (one per key: a file, a web page, a text), the chunks: models\KbChunk (written and read in bulk through the collection: never one by one).
+    The documents: models\kb\KbDocument (one per key: a file, a web page, a text), the chunks: models\kb\KbChunk (written and read in bulk through the collection: never one by one).
     Deleted with its documents and chunks (beforeDelete).
-    CLD: 2026-10-31T01:00:00+02:00: the embedding model is the account's (models\EmbeddingSettings; was a credential + model of the knowledge base): `model` / dims are those it was
+    CLD: 2026-10-31T01:00:00+02:00: the embedding model is the account's (models\kb\EmbeddingSettings; was a credential + model of the knowledge base): `model` / dims are those it was
     indexed with; once the account uses another model it must be re-indexed (reindex(): a job re-embeds every chunk, then switches) before it is searched or added to again.
     Made on the Knowledge bases page (controllers\KnowledgeController) or by the Knowledge base step's first Add to a new name (open()). Documents added on the page are indexed
     by the daemon (queue(): a pending document, then indexJob); `state`: ready | reindexing, `state_message`: the last re-index's error. Permissions KnowledgeBase::* (checkAccess)
 */
 
-namespace models;
+namespace models\kb;
 
 class KnowledgeBase extends \sys\BaseModel {
     protected static $collection = 'knowledge-bases';
@@ -475,7 +475,7 @@ class KnowledgeBase extends \sys\BaseModel {
 	    $docs->insertOne([ 'aid' => $this->aid, 'kb' => $this->_id, 'key' => $key, 'title' => $title, 'source' => $type, 'file' => $extra['file'] ?? null, 'url' => $extra['url'] ?? null,
 		'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'created_at' => $now, 'updated_at' => $now ]);
 	$this->recount();
-	\models\Job::submit('\models\KnowledgeBase::indexJob', [ 'aid' => (string)$this->aid, 'project' => (string)$this->project, 'kb' => (string)$this->_id, 'key' => $key, 'src' => $src ],
+	\models\Job::submit('\models\kb\KnowledgeBase::indexJob', [ 'aid' => (string)$this->aid, 'project' => (string)$this->project, 'kb' => (string)$this->_id, 'key' => $key, 'src' => $src ],
 	    [ 'delete_on_done' => true ]);
 	return $key;
     }
@@ -534,7 +534,7 @@ class KnowledgeBase extends \sys\BaseModel {
 	$this->state = 'reindexing';
 	$this->state_message = '';
 	\V::app()->om->updateMany('KnowledgeBase', [ '_id' => $this->_id ], [ '$set' => [ 'state' => 'reindexing', 'state_message' => '' ] ]);
-	\models\Job::submit('\models\KnowledgeBase::reindexJob', [ 'aid' => (string)$this->aid, 'project' => (string)$this->project, 'kb' => (string)$this->_id ], [ 'delete_on_done' => true ]);
+	\models\Job::submit('\models\kb\KnowledgeBase::reindexJob', [ 'aid' => (string)$this->aid, 'project' => (string)$this->project, 'kb' => (string)$this->_id ], [ 'delete_on_done' => true ]);
     }
 
     //the daemon's job: every chunk embedded again with the account's model (the new vectors aside, then put in place at once: a failure leaves the old ones), then the

@@ -160,7 +160,7 @@ class CheckCommand extends \sys\BaseController {
 	}
 	$wf->save();
 	$this->created[] = $wf->_id;
-	$exe = \models\WfExecution::startFor($wf, 'console', [ 'vars' => $vars ]);
+	$exe = \models\wf\WfExecution::startFor($wf, 'console', [ 'vars' => $vars ]);
 	$exe->run();
 	return $exe;
     }
@@ -849,7 +849,7 @@ class CheckCommand extends \sys\BaseController {
 	$results = [];
 	foreach([ false, true ] as $f) {
 	    $found->setValue(null, $f);
-	    $results[] = [ \models\node\NodeTriggerEmail::available(), !empty(\models\WfNode::designerDefs($this->account)['defs']['trigger::email']['unavailable']), $unavailable() ];
+	    $results[] = [ \models\node\NodeTriggerEmail::available(), !empty(\models\wf\WfNode::designerDefs($this->account)['defs']['trigger::email']['unavailable']), $unavailable() ];
 	}
 	$found->setValue(null, $wasFound);
 	$step = \V::app()->om->create('NodeTriggerEmail', [ 'wfid' => 't', 'fqname' => 'trigger::email', 'config' => [ 'token' => 'abcd1234', 'address' => 'old-abcd1234@example.com', 'variable' => 'mail' ] ]);
@@ -879,7 +879,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('the workflow is valid', true, $wf->validates());
 	$wf->save();
 	$this->created[] = $wf->_id;
-	$exe = \models\WfExecution::startFor($wf, 'form', [ 'vars' => [ 'form' => [ 'amount' => 120 ], 'form_user' => null ] ], 'f');
+	$exe = \models\wf\WfExecution::startFor($wf, 'form', [ 'vars' => [ 'form' => [ 'amount' => 120 ], 'form_user' => null ] ], 'f');
 	$exe->run();
 	$task = \V::app()->om->findOne('WfTask', [ 'execution' => $exe->_id ]);
 	$this->check('the run waits for the task', [ 'sleep', 'open', 'Approve 120' ], [ $exe->state, $task?->state, $task?->title ]);
@@ -894,7 +894,7 @@ class CheckCommand extends \sys\BaseController {
 	$wf->validates();
 	$wf->save();
 	$this->created[] = $wf->_id;
-	$exe = \models\WfExecution::startFor($wf, 'form', [ 'vars' => [ 'form' => [ 'amount' => 5 ] ] ], 'f');
+	$exe = \models\wf\WfExecution::startFor($wf, 'form', [ 'vars' => [ 'form' => [ 'amount' => 5 ] ] ], 'f');
 	$exe->run();
 	$task = \V::app()->om->findOne('WfTask', [ 'execution' => $exe->_id ]);
 	$this->check('with a time limit: due, the run wakes then', [ 'sleep', true, true ], [ $exe->state, $task?->due_at instanceof \MongoDB\BSON\UTCDateTime, $exe->wake_at instanceof \MongoDB\BSON\UTCDateTime ]);
@@ -907,7 +907,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('expired: the timeout output, the task expired', [ 'end', 'expired', 'expired' ],
 		[ $exe->state, $exe->getVariable('summary'), \V::app()->om->findById('WfTask', (string)$task->_id)?->state ]);
 	}
-	//deleting the workflow takes its tasks and form index entries with it (models\WfTask::beforeWorkflowDelete, hooked by sys\Boot; CLD: 2026-10-17T13:24:18+03:00: was plugins\BaseNodes\Plugin::beforeWorkflowDelete; CLD: 2026-10-14T07:50:50+03:00: was plugins\Forms\Plugin)
+	//deleting the workflow takes its tasks and form index entries with it (models\wf\WfTask::beforeWorkflowDelete, hooked by sys\Boot; CLD: 2026-10-17T13:24:18+03:00: was plugins\BaseNodes\Plugin::beforeWorkflowDelete; CLD: 2026-10-14T07:50:50+03:00: was plugins\Forms\Plugin)
 	$id = $wf->_id;
 	\V::app()->om->findById('Workflow', (string)$id)->delete();
 	$this->check('a deleted workflow takes its tasks with it', 0, \V::app()->om->count('WfTask', [ 'wf' => $id ]));
@@ -1019,7 +1019,7 @@ class CheckCommand extends \sys\BaseController {
 	    //CLD: 2026-10-27T23:11:38+02:00: the Files setting (promptFiles; was Images, promptImages): the parts made of each file, by step and PDFs as ($cred: the OpenAI step's base URL)
 	    $parts = function($value, $vars, $step = 'app::claude', $config = [], $cred = null) use ($n) {
 		$wf = $this->workflow('files', [ $n('m', 'trigger::manual'), $n('c', $step, $config + [ 'files' => $value ]) ]);
-		$exe = \models\WfExecution::startFor($wf, 'console', [ 'vars' => $vars ]);
+		$exe = \models\wf\WfExecution::startFor($wf, 'console', [ 'vars' => $vars ]);
 		$exe->__nodes['c']->exec = $exe;
 		$m = new \ReflectionMethod($exe->__nodes['c'], 'promptFiles');
 		$m->setAccessible(true);
@@ -1202,7 +1202,7 @@ class CheckCommand extends \sys\BaseController {
 	$e = [ self::class, 'edge' ];
 	$D = \models\node\NodeAppGoogleDrive::class;
 	$this->check('Google Drive: a step type, an `error` output when chosen', [ true, [ 'success', 'error' ], 1 ],
-	    [ isset(\models\WfNode::getAll()['app::google-drive']), $D::outLabelsFor([ 'onError' => 'output' ]), $D::outputCountFor([]) ]);
+	    [ isset(\models\wf\WfNode::getAll()['app::google-drive']), $D::outLabelsFor([ 'onError' => 'output' ]), $D::outputCountFor([]) ]);
 	$this->check('Google Drive: ids from links', [ '1AbCdEfGhIjK_lm-no', '0BxFolder123456789', '1AbCdEfGhIjK_lm-no', '1DocId_abcdefghij', 'root' ], [
 	    $D::driveId('https://drive.google.com/file/d/1AbCdEfGhIjK_lm-no/view?usp=sharing'), $D::driveId('https://drive.google.com/drive/folders/0BxFolder123456789'),
 	    $D::driveId('https://drive.google.com/open?id=1AbCdEfGhIjK_lm-no'), $D::driveId('https://docs.google.com/document/d/1DocId_abcdefghij/edit'), $D::driveId(' root ') ]);
@@ -1264,7 +1264,7 @@ class CheckCommand extends \sys\BaseController {
 	$e = [ self::class, 'edge' ];
 	$S = \models\node\NodeAppGoogleSheets::class;
 	$this->check('Google Sheets: a step type, an `error` output when chosen', [ true, [ 'success', 'error' ] ],
-	    [ isset(\models\WfNode::getAll()['app::google-sheets']), $S::outLabelsFor([ 'onError' => 'output' ]) ]);
+	    [ isset(\models\wf\WfNode::getAll()['app::google-sheets']), $S::outLabelsFor([ 'onError' => 'output' ]) ]);
 	$this->check('Google Sheets: column names', [ 'A', 'Z', 'AA', 'AZ', 'BA', 'ZZ', 'AAA' ], array_map([ $S, 'columnName' ], [ 0, 25, 26, 51, 52, 701, 702 ]));
 	$this->check('Google Sheets: a sheet name quoted', "'Bob''s sheet'", $S::quoteSheet("Bob's sheet"));
 	$this->check('Google Sheets: rows from JSON, a list of lists, one object, one row of cells', [ [ [ 'a', 1 ], [ 'b', 2 ] ], [ [ 'x' => 1 ] ], [ [ 'a', 'b' ] ], [] ],
@@ -1341,7 +1341,7 @@ class CheckCommand extends \sys\BaseController {
 	$G = \models\node\NodeAppGmail::class;
 	$om = \V::app()->om;
 	$this->check('Gmail: a step type, an `error` output when chosen; the Google Mail credential provides it (and still IMAP)', [ true, [ 'success', 'error' ], [ 'imap', 'gmail' ] ],
-	    [ isset(\models\WfNode::getAll()['app::gmail']), $G::outLabelsFor([ 'onError' => 'output' ]), \models\credential\CredentialGoogleMail::$provides ]);
+	    [ isset(\models\wf\WfNode::getAll()['app::gmail']), $G::outLabelsFor([ 'onError' => 'output' ]), \models\credential\CredentialGoogleMail::$provides ]);
 	$this->check('Gmail: addresses (text, names, semicolons, a list, objects; doubles once)', [ 'a@x.ro', 'b@y.com', 'c@z.org' ],
 	    $G::addresses('a@x.ro; "B, Jr." <b@y.com>, a@x.ro;c@z.org')) && $this->check('Gmail: addresses from a list', [ 'a@x.ro', 'c@z.org' ], $G::addresses([ 'a@x.ro', [ 'email' => 'c@z.org' ] ]));
 	$bad = function($value) use ($G) {
@@ -1418,7 +1418,7 @@ class CheckCommand extends \sys\BaseController {
 	$C = \models\node\NodeAppGoogleCalendar::class;
 	$tz = new \DateTimeZone('Europe/Bucharest');
 	$this->check('Google Calendar: a step type, an `error` output when chosen', [ true, [ 'success', 'error' ] ],
-	    [ isset(\models\WfNode::getAll()['app::google-calendar']), $C::outLabelsFor([ 'onError' => 'output' ]) ]);
+	    [ isset(\models\wf\WfNode::getAll()['app::google-calendar']), $C::outLabelsFor([ 'onError' => 'output' ]) ]);
 	$this->check('Google Calendar: times read (local, with an offset kept as the instant, ISO)', [ '2026-10-21T14:00:00+03:00', '2026-10-21T15:00:00+03:00', '2026-12-01T09:30:00+02:00' ],
 	    [ $C::parseTime('2026-10-21 14:00', $tz)->format(DATE_RFC3339), $C::parseTime('2026-10-21T12:00:00Z', $tz)->format(DATE_RFC3339), $C::parseTime('2026-12-01T09:30', $tz)->format(DATE_RFC3339) ]);
 	$refused = function(\Closure $f) {
@@ -1495,7 +1495,7 @@ class CheckCommand extends \sys\BaseController {
 	$e = [ self::class, 'edge' ];
 	$D = \models\node\NodeAppGoogleDocs::class;
 	$this->check('Google Docs: a step type, an `error` output when chosen; every Google step is a NodeAppGoogle', [ true, [ 'success', 'error' ], [ true, true, true, true, true ] ],
-	    [ isset(\models\WfNode::getAll()['app::google-docs']), $D::outLabelsFor([ 'onError' => 'output' ]), array_map(fn($c) => is_subclass_of($c, \models\node\NodeAppGoogle::class),
+	    [ isset(\models\wf\WfNode::getAll()['app::google-docs']), $D::outLabelsFor([ 'onError' => 'output' ]), array_map(fn($c) => is_subclass_of($c, \models\node\NodeAppGoogle::class),
 		[ $D, \models\node\NodeAppGoogleDrive::class, \models\node\NodeAppGoogleSheets::class, \models\node\NodeAppGmail::class, \models\node\NodeAppGoogleCalendar::class ]) ]);
 	$this->check('Google Docs: lengths in UTF-16 (ă: 1, an emoji: 2)', [ 1, 2, 5 ], [ $D::len('ă'), $D::len('😀'), $D::len('a😀bc') ]);
 	$this->check('Google Docs: inline Markdown (bold, italic, code, a link; snake_case left alone)', [ 'Hi Ana, see site and x a_b_c', [ [ 3, 6, [ 'bold' => true ] ], [ 8, 11, [ 'italic' => true ] ],
@@ -1578,7 +1578,7 @@ class CheckCommand extends \sys\BaseController {
 	$drive = $ns . 'NodeAppOneDrive';
 	$xl = $ns . 'NodeAppExcel';
 	$teams = $ns . 'NodeAppTeams';
-	$all = \models\WfNode::getAll();
+	$all = \models\wf\WfNode::getAll();
 	$this->check('Microsoft: the step types, an `error` output when chosen', [ true, true, true, true, true, [ 'success', 'error' ] ],
 	    [ isset($all['app::outlook-mail']), isset($all['app::outlook-calendar']), isset($all['app::onedrive']), isset($all['app::excel']), isset($all['app::teams']),
 		$mail::outLabelsFor([ 'onError' => 'output' ]) ]);
@@ -1710,7 +1710,7 @@ class CheckCommand extends \sys\BaseController {
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
 	$om = \V::app()->om;
-	$all = \models\WfNode::getAll();
+	$all = \models\wf\WfNode::getAll();
 	$this->check('local AI: the step types; the credentials provide them', [ true, true, [ 'lemonade', 'http' ], [ 'ollama', 'http' ], [ 'success', 'error' ] ], [ isset($all['app::lemonade']),
 	    isset($all['app::ollama']), \models\credential\CredentialLemonade::$provides, \models\credential\CredentialOllama::$provides,
 	    \models\node\NodeAppOllama::outLabelsFor([ 'onError' => 'output' ]) ]);
@@ -1842,10 +1842,10 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-30T23:30:00+02:00: new: the knowledge bases (models\KnowledgeBase, the Knowledge base step, the AI steps' search_knowledge_base tool) against the fake AI server's
+    //CLD: 2026-10-30T23:30:00+02:00: new: the knowledge bases (models\kb\KnowledgeBase, the Knowledge base step, the AI steps' search_knowledge_base tool) against the fake AI server's
     //embeddings: the text cut into chunks (pages, overlap), a new knowledge base made by Add (its embedding model, dims), unchanged documents left as they are, files / web page /
     //text, search by meaning and by words (merged), the metadata filter, remove, list, another vector length refused, Ollama's /api/embed, the model's prefixes, the AI tool
-    //CLD: 2026-10-31T01:00:00+02:00: the account's embedding model (models\EmbeddingSettings; the check account's put back after: was a credential of the step), Connect's list, the
+    //CLD: 2026-10-31T01:00:00+02:00: the account's embedding model (models\kb\EmbeddingSettings; the check account's put back after: was a credential of the step), Connect's list, the
     //documents queued for the daemon (queue, indexJob), re-index after another model (reindex, reindexJob), the permissions' defaults
     private function suiteKb() {
 	$n = [ self::class, 'node' ];
@@ -1859,11 +1859,11 @@ class CheckCommand extends \sys\BaseController {
 	    end($chunks)['page'], max(array_map(fn($c) => mb_strlen($c['text']), $chunks)) <= 300, str_contains($chunks[1]['text'], mb_substr(trim(mb_substr($chunks[0]['text'], -40)), 0, 15)) ]);
 	$this->check('kb: a text without pages: one chunk, page null; an empty text: none', [ [ [ 'text' => "One.\n\nTwo.", 'page' => null ] ], [] ],
 	    [ \util\TextChunks::split("One.\n\n\n\nTwo.", 1000, 100), \util\TextChunks::split("  \n ", 1000, 100) ]);
-	$all = \models\WfNode::getAll();
+	$all = \models\wf\WfNode::getAll();
 	$this->check('kb: the step (AI group, basic), the error output; the metadata / filter checks', [ true, 'ai', 'basic', [ 'success', 'error' ], [ 'meta.category' => [ '$in' => [ 'hr', 'it' ] ] ],
 	    'Filter: `a.b` is not a name (letters, digits, _)' ], [ isset($all['app::knowledge']), $all['app::knowledge']['category'] ?? null, $all['app::knowledge']['audience'] ?? null,
-	    \models\node\NodeAppKnowledge::outLabelsFor([ 'onError' => 'output' ]), \models\KnowledgeBase::filterQuery([ 'category' => [ 'hr', 'it' ] ]),
-	    (function() { try { \models\KnowledgeBase::filterQuery([ 'a.b' => 1 ]); return null; } catch (\ErrorException $x) { return $x->getMessage(); } })() ]);
+	    \models\node\NodeAppKnowledge::outLabelsFor([ 'onError' => 'output' ]), \models\kb\KnowledgeBase::filterQuery([ 'category' => [ 'hr', 'it' ] ]),
+	    (function() { try { \models\kb\KnowledgeBase::filterQuery([ 'a.b' => 1 ]); return null; } catch (\ErrorException $x) { return $x->getMessage(); } })() ]);
 	$member = $om->create('Role', [ 'iname' => 'member', 'permissions' => [] ]);
 	$this->check('kb: the permissions: defaults for the roles already stored (member: the project\'s)', [ 'project', 'project', 'project', 'project' ], array_map(fn($p) => $member->getPermissionScope("KnowledgeBase::{$p}"),
 	    [ 'create', 'read', 'update', 'delete' ]));
@@ -1877,10 +1877,10 @@ class CheckCommand extends \sys\BaseController {
 	$name = 'Check KB ' . uniqid();
 	$allow = \V::app()->config('http.steps.allow_private');
 	//the check account's embedding settings, put back after
-	$settingsColl = \V::app()->mongo->selectCollection(\models\EmbeddingSettings::_database(), \models\EmbeddingSettings::_collection());
+	$settingsColl = \V::app()->mongo->selectCollection(\models\kb\EmbeddingSettings::_database(), \models\kb\EmbeddingSettings::_collection());
 	$before = $settingsColl->findOne([ 'aid' => $this->account->_id ]);
 	$setModel = function($provider, $url, $model) {
-	    $s = \models\EmbeddingSettings::of($this->account->_id);
+	    $s = \models\kb\EmbeddingSettings::of($this->account->_id);
 	    $s->assign([ 'provider' => $provider, 'url' => $url, 'api_key' => 'check-key', 'model' => $model ]);
 	    if (!$s->validates() || !$s->save())
 		throw new \ErrorException('embedding settings: ' . json_encode($s->errors()));
@@ -1903,7 +1903,7 @@ class CheckCommand extends \sys\BaseController {
 		$om->create('EmbeddingSettings', [ 'aid' => $this->account->_id, 'provider' => 'openai', 'url' => 'http://10.0.0.1/v1', 'model' => 'x' ])->validates(),
 		$om->create('EmbeddingSettings', [ 'aid' => $this->account->_id, 'provider' => 'ollama' ])->baseUrl() ]);
 	    $setModel('lemonade', "http://127.0.0.1:{$port}/api/v1", 'nomic-embed-text-v2-moe-GGUF');
-	    $models = \util\Embeddings::models(\models\EmbeddingSettings::of($this->account->_id));
+	    $models = \util\Embeddings::models(\models\kb\EmbeddingSettings::of($this->account->_id));
 	    $this->check('kb: Connect\'s list: the server\'s models, those not named as embedding models marked', [ 'Gemma-3-4b-it-GGUF', 'Gemma-3-4b-it-GGUF (not named as an embedding model)', 2 ],
 		[ $models[0]['id'] ?? null, $models[0]['label'] ?? null, count($models) ]);
 	    [ $route, $v ] = $flow('search missing', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'x' ]);
@@ -1913,7 +1913,7 @@ class CheckCommand extends \sys\BaseController {
 	    @unlink($log);
 	    [ $route, $v ] = $flow('add text', [ 'knowledgeBase' => $name, 'operation' => 'addText', 'title' => 'Holidays', 'text' => 'Employees get {{ days }} days of paid holiday every year.',
 		'meta' => '{"category": "hr"}' ], [ 'days' => 21 ]);
-	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $kb = \models\kb\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
 	    $sent = $requests('/api/v1/embeddings');
 	    $this->check('kb: Add a text: the knowledge base made (the account\'s model, dims), the document added, the prefix and title embedded, the key sent', [ 'success', true,
 		[ [ 'key' => 'Holidays', 'title' => 'Holidays', 'status' => 'added', 'chunks' => 1 ] ], 'nomic-embed-text-v2-moe-GGUF', 64, 1,
@@ -1943,24 +1943,24 @@ class CheckCommand extends \sys\BaseController {
 	    [ $route, $v ] = $flow('add page', [ 'knowledgeBase' => $name, 'operation' => 'addUrl', 'url' => "http://127.0.0.1:{$port}/kb/page" ]);
 	    $this->check('kb: Add a web page: its title, its text (no head)', [ 'success', 'Refund policy', "http://127.0.0.1:{$port}/kb/page" ],
 		[ $route, $v['documents'][0]['title'] ?? null, $v['documents'][0]['key'] ?? null ]);
-	    $chunk = \models\KnowledgeBase::chunkCollection()->findOne([ 'kb' => $kb->_id, 'key' => "http://127.0.0.1:{$port}/kb/page" ]);
+	    $chunk = \models\kb\KnowledgeBase::chunkCollection()->findOne([ 'kb' => $kb->_id, 'key' => "http://127.0.0.1:{$port}/kb/page" ]);
 	    $this->check('kb: the page\'s chunk: the text without the style; the embedding a float32 vector', [ "Refunds\n\nRefunds are paid within 14 days of the return.", true, 64 ],
 		[ $chunk['text'] ?? null, ($chunk['embedding'] ?? null) instanceof \MongoDB\BSON\Binary, count($chunk['embedding']->toArray()) ]);
 
 	    //queued for the daemon (the Knowledge bases page): pending, then indexed by the job; a failure is the document's error
-	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $kb = \models\kb\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
 	    $k1 = $kb->queue([ 'type' => 'file', 'file' => (string)$md ]);
 	    $k2 = $kb->queue([ 'type' => 'text', 'title' => 'Lunch', 'text' => 'Lunch is served from 12 to 14 in the canteen.' ]);
 	    $k3 = $kb->queue([ 'type' => 'file', 'file' => (string)$png ]);
-	    $status = fn($key) => \models\KnowledgeBase::documentCollection()->findOne([ 'kb' => $kb->_id, 'key' => $key ]);
+	    $status = fn($key) => \models\kb\KnowledgeBase::documentCollection()->findOne([ 'kb' => $kb->_id, 'key' => $key ]);
 	    //pending (or indexed already by a daemon running)
 	    $this->check('kb: documents queued: pending', [ true, true ], [ in_array($status($k1)['status'] ?? null, [ 'pending', 'indexed' ], true),
 		in_array($status($k2)['status'] ?? null, [ 'pending', 'indexed' ], true) ]);
 	    //the jobs' work done here (a daemon running may take the jobs first: a document no longer pending is left as it is); the first as the daemon gives it (an object, aid an ObjectId)
-	    \models\KnowledgeBase::indexJob((object)[ 'aid' => $kb->aid, 'kb' => (string)$kb->_id, 'key' => $k1, 'src' => [ 'type' => 'file', 'file' => (string)$md ] ]);
-	    \models\KnowledgeBase::indexJob([ 'aid' => (string)$kb->aid, 'kb' => (string)$kb->_id, 'key' => $k2, 'src' => [ 'type' => 'text', 'title' => 'Lunch',
+	    \models\kb\KnowledgeBase::indexJob((object)[ 'aid' => $kb->aid, 'kb' => (string)$kb->_id, 'key' => $k1, 'src' => [ 'type' => 'file', 'file' => (string)$md ] ]);
+	    \models\kb\KnowledgeBase::indexJob([ 'aid' => (string)$kb->aid, 'kb' => (string)$kb->_id, 'key' => $k2, 'src' => [ 'type' => 'text', 'title' => 'Lunch',
 		'text' => 'Lunch is served from 12 to 14 in the canteen.' ] ]);
-	    \models\KnowledgeBase::indexJob([ 'aid' => (string)$kb->aid, 'kb' => (string)$kb->_id, 'key' => $k3, 'src' => [ 'type' => 'file', 'file' => (string)$png ] ]);
+	    \models\kb\KnowledgeBase::indexJob([ 'aid' => (string)$kb->aid, 'kb' => (string)$kb->_id, 'key' => $k3, 'src' => [ 'type' => 'file', 'file' => (string)$png ] ]);
 	    $this->check('kb: the jobs: indexed (a file, a text: the key its title), an image: the error', [ 'indexed', 1, 'indexed', 'Lunch', 'error', '`check-kb.png` has no text to add (PDF, Office or text files)' ],
 		[ $status($k1)['status'] ?? null, $status($k1)['chunks'] ?? null, $status($k2)['status'] ?? null, $k2, $status($k3)['status'] ?? null, $status($k3)['error'] ?? null ]);
 
@@ -1984,9 +1984,9 @@ class CheckCommand extends \sys\BaseController {
 		[ $route, $v['count'] ?? null, (function($d) { $s = array_column($d, 'source'); sort($s); return $s; })($v['documents'] ?? []),
 		array_column($v['documents'] ?? [], 'meta', 'key')['Holidays'] ?? null, count(array_filter($v['documents'] ?? [], fn($d) => $d['status'] === 'error')) ]);
 	    [ $route, $v ] = $flow('remove', [ 'knowledgeBase' => $name, 'operation' => 'remove', 'docKey' => (string)$txt ]);
-	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $kb = \models\kb\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
 	    $this->check('kb: Remove a document by its file id: its chunks gone, the counts updated', [ 'success', 1, 6, 0 ], [ $route, $v['removed'] ?? null, (int)$kb->documents,
-		\models\KnowledgeBase::chunkCollection()->countDocuments([ 'kb' => $kb->_id, 'key' => (string)$txt ]) ]);
+		\models\kb\KnowledgeBase::chunkCollection()->countDocuments([ 'kb' => $kb->_id, 'key' => (string)$txt ]) ]);
 
 	    //another vector length (the model changed on the server): refused
 	    $om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => [ 'dims' => 32 ] ]);
@@ -1996,7 +1996,7 @@ class CheckCommand extends \sys\BaseController {
 
 	    //the account's model changed: re-index needed (search and add refused), then re-indexed in the daemon
 	    $setModel('lemonade', "http://127.0.0.1:{$port}/api/v1", 'small-embed');
-	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $kb = \models\kb\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
 	    [ $route, $v ] = $flow('stale', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'holiday' ]);
 	    $this->check('kb: another model for the account: re-index needed, search refused', [ true, 'error', true ], [ $kb->needsReindex(), $route,
 		str_contains((string)($v['error'] ?? ''), 'was indexed with the model `nomic-embed-text-v2-moe-GGUF`, the account now uses `small-embed`: re-index it') ]);
@@ -2005,18 +2005,18 @@ class CheckCommand extends \sys\BaseController {
 	    [ $route, $v ] = $flow('reindexing', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'holiday' ]);
 	    $this->check('kb: re-indexing: searches wait', [ 'error', true ], [ $route, str_contains((string)($v['error'] ?? ''), 'is being re-indexed') ]);
 	    $om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => [ 'state' => 'ready' ] ]);
-	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $kb = \models\kb\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
 	    $kb->reindex();
-	    \models\KnowledgeBase::reindexJob((object)[ 'aid' => $kb->aid, 'kb' => (string)$kb->_id ]);
-	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
-	    $chunk = \models\KnowledgeBase::chunkCollection()->findOne([ 'kb' => $kb->_id ]);
+	    \models\kb\KnowledgeBase::reindexJob((object)[ 'aid' => $kb->aid, 'kb' => (string)$kb->_id ]);
+	    $kb = \models\kb\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    $chunk = \models\kb\KnowledgeBase::chunkCollection()->findOne([ 'kb' => $kb->_id ]);
 	    [ $route, $v ] = $flow('reindexed', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'holiday', 'results' => 1 ]);
 	    $this->check('kb: re-indexed: the new model and length, every chunk\'s vector, searched again', [ 'ready', 'small-embed', 8, 8, false, false, 'success', 1 ],
 		[ (string)$kb->state, (string)$kb->model, (int)$kb->dims, count($chunk['embedding']->toArray()), isset($chunk['embedding_new']), $kb->needsReindex(), $route, $v['count'] ?? null ]);
 	    $setModel('lemonade', "http://127.0.0.1:{$port}/api/v1", 'slow-model');
 	    $kb->reindex();
-	    \models\KnowledgeBase::reindexJob([ 'aid' => (string)$kb->aid, 'kb' => (string)$kb->_id ]);
-	    $kb = \models\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
+	    \models\kb\KnowledgeBase::reindexJob([ 'aid' => (string)$kb->aid, 'kb' => (string)$kb->_id ]);
+	    $kb = \models\kb\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
 	    $this->check('kb: a failed re-index: the old vectors and model kept, the error shown', [ 'ready', 'small-embed', true ],
 		[ (string)$kb->state, (string)$kb->model, str_starts_with((string)$kb->state_message, 'Re-index failed: Lemonade answered HTTP status 404') ]);
 	    $setModel('lemonade', "http://127.0.0.1:{$port}/api/v1", 'small-embed');
@@ -2079,16 +2079,16 @@ class CheckCommand extends \sys\BaseController {
 	    //deleted with its documents and chunks
 	    $id = $kb->_id;
 	    $kb->delete();
-	    $this->check('kb: a knowledge base deleted takes its documents and chunks', [ 0, 0 ], [ \models\KnowledgeBase::documentCollection()->countDocuments([ 'kb' => $id ]),
-		\models\KnowledgeBase::chunkCollection()->countDocuments([ 'kb' => $id ]) ]);
+	    $this->check('kb: a knowledge base deleted takes its documents and chunks', [ 0, 0 ], [ \models\kb\KnowledgeBase::documentCollection()->countDocuments([ 'kb' => $id ]),
+		\models\kb\KnowledgeBase::chunkCollection()->countDocuments([ 'kb' => $id ]) ]);
 	} catch (\ErrorException $ex) {
 	    $this->fail('kb: ' . $ex->getMessage());
 	} finally {
 	    \V::app()->config('http.steps.allow_private', $allow);
 	    foreach($om->find('KnowledgeBase', [ 'aid' => $this->account->_id, 'name' => [ '$regex' => '^Check KB ' ] ]) as $k)
 		$k->delete();
-	    \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection())->deleteMany([ 'job_spec' => [ '$in' => [ '\models\KnowledgeBase::indexJob',
-		'\models\KnowledgeBase::reindexJob' ] ], 'aid' => $this->account->_id ]);
+	    \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection())->deleteMany([ 'job_spec' => [ '$in' => [ '\models\kb\KnowledgeBase::indexJob',
+		'\models\kb\KnowledgeBase::reindexJob' ] ], 'aid' => $this->account->_id ]);
 	    foreach($files as $fid)
 		$om->findOne('File', [ '_id' => $fid ])?->delete();
 	    $lem?->delete();
@@ -2107,8 +2107,8 @@ class CheckCommand extends \sys\BaseController {
     private function suiteHttp() {
 	$H = \util\Http::class;
 	//CLD: 2026-10-30T15:00:00+02:00: the step picker's presentation (WfNode audience / category): every step in a known group; HTTP Request advanced, its basic variants not
-	$defs = \models\WfNode::getAll();
-	$this->check('steps: every step in a group of the picker', [], array_keys(array_filter($defs, fn($d) => !isset(\models\WfNode::CATEGORIES[$d['category']]))));
+	$defs = \models\wf\WfNode::getAll();
+	$this->check('steps: every step in a group of the picker', [], array_keys(array_filter($defs, fn($d) => !isset(\models\wf\WfNode::CATEGORIES[$d['category']]))));
 	$this->check('steps: audience and group (HTTP Request, Download File, Read a web page, Webhook, Gmail, Ollama, If)',
 	    [ [ 'advanced', 'developer' ], [ 'basic', 'web' ], [ 'basic', 'web' ], [ 'advanced', 'trigger' ], [ 'basic', 'google' ], [ 'advanced', 'ai' ], [ 'basic', 'flow' ] ],
 	    array_map(fn($fq) => [ $defs[$fq]['audience'] ?? null, $defs[$fq]['category'] ?? null ], [ 'app::http', 'app::download', 'app::webpage', 'trigger::webhook', 'app::gmail', 'app::ollama', 'core::if' ]));
@@ -2298,7 +2298,7 @@ class CheckCommand extends \sys\BaseController {
 	$S = \models\node\NodeAppFtp::class;
 	$D = \util\FileDecrypt::class;
 	$this->check('FTP: a step type, an `error` output when chosen', [ true, [ 'success', 'error' ], 1 ],
-	    [ isset(\models\WfNode::getAll()['app::ftp']), $S::outLabelsFor([ 'onError' => 'output' ]), $S::outputCountFor([]) ]);
+	    [ isset(\models\wf\WfNode::getAll()['app::ftp']), $S::outLabelsFor([ 'onError' => 'output' ]), $S::outputCountFor([]) ]);
 	$this->check('FTP: paths normalized and joined', [ '/a/b', 'a/b', '', '/', '/x', 'in/f.csv' ],
 	    [ $F::normalize(' /a//./b/ '), $F::normalize('a\\b'), $F::normalize('.'), $F::normalize('/'), $F::join('/', 'x'), $F::join('in/', 'f.csv') ]);
 	$this->check('FTP: fingerprints', [ true, true, false, '65:86:4b:44:35:a1:df:66:da:3a:6d:3b:e5:0f:ab:48' ],
@@ -2613,7 +2613,7 @@ class CheckCommand extends \sys\BaseController {
 		str_contains($refused('rawatt', [ 'verifySignature' => 'attached', 'verifyCredential' => (string)$verRsa->_id ]), 'always a separate file'),
 		str_contains($refused('signver', [ 'verifySignature' => 'detached', 'verifyCredential' => (string)$rawRsa->_id ]), 'Verification key'),
 		$refused('rawdet', [ 'verifySignature' => 'detached', 'verifyCredential' => (string)$verRsa->_id ]) ]);
-	    $this->check('FTP upload: a step type with its variable', [ true, true ], [ isset(\models\WfNode::getAll()['app::ftp-upload']), isset($U::outputVariables([])['upload']['fields']['files']['items']['fields']['remoteName']) ]);
+	    $this->check('FTP upload: a step type with its variable', [ true, true ], [ isset(\models\wf\WfNode::getAll()['app::ftp-upload']), isset($U::outputVariables([])['upload']['fields']['files']['items']['fields']['remoteName']) ]);
 	    $exe = $this->runFlow('ftp no server', [ $n('m', 'trigger::manual'), $n('f', 'app::ftp', [ 'credential' => (string)$ftp->_id, 'onError' => 'output', 'timeout' => 5 ]),
 		$n('ok', 'app::set', [ 'variable' => 'route', 'value' => 'success' ]), $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]),
 		$e('e1', 'm', 'f'), $e('e2', 'f', 'ok', 0), $e('e3', 'f', 'err', 1) ]);
@@ -2713,7 +2713,7 @@ class CheckCommand extends \sys\BaseController {
 		[ $names, $saved['a.csv'] ?? null, $saved['b.CSV'] ?? null, $saved['enc.csv'] ?? null, $saved['z.csv'] ?? null, array_map('basename', array_column($v['skipped'] ?? [], 'path')), $flags ]);
 	    //the same workflow again (the state is per workflow and step): nothing new; a changed file is new again
 	    $again = function() use ($exe) {
-		$x = \models\WfExecution::startFor(\V::app()->om->findById('Workflow', (string)$exe->wf), 'console', [ 'vars' => [] ]);
+		$x = \models\wf\WfExecution::startFor(\V::app()->om->findById('Workflow', (string)$exe->wf), 'console', [ 'vars' => [] ]);
 		$x->run();
 		return $x->getVariable('ftp') ?? [];
 	    };
@@ -3113,7 +3113,7 @@ class CheckCommand extends \sys\BaseController {
 
 	$this->nestedSteps();
 
-	//`object`: the schema of that object (models\WfTask: title required, state default `open`), its system fields left out; `object` wins over `fields`
+	//`object`: the schema of that object (models\wf\WfTask: title required, state default `open`), its system fields left out; `object` wins over `fields`
 	//CLD: 2026-10-18T13:00:00+03:00: sys\NestedModel (was models\WfNodeConfig; option nestedSchema, was configSchema)
 	$byObject = \sys\NestedModel::create([], [ 'objectName' => 'NestedModel', 'nestedSchema' => [
 	    [ 'key' => 'task', 'type' => 'nested', 'label' => 'Task', 'object' => 'WfTask', 'fields' => $address ],
@@ -3368,7 +3368,7 @@ class CheckCommand extends \sys\BaseController {
 	$b = $saved('call loop b', [ $n('c', 'trigger::call') ]);
 	$setNodes($b, [ $n('c', 'trigger::call'), $n('w', 'app::workflow', [ 'workflow' => (string)$a->_id ]), $e('e1', 'c', 'w') ]);
 	$setNodes($a, [ $n('c', 'trigger::call'), $n('w', 'app::workflow', [ 'workflow' => (string)$b->_id, 'onError' => 'output' ]), $e('e1', 'c', 'w') ]);
-	$exe = \models\WfExecution::startFor($a, 'console', []);
+	$exe = \models\wf\WfExecution::startFor($a, 'console', []);
 	$exe->run();
 	$this->check('Run a workflow: no loops (a workflow already in the chain)', [ 'end', true ],
 	    [ $exe->state, str_contains((string)($exe->getVariable('result')['error'] ?? ''), 'already running in this chain of workflows') ]);
@@ -3551,7 +3551,7 @@ class CheckCommand extends \sys\BaseController {
 		$map[$el['wfid']] = $el;
 	    $wfA->nodes = $map;
 	    $wfA->save();
-	    $exeA = \models\WfExecution::startFor($wfA, 'console', []);
+	    $exeA = \models\wf\WfExecution::startFor($wfA, 'console', []);
 	    $exeA->run();
 	    $aiA = $exeA->getVariable('ai');
 	    $exeB = $om->findOne('WfExecution', [ 'input.caller.execution' => (string)$exeA->_id ]);
@@ -3687,7 +3687,7 @@ class CheckCommand extends \sys\BaseController {
 		if (!$exe || !$task)
 		    continue;
 		$before = $chats();
-		\models\WfNode::resetCache();
+		\models\wf\WfNode::resetCache();
 		$again = $om->findById('WfExecution', (string)$exe->_id);
 		$again->run();
 		$this->check("agent approval ({$p}): a restart while waiting: still waiting, the model not called", [ 'sleep', 0, 'open' ],
@@ -3809,7 +3809,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-02T10:00:00+02:00: new: the guardrails of the AI steps' agents (util\AgentGuard, models\AgentPolicy, util\PersonalData, AuditLog::agentCall), with the fake AI server. On an account of its
+    //CLD: 2026-11-02T10:00:00+02:00: new: the guardrails of the AI steps' agents (util\AgentGuard, models\agent\AgentPolicy, util\PersonalData, AuditLog::agentCall), with the fake AI server. On an account of its
     //own (its policy would apply to the real account's runs, its audit entries are sealed): removed at the end, with what it wrote
     private function suiteAgentguard() {
 	$om = \V::app()->om;
@@ -3892,7 +3892,7 @@ class CheckCommand extends \sys\BaseController {
 	    $policy = function(array $values) use ($coll, $account) {
 		$coll('agent_policy')->deleteMany([ 'aid' => $account->_id ]);
 		if ($values) {
-		    $p = \models\AgentPolicy::ofAccount($account->_id);
+		    $p = \models\agent\AgentPolicy::ofAccount($account->_id);
 		    $p->assign($values, true);
 		    if (!$p->validates() || !$p->save())
 			throw new \ErrorException('policy: ' . json_encode($p->errors()));
@@ -3911,7 +3911,7 @@ class CheckCommand extends \sys\BaseController {
 		$wf->save();
 		$this->created[] = $wf->_id;
 		$then();
-		$exe = \models\WfExecution::startFor($wf, 'console', [ 'vars' => $vars ]);
+		$exe = \models\wf\WfExecution::startFor($wf, 'console', [ 'vars' => $vars ]);
 		$exe->run();
 		return $exe;
 	    };
@@ -4060,7 +4060,7 @@ class CheckCommand extends \sys\BaseController {
 	    $exe = $start('lemonade', [ [ [ 'chk_look', [] ], [ 'chk_click', [] ] ] ], [ 'servers' => [ 'chk' ], 'fortigateCredential' => '', 'toolsApprovalMode' => 'none' ]);
 	    $none = [ $mcp->calls, $statuses($exe)[1][2] ?? null ];
 	    $mcp->calls = [];
-	    $policy([ 'write_mode' => 'chosen', 'allowed_writes' => [ \models\AgentPolicy::MCP ] ]);
+	    $policy([ 'write_mode' => 'chosen', 'allowed_writes' => [ \models\agent\AgentPolicy::MCP ] ]);
 	    $exe = $start('lemonade', [ [ [ 'chk_click', [] ] ] ], [ 'servers' => [ 'chk' ], 'fortigateCredential' => '', 'toolsApprovalMode' => 'none' ]);
 	    $policy([]);
 	    $this->check('agent guard: policy: tools of a tool server: marked read-only: reads; not marked: writes, none / those chosen apply', [ [ [ 'look' ], 'error' ], [ 'click' ] ], [ $none, $mcp->calls ]);
@@ -4084,7 +4084,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('agent guard: the policy\'s approval: None on the project and MCP tools is refused, says why', true, str_contains($noneRefused, 'those that change something always need approval'));
 
 	    // ---- the monthly budget
-	    $usage = fn() => \models\AgentUsage::spent($account->_id);
+	    $usage = fn() => \models\agent\AgentUsage::spent($account->_id);
 	    \util\AiPrices::$test += [ 'gpt-check' => [ 100, 100, 10 ] ];
 	    $coll('agent_usage')->deleteMany([ 'aid' => $account->_id ]);
 	    $exe = $start('openai', [], []);
@@ -4241,7 +4241,7 @@ class CheckCommand extends \sys\BaseController {
 	    $project?->delete();
 	    $coll('agent_policy')->deleteMany([ 'aid' => $account->_id ]);
 	    $coll('agent_usage')->deleteMany([ 'aid' => $account->_id ]);
-	    $coll(\models\WfTask::_collection())->deleteMany([ 'aid' => $account->_id ]);
+	    $coll(\models\wf\WfTask::_collection())->deleteMany([ 'aid' => $account->_id ]);
 	    //this account's own sealed entries: the log's class never deletes
 	    $coll('audit_log')->deleteMany([ 'aid' => $account->_id ]);
 	    $coll('audit_seal')->deleteOne([ '_id' => $account->_id ]);
@@ -4260,13 +4260,13 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-02T14:00:00+02:00: new: the trace of an AI step's visit (util\AgentTracer, models\AgentTrace): a run of several rounds with read and write tools and an approval against the fake AI server, a
+    //CLD: 2026-11-02T14:00:00+02:00: new: the trace of an AI step's visit (util\AgentTracer, models\agent\AgentTrace): a run of several rounds with read and write tools and an approval against the fake AI server, a
     //rejection, the cuts, secrets, the cost and the price table, Run again, retention. On its own account, as agentguard: a run with prices counts in the account's monthly usage
     private function suiteAgenttrace() {
 	$om = \V::app()->om;
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
-	$T = \models\AgentTrace::class;
+	$T = \models\agent\AgentTrace::class;
 
 	$aiServer = $this->startAiServer('agent trace');
 	if (!$aiServer)
@@ -4412,7 +4412,7 @@ class CheckCommand extends \sys\BaseController {
 		[ array_slice($priced('openai', 'gpt-5-mini'), 0, 2), array_slice($priced('openai', 'gpt-5-2025-08-07'), 0, 2), $priced('openai', 'gpt-5.9'), array_slice($priced('openai', 'claude-opus-5-5'), 0, 2), array_slice($priced('ollama', 'gpt-5'), 0, 2),
 		    array_slice($priced('gemini', 'models/gemini-2.5-flash'), 0, 2), $priced('gemini', 'gemini-new') ]);
 	    $saved = $om->create('AssistantSettings', [ 'aid' => $account->_id, 'provider' => 'openai', 'model' => 'gpt-unknown', 'price_input' => 50, 'price_output' => 50 ]);
-	    $this->check('agent trace: an Assistant settings document: a price saved earlier is not used', null, \models\AssistantSettings::pricesOf($saved));
+	    $this->check('agent trace: an Assistant settings document: a price saved earlier is not used', null, \models\assistant\AssistantSettings::pricesOf($saved));
 
 	    // ---- Run again: the same inputs, a new execution, on the draft
 	    $wf = $om->findById('Workflow', (string)$exe->wf);
@@ -4513,8 +4513,8 @@ class CheckCommand extends \sys\BaseController {
 	$om = \V::app()->om;
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
-	$C = \models\AgentConversation::class;
-	$M = \models\AgentMessage::class;
+	$C = \models\agent\AgentConversation::class;
+	$M = \models\agent\AgentMessage::class;
 	$aiServer = $this->startAiServer('agent chat');
 	if (!$aiServer)
 	    return;
@@ -4672,12 +4672,12 @@ class CheckCommand extends \sys\BaseController {
 	    })());
 
 	    // ---- Remember / Recall on a knowledge base: a document marked as a memory; recall reads only those, only the person's
-	    $settings = \models\EmbeddingSettings::of($account->_id);
+	    $settings = \models\kb\EmbeddingSettings::of($account->_id);
 	    $settings->assign([ 'provider' => 'lemonade', 'url' => "{$ai}/api/v1", 'api_key' => 'check-key', 'model' => 'check-embed' ]);
 	    if (!$settings->validates() || !$settings->save())
 		throw new \ErrorException('embedding settings: ' . json_encode($settings->errors()));
 	    $kbName = 'chk_memory_' . uniqid();
-	    [ $kbCreated ] = \models\KnowledgeBase::open($kbName, $account->_id, $project->_id);
+	    [ $kbCreated ] = \models\kb\KnowledgeBase::open($kbName, $account->_id, $project->_id);
 	    $kbCreated->addDocument('manual', 'A manual', 'Printers are serviced on Fridays by the vendor', [], [ 'type' => 'text' ]);
 	    [ $wfB, $linkB ] = $publish('agent kb', $agentNodes([ 'memoryStore' => 'knowledge', 'memoryKb' => $kbName, 'memoryTable' => '' ]));
 	    [ , $liveB, $nodeB ] = \models\node\NodeTriggerChat::live($linkB);
@@ -4686,7 +4686,7 @@ class CheckCommand extends \sys\BaseController {
 	    $foundB = (string)($sayB($ana, 'find' . $script([ [ [ 'recall', [ 'query' => 'printers Fridays' ] ] ] ]))?->getVariable('ai')['text'] ?? '');
 	    $otherB = (string)($sayB($bob, 'find' . $script([ [ [ 'recall', [ 'query' => 'printers Fridays' ] ] ] ]))?->getVariable('ai')['text'] ?? '');
 	    $this->check('agent chat: Remember / Recall on a knowledge base: saved as a document of it; found by its owner; not by another person, not the other documents', [ 'end', 2, true, false, false ],
-		[ $savedB?->state, \models\KnowledgeBase::documentCollection()->countDocuments([ 'kb' => $kbCreated->_id ]), str_contains($foundB, 'Ana services printers'), str_contains($otherB, 'Ana services printers'), str_contains($foundB, 'by the vendor') ]);
+		[ $savedB?->state, \models\kb\KnowledgeBase::documentCollection()->countDocuments([ 'kb' => $kbCreated->_id ]), str_contains($foundB, 'Ana services printers'), str_contains($otherB, 'Ana services printers'), str_contains($foundB, 'by the vendor') ]);
 
 	    // ---- Mask personal data: the earlier turns too; the store holds the real value
 	    [ $wfM, $linkM ] = $publish('agent mask', $agentNodes([ 'maskPersonalData' => true, 'memoryStore' => '' ]));
@@ -4728,7 +4728,7 @@ class CheckCommand extends \sys\BaseController {
 	    $savedS = $C::read($convS['_id'], $account->_id);
 	    $this->check('agent chat: past Turns: the older turn summarized by the model, kept on the conversation; sent instead of it, marked; the newest turn whole; the summary\'s tokens counted', [ 'end', 'SUMMARY-OK', true, false, true, true ],
 		[ $third?->state, (string)$savedS['summary'], str_contains($messages[0][1] ?? '', 'SUMMARY-OK') && str_contains($messages[0][1] ?? '', 'untrusted_'), str_contains(json_encode($messages), 'alpha turn'), str_contains(json_encode($messages), 'beta turn'), ($third?->getVariable('ai')['usage']['input_tokens'] ?? 0) > 13 ]);
-	    $trace = \models\AgentTrace::coll()->findOne([ 'execution' => $third->_id ], \sys\Mongo::ARRAYS);
+	    $trace = \models\agent\AgentTrace::coll()->findOne([ 'execution' => $third->_id ], \sys\Mongo::ARRAYS);
 	    $this->check('agent chat: the trace says what the step was given', [ 1, true, 1 ], [ $trace['conversation']['turns'] ?? null, $trace['conversation']['summary'] ?? null, $trace['conversation']['summarized']['turns'] ?? null ]);
 	    $recent = $C::context($savedS, null, 100, 5)['recent'];
 	    $this->check('agent chat: a limit of tokens: fewer turns; always the newest, cut to fit', [ 1, 'gamma turn' ], [ count($recent), $recent[0]['user'] ]);
@@ -4775,7 +4775,7 @@ class CheckCommand extends \sys\BaseController {
 	    $locked?->kill('check');
 
 	    // ---- what the account's policy forbids
-	    $policy = \models\AgentPolicy::ofAccount($account->_id);
+	    $policy = \models\agent\AgentPolicy::ofAccount($account->_id);
 	    $policy->write_mode = 'none';
 	    $policy->save();
 	    $this->check('agent chat: the account\'s AI policy forbids writes: a step with long-term memory is not saved', true, count(array_filter($this->errorsOf('agent policy', $agentNodes()), fn($m) => str_contains(json_encode($m), 'remember'))) > 0);
@@ -4923,7 +4923,7 @@ class CheckCommand extends \sys\BaseController {
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
 	$E = \util\AgentEval::class;
-	$R = \models\WfTestRun::class;
+	$R = \models\wf\WfTestRun::class;
 	$mcp = \util\McpServerTools::class;
 
 	$aiServer = $this->startAiServer('agent eval');
@@ -4997,7 +4997,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('agent eval: recorded results: no write ran, no read ran, the step that sends a request did not run', $before, [ $rows(), $pageHits() ]);
 	    $this->check('agent eval: the model got the recorded results, not what the table holds now', [ true, false ], [ str_contains((string)$c0['answer'], '"first"') || str_contains((string)$c0['answer'], '\\"first\\"'), str_contains((string)$c0['answer'], 'added later') ]);
 	    $this->check('agent eval: the recorded step stands in: a later step reads its variable', 200, (int)$test?->getVariable('seen'));
-	    $this->check('agent eval: tokens and cost per case: the same run\'s, with its trace', [ true, true, true ], [ $c0['tokens']['input'] > 0, (float)$c0['cost']['usd'] > 0, (bool)\models\AgentTrace::read((string)$c0['trace'], $account->_id) ]);
+	    $this->check('agent eval: tokens and cost per case: the same run\'s, with its trace', [ true, true, true ], [ $c0['tokens']['input'] > 0, (float)$c0['cost']['usd'] > 0, (bool)\models\agent\AgentTrace::read((string)$c0['trace'], $account->_id) ]);
 	    $this->check('agent eval: the test\'s execution: trigger test, marked, not among the workflow\'s executions, not run again', [ 'test', (string)$run['_id'], 1 ],
 		[ (string)$test?->trigger, (string)$test?->test_run, $om->count('WfExecution', [ 'wf' => $wf->_id, 'aid' => $account->_id, 'test_run' => null ]) ]);
 	    $again = null;
@@ -5044,7 +5044,7 @@ class CheckCommand extends \sys\BaseController {
 		[ $c2['state'] ?? null, $om->count('WfTask', [ 'aid' => $account->_id ]), $count, str_contains((string)$c2['answer'], 'no recorded result'), (bool)array_filter((array)$c2['notes'], fn($x) => str_contains($x, 'nothing is recorded')) ]);
 
 	    // ---- a test whose context is lost does not go on
-	    $lost = \models\WfExecution::startFor($wf, 'test', [ 'vars' => [] ], 'm');
+	    $lost = \models\wf\WfExecution::startFor($wf, 'test', [ 'vars' => [] ], 'm');
 	    $lost->test_run = (string)$run['_id'];
 	    $lost->run();
 	    $this->check('agent eval: an execution of a test without its context stops: nothing runs for real', [ 'error', count($rows()) ], [ $lost->state, $count ]);
@@ -5074,9 +5074,9 @@ class CheckCommand extends \sys\BaseController {
 	    $hasnt = fn($t, $cs = false) => [ 'type' => 'not_contains', 'text' => $t, 'case_sensitive' => $cs ];
 	    $this->check('agent eval: the answer contains, does not contain, exact case; the last visit\'s answer; no AI step ran: both fail', [ true, false, false, true, false, true, true, false, false ],
 		[ $one($has('billing')), $one($has('billing', true)), $one($hasnt('billing')), $one($hasnt('billing', true)), $one($has('zzz')), $one($hasnt('zzz')), $one($has('plain'), [ $visit, $other ]), $one($has('x'), []), $one($hasnt('x'), []) ]);
-	    [ $norm, $errs ] = \models\WfTestCase::normalize([ [ 'type' => 'json_field', 'path' => 'a', 'op' => 'matches', 'value' => '(' ], [ 'type' => 'contains', 'text' => '' ], [ 'type' => 'nope' ], [ 'type' => 'judged', 'rubric' => ' ' ], [ 'type' => 'tool_called', 'tool' => 'x', 'args' => [ [ 'path' => '', 'op' => 'exists' ] ] ], [ 'type' => 'no_write_tool', 'extra' => 'dropped', 'step' => 's' ] ]);
+	    [ $norm, $errs ] = \models\wf\WfTestCase::normalize([ [ 'type' => 'json_field', 'path' => 'a', 'op' => 'matches', 'value' => '(' ], [ 'type' => 'contains', 'text' => '' ], [ 'type' => 'nope' ], [ 'type' => 'judged', 'rubric' => ' ' ], [ 'type' => 'tool_called', 'tool' => 'x', 'args' => [ [ 'path' => '', 'op' => 'exists' ] ] ], [ 'type' => 'no_write_tool', 'extra' => 'dropped', 'step' => 's' ] ]);
 	    $this->check('agent eval: checks refused when saved: a bad pattern, no text, an unknown type, no rubric, an argument with no name; only a type\'s own fields kept', [ 5, [ 'type' => 'no_write_tool', 'step' => 's' ] ], [ count($errs), end($norm) ]);
-	    $this->check('agent eval: inputs refused: a list, a bad name, the project variables\' name', [ 1, 1, 1, 0 ], [ count(\models\WfTestCase::normalizeInput([ 1 ])[1]), count(\models\WfTestCase::normalizeInput([ 'a b' => 1 ])[1]), count(\models\WfTestCase::normalizeInput([ 'vars' => 1 ])[1]), count(\models\WfTestCase::normalizeInput([ 'ok' => 1 ])[1]) ]);
+	    $this->check('agent eval: inputs refused: a list, a bad name, the project variables\' name', [ 1, 1, 1, 0 ], [ count(\models\wf\WfTestCase::normalizeInput([ 1 ])[1]), count(\models\wf\WfTestCase::normalizeInput([ 'a b' => 1 ])[1]), count(\models\wf\WfTestCase::normalizeInput([ 'vars' => 1 ])[1]), count(\models\wf\WfTestCase::normalizeInput([ 'ok' => 1 ])[1]) ]);
 
 	    // ---- the checks of a run, end to end: a JSON answer, the differences between runs
 	    $jsonFlow = fn($answer) => [ $n('m', 'trigger::manual'), $n('s', 'app::claude', $step([ [ [ 'query_table', [ 'table' => $table ] ] ] ], [ 'output' => 'json', 'prompt' => "Classify {{ who }}\nSCRIPT: " . json_encode([ [ [ 'query_table', [ 'table' => $table ] ] ] ]) . "\nANSWER: {$answer}" ])), $e('e1', 'm', 's') ];
@@ -5120,7 +5120,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('agent eval: judged: passes on the provider\'s verdict, its reason, what it cost', [ true, 'by the fake judge', true, true ], [ $yes['pass'], $yes['detail'], ($yes['spent']['tokens']['input'] ?? 0) > 0, ($yes['spent']['cost']['usd'] ?? 0) > 0 ]);
 	    $this->check('agent eval: judged: the provider the account chose, the rubric, the tools\' names, not their arguments', [ 'claude-check', true, true, false ],
 		[ $body['model'] ?? null, str_contains((string)$body['messages'][0]['content'], 'it is polite'), str_contains((string)$body['messages'][0]['content'], 'fgt_block, list_x'), str_contains((string)$body['messages'][0]['content'], '203.0.113.9') ]);
-	    $this->check('agent eval: judged: counted as the Assistant\'s spending', true, \models\AssistantUsage::current($account->_id)->requests >= 1);
+	    $this->check('agent eval: judged: counted as the Assistant\'s spending', true, \models\assistant\AssistantUsage::current($account->_id)->requests >= 1);
 	    $this->check('agent eval: judged: fails on the provider\'s verdict', [ false, 'by the fake judge' ], [ $judge('be polite')['pass'], $judge('be polite')['detail'] ]);
 	    $bad = $judge('JUDGE-BAD');
 	    $this->check('agent eval: judged: an answer that is not the verdict asked for fails', [ false, true ], [ $bad['pass'], str_contains($bad['detail'], 'did not answer as asked') ]);
@@ -5286,7 +5286,7 @@ class CheckCommand extends \sys\BaseController {
 	    };
 	    $starts = function() use ($account) {
 		try {
-		    \models\WfExecution::startFor((object)[ 'aid' => $account->_id, 'project' => null, '_id' => null, 'nodes' => [], 'runVersion' => null ]);
+		    \models\wf\WfExecution::startFor((object)[ 'aid' => $account->_id, 'project' => null, '_id' => null, 'nodes' => [], 'runVersion' => null ]);
 		    return 'starts';
 		} catch (\ErrorException $e) {
 		    return $e->getMessage();
@@ -5524,7 +5524,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('enterprise: no limits; a feature on, a feature off', [ null, true, false ], [ $T::limit($account, 'files_bytes'), $T::has($account, 'chk_a'), $T::has($account, 'chk_b') ]);
 
 	    //data tables: 2 of the account's, the limit 2 refuses a third
-	    $defs = \V::app()->mongo->selectCollection($db, \models\DataTableDef::_collection());
+	    $defs = \V::app()->mongo->selectCollection($db, \models\datatable\DataTableDef::_collection());
 	    $defs->insertMany([ [ 'aid' => $account->_id, 'iname' => $iname, 'name' => 'chk_a', 'project' => null ], [ 'aid' => $account->_id, 'iname' => $iname . '-b', 'name' => 'chk_b', 'project' => null ] ]);
 	    $set('free', [ 'datatables' => 3 ]);
 	    $a = $refused(fn() => $T::check($account, 'datatables'));
@@ -5604,7 +5604,7 @@ class CheckCommand extends \sys\BaseController {
 	    foreach($files as $fid)
 		$om->acrossAccounts(fn() => $om->findOne('File', [ '_id' => $fid ]))?->delete();
 	    \V::app()->mongo->selectCollection(\models\File::_database(), \models\File::_collection())->deleteMany([ 'metadata.aid' => $account->_id ]);
-	    \V::app()->mongo->selectCollection($db, \models\DataTableDef::_collection())->deleteMany([ 'aid' => $account->_id ]);
+	    \V::app()->mongo->selectCollection($db, \models\datatable\DataTableDef::_collection())->deleteMany([ 'aid' => $account->_id ]);
 	    \V::app()->mongo->selectCollection($db, $iname)->drop();
 	    \V::app()->mongo->selectCollection(\models\Account::_database(), \models\Account::_collection())->deleteOne([ '_id' => $account->_id ]);
 	}
@@ -5891,7 +5891,7 @@ class CheckCommand extends \sys\BaseController {
     //the steps that keep their place, the conversation sent back, failures
     //CLD: 2026-10-19T20:10:00+03:00: plugins\Assistant\util\WorkflowAssistant (was util\WorkflowAssistant); skipped when the Assistant plugin is not enabled (app/plugins.php)
     private function suiteAssistant() {
-	//CLD: 2026-10-26T23:49:50+02:00: core again: util\WorkflowAssistant, models\AssistantSettings (were the Assistant plugin's: skipped without it)
+	//CLD: 2026-10-26T23:49:50+02:00: core again: util\WorkflowAssistant, models\assistant\AssistantSettings (were the Assistant plugin's: skipped without it)
 	//CLD: 2026-10-20T10:00:00+03:00: the Assistant's settings (its server, key and model; was a credential)
 	$cred = (object)[ 'provider' => 'anthropic', 'url' => 'https://api.invalid', 'api_key' => 'test', 'model' => 'claude-opus-5-5' ];
 	//a model answering $turns in order (each: [ stop_reason, content blocks ]); the requests are kept in $sent
@@ -5944,7 +5944,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('the assistant turn goes back as it came', 'Building.', $second[count($second) - 2]['content'][0]['text'] ?? null);
 
 	//CLD: 2026-10-19T15:48:10+03:00: the model and effort of the account settings; an unknown effort: the default
-	//CLD: 2026-10-19T20:40:00+03:00: the Assistant's settings given (models\AssistantSettings fields; were the account's assistant_* fields, changed here in memory)
+	//CLD: 2026-10-19T20:40:00+03:00: the Assistant's settings given (models\assistant\AssistantSettings fields; were the account's assistant_* fields, changed here in memory)
 	$b = new \util\WorkflowAssistant($wf, $this->project, (object)[ 'model' => 'claude-sonnet-5-5', 'effort' => 'low' ]);
 	$c = new \util\WorkflowAssistant($wf, $this->project, (object)[ 'model' => 'claude-sonnet-5-5', 'effort' => 'extreme' ]);
 	$b->transport = $scripted([ [ 'end_turn', [ [ 'type' => 'text', 'text' => 'ok' ] ] ] ], $sentB);
@@ -6018,7 +6018,7 @@ class CheckCommand extends \sys\BaseController {
 	//CLD: 2026-10-22T14:00:00+03:00: bring your own key: Gemini, Ollama, Lemonade speak OpenAI chat completions at their own URLs (Bearer key); Gemini's model ids without models/;
 	//System is the installation's server (config assistant.system), refused when there is none; the prices, the budget (the loop stops once it is spent)
 	//CLD: 2026-10-23T10:00:00+03:00: the System AI (config ai.system, plugins\MultiTenant; was assistant.system)
-	$AS = \models\AssistantSettings::class;
+	$AS = \models\assistant\AssistantSettings::class;
 	$gem = $WA::credentialOf((object)[ 'provider' => 'gemini', 'api_key' => 'g1' ]);
 	$this->check('gemini, ollama, lemonade: their own URLs, Bearer key', [ 'https://generativelanguage.googleapis.com/v1beta/openai', [ 'Authorization' => 'Bearer g1' ], 'http://localhost:11434/v1', 'http://localhost:8000/api/v1', [] ],
 	    [ $gem->baseUrl, $gem->httpAuth()['headers'], $WA::credentialOf((object)[ 'provider' => 'ollama' ])->baseUrl, $WA::credentialOf((object)[ 'provider' => 'lemonade' ])->baseUrl,
@@ -8470,7 +8470,7 @@ class CheckCommand extends \sys\BaseController {
 	$e = [ self::class, 'edge' ];
 	$om = \V::app()->om;
 	$this->check('LDAP step: a step type, an `error` output when chosen', [ true, [ 'success', 'error' ] ],
-	    [ isset(\models\WfNode::getAll()['app::ldap']), \models\node\NodeAppLdap::outLabelsFor([ 'onError' => 'output' ]) ]);
+	    [ isset(\models\wf\WfNode::getAll()['app::ldap']), \models\node\NodeAppLdap::outLabelsFor([ 'onError' => 'output' ]) ]);
 	$creds = [];
 	foreach([ 'ad', 'openldap' ] as $dir) {
 	    $c = $om->create('CredentialLdap', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => "Check: LDAP {$dir} " . uniqid(), 'directory' => $dir,
@@ -8562,7 +8562,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('Database: the types offered are those whose PDO driver is loaded; the step of each with it; all in the Database group', [ $expected, $expected, [ 'Database' ] ],
 	    [ $actual, array_map(fn($step) => $om->getObjectClass($step)::available(), $steps), array_values(array_unique(array_map(fn($n) => $om->getObjectClass($n)::$group, \models\credential\CredentialDatabase::CREDENTIALS))) ]);
 	//CLD: 2026-10-31T23:30:00+02:00: the six steps, in the Databases group; a step's credentials are those of its type only
-	$defs = \models\WfNode::getAll();
+	$defs = \models\wf\WfNode::getAll();
 	$this->check('Database: the steps (one per type, in Databases, advanced); each step takes the credentials of its type only', [
 	    [ 'app::mysql', 'app::postgres', 'app::mssql', 'app::oracle', 'app::firebird', 'app::odbc' ], [ 'database' ], [ 'advanced' ], [ 'CredentialMysql' ], [ 'CredentialOdbc' ], false ], [
 	    array_values(array_filter(array_keys($defs), fn($fq) => is_subclass_of($om->getObjectClass($defs[$fq]['objectName']), \models\node\NodeAppDatabase::class))),
@@ -8932,7 +8932,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('SAML sign-in: a test (dry): signed in, nothing saved', [ 'user:ana@example.com:member', $users ], [ $dry, $om->count('User', [ 'aid' => $account->_id ]) ]);
 	    $first = $signIn();
 	    $ana = $om->findOne('User', [ 'aid' => $account->_id, 'email' => 'ana@example.com' ]);
-	    $link = $ana ? \models\SamlLink::forUser($ana) : null;
+	    $link = $ana ? \models\saml\SamlLink::forUser($ana) : null;
 	    $this->check('SAML sign-in: the user created (names, role from the group), linked by its NameID, an SSO user; again: the same user', [
 		'user:ana@example.com:member', 'Ana Pop', 'ana@example.com', 'SSO', 'user:ana@example.com:member', 1 ],
 		[ $first, (string)$ana, $link?->subject, \sys\Identity::passwordSource($ana), $signIn(), $om->count('User', [ 'aid' => $account->_id, 'email' => 'ana@example.com' ]) ]);
@@ -8942,7 +8942,7 @@ class CheckCommand extends \sys\BaseController {
 		$signIn([ 'nameId' => 'c-123', 'format' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
 		    'attributes' => [ 'email' => [ 'Carol@Example.com' ], 'groups' => [ 'CN=Staff, OU=Groups,DC=example,DC=com' ] ] ]),
 		$signIn([ 'nameId' => 'dave@example.com', 'attributes' => [ 'groups' => [ 'Others' ] ] ]),
-		$signIn([ 'nameId' => '_t1', 'format' => \models\SamlSettings::TRANSIENT, 'attributes' => [ 'groups' => [ 'Devs' ] ] ]) ]);
+		$signIn([ 'nameId' => '_t1', 'format' => \models\saml\SamlSettings::TRANSIENT, 'attributes' => [ 'groups' => [ 'Devs' ] ] ]) ]);
 
 	    //an existing user with a password
 	    $erin = \models\User::create([ 'aid' => $account->_id, 'email' => 'erin@example.com', 'firstname' => 'Erin', 'lastname' => 'Local', 'state' => 'active', 'role' => $roles['member']->_id,
@@ -8972,10 +8972,10 @@ class CheckCommand extends \sys\BaseController {
 	    //replays, the request's browser token, "Sign in with SSO"
 	    $once = $claims($response());
 	    $replay = [ $Auth::useOnce($account->_id, $once), $Auth::useOnce($account->_id, $once) ];
-	    [ $rq, $token ] = \models\SamlRequest::start($account->_id);
-	    [ $rq2, ] = \models\SamlRequest::start($account->_id);
-	    $taken = [ \models\SamlRequest::take($account->_id, $rq2->request_id, $token) === null, \models\SamlRequest::take($account->_id, $rq->request_id, $token)?->request_id,
-		\models\SamlRequest::take($account->_id, $rq->request_id, $token) ];
+	    [ $rq, $token ] = \models\saml\SamlRequest::start($account->_id);
+	    [ $rq2, ] = \models\saml\SamlRequest::start($account->_id);
+	    $taken = [ \models\saml\SamlRequest::take($account->_id, $rq2->request_id, $token) === null, \models\saml\SamlRequest::take($account->_id, $rq->request_id, $token)?->request_id,
+		\models\saml\SamlRequest::take($account->_id, $rq->request_id, $token) ];
 	    $this->check('SAML: an assertion used once; a request taken with its browser\'s token only, once; Sign in with SSO: by the domain, an SSO user\'s email, not another domain', [
 		[ true, false ], [ true, $rq->request_id, null ], (string)$account->_id, (string)$account->_id, null ],
 		[ $replay, $taken, (string)$Auth::accountFor('Someone@Example.com')?->aid, (string)$Auth::accountFor('erin@example.com')?->aid, $Auth::accountFor('x@other.test') ]);

@@ -6,12 +6,12 @@
 	- denied_families: the integration families no agent may use (util\AgentTools::FAMILIES)
 	- write_mode: the tools that change something: all, none, or chosen (allowed_writes: the tools by name; @workflows: workflows run as tools; @mcp: tools of MCP servers and tool servers)
 	- writes_need_approval: a tool that changes something always waits for a person's approval
-	- budget: the most the AI steps with the account's own keys may spend per calendar month (USD; estimated from the tokens: models\AgentUsage), at the list prices (data\AiProviders); the System AI uses credits instead
+	- budget: the most the AI steps with the account's own keys may spend per calendar month (USD; estimated from the tokens: models\agent\AgentUsage), at the list prices (data\AiProviders); the System AI uses credits instead
     Checked on the server: when a step is saved (stepErrors: the message says why) and when it runs (allowsTool: util\AgentGuard::govern, so a policy made after the step was saved holds too).
     A tool that changes something: an integration operation in the step's WRITES, a workflow run as a tool, a project tool or MCP tool not marked read-only (annotation readOnlyHint)
 */
 
-namespace models;
+namespace models\agent;
 
 class AgentPolicy extends \sys\BaseModel {
     protected static $collection = 'agent_policy';

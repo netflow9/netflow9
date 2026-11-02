@@ -1,7 +1,7 @@
 <?php
 
 /*
-    "My tasks" - the tasks of the Human task steps (plugins\Forms\models\WfTask):
+    "My tasks" - the tasks of the Human task steps (plugins\Forms\models\wf\WfTask):
     /task/list      the open tasks of the current project the user may complete (assigned to them, to their role, or to any member)
     /task/<id>      GET: the task (instructions + form); POST (JSON { answers }): checked on the server (util\SmartForm::answers), the task claimed (only one person
                   completes it) and done, the waiting run resumed after the answer -> { ok, message }; 422 { errors } / 409 when it is no longer open
@@ -23,7 +23,7 @@ class TaskController extends \sys\BaseController {
 
     public function list($req, $resp) {
 	$account = \V::app()->config('rt.account');
-	$tasks = \models\WfTask::openFor(\V::app()->user, $account->_id ?? null, null);
+	$tasks = \models\wf\WfTask::openFor(\V::app()->user, $account->_id ?? null, null);
 	$names = [];
 	$projects = [];
 	foreach($tasks as $t) {

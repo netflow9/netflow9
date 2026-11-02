@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-23T12:00:00+03:00: new: the sign-in with SAML (SsoController::acs), by the accounts' settings (models\SamlSettings), and the hooks of sys\Identity:
+//CLD: 2026-10-23T12:00:00+03:00: new: the sign-in with SAML (SsoController::acs), by the accounts' settings (models\saml\SamlSettings), and the hooks of sys\Identity:
 //  signIn($s, $claims, $opt)            the user of the claims of a checked response (util\SamlSp::response): [ 'user' => User|null, 'reason' => text|null ]. The user: the SSO
 //                                       user of the subject (SamlLink: the NameID; the email with a transient NameID), else a user of the account with the person's email when
 //                                       Link existing users is on (linked now: its password here removed), else a new user (provision), else refused. Refreshed at each
@@ -14,8 +14,8 @@
 
 namespace util;
 
-use models\SamlSettings;
-use models\SamlLink;
+use models\saml\SamlSettings;
+use models\saml\SamlLink;
 
 class SamlAuth {
     const GENERIC = 'The single sign-on did not succeed';

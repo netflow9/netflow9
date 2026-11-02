@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-31T01:00:00+02:00: new: the knowledge bases of the current project (models\KnowledgeBase) and the account's embedding model (models\EmbeddingSettings).
+    CLD: 2026-10-31T01:00:00+02:00: new: the knowledge bases of the current project (models\kb\KnowledgeBase) and the account's embedding model (models\kb\EmbeddingSettings).
 	list            the project's knowledge bases (app.GridView; ?data=1: JSON)                                   KnowledgeBase::list
 	create, update  the form (name, description, chunk size, overlap) in a dialog                                 KnowledgeBase::create / update
 	delete          POST: with its documents and chunks                                                            KnowledgeBase::delete
@@ -19,8 +19,8 @@
 
 namespace controllers;
 
-use models\KnowledgeBase;
-use models\EmbeddingSettings;
+use models\kb\KnowledgeBase;
+use models\kb\EmbeddingSettings;
 
 class KnowledgeController extends \sys\BaseController {
 

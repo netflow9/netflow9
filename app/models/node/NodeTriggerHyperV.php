@@ -3,7 +3,7 @@
 /*
     CLD: 2026-11-01T16:00:00+02:00: new trigger: Hyper-V VM state - starts the workflow when a VM of a Hyper-V host stops running (or on any change of its state), or when its replication
     health turns Warning or Critical; optionally also when it recovers (running again, replication Normal). Hyper-V calls no webhook: the step reads the VMs on its schedule
-    (models\WfSchedule, every 2 minutes by default; util\Scheduler runs runScheduled; PowerShell over WinRM) and compares them with the last check's (models\TriggerState: VM ID =>
+    (models\wf\WfSchedule, every 2 minutes by default; util\Scheduler runs runScheduled; PowerShell over WinRM) and compares them with the last check's (models\TriggerState: VM ID =>
     { name, state, health, firedState, firedHealth }). Passing states (Starting, Stopping, Saving, ...) are not changes: the state before stays until a settled one is read. The first
     check only notes the VMs; a VM that appears later is noted, one that disappears is forgotten. The variable: the event { event: stopped | state | replication | recovery, vm: { name,
     id }, from, to, state, replicationHealth, time }, or { events, count } per check; at most MAX_RUNS per check
@@ -11,7 +11,7 @@
 
 namespace models\node;
 
-class NodeTriggerHyperV extends \models\WfNode {
+class NodeTriggerHyperV extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'trigger';
     public static $name = 'hyperv';
@@ -96,16 +96,16 @@ class NodeTriggerHyperV extends \models\WfNode {
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
-	], \models\WfSchedule::schema([ 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]));
+	], \models\wf\WfSchedule::schema([ 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]));
     }
 
     public static function matches(array $cfg, \DateTimeInterface $t) {
-	return \models\WfSchedule::matches($cfg, $t);
+	return \models\wf\WfSchedule::matches($cfg, $t);
     }
 
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$error = \models\WfSchedule::validate(is_array($this->config) ? $this->config : []);
+	$error = \models\wf\WfSchedule::validate(is_array($this->config) ? $this->config : []);
 	if ($error !== null) {
 	    $this->errors('config', $error);
 	    $valid = false;
@@ -225,7 +225,7 @@ PS, [ 'names' => $names ]);
 	$values = !$events ? [] : (($cfg['runs'] ?? 'each') === 'batch' ? [ [ 'events' => $events, 'count' => count($events) ] ] : $events);
 	$started = [];
 	foreach($values as $ev) {
-	    $exe = \models\WfExecution::startFor($wf, 'hyperv', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $ev ] ], $node['wfid']);
+	    $exe = \models\wf\WfExecution::startFor($wf, 'hyperv', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $ev ] ], $node['wfid']);
 	    $exe->log($node['wfid'], isset($ev['events']) ? 'Hyper-V: ' . \util\Format::plural($ev['count'], 'event') : "Hyper-V {$ev['event']}: {$ev['vm']['name']} {$ev['from']} -> {$ev['to']}");
 	    $exe->queue();
 	    $started[] = $exe;
@@ -247,7 +247,7 @@ PS, [ 'names' => $names ]);
 	$ev = [ 'event' => $v['state'] === 'Running' ? 'state' : 'stopped', 'vm' => [ 'name' => (string)$v['name'], 'id' => (string)$v['id'] ], 'from' => 'Running', 'to' => (string)$v['state'],
 	    'state' => (string)$v['state'], 'replicationHealth' => (string)$v['health'], 'time' => gmdate('Y-m-d\TH:i:s\Z') ];
 	$name = \util\Validator::isIdentifier((string)($cfg['variable'] ?? '')) ? (string)$cfg['variable'] : 'hv';
-	$exe = \models\WfExecution::startFor($wf, 'hyperv', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => ($cfg['runs'] ?? 'each') === 'batch' ? [ 'events' => [ $ev ], 'count' => 1 ] : $ev ] ], (string)$node['wfid']);
+	$exe = \models\wf\WfExecution::startFor($wf, 'hyperv', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => ($cfg['runs'] ?? 'each') === 'batch' ? [ 'events' => [ $ev ], 'count' => 1 ] : $ev ] ], (string)$node['wfid']);
 	$exe->save();
 	return [ 'executions' => [ $exe ], 'message' => "Run with VM {$v['name']} ({$v['state']})" ];
     }

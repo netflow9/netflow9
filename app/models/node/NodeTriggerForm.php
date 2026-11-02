@@ -1,7 +1,7 @@
 <?php
 namespace models\node;
 
-class NodeTriggerForm extends \models\WfNode {
+class NodeTriggerForm extends \models\wf\WfNode {
     public static $type = 'trigger';
     public static $name = 'form';
     public static $label = 'Form';

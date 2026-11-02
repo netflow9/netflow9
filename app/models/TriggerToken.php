@@ -78,7 +78,7 @@ class TriggerToken extends \sys\BaseModel {
     public static function syncForWorkflow($wf) {
 	foreach(\V::app()->om->find('TriggerToken', [ 'wf' => $wf->_id ]) as $old)
 	    $old->delete();
-	$defs = \models\WfNode::getAll();
+	$defs = \models\wf\WfNode::getAll();
 	$version = $wf->publishedVersion();
 	foreach((is_array($version->nodes ?? null) ? $version->nodes : []) as $n) {
 	    $def = empty($n['isNode']) ? null : ($defs[$n['fqname'] ?? ''] ?? null);

@@ -3,7 +3,7 @@
 //CLD: 2026-10-17T13:24:18+03:00: moved from the BaseNodes plugin into the core (was plugins\BaseNodes\app)
 namespace models\node;
 
-class NodeAppWait extends \models\WfNode {
+class NodeAppWait extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $name = 'wait';

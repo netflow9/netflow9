@@ -2,7 +2,7 @@
 
 /*
     CLD: 2026-11-01T08:00:00+02:00: new trigger: Checkmk problem - starts the workflow when Checkmk reports a new problem: a host DOWN / UNREACH, a service WARN / CRIT / UNKNOWN
-    (or CRIT only), of one host or every host; optionally also when one clears. It checks the site on its schedule (models\WfSchedule, every 2 minutes by default; util\Scheduler
+    (or CRIT only), of one host or every host; optionally also when one clears. It checks the site on its schedule (models\wf\WfSchedule, every 2 minutes by default; util\Scheduler
     runs runScheduled): every current problem is read (acknowledged ones and those in a downtime too, so they are not taken as cleared) and compared with the last check's
     (models\TriggerState: key host|service => { state, fired }): a problem starts a run when it is new or its state changed, unless it is acknowledged or in a downtime and those
     are left out; a problem that started a run and is gone starts a `recovery` run when chosen. The first check only notes the current problems. The variable: the problem
@@ -11,7 +11,7 @@
 
 namespace models\node;
 
-class NodeTriggerCheckmk extends \models\WfNode {
+class NodeTriggerCheckmk extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'trigger';
     public static $name = 'checkmk';
@@ -102,16 +102,16 @@ class NodeTriggerCheckmk extends \models\WfNode {
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
-	], \models\WfSchedule::schema([ 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]));
+	], \models\wf\WfSchedule::schema([ 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]));
     }
 
     public static function matches(array $cfg, \DateTimeInterface $t) {
-	return \models\WfSchedule::matches($cfg, $t);
+	return \models\wf\WfSchedule::matches($cfg, $t);
     }
 
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$error = \models\WfSchedule::validate(is_array($this->config) ? $this->config : []);
+	$error = \models\wf\WfSchedule::validate(is_array($this->config) ? $this->config : []);
 	if ($error !== null) {
 	    $this->errors('config', $error);
 	    $valid = false;
@@ -217,7 +217,7 @@ class NodeTriggerCheckmk extends \models\WfNode {
 	$values = !$events ? [] : (($cfg['runs'] ?? 'each') === 'batch' ? [ [ 'problems' => $events, 'count' => count($events) ] ] : $events);
 	$started = [];
 	foreach($values as $v) {
-	    $exe = \models\WfExecution::startFor($wf, 'checkmk', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $v ] ], $node['wfid']);
+	    $exe = \models\wf\WfExecution::startFor($wf, 'checkmk', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $v ] ], $node['wfid']);
 	    $exe->log($node['wfid'], isset($v['problems']) ? 'Checkmk: ' . \util\Format::plural($v['count'], 'event')
 		: "Checkmk {$v['event']}: {$v['host_name']}" . ($v['service'] !== null ? " / {$v['service']}" : '') . " {$v['stateText']}");
 	    $exe->queue();
@@ -238,7 +238,7 @@ class NodeTriggerCheckmk extends \models\WfNode {
 	    return [ 'executions' => [], 'message' => 'Checkmk problem: no current problem matches' ];
 	$p = [ 'event' => 'problem' ] + $problems[0];
 	$name = \util\Validator::isIdentifier((string)($cfg['variable'] ?? '')) ? (string)$cfg['variable'] : 'cmk';
-	$exe = \models\WfExecution::startFor($wf, 'checkmk', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => ($cfg['runs'] ?? 'each') === 'batch' ? [ 'problems' => [ $p ], 'count' => 1 ] : $p ] ], (string)$node['wfid']);
+	$exe = \models\wf\WfExecution::startFor($wf, 'checkmk', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => ($cfg['runs'] ?? 'each') === 'batch' ? [ 'problems' => [ $p ], 'count' => 1 ] : $p ] ], (string)$node['wfid']);
 	$exe->save();
 	return [ 'executions' => [ $exe ], 'message' => "Run with a current problem: {$p['host_name']}" . ($p['service'] !== null ? " / {$p['service']}" : '') . " {$p['stateText']}" ];
     }

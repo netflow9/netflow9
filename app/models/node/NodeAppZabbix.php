@@ -13,7 +13,7 @@
 
 namespace models\node;
 
-abstract class NodeAppZabbix extends \models\WfNode {
+abstract class NodeAppZabbix extends \models\wf\WfNode {
     //CLD: 2026-11-01T21:50:00+02:00: its operations can be an AI step's tools (util\AgentTools: settingValue, setResult)
     use AgentToolTrait;
 

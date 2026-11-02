@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-23T12:00:00+03:00: new: the SAML 2.0 Web Browser SSO profile of an account's service provider (models\SamlSettings):
+//CLD: 2026-10-23T12:00:00+03:00: new: the SAML 2.0 Web Browser SSO profile of an account's service provider (models\saml\SamlSettings):
 //  requestUrl($s, $id)                 the IdP's URL with an AuthnRequest of ID $id (HTTP-Redirect binding; signed with the SP's key when signRequests)
 //  metadata($s)                        the SP's metadata (XML): entity ID, ACS (HTTP-POST), its certificate for signing and encryption, the NameID format
 //  inResponseTo($b64)                  the request a SAMLResponse (as posted) says it answers, before it is checked (to find the request); '' for none
@@ -13,7 +13,7 @@
 
 namespace util;
 
-use models\SamlSettings;
+use models\saml\SamlSettings;
 
 class SamlSp {
     const BINDING_REDIRECT = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect';

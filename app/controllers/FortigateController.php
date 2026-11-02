@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new: the public endpoint of the FortiGate event triggers (/fortigate/<token>, NodeTriggerFortiGate): a FortiGate automation stitch's webhook action
+    the public endpoint of the FortiGate event triggers (/fortigate/<token>, NodeTriggerFortiGate): a FortiGate automation stitch's webhook action
     POSTs the log (%%log%%, JSON) with `Authorization: Bearer <the step's secret>`. One run of the published version per request, with the body in the step's variable (JSON as
     sent, else { raw }) and received_at. Refusals (unknown token, secret, not published, errors) as HookController's, logged for the workflow; answered 200 when started
 */
@@ -34,7 +34,7 @@ class FortigateController extends \sys\APIController {
 	$value = (is_array($data) && !array_is_list($data) ? self::clean($data) : [ 'raw' => mb_substr($raw, 0, 100000) ])
 	    + [ 'received_at' => $received->toDateTime()->format(DATE_ATOM) ];
 	$name = \util\Validator::isIdentifier((string)($cfg['variable'] ?? '')) ? (string)$cfg['variable'] : 'fgt';
-	$exe = \models\WfExecution::startFor($live, 'fortigate', [ 'received_at' => $received, 'vars' => [ $name => $value ] ], $entry->node);
+	$exe = \models\wf\WfExecution::startFor($live, 'fortigate', [ 'received_at' => $received, 'vars' => [ $name => $value ] ], $entry->node);
 	$exe->log($entry->node, 'FortiGate event received' . (isset($value['logid']) ? " (log {$value['logid']})" : ''));
 	$exe->queue();
 	$resp->sendJSON([ 'execution' => (string)$exe->_id, 'state' => 'accepted' ]);

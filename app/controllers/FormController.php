@@ -114,7 +114,7 @@ class FormController extends \sys\BaseController {
 
 	$variable = \util\Validator::isIdentifier((string)($cfg['variable'] ?? '')) ? (string)$cfg['variable'] : 'form';
 	$user = $guest ? null : [ 'id' => (string)\V::app()->user->_id, 'name' => (string)\V::app()->user->name, 'email' => (string)\V::app()->user->email ];
-	$exe = \models\WfExecution::startFor($live, 'form', [ 'form' => $token, 'user' => $user['id'] ?? null, 'received_at' => new \MongoDB\BSON\UTCDateTime(),
+	$exe = \models\wf\WfExecution::startFor($live, 'form', [ 'form' => $token, 'user' => $user['id'] ?? null, 'received_at' => new \MongoDB\BSON\UTCDateTime(),
 	    'vars' => [ $variable => $answers, $variable . '_user' => $user ] ], $link->node);
 	$exe->log($link->node, 'form sent' . ($user ? ' by ' . $user['name'] : ''));
 	//CLD: 2026-10-30T15:00:00+02:00: queued for the daemon (saved; was run here after the answer: runSync)

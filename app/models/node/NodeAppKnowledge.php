@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-30T23:30:00+02:00: new step: Knowledge base - documents a workflow adds to a knowledge base of the project (models\KnowledgeBase), searched by meaning and by words.
+    CLD: 2026-10-30T23:30:00+02:00: new step: Knowledge base - documents a workflow adds to a knowledge base of the project (models\kb\KnowledgeBase), searched by meaning and by words.
     Operations:
 	- Search: the chunks that best answer a query: { results: [ { text, score, match, document, title, page, meta } ], count, context } - context: the results as one text for a
 	  prompt ([n] title (page), then the text); a filter on the documents' metadata, a least similarity
@@ -14,13 +14,13 @@
 	- List the documents: { documents: [ { key, title, source, file, url, chunks, chars, meta, updated_at } ], count }
     The knowledge base: one of the project's, or a new name - made by the first Add.
     CLD: 2026-10-31T02:10:00+02:00: with the default chunk size / overlap (no longer settings of the step: a knowledge base's own, on the Knowledge bases page, under Advanced…)
-    CLD: 2026-10-31T01:00:00+02:00: the embedding model is the account's (Settings: Knowledge bases; models\EmbeddingSettings): no Embedding credential / model here any more
+    CLD: 2026-10-31T01:00:00+02:00: the embedding model is the account's (Settings: Knowledge bases; models\kb\EmbeddingSettings): no Embedding credential / model here any more
     On error: fail the step, or continue on the `error` output (the variable then { error }).
 */
 
 namespace models\node;
 
-class NodeAppKnowledge extends \models\WfNode {
+class NodeAppKnowledge extends \models\wf\WfNode {
     public static $type = 'app';
     public static $category = 'ai';
     public static $name = 'knowledge';
@@ -48,7 +48,7 @@ class NodeAppKnowledge extends \models\WfNode {
     public static function configSchema() {
 	[ $aid, $project ] = static::designerProject();
 	$names = [];
-	foreach(\models\KnowledgeBase::namesFor($aid, $project) as $name)
+	foreach(\models\kb\KnowledgeBase::namesFor($aid, $project) as $name)
 	    $names[] = [ 'value' => $name, 'label' => $name ];
 	$add = [ 'key' => 'operation', 'operator' => 'in', 'value' => self::ADD ];
 
@@ -61,7 +61,7 @@ class NodeAppKnowledge extends \models\WfNode {
 		'required' => true,
 		'transform' => 'trim',
 		'help' => 'One of the project\'s, or type a new name',
-		'validate' => [ [ 'regex', 'pattern' => '^.{1,' . \models\KnowledgeBase::MAX_NAME . '}$', 'skipEmpty' => true, 'message' => 'At most ' . \models\KnowledgeBase::MAX_NAME . ' characters' ] ],
+		'validate' => [ [ 'regex', 'pattern' => '^.{1,' . \models\kb\KnowledgeBase::MAX_NAME . '}$', 'skipEmpty' => true, 'message' => 'At most ' . \models\kb\KnowledgeBase::MAX_NAME . ' characters' ] ],
 		'ui' => [ 'resource' => true, 'width' => 6, 'type' => 'select', 'allowCustom' => true, 'choices' => $names, 'placeholder' => 'Choose or type a name...' ],
 	    ],
 	    [
@@ -88,7 +88,7 @@ class NodeAppKnowledge extends \models\WfNode {
 		'required' => true,
 		'default' => 5,
 		'help' => 'The best chunks',
-		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => \models\KnowledgeBase::MAX_RESULTS, 'skipEmpty' => true, 'message' => 'from 1 to ' . \models\KnowledgeBase::MAX_RESULTS ] ],
+		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => \models\kb\KnowledgeBase::MAX_RESULTS, 'skipEmpty' => true, 'message' => 'from 1 to ' . \models\kb\KnowledgeBase::MAX_RESULTS ] ],
 		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'search' ] ],
 	    ],
 	    [
@@ -250,7 +250,7 @@ class NodeAppKnowledge extends \models\WfNode {
 	if (in_array($op, self::ADD, true)) {
 	    //CLD: 2026-10-31T01:00:00+02:00: made with the account's embedding model (was the step's credential and model)
 	    //CLD: 2026-10-31T02:10:00+02:00: and the default chunk size / overlap (were settings of the step: changed on the Knowledge bases page only)
-	    [ $kb, $created ] = \models\KnowledgeBase::open($kbName, $aid, $project);
+	    [ $kb, $created ] = \models\kb\KnowledgeBase::open($kbName, $aid, $project);
 	    if ($created)
 		$this->exec->log($this->wfid, static::$label . ": made `{$kb->name}` ({$kb->model})");
 	    $meta = $this->expr('meta', '');
@@ -260,7 +260,7 @@ class NodeAppKnowledge extends \models\WfNode {
 		    throw new \ErrorException('Metadata: not a JSON object');
 		$meta = $decoded;
 	    }
-	    $meta = \models\KnowledgeBase::checkMeta($meta);
+	    $meta = \models\kb\KnowledgeBase::checkMeta($meta);
 	    $docs = [];
 	    foreach($this->sources($op, $timeout) as $s)
 		$docs[] = $kb->addDocument($s['key'], $s['title'], $s['text'], $meta, $s['source'], $timeout);
@@ -270,7 +270,7 @@ class NodeAppKnowledge extends \models\WfNode {
 	    return [ 'knowledgeBase' => (string)$kb->name, 'created' => $created, 'documents' => $docs, 'chunks' => $chunks ];
 	}
 
-	$kb = \models\KnowledgeBase::named($kbName, $aid, $project);
+	$kb = \models\kb\KnowledgeBase::named($kbName, $aid, $project);
 	if (!$kb)
 	    throw new \ErrorException("there is no knowledge base `{$kbName}` in this project");
 
@@ -298,16 +298,16 @@ class NodeAppKnowledge extends \models\WfNode {
 		}
 		$results = $kb->search($query, (int)$this->cfg('results', 5), $filter ?: [], (string)$this->cfg('minScore', '') === '' ? null : (float)$this->cfg('minScore'), $timeout);
 		$this->exec->log($this->wfid, static::$label . ": `{$kb->name}`: " . count($results) . ' result(s)' . ($results ? ', best ' . $results[0]['score'] : ''));
-		return [ 'results' => $results, 'count' => count($results), 'context' => \models\KnowledgeBase::context($results) ];
+		return [ 'results' => $results, 'count' => count($results), 'context' => \models\kb\KnowledgeBase::context($results) ];
 	}
     }
 
     //the documents to add: [ [ key, title, text, source: [ type, file, url ] ] ]
-    //CLD: 2026-10-31T01:00:00+02:00: through models\KnowledgeBase::textSource / urlSource / fileSource (were read here: the Knowledge bases page adds documents too)
+    //CLD: 2026-10-31T01:00:00+02:00: through models\kb\KnowledgeBase::textSource / urlSource / fileSource (were read here: the Knowledge bases page adds documents too)
     protected function sources($op, $timeout) {
 	if ($op === 'addText') {
 	    try {
-		return [ \models\KnowledgeBase::textSource(\util\Expression::toText($this->expr('title', '')), \util\Expression::toText($this->expr('text', '')),
+		return [ \models\kb\KnowledgeBase::textSource(\util\Expression::toText($this->expr('title', '')), \util\Expression::toText($this->expr('text', '')),
 		    \util\Expression::toText($this->expr('docKey', ''))) ];
 	    } catch (\ErrorException $e) {
 		throw new \ErrorException('Text: ' . $e->getMessage());
@@ -316,7 +316,7 @@ class NodeAppKnowledge extends \models\WfNode {
 
 	if ($op === 'addUrl') {
 	    try {
-		return [ \models\KnowledgeBase::urlSource(\util\Expression::toText($this->expr('url', '')), $timeout) ];
+		return [ \models\kb\KnowledgeBase::urlSource(\util\Expression::toText($this->expr('url', '')), $timeout) ];
 	    } catch (\ErrorException $e) {
 		throw new \ErrorException('Page address: ' . $e->getMessage());
 	    }
@@ -333,7 +333,7 @@ class NodeAppKnowledge extends \models\WfNode {
 	    if (!$f)
 		throw new \ErrorException("Files: no file `{$id}` in this project");
 	    try {
-		$out[] = \models\KnowledgeBase::fileSource($f);
+		$out[] = \models\kb\KnowledgeBase::fileSource($f);
 	    } catch (\ErrorException $e) {
 		throw new \ErrorException('Files: ' . $e->getMessage());
 	    }

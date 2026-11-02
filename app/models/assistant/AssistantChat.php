@@ -11,7 +11,7 @@
     Removed with its workflow (hook workflow:before-delete, sys\Boot)
 */
 
-namespace models;
+namespace models\assistant;
 
 class AssistantChat extends \sys\BaseModel {
     protected static $collection = 'assistant_chats';

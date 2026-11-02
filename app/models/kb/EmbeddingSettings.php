@@ -6,10 +6,10 @@
 	provider   ollama | lemonade | openai (or another OpenAI-compatible server) | gemini
 	url        the server (empty: the provider's own: data\AiProviders)
 	api_key    encrypted; empty keeps the saved one (only for the same provider and server)
-	model      the embedding model; a knowledge base remembers the model it was indexed with (models\KnowledgeBase::$model): another model here means re-indexing it
+	model      the embedding model; a knowledge base remembers the model it was indexed with (models\kb\KnowledgeBase::$model): another model here means re-indexing it
 */
 
-namespace models;
+namespace models\kb;
 
 class EmbeddingSettings extends \sys\BaseModel {
     protected static $collection = 'embedding_settings';

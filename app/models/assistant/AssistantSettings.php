@@ -15,7 +15,7 @@
     System is paid in credits (AssistantWallet), not with the budget: + credit_cap, the most credits the account lets the Assistant use per month
 */
 
-namespace models;
+namespace models\assistant;
 
 
 class AssistantSettings extends \sys\BaseModel {

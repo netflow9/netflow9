@@ -13,14 +13,14 @@ use util\WorkflowAssistant;
 $assistantOn = !$viewVersion && \V::app()->user->can('Workflow::update', [ 'object' => $wf ]);
 $assistantSettings = \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
 $assistantReady = WorkflowAssistant::isReady($assistantSettings);
-//CLD: 2026-10-23T23:45:00+03:00: + the kept conversation (models\AssistantChat: messages, chatUrl, clearUrl) and who is viewing (uid: the others' messages are signed)
+//CLD: 2026-10-23T23:45:00+03:00: + the kept conversation (models\assistant\AssistantChat: messages, chatUrl, clearUrl) and who is viewing (uid: the others' messages are signed)
 $assistantJs = \util\JSON::encode([
     'wfid' => (string)$wf->_id,
     'url' => \V::app()->createUrl('/assistant/ask', [ 'id' => (string)$wf->_id ]),
     'chatUrl' => \V::app()->createUrl('/assistant/chat_add', [ 'id' => (string)$wf->_id ]),
     'clearUrl' => \V::app()->createUrl('/assistant/chat_clear', [ 'id' => (string)$wf->_id ]),
     'uid' => (string)\V::app()->user->_id,
-    'messages' => $assistantOn && $assistantReady ? \models\AssistantChat::messagesOf($wf) : [],
+    'messages' => $assistantOn && $assistantReady ? \models\assistant\AssistantChat::messagesOf($wf) : [],
 ]);
 
 //after the designer's own script (new app.Workflow): the panel as last time, then the conversation (only when it is there: the draft, people who may change it, set up)

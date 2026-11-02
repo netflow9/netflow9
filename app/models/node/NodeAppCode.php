@@ -13,7 +13,7 @@ User's choice: the workflow variables are plain names in the code and assigning 
 //CLD: 2026-10-17T13:24:18+03:00: moved from the BaseNodes plugin into the core (was plugins\BaseNodes\app)
 namespace models\node;
 
-class NodeAppCode extends \models\WfNode {
+class NodeAppCode extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $name = 'code';

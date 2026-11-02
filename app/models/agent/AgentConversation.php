@@ -2,7 +2,7 @@
 
 /*
     CLD: 2026-11-02T18:00:00+02:00: new: a conversation with an agent (a workflow that starts with a Chat trigger, or an Email (inbound) / Teams message trigger that keeps conversations).
-	One document per conversation; its messages are models\AgentMessage (apart: a conversation can be long, the page reads only what is new).
+	One document per conversation; its messages are models\agent\AgentMessage (apart: a conversation can be long, the page reads only what is new).
 	Each message of a person starts a run (startTurn): the run's variables message, conversation, user; the Reply to chat step adds the answers (reply()), the AI steps read the earlier turns
 	(context()) and write what their tools did on the turn (noteTools()).
     Fields: wf, project, node (the trigger step), channel (app | embed | email | teams), user (a NetFlow9 user; null: a guest, a mail sender, a Teams person), user_name, user_email, who (whose memories:
@@ -14,7 +14,7 @@
     Read as arrays
 */
 
-namespace models;
+namespace models\agent;
 
 class AgentConversation extends \sys\BaseModel {
     protected static $collection = 'agent_conversations';
@@ -215,7 +215,7 @@ class AgentConversation extends \sys\BaseModel {
 	    $user = $o['user'] ?? [ 'id' => $conv['user'] ?? null, 'name' => (string)($conv['user_name'] ?? ''), 'email' => (string)($conv['user_email'] ?? '') ];
 	    $variable = [ 'id' => (string)$conv['_id'], 'channel' => (string)$conv['channel'], 'turn' => $seq, 'title' => (string)($conv['title'] ?: mb_substr($text, 0, 80)), 'history' => self::historyVar($conv, $seq),
 		'summary' => (string)($conv['summary'] ?? '') ];
-	    $exe = \models\WfExecution::startFor($live, (string)($o['trigger'] ?? 'chat'), [ 'conversation' => (string)$conv['_id'], 'turn' => $seq, 'channel' => (string)$conv['channel'], 'who' => (string)($conv['who'] ?? ''),
+	    $exe = \models\wf\WfExecution::startFor($live, (string)($o['trigger'] ?? 'chat'), [ 'conversation' => (string)$conv['_id'], 'turn' => $seq, 'channel' => (string)$conv['channel'], 'who' => (string)($conv['who'] ?? ''),
 		'received_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ 'message' => $text, 'conversation' => $variable, 'user' => $user ] + (array)($o['vars'] ?? []) ] + (array)($o['input'] ?? []), (string)$node['wfid']);
 	    $exe->log($node['wfid'], 'message ' . $seq . ' of conversation ' . (string)$conv['_id'] . ' (' . $conv['channel'] . ')');
 	    $exe->save();

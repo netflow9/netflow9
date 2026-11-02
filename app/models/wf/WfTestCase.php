@@ -11,7 +11,7 @@
 	notes    what could not be recorded
 */
 
-namespace models;
+namespace models\wf;
 
 class WfTestCase extends \sys\BaseModel {
     protected static $collection = 'wf_test_cases';

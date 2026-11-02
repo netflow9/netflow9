@@ -3,8 +3,8 @@
 /*
     CLD: 2026-11-02T10:00:00+02:00: new class: what keeps an AI step's agent in bounds during one run (models\node\NodeAppAi: run, loop). Everything here is checked on the server, whatever the dialog shows.
 	Limits (the step's section Guardrails; empty: none): Most tool calls and Most write calls per run, Cost limit (USD estimated from the tokens with the account's own keys, credits on the System
-	    AI). A call past a limit is not run; the agent stops (AgentLimitReached), its variable keeps what it did. The account's monthly budget stops it the same way (models\AgentUsage).
-	The account's policy (models\AgentPolicy): govern() takes the tools it does not allow out of the run, and makes those that must ask ask.
+	    AI). A call past a limit is not run; the agent stops (AgentLimitReached), its variable keeps what it did. The account's monthly budget stops it the same way (models\agent\AgentUsage).
+	The account's policy (models\agent\AgentPolicy): govern() takes the tools it does not allow out of the run, and makes those that must ask ask.
 	Untrusted content: wrap() puts text from outside between marks with a random name per run (a text cannot close a block it cannot name; the name in a text is removed), the system prompt
 	    says what they mean (systemPrompt()). Wrapped: tool results (result()), files sent with the prompt (files()), values of {{ }} in the prompts (render(): text from the workflow's
 	    variables; not the project variables, a step's Trusted variables, numbers or yes / no).
@@ -45,7 +45,7 @@ class AgentGuard {
 	$this->step = $step;
 	$this->aid = $step->exec->aid ?? null;
 	$this->system = (bool)$system;
-	$this->policy = \models\AgentPolicy::ofAccount($this->aid);
+	$this->policy = \models\agent\AgentPolicy::ofAccount($this->aid);
 	$this->maxTools = self::positive($step->cfg('maxToolCalls', ''));
 	$this->maxWrites = self::positive($step->cfg('maxWriteCalls', ''));
 	$this->maxCost = (float)$step->cfg('maxCost', 0) > 0 ? (float)$step->cfg('maxCost') : null;
@@ -99,7 +99,7 @@ class AgentGuard {
     //The step runs: with no price field to fill, a new model must not stop a workflow, and the owner sees that its spending is not limited
     public static function priceWarning($capability, array $config, $aid) {
 	$limited = (float)($config['maxCost'] ?? 0) > 0;
-	if ((string)($config['credential'] ?? '') === \models\node\NodeAppAi::SYSTEM || (!$limited && \models\AgentPolicy::ofAccount($aid)->budget() === null))
+	if ((string)($config['credential'] ?? '') === \models\node\NodeAppAi::SYSTEM || (!$limited && \models\agent\AgentPolicy::ofAccount($aid)->budget() === null))
 	    return null;
 	if (AiPrices::of((object)[ 'provider' => $capability, 'model' => trim((string)($config['model'] ?? '')) ]) !== null)
 	    return null;
@@ -188,7 +188,7 @@ class AgentGuard {
 	return $lines;
     }
 
-    //CLD: 2026-11-02T18:00:00+02:00: new: whether the run was started by a message of a conversation (models\AgentConversation::startTurn)
+    //CLD: 2026-11-02T18:00:00+02:00: new: whether the run was started by a message of a conversation (models\agent\AgentConversation::startTurn)
     private function inConversation() {
 	$input = $this->step->exec->input ?? null;
 	//CLD: 2026-11-02T15:46:06+02:00: + a test case of such a run: the prompt must be built as in the real one
@@ -363,7 +363,7 @@ class AgentGuard {
 	$this->checkCost();
 	$budget = $this->system ? null : $this->policy->budget();
 	if ($budget !== null && $this->prices && ($this->prices[0] > 0 || $this->prices[1] > 0)) {
-	    $spent = \models\AgentUsage::spent($this->aid);
+	    $spent = \models\agent\AgentUsage::spent($this->aid);
 	    if ($spent >= $budget)
 		throw new AgentLimitReached(self::LIMIT_BUDGET, "the agent was stopped: the account's monthly AI budget of {$budget} USD is used up (about " . round($spent, 2) . ' USD this month; Account settings > AI)');
 	}
@@ -383,7 +383,7 @@ class AgentGuard {
 	$cost = ((int)$tokens[0] * $this->prices[0] + (int)$tokens[1] * $this->prices[1]) / 1000000;
 	$this->cost += $cost;
 	if ($this->aid)
-	    \models\AgentUsage::add($this->aid, $cost, $tokens);
+	    \models\agent\AgentUsage::add($this->aid, $cost, $tokens);
     }
 
     //the run's cost limit reached: the agent stops

@@ -8,7 +8,7 @@
 
 namespace models\node;
 
-class NodeTriggerCall extends \models\WfNode {
+class NodeTriggerCall extends \models\wf\WfNode {
     public static $type = 'trigger';
     public static $name = 'call';
     public static $label = 'Called by a workflow';
@@ -129,7 +129,7 @@ class NodeTriggerCall extends \models\WfNode {
 
     //Run in the designer: the inputs' defaults
     public static function startNow($wf, array $node) {
-	$exe = \models\WfExecution::startFor($wf, 'manual', [ 'user' => (string)\V::app()->user->_id ], (string)$node['wfid']);
+	$exe = \models\wf\WfExecution::startFor($wf, 'manual', [ 'user' => (string)\V::app()->user->_id ], (string)$node['wfid']);
 	$exe->save();
 	return [ 'executions' => [ $exe ], 'message' => null ];
     }

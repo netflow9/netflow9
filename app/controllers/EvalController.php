@@ -7,8 +7,8 @@
 
 namespace controllers;
 
-use models\WfTestCase;
-use models\WfTestRun;
+use models\wf\WfTestCase;
+use models\wf\WfTestRun;
 use util\AgentEval;
 
 class EvalController extends \sys\BaseController {
@@ -47,7 +47,7 @@ class EvalController extends \sys\BaseController {
 	$cases = [];
 	foreach(\V::app()->om->find('WfTestCase', [ 'wf' => $wf->_id, 'aid' => $wf->aid ], [ 'sort' => [ '_id' => 1 ] ]) as $c)
 	    $cases[] = self::caseData($c);
-	$classes = \models\WfNode::nodeClasses();
+	$classes = \models\wf\WfNode::nodeClasses();
 	$steps = [];
 	foreach((array)$wf->nodes as $n) {
 	    $name = $classes[$n['fqname'] ?? ''] ?? null;

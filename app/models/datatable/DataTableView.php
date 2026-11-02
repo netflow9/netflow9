@@ -5,7 +5,7 @@
     shared by every user who can open the table (controllers\DatatableController views / create_view / delete_view;
     DataTable::readData on the table). Deleted with its table (DataTableDef::beforeDelete)
 */
-namespace models;
+namespace models\datatable;
 
 class DataTableView extends \sys\BaseModel {
     protected static $collection = 'data-tables-views';

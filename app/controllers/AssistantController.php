@@ -3,7 +3,7 @@
 /*
     the requests of the Assistant plugin, served at /assistant/<action>:
 	ask      the designer's Assistant (was WorkflowController::assistant)
-	chat_add, chat_clear  CLD: 2026-10-23T23:45:00+03:00: the conversation of the workflow, kept (models\AssistantChat)
+	chat_add, chat_clear  CLD: 2026-10-23T23:45:00+03:00: the conversation of the workflow, kept (models\assistant\AssistantChat)
 	settings the Assistant's settings of the account
 	connect  the models of a server (the settings page's Connect)
 */
@@ -11,9 +11,9 @@
 namespace controllers;
 
 use util\WorkflowAssistant;
-use models\AssistantSettings;
-use models\AssistantUsage;
-use models\AssistantChat;
+use models\assistant\AssistantSettings;
+use models\assistant\AssistantUsage;
+use models\assistant\AssistantChat;
 
 class AssistantController extends \sys\BaseController {
 
@@ -46,7 +46,7 @@ class AssistantController extends \sys\BaseController {
 	$wf = $this->findWorkflow('Workflow::update');
 	$data = is_array($req->data) ? $req->data : [];
 
-	//the Assistant's settings (models\AssistantSettings)
+	//the Assistant's settings (models\assistant\AssistantSettings)
 	$settings = \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
 
 	if (!WorkflowAssistant::isReady($settings))
@@ -153,7 +153,7 @@ class AssistantController extends \sys\BaseController {
 	}
     }
 
-    //the Assistant's settings of the account (models\AssistantSettings;), for who may change the account
+    //the Assistant's settings of the account (models\assistant\AssistantSettings;), for who may change the account
     //linked from the Settings menu (layouts/main_aside.php)
     public function settings($req, $resp) {
 	if (!\V::app()->user->can('Account::update'))
@@ -205,7 +205,7 @@ class AssistantController extends \sys\BaseController {
 	$saved = $this->findSettings();
 	$provider = (string)($data['provider'] ?? '');
 	//AssistantSettings::providers
-	if (!array_key_exists($provider, \models\AssistantSettings::providers()))
+	if (!array_key_exists($provider, \models\assistant\AssistantSettings::providers()))
 	    $resp->sendJSON([ 'error' => 'Choose a provider' ], true, 400);
 	//System: the installation's model, nothing to connect to (its server and key are never used from here)
 	if ($provider === 'system')

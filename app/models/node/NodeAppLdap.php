@@ -23,7 +23,7 @@ namespace models\node;
 use util\LdapClient;
 use util\LdapException;
 
-class NodeAppLdap extends \models\WfNode {
+class NodeAppLdap extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $name = 'ldap';

@@ -2,7 +2,7 @@
 
 /*
     CLD: 2026-10-23T12:00:00+03:00: new: the settings pages of the SAML sign-in, served at /saml/<action>, for who may change the account (Account::update, as AccountController::settings):
-	settings   the account's SAML settings (models\SamlSettings; posted as JSON: `settings_json`, the form's app.smartform data), the service provider's details for the IdP,
+	settings   the account's SAML settings (models\saml\SamlSettings; posted as JSON: `settings_json`, the form's app.smartform data), the service provider's details for the IdP,
 		   the account's SSO users. Made (and saved, off) at the first visit: the SP's key pair and metadata exist before the IdP is set up
 	import     POST, JSON: the IdP's metadata (`url`, read here, or the pasted `xml`) read: { ok, values (the form's IdP fields), lines }; nothing saved
 	test       a sign-in at the IdP with the saved settings (on or off), whose result is shown instead of signing in (SsoController::begin, ::acs)

@@ -1,10 +1,10 @@
 <?php
 /*
-    CLD: 2026-10-31T01:00:00+02:00: new: the account's embedding model (KnowledgeController::settings; models\EmbeddingSettings): provider, Server URL, API key, then Connect
+    CLD: 2026-10-31T01:00:00+02:00: new: the account's embedding model (KnowledgeController::settings; models\kb\EmbeddingSettings): provider, Server URL, API key, then Connect
     (KnowledgeController::connect) lists the server's models (the embedding ones first) for Model; the saved model is shown until the next Connect (the page connects by itself
     when there is one). $stale: the knowledge bases indexed with another model (re-index them)
 */
-use models\EmbeddingSettings;
+use models\kb\EmbeddingSettings;
 
 $this->pageTitle = 'Knowledge base settings';
 

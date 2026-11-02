@@ -28,7 +28,7 @@
 
 namespace models\node;
 
-class NodeAppTable extends \models\WfNode {
+class NodeAppTable extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $name = 'table';
@@ -395,14 +395,14 @@ class NodeAppTable extends \models\WfNode {
 		return [ 'columns' => $list ];
 
 	    case 'query':
-		$query = \models\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $render, $aid);
+		$query = \models\datatable\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $render, $aid);
 		$options = [ 'skip' => max(0, (int)$this->cfg('offset', 0)), 'limit' => max(1, min(self::MAX_LIMIT, (int)$this->cfg('limit', 100))) ];
 		$sortBy = trim((string)$this->cfg('sortBy', ''));
 		if ($sortBy !== '')
 		    $options['sort'] = [ ($sortBy === 'id' ? '_id' : $sortBy) => $this->cfg('sortDir', 'asc') === 'desc' ? -1 : 1 ];
 		$rows = [];
 		foreach(\V::app()->om->find($iname, $query, $options) as $row)
-		    $rows[] = \models\DataTableDef::rowValue($row, $columns);
+		    $rows[] = \models\datatable\DataTableDef::rowValue($row, $columns);
 		$total = \V::app()->om->count($iname, $query);
 		$this->exec->log($this->wfid, "table {$label}: query -> " . count($rows) . " of {$total} rows");
 		return [ 'rows' => $rows, 'count' => count($rows), 'total' => $total ];
@@ -410,16 +410,16 @@ class NodeAppTable extends \models\WfNode {
 	    case 'get':
 		$row = $this->rowById($iname, $render($this->cfg('rowId', '')), $aid, false);
 		$this->exec->log($this->wfid, "table {$label}: get -> " . ($row ? 'found' : 'not found'));
-		return [ 'row' => $row ? \models\DataTableDef::rowValue($row, $columns) : null ];
+		return [ 'row' => $row ? \models\datatable\DataTableDef::rowValue($row, $columns) : null ];
 
 	    case 'insert':
 		$row = \V::app()->om->create($iname, [ 'aid' => $aid ]);
-		\models\DataTableDef::assignRow($row, $this->dataValues($columns, $render));
+		\models\datatable\DataTableDef::assignRow($row, $this->dataValues($columns, $render));
 		//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of rows in a data table (util\Tiers; the step fails with the message)
 		\util\Tiers::check($aid, 'datatable_records', 1, $iname);
 		$row->save();
 		$this->exec->log($this->wfid, "table {$label}: inserted row {$row->_id}");
-		return [ 'row' => \models\DataTableDef::rowValue($row, $columns) ];
+		return [ 'row' => \models\datatable\DataTableDef::rowValue($row, $columns) ];
 
 	    case 'insertMany':
 		$list = $render($this->cfg('rows', ''));
@@ -436,7 +436,7 @@ class NodeAppTable extends \models\WfNode {
 			    throw new \ErrorException('Rows: item ' . ($i + 1) . ": the table has no column `{$c}`");
 		    }
 		    $row = \V::app()->om->create($iname, [ 'aid' => $aid ]);
-		    \models\DataTableDef::assignRow($row, $item, 'item ' . ($i + 1) . ': ');
+		    \models\datatable\DataTableDef::assignRow($row, $item, 'item ' . ($i + 1) . ': ');
 		    $models[] = $row;
 		}
 		//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of rows in a data table (util\Tiers): all of them, or none
@@ -458,26 +458,26 @@ class NodeAppTable extends \models\WfNode {
 		$row = \V::app()->om->findOne($iname, [ 'aid' => $aid, $key => $match ]);
 		$operation = $row ? 'update' : 'insert';
 		$row = $row ?: \V::app()->om->create($iname, [ 'aid' => $aid ]);
-		\models\DataTableDef::assignRow($row, $values);
+		\models\datatable\DataTableDef::assignRow($row, $values);
 		//CLD: 2026-10-24T09:45:36+03:00: a new row: the tier's limit of rows in a data table (util\Tiers)
 		if ($operation === 'insert')
 		    \util\Tiers::check($aid, 'datatable_records', 1, $iname);
 		$row->save();
 		$this->exec->log($this->wfid, "table {$label}: upsert by {$key} -> {$operation} row {$row->_id}");
-		return [ 'row' => \models\DataTableDef::rowValue($row, $columns), 'operation' => $operation ];
+		return [ 'row' => \models\datatable\DataTableDef::rowValue($row, $columns), 'operation' => $operation ];
 
 	    case 'update':
 		$row = $this->rowById($iname, $render($this->cfg('rowId', '')), $aid, true);
-		\models\DataTableDef::assignRow($row, $this->dataValues($columns, $render));
+		\models\datatable\DataTableDef::assignRow($row, $this->dataValues($columns, $render));
 		$row->save();
 		$this->exec->log($this->wfid, "table {$label}: updated row {$row->_id}");
-		return [ 'row' => \models\DataTableDef::rowValue($row, $columns) ];
+		return [ 'row' => \models\datatable\DataTableDef::rowValue($row, $columns) ];
 
 	    case 'updateMany':
 		$values = $this->dataValues($columns, $render);
 		$updated = 0;
-		foreach(\V::app()->om->find($iname, \models\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $render, $aid)) as $row) {
-		    \models\DataTableDef::assignRow($row, $values, "row {$row->_id}: ");
+		foreach(\V::app()->om->find($iname, \models\datatable\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $render, $aid)) as $row) {
+		    \models\datatable\DataTableDef::assignRow($row, $values, "row {$row->_id}: ");
 		    $row->save();
 		    $updated++;
 		}
@@ -493,7 +493,7 @@ class NodeAppTable extends \models\WfNode {
 
 	    case 'deleteMany':
 		$deleted = 0;
-		foreach(\V::app()->om->find($iname, \models\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $render, $aid)) as $row) {
+		foreach(\V::app()->om->find($iname, \models\datatable\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $render, $aid)) as $row) {
 		    $row->delete();
 		    $deleted++;
 		}
