@@ -6,7 +6,7 @@
 
 namespace models\node;
 
-class NodeCoreSwitch extends \models\WfNode {
+class NodeCoreSwitch extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'core';
     public static $name = 'switch';

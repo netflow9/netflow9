@@ -2,7 +2,7 @@
 
 namespace models\node;
 
-class NodeCoreNote extends \models\WfNode {
+class NodeCoreNote extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'core';
     public static $name = 'note';

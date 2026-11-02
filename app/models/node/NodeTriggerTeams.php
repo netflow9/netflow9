@@ -2,7 +2,7 @@
 
 /*
     CLD: 2026-11-02T18:00:00+02:00: new trigger: Teams message - a conversation with an agent in Microsoft Teams: a message in a chat of the credential's account starts a run (variables message, conversation, user,
-	teams: { chat, message_id }); Reply to chat answers in that chat as that account. One conversation per chat. It checks on its schedule (models\WfSchedule, every minute by default; util\Scheduler runs
+	teams: { chat, message_id }); Reply to chat answers in that chat as that account. One conversation per chat. It checks on its schedule (models\wf\WfSchedule, every minute by default; util\Scheduler runs
 	runScheduled; models\TriggerState: how far it has read): one chat, or the account's latest MAX_CHATS. The first check only notes where it starts. Not read: the account's own messages (use an account for the
 	agent, else it would answer itself), apps' and system messages.
     Chats only, not channels: reading channel messages takes a permission only an administrator can consent to (ChannelMessage.Read.All), the Teams credential would ask it of everyone
@@ -10,7 +10,7 @@
 
 namespace models\node;
 
-class NodeTriggerTeams extends \models\WfNode {
+class NodeTriggerTeams extends \models\wf\WfNode {
     public static $type = 'trigger';
     public static $name = 'teams';
     public static $label = 'Teams message';
@@ -49,16 +49,16 @@ class NodeTriggerTeams extends \models\WfNode {
 		'help' => 'A chat id (the Teams step\'s List my chats); empty: every chat of the account',
 		'ui' => [ 'width' => 6 ],
 	    ],
-	], \models\WfSchedule::schema([ 'mode' => 'interval', 'every' => 1, 'every_unit' => 'minutes' ]));
+	], \models\wf\WfSchedule::schema([ 'mode' => 'interval', 'every' => 1, 'every_unit' => 'minutes' ]));
     }
 
     public static function matches(array $cfg, \DateTimeInterface $t) {
-	return \models\WfSchedule::matches($cfg, $t);
+	return \models\wf\WfSchedule::matches($cfg, $t);
     }
 
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$error = \models\WfSchedule::validate(is_array($this->config) ? $this->config : []);
+	$error = \models\wf\WfSchedule::validate(is_array($this->config) ? $this->config : []);
 	if ($error !== null) {
 	    $this->errors('config', $error);
 	    $valid = false;
@@ -159,11 +159,11 @@ class NodeTriggerTeams extends \models\WfNode {
 	    return null;
 	$from = (array)($m['from']['user'] ?? []);
 	$person = [ 'id' => (string)($from['id'] ?? ''), 'name' => (string)($from['displayName'] ?? ''), 'email' => '' ];
-	$c = \models\AgentConversation::coll();
+	$c = \models\agent\AgentConversation::coll();
 	$conv = $c->findOne([ 'aid' => $wf->aid, 'wf' => $wf->_id, 'thread' => (string)$chat ], \sys\Mongo::ARRAYS)
-	    ?: \models\AgentConversation::begin([ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => $node['wfid'], 'channel' => 'teams', 'user_name' => $person['name'], 'who' => 't:' . $person['id'], 'thread' => (string)$chat,
+	    ?: \models\agent\AgentConversation::begin([ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => $node['wfid'], 'channel' => 'teams', 'user_name' => $person['name'], 'who' => 't:' . $person['id'], 'thread' => (string)$chat,
 		'credential' => (string)($node['config']['credential'] ?? '') ]);
-	return \models\AgentConversation::startTurn($wf, $node, $conv, $text, [ 'wait' => false, 'trigger' => 'teams', 'user' => $person, 'input' => [ 'who' => 't:' . $person['id'] ],
+	return \models\agent\AgentConversation::startTurn($wf, $node, $conv, $text, [ 'wait' => false, 'trigger' => 'teams', 'user' => $person, 'input' => [ 'who' => 't:' . $person['id'] ],
 	    'vars' => [ 'teams' => [ 'chat' => (string)$chat, 'message_id' => (string)($m['id'] ?? '') ] ] ]);
     }
 }

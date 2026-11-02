@@ -2,7 +2,7 @@
 
 /*
     CLD: 2026-11-01T12:00:00+02:00: new trigger: VMware alarm - starts the workflow when an alarm of a vCenter Server is triggered (red, or yellow and red) on a VM, host, datastore, ...
-    or any object; optionally also when one clears. vCenter calls no webhook: the step checks it on its schedule (models\WfSchedule, every 2 minutes by default; util\Scheduler runs
+    or any object; optionally also when one clears. vCenter calls no webhook: the step checks it on its schedule (models\wf\WfSchedule, every 2 minutes by default; util\Scheduler runs
     runScheduled), reading the alarms triggered now (NodeAppVmwareAlarms::alarms, VI/JSON: vCenter 8.0 U1 and later; acknowledged ones too, so they are not taken as cleared) and
     comparing them with the last check's (models\TriggerState: key alarm|entity => { status, fired, quiet }), as the Checkmk problem trigger: an alarm starts a run when it is new
     or its status changed (yellow -> red), unless it is acknowledged and those are left out; an alarm that started a run and is gone starts a `recovery` run when chosen. The first
@@ -11,7 +11,7 @@
 
 namespace models\node;
 
-class NodeTriggerVmware extends \models\WfNode {
+class NodeTriggerVmware extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'trigger';
     public static $name = 'vmware';
@@ -91,16 +91,16 @@ class NodeTriggerVmware extends \models\WfNode {
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
-	], \models\WfSchedule::schema([ 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]));
+	], \models\wf\WfSchedule::schema([ 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]));
     }
 
     public static function matches(array $cfg, \DateTimeInterface $t) {
-	return \models\WfSchedule::matches($cfg, $t);
+	return \models\wf\WfSchedule::matches($cfg, $t);
     }
 
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$error = \models\WfSchedule::validate(is_array($this->config) ? $this->config : []);
+	$error = \models\wf\WfSchedule::validate(is_array($this->config) ? $this->config : []);
 	if ($error !== null) {
 	    $this->errors('config', $error);
 	    $valid = false;
@@ -196,7 +196,7 @@ class NodeTriggerVmware extends \models\WfNode {
 	$values = !$events ? [] : (($cfg['runs'] ?? 'each') === 'batch' ? [ [ 'alarms' => $events, 'count' => count($events) ] ] : $events);
 	$started = [];
 	foreach($values as $v) {
-	    $exe = \models\WfExecution::startFor($wf, 'vmware', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $v ] ], $node['wfid']);
+	    $exe = \models\wf\WfExecution::startFor($wf, 'vmware', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $v ] ], $node['wfid']);
 	    $exe->log($node['wfid'], isset($v['alarms']) ? 'VMware: ' . \util\Format::plural($v['count'], 'event') : "VMware {$v['event']}: " . NodeAppVmwareAlarms::describe($v));
 	    $exe->queue();
 	    $started[] = $exe;
@@ -216,7 +216,7 @@ class NodeTriggerVmware extends \models\WfNode {
 	    return [ 'executions' => [], 'message' => 'VMware alarm: no alarm triggered now matches' ];
 	$a = [ 'event' => 'alarm' ] + $alarms[0];
 	$name = \util\Validator::isIdentifier((string)($cfg['variable'] ?? '')) ? (string)$cfg['variable'] : 'alarm';
-	$exe = \models\WfExecution::startFor($wf, 'vmware', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => ($cfg['runs'] ?? 'each') === 'batch' ? [ 'alarms' => [ $a ], 'count' => 1 ] : $a ] ], (string)$node['wfid']);
+	$exe = \models\wf\WfExecution::startFor($wf, 'vmware', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => ($cfg['runs'] ?? 'each') === 'batch' ? [ 'alarms' => [ $a ], 'count' => 1 ] : $a ] ], (string)$node['wfid']);
 	$exe->save();
 	return [ 'executions' => [ $exe ], 'message' => 'Run with an alarm triggered now: ' . NodeAppVmwareAlarms::describe($a) ];
     }

@@ -45,7 +45,7 @@ class AgentEvalContext {
 	return false;
     }
 
-    //the work of step $node in a test (models\WfNode::receive)
+    //the work of step $node in a test (models\wf\WfNode::receive)
     public function execute($node, $edgeId) {
 	if (self::runs($node))
 	    return $node->execute($edgeId);

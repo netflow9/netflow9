@@ -11,7 +11,7 @@
 	cron:     cron                   minute hour day-of-month month day-of-week (util\Cron)
 */
 
-namespace models;
+namespace models\wf;
 
 class WfSchedule {
 

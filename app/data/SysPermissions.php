@@ -269,7 +269,7 @@ class SysPermissions {
 	    ],
 	];
 
-	//CLD: 2026-10-31T01:00:00+02:00: knowledge bases (models\KnowledgeBase; controllers\KnowledgeController); defaults for the roles already stored, as the data tables'
+	//CLD: 2026-10-31T01:00:00+02:00: knowledge bases (models\kb\KnowledgeBase; controllers\KnowledgeController); defaults for the roles already stored, as the data tables'
 	$kbDefaults = [ 'owner' => [ 'enabled' => true, 'scope' => 'global' ], 'member' => [ 'enabled' => true, 'scope' => 'project' ] ];
 	$data['KnowledgeBase'] = [
 	    [

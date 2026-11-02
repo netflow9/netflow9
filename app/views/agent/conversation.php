@@ -16,7 +16,7 @@ foreach($turns as $m) {
 	'class' => $user ? 'wfa-user' : ($m['role'] === 'notice' ? 'text-danger-emphasis bg-danger-subtle' : 'wfa-bot'),
 	'body' => $m['html'] !== '' ? $m['html'] : nl2br(\V::app()->html->escape($m['text']), false),
 	'buttons' => $m['buttons'] ? \util\VString::insert('<div class="mt-1 text-muted">Buttons: {:v}</div>', [ 'v' => \V::app()->html->escape(implode(', ', array_column($m['buttons'], 'label'))) ]) : '',
-	'tools' => $list ? \util\VString::insert('<div class="small text-muted mt-1"><i class="bi bi-tools me-1"></i>{:v}</div>', [ 'v' => \V::app()->html->escape(\models\AgentConversation::toolsLine($list)) ]) : '',
+	'tools' => $list ? \util\VString::insert('<div class="small text-muted mt-1"><i class="bi bi-tools me-1"></i>{:v}</div>', [ 'v' => \V::app()->html->escape(\models\agent\AgentConversation::toolsLine($list)) ]) : '',
 	'at' => \V::app()->html->escape($m['at'] ? \util\Format::datetime(new \MongoDB\BSON\UTCDateTime(strtotime($m['at']) * 1000)) : ''),
     ]);
 }

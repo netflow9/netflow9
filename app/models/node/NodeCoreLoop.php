@@ -10,7 +10,7 @@
 
 namespace models\node;
 
-class NodeCoreLoop extends \models\WfNode {
+class NodeCoreLoop extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'core';
     public static $name = 'loop';

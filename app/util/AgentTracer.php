@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T14:00:00+02:00: new class: writes the trace of one visit of an AI step (models\AgentTrace; models\node\NodeAppAi: run, loop, decided), round by round, so the Executions panel follows a
+    CLD: 2026-11-02T14:00:00+02:00: new class: writes the trace of one visit of an AI step (models\agent\AgentTrace; models\node\NodeAppAi: run, loop, decided), round by round, so the Executions panel follows a
     run live. A trace never stops a run: a failed write is logged once, the step goes on.
 	What is kept is what the model saw: with Mask personal data, placeholders (the arguments as the model wrote them, the results masked).
 	Secrets never: values of keys that name a secret and secrets inside texts (models\AuditLog::withoutSecrets, SECRET_VALUES), `password: x` inside texts, the values of the step's
@@ -40,7 +40,7 @@ class AgentTracer {
 	$trace = new self($step, new \MongoDB\BSON\ObjectId());
 	$now = new \MongoDB\BSON\UTCDateTime();
 	$exec = $step->exec;
-	$trace->attempt(fn() => \models\AgentTrace::coll()->insertOne([ '_id' => $trace->id, 'aid' => $exec->aid, 'project' => $exec->project, 'wf' => $exec->wf, 'execution' => $exec->_id,
+	$trace->attempt(fn() => \models\agent\AgentTrace::coll()->insertOne([ '_id' => $trace->id, 'aid' => $exec->aid, 'project' => $exec->project, 'wf' => $exec->wf, 'execution' => $exec->_id,
 	    'node' => (string)$step->wfid, 'step' => (string)($step->title ?: $step::$label), 'visit' => (int)$step->runs + 1, 'provider' => $step::PROVIDER, 'model' => trim((string)$step->cfg('model', '')),
 	    'state' => 'running', 'rounds' => [], 'totals' => self::emptyTotals(), 'created_at' => $now, 'started_at' => $now, 'updated_at' => $now ]));
 	return $trace;
@@ -48,7 +48,7 @@ class AgentTracer {
 
     //the visit goes on after an approval: trace $id, or a new one when it is gone (the retention)
     public static function resume($step, $id) {
-	$doc = \models\AgentTrace::read($id, $step->exec->aid);
+	$doc = \models\agent\AgentTrace::read($id, $step->exec->aid);
 	if (!$doc)
 	    return self::begin($step);
 	$trace = new self($step, $doc['_id']);
@@ -207,7 +207,7 @@ class AgentTracer {
     }
 
     private function save(array $set) {
-	$this->attempt(fn() => \models\AgentTrace::coll()->updateOne([ '_id' => $this->id ], [ '$set' => $set + [ 'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]));
+	$this->attempt(fn() => \models\agent\AgentTrace::coll()->updateOne([ '_id' => $this->id ], [ '$set' => $set + [ 'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]));
     }
 
     //a write; a failure logged once, never passed on

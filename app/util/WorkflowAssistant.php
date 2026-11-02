@@ -18,7 +18,7 @@
 //CLD: 2026-10-19T16:05:12+03:00: + an OpenAI-compatible model (OpenAI, or a local server: Lemonade, Ollama, vLLM, ...), with an OpenAI API credential of the project
 //(models\credential\CredentialOpenAI): POST <base URL>/chat/completions, tools as functions, results as `tool` messages (as models\node\NodeAppOpenAI); the model from the
 //account settings (assistant_openai_model), else the first one the server lists. The provider follows the credential; the loop is the same (turnAnthropic / turnOpenAI)
-//CLD: 2026-10-20T10:00:00+03:00: only the Assistant's settings (models\AssistantSettings: provider, url, api_key, model, effort; credentialOf) are used, no longer a credential
+//CLD: 2026-10-20T10:00:00+03:00: only the Assistant's settings (models\assistant\AssistantSettings: provider, url, api_key, model, effort; credentialOf) are used, no longer a credential
 //of the workflow's project; models(): the models of the settings' server (the settings page's Connect)
 //CLD: 2026-10-22T14:00:00+03:00: bring your own key: the settings' provider (System: the installation's server, AssistantSettings::system; Claude, OpenAI, Gemini, Ollama, Lemonade) is
 //resolved to its server (resolve) and spoken to with its protocol (data\AiProviders: anthropic | openai). The cost of each turn is counted (AssistantSettings::pricesOf);
@@ -28,7 +28,7 @@
 //CLD: 2026-10-26T23:49:50+02:00: moved to the core (was the Assistant plugin's); its System provider only while the SystemAI plugin is enabled
 namespace util;
 
-use models\AssistantSettings;
+use models\assistant\AssistantSettings;
 
 class WorkflowAssistant {
     const MAX_TOKENS = 32000;
@@ -84,7 +84,7 @@ class WorkflowAssistant {
     //CLD: 2026-10-19T16:05:12+03:00: + $path (/v1/messages, /chat/completions, /models), GET
     public $transport = null;
 
-    //CLD: 2026-10-19T20:40:00+03:00: + $settings: the Assistant's settings (models\AssistantSettings, or an object with the same fields); default: those of the workflow's account (were
+    //CLD: 2026-10-19T20:40:00+03:00: + $settings: the Assistant's settings (models\assistant\AssistantSettings, or an object with the same fields); default: those of the workflow's account (were
     //the account's assistant_* fields)
     //CLD: 2026-10-20T10:00:00+03:00: no $cred: the server and its key are the settings' (credentialOf); the provider is the settings' (was the credential's)
     public function __construct($wf, $project, $settings = null) {
@@ -175,7 +175,7 @@ class WorkflowAssistant {
     }
 
     //CLD: 2026-10-19T16:24:37+03:00: the provider account $account chose (a missing or unknown value: the default)
-    //CLD: 2026-10-19T20:40:00+03:00: of the Assistant's settings $settings (models\AssistantSettings: provider; was the account's field)
+    //CLD: 2026-10-19T20:40:00+03:00: of the Assistant's settings $settings (models\assistant\AssistantSettings: provider; was the account's field)
     public static function providerOf($settings) {
 	$p = (string)($settings->provider ?? '');
 	return array_key_exists($p, AssistantSettings::providers()) ? $p : AssistantSettings::DEFAULT_PROVIDER;

@@ -94,18 +94,18 @@ class SysObjects {
 		'class' => 'models\Workflow',
 	    ],
 	    'WfNode' => [
-		'class' => 'models\WfNode',
+		'class' => 'models\wf\WfNode',
 	    ],
 	    'WfEdge' => [
-		'class' => 'models\WfEdge',
+		'class' => 'models\wf\WfEdge',
 	    ],
 	    'WfExecution' => [
-		'class' => 'models\WfExecution',
+		'class' => 'models\wf\WfExecution',
 		'auditLog' => false,
 	    ],
 	    //CLD: 2026-10-11T13:51:42+03:00: published versions of workflows
 	    'WfVersion' => [
-		'class' => 'models\WfVersion',
+		'class' => 'models\wf\WfVersion',
 		'auditLog' => false,
 	    ],
 	    'AuditLog' => [
@@ -130,28 +130,28 @@ class SysObjects {
 	    ],
 	    //CLD: 2026-10-30T15:00:00+02:00: ExecutionSlot removed (sync executions: every execution runs in the daemon)
 	    'DataTableDef' => [
-		'class' => 'models\DataTableDef',
+		'class' => 'models\datatable\DataTableDef',
 	    ],
 	    //CLD: 2026-10-30T17:18:20+02:00: the saved views of a data table (named filters)
 	    'DataTableView' => [
-		'class' => 'models\DataTableView',
+		'class' => 'models\datatable\DataTableView',
 	    ],
 	    //CLD: 2026-10-30T23:30:00+02:00: the knowledge bases (documents cut into chunks, searched by meaning and by words: the Knowledge base step, the AI steps' tool); their documents and
 	    //chunks are written in bulk, not in the audit log
 	    'KnowledgeBase' => [
-		'class' => 'models\KnowledgeBase',
+		'class' => 'models\kb\KnowledgeBase',
 	    ],
 	    'KbDocument' => [
-		'class' => 'models\KbDocument',
+		'class' => 'models\kb\KbDocument',
 		'auditLog' => false,
 	    ],
 	    'KbChunk' => [
-		'class' => 'models\KbChunk',
+		'class' => 'models\kb\KbChunk',
 		'auditLog' => false,
 	    ],
 	    //CLD: 2026-10-31T01:00:00+02:00: the account's embedding model (the knowledge bases': Settings, Knowledge bases)
 	    'EmbeddingSettings' => [
-		'class' => 'models\EmbeddingSettings',
+		'class' => 'models\kb\EmbeddingSettings',
 	    ],
 	    //CLD: 2026-10-20T23:40:00+03:00: McpToken (access tokens of the project's MCP server) is registered by the SysMCPTools plugin
 	    //CLD: 2026-10-26T23:56:07+02:00: core again (the project's MCP server, controllers\McpController; same object name: stored tokens, audit entries and roles keep working)
@@ -818,40 +818,40 @@ class SysObjects {
 	    ],
 	    //CLD: 2026-10-26T23:49:50+02:00: the designer's Assistant, core (were registered by the Assistant plugin): the account's settings, its spending per month, the conversation of each workflow
 	    'AssistantSettings' => [
-		'class' => 'models\AssistantSettings',
+		'class' => 'models\assistant\AssistantSettings',
 	    ],
 	    'AssistantUsage' => [
-		'class' => 'models\AssistantUsage',
+		'class' => 'models\assistant\AssistantUsage',
 	    ],
 	    //CLD: 2026-11-02T10:00:00+02:00: what an account's agents may do (Account settings > AI), what its AI steps spent this month (own keys)
 	    'AgentPolicy' => [
-		'class' => 'models\AgentPolicy',
+		'class' => 'models\agent\AgentPolicy',
 		'name' => 'AI policy',
 	    ],
 	    'AgentUsage' => [
-		'class' => 'models\AgentUsage',
+		'class' => 'models\agent\AgentUsage',
 	    ],
 	    //CLD: 2026-11-02T14:00:00+02:00: the traces of the AI steps' visits (the Executions panel)
 	    'AgentTrace' => [
-		'class' => 'models\AgentTrace',
+		'class' => 'models\agent\AgentTrace',
 		'auditLog' => false,
 	    ],
 	    //CLD: 2026-11-02T15:46:06+02:00: a workflow's test cases and test runs (util\AgentEval); the audit log has named actions for them (EvalController): a case's inputs are large
 	    'WfTestCase' => [
-		'class' => 'models\WfTestCase',
+		'class' => 'models\wf\WfTestCase',
 		'auditLog' => false,
 	    ],
 	    'WfTestRun' => [
-		'class' => 'models\WfTestRun',
+		'class' => 'models\wf\WfTestRun',
 		'auditLog' => false,
 	    ],
 	    //CLD: 2026-11-02T18:00:00+02:00: the conversations with agents, their messages
 	    'AgentConversation' => [
-		'class' => 'models\AgentConversation',
+		'class' => 'models\agent\AgentConversation',
 		'auditLog' => false,
 	    ],
 	    'AgentMessage' => [
-		'class' => 'models\AgentMessage',
+		'class' => 'models\agent\AgentMessage',
 		'auditLog' => false,
 	    ],
 	    //CLD: 2026-11-01T11:55:18+02:00: the tool servers (util\ToolServers): the servers an account may use, the sessions open (were registered by the LocalMCP plugin)
@@ -871,7 +871,7 @@ class SysObjects {
 	    ],
 	    //not in the audit log: deleting a workflow would copy its conversation there (SOC2.md gap 11); the workflow's deletion is recorded
 	    'AssistantChat' => [
-		'class' => 'models\AssistantChat',
+		'class' => 'models\assistant\AssistantChat',
 		'auditLog' => false,
 	    ],
 	    //CLD: 2026-10-17T13:24:18+03:00: the IMAP trigger's check state and the Human task's tasks (were registered by the BaseNodes plugin); the check state is not in the audit log
@@ -885,7 +885,7 @@ class SysObjects {
 		'auditLog' => false,
 	    ],
 	    'WfTask' => [
-		'class' => 'models\WfTask',
+		'class' => 'models\wf\WfTask',
 	    ],
 	    //the LDAP sign-in: an account's settings, the users who are LDAP users
 	    'LdapSettings' => [
@@ -896,17 +896,17 @@ class SysObjects {
 	    ],
 	    //the SAML single sign-on: an account's settings, the users who are SSO users, the requests waiting for their response, the assertions used (not in the audit log)
 	    'SamlSettings' => [
-		'class' => 'models\SamlSettings',
+		'class' => 'models\saml\SamlSettings',
 	    ],
 	    'SamlLink' => [
-		'class' => 'models\SamlLink',
+		'class' => 'models\saml\SamlLink',
 	    ],
 	    'SamlRequest' => [
-		'class' => 'models\SamlRequest',
+		'class' => 'models\saml\SamlRequest',
 		'auditLog' => false,
 	    ],
 	    'SamlReplay' => [
-		'class' => 'models\SamlReplay',
+		'class' => 'models\saml\SamlReplay',
 		'auditLog' => false,
 	    ],
 

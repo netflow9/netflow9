@@ -13,7 +13,7 @@
 
 namespace models\node;
 
-class NodeAppHttp extends \models\WfNode {
+class NodeAppHttp extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $name = 'http';

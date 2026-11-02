@@ -1,7 +1,7 @@
 <?php
 //CLD: 2026-10-31T01:00:00+02:00: new: a knowledge base's settings in a dialog (KnowledgeController::create / update): name, description, chunk size, overlap; the embedding model is the
 //account's (shown, not chosen here)
-use models\KnowledgeBase;
+use models\kb\KnowledgeBase;
 
 if ($kb->exists()) {
     $t_ok = 'Save';

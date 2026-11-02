@@ -2,7 +2,7 @@
 
 /*
     CLD: 2026-11-02T18:00:00+02:00: new: where an agent's answers go when the conversation is not on a chat page: an email (threaded: In-Reply-To, References, its address to reply to) or a Teams chat.
-    The chat pages read the messages themselves (models\AgentConversation).
+    The chat pages read the messages themselves (models\agent\AgentConversation).
     AgentChannels::$sink: the check suite takes what would be sent (fn(kind, data) => what the call answers), so nothing leaves and no job reaches a running daemon
 */
 
@@ -58,7 +58,7 @@ class AgentChannels {
 	    (self::$sink)('email', $data);
 	else
 	    \models\Job::submit('\util\EmailSend::deliver', $data, [ 'aid' => $exec->aid, 'project' => $exec->project, 'delete_on_done' => true ]);
-	\models\AgentConversation::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$push' => [ 'refs' => [ '$each' => [ $id ], '$slice' => -\models\AgentConversation::MAX_REFS ] ] ]);
+	\models\agent\AgentConversation::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$push' => [ 'refs' => [ '$each' => [ $id ], '$slice' => -\models\agent\AgentConversation::MAX_REFS ] ] ]);
     }
 
     //the reply in the Teams chat of the conversation, through the trigger's Teams credential

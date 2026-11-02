@@ -32,7 +32,7 @@ class Scheduler {
 		continue;
 	    foreach(self::scheduleNodes($versionNodes[(string)$wf['version']] ?? [], $types) as $node) {
 		$cfg = is_array($node['config'] ?? null) ? $node['config'] : [];
-		if (!\models\WfSchedule::matches($cfg, $t))
+		if (!\models\wf\WfSchedule::matches($cfg, $t))
 		    continue;
 
 		//CLD: 2026-10-09T12:07:59+03:00: models\Job (was models\Event)
@@ -107,7 +107,7 @@ class Scheduler {
     //CLD: 2026-10-08T22:57:28+03:00: scheduled step types: [ fqname => class ]
     public static function scheduledTypes() {
 	$types = [];
-	foreach(\models\WfNode::getAll() as $fqname => $def) {
+	foreach(\models\wf\WfNode::getAll() as $fqname => $def) {
 	    if (!empty($def['scheduled']))
 		$types[$fqname] = \V::app()->om->getObjectClass($def['objectName']);
 	}

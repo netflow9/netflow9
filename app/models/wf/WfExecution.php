@@ -1,6 +1,6 @@
 <?php
 
-namespace models;
+namespace models\wf;
 
 /*
     past the trigger and beforeSave dropped the edges), node receive()/execute() contract (see WfNode),
@@ -16,7 +16,7 @@ class WfExecution extends \sys\BaseModel {
 	[ [ 'state' => 1, 'wake_at' => 1 ], [] ],
 	//CLD: 2026-10-30T19:00:00+02:00: the workflows a run started and waits for (Run a workflow; kill cancels them)
 	[ [ 'input.caller.execution' => 1 ], [ 'sparse' => true ] ],
-	//CLD: 2026-11-02T18:00:00+02:00: the runs of the conversations with agents, past the retention (models\AgentConversation::prune)
+	//CLD: 2026-11-02T18:00:00+02:00: the runs of the conversations with agents, past the retention (models\agent\AgentConversation::prune)
 	[ [ 'aid' => 1, 'input.conversation' => 1, 'end_at' => 1 ], [ 'sparse' => true ] ],
     ];
 
@@ -51,7 +51,7 @@ class WfExecution extends \sys\BaseModel {
 
 	//CLD: 2026-10-18T11:40:00+03:00: the step classes only (WfNode::nodeClasses; was WfNode::getAll(): every step's definition and config form, rebuilt for each execution loaded,
 	//e.g. ~2 s for the Overview's executions)
-	$nodeClasses = \models\WfNode::nodeClasses();
+	$nodeClasses = \models\wf\WfNode::nodeClasses();
 
 	if (!is_array($this->tokens))
 	    $this->tokens = [];
@@ -118,7 +118,7 @@ class WfExecution extends \sys\BaseModel {
     //CLD: 2026-11-02T14:00:00+02:00: new: its AI steps' traces go with it (every way of deleting an execution comes here)
     public function beforeDelete() {
 	parent::beforeDelete();
-	\models\AgentTrace::dropFor($this);
+	\models\agent\AgentTrace::dropFor($this);
     }
 
     //CLD: 2026-11-02T14:00:00+02:00: new: a new execution (not saved) of workflow $wf's draft with the inputs of this finished one: the same trigger, input and first variables, so a change of the steps (e.g. a prompt)
@@ -145,7 +145,7 @@ class WfExecution extends \sys\BaseModel {
 
     //CLD: 2026-11-02T14:00:00+02:00: new: the trigger step among $nodes (as stored: elements with wfid, fqname); null: none
     private static function triggerOf(array $nodes) {
-	$classes = \models\WfNode::nodeClasses();
+	$classes = \models\wf\WfNode::nodeClasses();
 	foreach($nodes as $n) {
 	    $name = $classes[$n['fqname'] ?? ''] ?? null;
 	    if (!empty($n['isNode']) && $name && \V::app()->om->getObjectClass($name)::$type === 'trigger')
@@ -227,7 +227,7 @@ class WfExecution extends \sys\BaseModel {
 		'label' => 'Run again of',
 		'help' => false,
 	    ],
-	    //CLD: 2026-11-02T15:46:06+02:00: the test run it belongs to (models\WfTestRun): not listed with the workflow's executions
+	    //CLD: 2026-11-02T15:46:06+02:00: the test run it belongs to (models\wf\WfTestRun): not listed with the workflow's executions
 	    [
 		'key' => 'test_run',
 		'type' => 'text',
@@ -418,7 +418,7 @@ class WfExecution extends \sys\BaseModel {
 	    //CLD: 2026-10-30T19:00:00+02:00: ended or failed: the workflow waiting for it (Run a workflow) is resumed
 	    if (in_array($this->state, [ 'end', 'error' ], true)) {
 		$this->notifyCaller();
-		//CLD: 2026-11-02T18:00:00+02:00: + the hook of a run that stopped however it ended (models\AgentConversation::afterRun)
+		//CLD: 2026-11-02T18:00:00+02:00: + the hook of a run that stopped however it ended (models\agent\AgentConversation::afterRun)
 		\V::app()->hooks->applyHook('execution:stopped', [ $this ]);
 	    }
 	} finally {
@@ -457,7 +457,7 @@ class WfExecution extends \sys\BaseModel {
 	\V::app()->om->updateMany('WfTask', [ 'aid' => $this->aid, 'execution' => $this->_id, 'state' => 'open' ], [ '$set' => [ 'state' => 'cancelled' ] ]);
 	\models\node\NodeAppAi::dropSaved($this);
 	//CLD: 2026-11-02T14:00:00+02:00: its traces end
-	\models\AgentTrace::stopOpen($this);
+	\models\agent\AgentTrace::stopOpen($this);
 
 	//CLD: 2026-10-30T19:00:00+02:00: the workflows it waits for (Run a workflow) are cancelled too; the workflow waiting for it is resumed (its step: cancelled)
 	foreach(\V::app()->om->find('WfExecution', [ 'aid' => $this->aid, 'input.caller.execution' => (string)$this->_id, 'input.caller.wait' => true,

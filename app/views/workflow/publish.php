@@ -19,7 +19,7 @@ if ($gate['cases'] > 0 || $gate['required']) {
 	'kind' => $gate['ok'] ? 'success' : ($blocked ? 'danger' : 'warning'),
 	'icon' => $gate['ok'] ? 'check-circle' : 'exclamation-triangle',
 	'message' => \V::app()->html->escape($gate['message']),
-	'counts' => $gate['latest'] && !in_array($testState, \models\WfTestRun::ACTIVE, true) ? \V::app()->html->escape(' (' . (int)($testTotals['passed'] ?? 0) . ' of ' . (int)($testTotals['cases'] ?? 0) . ' passed, ' . (\util\Format::datetime($gate['latest']['ended_at'] ?? null) ?: '') . ')') : '',
+	'counts' => $gate['latest'] && !in_array($testState, \models\wf\WfTestRun::ACTIVE, true) ? \V::app()->html->escape(' (' . (int)($testTotals['passed'] ?? 0) . ' of ' . (int)($testTotals['cases'] ?? 0) . ' passed, ' . (\util\Format::datetime($gate['latest']['ended_at'] ?? null) ?: '') . ')') : '',
 	'why' => $blocked ? '. Tests must pass to publish: run them in the Tests panel.' : ($gate['required'] && !$gate['ok'] ? '. Tests must pass only for a new version of the draft: this is not one.' : ''),
     ]);
 }

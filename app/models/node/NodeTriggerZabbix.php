@@ -2,7 +2,7 @@
 
 /*
     CLD: 2026-11-01T14:00:00+02:00: new trigger: Zabbix problem - starts the workflow when Zabbix reports a new problem of a severity and worse, of hosts / host groups, with tags;
-    optionally also when one is resolved. It checks the server on its schedule (models\WfSchedule, every 2 minutes by default; util\Scheduler runs runScheduled): every current
+    optionally also when one is resolved. It checks the server on its schedule (models\wf\WfSchedule, every 2 minutes by default; util\Scheduler runs runScheduled): every current
     problem is read (acknowledged and suppressed ones too, so they are not taken as resolved) and compared with the last check's (models\TriggerState: eventid => { severity,
     fired, quiet }): a problem starts a run when it is new or its severity changed, unless it is acknowledged or suppressed and those are left out; a problem that started a run
     and is gone starts a `recovery` run when chosen. The first check only notes the current problems. The variable: the problem (NodeAppZbxProblems::problem + event: problem |
@@ -11,7 +11,7 @@
 
 namespace models\node;
 
-class NodeTriggerZabbix extends \models\WfNode {
+class NodeTriggerZabbix extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'trigger';
     public static $name = 'zabbix';
@@ -116,16 +116,16 @@ class NodeTriggerZabbix extends \models\WfNode {
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
-	], \models\WfSchedule::schema([ 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]));
+	], \models\wf\WfSchedule::schema([ 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]));
     }
 
     public static function matches(array $cfg, \DateTimeInterface $t) {
-	return \models\WfSchedule::matches($cfg, $t);
+	return \models\wf\WfSchedule::matches($cfg, $t);
     }
 
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$error = \models\WfSchedule::validate(is_array($this->config) ? $this->config : []);
+	$error = \models\wf\WfSchedule::validate(is_array($this->config) ? $this->config : []);
 	if ($error !== null) {
 	    $this->errors('config', $error);
 	    $valid = false;
@@ -233,7 +233,7 @@ class NodeTriggerZabbix extends \models\WfNode {
 	$values = !$events ? [] : (($cfg['runs'] ?? 'each') === 'batch' ? [ [ 'problems' => $events, 'count' => count($events) ] ] : $events);
 	$started = [];
 	foreach($values as $v) {
-	    $exe = \models\WfExecution::startFor($wf, 'zabbix', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $v ] ], $node['wfid']);
+	    $exe = \models\wf\WfExecution::startFor($wf, 'zabbix', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $v ] ], $node['wfid']);
 	    $exe->log($node['wfid'], isset($v['problems']) ? 'Zabbix: ' . \util\Format::plural($v['count'], 'event')
 		: "Zabbix {$v['event']}: {$v['host']}: {$v['name']} ({$v['severityText']})");
 	    $exe->queue();
@@ -254,7 +254,7 @@ class NodeTriggerZabbix extends \models\WfNode {
 	    return [ 'executions' => [], 'message' => 'Zabbix problem: no current problem matches' ];
 	$p = [ 'event' => 'problem' ] + $problems[0];
 	$name = \util\Validator::isIdentifier((string)($cfg['variable'] ?? '')) ? (string)$cfg['variable'] : 'zbx';
-	$exe = \models\WfExecution::startFor($wf, 'zabbix', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => ($cfg['runs'] ?? 'each') === 'batch' ? [ 'problems' => [ $p ], 'count' => 1 ] : $p ] ], (string)$node['wfid']);
+	$exe = \models\wf\WfExecution::startFor($wf, 'zabbix', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => ($cfg['runs'] ?? 'each') === 'batch' ? [ 'problems' => [ $p ], 'count' => 1 ] : $p ] ], (string)$node['wfid']);
 	$exe->save();
 	return [ 'executions' => [ $exe ], 'message' => "Run with a current problem: {$p['host']}: {$p['name']} ({$p['severityText']})" ];
     }

@@ -11,7 +11,7 @@
 
 namespace models\node;
 
-class NodeTriggerGravityZone extends \models\WfNode {
+class NodeTriggerGravityZone extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'trigger';
     public static $name = 'gravityzone';

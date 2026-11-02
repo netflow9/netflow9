@@ -116,7 +116,7 @@ class DemoCommand extends \sys\BaseController {
 
 	//the AI settings of another account of this server
 	if ($aiFrom !== '') {
-	    foreach([ \models\AssistantSettings::class, \models\EmbeddingSettings::class ] as $class) {
+	    foreach([ \models\assistant\AssistantSettings::class, \models\kb\EmbeddingSettings::class ] as $class) {
 		$coll = $db->selectCollection($class::_collection());
 		$src = $coll->findOne([ 'aid' => new ObjectId($aiFrom) ], [ 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ]);
 		if ($src) {
@@ -155,7 +155,7 @@ class DemoCommand extends \sys\BaseController {
 		'nodes' => $wf->nodes, 'note' => $note, 'from_number' => null, 'published_by' => $u['maria']->_id ]);
 	    if (!$version->validates() || !$version->save())
 		$this->fail('version: ' . json_encode($version->errors()));
-	    $db->selectCollection(\models\WfVersion::_collection())->updateOne([ '_id' => $version->_id ], [ '$set' => [ 'created_at' => self::daysAgo($days, 16, 20) ] ]);
+	    $db->selectCollection(\models\wf\WfVersion::_collection())->updateOne([ '_id' => $version->_id ], [ '$set' => [ 'created_at' => self::daysAgo($days, 16, 20) ] ]);
 	    $wf = $om->findById('Workflow', (string)$wf->_id);
 	}
 	$wf->version = $version->_id;
@@ -166,7 +166,7 @@ class DemoCommand extends \sys\BaseController {
 	//the runs, as FormController starts them, run here; Maria's decisions as TaskController records them, the run then run again
 	foreach(self::RUNS as [ $who, $amount, $category, $reason, $decision, $comment, $hours ]) {
 	    $person = [ 'id' => (string)$u[$who]->_id, 'name' => $names[$who], 'email' => (string)$u[$who]->email ];
-	    $exe = \models\WfExecution::startFor($wf->forVersion($version), 'form', [ 'form' => $token, 'user' => $person['id'], 'received_at' => new UTCDateTime(),
+	    $exe = \models\wf\WfExecution::startFor($wf->forVersion($version), 'form', [ 'form' => $token, 'user' => $person['id'], 'received_at' => new UTCDateTime(),
 		'vars' => [ 'form' => [ 'amount' => $amount, 'category' => $category, 'reason' => $reason ], 'form_user' => $person ] ], 'form');
 	    $exe->log('form', 'form sent by ' . $person['name']);
 	    $exe->save();
@@ -198,7 +198,7 @@ class DemoCommand extends \sys\BaseController {
 
 	//the knowledge base, with an embedding model
 	$kbLine = 'no knowledge base (no embedding model: --ai-from)';
-	$settings = \models\EmbeddingSettings::of($account->_id);
+	$settings = \models\kb\EmbeddingSettings::of($account->_id);
 	if ($settings->ready())
 	    $kbLine = $this->knowledgeBase($account, $project, $settings);
 
@@ -328,7 +328,7 @@ class DemoCommand extends \sys\BaseController {
 	    return $v;
 	};
 	$rowId = null;
-	foreach([ \models\WfExecution::_collection() => [ '_id' => $exe->_id ], \models\WfTask::_collection() => [ 'execution' => $exe->_id ] ] as $c => $q) {
+	foreach([ \models\wf\WfExecution::_collection() => [ '_id' => $exe->_id ], \models\wf\WfTask::_collection() => [ 'execution' => $exe->_id ] ] as $c => $q) {
 	    $coll = $db->selectCollection($c);
 	    foreach($coll->find($q, $map) as $doc) {
 		$coll->replaceOne([ '_id' => $doc['_id'] ], $shift($doc));
@@ -352,13 +352,13 @@ class DemoCommand extends \sys\BaseController {
 	    'description' => 'The travel and expense rules every request is checked against', 'model' => trim((string)$settings->model), 'chunkSize' => 600, 'overlap' => 100 ]);
 	if (!$kb->validates() || !$kb->save())
 	    return 'knowledge base not made: ' . json_encode($kb->errors());
-	$docs = \models\KnowledgeBase::documentCollection();
+	$docs = \models\kb\KnowledgeBase::documentCollection();
 	foreach(self::POLICY as $title => $text) {
-	    $s = \models\KnowledgeBase::textSource($title, $title . "\n\n" . $text, '');
+	    $s = \models\kb\KnowledgeBase::textSource($title, $title . "\n\n" . $text, '');
 	    $now = new UTCDateTime();
 	    $docs->insertOne([ 'aid' => $kb->aid, 'kb' => $kb->_id, 'key' => $s['key'], 'title' => $s['title'], 'source' => 'text', 'file' => null, 'url' => null,
 		'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'created_at' => $now, 'updated_at' => $now ]);
-	    \models\KnowledgeBase::indexJob([ 'aid' => (string)$kb->aid, 'project' => (string)$kb->project, 'kb' => (string)$kb->_id, 'key' => $s['key'],
+	    \models\kb\KnowledgeBase::indexJob([ 'aid' => (string)$kb->aid, 'project' => (string)$kb->project, 'kb' => (string)$kb->_id, 'key' => $s['key'],
 		'src' => [ 'type' => 'text', 'title' => $s['title'], 'text' => $s['text'], 'key' => $s['key'] ] ]);
 	}
 	$kb = \V::app()->om->findById('KnowledgeBase', (string)$kb->_id);

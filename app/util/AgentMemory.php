@@ -96,7 +96,7 @@ class AgentMemory {
 		'type' => 'select',
 		'label' => 'Knowledge base',
 		'default' => '',
-		'choices' => \models\KnowledgeBase::namesFor($aid, $project),
+		'choices' => \models\kb\KnowledgeBase::namesFor($aid, $project),
 		'ui' => $mem + [ 'width' => 4, 'showIf' => [ 'key' => 'memoryStore', 'operator' => 'eq', 'value' => 'knowledge' ] ],
 	    ],
 	    [
@@ -137,10 +137,10 @@ class AgentMemory {
 		    if (!isset($columns[$c]))
 			$errors[] = "Long-term memory: the table `{$table->name}` needs a text column `{$c}`";
 	    }
-	} elseif ((string)$step->cfg('memoryKb', '') === '' || !\models\KnowledgeBase::named((string)$step->cfg('memoryKb'), $wf->aid, $wf->project)) {
+	} elseif ((string)$step->cfg('memoryKb', '') === '' || !\models\kb\KnowledgeBase::named((string)$step->cfg('memoryKb'), $wf->aid, $wf->project)) {
 	    $errors[] = 'Long-term memory: choose a knowledge base of this project';
 	}
-	if (!\models\AgentPolicy::ofAccount($wf->aid)->writeAllowed(self::REMEMBER, 'memory'))
+	if (!\models\agent\AgentPolicy::ofAccount($wf->aid)->writeAllowed(self::REMEMBER, 'memory'))
 	    $errors[] = 'Long-term memory: agents may not use `remember` (it changes something), by the account\'s AI policy';
 	return $errors;
     }
@@ -151,7 +151,7 @@ class AgentMemory {
 	$scope = (string)$ai->cfg('memoryScope', 'user');
 	if ($scope === 'agent')
 	    return '';
-	$at = \models\AgentConversation::ofExecution($exec);
+	$at = \models\agent\AgentConversation::ofExecution($exec);
 	$conv = $at ? (string)$at[0]['_id'] : 'run-' . (string)($exec->_id ?? '');
 	if ($scope === 'conversation')
 	    return 'c:' . $conv;
@@ -166,7 +166,7 @@ class AgentMemory {
 	if ($store === '')
 	    return [];
 	$scope = self::scopeKey($ai);
-	$at = \models\AgentConversation::ofExecution($ai->exec);
+	$at = \models\agent\AgentConversation::ofExecution($ai->exec);
 	$conv = $at ? (string)$at[0]['_id'] : '';
 	if ($store === 'table') {
 	    $table = \models\node\NodeAppTable::findTable((string)$ai->cfg('memoryTable', ''), $project->aid, $project->_id);
@@ -176,7 +176,7 @@ class AgentMemory {
 	    $save = fn($fact) => self::saveRow($table, $fact, $scope, $conv, $ai);
 	    $find = fn($query, $limit) => self::findRows($table, $query, $limit, $scope);
 	} else {
-	    $kb = \models\KnowledgeBase::named((string)$ai->cfg('memoryKb', ''), $project->aid, $project->_id);
+	    $kb = \models\kb\KnowledgeBase::named((string)$ai->cfg('memoryKb', ''), $project->aid, $project->_id);
 	    if (!$kb)
 		throw new \ErrorException('the knowledge base of Long-term memory is no longer in the project');
 	    $on = "knowledge base {$kb->name}";
@@ -240,7 +240,7 @@ class AgentMemory {
 	if (isset($columns['source']))
 	    $values['source'] = (string)($ai->workflow->name ?? $ai->exec->wf ?? '');
 	$row = \V::app()->om->create($table->iname, [ 'aid' => $table->aid ]);
-	\models\DataTableDef::assignRow($row, $values);
+	\models\datatable\DataTableDef::assignRow($row, $values);
 	Tiers::check($table->aid, 'datatable_records', 1, $table->iname);
 	$row->save();
 	return (string)$row->_id;

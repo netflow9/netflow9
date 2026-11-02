@@ -110,7 +110,7 @@ $dd_items = implode('', $dd_items);
 			'/agent/list',
 			[ 'class' => 'nav-link ps-2', 'escape' => false ]
 		    );
-		    $openTasks = count(\models\WfTask::openFor(\V::app()->user, $crtProject->aid, null));
+		    $openTasks = count(\models\wf\WfTask::openFor(\V::app()->user, $crtProject->aid, null));
 		    echo \V::app()->html->link(
 			\util\VString::insert('<i class="bi bi-person-check"></i> My tasks{:badge}', [
 			    'badge' => $openTasks ? \util\VString::insert(' <span class="badge rounded-pill text-bg-primary ms-1">{:n}</span>', [ 'n' => $openTasks ]) : '',

@@ -80,13 +80,13 @@ class HookController extends \sys\APIController {
 	//429 when the account's were all running)
 	$respWhenFinished = ($cfg['respond'] ?? 'received') === 'finished';
 
-	$exe = \models\WfExecution::startFor($live, 'webhook', $input, $hook->node);
+	$exe = \models\wf\WfExecution::startFor($live, 'webhook', $input, $hook->node);
 	$exe->log($hook->node, "webhook {$method} received");
 	$exe->queue();
 
 	if ($respWhenFinished) {
 	    //CLD: 2026-10-26T09:58:28+02:00: still running: the daemon finishes it, no result to answer with
-	    if ($exe->waitFor(\models\WfExecution::WAIT_RESULT) === 'queued')
+	    if ($exe->waitFor(\models\wf\WfExecution::WAIT_RESULT) === 'queued')
 		$resp->sendJSON([ 'execution' => (string)$exe->_id, 'state' => 'queued' ], true, 202);
 	    $answer = [ 'execution' => (string)$exe->_id, 'state' => $exe->state ];
 	    if ($exe->state == 'error')

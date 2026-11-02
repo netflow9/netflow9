@@ -14,7 +14,7 @@
 */
 namespace models\node;
 
-class NodeAppReadEmail extends \models\WfNode {
+class NodeAppReadEmail extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $name = 'read-email';

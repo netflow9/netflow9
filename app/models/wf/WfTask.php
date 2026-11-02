@@ -10,7 +10,7 @@
     arguments } ]); state `cancelled`: its run was killed (WfExecution::kill)
 */
 
-namespace models;
+namespace models\wf;
 
 class WfTask extends \sys\BaseModel {
     protected static $collection = 'wf_tasks';

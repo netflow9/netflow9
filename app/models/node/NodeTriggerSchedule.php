@@ -2,7 +2,7 @@
 
 namespace models\node;
 
-class NodeTriggerSchedule extends \models\WfNode {
+class NodeTriggerSchedule extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'trigger';
     public static $name = 'schedule';
@@ -14,21 +14,21 @@ class NodeTriggerSchedule extends \models\WfNode {
 
     public static $scheduled = true;
 
-    //CLD: 2026-10-08T22:57:28+03:00: the schedule fields, matching and checks moved to models\WfSchedule (shared with the other scheduled steps, e.g. the Email
+    //CLD: 2026-10-08T22:57:28+03:00: the schedule fields, matching and checks moved to models\wf\WfSchedule (shared with the other scheduled steps, e.g. the Email
     //(IMAP) trigger); this step has nothing else
     //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfSchedule::schema; was fields())
     public static function configSchema() {
-	return \models\WfSchedule::schema();
+	return \models\wf\WfSchedule::schema();
     }
 
     public static function matches(array $cfg, \DateTimeInterface $t) {
-	return \models\WfSchedule::matches($cfg, $t);
+	return \models\wf\WfSchedule::matches($cfg, $t);
     }
 
     //CLD: 2026-10-09T08:10:30+03:00: the config is checked by its schema's rules (parent::validates); here only the weekdays (a list)
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$error = \models\WfSchedule::validate(is_array($this->config) ? $this->config : []);
+	$error = \models\wf\WfSchedule::validate(is_array($this->config) ? $this->config : []);
 	if ($error !== null) {
 	    $this->errors('config', $error);
 	    $valid = false;
@@ -51,7 +51,7 @@ class NodeTriggerSchedule extends \models\WfNode {
 	if (array_filter($wf->validateFlow(), fn($i) => $i['level'] == 'error'))
 	    throw new \Exception("workflow `{$wf->name}` has errors and cannot run");
 
-	$exe = \models\WfExecution::startFor($wf, 'schedule', [
+	$exe = \models\wf\WfExecution::startFor($wf, 'schedule', [
 	    'scheduled_at' => (string)$at,
 	    'started_at' => new \MongoDB\BSON\UTCDateTime(),
 	    'vars' => [ 'schedule_time' => (string)$at ],
@@ -67,7 +67,7 @@ class NodeTriggerSchedule extends \models\WfNode {
     //CLD: 2026-10-12T20:33:47+03:00: Run: one execution now, as a scheduled run of the current minute (schedule_time = now; the schedule itself is not changed)
     public static function startNow($wf, array $node) {
 	$at = (new \DateTimeImmutable('now'))->format('Y-m-d\TH:i:00P');
-	$exe = \models\WfExecution::startFor($wf, 'schedule', [
+	$exe = \models\wf\WfExecution::startFor($wf, 'schedule', [
 	    'scheduled_at' => $at,
 	    'started_at' => new \MongoDB\BSON\UTCDateTime(),
 	    'vars' => [ 'schedule_time' => $at ],

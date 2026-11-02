@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T18:00:00+02:00: new step: Reply to chat - the workflow answers in the conversation that started the run (models\AgentConversation), as text or Markdown, with optional buttons: the button chosen
+    CLD: 2026-11-02T18:00:00+02:00: new step: Reply to chat - the workflow answers in the conversation that started the run (models\agent\AgentConversation), as text or Markdown, with optional buttons: the button chosen
 	comes back as the next message (its value). In a chat page it appears at once; in a conversation by email or Teams it is sent there (util\AgentChannels; buttons: a line saying what to answer).
 	A run with no conversation (Run in the designer, a workflow started otherwise) sends nothing: the answer is logged. A Run again sends nothing either: the person has had the answer.
     The variable (default `reply`): { sent, text, message: its number }
@@ -9,7 +9,7 @@
 
 namespace models\node;
 
-class NodeAppChatReply extends \models\WfNode {
+class NodeAppChatReply extends \models\wf\WfNode {
     public static $type = 'app';
     public static $name = 'chatreply';
     public static $label = 'Reply to chat';
@@ -104,14 +104,14 @@ class NodeAppChatReply extends \models\WfNode {
 	try {
 	    if ($text === '')
 		throw new \RuntimeException('the answer is empty');
-	    $where = \models\AgentConversation::ofExecution($this->exec);
+	    $where = \models\agent\AgentConversation::ofExecution($this->exec);
 	    if (!$where || !empty($this->exec->rerun_of)) {
 		$this->exec->log($this->wfid, 'Reply to chat: not sent (' . (!$where ? 'no conversation' : 'a Run again') . '): ' . mb_substr($text, 0, 500));
 		$result = [ 'sent' => false, 'text' => $text, 'message' => null ];
 	    } else {
 		[ $conv ] = $where;
 		\util\AgentChannels::deliver($conv, $this->exec, $text, $format, $buttons);
-		$seq = \models\AgentConversation::reply($conv, $this->exec, $text, $format, $buttons);
+		$seq = \models\agent\AgentConversation::reply($conv, $this->exec, $text, $format, $buttons);
 		$this->exec->log($this->wfid, 'Reply to chat: message ' . $seq . (count($buttons) ? ', ' . count($buttons) . ' button(s)' : ''));
 		$result = [ 'sent' => true, 'text' => $text, 'message' => $seq ];
 	    }

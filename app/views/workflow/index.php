@@ -5,7 +5,7 @@ $this->pageTitle = 'Workflow: ' . (string)$wf;
 //we need to build a list of available nodes for the builder
 //CLD: 2026-10-25T20:00:00+02:00: only their version here (WfNode::designerDefs, which builds them): the designer asks them when this tab does not have that version (nodeDefs below,
 //WorkflowController::node_defs); were in each page (~85 KB, ~250 KB in the pjax answer)
-$nodeDefsVersion = \models\WfNode::designerDefs(\V::app()->config('rt.account'))['version'];
+$nodeDefsVersion = \models\wf\WfNode::designerDefs(\V::app()->config('rt.account'))['version'];
 $nodeDefsUrl = \V::app()->createUrl('/workflow/node_defs');
 //the canvas of this page (mount: not one of a page loaded since, while the definitions were asked); hex only, safe in the script
 $pageToken = bin2hex(random_bytes(6));
@@ -22,7 +22,7 @@ $__canvas_zoom = $__canvas_num('__canvas_zoom');
 $nodeInitUrl = \V::app()->createUrl('/workflow/node_init', [ 'id' => (string)$wf->_id ]);
 $exprUrl = \V::app()->createUrl('/workflow/expression', [ 'id' => (string)$wf->_id ]);
 $runUrl = \V::app()->createUrl('/workflow/start', [ 'id' => (string)$wf->_id ]);
-$runTriggers = \util\JSON::encode(array_keys(array_filter(\models\WfNode::getAll(), fn($d) => $d['type'] === 'trigger' && !empty($d['canRun']))));
+$runTriggers = \util\JSON::encode(array_keys(array_filter(\models\wf\WfNode::getAll(), fn($d) => $d['type'] === 'trigger' && !empty($d['canRun']))));
 $executionsUrl = \V::app()->createUrl('/workflow/executions', [ 'id' => (string)$wf->_id ]);
 $saveUrl = \V::app()->createUrl('/workflow/save', [ 'id' => (string)$wf->_id ]);
 $wfIdJs = (string)$wf->_id;

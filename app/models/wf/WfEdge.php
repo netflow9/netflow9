@@ -1,6 +1,6 @@
 <?php
 
-namespace models;
+namespace models\wf;
 
 //CLD: 2026-10-18T13:30:00+03:00: a sys\NestedModel (was sys\BaseModel): held inside a workflow's `nodes` (with the steps, keyed by wfid), never saved by itself;
 //global (no aid of its own: validates() skips the aid check); its own schema (no nestedSchema option), no system fields

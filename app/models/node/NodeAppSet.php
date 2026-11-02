@@ -2,7 +2,7 @@
 
 namespace models\node;
 
-class NodeAppSet extends \models\WfNode {
+class NodeAppSet extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $name = 'set';

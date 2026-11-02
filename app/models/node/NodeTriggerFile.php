@@ -5,7 +5,7 @@
 //so a workflow cannot start itself again. The run is a daemon job (deliver), the upload is not delayed
 namespace models\node;
 
-class NodeTriggerFile extends \models\WfNode {
+class NodeTriggerFile extends \models\wf\WfNode {
     public static $type = 'trigger';
     public static $name = 'file';
     public static $label = 'File upload';
@@ -139,7 +139,7 @@ class NodeTriggerFile extends \models\WfNode {
 	    'size' => (int)$file->length,
 	    'uploaded_by' => $user ? [ 'id' => (string)$user->_id, 'name' => (string)$user->name, 'email' => (string)$user->email ] : null,
 	];
-	$exe = \models\WfExecution::startFor($live, 'file', [ 'file' => (string)$file->_id, 'user' => $user ? (string)$user->_id : null,
+	$exe = \models\wf\WfExecution::startFor($live, 'file', [ 'file' => (string)$file->_id, 'user' => $user ? (string)$user->_id : null,
 	    'received_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $variable => $value ] ], $node['wfid']);
 	$exe->log($node['wfid'], 'file uploaded: ' . $file->filename . ($user ? ' by ' . $user->name : ''));
 	$exe->save();

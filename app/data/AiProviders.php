@@ -10,7 +10,7 @@
 	embeddings  whether it makes embeddings (the knowledge bases)
 	url         its own API: the AI steps' credentials, the embeddings
 	chat_url    its OpenAI-compatible API, for the Assistant, when that is another address than url
-    Not here: the System AI (it is an installation's server, see models\AssistantSettings::providers)
+    Not here: the System AI (it is an installation's server, see models\assistant\AssistantSettings::providers)
 */
 
 namespace data;

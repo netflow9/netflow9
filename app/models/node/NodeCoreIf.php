@@ -2,7 +2,7 @@
 
 namespace models\node;
 
-class NodeCoreIf extends \models\WfNode {
+class NodeCoreIf extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'core';
     public static $name = 'if';

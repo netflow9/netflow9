@@ -2,7 +2,7 @@
 
 /*
     CLD: 2026-11-01T04:00:00+02:00: new trigger: Veeam event - starts the workflow when job sessions of a Veeam Backup & Replication server end with the results chosen (Failed, Warning,
-    Success), of a job or of every job. Veeam does not call other systems: the step checks the server on its schedule (models\WfSchedule, every 5 minutes by default; util\Scheduler
+    Success), of a job or of every job. Veeam does not call other systems: the step checks the server on its schedule (models\wf\WfSchedule, every 5 minutes by default; util\Scheduler
     runs runScheduled), reading the sessions ended since its last check (GET /api/v1/sessions: endedAfterFilter, stateFilter Stopped, resultFilter, jobIdFilter; oldest first).
     What it has read is kept in models\TriggerState (the last end time, and the sessions already started at that time), locked during a check. Its first check only notes the
     time: sessions that ended before the trigger was published do not start runs. Runs: one per session (the variable: the session, as Veeam gives it) or one per check with
@@ -11,7 +11,7 @@
 
 namespace models\node;
 
-class NodeTriggerVeeam extends \models\WfNode {
+class NodeTriggerVeeam extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'trigger';
     public static $name = 'veeam';
@@ -78,16 +78,16 @@ class NodeTriggerVeeam extends \models\WfNode {
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
-	], \models\WfSchedule::schema([ 'mode' => 'interval', 'every' => 5, 'every_unit' => 'minutes' ]));
+	], \models\wf\WfSchedule::schema([ 'mode' => 'interval', 'every' => 5, 'every_unit' => 'minutes' ]));
     }
 
     public static function matches(array $cfg, \DateTimeInterface $t) {
-	return \models\WfSchedule::matches($cfg, $t);
+	return \models\wf\WfSchedule::matches($cfg, $t);
     }
 
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$error = \models\WfSchedule::validate(is_array($this->config) ? $this->config : []);
+	$error = \models\wf\WfSchedule::validate(is_array($this->config) ? $this->config : []);
 	if ($error !== null) {
 	    $this->errors('config', $error);
 	    $valid = false;
@@ -178,7 +178,7 @@ class NodeTriggerVeeam extends \models\WfNode {
 	$values = !$new ? [] : (($cfg['runs'] ?? 'each') === 'batch' ? [ [ 'sessions' => $new, 'count' => count($new) ] ] : $new);
 	$started = [];
 	foreach($values as $v) {
-	    $exe = \models\WfExecution::startFor($wf, 'veeam', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $v ] ], $node['wfid']);
+	    $exe = \models\wf\WfExecution::startFor($wf, 'veeam', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $v ] ], $node['wfid']);
 	    $exe->log($node['wfid'], isset($v['sessions']) ? 'Veeam: ' . \util\Format::plural($v['count'], 'session') . ' ended' : 'Veeam: ' . NodeAppVeeamSessions::describe($v));
 	    $exe->queue();
 	    $started[] = $exe;
@@ -207,7 +207,7 @@ class NodeTriggerVeeam extends \models\WfNode {
 	    return [ 'executions' => [], 'message' => 'Veeam event: no session ended with these results yet' ];
 	$name = \util\Validator::isIdentifier((string)($cfg['variable'] ?? '')) ? (string)$cfg['variable'] : 'veeam';
 	$value = ($cfg['runs'] ?? 'each') === 'batch' ? [ 'sessions' => [ $session ], 'count' => 1 ] : $session;
-	$exe = \models\WfExecution::startFor($wf, 'veeam', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $value ] ], (string)$node['wfid']);
+	$exe = \models\wf\WfExecution::startFor($wf, 'veeam', [ 'started_at' => new \MongoDB\BSON\UTCDateTime(), 'vars' => [ $name => $value ] ], (string)$node['wfid']);
 	$exe->save();
 	return [ 'executions' => [ $exe ], 'message' => 'Run with the newest matching session: ' . NodeAppVeeamSessions::describe($session) ];
     }

@@ -7,10 +7,10 @@
 	cases    [ { case, name, state (pass | fail | error | stopped), execution, trace, error, answer, tokens { input, output }, cost { usd, credits }, duration_ms,
 		   checks: [ { type, label, pass, detail } ], notes } ], in the order they ran
 	totals   { cases, passed, failed, tokens { input, output }, cost { usd, credits } }
-    Written directly to the collection (as models\AgentTrace): never in the audit or execution logs. Read as arrays
+    Written directly to the collection (as models\agent\AgentTrace): never in the audit or execution logs. Read as arrays
 */
 
-namespace models;
+namespace models\wf;
 
 class WfTestRun extends \sys\BaseModel {
     protected static $collection = 'wf_test_runs';

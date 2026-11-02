@@ -7,7 +7,7 @@
     Written with an atomic upsert ($inc), not with save(): requests of the same account may end at the same time
 */
 
-namespace models;
+namespace models\assistant;
 
 class AssistantUsage extends \sys\BaseModel {
     protected static $collection = 'assistant_usage';

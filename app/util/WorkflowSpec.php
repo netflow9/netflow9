@@ -32,7 +32,7 @@ class WorkflowSpec {
     //the step types an agent may use: [ { type, label, kind, inputs, outputs, outputs_from, container, settings, variables } ]
     public static function stepTypes() {
 	$types = [];
-	foreach(\models\WfNode::getAll() as $fq => $def) {
+	foreach(\models\wf\WfNode::getAll() as $fq => $def) {
 	    $class = \V::app()->om->getObjectClass($def['objectName']);
 	    $ports = $class::$outPorts;
 	    $settings = [];
@@ -118,7 +118,7 @@ class WorkflowSpec {
 	$steps = [];
 	$connections = [];
 	$nodes = is_array($wf->nodes) ? $wf->nodes : [];
-	$defs = \models\WfNode::getAll();
+	$defs = \models\wf\WfNode::getAll();
 	foreach($nodes as $n) {
 	    if (!empty($n['isNode']))
 		$steps[] = array_filter([ 'id' => (string)$n['wfid'], 'type' => (string)$n['fqname'], 'title' => (string)($n['title'] ?? ''),
@@ -151,7 +151,7 @@ class WorkflowSpec {
 	    throw new \ErrorException('steps: at most ' . self::MAX_STEPS);
 	if (count($connections) > self::MAX_CONNECTIONS)
 	    throw new \ErrorException('connections: at most ' . self::MAX_CONNECTIONS);
-	$defs = \models\WfNode::getAll();
+	$defs = \models\wf\WfNode::getAll();
 	$oldById = [];
 	foreach($old as $o) {
 	    if (!empty($o['isNode']))

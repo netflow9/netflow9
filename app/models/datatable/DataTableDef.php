@@ -1,6 +1,6 @@
 <?php
 
-namespace models;
+namespace models\datatable;
 
 class DataTableDef extends \sys\BaseModel {
     protected static $collection = 'data-tables-defs';

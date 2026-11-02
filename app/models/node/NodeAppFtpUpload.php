@@ -21,7 +21,7 @@
 
 namespace models\node;
 
-class NodeAppFtpUpload extends \models\WfNode {
+class NodeAppFtpUpload extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $name = 'ftp-upload';

@@ -1,11 +1,11 @@
 <?php
 
 /*
-    a document of a knowledge base (models\KnowledgeBase::addDocument): its key (unique in the knowledge base: file:<id>, url:<address>, or given),
+    a document of a knowledge base (models\kb\KnowledgeBase::addDocument): its key (unique in the knowledge base: file:<id>, url:<address>, or given),
     title, source (file | url | text; file, url), meta, the hash of what was indexed (unchanged: not indexed again), the number of its chunks and characters. Written and read
-    through the collection by models\KnowledgeBase; registered for its indexes
+    through the collection by models\kb\KnowledgeBase; registered for its indexes
 */
-namespace models;
+namespace models\kb;
 
 class KbDocument extends \sys\BaseModel {
     protected static $collection = 'kb-documents';

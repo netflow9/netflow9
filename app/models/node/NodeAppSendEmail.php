@@ -11,7 +11,7 @@
 */
 namespace models\node;
 
-class NodeAppSendEmail extends \models\WfNode {
+class NodeAppSendEmail extends \models\wf\WfNode {
     public static $type = 'app';
     public static $name = 'send-email';
     public static $label = 'Send email';

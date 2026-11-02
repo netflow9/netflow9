@@ -12,7 +12,7 @@ namespace models\node;
 use models\InboundMailSettings;
 
 //CLD: 2026-10-17T15:20:00+03:00: renamed NodeTriggerInbound -> NodeTriggerEmail
-class NodeTriggerEmail extends \models\WfNode {
+class NodeTriggerEmail extends \models\wf\WfNode {
     public static $type = 'trigger';
     //CLD: 2026-10-17T15:35:00+03:00: trigger::email (was trigger::inbound); runs started by it have trigger `email` (was `inbound`)
     public static $name = 'email';
@@ -215,11 +215,11 @@ class NodeTriggerEmail extends \models\WfNode {
 	$from = strtolower(trim((string)($msg['from'] ?? '')));
 	$own = trim((string)($msg['message_id'] ?? ''), '<> ');
 	$ids = array_values(array_filter(array_map(fn($r) => trim((string)$r, '<> '), array_merge([ (string)($msg['in_reply_to'] ?? '') ], (array)($msg['references'] ?? [])))));
-	$C = \models\AgentConversation::class;
+	$C = \models\agent\AgentConversation::class;
 	$conv = $ids ? $C::coll()->findOne([ 'aid' => $live->aid, 'wf' => $live->_id, 'channel' => 'email', 'refs' => [ '$in' => $ids ], 'user_email' => $from ], \sys\Mongo::ARRAYS) : null;
 	if ($conv) {
 	    $hourAgo = new \MongoDB\BSON\UTCDateTime((time() - 3600) * 1000);
-	    if (\models\AgentMessage::coll()->countDocuments([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'user', 'at' => [ '$gte' => $hourAgo ] ]) >= self::MAX_THREAD_RATE)
+	    if (\models\agent\AgentMessage::coll()->countDocuments([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'user', 'at' => [ '$gte' => $hourAgo ] ]) >= self::MAX_THREAD_RATE)
 		return false;
 	}
 	$mail = [ 'to' => $from, 'subject' => (string)($msg['subject'] ?? ''), 'reply_to' => (string)$rcpt ];

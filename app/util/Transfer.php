@@ -519,7 +519,7 @@ class Transfer {
 	//the step settings' choices (tables, credentials of the project) are read again: some were just imported
 	$om->resetCache();
 	$tokens = self::tokensInUse($aid);
-	$defs = \models\WfNode::getAll();
+	$defs = \models\wf\WfNode::getAll();
 	foreach($targets as $i => [ $wf, $a ]) {
 	    //a replaced workflow's triggers keep the tokens they have here (their URLs do not change at each import)
 	    $here = [];

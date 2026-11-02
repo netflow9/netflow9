@@ -19,7 +19,7 @@ namespace models\node;
 
 use util\SqlDb;
 
-abstract class NodeAppDatabase extends \models\WfNode {
+abstract class NodeAppDatabase extends \models\wf\WfNode {
     //CLD: 2026-11-01T21:50:00+02:00: its operations can be an AI step's tools (util\AgentTools: varsForSettings, setResult)
     use AgentToolTrait;
 

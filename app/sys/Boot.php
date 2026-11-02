@@ -38,13 +38,13 @@ class Boot {
 
 	//a polling trigger's state (e.g. Veeam event) goes with its workflow
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\TriggerState::class, 'beforeWorkflowDelete' ]);
-	\V::app()->hooks->addHook('workflow:before-delete', [ \models\WfTask::class, 'beforeWorkflowDelete' ]);
+	\V::app()->hooks->addHook('workflow:before-delete', [ \models\wf\WfTask::class, 'beforeWorkflowDelete' ]);
 
 	//the Assistant's conversation goes with its workflow (was the Assistant plugin's)
-	\V::app()->hooks->addHook('workflow:before-delete', [ \models\AssistantChat::class, 'beforeWorkflowDelete' ]);
+	\V::app()->hooks->addHook('workflow:before-delete', [ \models\assistant\AssistantChat::class, 'beforeWorkflowDelete' ]);
 	//CLD: 2026-11-02T18:00:00+02:00: the conversations with an agent go with its workflow; a run that stops ends its turn
-	\V::app()->hooks->addHook('workflow:before-delete', [ \models\AgentConversation::class, 'beforeWorkflowDelete' ]);
-	\V::app()->hooks->addHook('execution:stopped', [ \models\AgentConversation::class, 'afterRun' ]);
+	\V::app()->hooks->addHook('workflow:before-delete', [ \models\agent\AgentConversation::class, 'beforeWorkflowDelete' ]);
+	\V::app()->hooks->addHook('execution:stopped', [ \models\agent\AgentConversation::class, 'afterRun' ]);
 
 	//a completed Email (inbound) run deletes its raw message, in every mode: the daemon runs them (was the InboundMail plugin's)
 	\V::app()->hooks->addHook('execution:end', [ \models\node\NodeTriggerEmail::class, 'afterExecutionEnd' ]);
@@ -54,7 +54,7 @@ class Boot {
 	\V::app()->hooks->addHook('model:after-delete', [ \models\LdapLink::class, 'afterModelDelete' ]);
 	\V::app()->hooks->addHook('identity:authenticate', [ \util\LdapAuth::class, 'onAuthenticate' ]);
 	\V::app()->hooks->addHook('identity:password-source', [ \util\LdapAuth::class, 'onPasswordSource' ]);
-	\V::app()->hooks->addHook('model:after-delete', [ \models\SamlLink::class, 'afterModelDelete' ]);
+	\V::app()->hooks->addHook('model:after-delete', [ \models\saml\SamlLink::class, 'afterModelDelete' ]);
 	\V::app()->hooks->addHook('identity:authenticate', [ \util\SamlAuth::class, 'onAuthenticate' ]);
 	\V::app()->hooks->addHook('identity:password-source', [ \util\SamlAuth::class, 'onPasswordSource' ]);
 
@@ -137,7 +137,7 @@ class Boot {
 	    $om = \V::app()->om;
 	    $data = $om->acrossAccounts(fn() => [
 		'settings' => $om->findOne('AssistantSettings', [ 'aid' => $account->_id ]),
-		'usage' => \models\AssistantUsage::current($account->_id),
+		'usage' => \models\assistant\AssistantUsage::current($account->_id),
 	    ]);
 	    echo \V::app()->view->renderFile('/views/assistant/_admin_account_panel', $data);
 	});

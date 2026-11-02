@@ -12,7 +12,7 @@
 
 namespace controllers;
 
-use models\SamlRequest;
+use models\saml\SamlRequest;
 use util\SamlAuth;
 use util\SamlException;
 use util\SamlSp;

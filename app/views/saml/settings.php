@@ -1,11 +1,11 @@
 <?php
 //CLD: 2026-10-24T16:30:00+03:00: the certificate's end in the account's date format (util\Format::date; was Y-m-d)
 /*
-    CLD: 2026-10-23T12:00:00+03:00: new: the SAML single sign-on settings page (SamlController::settings): the settings (app.smartform of models\SamlSettings, in sections; posted
+    CLD: 2026-10-23T12:00:00+03:00: new: the SAML single sign-on settings page (SamlController::settings): the settings (app.smartform of models\saml\SamlSettings, in sections; posted
     as one JSON value `settings_json`: the groups' rows are an edit grid), Import of the IdP's metadata into the form (SamlController::import: nothing saved), the details of
     this service provider for the IdP (entity ID, ACS URL, metadata, certificate: Renew), Test sign-in (saved settings), the SSO users of the account (Unlink)
 */
-use models\SamlSettings;
+use models\saml\SamlSettings;
 
 $this->pageTitle = 'SAML single sign-on';
 

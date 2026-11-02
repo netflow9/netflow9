@@ -640,9 +640,9 @@ class DaemonCommand extends \sys\BaseController {
 		    $exe_log_coll->deleteMany([ 'aid' => $acct->_id, 'created_at' => [ '$lte' => $time_limit ] ]);
 		}
 		//the AI steps' traces: the same setting
-		\models\AgentTrace::prune($acct);
+		\models\agent\AgentTrace::prune($acct);
 		//the conversations with agents and the runs that hold their text: the same setting
-		\models\AgentConversation::prune($acct);
+		\models\agent\AgentConversation::prune($acct);
 	    }
 	});
 
@@ -737,8 +737,8 @@ class DaemonCommand extends \sys\BaseController {
 	    throw new \Exception("unknown method `{$job_method}` in class `{$job_class}`");
 
 	//ok, run it
-	//each job starts without the step definitions cached by an earlier one (models\WfNode::getAll: per request)
-	\models\WfNode::resetCache();
+	//each job starts without the step definitions cached by an earlier one (models\wf\WfNode::getAll: per request)
+	\models\wf\WfNode::resetCache();
 	//...and without the data tables / columns cached by an earlier one (another process may have changed them)
 	\V::app()->om->resetCache();
 	$job_class::$job_method($job_data);

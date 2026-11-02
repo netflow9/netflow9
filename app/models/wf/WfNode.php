@@ -1,6 +1,6 @@
 <?php
 
-namespace models;
+namespace models\wf;
 
 /*
     a sys\NestedModel: held inside a workflow's `nodes` (with the edges, keyed by wfid), never saved by itself;
@@ -50,7 +50,7 @@ class WfNode extends \sys\NestedModel {
 	'ai' => 'AI',
 	'developer' => 'Developer',
     ];
-    //a step started by the daemon's scheduler on its schedule (config of models\WfSchedule); the class implements runScheduled()
+    //a step started by the daemon's scheduler on its schedule (config of models\wf\WfSchedule); the class implements runScheduled()
     public static $scheduled = false;
     //outputs that follow the step's config (e.g. Switch: one per case): [ 'rows' => <config key of the rows>, 'label' => <row key of the
     //output's label>, 'after' => [ labels of the outputs after the rows ] ]; null = the class's $outputs / $outLabels. The designer applies the same rule (outPortsOf)

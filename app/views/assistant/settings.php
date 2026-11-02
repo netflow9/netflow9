@@ -13,7 +13,7 @@
     //and the last changes on its own page (AI credits: /MultiTenant/credits/index; no $ledger)
     //CLD: 2026-10-31T22:00:00+02:00: the System part is the provider's ($systemHtml: util\AssistantSystem; no $wallet, $rates)
 */
-use models\AssistantSettings;
+use models\assistant\AssistantSettings;
 
 $this->pageTitle = 'Assistant settings';
 

@@ -182,7 +182,7 @@ class SysCommand extends \sys\BaseController {
 	}
 
 	//CLD: 2026-10-11T17:45:25+03:00: started from the console (was the default `manual`: the execution log and Executions panel showed a designer Run)
-	$exe = \models\WfExecution::startFor($wf, 'console');
+	$exe = \models\wf\WfExecution::startFor($wf, 'console');
 	$exe->save();
 	echo "execution " . $exe->_id . " of workflow `" . $wf->name . "`\n";
 

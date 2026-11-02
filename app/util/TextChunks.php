@@ -1,7 +1,7 @@
 <?php
 
 /*
-    a document's text cut into chunks for a knowledge base (models\KnowledgeBase): at most $size characters each, the last $overlap characters
+    a document's text cut into chunks for a knowledge base (models\kb\KnowledgeBase): at most $size characters each, the last $overlap characters
     of a chunk repeated at the start of the next (a sentence cut at the edge is still found whole). Cut at paragraphs, else at sentences, else at a space, else anywhere.
     A PDF's text (models\node\NodeAppAi::pdfRead: "--- page N ---" before each page) is cut page by page: each chunk knows its page.
     TextChunks::split($text, $size, $overlap)   [ [ text, page (null: no pages) ], ... ]

@@ -6,7 +6,7 @@
 //settings page (Unlink: the user signs in with a password of this application again)
 
 */
-namespace models;
+namespace models\saml;
 
 class SamlLink extends \sys\BaseModel {
     protected static $collection = 'saml_links';

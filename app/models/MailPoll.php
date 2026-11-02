@@ -308,7 +308,7 @@ class MailPoll extends \sys\BaseModel {
 	[ $msg, $input ] = self::messageVars($raw, $o + [ 'meta' => [ 'project' => $wf->project, 'aid' => $wf->aid, 'wf' => $wf->_id ] ]);
 	$input['vars'] = [ $variable => $msg ];
 
-	$exe = \models\WfExecution::startFor($wf, $trigger, $input, $wfid);
+	$exe = \models\wf\WfExecution::startFor($wf, $trigger, $input, $wfid);
 	$exe->log($wfid, ($o['log'] ?? 'message') . " from {$msg['from']}: " . mb_substr($msg['subject'], 0, 100));
 	$exe->save();
 	return $exe;

@@ -1,7 +1,7 @@
 <?php
 namespace models\node;
 
-class NodeTriggerWebhook extends \models\WfNode {
+class NodeTriggerWebhook extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'trigger';
     public static $name = 'webhook';

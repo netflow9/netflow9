@@ -165,7 +165,7 @@ class Workflow extends \sys\BaseModel {
     //$normalize: each step's config as normalized by its config form goes back into `nodes`
     public function validateSteps($normalize = false) {
 	$issues = [];
-	$defs = \models\WfNode::getAll();
+	$defs = \models\wf\WfNode::getAll();
 	//CLD: 2026-10-09T08:10:30+03:00: + each step's config as normalized by its config form (cast values, defaults) goes back into `nodes`
 	$nodes = is_array($this->nodes) ? $this->nodes : [];
 	foreach($nodes as $index => $data) {
@@ -302,7 +302,7 @@ class Workflow extends \sys\BaseModel {
     //map). [ name => [ type, info ] ]; info says where it comes from
     //CLD: 2026-10-13T12:34:29+03:00: $depth: how deep the type of a `from` variable is being looked for (at most MAX_TYPE_DEPTH)
     public static function variablesAt($nodes, $wfid, $depth = 0) {
-	$defs = \models\WfNode::getAll();
+	$defs = \models\wf\WfNode::getAll();
 	$byId = [];
 	$from = [];
 	foreach((is_array($nodes) ? $nodes : []) as $e) {
@@ -367,7 +367,7 @@ class Workflow extends \sys\BaseModel {
     }
 
     public function validateFlow() {
-	$defs = \models\WfNode::getAll();
+	$defs = \models\wf\WfNode::getAll();
 	$issues = [];
 	$add = function($level, $node, $message) use (&$issues) {
 	    $issues[] = [ 'level' => $level, 'node' => $node, 'message' => $message ];

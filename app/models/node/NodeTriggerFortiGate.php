@@ -10,7 +10,7 @@
 
 namespace models\node;
 
-class NodeTriggerFortiGate extends \models\WfNode {
+class NodeTriggerFortiGate extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'trigger';
     public static $name = 'fortigate';

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T15:46:06+02:00: new class: testing AI steps and agent workflows: the test cases of a workflow (models\WfTestCase), their runs on its draft (models\WfTestRun; job() in the daemon), the checks, the publish gate.
+    CLD: 2026-11-02T15:46:06+02:00: new class: testing AI steps and agent workflows: the test cases of a workflow (models\wf\WfTestCase), their runs on its draft (models\wf\WfTestRun; job() in the daemon), the checks, the publish gate.
 	A case runs as an execution of the draft, trigger `test`, test_run set (kept out of the Executions list and the Overview), with util\AgentEvalContext: no write tool and no step with an effect outside the run runs.
 	The model-judged check goes to the account's chosen provider (Assistant settings; paid as the Assistant: its budget, or System AI credits). It sees the rubric, the answer between marks with a random name (data, not
 	    instructions: an answer cannot grade itself) and the tools' names; masked when the step masks personal data. Only { "pass": true } passes: an answer it cannot read is a failed check.
@@ -11,8 +11,8 @@
 
 namespace util;
 
-use models\WfTestCase;
-use models\WfTestRun;
+use models\wf\WfTestCase;
+use models\wf\WfTestRun;
 
 class AgentEval {
     public static $inline = false;
@@ -39,7 +39,7 @@ class AgentEval {
 	$size = 0;
 
 	$steps = [];
-	$classes = \models\WfNode::nodeClasses();
+	$classes = \models\wf\WfNode::nodeClasses();
 	foreach($nodes as $n) {
 	    $objectName = $classes[$n['fqname'] ?? ''] ?? null;
 	    if (empty($n['isNode']) || !$objectName || empty($n['runs']))
@@ -66,11 +66,11 @@ class AgentEval {
 	}
 
 	$mocks = [];
-	[ $traces, $total ] = \models\AgentTrace::ofExecution($exe);
+	[ $traces, $total ] = \models\agent\AgentTrace::ofExecution($exe);
 	if ($total > count($traces))
 	    $notes[] = 'Only the tool results of its first ' . count($traces) . " of {$total} AI step visits are recorded";
 	foreach($traces as $summary) {
-	    $trace = \models\AgentTrace::read((string)$summary['_id'], $exe->aid, $exe);
+	    $trace = \models\agent\AgentTrace::read((string)$summary['_id'], $exe->aid, $exe);
 	    foreach((array)($trace['rounds'] ?? []) as $round) {
 		foreach((array)($round['calls'] ?? []) as $call) {
 		    if (!array_key_exists('result', $call))
@@ -268,7 +268,7 @@ class AgentEval {
 	$context->chat = $context->chat || in_array((string)$trigger['fqname'], [ 'trigger::chat', 'trigger::teams' ], true);
 	try {
 	    $input = is_array($case->input) ? array_intersect_key($case->input, [ 'vars' => 1 ]) : [];
-	    $exe = \models\WfExecution::startFor($wf, 'test', $input + [ 'test_case' => (string)$case->_id ], (string)$trigger['wfid']);
+	    $exe = \models\wf\WfExecution::startFor($wf, 'test', $input + [ 'test_case' => (string)$case->_id ], (string)$trigger['wfid']);
 	    $exe->test_run = (string)$runId;
 	    $exe->__test = $context;
 	    $exe->log(null, 'test case: ' . (string)$case->name);
@@ -494,8 +494,8 @@ class AgentEval {
 	$settings = \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
 	if (!$settings || !WorkflowAssistant::isReady($settings))
 	    return $failed('Not judged: no provider is chosen: connect one and choose a model in Assistant settings (Settings menu)');
-	$budget = \models\AssistantSettings::budgetOf($settings);
-	if ($budget !== null && \models\AssistantUsage::current($wf->aid)->cost >= $budget)
+	$budget = \models\assistant\AssistantSettings::budgetOf($settings);
+	if ($budget !== null && \models\assistant\AssistantUsage::current($wf->aid)->cost >= $budget)
 	    return $failed('Not judged: the monthly budget in Assistant settings is spent');
 	$system = WorkflowAssistant::providerOf($settings) === 'system' ? AssistantSystem::provider() : null;
 	$hold = null;
@@ -530,7 +530,7 @@ class AgentEval {
 	$spent = [ 'tokens' => [ 'input' => (int)($assistant->usage['input_tokens'] ?? 0), 'output' => (int)($assistant->usage['output_tokens'] ?? 0) ], 'cost' => [ 'usd' => null, 'credits' => null ] ];
 	if ($assistant && array_sum($assistant->usage)) {
 	    try {
-		\models\AssistantUsage::add($wf->aid, $assistant->cost, $assistant->usage);
+		\models\assistant\AssistantUsage::add($wf->aid, $assistant->cost, $assistant->usage);
 	    } catch (\Exception $e) {
 		\V::app()->log->error('AgentEval: the usage was not recorded: ' . $e->getMessage());
 	    }

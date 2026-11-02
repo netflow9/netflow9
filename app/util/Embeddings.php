@@ -1,8 +1,8 @@
 <?php
 
 /*
-    embeddings (text -> vector) for the knowledge bases (models\KnowledgeBase)
-    through the account's embedding settings (models\EmbeddingSettings: provider, server, key, model; was an AI credential of the project):
+    embeddings (text -> vector) for the knowledge bases (models\kb\KnowledgeBase)
+    through the account's embedding settings (models\kb\EmbeddingSettings: provider, server, key, model; was an AI credential of the project):
 	ollama        POST <URL>/api/embed { model, input: [ ... ], truncate } -> embeddings; models: GET <URL>/api/tags
 	lemonade,     POST <URL>/embeddings { model, input: [ ... ] } -> data[].embedding (by index); models: GET <URL>/models
 	openai

@@ -360,7 +360,7 @@ class SiteController extends \sys\BaseController {
 		$tasks[] = $t;
 	} else {
 	    //CLD: 2026-10-17T13:24:18+03:00: WfTask is a core model (was plugins\BaseNodes\models)
-	    $tasks = \models\WfTask::openFor($user, $project->aid, $project->_id);
+	    $tasks = \models\wf\WfTask::openFor($user, $project->aid, $project->_id);
 	}
 	$overdueTasks = array_values(array_filter($tasks, fn($t) => ($ms($t->due_at) ?? PHP_INT_MAX) < $now * 1000));
 	$out['tiles']['tasks'] = [ 'open' => count($tasks), 'overdue' => count($overdueTasks) ];
