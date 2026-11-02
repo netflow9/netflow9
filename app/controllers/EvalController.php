@@ -29,11 +29,6 @@ class EvalController extends \sys\BaseController {
 	return $wf;
     }
 
-    private function post() {
-	if (!\V::app()->request->is('post'))
-	    \V::app()->error(405, 'Method not allowed');
-    }
-
     private function findCase($wf, $id) {
 	$case = \util\Validator::rule('oid', (string)$id) ? \V::app()->om->findOne('WfTestCase', [ '_id' => (string)$id, 'wf' => $wf->_id, 'aid' => $wf->aid ]) : null;
 	if (empty($case))
@@ -76,7 +71,8 @@ class EvalController extends \sys\BaseController {
 
     //a case created (no `case_id`) or changed: POST `case`, JSON { name, vars, tools, mocks, checks } => { case }; its problems in { error }. Workflow::update
     public function case_save($req, $resp) {
-	$this->post();
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$wf = $this->findWorkflow('Workflow::update');
 	$data = json_decode((string)($req->data['case'] ?? ''), true);
 	if (!is_array($data))
@@ -115,7 +111,8 @@ class EvalController extends \sys\BaseController {
 
     //Save as test case: from the execution ?execution= => { case }. Workflow::update
     public function case_from_execution($req, $resp) {
-	$this->post();
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$wf = $this->findWorkflow('Workflow::update');
 	$eid = (string)($req->query['execution'] ?? '');
 	$exe = \util\Validator::rule('oid', $eid) ? \V::app()->om->findOne('WfExecution', [ '_id' => $eid, 'wf' => $wf->_id, 'aid' => $wf->aid ]) : null;
@@ -136,7 +133,8 @@ class EvalController extends \sys\BaseController {
 
     //POST ?case=. Workflow::update
     public function case_delete($req, $resp) {
-	$this->post();
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$wf = $this->findWorkflow('Workflow::update');
 	$case = $this->findCase($wf, $req->query['case'] ?? '');
 	$name = (string)$case->name;
@@ -149,7 +147,8 @@ class EvalController extends \sys\BaseController {
     //run the tests of the saved draft, in the daemon (POST) => { run }; one already running: that one. Workflow::update
     //named start: BaseController::run() is the request dispatcher
     public function start($req, $resp) {
-	$this->post();
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$wf = $this->findWorkflow('Workflow::update');
 	try {
 	    [ $run, $new ] = AgentEval::start($wf, (string)\V::app()->user->name);
@@ -163,7 +162,8 @@ class EvalController extends \sys\BaseController {
 
     //POST ?run=. Workflow::update
     public function run_stop($req, $resp) {
-	$this->post();
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$wf = $this->findWorkflow('Workflow::update');
 	$run = WfTestRun::read((string)($req->query['run'] ?? ''), $wf);
 	if (!$run)
@@ -175,7 +175,8 @@ class EvalController extends \sys\BaseController {
 
     //Tests must pass to publish (POST `required`: 1 | 0). Workflow::publish; the change is in the audit log (a saved model)
     public function required($req, $resp) {
-	$this->post();
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$wf = $this->findWorkflow('Workflow::publish');
 	$wf->tests_required = !empty($req->data['required']) && (string)$req->data['required'] !== '0';
 	if (!$wf->save())

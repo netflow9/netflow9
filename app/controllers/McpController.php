@@ -10,7 +10,7 @@
 */
 namespace controllers;
 
-class McpController extends \sys\BaseController {
+class McpController extends \sys\APIController {
 
     //CLD: 2026-11-01T02:00:00+02:00: removed SHOW_MENU (the menu link hidden for every project): the account's owners turn the server on per project (Account::mcpEnabled; account settings, Data access)
 
@@ -24,9 +24,6 @@ class McpController extends \sys\BaseController {
     const TOUCH_EVERY = 60;
 
     //called by MCP clients: no CSRF token, the bearer token is the credential
-    public function validateRequest() {
-    }
-
     //CLD: 2026-10-21T00:25:00+03:00: the answers are sent with $resp->sendJSON (JSON, no-store; ends the request), slashes and Unicode as they are (was reply())
     //CLD: 2026-10-21T00:35:00+03:00: the error answers made by fail() (were written here)
     public function serve($req, $resp) {

@@ -238,7 +238,8 @@ class ProjectController extends \sys\BaseController {
 	$account = \V::app()->config('rt.account');
 	$uid = (string)($req->data['user'] ?? '');
 	$user = \util\Validator::rule('oid', $uid) ? \V::app()->om->findOne('User', [ '_id' => $uid, 'aid' => $account->_id ]) : null;
-	$role = $this->memberRole($req->data['role'] ?? '');
+	$roleId = (string)($req->data['role'] ?? '');
+	$role = \util\Validator::rule('oid', $roleId) ? \V::app()->om->findOne('Role', [ '_id' => $roleId, 'aid' => \V::app()->config('rt.account')->_id ]) : null;
 	$members = (array)$project->members;
 	if (!$user || !$role)
 	    $this->addToast('error', 'Not added', 'Choose a user and a role');
@@ -254,7 +255,8 @@ class ProjectController extends \sys\BaseController {
     public function member_role($req, $resp) {
 	$project = $this->memberProject();
 	$uid = (string)($req->query['user'] ?? '');
-	$role = $this->memberRole($req->data['role'] ?? '');
+	$roleId = (string)($req->data['role'] ?? '');
+	$role = \util\Validator::rule('oid', $roleId) ? \V::app()->om->findOne('Role', [ '_id' => $roleId, 'aid' => \V::app()->config('rt.account')->_id ]) : null;
 	$members = (array)$project->members;
 	if (!isset($members[$uid]) || !$role)
 	    $this->addToast('error', 'Not changed', 'Unknown member or role');
@@ -286,7 +288,8 @@ class ProjectController extends \sys\BaseController {
 	$project = $this->memberProject();
 	$account = \V::app()->config('rt.account');
 	$email = strtolower(trim((string)($req->data['email'] ?? '')));
-	$role = $this->memberRole($req->data['role'] ?? '');
+	$roleId = (string)($req->data['role'] ?? '');
+	$role = \util\Validator::rule('oid', $roleId) ? \V::app()->om->findOne('Role', [ '_id' => $roleId, 'aid' => \V::app()->config('rt.account')->_id ]) : null;
 	$back = fn() => $this->redirect('/project/settings', [ 'id' => (string)$project->_id, '__tab' => 'members' ]);
 	if (!\util\Validator::rule('email', $email) || !$role) {
 	    $this->addToast('error', 'Not invited', 'Enter an email address and choose a role');
@@ -371,12 +374,6 @@ class ProjectController extends \sys\BaseController {
 	if ($project->personal)
 	    \V::app()->error(400, 'A personal project has no other members');
 	return $project;
-    }
-
-    //a role of this account, or null
-    private function memberRole($id) {
-	$id = (string)$id;
-	return \util\Validator::rule('oid', $id) ? \V::app()->om->findOne('Role', [ '_id' => $id, 'aid' => \V::app()->config('rt.account')->_id ]) : null;
     }
 
     //saves the members (a change does not take away the last member with the owner role) and records the change

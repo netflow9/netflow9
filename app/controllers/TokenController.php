@@ -28,16 +28,10 @@ class TokenController extends \sys\BaseController {
 	    \V::app()->error(403, 'The MCP server of this project is off: the account\'s owners turn it on in Account settings, Data access');
     }
 
-    //an unsaved token of the current project: the object for list/create checks (project scope = membership)
-    private function projectToken() {
-	return \V::app()->om->create('McpToken', [
-	    'aid' => \V::app()->config('rt.account')->_id,
-	    'project' => $this->project->_id,
-	]);
-    }
-
     public function list($req, $resp) {
-	if (!\V::app()->user->can('McpToken::list', [ 'object' => $this->projectToken() ]))
+	//an unsaved token of the current project: the object for the check (project scope = membership)
+	$token = \V::app()->om->create('McpToken', [ 'aid' => \V::app()->config('rt.account')->_id, 'project' => $this->project->_id ]);
+	if (!\V::app()->user->can('McpToken::list', [ 'object' => $token ]))
 	    \V::app()->error(403, 'Unauthorized');
 
 	if (!empty($req->query['data']))
@@ -47,7 +41,8 @@ class TokenController extends \sys\BaseController {
     }
 
     public function create($req, $resp) {
-	$token = $this->projectToken();
+	//unsaved until it is valid: first the object for the check (project scope = membership)
+	$token = \V::app()->om->create('McpToken', [ 'aid' => \V::app()->config('rt.account')->_id, 'project' => $this->project->_id ]);
 	if (!\V::app()->user->can('McpToken::create', [ 'object' => $token ]))
 	    \V::app()->error(403, 'Unauthorized');
 
