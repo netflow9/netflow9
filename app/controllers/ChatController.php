@@ -14,11 +14,8 @@ namespace controllers;
 use \models\AgentConversation;
 use \models\node\NodeTriggerChat;
 
-class ChatController extends \sys\BaseController {
+class ChatController extends \sys\APIController {
     public $layout = 'bare';
-
-    public function validateRequest() {
-    }
 
     public function open($req, $resp) {
 	$token = (string)($req->query['id'] ?? '');

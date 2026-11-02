@@ -26,22 +26,18 @@ class AgentController extends \sys\BaseController {
 	}
     }
 
-    private static function aid() {
-	return \V::app()->config('rt.account')->_id ?? null;
-    }
-
     //the index entry of the Chat trigger $token in this account, when the user may talk to it; null: not
     private function agent($token) {
 	if (!\models\TriggerToken::isToken((string)$token, 'hex'))
 	    return null;
-	$link = \V::app()->om->findOne('TriggerToken', [ 'type' => 'trigger::chat', 'token' => (string)$token, 'aid' => self::aid() ]);
+	$link = \V::app()->om->findOne('TriggerToken', [ 'type' => 'trigger::chat', 'token' => (string)$token, 'aid' => \V::app()->config('rt.account')->_id ?? null ]);
 	return $link && NodeTriggerChat::allows(\V::app()->user, $link) ? $link : null;
     }
 
     public function list($req, $resp) {
 	$agents = [];
 	$projects = [];
-	foreach(\V::app()->om->find('TriggerToken', [ 'aid' => self::aid(), 'type' => 'trigger::chat' ], [ 'sort' => [ 'title' => 1 ] ]) as $link) {
+	foreach(\V::app()->om->find('TriggerToken', [ 'aid' => \V::app()->config('rt.account')->_id ?? null, 'type' => 'trigger::chat' ], [ 'sort' => [ 'title' => 1 ] ]) as $link) {
 	    if (!NodeTriggerChat::allows(\V::app()->user, $link))
 		continue;
 	    $wf = \V::app()->om->findOne('Workflow', [ '_id' => $link->wf, 'aid' => $link->aid ]);
@@ -115,7 +111,7 @@ class AgentController extends \sys\BaseController {
 
     //the user's own conversation ?conversation / $id, else 404
     private function own($id, $resp) {
-	$conv = AgentConversation::read((string)$id, self::aid());
+	$conv = AgentConversation::read((string)$id, \V::app()->config('rt.account')->_id ?? null);
 	if (!$conv || (string)$conv['user'] !== (string)\V::app()->user->_id)
 	    $resp->sendJSON([ 'ok' => false, 'error' => 'This conversation is not yours.' ], true, 404);
 	return $conv;
@@ -141,7 +137,7 @@ class AgentController extends \sys\BaseController {
     public function conversations($req, $resp) {
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
-	$aid = self::aid();
+	$aid = \V::app()->config('rt.account')->_id ?? null;
 	$names = fn($c) => (string)(\V::app()->om->findOne('Workflow', [ '_id' => $c['wf'], 'aid' => $aid ])->name ?? '');
 	if (isset($req->query['id'])) {
 	    $conv = AgentConversation::read((string)$req->query['id'], $aid);

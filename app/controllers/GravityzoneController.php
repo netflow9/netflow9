@@ -11,34 +11,15 @@ namespace controllers;
 
 use \models\node\NodeTriggerGravityZone;
 
-class GravityzoneController extends \sys\BaseController {
+class GravityzoneController extends \sys\APIController {
 
     const MAX_BODY = 10 * 1024 * 1024;
     const MAX_RUNS = 500;
+    const REFUSED = 'gravityzone.refused';
 
     //called by GravityZone: no CSRF token, the URL's token and the secret are the credential
-    public function validateRequest() {
-    }
-
-    private $wf = null;
-
     public function receive($req, $resp) {
-	$token = (string)($req->query['id'] ?? '');
-	if (!\models\TriggerToken::isToken($token, 'hex'))
-	    $this->refuse(404, 'Not found');
-	$entry = \V::app()->om->findOne('TriggerToken', [ 'type' => 'trigger::gravityzone', 'token' => $token ]);
-	$wf = $entry ? \V::app()->om->findOne('Workflow', [ '_id' => $entry->wf, 'aid' => $entry->aid ]) : null;
-	$this->wf = $wf;
-	$version = $wf ? $wf->publishedVersion() : null;
-	$live = $version ? $wf->forVersion($version) : null;
-	$node = null;
-	foreach((is_array($live->nodes ?? null) ? $live->nodes : []) as $n) {
-	    if (($n['wfid'] ?? null) == $entry->node && ($n['config']['token'] ?? null) === $token)
-		$node = $n;
-	}
-	if (empty($node))
-	    $this->refuse(404, 'Not found');
-	\V::app()->var('rt.account', \V::app()->om->findById('Account', $entry->aid));
+	[ $entry, $wf, $live, $node ] = $this->triggerOf('trigger::gravityzone', (string)($req->query['id'] ?? ''));
 	$cfg = (array)$node['config'];
 
 	if (strtoupper($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -47,10 +28,7 @@ class GravityzoneController extends \sys\BaseController {
 	}
 	if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > self::MAX_BODY)
 	    $this->refuse(413, 'Request body too large');
-	$secret = (string)($cfg['secret'] ?? '');
-	$auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? '');
-	if ($secret === '' || stripos($auth, 'Bearer ') !== 0 || !hash_equals($secret, trim(substr($auth, 7))))
-	    $this->refuse(401, 'Unauthorized');
+	$this->requireBearer($cfg['secret'] ?? '');
 
 	$raw = (string)file_get_contents('php://input', false, null, 0, self::MAX_BODY + 1);
 	$data = json_decode($raw, true);
@@ -60,10 +38,7 @@ class GravityzoneController extends \sys\BaseController {
 	if ($events === null)
 	    $this->refuse(400, 'No events (expected params.events)');
 
-	if ($wf->status !== \models\Workflow::PUBLISHED)
-	    $this->refuse(409, 'The workflow is not published');
-	if (array_filter($live->validateFlow(), fn($i) => $i['level'] == 'error'))
-	    $this->refuse(409, 'The workflow has errors and cannot run');
+	$this->requireRunnable($wf, $live);
 
 	$types = NodeTriggerGravityZone::chosenTypes($cfg);
 	$kept = array_values(array_filter($events, fn($e) => is_array($e) && (!$types || in_array((string)($e['module'] ?? ''), $types, true))));
@@ -96,20 +71,4 @@ class GravityzoneController extends \sys\BaseController {
 	return is_array($events) && array_is_list($events) ? $events : null;
     }
 
-    //an event as a variable value: keys a database field cannot have (`.`, leading `$`) left out, 32 levels at most
-    public static function clean(array $data, $depth = 0) {
-	$out = [];
-	foreach($data as $key => $value) {
-	    if (is_string($key) && ($key === '' || str_contains($key, '.') || $key[0] === '$'))
-		continue;
-	    $out[$key] = is_array($value) ? ($depth >= 31 ? null : self::clean($value, $depth + 1)) : $value;
-	}
-	return $out;
-    }
-
-    private function refuse($status, $error) {
-	if ($this->wf)
-	    \models\ExecutionLog::record('gravityzone.refused', $this->wf, $status . ': ' . $error . ' (' . ($_SERVER['REQUEST_METHOD'] ?? '') . ' from ' . \V::app()->request->userIP . ')');
-	\V::app()->response->sendJSON([ 'error' => $error ], true, $status);
-    }
 }

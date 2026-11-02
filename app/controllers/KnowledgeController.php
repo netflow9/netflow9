@@ -54,12 +54,6 @@ class KnowledgeController extends \sys\BaseController {
 	return $kb;
     }
 
-    //a POST, else 405
-    private function requirePost($req) {
-	if (!$req->is('post'))
-	    \V::app()->error(405, 'Method not allowed');
-    }
-
     public function list($req, $resp) {
 	if (!\V::app()->user->can('KnowledgeBase::list', [ 'object' => $this->proto() ]))
 	    \V::app()->error(403, 'Unauthorized');
@@ -124,7 +118,8 @@ class KnowledgeController extends \sys\BaseController {
     }
 
     public function delete($req, $resp) {
-	$this->requirePost($req);
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$kb = $this->findKb('KnowledgeBase::delete');
 	$kb->delete();
 	$this->addToast('success', 'OK', 'Knowledge base deleted');
@@ -159,7 +154,8 @@ class KnowledgeController extends \sys\BaseController {
     }
 
     public function add($req, $resp) {
-	$this->requirePost($req);
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$kb = $this->findKb('KnowledgeBase::update');
 	if (!EmbeddingSettings::of($kb->aid)->ready())
 	    $resp->sendJSON([ 'error' => 'Set the account\'s embedding model first (Settings: Knowledge bases)' ], true, 409);
@@ -185,7 +181,8 @@ class KnowledgeController extends \sys\BaseController {
 
     //an uploaded file: a file of the project (as the Files page's upload), then queued
     public function upload($req, $resp) {
-	$this->requirePost($req);
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$kb = $this->findKb('KnowledgeBase::update');
 	if (!\V::app()->user->can('File::create', [ 'project' => $this->project ]))
 	    \V::app()->error(403, 'Unauthorized');
@@ -212,7 +209,8 @@ class KnowledgeController extends \sys\BaseController {
     }
 
     public function remove($req, $resp) {
-	$this->requirePost($req);
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$kb = $this->findKb('KnowledgeBase::update');
 	$doc = (string)($req->query['doc'] ?? '');
 	$d = \util\Validator::rule('oid', $doc) ? KnowledgeBase::documentCollection()->findOne([ '_id' => new \MongoDB\BSON\ObjectId($doc), 'kb' => $kb->_id ]) : null;
@@ -225,7 +223,8 @@ class KnowledgeController extends \sys\BaseController {
     }
 
     public function search($req, $resp) {
-	$this->requirePost($req);
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$kb = $this->findKb('KnowledgeBase::read');
 	$data = is_array($req->data) ? $req->data : [];
 	$start = microtime(true);
@@ -238,7 +237,8 @@ class KnowledgeController extends \sys\BaseController {
     }
 
     public function reindex($req, $resp) {
-	$this->requirePost($req);
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	$kb = $this->findKb('KnowledgeBase::update');
 	try {
 	    $kb->reindex();
@@ -283,7 +283,8 @@ class KnowledgeController extends \sys\BaseController {
     //Connect on the settings page (POST, JSON): `provider`, `url`, `api_key` as in the form (not saved yet) => { models: [ { id, label } ] }, or { error }. An empty API key is the
     //saved one, but only for the saved provider and Server URL
     public function connect($req, $resp) {
-	$this->requirePost($req);
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
 	$data = is_array($req->data) ? $req->data : [];

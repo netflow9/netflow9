@@ -457,7 +457,7 @@ class WorkflowController extends \sys\BaseController {
 	foreach((is_array($exe->log) ? $exe->log : []) as $entry) {
 	    $node = $entry['node'] ?? null;
 	    $log[] = [
-		'time' => $this->localTime($entry['ts'] ?? null, 'Y-m-d H:i:s'),
+		'time' => \util\Format::datetime($entry['ts'] ?? null, 'Y-m-d H:i:s'),
 		'node' => $node,
 		'title' => $node !== null ? ($titles[$node] ?? $node) : null,
 		'message' => (string)($entry['message'] ?? ''),
@@ -484,7 +484,7 @@ class WorkflowController extends \sys\BaseController {
 	$rounds = array_map(function($round) {
 	    $round['calls'] = array_map(function($call) {
 		if (isset($call['approval']['at']))
-		    $call['approval']['at'] = $this->localTime($call['approval']['at'], 'Y-m-d H:i:s');
+		    $call['approval']['at'] = \util\Format::datetime($call['approval']['at'], 'Y-m-d H:i:s');
 		return $call;
 	    }, array_values((array)($round['calls'] ?? [])));
 	    return $round;
@@ -527,7 +527,7 @@ class WorkflowController extends \sys\BaseController {
 	    'totals' => $totals,
 	    //CLD: 2026-11-02T18:00:00+02:00: what the step was given of the conversation
 	    'conversation' => $t['conversation'] ?? null,
-	    'started' => $this->localTime($start),
+	    'started' => \util\Format::datetime($start),
 	    'duration' => $start ? (int)(string)($end ?? new \MongoDB\BSON\UTCDateTime()) - (int)(string)$start : null,
 	    'updated' => (string)($t['updated_at'] ?? ''),
 	];
@@ -758,7 +758,6 @@ class WorkflowController extends \sys\BaseController {
     private function executionSummary($exe) {
 	$start = $exe->start_at instanceof \MongoDB\BSON\UTCDateTime ? $exe->start_at : null;
 	$end = $exe->end_at instanceof \MongoDB\BSON\UTCDateTime ? $exe->end_at : null;
-	$created = $exe->created_at instanceof \MongoDB\BSON\UTCDateTime ? $exe->created_at : null;
 	//milliseconds; a running execution counts until now
 	$duration = $start ? (int)(string)($end ?? new \MongoDB\BSON\UTCDateTime()) - (int)(string)$start : null;
 	return [
@@ -767,30 +766,17 @@ class WorkflowController extends \sys\BaseController {
 	    'trigger' => (string)$exe->trigger,
 	    //CLD: 2026-10-11T13:51:42+03:00: published version number, null = the draft
 	    'version' => is_numeric($exe->version) ? (int)$exe->version : null,
-	    'created' => $this->localTime($created),
-	    'started' => $this->localTime($start),
-	    'ended' => $this->localTime($end),
+	    'created' => \util\Format::datetime($exe->created_at),
+	    'started' => \util\Format::datetime($start),
+	    'ended' => \util\Format::datetime($end),
 	    'duration' => $duration,
-	    'wake_at' => $this->localTime($exe->wake_at),
+	    'wake_at' => \util\Format::datetime($exe->wake_at),
 	    'error' => $exe->error ? (string)$exe->error : null,
 	    //CLD: 2026-11-02T14:00:00+02:00: the execution whose inputs it ran with
 	    'rerun_of' => $exe->rerun_of ? (string)$exe->rerun_of : null,
 	    //CLD: 2026-11-02T15:46:06+02:00: of a test run: not run again, not saved as a test case
 	    'test_run' => $exe->test_run ? (string)$exe->test_run : null,
 	];
-    }
-
-    //Y-m-d H:i:s in the app's timezone; null when not a date
-    //CLD: 2026-10-24T16:30:00+03:00: util\Format::datetime: the account's datetime format, or $format (the log's times: with seconds, as before)
-    private function localTime($value, $format = null) {
-	if (!$value instanceof \MongoDB\BSON\UTCDateTime)
-	    return null;
-	return \util\Format::datetime($value, $format);
-    }
-
-    public function node_edit($req, $resp) {
-	$node_data = $req->data ?? [];
-	$this->render('node_edit', compact('node_data'));
     }
 
 }

@@ -87,7 +87,7 @@ class AgentEval {
 	    $notes[] = 'Its traces are no longer kept: no tool results are recorded';
 
 	$message = trim(Expression::toText($vars['message'] ?? ''));
-	$started = $exe->start_at instanceof \MongoDB\BSON\UTCDateTime ? Format::datetime($exe->start_at) : '';
+	$started = Format::datetime($exe->start_at);
 	$trigger = self::triggerOf($nodes);
 	return \V::app()->om->create('WfTestCase', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'name' => mb_substr($message !== '' ? $message : 'Execution of ' . $started, 0, 80), 'source' => (string)$exe->_id,
 	    'trigger' => (string)($trigger['fqname'] ?? ''), 'chat' => !empty($input['conversation']), 'input' => [ 'vars' => $vars ], 'tools' => 'mock', 'mocks' => $mocks, 'steps' => $steps, 'checks' => [], 'notes' => $notes ]);
@@ -589,7 +589,7 @@ class AgentEval {
 
     //a run as it is shown and as the MCP tools give it
     public static function summary(array $run) {
-	$at = fn($v) => $v instanceof \MongoDB\BSON\UTCDateTime ? Format::datetime($v, 'Y-m-d H:i:s') : null;
+	$at = fn($v) => Format::datetime($v, 'Y-m-d H:i:s');
 	return [ 'id' => (string)$run['_id'], 'state' => (string)$run['state'], 'by' => (string)($run['by'] ?? ''), 'error' => isset($run['error']) ? (string)$run['error'] : null, 'totals' => $run['totals'] ?? self::emptyTotals(),
 	    'created' => $at($run['created_at'] ?? null), 'started' => $at($run['started_at'] ?? null), 'ended' => $at($run['ended_at'] ?? null) ];
     }

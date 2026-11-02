@@ -19,7 +19,6 @@ $__canvas_pan_x = $__canvas_num('__canvas_pan_x');
 $__canvas_pan_y = $__canvas_num('__canvas_pan_y');
 $__canvas_zoom = $__canvas_num('__canvas_zoom');
 
-$nodeEditUrl = \V::app()->createUrl('/workflow/node_edit');
 $nodeInitUrl = \V::app()->createUrl('/workflow/node_init', [ 'id' => (string)$wf->_id ]);
 $exprUrl = \V::app()->createUrl('/workflow/expression', [ 'id' => (string)$wf->_id ]);
 $runUrl = \V::app()->createUrl('/workflow/start', [ 'id' => (string)$wf->_id ]);
@@ -403,7 +402,6 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	    $('.btn-redo-wf').toggleClass('disabled opacity-50', !h.canRedo).attr('aria-disabled', h.canRedo ? 'false' : 'true');
 	},
 	onCanvasChange: (pan, zoom) => canvasView.store(pan, zoom),
-	nodeEditUrl: '{$nodeEditUrl}',
 	nodeInitUrl: '{$nodeInitUrl}',
 	exprUrl: '{$exprUrl}',
     };

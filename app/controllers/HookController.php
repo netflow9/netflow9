@@ -6,46 +6,19 @@ namespace controllers;
 
 use \models\node\NodeTriggerWebhook;
 
-class HookController extends \sys\BaseController {
+class HookController extends \sys\APIController {
 
     //largest accepted request body (bytes)
     const MAX_BODY = 1048576;
 
     //CLD: 2026-10-17T10:46:42+03:00: limits of the request variable (were MAX_VARS, the number of query_ / body_ variables): headers kept, levels of query / body data
     const MAX_HEADERS = 100;
-    const MAX_DEPTH = 32;
+    const REFUSED = 'webhook.refused';
 
     //called by other systems: no CSRF token, the URL's secret token is the credential
-    public function validateRequest() {
-    }
-
-    //the workflow of the token, once known: refusals are written to its account's execution log (refuse)
-    private $wf = null;
-
     public function receive($req, $resp) {
-	//webhook trigger of the token, still present in its workflow
 	$token = (string)($req->query['id'] ?? '');
-	//CLD: 2026-10-18T15:00:00+03:00: TriggerToken::isToken (was NodeTriggerWebhook::isToken)
-	if (!\models\TriggerToken::isToken($token, 'hex'))
-	    $this->refuse(404, 'Not found');
-
-
-	$hook = \V::app()->om->findOne('TriggerToken', [ 'type' => 'trigger::webhook', 'token' => $token ]);
-	$wf = $hook ? \V::app()->om->findOne('Workflow', [ '_id' => $hook->wf, 'aid' => $hook->aid ]) : null;
-	$this->wf = $wf;
-	//CLD: 2026-10-11T13:51:42+03:00: the step of the published version (the index is built from it; the workflow's nodes are the draft): a copy of the
-	//workflow holding that version's steps (Workflow::forVersion) is validated and started below
-	$version = $wf ? $wf->publishedVersion() : null;
-	$live = $version ? $wf->forVersion($version) : null;
-	$node = null;
-	foreach((is_array($live->nodes ?? null) ? $live->nodes : []) as $n) {
-	    if (($n['wfid'] ?? null) == $hook->node && ($n['config']['token'] ?? null) === $token)
-		$node = $n;
-	}
-	if (empty($node))
-	    $this->refuse(404, 'Not found');
-
-	\V::app()->var('rt.account', \V::app()->om->findById('Account', $hook->aid));
+	[ $hook, $wf, $live, $node ] = $this->triggerOf('trigger::webhook', $token);
 	$cfg = $node['config'];
 
 	//CLD: 2026-10-07T11:36:11+03:00: size first (the HMAC check reads the body), then authentication, before anything else is revealed
@@ -67,15 +40,7 @@ class HookController extends \sys\BaseController {
 	$contentType = strtolower(trim(explode(';', (string)($_SERVER['CONTENT_TYPE'] ?? ''))[0]));
 	[ $bodyText, $bodyData ] = ($method === 'GET') ? [ '', null ] : $this->readBody($cfg['contentType'] ?? 'json', $contentType, $method);
 
-	//CLD: 2026-10-11T13:29:36+03:00: drafts are not started by their triggers (checked after authentication: nothing is revealed before)
-	if ($wf->status !== \models\Workflow::PUBLISHED)
-	    $this->refuse(409, 'The workflow is not published');
-
-
-	//the workflow must be able to run
-	//CLD: 2026-10-11T13:51:42+03:00: the published version (was the workflow's nodes)
-	if (array_filter($live->validateFlow(), fn($i) => $i['level'] == 'error'))
-	    $this->refuse(409, 'The workflow has errors and cannot run');
+	$this->requireRunnable($wf, $live);
 
 	//start: the request is kept as JSON text (any keys allowed)
 	//CLD: 2026-10-17T10:46:42+03:00: the whole request goes into one variable, an object named by the step's `variable` setting (default `webhook`; were webhook_method,
@@ -213,20 +178,6 @@ class HookController extends \sys\BaseController {
 	return [ $raw, null ];
     }
 
-    //CLD: 2026-10-17T10:46:42+03:00: query / body data as a variable value (replaces addVars, which made top-level simple values into $prefix<name> variables): keys a
-    //database field cannot have (`.`, leading `$`) are left out, levels below MAX_DEPTH become null
-    private function clean(array $data, $depth = 0) {
-	$out = [];
-	foreach($data as $key => $value) {
-	    if (is_string($key) && ($key === '' || str_contains($key, '.') || $key[0] === '$'))
-		continue;
-	    if (is_array($value))
-		$value = ($depth + 1 >= self::MAX_DEPTH) ? null : $this->clean($value, $depth + 1);
-	    $out[$key] = $value;
-	}
-	return $out;
-    }
-
     //CLD: 2026-10-17T10:46:42+03:00: the request headers as a variable value: lower-case name => value; without the ones carrying secrets (authorization, cookie, the
     //step's secret header)
     private function requestHeaders(array $cfg) {
@@ -251,13 +202,5 @@ class HookController extends \sys\BaseController {
 	}
 	ksort($headers);
 	return $headers;
-    }
-
-    //CLD: 2026-10-18T18:34:20+03:00: a refused call: the JSON { error } answer, and, for a known workflow's webhook, an execution log entry (unknown tokens: no account to
-    //write to); replaces reply() / send(), which handled the output buffers
-    private function refuse($status, $error) {
-	if ($this->wf)
-	    \models\ExecutionLog::record('webhook.refused', $this->wf, $status . ': ' . $error . ' (' . ($_SERVER['REQUEST_METHOD'] ?? '') . ' from ' . \V::app()->request->userIP . ')');
-	\V::app()->response->sendJSON([ 'error' => $error ], true, $status);
     }
 }
