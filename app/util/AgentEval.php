@@ -582,7 +582,8 @@ class AgentEval {
 		'answer_changed' => (string)($c['answer'] ?? '') !== (string)($was['answer'] ?? ''), 'checks' => $changed ];
 	}
 	$out['cases'] = (object)$cases;
-	$out['removed'] = array_values(array_map(fn($c) => (string)$c['name'], $before));
+	//CLD: 2026-11-02T16:54:09+02:00: only of a run that has ended: while one runs, the cases not reached yet are not gone
+	$out['removed'] = in_array((string)($run['state'] ?? ''), WfTestRun::ACTIVE, true) ? [] : array_values(array_map(fn($c) => (string)$c['name'], $before));
 	return $out;
     }
 
