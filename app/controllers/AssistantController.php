@@ -168,8 +168,12 @@ class AssistantController extends \sys\BaseController {
 	    $settings->assign($req->data, true);
 	    if ($before !== [ (string)$settings->provider, trim((string)$settings->url) ] && (string)($req->data['api_key'] ?? '') === '')
 		$settings->api_key = '';
-	    if ($settings->validates() && $settings->save())
+	    if ($settings->validates() && $settings->save()) {
 		$this->addToast('success', 'OK', 'Assistant settings saved!');
+		//CLD: 2026-11-02T23:00:00+02:00: a budget this model's spending is not counted in
+		if (AssistantSettings::budgetOf($settings) !== null && AssistantSettings::pricesOf($settings) === null)
+		    $this->addToast('warning', 'Budget', 'NetFlow9 does not know the price of this model: what it spends is not counted in the monthly budget');
+	    }
 	    else
 		$this->addToast('error', 'Not saved', 'Check the settings marked in the form');
 	}

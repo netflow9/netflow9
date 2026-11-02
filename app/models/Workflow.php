@@ -586,6 +586,10 @@ class Workflow extends \sys\BaseModel {
 		if ($used < $d['inputs'])
 		    $add('warning', $id, "Only {$used} of {$d['inputs']} inputs are connected");
 	    }
+	    //CLD: 2026-11-02T23:00:00+02:00: an AI step whose spending cannot be counted (it may still run)
+	    $class = \V::app()->om->getObjectClass($d['objectName']);
+	    if (is_subclass_of($class, \models\node\NodeAppAi::class) && ($warning = \util\AgentGuard::priceWarning($class::CAPABILITY, (array)($nodes[$id]['config'] ?? []), $this->aid)))
+		$add('warning', $id, $warning);
 	}
 
 	return $issues;

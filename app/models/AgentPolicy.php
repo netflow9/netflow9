@@ -6,10 +6,7 @@
 	- denied_families: the integration families no agent may use (util\AgentTools::FAMILIES)
 	- write_mode: the tools that change something: all, none, or chosen (allowed_writes: the tools by name; @workflows: workflows run as tools; @mcp: tools of MCP servers and tool servers)
 	- writes_need_approval: a tool that changes something always waits for a person's approval
-	- budget: the most the AI steps with the account's own keys may spend per calendar month (USD; estimated from the tokens: models\AgentUsage), price_input / price_output: the prices (USD per
-	  1M tokens) of the models with no known price (util\AiPrices) and no prices on the step
-	//CLD: 2026-11-02T14:00:00+02:00: - price_table: the owners' prices per provider and model (rows: provider, '' for any; model, a name or its start; input; output): before the known ones (priceOf), for
-	  the budget and the cost a trace shows (models\AgentTrace); the System AI uses credits instead
+	- budget: the most the AI steps with the account's own keys may spend per calendar month (USD; estimated from the tokens: models\AgentUsage), at the list prices (data\AiProviders); the System AI uses credits instead
     Checked on the server: when a step is saved (stepErrors: the message says why) and when it runs (allowsTool: util\AgentGuard::govern, so a policy made after the step was saved holds too).
     A tool that changes something: an integration operation in the step's WRITES, a workflow run as a tool, a project tool or MCP tool not marked read-only (annotation readOnlyHint)
 */
@@ -26,8 +23,6 @@ class AgentPolicy extends \sys\BaseModel {
     //the entries of allowed_writes that stand for tools with no fixed name
     const WORKFLOWS = '@workflows';
     const MCP = '@mcp';
-    //CLD: 2026-11-02T14:00:00+02:00: the price table: its most rows
-    const MAX_PRICES = 20;
 
     public function getSchema() {
 	return array_merge([
@@ -83,36 +78,6 @@ class AgentPolicy extends \sys\BaseModel {
 		'default' => '',
 		'validate' => [ [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => 'must be 0 or more' ] ],
 	    ],
-	    //CLD: 2026-11-02T14:00:00+02:00: the price table (rows from the view, AccountController::settings: priceRows)
-	    [
-		'key' => 'price_table',
-		'type' => 'array',
-		'label' => 'Prices',
-		'help' => false,
-		'perm:read' => 'everybody',
-		'perm:update' => 'everybody',
-		'default' => [],
-	    ],
-	    [
-		'key' => 'price_input',
-		'type' => 'number',
-		'label' => 'Input price',
-		'help' => false,
-		'perm:read' => 'everybody',
-		'perm:update' => 'everybody',
-		'default' => '',
-		'validate' => [ [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => 'must be 0 or more' ] ],
-	    ],
-	    [
-		'key' => 'price_output',
-		'type' => 'number',
-		'label' => 'Output price',
-		'help' => false,
-		'perm:read' => 'everybody',
-		'perm:update' => 'everybody',
-		'default' => '',
-		'validate' => [ [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => 'must be 0 or more' ] ],
-	    ],
 	], $this->getSystemSchema());
     }
 
@@ -137,7 +102,7 @@ class AgentPolicy extends \sys\BaseModel {
     public static function ofAccount($aid) {
 	$oid = $aid ? \V::app()->om->to_oid((string)$aid) : null;
 	return ($oid ? \V::app()->om->findOne('AgentPolicy', [ 'aid' => $oid ]) : null) ?: \V::app()->om->create('AgentPolicy', [ 'aid' => $oid, 'denied_families' => [], 'write_mode' => 'all',
-	    'allowed_writes' => [], 'writes_need_approval' => false, 'budget' => '', 'price_input' => '', 'price_output' => '', 'price_table' => [] ]);
+	    'allowed_writes' => [], 'writes_need_approval' => false, 'budget' => '' ]);
     }
 
     public function familyAllowed($key) {
@@ -167,62 +132,6 @@ class AgentPolicy extends \sys\BaseModel {
     //the monthly budget (USD), null: none
     public function budget() {
 	return (float)$this->budget > 0 ? (float)$this->budget : null;
-    }
-
-    //the prices of the models with no known price: [ input, output, 0 ], null: none set
-    public function prices() {
-	return (float)$this->price_input > 0 || (float)$this->price_output > 0 ? [ (float)$this->price_input, (float)$this->price_output, 0 ] : null;
-    }
-
-    //CLD: 2026-11-02T14:00:00+02:00: new: the table's prices of $model of provider $capability: [ input, output, cache read (10% of input, as util\AiPrices for set prices) ]; the row with the longest matching
-    //model name, one of that provider before one of any provider; null: no row
-    public function priceOf($capability, $model) {
-	$best = null;
-	$bestScore = -1;
-	foreach((array)$this->price_table as $row) {
-	    $name = (string)($row['model'] ?? '');
-	    $provider = (string)($row['provider'] ?? '');
-	    if ($name === '' || !str_starts_with((string)$model, $name) || ($provider !== '' && $provider !== (string)$capability))
-		continue;
-	    $score = strlen($name) * 2 + ($provider !== '' ? 1 : 0);
-	    if ($score > $bestScore) {
-		[ $best, $bestScore ] = [ $row, $score ];
-	    }
-	}
-	return $best === null ? null : [ (float)$best['input'], (float)$best['output'], (float)$best['input'] * 0.1 ];
-    }
-
-    //CLD: 2026-11-02T14:00:00+02:00: new: the rows posted, as they are stored: without those with no model, [ provider, model, input, output ], in order; `input` / `output` as posted when they are not
-    //numbers of 0 or more (validates() refuses them)
-    public static function priceRows($posted) {
-	$rows = [];
-	foreach((array)$posted as $row) {
-	    $model = trim((string)($row['model'] ?? ''));
-	    if ($model === '')
-		continue;
-	    $provider = (string)($row['provider'] ?? '');
-	    $number = fn($v) => is_numeric($v) && (float)$v >= 0 ? (float)$v : (string)$v;
-	    $rows[] = [ 'provider' => array_key_exists($provider, \data\AiProviders::DATA) ? $provider : '', 'model' => mb_substr($model, 0, 100), 'input' => $number($row['input'] ?? 0), 'output' => $number($row['output'] ?? 0) ];
-	}
-	return $rows;
-    }
-
-    //CLD: 2026-11-02T14:00:00+02:00: new: + the price table's rows
-    public function validates($options = []) {
-	$valid = parent::validates($options);
-	$rows = (array)$this->price_table;
-	if (count($rows) > self::MAX_PRICES) {
-	    $this->errors('price_table', 'Prices: at most ' . self::MAX_PRICES . ' rows');
-	    $valid = false;
-	}
-	foreach($rows as $row) {
-	    if (!is_float($row['input'] ?? null) && !is_int($row['input'] ?? null) || !is_float($row['output'] ?? null) && !is_int($row['output'] ?? null)) {
-		$this->errors('price_table', 'Prices: `' . ($row['model'] ?? '') . '`: the prices must be numbers of 0 or more');
-		$valid = false;
-		break;
-	    }
-	}
-	return $valid;
     }
 
     //where AI step $step goes beyond the policy of its account: [ message ] (saving is refused with them; its tools of MCP servers are only known when it runs)

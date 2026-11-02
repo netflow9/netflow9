@@ -6,9 +6,9 @@
     //CLD: 2026-10-20T10:00:00+03:00: one server for both providers (Server URL, API key), then Connect (AssistantController::connect): when it answers, the models it lists
     //are offered in Model; Effort for Claude only. The saved model is shown until the next Connect (the page connects by itself when there is one)
     //CLD: 2026-10-22T14:00:00+03:00: bring your own key: System (the installation's server: nothing to set; offered only when there is one: $system), Claude, OpenAI, Gemini, Ollama,
-    //Lemonade (the Server URL's placeholder is the provider's own). + the monthly budget, the prices (not for System) and this month's spending ($usage)
+    //Lemonade (the Server URL's placeholder is the provider's own). + the monthly budget (not for System) and this month's spending ($usage)
     //CLD: 2026-10-22T15:00:00+03:00: System is paid in credits: the wallet ($wallet: this month's allowance, the top-ups and their expiry), the model's rates ($rates), the last
-    //entries ($ledger), the account's monthly limit (credit_cap). The budget and the prices are for the other providers only
+    //entries ($ledger), the account's monthly limit (credit_cap). The budget is for the other providers only
     //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (plugins\MultiTenant): here its credits left and the account's monthly limit for the Assistant; the allowance, the top-ups
     //and the last changes on its own page (AI credits: /MultiTenant/credits/index; no $ledger)
     //CLD: 2026-10-31T22:00:00+02:00: the System part is the provider's ($systemHtml: util\AssistantSystem; no $wallet, $rates)
@@ -191,13 +191,11 @@ JS . "}({$connectJs});");
 
 	</div>
 	<div class="col-xl-6">
-	    <?php //CLD: 2026-10-22T14:00:00+03:00: new: the monthly budget, the prices it is counted with, this month's spending ?>
+	    <?php //CLD: 2026-10-22T14:00:00+03:00: new: the monthly budget, this month's spending ?>
 	    <?php //CLD: 2026-10-22T15:00:00+03:00: the budget is for your own key (System: credits, above) ?>
 	    <div data-assistant-provider="anthropic openai gemini ollama lemonade">
 	    <h6 class="mt-4 mt-xl-2">Budget</h6>
 	    <?= $settings->schema['budget']->input([ 'cols' => '3,9', 'input' => [ 'inputmode' => 'decimal', 'placeholder' => 'No limit' ] ]) ?>
-		<?= $settings->schema['price_input']->input([ 'cols' => '3,9', 'input' => [ 'inputmode' => 'decimal' ] ]) ?>
-		<?= $settings->schema['price_output']->input([ 'cols' => '3,9', 'input' => [ 'inputmode' => 'decimal' ] ]) ?>
 	    </div>
 	    <?php //CLD: 2026-10-22T15:00:00+03:00: your own key's spending (System: the credits, above) ?>
 	    <div class="form-group row mb-2" data-assistant-provider="anthropic openai gemini ollama lemonade">
@@ -213,7 +211,7 @@ JS . "}({$connectJs});");
 			<div class="progress-bar <?= $pct >= 100 ? 'bg-danger' : ($pct >= 80 ? 'bg-warning' : '') ?>" style="width: <?= $pct ?>%"></div>
 		    </div>
 		    <?php endif; ?>
-		    <div class="form-text">Counted by the Assistant from the tokens and the prices; your provider's bill is what counts. Since <?= gmdate('F 1') ?> (UTC).</div>
+		    <div class="form-text">Counted by the Assistant from the tokens and the provider's list prices; your provider's bill is what counts. Since <?= gmdate('F 1') ?> (UTC).</div>
 		</div>
 	    </div>
 
