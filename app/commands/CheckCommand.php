@@ -5091,6 +5091,8 @@ class CheckCommand extends \sys\BaseController {
 	    $changes = (array)$d2['cases'];
 	    $this->check('agent eval: a changed draft is what runs: failed, per check, the difference from the last run', [ 'failed', 'fail', [ false, true, true, false ], (string)$r1['_id'], 'broken', true, [ 'JSON category equals billing', false ] ],
 		[ $r2['state'], $r2['cases'][0]['state'], array_column((array)$r2['cases'][0]['checks'], 'pass'), $d2['previous'], $changes[(string)$jc->_id]['change'] ?? null, $changes[(string)$jc->_id]['answer_changed'] ?? null, [ $changes[(string)$jc->_id]['checks'][0]['label'] ?? null, $changes[(string)$jc->_id]['checks'][0]['now'] ?? null ] ]);
+	    $this->check('agent eval: a case of the last run that is not in this one: told once the run has ended, not while it runs', [ [ 'gone' ], [] ],
+		[ $E::diff([ 'state' => 'passed', 'cases' => [] ], [ '_id' => 1, 'cases' => [ [ 'case' => 'x', 'name' => 'gone', 'state' => 'pass' ] ] ])['removed'], $E::diff([ 'state' => 'running', 'cases' => [] ], [ '_id' => 1, 'cases' => [ [ 'case' => 'x', 'name' => 'gone', 'state' => 'pass' ] ] ])['removed'] ]);
 	    $saveDraft($jwf, $jsonFlow('{"category":"billing"}'));
 	    [ $r3 ] = $E::start($jwf);
 	    $d3 = $E::diff($R::read((string)$r3['_id'], $jwf), $R::previous($R::read((string)$r3['_id'], $jwf)));
