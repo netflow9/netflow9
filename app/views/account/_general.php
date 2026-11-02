@@ -24,7 +24,7 @@
 		    <?= $account->schema['audit_log_retention']->input([ 'cols' => '6,6' ]) ?>
 		    <?= $account->schema['execution_log_retention']->input([ 'cols' => '6,6' ]) ?>
 		    <?php //CLD: 2026-10-22T00:00:00+03:00: the audit log is kept 1 year at least (models\AuditLog::MIN_RETENTION_DAYS) ?>
-		    <div class="form-text">A shorter time also removes the older entries already written. Audit log entries are kept at least 1 year.</div>
+		    <div class="form-text">A shorter time also removes the older entries already written. Audit log entries are kept at least 1 year. The AI steps' traces are kept as long as the execution log's entries.</div>
 		</div>
 	    </div>
 

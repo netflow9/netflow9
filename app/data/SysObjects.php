@@ -818,6 +818,11 @@ class SysObjects {
 	    'AgentUsage' => [
 		'class' => 'models\AgentUsage',
 	    ],
+	    //CLD: 2026-11-02T14:00:00+02:00: the traces of the AI steps' visits (the Executions panel)
+	    'AgentTrace' => [
+		'class' => 'models\AgentTrace',
+		'auditLog' => false,
+	    ],
 	    //CLD: 2026-11-01T11:55:18+02:00: the tool servers (util\ToolServers): the servers an account may use, the sessions open (were registered by the LocalMCP plugin)
 	    'ToolServerAccess' => [
 		'class' => 'models\ToolServerAccess',

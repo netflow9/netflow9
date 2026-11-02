@@ -36,6 +36,7 @@
 	//CLD: 2026-10-23T01:10:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page or an HTTP request
 	//CLD: 2026-10-23T02:30:00+03:00: in an email {{ ai.html }} shows it formatted (util\EmailHtml; was escaped: {{ markdown(ai.text) }} only)
     //CLD: 2026-11-02T10:00:00+02:00: what keeps the agent in bounds: util\AgentGuard (limits, the account's policy, untrusted content marked, lockdown, masking), each tool call in the audit log
+    //CLD: 2026-11-02T14:00:00+02:00: each visit writes its trace (util\AgentTracer, models\AgentTrace; the Executions panel): rounds, tool calls, approvals, tokens, cost; its id in the variable (trace_id)
     //CLD: 2026-10-23T10:00:00+03:00: Credential `system` (SYSTEM): the installation's System AI instead of a credential of the project, when it is of the step's provider (a plugin gives
     //it: hook ai:system-provider, systemProvider(); the MultiTenant plugin's System AI). A run reserves the account's credits, counts each call's tokens in credits, stops before a call once the
     //reserved ones are used up, and is charged what it used (its session: start, add, exhausted, finish)
@@ -96,6 +97,8 @@ abstract class NodeAppAi extends \models\WfNode {
     //CLD: 2026-11-02T10:00:00+02:00: the run's util\AgentGuard; what the agent did so far (kept in the variable when a limit stops it)
     public $guard = null;
     private $progress = null;
+    //CLD: 2026-11-02T14:00:00+02:00: the trace of this visit (util\AgentTracer)
+    public $tracer = null;
 
     //CLD: 2026-11-02T10:00:00+02:00: new: whether the provider is someone else's servers (util\AgentGuard: Mask personal data)
     public static function isCloud() {
@@ -502,7 +505,7 @@ abstract class NodeAppAi extends \models\WfNode {
     public static function outputVariables($config) {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'ai') : 'ai';
 	return \util\Validator::isIdentifier($name) ? [ $name => [ 'type' => 'object',
-	    'info' => 'the answer: { text, html, json, model, stop_reason, rounds, tool_calls, usage }; on error { error }',
+	    'info' => 'the answer: { text, html, json, model, stop_reason, rounds, tool_calls, usage, trace_id }; on error { error, trace_id }',
 	    //CLD: 2026-10-13T12:34:29+03:00: the fields and their types (suggested after `ai.`; was a list of names)
 	    'fields' => [
 		'text' => [ 'type' => 'string', 'info' => 'the answer' ],
@@ -512,6 +515,8 @@ abstract class NodeAppAi extends \models\WfNode {
 		'usage' => [ 'type' => 'object', 'fields' => [ 'input_tokens' => [ 'type' => 'number' ], 'output_tokens' => [ 'type' => 'number' ] ] ], 'error' => [ 'type' => 'string', 'info' => 'on error only' ],
 			'cost' => [ 'type' => 'object', 'info' => 'estimated from the tokens (usd) or the System AI credits used', 'fields' => [ 'usd' => [ 'type' => 'number' ], 'credits' => [ 'type' => 'number' ] ] ],
 			'limit' => [ 'type' => 'string', 'info' => 'the limit that stopped the agent: tool_calls, write_calls, cost, budget' ],
+			//CLD: 2026-11-02T14:00:00+02:00: new
+			'trace_id' => [ 'type' => 'string', 'info' => 'the id of this visit\'s trace; a link to it: /workflow/trace?id={{ ai.trace_id }}' ],
 	    ] ] ] : [];
     }
 
@@ -618,9 +623,11 @@ abstract class NodeAppAi extends \models\WfNode {
 	    //CLD: 2026-11-01T23:30:00+02:00: a resumed step that fails: its saved conversation removed
 	    $this->dropWait();
 	    $message = $e->getMessage();
+	    //CLD: 2026-11-02T14:00:00+02:00: the visit's trace ends; its id in the variable
+	    $this->tracer?->finish('error', $message);
 	    //CLD: 2026-11-02T10:00:00+02:00: a limit reached: what the agent did so far is kept
 	    if (\util\Validator::isIdentifier($name))
-		$this->exec->setVariable($name, [ 'error' => $message ] + ($e instanceof \util\AgentLimitReached ? [ 'limit' => $e->limit ] + (array)$this->progress + [ 'tool_calls' => [] ]
+		$this->exec->setVariable($name, [ 'error' => $message ] + ($this->tracer ? [ 'trace_id' => $this->tracer->id() ] : []) + ($e instanceof \util\AgentLimitReached ? [ 'limit' => $e->limit ] + (array)$this->progress + [ 'tool_calls' => [] ]
 		    + ($this->guard ? [ 'cost' => $this->guard->costs() ] : []) : []));
 	    $this->exec->log($this->wfid, "{$label}: {$message}");
 	    if ($this->cfg('onError', 'fail') === 'output')
@@ -639,6 +646,9 @@ abstract class NodeAppAi extends \models\WfNode {
 
     //the agent loop; $clients gets the MCP clients opened (closed by execute())
     protected function run(array &$clients) {
+	//CLD: 2026-11-02T14:00:00+02:00: the visit's trace, the first thing: a visit that fails at once has one too
+	$this->tracer = !empty($this->agentWait['trace']) ? \util\AgentTracer::resume($this, (string)$this->agentWait['trace']) : \util\AgentTracer::begin($this);
+	$this->traceSecrets();
 	//CLD: 2026-10-23T10:00:00+03:00: System AI: its credential (the session, with the credits: below)
 	$system = null;
 	if ((string)$this->cfg('credential', '') === self::SYSTEM) {
@@ -656,6 +666,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	$resume = !empty($this->agentWait) ? $this->loadWait() : null;
 	//CLD: 2026-11-02T10:00:00+02:00: the guard of this run (resumed: as it was saved)
 	$this->guard = new \util\AgentGuard($this, $system !== null, $resume['guard'] ?? null);
+	$this->tracer->addSecrets($cred);
+	$this->tracer->attach($this->guard);
 
 	$json = $this->cfg('output', 'text') === 'json';
 	$schema = $json && trim((string)$this->cfg('jsonSchema', '')) !== '' ? json_decode((string)$this->cfg('jsonSchema')) : null;
@@ -712,12 +724,16 @@ abstract class NodeAppAi extends \models\WfNode {
 		throw new \ErrorException('the System AI credits reserved for this step (' . $session->reserved() . ') are used up before the model finished');
 	    //CLD: 2026-11-02T10:00:00+02:00: the run's cost limit, the account's monthly budget
 	    $guard->beforeCall();
+	    $asked = microtime(true);
 	    $answer = $this->callModel($cred, $state, $tools, $json ? ($schema ?: true) : null);
+	    $askedMs = (int)((microtime(true) - $asked) * 1000);
 	    $usage['input_tokens'] += (int)$answer['usage'][0];
 	    $usage['output_tokens'] += (int)$answer['usage'][1];
 	    if ($session)
 		$session->add($answer['usage']);
 	    $guard->afterCall($answer['usage'], $session);
+	    //CLD: 2026-11-02T14:00:00+02:00: the round in the trace, tokens and cost included
+	    $this->tracer->round($round, $answer, $askedMs);
 	    if (!empty($answer['continue']))
 		continue;
 	    if (!$answer['calls'])
@@ -731,13 +747,16 @@ abstract class NodeAppAi extends \models\WfNode {
 	    foreach($answer['calls'] as [ $id, $tool, $args ]) {
 		//CLD: 2026-10-17T21:00:54+03:00: + the images of the result
 		$toolImages = [];
+		//CLD: 2026-11-02T14:00:00+02:00: in the trace as the model wrote it, before the masked values go back; $took: how long the tool ran
+		$this->tracer->call($round, count($results), $tool, $args, $guard->accessOf($tool));
+		$took = 0;
 		//CLD: 2026-11-02T10:00:00+02:00: masked values back in the arguments; past a limit: the agent stops; approval: also by the policy or a lockdown (approvalFor)
 		$args = $guard->restore($args);
 		$asks = null;
 		if (isset($tools[$tool]) && is_array($args)) {
 		    $reached = $guard->takeCall($tools[$tool]);
 		    if ($reached)
-			$this->limitReached($reached, $tool, $args, $pending, $calls);
+			$this->limitReached($reached, $tool, $args, $pending, $calls, $round, count($results));
 		    $asks = $guard->approvalFor($tools[$tool]);
 		}
 		if (!isset($tools[$tool])) {
@@ -752,16 +771,20 @@ abstract class NodeAppAi extends \models\WfNode {
 		    //CLD: 2026-11-02T10:00:00+02:00: + meta: what asks (the tool's `approval` or `lockdown`)
 		    $pending[] = [ 'index' => count($results), 'call' => count($calls), 'id' => $id, 'tool' => $tool, 'args' => $args, 'meta' => $asks ];
 		    $calls[] = [ 'tool' => $tool, 'arguments' => $args, 'error' => false, 'approval' => 'asked' ];
+		    $this->tracer->approval($round, count($results), 'asked');
 		    $results[] = null;
 		    continue;
 		} else {
 		    $guard->ran();
+		    $started = microtime(true);
 		    try {
 			[ $text, $isError, $toolImages ] = ($tools[$tool]['run'])($args);
 		    } catch (\Exception $e) {
 			[ $text, $isError ] = [ 'the tool failed: ' . $e->getMessage(), true ];
 		    }
+		    $took = (int)((microtime(true) - $started) * 1000);
 		}
+		$this->tracer->result($round, count($results), $text, $isError, $took, count((array)$toolImages));
 		//CLD: 2026-11-01T23:30:00+02:00: toolResult() (was here)
 		$results[] = $this->toolResult($id, $tool, $args, $text, $isError, (array)$toolImages, $calls);
 	    }
@@ -776,7 +799,7 @@ abstract class NodeAppAi extends \models\WfNode {
 	$text = trim((string)$guard->restore((string)$answer['text']));
 	//CLD: 2026-10-23T01:10:00+03:00: + html (util\Markdown)
 	$result = [ 'text' => $text, 'html' => \util\Markdown::toHtml($text), 'json' => null, 'model' => $answer['model'], 'stop_reason' => $answer['stop_reason'], 'rounds' => min($round, $maxRounds),
-	    'tool_calls' => $calls, 'usage' => $usage, 'cost' => $guard->costs() ]; //CLD: 2026-11-02T10:00:00+02:00: + cost
+	    'tool_calls' => $calls, 'usage' => $usage, 'cost' => $guard->costs(), 'trace_id' => $this->tracer->id() ]; //CLD: 2026-11-02T10:00:00+02:00: + cost //CLD: 2026-11-02T14:00:00+02:00: + trace_id
 	if ($json) {
 	    $clean = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $text);
 	    $parsed = json_decode($clean, true);
@@ -785,6 +808,7 @@ abstract class NodeAppAi extends \models\WfNode {
 	    $result['json'] = $parsed;
 	}
 	$this->exec->log($this->wfid, static::$label . ": {$answer['model']}, {$result['rounds']} round(s), " . count($calls) . " tool call(s), {$usage['input_tokens']} + {$usage['output_tokens']} tokens");
+	$this->tracer->finish('done');
 	return $result;
     }
 
@@ -1033,13 +1057,28 @@ abstract class NodeAppAi extends \models\WfNode {
 	return [ $id, $this->guard->result($tool, $text, self::MAX_TOOL_RESULT), $isError, $images ];
     }
 
+    //CLD: 2026-11-02T14:00:00+02:00: new: the values of the credentials the step names (MCP servers, integrations) never go in its trace, wherever they turn up (the provider's: added in run(), the System AI's too)
+    protected function traceSecrets() {
+	$ids = [];
+	foreach((array)$this->cfg('mcp', []) as $id)
+	    $ids[] = [ 'mcp', (string)$id ];
+	foreach(\util\AgentTools::FAMILIES as $key => $fam)
+	    if ((string)$this->cfg("{$key}Credential", '') !== '')
+		$ids[] = [ $fam['capability'], (string)$this->cfg("{$key}Credential") ];
+	foreach($ids as [ $capability, $id ])
+	    $this->tracer->addSecrets(\models\Credential::findFor($this->exec, $id, $capability));
+    }
+
     //CLD: 2026-11-02T10:00:00+02:00: new: call $tool went past a limit: not run, nor are the round's calls that were to ask (in $calls: not run; in the audit log), the agent stops
-    protected function limitReached(\util\AgentLimitReached $reached, $tool, array $args, array $pending, array &$calls) {
+    //CLD: 2026-11-02T14:00:00+02:00: + $round, $index: the call's place in the trace
+    protected function limitReached(\util\AgentLimitReached $reached, $tool, array $args, array $pending, array &$calls, $round, $index) {
 	foreach($pending as $p) {
 	    $calls[$p['call']] = [ 'tool' => $p['tool'], 'arguments' => $p['args'], 'error' => true, 'approval' => 'not asked' ];
+	    $this->tracer->approval($round, $p['index'], 'not asked');
 	    $this->guard->audit($p['tool'], $p['args'], 'stopped by a limit');
 	}
 	$calls[] = [ 'tool' => $tool, 'arguments' => $args, 'error' => true, 'refused' => $reached->limit ];
+	$this->tracer->refused($round, $index, $reached->limit);
 	$this->guard->audit($tool, $args, 'stopped by a limit');
 	$this->exec->log($this->wfid, static::$label . ": tool {$tool} not run: " . $reached->getMessage());
 	throw $reached;
@@ -1103,7 +1142,9 @@ abstract class NodeAppAi extends \models\WfNode {
 	    self::dropBlob($file);
 	    throw new \ErrorException('the approval task could not be saved: ' . json_encode($task->errors(), JSON_UNESCAPED_UNICODE));
 	}
-	$this->agentWait = [ 'task' => (string)$task->_id, 'file' => (string)$file ];
+	//CLD: 2026-11-02T14:00:00+02:00: + trace: the visit goes on in the same trace
+	$this->agentWait = [ 'task' => (string)$task->_id, 'file' => (string)$file, 'trace' => $this->tracer->id() ];
+	$this->tracer->waiting();
 	$this->resume_at = $due;
 	$this->exec->log($this->wfid, static::$label . ': waiting for approval: ' . $task->title);
 	\models\ExecutionLog::record('ai.approval.ask', null, $task->title . ' - ' . self::callsText($items));
@@ -1144,17 +1185,20 @@ abstract class NodeAppAi extends \models\WfNode {
 	$results = $resume['results'];
 	foreach($resume['pending'] as $k => $p) {
 	    $images = [];
+	    $took = 0;
 	    if ($done && ($answers["call{$k}"] ?? '') === 'approve') {
 		$decision = "approved by {$who}";
 		if (!isset($tools[$p['tool']])) {
 		    [ $text, $isError ] = [ "the tool `{$p['tool']}` is no longer offered", true ];
 		} else {
 		    $this->guard->ran();
+		    $started = microtime(true);
 		    try {
 			[ $text, $isError, $images ] = ($tools[$p['tool']]['run'])($p['args']);
 		    } catch (\Exception $e) {
 			[ $text, $isError ] = [ 'the tool failed: ' . $e->getMessage(), true ];
 		    }
+		    $took = (int)((microtime(true) - $started) * 1000);
 		}
 		$outcome = 'approved';
 	    } else {
@@ -1163,6 +1207,9 @@ abstract class NodeAppAi extends \models\WfNode {
 		[ $text, $isError ] = [ $decision, true ];
 		$outcome = $done ? 'rejected' : 'expired';
 	    }
+	    //CLD: 2026-11-02T14:00:00+02:00: the decision and the result in the trace (rejected, not in time: the same text the model gets)
+	    $this->tracer->approval($resume['round'], $p['index'], $outcome, $done ? $who : null, $done ? $task->completed_at : null, $done && $outcome === 'rejected' ? $comment : '');
+	    $this->tracer->result($resume['round'], $p['index'], $text, $isError, $took, count((array)$images));
 	    $one = [];
 	    //CLD: 2026-11-02T10:00:00+02:00: + what the audit log says: approved by whom, else why it did not run
 	    $withoutReason = \util\AgentTools::withoutReason($p['args'], $p['meta']['reason'] ?? null);

@@ -641,6 +641,8 @@ class DaemonCommand extends \sys\BaseController {
 		    $time_limit = new \MongoDB\BSON\UTCDateTime((time() - $acct->execution_log_retention * 60*60*24) * 1000);
 		    $exe_log_coll->deleteMany([ 'aid' => $acct->_id, 'created_at' => [ '$lte' => $time_limit ] ]);
 		}
+		//CLD: 2026-11-02T14:00:00+02:00: the AI steps' traces: the same setting
+		\models\AgentTrace::prune($acct);
 	    }
 	});
 
