@@ -18,6 +18,8 @@ if (!window.app)
 //CLD: 2026-10-29T21:38:25+02:00: the execution on the canvas (`shown`) stays when the panel is closed, refreshed every 2 s while it runs; showLive(): the latest one running / waiting is shown
 //without opening the panel (the page, when the designer opens). A chip at the top of the canvas (options.chip(): the canvas element) says which one: a click opens it in the panel,
 //its x takes the marks off (hide())
+//CLD: 2026-11-02T14:00:00+02:00: + an AI step's trace in the details (urls.trace: WorkflowController::execution_trace): its visits, opened one loaded and followed while it runs; rounds collapsed, a tool call
+//opens on its arguments and result (what is open stays over the refreshes: traceKeys); Run again with the same inputs (urls.again: execution_again, asked again in place); openTrace(execution, trace)
 window.app.WfExecutions = (function() {
     //the one of the current designer page
     let current = null;
@@ -48,6 +50,34 @@ window.app.WfExecutions = (function() {
 	return `<span class='badge text-bg-${colors[state] || 'secondary'}'>${esc(labels[state] || state)}</span>`;
     }
 
+    //CLD: 2026-11-02T14:00:00+02:00: the trace: its state; an estimated cost or credits; a text cut; a tool call's approval
+    function traceBadge(state) {
+	const colors = { running: 'primary', waiting: 'warning', done: 'success', error: 'danger', stopped: 'secondary' };
+	const labels = { running: 'running', waiting: 'waiting for approval', done: 'done', error: 'failed', stopped: 'stopped' };
+	return `<span class='badge text-bg-${colors[state] || 'secondary'}'>${esc(labels[state] || state)}</span>`;
+    }
+
+    function costText(cost) {
+	if (cost && cost.usd !== null && cost.usd !== undefined)
+	    return 'about $' + Number(cost.usd).toFixed(cost.usd > 0 && cost.usd < 0.01 ? 4 : 2);
+	if (cost && cost.credits !== null && cost.credits !== undefined)
+	    return cost.credits + ' credit(s)';
+	return '';
+    }
+
+    const muted = (html) => `<span style='color: var(--netflow9-debug-muted)'>${html}</span>`;
+    const cutNote = (shown, full) => full ? `<div class='small' style='color: var(--netflow9-debug-muted)'>Cut: the first ${esc(Number(String(shown || '').length).toLocaleString())} of ${esc(Number(full).toLocaleString())} characters</div>` : '';
+    const block = (text) => `<pre class='mb-1 small' style='color: inherit; white-space: pre-wrap'>${esc(text)}</pre>`;
+
+    function approvalBadge(a, waiting) {
+	if (!a)
+	    return '';
+	const by = a.by ? ' by ' + a.by : '';
+	const shown = { asked: waiting ? [ 'warning', 'waiting for approval' ] : [ 'secondary', 'not decided' ], approved: [ 'success', 'approved' + by ], rejected: [ 'danger', 'rejected' + by ],
+	    expired: [ 'secondary', 'not approved in time' ], 'not asked': [ 'secondary', 'not asked: a limit stopped the agent' ] }[a.state] || [ 'secondary', a.state ];
+	return `<span class='badge text-bg-${shown[0]}'>${esc(shown[1])}</span>`;
+    }
+
     class WfExecutions {
 	constructor(panel, options) {
 	    if (current)
@@ -71,6 +101,12 @@ window.app.WfExecutions = (function() {
 	    this.shown = null;
 	    this.shownDetail = null;
 	    this.chipEl = null;
+	    //CLD: 2026-11-02T14:00:00+02:00: the traces: those loaded (id => with its rounds), being loaded, whether opened by the user (id => yes / no; not told: the only one of a run is open), the rounds and calls open, one to show
+	    this.traces = {};
+	    this.traceLoading = new Set();
+	    this.traceOpen = new Map();
+	    this.traceKeys = new Set();
+	    this.traceToShow = null;
 	    //the elements its listeners are on (removed by destroy)
 	    this.bound = [];
 
@@ -138,6 +174,42 @@ window.app.WfExecutions = (function() {
 		this.askKill = null;
 		this.renderDetail();
 	    }, '.btn-exec-kill-no');
+	    //CLD: 2026-11-02T14:00:00+02:00: Run again (asked again in place; kept over the 2 s refresh while asked: askAgain)
+	    this.on($panel, 'click', (e) => {
+		e.preventDefault();
+		this.askAgain = this.selected;
+		this.renderDetail();
+		const yes = this.find('.btn-exec-again-yes');
+		if (yes)
+		    yes.focus();
+	    }, '.btn-exec-again');
+	    this.on($panel, 'click', (e) => {
+		e.preventDefault();
+		this.runAgain();
+	    }, '.btn-exec-again-yes');
+	    this.on($panel, 'click', (e) => {
+		e.preventDefault();
+		this.askAgain = null;
+		this.renderDetail();
+	    }, '.btn-exec-again-no');
+	    this.on($panel, 'click', (e) => {
+		e.preventDefault();
+		this.select(e.currentTarget.dataset.id);
+	    }, '.exec-rerun-of');
+	    //CLD: 2026-11-02T14:00:00+02:00: a trace, a round, a tool call opened or closed (the click comes before the element toggles)
+	    this.on($panel, 'click', (e) => {
+		const d = e.currentTarget.parentElement;
+		const open = !d.open;
+		if (d.dataset.trace) {
+		    this.traceOpen.set(d.dataset.trace, open);
+		    if (open && this.detail)
+			this.loadTraces(this.detail);
+		} else if (open) {
+		    this.traceKeys.add(d.dataset.key);
+		} else {
+		    this.traceKeys.delete(d.dataset.key);
+		}
+	    }, 'details[data-key] > summary');
 	}
 
 	//a listener removed by destroy() (selector: delegated)
@@ -382,7 +454,7 @@ window.app.WfExecutions = (function() {
 	    }
 	    box.innerHTML = this.list.map((e) => `
 		<div class='exec-row d-flex align-items-center gap-2 px-1 rounded${e.id === this.selected ? ' exec-selected' : ''}' data-id='${esc(e.id)}' title='${esc(e.error || '')}' style='cursor: pointer'>
-		    ${badge(e.state)}
+		    ${badge(e.state)}${e.rerun_of ? ` <i class='bi bi-arrow-repeat' title='Run again with the inputs of another execution'></i>` : ''}
 		    <span class='exec-time'>${esc(e.started || e.created)}</span>
 		    <span class='exec-what' style='color: var(--netflow9-debug-muted)' title='${esc(e.trigger + ' ' + versionLabel(e))}'>${esc(e.trigger)} ${esc(versionLabel(e))}</span>
 		    <span class='exec-duration ms-auto' style='color: var(--netflow9-debug-muted)'>${duration(e.duration)}</span>
@@ -402,13 +474,166 @@ window.app.WfExecutions = (function() {
 	    const kill = !this.killable(e) ? '' : `<span class='exec-kill ms-auto flex-shrink-0'>` + (this.askKill === e.id
 		? `<span class='me-1'>Kill?</span><button type='button' class='debug-icon-btn btn-exec-kill-yes text-danger' title='Yes, stop it'><i class='bi bi-check-lg'></i></button><button type='button' class='debug-icon-btn btn-exec-kill-no' title='No'><i class='bi bi-x-lg'></i></button>`
 		: `<button type='button' class='debug-icon-btn btn-exec-kill text-danger' title='Kill this execution'><i class='bi bi-stop-circle'></i></button>`) + `</span>`;
+	    //CLD: 2026-11-02T14:00:00+02:00: Run again: one that has finished, by a user who may run the workflow; the one it ran again; its position kept over a refresh
+	    const again = !this.againable(e) ? '' : `<span class='exec-again d-inline-flex align-items-center'>` + (this.askAgain === e.id
+		? `<span class='me-1'>Run again on the current draft? Its tools run again too.</span><button type='button' class='debug-icon-btn btn-exec-again-yes' title='Yes, run it again'><i class='bi bi-check-lg'></i></button><button type='button' class='debug-icon-btn btn-exec-again-no' title='No'><i class='bi bi-x-lg'></i></button>`
+		: `<button type='button' class='debug-icon-btn btn-exec-again' title='Run again with the same inputs, on the current draft'><i class='bi bi-arrow-repeat'></i></button>`) + `</span>`;
+	    const from = e.rerun_of ? `, <a href='#' class='exec-rerun-of' data-id='${esc(e.rerun_of)}'>run again of another execution</a>` : '';
+	    const top = box.scrollTop;
 	    box.innerHTML = `
-		<div class='mb-1 d-flex align-items-center gap-1'><span>${badge(e.state)} <span style='color: var(--netflow9-debug-muted)'>${esc(e.trigger)} ${esc(versionLabel(e))}, started ${esc(e.started || e.created || '-')}${e.duration !== null ? ', ' + duration(e.duration) : ''}${e.wake_at ? ', wakes at ' + esc(e.wake_at) : ''}</span></span>${del}${kill}</div>
+		<div class='mb-1 d-flex flex-wrap align-items-center gap-1'><span>${badge(e.state)} <span style='color: var(--netflow9-debug-muted)'>${esc(e.trigger)} ${esc(versionLabel(e))}, started ${esc(e.started || e.created || '-')}${e.duration !== null ? ', ' + duration(e.duration) : ''}${e.wake_at ? ', wakes at ' + esc(e.wake_at) : ''}${from}</span></span><span class='ms-auto d-inline-flex align-items-center gap-1'>${again}${del}${kill}</span></div>
 		${e.error ? `<div class='text-danger mb-1'>${esc(e.error)}</div>` : ''}
+		${this.tracesHtml(e)}
 		<div class='debug-panel-title mt-2 mb-1'>Log</div>
 		${log || `<div style='color: var(--netflow9-debug-muted)'>(empty)</div>`}
 		<div class='debug-panel-title mt-2 mb-1'>Variables</div>
 		<pre class='mb-0' style='color: inherit; white-space: pre-wrap'>${esc(vars)}</pre>`;
+	    box.scrollTop = top;
+	    this.loadTraces(e);
+	    if (this.traceToShow) {
+		const el = box.querySelector(`details[data-trace='${CSS.escape(this.traceToShow)}']`);
+		if (el) {
+		    el.scrollIntoView({ block: 'nearest' });
+		    this.traceToShow = null;
+		}
+	    }
+	}
+
+	/* ---------------- an AI step's trace ---------------- */
+	//CLD: 2026-11-02T14:00:00+02:00: new: whether trace `t` of execution `e` is open
+	traceIsOpen(t, e) {
+	    return this.traceOpen.has(t.id) ? this.traceOpen.get(t.id) : (e.traces || []).length === 1;
+	}
+
+	//the open traces not loaded, or changed since (one that runs: at each refresh); shown again when they arrive
+	loadTraces(e) {
+	    (e.traces || []).filter((t) => this.traceIsOpen(t, e)).forEach((t) => {
+		const have = this.traces[t.id];
+		if ((have && have.updated === t.updated) || this.traceLoading.has(t.id) || !this.o.urls.trace)
+		    return;
+		this.traceLoading.add(t.id);
+		$.getJSON(this.o.urls.trace, { execution: e.id, trace: t.id })
+		    .done((resp) => {
+			this.traces[t.id] = resp.trace;
+		    })
+		    .fail(() => {
+			this.traces[t.id] = Object.assign({}, t, { rounds: [], missing: true });
+		    })
+		    .always(() => {
+			this.traceLoading.delete(t.id);
+			if (this.detail && this.detail.id === e.id)
+			    this.renderDetail();
+		    });
+	    });
+	}
+
+	//the visits of the AI steps; none: nothing
+	tracesHtml(e) {
+	    if (!(e.traces || []).length)
+		return '';
+	    const more = e.traces_total > e.traces.length ? `<div class='small' style='color: var(--netflow9-debug-muted)'>The first ${esc(e.traces.length)} of ${esc(e.traces_total)} visits</div>` : '';
+	    return `<div class='debug-panel-title mt-2 mb-1'>Agent trace</div>${e.traces.map((t) => this.traceHtml(t, e)).join('')}${more}`;
+	}
+
+	traceHtml(t, e) {
+	    const totals = t.totals || {};
+	    const n = (v) => Number(v || 0).toLocaleString();
+	    const money = costText(totals.cost);
+	    const parts = [ esc(t.provider + (t.model ? ' ' + t.model : '')), `${n(totals.rounds)} round(s)`, `${n(totals.tool_calls)} tool call(s)${totals.write_calls ? ', ' + n(totals.write_calls) + ' write' : ''}`,
+		`${n(totals.input_tokens)} + ${n(totals.output_tokens)} tokens` ];
+	    parts.push(money ? esc(money) + (t.system ? '' : ' (estimated)') : `<span title='Set the prices of this model: on the step, or in Account settings &gt; AI'>cost not known</span>`);
+	    if (t.duration !== null)
+		parts.push(esc(duration(t.duration)));
+	    const open = this.traceIsOpen(t, e);
+	    const data = this.traces[t.id];
+	    let body = '';
+	    if (open && data)
+		body = data.missing ? muted('This trace could not be loaded') : (data.rounds || []).map((r) => this.roundHtml(t, r)).join('') || muted('No call to the model yet');
+	    else if (open)
+		body = muted('Loading…');
+	    return `<details class='mb-1' data-key='${esc(t.id)}' data-trace='${esc(t.id)}'${open ? ' open' : ''}>
+		<summary style='cursor: pointer'>${traceBadge(t.state)} <span class='tag'>[${esc(t.step)}${t.visit > 1 ? ' #' + esc(t.visit) : ''}]</span> ${muted(parts.join(', '))}</summary>
+		<div class='ps-3 pt-1'>${t.error ? `<div class='text-danger mb-1'>${esc(t.error)}</div>` : ''}${body}</div>
+	    </details>`;
+	}
+
+	roundHtml(t, r) {
+	    const key = `${t.id}:r${r.n}`;
+	    const tokens = r.tokens || {};
+	    const calls = r.calls || [];
+	    const money = costText(r.cost);
+	    const parts = [ esc(r.model), `${Number(tokens.input || 0).toLocaleString()} + ${Number(tokens.output || 0).toLocaleString()} tokens` ];
+	    if (money)
+		parts.push(esc(money));
+	    parts.push(esc(duration(r.duration_ms)));
+	    if (calls.length)
+		parts.push(calls.length + ' tool call(s)');
+	    const asked = calls.filter((c) => c.approval).length;
+	    if (asked)
+		parts.push(asked + ' asked for approval');
+	    return `<details class='mb-1' data-key='${esc(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
+		<summary style='cursor: pointer'>Round ${esc(r.n)} ${muted(parts.join(', '))}${calls.some((c) => c.access === 'write') ? ` <span class='badge text-bg-warning'>write</span>` : ''}</summary>
+		<div class='ps-3 pt-1'>
+		    ${r.text ? block(r.text) + cutNote(r.text, r.text_length) : ''}
+		    ${calls.map((c, i) => this.callHtml(t, key, c, i)).join('')}
+		</div>
+	    </details>`;
+	}
+
+	callHtml(t, roundKey, c, i) {
+	    const key = `${roundKey}:c${i}`;
+	    const waiting = t.state === 'waiting';
+	    const a = c.approval;
+	    const decided = a && (a.by || a.at || a.comment) ? `<div class='small mb-1'>${muted('Decision:')} ${esc(a.state)}${a.by ? ' by ' + esc(a.by) : ''}${a.at ? ', ' + esc(a.at) : ''}${a.comment ? ': ' + esc(a.comment) : ''}</div>` : '';
+	    const result = c.result !== undefined ? block(c.result || '(empty)') + cutNote(c.result, c.result_length) : muted(a && a.state === 'asked' && waiting ? 'Not run: waiting for approval' : 'Not run');
+	    return `<details class='mb-1' data-key='${esc(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
+		<summary style='cursor: pointer'><i class='bi bi-wrench'></i> <code>${esc(c.tool)}</code> ${c.access === 'write' ? `<span class='badge text-bg-warning'>write</span>` : muted(esc(c.access))}
+		    ${approvalBadge(a, waiting)}${c.refused ? ` <span class='badge text-bg-danger'>stopped by a limit</span>` : ''}${c.error && !c.refused ? ` <span class='text-danger'>error</span>` : ''}
+		    ${c.duration_ms !== undefined && c.result !== undefined && !(a && a.state !== 'approved') ? muted(esc(duration(c.duration_ms))) : ''}${c.images ? ' ' + muted(esc(c.images) + ' image(s)') : ''}</summary>
+		<div class='ps-3 pt-1'>
+		    ${decided}
+		    <div class='small' style='color: var(--netflow9-debug-muted)'>Arguments</div>
+		    ${block(c.arguments || '{}')}${cutNote(c.arguments, c.arguments_length)}
+		    <div class='small' style='color: var(--netflow9-debug-muted)'>Result</div>
+		    ${result}
+		</div>
+	    </details>`;
+	}
+
+	//CLD: 2026-11-02T14:00:00+02:00: new: the panel on execution `id`, its trace `trace` open (a link to a trace: WorkflowController::trace)
+	openTrace(id, trace) {
+	    if (trace) {
+		this.traceOpen.set(trace, true);
+		this.traceToShow = trace;
+	    }
+	    this.open();
+	    this.select(id);
+	}
+
+	/* ---------------- run again ---------------- */
+	//CLD: 2026-11-02T14:00:00+02:00: new: a finished execution, by a user who may run the workflow
+	againable(e) {
+	    return this.o.canRun && !!this.o.urls.again && ![ 'new', 'run', 'sleep' ].includes(e.state);
+	}
+
+	//the selected execution's inputs, as a new execution, once the changes are saved (the change to compare); it is shown
+	runAgain() {
+	    const id = this.selected;
+	    this.askAgain = null;
+	    this.renderDetail();
+	    if (!id)
+		return;
+	    const url = this.o.urls.again + (this.o.urls.again.includes('?') ? '&' : '?') + 'execution=' + encodeURIComponent(id);
+	    this.o.whenSaved(() => {
+		$.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': csrf() } })
+		    .done((resp) => {
+			toast('success', 'Started', 'Running again with the same inputs');
+			this.select(resp.execution);
+			this.refresh();
+			this.ensureTimer();
+		    })
+		    .fail((xhr) => toast('error', 'Not started', (xhr.responseJSON && xhr.responseJSON.error) || 'The execution could not be run again'));
+	    });
 	}
 
 	//CLD: 2026-10-29T21:38:25+02:00: the canvas: hide() (was here)

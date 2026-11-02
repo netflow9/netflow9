@@ -456,7 +456,95 @@ class WorkflowController extends \sys\BaseController {
 	}
 	//CLD: 2026-10-18T12:49:28+03:00: $resp->sendJSON (was $this->json, removed)
 	//CLD: 2026-10-29T21:30:00+02:00: + run: where each step and connection is (the designer shows it on the canvas: runStatus)
-	$resp->sendJSON([ 'execution' => $this->executionSummary($exe) + [ 'variables' => (object)(is_array($exe->variables) ? $exe->variables : []), 'log' => $log, 'run' => $this->runStatus($exe) ] ]);
+	//CLD: 2026-11-02T14:00:00+02:00: + traces: its AI steps' visits without their rounds (execution_trace), traces_total
+	[ $traces, $tracesTotal ] = \models\AgentTrace::ofExecution($exe);
+	$resp->sendJSON([ 'execution' => $this->executionSummary($exe) + [ 'variables' => (object)(is_array($exe->variables) ? $exe->variables : []), 'log' => $log, 'run' => $this->runStatus($exe),
+	    'traces' => array_map(fn($t) => $this->traceSummary($t, $exe), $traces), 'traces_total' => $tracesTotal ] ]);
+    }
+
+    //CLD: 2026-11-02T14:00:00+02:00: new: one trace of an execution, its rounds and calls, for the timeline of the Executions panel (?execution=<id>&trace=<id>). Workflow::read, as the execution
+    public function execution_trace($req, $resp) {
+	$wf = $this->findWorkflow('Workflow::read');
+	$eid = (string)($req->query['execution'] ?? '');
+	if (!\util\Validator::rule('oid', $eid))
+	    \V::app()->error(400, 'malformed request: not oid');
+	$exe = \V::app()->om->findOne('WfExecution', [ '_id' => $eid, 'wf' => $wf->_id, 'aid' => $wf->aid ], [ 'projection' => [ '_id' => 1, 'aid' => 1, 'state' => 1 ] ]);
+	$trace = $exe ? \models\AgentTrace::read((string)($req->query['trace'] ?? ''), $wf->aid, $exe) : null;
+	if (!$trace)
+	    \V::app()->error(404, 'Not found');
+	$rounds = array_map(function($round) {
+	    $round['calls'] = array_map(function($call) {
+		if (isset($call['approval']['at']))
+		    $call['approval']['at'] = $this->localTime($call['approval']['at'], 'Y-m-d H:i:s');
+		return $call;
+	    }, array_values((array)($round['calls'] ?? [])));
+	    return $round;
+	}, array_values((array)($trace['rounds'] ?? [])));
+	$resp->sendJSON([ 'trace' => $this->traceSummary($trace, $exe) + [ 'rounds' => $rounds ] ]);
+    }
+
+    //CLD: 2026-11-02T14:00:00+02:00: new: a link to a trace (?id=<trace_id>, e.g. from the variable of the AI step in a later step's message): the designer, its Executions panel on it. Workflow::read
+    public function trace($req, $resp) {
+	$trace = \models\AgentTrace::read((string)($req->query['id'] ?? ''), \V::app()->config('rt.account')->_id);
+	if (!$trace)
+	    \V::app()->error(404, 'This agent trace is no longer kept');
+	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $trace['wf'], 'aid' => $trace['aid'] ]);
+	if (empty($wf))
+	    \V::app()->error(404, 'Not found');
+	if (!\V::app()->user->can('Workflow::read', [ 'object' => $wf ]))
+	    \V::app()->error(403, 'Unauthorized');
+	$resp->redirect(\V::app()->createUrl('/workflow/index', [ 'id' => (string)$wf->_id, 'execution' => (string)$trace['execution'], 'trace' => (string)$trace['_id'] ]));
+    }
+
+    //CLD: 2026-11-02T14:00:00+02:00: new: a trace as the panel shows it: an open one of an execution that no longer runs (its process died) is stopped
+    private function traceSummary(array $t, $exe) {
+	$state = (string)($t['state'] ?? '');
+	if (in_array($state, \models\AgentTrace::OPEN, true) && !$exe->canRun())
+	    $state = 'stopped';
+	$start = $t['started_at'] ?? null;
+	$end = $t['ended_at'] ?? null;
+	$totals = (array)($t['totals'] ?? []);
+	return [
+	    'id' => (string)$t['_id'],
+	    'node' => (string)($t['node'] ?? ''),
+	    'step' => (string)($t['step'] ?? ''),
+	    'visit' => (int)($t['visit'] ?? 1),
+	    'state' => $state,
+	    'error' => isset($t['error']) ? (string)$t['error'] : null,
+	    'provider' => (string)($t['provider'] ?? ''),
+	    'model' => (string)($t['model'] ?? ''),
+	    'system' => !empty($t['system']),
+	    'prices' => $t['prices'] ?? null,
+	    'totals' => $totals,
+	    'started' => $this->localTime($start),
+	    'duration' => $start ? (int)(string)($end ?? new \MongoDB\BSON\UTCDateTime()) - (int)(string)$start : null,
+	    'updated' => (string)($t['updated_at'] ?? ''),
+	];
+    }
+
+    //CLD: 2026-11-02T14:00:00+02:00: new: run a finished execution again with the same inputs (POST ?execution=<id>; the Executions panel), as a new execution of the draft, queued: Run's checks and audit entry. Answers
+    //{ execution }. Workflow::update (as Run)
+    public function execution_again($req, $resp) {
+	if (!$req->is('post'))
+	    \V::app()->error(405, 'Method not allowed');
+	$wf = $this->findWorkflow('Workflow::update');
+	$eid = (string)($req->query['execution'] ?? '');
+	if (!\util\Validator::rule('oid', $eid))
+	    \V::app()->error(400, 'malformed request: not oid');
+	$exe = \V::app()->om->findOne('WfExecution', [ '_id' => $eid, 'wf' => $wf->_id, 'aid' => $wf->aid ]);
+	if (empty($exe))
+	    \V::app()->error(404, 'Not found');
+	if (array_filter($wf->issues(), fn($i) => $i['level'] == 'error'))
+	    $resp->sendJSON([ 'error' => 'The workflow has errors (steps\' settings or connections): fix them and save it first' ], true, 409);
+	try {
+	    $again = $exe->again($wf);
+	} catch (\ErrorException $e) {
+	    $resp->sendJSON([ 'error' => ucfirst($e->getMessage()) ], true, 409);
+	}
+	$again->log(null, 'started by ' . (string)\V::app()->user->name . ' with the inputs of execution ' . $eid);
+	$again->queue();
+	\models\AuditLog::record('workflow.run', $wf, 'execution ' . (string)$again->_id . ', with the inputs of ' . $eid);
+	$resp->sendJSON([ 'execution' => (string)$again->_id ]);
     }
 
     //CLD: 2026-10-29T21:30:00+02:00: the steps and connections of an execution as the designer shows them: { nodes: { wfid: { status, runs } }, edges: { wfid: status } }, only those
@@ -673,6 +761,8 @@ class WorkflowController extends \sys\BaseController {
 	    'duration' => $duration,
 	    'wake_at' => $this->localTime($exe->wake_at),
 	    'error' => $exe->error ? (string)$exe->error : null,
+	    //CLD: 2026-11-02T14:00:00+02:00: the execution whose inputs it ran with
+	    'rerun_of' => $exe->rerun_of ? (string)$exe->rerun_of : null,
 	];
     }
 

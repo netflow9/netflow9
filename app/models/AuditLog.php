@@ -217,17 +217,18 @@ class AuditLog extends \sys\BaseModel {
     }
 
     //$value with what looks like a secret removed: the values of keys that name one (numbers and yes / no are kept: max_tokens), and secrets inside texts; long texts shortened
-    public static function withoutSecrets($value, $key = '') {
+    //CLD: 2026-11-02T14:00:00+02:00: + $maxValue (util\AgentTracer cuts them itself, the full length noted)
+    public static function withoutSecrets($value, $key = '', $maxValue = self::MAX_VALUE) {
 	if (is_array($value)) {
 	    $out = [];
 	    foreach($value as $k => $v)
-		$out[$k] = is_string($k) && preg_match(self::SECRET_KEYS, $k) && !is_int($v) && !is_float($v) && !is_bool($v) && $v !== null ? self::REMOVED : static::withoutSecrets($v, (string)$k);
+		$out[$k] = is_string($k) && preg_match(self::SECRET_KEYS, $k) && !is_int($v) && !is_float($v) && !is_bool($v) && $v !== null ? self::REMOVED : static::withoutSecrets($v, (string)$k, $maxValue);
 	    return $out;
 	}
 	if (!is_string($value))
-	    return is_object($value) ? static::withoutSecrets((array)$value, $key) : $value;
+	    return is_object($value) ? static::withoutSecrets((array)$value, $key, $maxValue) : $value;
 	$text = preg_replace(self::SECRET_VALUES, self::REMOVED, $value) ?? self::REMOVED;
-	return mb_strlen($text) > self::MAX_VALUE ? mb_substr($text, 0, self::MAX_VALUE) . '…' : $text;
+	return mb_strlen($text) > $maxValue ? mb_substr($text, 0, $maxValue) . '…' : $text;
     }
 
     //recorded: a logged-in user's change outside a workflow run (those go to the execution log), of an object the logs record

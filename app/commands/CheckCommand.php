@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -4233,6 +4233,256 @@ class CheckCommand extends \sys\BaseController {
 	    $coll('audit_log')->deleteMany([ 'aid' => $account->_id ]);
 	    $coll('audit_seal')->deleteOne([ '_id' => $account->_id ]);
 	    $coll('execution_log')->deleteMany([ 'aid' => $account->_id ]);
+	    $account->delete();
+	    [ $this->account, $this->project ] = [ $realAccount, $realProject ];
+	    \V::app()->var('rt.account', $realAccount);
+	    if ($fgtServer ?? null) {
+		proc_terminate($fgtServer[1]);
+		proc_close($fgtServer[1]);
+	    }
+	    foreach(glob("{$dir}/*") ?: [] as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	    $this->stopAiServer($aiServer);
+	}
+    }
+
+    //CLD: 2026-11-02T14:00:00+02:00: new: the trace of an AI step's visit (util\AgentTracer, models\AgentTrace): a run of several rounds with read and write tools and an approval against the fake AI server, a
+    //rejection, the cuts, secrets, the cost and the price table, Run again, retention. On its own account, as agentguard: a run with prices counts in the account's monthly usage
+    private function suiteAgenttrace() {
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$T = \models\AgentTrace::class;
+
+	$aiServer = $this->startAiServer('agent trace');
+	if (!$aiServer)
+	    return;
+	$dir = sys_get_temp_dir() . '/netflow9-check-trace-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$fgtServer = $this->startServer('agent trace: FortiGate', 'FortiGateTestServer.php', $dir, [ 'FGT_STATE' => $dir ]);
+	[ $realAccount, $realProject ] = [ $this->account, $this->project ];
+	$fgtTesting = \util\FortiGate::$testing;
+	$account = \models\Account::create([ 'state' => 'active', 'name' => 'Check trace ' . uniqid(), 'execution_log_retention' => '30' ]);
+	$account->save();
+	$project = $om->create('Project', [ 'aid' => $account->_id, 'name' => 'Check trace' ]);
+	$project->save();
+	[ $this->account, $this->project ] = [ $account, $project ];
+	\V::app()->var('rt.account', $account);
+	$creds = [];
+	$user = null;
+	try {
+	    if (!$fgtServer)
+		return;
+	    \util\FortiGate::$testing = true;
+	    $make = function($variant, array $fields, array $http = []) use ($om, &$creds, $account, $project) {
+		$c = $om->create($variant, [ 'aid' => $account->_id, 'project' => $project->_id, 'name' => "Check: trace {$variant} " . uniqid() ] + $fields);
+		if (!$c->validates() || !$c->save())
+		    throw new \ErrorException("{$variant}: " . json_encode($c->errors()));
+		$creds[] = $c;
+		foreach($http as $k => $v)
+		    $c->$k = $v;
+		if ($http)
+		    $c->save([ 'validate' => false ]);
+		return $om->findById($variant, (string)$c->_id);
+	    };
+	    $ai = "http://127.0.0.1:{$aiServer['port']}";
+	    $claude = $make('CredentialAnthropic', [ 'baseUrl' => $ai, 'apiKey' => 'check-key' ]);
+	    $fgt = $make('CredentialFortiGate', [ 'serverUrl' => "https://127.0.0.1:{$fgtServer[0]}", 'apiToken' => 'fgtoken', 'vdom' => 'root' ], [ 'serverUrl' => "http://127.0.0.1:{$fgtServer[0]}" ]);
+	    $user = $om->create('User', [ 'aid' => $account->_id, 'username' => 'chk_trace_' . uniqid(), 'email' => 'chk_trace_' . uniqid() . '@example.invalid', 'firstname' => 'Maria', 'lastname' => 'Lopez', 'state' => 'active' ]);
+	    $user->save();
+	    $child = $this->workflow('trace child', [ $n('c', 'trigger::call', [ 'inputs' => [ [ 'name' => 'who', 'type' => 'text', 'required' => true ], [ 'name' => 'password', 'type' => 'text' ] ], 'outputs' => [ [ 'name' => 'greeting' ] ] ]),
+		$n('s', 'app::set', [ 'variable' => 'greeting', 'value' => 'Hi {{ who }}' ]), $e('e1', 'c', 's') ]);
+	    $child->save();
+	    $this->created[] = $child->_id;
+
+	    $flow = fn(array $script, array $more = []) => [ $n('m', 'trigger::manual'), $n('s', 'app::claude', $more + [ 'credential' => (string)$claude->_id, 'model' => 'claude-check', 'prompt' => "Handle the incident\nSCRIPT: " . json_encode($script),
+		'tools' => [], 'mcp' => [], 'fortigateCredential' => (string)$fgt->_id, 'fortigateTools' => [ 'fgt_addresses_block', 'fgt_addresses_list' ], 'workflows' => [ (string)$child->_id ], 'priceInput' => 2, 'priceOutput' => 10,
+		'maxRounds' => 6, 'onError' => 'output', 'timeout' => 20 ]), $n('ok', 'app::set', [ 'variable' => 'link', 'value' => '{{ ai.trace_id }}' ]), $e('e1', 'm', 's'), $e('e2', 's', 'ok', 0), $e('e3', 's', 'ok', 1) ];
+	    $traceOf = function($exe) use ($T) {
+		$t = $T::coll()->findOne([ 'execution' => $exe->_id ], $T::ARRAYS);
+		return $t;
+	    };
+	    $decide = function($exe, array $answers) use ($om, $user) {
+		$task = $om->findOne('WfTask', [ 'execution' => $exe->_id ], [ 'sort' => [ '_id' => -1 ] ]);
+		$om->updateMany('WfTask', [ '_id' => $task->_id, 'state' => 'open' ], [ '$set' => [ 'state' => 'done', 'answers' => $answers, 'completed_by' => $user->_id, 'completed_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
+		$exe = $om->findById('WfExecution', (string)$exe->_id);
+		$exe->run();
+		return $exe;
+	    };
+
+	    // ---- several rounds, read and write tools, an approval
+	    $long = str_repeat('x', 30000);
+	    $ip = '203.0.113.21';
+	    $toolName = 'wf_check_trace_child';
+	    $script = [ [ 'I will look first', [ 'fgt_addresses_list', [] ], [ 'fgt_addresses_block', [ 'ips' => [ $ip ], 'group' => 'Blocked', 'reason' => 'it attacks us' ] ] ],
+		[ 'Now greeting', [ $toolName, [ 'who' => 'Bearer abcdefgh.ijklmnop fgtoken ' . $long, 'password' => 'hunter2' ] ] ] ];
+	    $exe = $this->runFlow('trace run', $flow($script));
+	    $t = $exe ? $traceOf($exe) : null;
+	    $this->check('agent trace: waiting for the approval: one trace in its own collection, state waiting; the read call done, the write call asked and not run; the execution holds no trace',
+		[ 'sleep', 'waiting', 1, 'I will look first', [ 'fgt_addresses_list', 'read', false, true ], [ 'fgt_addresses_block', 'write', 'asked', false ], false ],
+		[ $exe?->state, $t['state'] ?? null, count($t['rounds'] ?? []), $t['rounds'][0]['text'] ?? null,
+		[ $t['rounds'][0]['calls'][0]['tool'] ?? null, $t['rounds'][0]['calls'][0]['access'] ?? null, $t['rounds'][0]['calls'][0]['error'] ?? null, isset($t['rounds'][0]['calls'][0]['result']) ],
+		[ $t['rounds'][0]['calls'][1]['tool'] ?? null, $t['rounds'][0]['calls'][1]['access'] ?? null, $t['rounds'][0]['calls'][1]['approval']['state'] ?? null, isset($t['rounds'][0]['calls'][1]['result']) ],
+		$exe ? str_contains((string)json_encode($exe->data()), 'duration_ms') : null ]);
+	    $traceId = (string)($t['_id'] ?? '');
+	    $this->check('agent trace: the waiting step knows its trace', $traceId, (string)($exe?->__nodes['s']->agentWait['trace'] ?? ''));
+
+	    $exe = $decide($exe, [ 'call0' => 'approve', 'comment' => '' ]);
+	    $t = $traceOf($exe);
+	    $var = $exe->getVariable('ai');
+	    $call = $t['rounds'][0]['calls'][1] ?? [];
+	    $this->check('agent trace: approved: the same trace goes on, the call has who, when and its result; the tokens and rounds counted',
+		[ 'end', $traceId, 'done', 'approved', 'Maria Lopez', true, false, true, 3, 39, 15, 3, 2 ],
+		[ $exe->state, (string)($t['_id'] ?? ''), $t['state'] ?? null, $call['approval']['state'] ?? null, $call['approval']['by'] ?? null, isset($call['approval']['at']), $call['error'] ?? null, array_key_exists('result', $call),
+		$t['totals']['rounds'] ?? null, $t['totals']['input_tokens'] ?? null, $t['totals']['output_tokens'] ?? null, $t['totals']['tool_calls'] ?? null, $t['totals']['write_calls'] ?? null ]);
+	    $this->check('agent trace: the round: its model, tokens, cost, how long', [ 'claude-check', [ 'input' => 13, 'output' => 5 ], 0.000076, true ],
+		[ $t['rounds'][0]['model'] ?? null, $t['rounds'][0]['tokens'] ?? null, $t['rounds'][0]['cost']['usd'] ?? null, is_int($t['rounds'][0]['duration_ms'] ?? null) ]);
+	    $this->check('agent trace: the cost: the run\'s, with the prices used', [ $var['cost']['usd'] ?? 'none', [ 2, 10 ], false ],
+		[ $t['totals']['cost']['usd'] ?? null, array_map('intval', array_slice((array)($t['prices'] ?? []), 0, 2)), !empty($t['system']) ]);
+	    $this->check('agent trace: the variable keeps its shape and adds trace_id, a later step reads it; the error key absent',
+		[ true, $traceId, $traceId, false ], [ !array_diff([ 'text', 'html', 'json', 'model', 'stop_reason', 'rounds', 'tool_calls', 'usage', 'cost' ], array_keys((array)$var)), $var['trace_id'] ?? null, $exe->getVariable('link'), isset($var['error']) ]);
+	    $greet = $t['rounds'][1]['calls'][0] ?? [];
+	    $this->check('agent trace: the size: arguments and result cut, the full length noted, the document small', [ true, 8000, true, 8000, true ],
+		[ strlen((string)($greet['arguments'] ?? '')) === \util\AgentTracer::MAX_ARGUMENTS, mb_strlen((string)($greet['result'] ?? '')), (int)($greet['arguments_length'] ?? 0) > 30000, \util\AgentTracer::MAX_RESULT, (int)($greet['result_length'] ?? 0) > 30000 ]);
+	    $doc = (string)json_encode($t, JSON_INVALID_UTF8_SUBSTITUTE);
+	    $this->check('agent trace: secrets never: a key that names one, a bearer value, the credential\'s token; the full text not kept', [ false, false, false, true ],
+		[ str_contains($doc, 'hunter2'), str_contains($doc, 'abcdefgh.ijklmnop'), str_contains($doc, 'fgtoken'), strlen($doc) < 60000 ]);
+
+	    // ---- rejected: who, the comment, a tool error; a later line
+	    $ip2 = '203.0.113.22';
+	    $rej = $this->runFlow('trace rejected', $flow([ [ [ 'fgt_addresses_block', [ 'ips' => [ $ip2 ], 'group' => 'Blocked' ] ] ], [ [ 'fgt_addresses_list', [] ] ] ]));
+	    $rej = $decide($rej, [ 'call0' => 'reject', 'comment' => 'wrong address, password: sesame' ]);
+	    $t2 = $traceOf($rej);
+	    $c2 = $t2['rounds'][0]['calls'][0] ?? [];
+	    $this->check('agent trace: rejected: by whom, the comment without its secret, the same text as the model\'s tool error, it goes on',
+		[ 'rejected', 'Maria Lopez', 'wrong address, password: [removed]', true, true, 'done' ],
+		[ $c2['approval']['state'] ?? null, $c2['approval']['by'] ?? null, $c2['approval']['comment'] ?? null, $c2['error'] ?? null, str_contains((string)($c2['result'] ?? ''), 'rejected by Maria Lopez'), $t2['state'] ?? null ]);
+
+	    // ---- a step that fails: its trace says why, the id in the variable; a limit: the calls left unasked and the refused one
+	    $bad = $this->runFlow('trace limit', $flow([ [ [ 'fgt_addresses_list', [] ], [ 'fgt_addresses_block', [ 'ips' => [ '203.0.113.23' ], 'group' => 'Blocked' ] ] ] ], [ 'maxToolCalls' => 1 ]));
+	    $t3 = $bad ? $traceOf($bad) : null;
+	    $this->check('agent trace: stopped by a limit: state error and why; the call refused; trace_id in the variable with the error',
+		[ 'error', true, 'tool_calls', (string)($t3['_id'] ?? '') ], [ $t3['state'] ?? null, str_contains((string)($t3['error'] ?? ''), 'limit'), $t3['rounds'][0]['calls'][1]['refused'] ?? null, $bad?->getVariable('ai')['trace_id'] ?? null ]);
+
+	    // ---- masked: what the model saw
+	    $mask = $this->runFlow('trace masked', $flow([], [ 'maskPersonalData' => true, 'prompt' => "Write to {{ who }}\nSCRIPT: " . json_encode([ [ [ $toolName, [ 'who' => '@@EMAIL@@' ] ] ] ]) ]), [ 'who' => 'ana.pop@firma.ro' ]);
+	    $t4 = $mask ? $traceOf($mask) : null;
+	    $this->check('agent trace: Mask personal data: placeholders in the trace (the arguments, the result), never the address', [ true, false ],
+		[ str_contains((string)($t4['rounds'][0]['calls'][0]['arguments'] ?? ''), '[EMAIL_'), str_contains((string)json_encode($t4), 'ana.pop@firma.ro') ]);
+
+	    // ---- the cuts, the total: past MAX_TOTAL each text at SMALL; a text that cannot be read
+	    $stepClass = $om->findById('WfExecution', (string)$exe->_id)->__nodes['s'];
+	    $stepClass->exec = $exe;
+	    $tracer = \util\AgentTracer::begin($stepClass);
+	    foreach(range(1, 25) as $r) {
+		$tracer->round($r, [ 'text' => "broken \xFF text", 'model' => 'm', 'stop_reason' => 'x', 'usage' => [ 1, 1 ] ], 5);
+		foreach(range(0, 29) as $i)
+		    $tracer->call($r, $i, 't', [ 'a' => str_repeat('y', 7000) ], 'read');
+	    }
+	    $big = $T::read($tracer->id(), $account->_id);
+	    $last = end($big['rounds'][24]['calls']);
+	    $this->check('agent trace: past the total for a visit, each text small, the full length noted; the document fits; invalid UTF-8 kept readable', [ \util\AgentTracer::SMALL, true, true, true ],
+		[ strlen((string)$last['arguments']), (int)($last['arguments_length'] ?? 0) > 7000, strlen((string)json_encode($big, JSON_INVALID_UTF8_SUBSTITUTE)) < 8 * 1024 * 1024, mb_check_encoding((string)$big['rounds'][0]['text'], 'UTF-8') ]);
+	    $T::coll()->deleteOne([ '_id' => new \MongoDB\BSON\ObjectId($tracer->id()) ]);
+
+	    // ---- secrets of a credential that is not a model (the System AI's): its key, not its other headers; what is not a secret stays
+	    $system = \util\AgentTracer::begin($stepClass);
+	    $system->addSecrets(new class { function httpAuth() { return [ 'headers' => [ 'x-api-key' => 'sys-key-123', 'anthropic-version' => '2023-06-01' ] ]; } });
+	    $system->addSecrets(new class { });
+	    $this->check('agent trace: the System AI\'s key removed, a date that looks like its other header and max_tokens: 100 kept', '[removed] on 2023-06-01, max_tokens: 100', $system->scrub('sys-key-123 on 2023-06-01, max_tokens: 100'));
+	    $T::coll()->deleteOne([ '_id' => new \MongoDB\BSON\ObjectId($system->id()) ]);
+
+	    // ---- the price table
+	    $policy = $om->create('AgentPolicy', [ 'aid' => $account->_id, 'price_table' => \models\AgentPolicy::priceRows([ [ 'provider' => '', 'model' => 'gpt-', 'input' => '1', 'output' => '2' ], [ 'provider' => 'openai', 'model' => 'gpt-', 'input' => '3', 'output' => '4' ],
+		[ 'provider' => 'openai', 'model' => 'gpt-5-mini', 'input' => '0.5', 'output' => '1' ], [ 'provider' => 'lemonade', 'model' => '', 'input' => '9', 'output' => '9' ], [ 'provider' => 'anthropic', 'model' => 'claude-opus-5-5', 'input' => '7', 'output' => '8' ] ]) ]);
+	    $this->check('agent trace: the price table: a row without a model dropped; the longest name, the provider\'s before any provider\'s; none: null', [ 4, [ 3.0, 4.0 ], [ 0.5, 1.0 ], [ 1.0, 2.0 ], null ],
+		[ count($policy->price_table), array_slice($policy->priceOf('openai', 'gpt-4o'), 0, 2), array_slice($policy->priceOf('openai', 'gpt-5-mini-x'), 0, 2), array_slice($policy->priceOf('gemini', 'gpt-4o'), 0, 2), $policy->priceOf('openai', 'other') ]);
+	    $priced = fn($more) => \util\AgentGuard::pricesFor(new class($more) { const CAPABILITY = 'anthropic'; private $c; function __construct($c) { $this->c = $c; } function cfg($k, $d = null) { return $this->c[$k] ?? $d; } }, $policy);
+	    $this->check('agent trace: the prices used: the step\'s own first, then the table (over the known ones), then the known ones', [ [ 1, 1 ], [ 7, 8 ], [ 2, 10 ] ],
+		[ array_map('intval', array_slice($priced([ 'model' => 'claude-opus-5-5', 'priceInput' => 1, 'priceOutput' => 1 ]), 0, 2)), array_map('intval', array_slice($priced([ 'model' => 'claude-opus-5-5' ]), 0, 2)), array_map('intval', array_slice($priced([ 'model' => 'claude-sonnet-5-5' ]), 0, 2)) ]);
+	    $wrong = $om->create('AgentPolicy', [ 'aid' => $account->_id, 'price_table' => \models\AgentPolicy::priceRows([ [ 'model' => 'x', 'input' => 'free', 'output' => '-1' ] ]) ]);
+	    $this->check('agent trace: the price table: prices that are not numbers of 0 or more refused', false, $wrong->validates());
+
+	    // ---- Run again: the same inputs, a new execution, on the draft
+	    $wf = $om->findById('Workflow', (string)$exe->wf);
+	    $source = $this->runFlow('trace again', [ $n('m', 'trigger::manual'), $n('s', 'app::claude', [ 'credential' => (string)$claude->_id, 'model' => 'claude-check', 'prompt' => "First {{ q }}\nSCRIPT: []", 'tools' => [], 'mcp' => [], 'maxRounds' => 2, 'timeout' => 20, 'priceInput' => 2, 'priceOutput' => 10 ]), $e('e1', 'm', 's') ], [ 'q' => 'question 7' ]);
+	    $sourceWf = $om->findById('Workflow', (string)$source->wf);
+	    $nodes = $sourceWf->nodes;
+	    $nodes['s']['config']['prompt'] = "Second {{ q }}\nSCRIPT: []";
+	    $sourceWf->nodes = $nodes;
+	    $sourceWf->save();
+	    @unlink($aiServer['log']);
+	    $again = $source->again($om->findById('Workflow', (string)$source->wf));
+	    $again->run();
+	    $sent = ($aiServer['requests'])('/v1/messages');
+	    $this->check('agent trace: Run again: a new execution, the same inputs and trigger, the changed prompt sent; a trace of its own; it names the source', [ 'end', true, 'question 7', 'console', true, (string)$source->_id, true ],
+		[ $again->state, (string)$again->_id !== (string)$source->_id, $again->getVariable('q'), $again->trigger, str_contains((string)json_encode($sent), 'Second'), $again->rerun_of, (string)($traceOf($again)['_id'] ?? 'a') !== (string)($traceOf($source)['_id'] ?? 'b') ]);
+	    $running = $om->create('WfExecution', [ 'aid' => $account->_id, 'project' => $project->_id, 'wf' => $source->wf, 'state' => 'sleep', 'nodes' => [] ]);
+	    $refused = function($exec, $wf) { try { $exec->again($wf); return null; } catch (\ErrorException $x) { return $x->getMessage(); } };
+	    $this->check('agent trace: Run again: not one that has not finished', 'the execution has not finished', $refused($running, $sourceWf));
+	    $other = $om->findById('Workflow', (string)$source->wf);
+	    $otherNodes = $other->nodes;
+	    $otherNodes['m']['fqname'] = 'trigger::schedule';
+	    $other->nodes = $otherNodes;
+	    $this->check('agent trace: Run again: not when the trigger is another one now', true, str_contains((string)$refused($source, $other), 'trigger'));
+	    $called = $om->create('WfExecution', [ 'aid' => $account->_id, 'project' => $project->_id, 'wf' => $source->wf, 'state' => 'end', 'trigger' => 'email', 'nodes' => $source->nodes,
+		'input' => [ 'raw_file' => 'abc', 'vars' => [ 'q' => 1 ], 'caller' => [ 'execution' => 'x', 'wait' => true, 'chain' => [ 'y' ] ] ] ]);
+	    $copy = $called->again($om->findById('Workflow', (string)$source->wf));
+	    $this->check('agent trace: Run again: not the Email trigger\'s raw message, no wait on the calling workflow, its chain kept', [ false, false, [ 'y' ], 1 ],
+		[ isset($copy->input['raw_file']), $copy->input['caller']['wait'], $copy->input['caller']['chain'], $copy->getVariable('q') ]);
+
+	    // ---- killed: its open trace ends
+	    $killed = $this->runFlow('trace killed', $flow([ [ [ 'fgt_addresses_block', [ 'ips' => [ '203.0.113.24' ], 'group' => 'Blocked' ] ] ] ]));
+	    $killed->kill('the check');
+	    $this->check('agent trace: killed while waiting: the trace is stopped', 'stopped', $traceOf($killed)['state'] ?? null);
+
+	    // ---- retention: with the execution, and after the account's setting
+	    $gone = $this->runFlow('trace gone', $flow([]));
+	    $goneId = $traceOf($gone)['_id'] ?? null;
+	    $om->findById('WfExecution', (string)$gone->_id)->delete();
+	    $this->check('agent trace: retention: deleted with its execution', 0, $T::coll()->countDocuments([ '_id' => $goneId ]));
+	    $viaWf = $this->runFlow('trace via workflow', $flow([]));
+	    $viaId = $traceOf($viaWf)['_id'] ?? null;
+	    $om->findById('Workflow', (string)$viaWf->wf)->delete();
+	    $this->created = array_values(array_filter($this->created, fn($id) => (string)$id !== (string)$viaWf->wf));
+	    $this->check('agent trace: retention: deleted with its workflow', 0, $T::coll()->countDocuments([ '_id' => $viaId ]));
+
+	    $aged = $this->runFlow('trace aged', $flow([]));
+	    $agedId = $traceOf($aged)['_id'] ?? null;
+	    $young = $this->runFlow('trace young', $flow([]));
+	    $youngId = $traceOf($young)['_id'] ?? null;
+	    $old = new \MongoDB\BSON\UTCDateTime((time() - 40 * 86400) * 1000);
+	    $T::coll()->updateOne([ '_id' => $agedId ], [ '$set' => [ 'created_at' => $old ] ]);
+	    $waitOld = $this->runFlow('trace waiting old', $flow([ [ [ 'fgt_addresses_block', [ 'ips' => [ '203.0.113.25' ], 'group' => 'Blocked' ] ] ] ]));
+	    $waitId = $traceOf($waitOld)['_id'] ?? null;
+	    $T::coll()->updateOne([ '_id' => $waitId ], [ '$set' => [ 'created_at' => $old ] ]);
+	    $forever = (object)[ '_id' => $account->_id, 'execution_log_retention' => '0' ];
+	    $T::prune($forever);
+	    $this->check('agent trace: retention: Forever keeps it', 1, $T::coll()->countDocuments([ '_id' => $agedId ]));
+	    $removed = $T::prune($om->findById('Account', (string)$account->_id));
+	    $this->check('agent trace: retention: older than the setting removed, the execution stays, a younger one and one waiting for an approval stay; another account\'s not touched', [ 1, 0, 1, 1, 'end' ],
+		[ $removed, $T::coll()->countDocuments([ '_id' => $agedId ]), $T::coll()->countDocuments([ '_id' => $youngId ]), $T::coll()->countDocuments([ '_id' => $waitId ]), $om->findById('WfExecution', (string)$aged->_id)?->state ]);
+	    $waitOld->kill('the check');
+
+	    // ---- no AI step: no trace; a failure before the first call has one
+	    $plain = $this->runFlow('trace none', [ $n('m', 'trigger::manual'), $n('s', 'app::set', [ 'variable' => 'x', 'value' => '1' ]), $e('e1', 'm', 's') ]);
+	    $this->check('agent trace: a run with no AI step has none', [ [], 0 ], $T::ofExecution($plain));
+	    $empty = $this->runFlow('trace empty prompt', [ $n('m', 'trigger::manual'), $n('s', 'app::claude', [ 'credential' => (string)$claude->_id, 'model' => 'claude-check', 'prompt' => '{{ q }}', 'tools' => [], 'mcp' => [], 'maxRounds' => 2, 'timeout' => 20, 'onError' => 'output' ]), $e('e1', 'm', 's') ], [ 'q' => '' ]);
+	    $te = $empty ? $traceOf($empty) : null;
+	    $this->check('agent trace: failed before the first call: a trace with why, no rounds', [ 'error', 'the prompt is empty', [] ], [ $te['state'] ?? null, $te['error'] ?? null, $te['rounds'] ?? null ]);
+	} finally {
+	    \util\FortiGate::$testing = $fgtTesting;
+	    $this->cleanCreated();
+	    foreach($creds as $c)
+		$c->delete();
+	    if ($user)
+		$user->delete();
+	    foreach([ 'WfTask', 'WfExecution', 'AgentPolicy', 'AgentUsage', 'AgentTrace', 'ExecutionLog', 'AuditLog' ] as $o) {
+		$cls = $om->getObjectClass($o);
+		\V::app()->mongo->selectCollection($cls::_database(), $cls::_collection())->deleteMany([ 'aid' => $account->_id ]);
+	    }
+	    $project->delete();
 	    $account->delete();
 	    [ $this->account, $this->project ] = [ $realAccount, $realProject ];
 	    \V::app()->var('rt.account', $realAccount);

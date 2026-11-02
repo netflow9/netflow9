@@ -73,6 +73,19 @@ class AgentGuard {
 	    'mask' => $this->mask ? $this->mask->save() : null ];
     }
 
+    //CLD: 2026-11-02T14:00:00+02:00: new: for the trace (util\AgentTracer): on the System AI, the prices used [ input, output, cache read ] (null: not known), a call's estimated cost (USD; null: not known, or credits)
+    public function onSystem() {
+	return $this->system;
+    }
+
+    public function prices() {
+	return $this->prices;
+    }
+
+    public function estimate(array $tokens) {
+	return !$this->system && $this->prices ? round(((int)$tokens[0] * $this->prices[0] + (int)$tokens[1] * $this->prices[1]) / 1000000, 6) : null;
+    }
+
     public function masking() {
 	return $this->mask !== null;
     }
@@ -82,7 +95,10 @@ class AgentGuard {
     }
 
     //a step's prices [ input, output, cache read ] (USD per 1M tokens): its own, else the model's known ones (local servers: nothing), else the account's; null: not known
+    //CLD: 2026-11-02T14:00:00+02:00: the account's price table (Account settings > AI: a provider, a model) before the known ones: that is what the table is for; the step's own still first
     public static function pricesFor($step, $policy) {
+	if ((float)$step->cfg('priceInput', 0) <= 0 && (float)$step->cfg('priceOutput', 0) <= 0 && ($row = $policy->priceOf($step::CAPABILITY, trim((string)$step->cfg('model', '')))) !== null)
+	    return $row;
 	$known = AiPrices::of((object)[ 'provider' => $step::CAPABILITY, 'model' => trim((string)$step->cfg('model', '')), 'price_input' => $step->cfg('priceInput', ''), 'price_output' => $step->cfg('priceOutput', '') ]);
 	return $known ?? $policy->prices();
     }

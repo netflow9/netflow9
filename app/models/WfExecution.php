@@ -111,6 +111,42 @@ class WfExecution extends \sys\BaseModel {
 	return $exe;
     }
 
+    //CLD: 2026-11-02T14:00:00+02:00: new: its AI steps' traces go with it (every way of deleting an execution comes here)
+    public function beforeDelete() {
+	parent::beforeDelete();
+	\models\AgentTrace::dropFor($this);
+    }
+
+    //CLD: 2026-11-02T14:00:00+02:00: new: a new execution (not saved) of workflow $wf's draft with the inputs of this finished one: the same trigger, input and first variables, so a change of the steps (e.g. a prompt)
+    //can be compared. Not the raw message of an Email trigger (the end of a run removes it, this run must not take the original's) and not a wait on the workflow that called it (it must not resume
+    //that one again). \ErrorException when it has not finished, or the trigger is another one now: the inputs would not fit
+    public function again($wf) {
+	if ($this->canRun())
+	    throw new \ErrorException('the execution has not finished');
+	$trigger = self::triggerOf(is_array($this->nodes) ? $this->nodes : []);
+	$now = self::triggerOf(is_array($wf->nodes) ? $wf->nodes : []);
+	if ($now === null || ($now['fqname'] ?? '') !== ($trigger['fqname'] ?? ''))
+	    throw new \ErrorException('the workflow\'s trigger is not the one this execution started from: its inputs would not fit');
+	$input = is_array($this->input) ? $this->input : [];
+	unset($input['raw_file']);
+	if (isset($input['caller']) && is_array($input['caller']))
+	    $input['caller']['wait'] = false;
+	$exe = self::startFor($wf, (string)$this->trigger, $input, (string)$now['wfid']);
+	$exe->rerun_of = (string)$this->_id;
+	return $exe;
+    }
+
+    //CLD: 2026-11-02T14:00:00+02:00: new: the trigger step among $nodes (as stored: elements with wfid, fqname); null: none
+    private static function triggerOf(array $nodes) {
+	$classes = \models\WfNode::nodeClasses();
+	foreach($nodes as $n) {
+	    $name = $classes[$n['fqname'] ?? ''] ?? null;
+	    if (!empty($n['isNode']) && $name && \V::app()->om->getObjectClass($name)::$type === 'trigger')
+		return $n;
+	}
+	return null;
+    }
+
     public function beforeSave() {
 	parent::beforeSave();
 
@@ -175,6 +211,13 @@ class WfExecution extends \sys\BaseModel {
 		'key' => 'input',
 		'type' => 'array',
 		'label' => 'Input',
+		'help' => false,
+	    ],
+	    //CLD: 2026-11-02T14:00:00+02:00: the execution whose inputs it ran again with (again())
+	    [
+		'key' => 'rerun_of',
+		'type' => 'text',
+		'label' => 'Run again of',
 		'help' => false,
 	    ],
 	    //variables set by the nodes (Set), read by others (If)
@@ -391,6 +434,8 @@ class WfExecution extends \sys\BaseModel {
 	//CLD: 2026-11-01T23:30:00+02:00: its open tasks (Human task, an AI step's approval) are cancelled; an AI step's saved conversation is removed
 	\V::app()->om->updateMany('WfTask', [ 'aid' => $this->aid, 'execution' => $this->_id, 'state' => 'open' ], [ '$set' => [ 'state' => 'cancelled' ] ]);
 	\models\node\NodeAppAi::dropSaved($this);
+	//CLD: 2026-11-02T14:00:00+02:00: its traces end
+	\models\AgentTrace::stopOpen($this);
 
 	//CLD: 2026-10-30T19:00:00+02:00: the workflows it waits for (Run a workflow) are cancelled too; the workflow waiting for it is resumed (its step: cancelled)
 	foreach(\V::app()->om->find('WfExecution', [ 'aid' => $this->aid, 'input.caller.execution' => (string)$this->_id, 'input.caller.wait' => true,

@@ -32,6 +32,11 @@ $executionDeleteUrl = \V::app()->createUrl('/workflow/execution_delete', [ 'id' 
 $executionsDeleteUrl = \V::app()->createUrl('/workflow/executions_delete', [ 'id' => (string)$wf->_id ]);
 //CLD: 2026-10-26T10:14:16+02:00: Kill in the Executions panel
 $executionKillUrl = \V::app()->createUrl('/workflow/execution_kill', [ 'id' => (string)$wf->_id ]);
+//CLD: 2026-11-02T14:00:00+02:00: an AI step's trace (app.WfExecutions), Run again; ?execution=&trace= (WorkflowController::trace): the panel opened on them
+$executionTraceUrl = \V::app()->createUrl('/workflow/execution_trace', [ 'id' => (string)$wf->_id ]);
+$executionAgainUrl = \V::app()->createUrl('/workflow/execution_again', [ 'id' => (string)$wf->_id ]);
+$openExecution = \util\Validator::rule('oid', (string)(\V::app()->request->query['execution'] ?? '')) ? (string)\V::app()->request->query['execution'] : '';
+$openTrace = $openExecution !== '' && \util\Validator::rule('oid', (string)(\V::app()->request->query['trace'] ?? '')) ? (string)\V::app()->request->query['trace'] : '';
 $canRun = \V::app()->user->can('Workflow::update', [ 'object' => $wf ]) ? 'true' : 'false';
 //the version being viewed (?version, read-only: its steps on the canvas)
 $activeVersion = $wf->publishedVersion();
@@ -94,7 +99,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
     //CLD: 2026-10-25T20:30:00+02:00: Run and the Executions panel: app.WfExecutions (app.wfexecutions.js; was the `exec` object here), the Debug panel: app.WfDebug (app.wfdebug.js;
     //was `debug`); one bottom panel at a time, the one last open remembered (bottomPanel)
     const exec = new app.WfExecutions(document.querySelector('.exec-panel'), {
-	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}', kill: '{$executionKillUrl}' },
+	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}', kill: '{$executionKillUrl}', trace: '{$executionTraceUrl}', again: '{$executionAgainUrl}' },
 	canRun: {$canRun},
 	//CLD: 2026-10-12T20:33:47+03:00: the triggers Run can start
 	runTriggers: {$runTriggers},
@@ -447,7 +452,11 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	    debug.open();
 	//CLD: 2026-10-29T21:38:25+02:00: the Executions panel closed: a run still running / waiting is shown on the canvas all the same (the draft, where the panel is)
 	if (!exec.isOpen() && document.querySelector('.btn-exec-toggle'))
-	    exec.showLive();
+	    //CLD: 2026-11-02T14:00:00+02:00: a link to a trace opens it, else the live run
+	    if ('{$openExecution}')
+		exec.openTrace('{$openExecution}', '{$openTrace}');
+	    else
+		exec.showLive();
     };
     nodeDefs.get(mount);
 
