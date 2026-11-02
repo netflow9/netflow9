@@ -43,7 +43,23 @@ if ($isExec) {
     $facts['Step'] = \V::app()->html->escape($entry->step);
 }
 $facts['Details'] = \V::app()->html->escape($entry->details);
-if (!$isExec) {
+//CLD: 2026-11-02T10:00:00+02:00: an agent's tool call: its workflow, execution, step, tool, read or write, how it ended, who approved it, the arguments (secrets removed)
+$agent = !$isExec && is_array($entry->agent) ? $entry->agent : null;
+if ($agent) {
+    $agentWf = $entry->workflow ? \V::app()->om->findById('Workflow', (string)$entry->workflow) : null;
+    $facts['Workflow'] = $entry->workflow ? \util\VString::insert('<a href="{:href}">{:name}</a> <span class="small text-muted">execution {:execution}</span>', [
+	'href' => \V::app()->createUrl('/workflow/index', [ 'id' => (string)$entry->workflow ]),
+	'name' => \V::app()->html->escape($agentWf ? (string)$agentWf->name : (string)$entry->workflow),
+	'execution' => \V::app()->html->escape($entry->execution),
+    ]) : '';
+    $facts['Step'] = \V::app()->html->escape($entry->step);
+    $facts['Tool'] = \V::app()->html->escape($agent['tool'] ?? '');
+    $facts['Read or write'] = \V::app()->html->escape($agent['access'] ?? '');
+    $facts['Result'] = \V::app()->html->escape($agent['status'] ?? '');
+    $facts['Approved by'] = \V::app()->html->escape($agent['approved_by'] ?? '');
+    $facts['Arguments'] = $show($agent['arguments'] ?? []);
+}
+if (!$isExec && !$agent) {
     $facts['IP'] = \V::app()->html->escape($entry->ip);
     $facts['Browser'] = \util\VString::insert('<span class="small text-muted">{:v}</span>', [ 'v' => \V::app()->html->escape($entry->user_agent) ]);
 }

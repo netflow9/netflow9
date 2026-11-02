@@ -35,6 +35,7 @@
 	The variable (default `ai`): { text, json, model, stop_reason, rounds, tool_calls: [ { tool, arguments, error } ], usage: { input_tokens, output_tokens } }; on error { error }
 	//CLD: 2026-10-23T01:10:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page or an HTTP request
 	//CLD: 2026-10-23T02:30:00+03:00: in an email {{ ai.html }} shows it formatted (util\EmailHtml; was escaped: {{ markdown(ai.text) }} only)
+    //CLD: 2026-11-02T10:00:00+02:00: what keeps the agent in bounds: util\AgentGuard (limits, the account's policy, untrusted content marked, lockdown, masking), each tool call in the audit log
     //CLD: 2026-10-23T10:00:00+03:00: Credential `system` (SYSTEM): the installation's System AI instead of a credential of the project, when it is of the step's provider (a plugin gives
     //it: hook ai:system-provider, systemProvider(); the MultiTenant plugin's System AI). A run reserves the account's credits, counts each call's tokens in credits, stops before a call once the
     //reserved ones are used up, and is charged what it used (its session: start, add, exhausted, finish)
@@ -91,6 +92,15 @@ abstract class NodeAppAi extends \models\WfNode {
     const DECISIONS = [ 'approve' => 'Approve', 'reject' => 'Reject' ];
     const APPROVAL_KIND = 'ai-approval';
     const MAX_ARGUMENT_SHOWN = 500;
+
+    //CLD: 2026-11-02T10:00:00+02:00: the run's util\AgentGuard; what the agent did so far (kept in the variable when a limit stops it)
+    public $guard = null;
+    private $progress = null;
+
+    //CLD: 2026-11-02T10:00:00+02:00: new: whether the provider is someone else's servers (util\AgentGuard: Mask personal data)
+    public static function isCloud() {
+	return in_array(static::CAPABILITY, \util\AgentGuard::CLOUD, true);
+    }
 
     public static function projectTools() {
 	return \util\MCPTools::all();
@@ -208,7 +218,10 @@ abstract class NodeAppAi extends \models\WfNode {
     }
 
     //CLD: 2026-10-27T23:11:38+02:00: new: a text file part as the text sent: <file name="...">...</file>
+    //CLD: 2026-11-02T10:00:00+02:00: `wrapped`: already so, inside its untrusted marks (util\AgentGuard::files)
     protected static function fileAsText(array $part) {
+	if (!empty($part['wrapped']))
+	    return $part['text'];
 	return '<file name="' . str_replace('"', "'", (string)$part['name']) . "\">\n" . $part['text'] . "\n</file>";
     }
 
@@ -457,7 +470,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	    ],
 	//CLD: 2026-11-01T21:50:00+02:00: + the integrations the model may use (section Integrations; in the designer, the families with a credential in the project: util\AgentTools)
 	//CLD: 2026-11-01T23:30:00+02:00: + the approvals (section Approvals)
-	], \util\AgentTools::familyFields(static::designerAccount(), static::designerAccount() ? \V::app()->user->crtProject : null), \util\AgentTools::approvalFields());
+	//CLD: 2026-11-02T10:00:00+02:00: + the limits and defences (section Guardrails)
+	], \util\AgentTools::familyFields(static::designerAccount(), static::designerAccount() ? \V::app()->user->crtProject : null), \util\AgentTools::approvalFields(), \util\AgentGuard::fields(static::isCloud()));
     }
 
     //CLD: 2026-10-22T01:58:24+03:00: the models each credential of the current project (providing static::CAPABILITY) recorded: [ credential id => [ model ] ], for the designer
@@ -496,6 +510,8 @@ abstract class NodeAppAi extends \models\WfNode {
 		'html' => [ 'type' => 'string', 'info' => 'the answer as safe HTML (its Markdown converted); in an email {{ ai.html }} shows it formatted' ], 'json' => [ 'type' => 'any', 'info' => 'the answer as JSON (answer: JSON)' ], 'model' => [ 'type' => 'string' ], 'stop_reason' => [ 'type' => 'string' ],
 		'rounds' => [ 'type' => 'number' ], 'tool_calls' => [ 'type' => 'array', 'items' => [ 'type' => 'object', 'fields' => [ 'tool' => [ 'type' => 'string' ], 'arguments' => [ 'type' => 'object' ], 'error' => [ 'type' => 'boolean' ] ] ] ],
 		'usage' => [ 'type' => 'object', 'fields' => [ 'input_tokens' => [ 'type' => 'number' ], 'output_tokens' => [ 'type' => 'number' ] ] ], 'error' => [ 'type' => 'string', 'info' => 'on error only' ],
+			'cost' => [ 'type' => 'object', 'info' => 'estimated from the tokens (usd) or the System AI credits used', 'fields' => [ 'usd' => [ 'type' => 'number' ], 'credits' => [ 'type' => 'number' ] ] ],
+			'limit' => [ 'type' => 'string', 'info' => 'the limit that stopped the agent: tool_calls, write_calls, cost, budget' ],
 	    ] ] ] : [];
     }
 
@@ -554,7 +570,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	    }
 	}
 	//CLD: 2026-11-01T21:50:00+02:00: the integrations (a credential of the project, known operations) and the workflows (of the project, called by a workflow)
-	foreach(\util\AgentTools::errors($this) as $message) {
+	//CLD: 2026-11-02T10:00:00+02:00: + the guardrails, and what the account's AI policy does not allow (it says why)
+	foreach(array_merge(\util\AgentTools::errors($this), \util\AgentGuard::errors($this), \models\AgentPolicy::stepErrors($this)) as $message) {
 	    $this->errors('config', $message);
 	    $valid = false;
 	}
@@ -601,8 +618,10 @@ abstract class NodeAppAi extends \models\WfNode {
 	    //CLD: 2026-11-01T23:30:00+02:00: a resumed step that fails: its saved conversation removed
 	    $this->dropWait();
 	    $message = $e->getMessage();
+	    //CLD: 2026-11-02T10:00:00+02:00: a limit reached: what the agent did so far is kept
 	    if (\util\Validator::isIdentifier($name))
-		$this->exec->setVariable($name, [ 'error' => $message ]);
+		$this->exec->setVariable($name, [ 'error' => $message ] + ($e instanceof \util\AgentLimitReached ? [ 'limit' => $e->limit ] + (array)$this->progress + [ 'tool_calls' => [] ]
+		    + ($this->guard ? [ 'cost' => $this->guard->costs() ] : []) : []));
 	    $this->exec->log($this->wfid, "{$label}: {$message}");
 	    if ($this->cfg('onError', 'fail') === 'output')
 		return [ 1 ];
@@ -635,21 +654,29 @@ abstract class NodeAppAi extends \models\WfNode {
 	$project = \V::app()->om->findOne('Project', [ '_id' => $this->exec->project, 'aid' => $this->exec->aid ]);
 	//CLD: 2026-11-01T23:30:00+02:00: resumed after an approval: the saved conversation (no files again: they are in it)
 	$resume = !empty($this->agentWait) ? $this->loadWait() : null;
+	//CLD: 2026-11-02T10:00:00+02:00: the guard of this run (resumed: as it was saved)
+	$this->guard = new \util\AgentGuard($this, $system !== null, $resume['guard'] ?? null);
 
-	$systemPrompt = trim(\util\Expression::toText($this->expr('system', ''))); //CLD: 2026-10-23T10:00:00+03:00: $systemPrompt (was $system: now the System AI)
-	$prompt = trim(\util\Expression::toText($this->expr('prompt', '')));
-	if ($prompt === '')
-	    throw new \ErrorException('the prompt is empty');
 	$json = $this->cfg('output', 'text') === 'json';
 	$schema = $json && trim((string)$this->cfg('jsonSchema', '')) !== '' ? json_decode((string)$this->cfg('jsonSchema')) : null;
 	//CLD: 2026-10-17T21:00:54+03:00: the images sent with the prompt
 	//CLD: 2026-10-27T23:11:38+02:00: the files (promptFiles; was promptImages)
-	$files = $resume ? [] : $this->promptFiles($project, $cred);
+	$files = $resume ? [] : $this->guard->files($this->promptFiles($project, $cred));
 
 	//CLD: 2026-10-22T22:00:00+03:00: collectTools() (was here)
-	$tools = $this->collectTools($clients, $project);
+	//CLD: 2026-11-02T10:00:00+02:00: only those the account's policy allows (govern())
+	$tools = $this->guard->govern($this->collectTools($clients, $project));
 
-	$state = $resume ? $resume['state'] : $this->startConversation($cred, $systemPrompt, $prompt, $json ? ($schema ?: true) : null, $files);
+	//CLD: 2026-10-23T10:00:00+03:00: $systemPrompt (was $system: now the System AI)
+	//CLD: 2026-11-02T10:00:00+02:00: the prompts through the guard (the values from outside marked, masked; the rules in the system prompt); only for a new conversation (a resumed one has them)
+	$state = $resume ? $resume['state'] : null;
+	if (!$resume) {
+	    $vars = $this->exec->expressionVariables();
+	    if (trim(\util\Expression::toText(\util\Expression::render($this->cfg('prompt', ''), $vars))) === '')
+		throw new \ErrorException('the prompt is empty');
+	    $systemPrompt = $this->guard->systemPrompt($this->cfg('system', ''), $vars);
+	    $state = $this->startConversation($cred, $systemPrompt, $this->guard->prompt($this->cfg('prompt', ''), $vars), $json ? ($schema ?: true) : null, $files);
+	}
 	//CLD: 2026-10-23T10:00:00+03:00: System AI: the credits reserved for the run (refused: not priced, none left); charged what it used when it ends, also on failure
 	$session = $system ? ($system['start'])(trim((string)$this->cfg('model', '')), [ 'wfid' => (string)($this->exec->wf ?? ''), 'exid' => (string)($this->exec->_id ?? '') ]) : null;
 	try {
@@ -672,6 +699,9 @@ abstract class NodeAppAi extends \models\WfNode {
 	$calls = [];
 	$answer = null;
 	$round = 1;
+	//CLD: 2026-11-02T10:00:00+02:00: what execute() keeps when a limit stops the agent
+	$this->progress = [ 'rounds' => &$round, 'tool_calls' => &$calls, 'usage' => &$usage ];
+	$guard = $this->guard;
 	if ($resume) {
 	    [ $usage, $calls, $answer ] = [ $resume['usage'], $resume['calls'], $resume['answer'] ];
 	    $this->addToolResults($state, $this->decided($resume, $tools, $calls));
@@ -680,36 +710,52 @@ abstract class NodeAppAi extends \models\WfNode {
 	for(; $round <= $maxRounds; $round++) {
 	    if ($session && $round > 1 && $session->exhausted())
 		throw new \ErrorException('the System AI credits reserved for this step (' . $session->reserved() . ') are used up before the model finished');
+	    //CLD: 2026-11-02T10:00:00+02:00: the run's cost limit, the account's monthly budget
+	    $guard->beforeCall();
 	    $answer = $this->callModel($cred, $state, $tools, $json ? ($schema ?: true) : null);
 	    $usage['input_tokens'] += (int)$answer['usage'][0];
 	    $usage['output_tokens'] += (int)$answer['usage'][1];
 	    if ($session)
 		$session->add($answer['usage']);
+	    $guard->afterCall($answer['usage'], $session);
 	    if (!empty($answer['continue']))
 		continue;
 	    if (!$answer['calls'])
 		break;
 	    if ($round === $maxRounds)
 		throw new \ErrorException("the model still wanted to use tools after {$maxRounds} round(s) (raise Rounds)");
+	    //CLD: 2026-11-02T10:00:00+02:00: the cost limit reached: the tools it asks for are not run
+	    $guard->checkCost();
 	    $results = [];
 	    $pending = [];
 	    foreach($answer['calls'] as [ $id, $tool, $args ]) {
 		//CLD: 2026-10-17T21:00:54+03:00: + the images of the result
 		$toolImages = [];
+		//CLD: 2026-11-02T10:00:00+02:00: masked values back in the arguments; past a limit: the agent stops; approval: also by the policy or a lockdown (approvalFor)
+		$args = $guard->restore($args);
+		$asks = null;
+		if (isset($tools[$tool]) && is_array($args)) {
+		    $reached = $guard->takeCall($tools[$tool]);
+		    if ($reached)
+			$this->limitReached($reached, $tool, $args, $pending, $calls);
+		    $asks = $guard->approvalFor($tools[$tool]);
+		}
 		if (!isset($tools[$tool])) {
 		    [ $text, $isError ] = [ "unknown tool `{$tool}`", true ];
 		} elseif (!is_array($args)) {
 		    [ $text, $isError ] = [ 'the arguments are not a JSON object', true ];
-		} elseif (!empty($tools[$tool]['approval']) && ($wrong = ($tools[$tool]['check'])($args)) !== null) {
+		} elseif ($asks && ($wrong = ($tools[$tool]['check'])($args)) !== null) {
 		    //CLD: 2026-11-01T23:30:00+02:00: a call that asks for approval with wrong arguments: a tool error, not sent for approval
 		    [ $text, $isError ] = [ $wrong, true ];
-		} elseif (!empty($tools[$tool]['approval'])) {
+		} elseif ($asks) {
 		    //CLD: 2026-11-01T23:30:00+02:00: asks for approval: not run now (its place kept in the results)
-		    $pending[] = [ 'index' => count($results), 'call' => count($calls), 'id' => $id, 'tool' => $tool, 'args' => $args ];
+		    //CLD: 2026-11-02T10:00:00+02:00: + meta: what asks (the tool's `approval` or `lockdown`)
+		    $pending[] = [ 'index' => count($results), 'call' => count($calls), 'id' => $id, 'tool' => $tool, 'args' => $args, 'meta' => $asks ];
 		    $calls[] = [ 'tool' => $tool, 'arguments' => $args, 'error' => false, 'approval' => 'asked' ];
 		    $results[] = null;
 		    continue;
 		} else {
+		    $guard->ran();
 		    try {
 			[ $text, $isError, $toolImages ] = ($tools[$tool]['run'])($args);
 		    } catch (\Exception $e) {
@@ -726,10 +772,11 @@ abstract class NodeAppAi extends \models\WfNode {
 	if (!empty($answer['continue']))
 	    throw new \ErrorException("the model did not finish in {$maxRounds} rounds (raise Rounds)");
 
-	$text = trim((string)$answer['text']);
+	//CLD: 2026-11-02T10:00:00+02:00: the masked values back in the answer
+	$text = trim((string)$guard->restore((string)$answer['text']));
 	//CLD: 2026-10-23T01:10:00+03:00: + html (util\Markdown)
 	$result = [ 'text' => $text, 'html' => \util\Markdown::toHtml($text), 'json' => null, 'model' => $answer['model'], 'stop_reason' => $answer['stop_reason'], 'rounds' => min($round, $maxRounds),
-	    'tool_calls' => $calls, 'usage' => $usage ];
+	    'tool_calls' => $calls, 'usage' => $usage, 'cost' => $guard->costs() ]; //CLD: 2026-11-02T10:00:00+02:00: + cost
 	if ($json) {
 	    $clean = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $text);
 	    $parsed = json_decode($clean, true);
@@ -754,7 +801,9 @@ abstract class NodeAppAi extends \models\WfNode {
 	    if (!in_array($t['name'], $wanted, true))
 		continue;
 	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
-	    $tools[$t['name']] = [ 'name' => $t['name'], 'description' => $t['description'], 'schema' => json_decode(\util\JSON::encode($t['inputSchema'])),
+	    //CLD: 2026-11-02T10:00:00+02:00: + kind, title, writes: not marked read-only
+	    $tools[$t['name']] = [ 'name' => $t['name'], 'kind' => 'project', 'title' => $t['title'] ?? $t['name'], 'writes' => ($t['annotations']['readOnlyHint'] ?? false) !== true,
+		'description' => $t['description'], 'schema' => json_decode(\util\JSON::encode($t['inputSchema'])),
 		'run' => function(array $args) use ($t, $project) {
 		    try {
 			//CLD: 2026-10-17T21:00:54+03:00: the images of the result (read_image) apart
@@ -818,7 +867,8 @@ abstract class NodeAppAi extends \models\WfNode {
 	    $required[] = 'knowledge_base';
 	}
 	$k = max(1, min(20, (int)$this->cfg('knowledgeResults', 5)));
-	return [ 'search_knowledge_base' => [ 'name' => 'search_knowledge_base',
+	//CLD: 2026-11-02T10:00:00+02:00: + kind, writes
+	return [ 'search_knowledge_base' => [ 'name' => 'search_knowledge_base', 'kind' => 'knowledge', 'writes' => false,
 	    //CLD: 2026-10-31T01:00:00+02:00: + each knowledge base's description (what its documents are about)
 	    'description' => 'Searches the knowledge base' . (count($names) > 1 ? 's ' : ' ') . implode(', ', array_map(fn($kb) => "`{$kb->name}`"
 		. (trim((string)$kb->description) !== '' ? ' (' . trim(preg_replace('/\s+/', ' ', (string)$kb->description)) . ')' : ''), $kbs))
@@ -853,7 +903,9 @@ abstract class NodeAppAi extends \models\WfNode {
 		continue;
 	    //names unique and as the providers want them (letters, digits, _ -, at most 64)
 	    $tn = substr(preg_replace('/[^A-Za-z0-9_-]/', '_', $prefix . '_' . $t['name']), 0, 64);
-	    $tools[$tn] = [ 'name' => $tn, 'description' => "[{$label}] " . ($t['description'] ?: ($t['title'] ?? $t['name'])), 'schema' => $t['inputSchema'],
+	    //CLD: 2026-11-02T10:00:00+02:00: + kind, title, writes: not marked read-only by the server
+	    $tools[$tn] = [ 'name' => $tn, 'kind' => 'mcp', 'title' => "{$label}: " . ($t['title'] ?? $t['name']), 'writes' => (((array)($t['annotations'] ?? []))['readOnlyHint'] ?? false) !== true,
+		'description' => "[{$label}] " . ($t['description'] ?: ($t['title'] ?? $t['name'])), 'schema' => $t['inputSchema'],
 		'run' => function(array $args) use ($client, $t) {
 		    $r = $client->callTool($t['name'], $args);
 		    $parts = [];
@@ -895,6 +947,9 @@ abstract class NodeAppAi extends \models\WfNode {
 	$mode = (string)$this->cfg('pdfs', 'auto');
 	if ($mode === 'auto')
 	    $mode = $this->pdfAsDocuments($cred) ? 'document' : 'text';
+	//CLD: 2026-11-02T10:00:00+02:00: masking: a PDF itself cannot be masked, its text can
+	if ($this->guard?->masking())
+	    $mode = 'text';
 	$parts = [];
 	$kinds = [];
 	$size = 0;
@@ -970,12 +1025,24 @@ abstract class NodeAppAi extends \models\WfNode {
 
     //CLD: 2026-11-01T23:30:00+02:00: new (was in loop()): a tool's result as sent to the model: cut at MAX_TOOL_RESULT, logged ($note after the tool's name), listed in $calls =>
     //[ id, text, isError, images ]
-    protected function toolResult($id, $tool, $args, $text, $isError, array $images, array &$calls, $note = '') {
-	if (mb_strlen($text) > self::MAX_TOOL_RESULT)
-	    $text = mb_substr($text, 0, self::MAX_TOOL_RESULT) . "\n[cut: the result was longer than " . self::MAX_TOOL_RESULT . ' characters]';
+    //CLD: 2026-11-02T10:00:00+02:00: masked and marked as untrusted (AgentGuard::result: the cut too); + in the audit log: $status (default: ok / error), $by: who approved it
+    protected function toolResult($id, $tool, $args, $text, $isError, array $images, array &$calls, $note = '', $status = null, $by = null) {
+	$this->guard->audit($tool, $args, $status ?? ($isError ? 'error' : 'ok'), $by);
 	$this->exec->log($this->wfid, static::$label . ": tool {$tool}" . $note . ($isError ? ' -> error: ' . mb_substr($text, 0, 200) : '') . ($images ? ', ' . count($images) . ' image(s)' : ''));
 	$calls[] = [ 'tool' => $tool, 'arguments' => $args, 'error' => $isError ];
-	return [ $id, $text, $isError, $images ];
+	return [ $id, $this->guard->result($tool, $text, self::MAX_TOOL_RESULT), $isError, $images ];
+    }
+
+    //CLD: 2026-11-02T10:00:00+02:00: new: call $tool went past a limit: not run, nor are the round's calls that were to ask (in $calls: not run; in the audit log), the agent stops
+    protected function limitReached(\util\AgentLimitReached $reached, $tool, array $args, array $pending, array &$calls) {
+	foreach($pending as $p) {
+	    $calls[$p['call']] = [ 'tool' => $p['tool'], 'arguments' => $p['args'], 'error' => true, 'approval' => 'not asked' ];
+	    $this->guard->audit($p['tool'], $p['args'], 'stopped by a limit');
+	}
+	$calls[] = [ 'tool' => $tool, 'arguments' => $args, 'error' => true, 'refused' => $reached->limit ];
+	$this->guard->audit($tool, $args, 'stopped by a limit');
+	$this->exec->log($this->wfid, static::$label . ": tool {$tool} not run: " . $reached->getMessage());
+	throw $reached;
     }
 
     // ------------------------------------------------------------------------------------
@@ -986,15 +1053,17 @@ abstract class NodeAppAi extends \models\WfNode {
     protected function askApproval(array $state, $round, array $answer, array $results, array $pending, array $calls, array $usage, array $tools) {
 	$items = [];
 	foreach($pending as $p) {
-	    $meta = $tools[$p['tool']]['approval'];
+	    //CLD: 2026-11-02T10:00:00+02:00: $p['meta'] (was the tool's `approval`: a lockdown asks too); the model's words with the masked values back; in the audit log
+	    $meta = $p['meta'];
 	    $args = \util\AgentTools::withoutReason($p['args'], $meta['reason']);
 	    $reason = trim(\util\Expression::toText($p['args'][$meta['reason']] ?? ''));
 	    $items[] = [ 'tool' => $p['tool'], 'label' => $meta['label'], 'title' => self::approvalTitle($meta, $args), 'arguments' => $args,
-		'reason' => mb_substr($reason !== '' ? $reason : trim((string)($answer['text'] ?? '')), 0, 2000) ];
+		'reason' => mb_substr($reason !== '' ? $reason : trim((string)$this->guard->restore((string)($answer['text'] ?? ''))), 0, 2000) ];
+	    $this->guard->audit($p['tool'], $args, 'waiting for approval');
 	}
 	$exec = $this->exec;
 	$file = self::saveBlob($exec, [ 'state' => $state, 'round' => $round, 'answer' => [ 'text' => (string)($answer['text'] ?? ''), 'model' => (string)($answer['model'] ?? ''),
-	    'stop_reason' => (string)($answer['stop_reason'] ?? '') ], 'results' => $results, 'pending' => $pending, 'calls' => $calls, 'usage' => $usage ]);
+	    'stop_reason' => (string)($answer['stop_reason'] ?? '') ], 'results' => $results, 'pending' => $pending, 'calls' => $calls, 'usage' => $usage, 'guard' => $this->guard->save() ]); //CLD: 2026-11-02T10:00:00+02:00: + guard
 	$several = count($items) > 1;
 	$fields = [];
 	$lines = [ (string)($this->title ?: static::$label) . ' (an AI step) asks to do ' . ($several ? 'these actions' : 'this') . ':' ];
@@ -1054,7 +1123,7 @@ abstract class NodeAppAi extends \models\WfNode {
 	return true;
     }
 
-    //the saved round (saveBlob) and its task => [ state, round, answer, results, pending, calls, usage, task ]
+    //the saved round (saveBlob) and its task => [ state, round, answer, results, pending, calls, usage, guard, task ]
     protected function loadWait() {
 	$saved = self::loadBlob((string)($this->agentWait['file'] ?? ''));
 	if (!is_array($saved))
@@ -1080,6 +1149,7 @@ abstract class NodeAppAi extends \models\WfNode {
 		if (!isset($tools[$p['tool']])) {
 		    [ $text, $isError ] = [ "the tool `{$p['tool']}` is no longer offered", true ];
 		} else {
+		    $this->guard->ran();
 		    try {
 			[ $text, $isError, $images ] = ($tools[$p['tool']]['run'])($p['args']);
 		    } catch (\Exception $e) {
@@ -1094,7 +1164,10 @@ abstract class NodeAppAi extends \models\WfNode {
 		$outcome = $done ? 'rejected' : 'expired';
 	    }
 	    $one = [];
-	    $results[$p['index']] = $this->toolResult($p['id'], $p['tool'], $p['args'], $text, $isError, (array)$images, $one, " ({$decision})");
+	    //CLD: 2026-11-02T10:00:00+02:00: + what the audit log says: approved by whom, else why it did not run
+	    $withoutReason = \util\AgentTools::withoutReason($p['args'], $p['meta']['reason'] ?? null);
+	    $results[$p['index']] = $this->toolResult($p['id'], $p['tool'], $withoutReason, $text, $isError, (array)$images, $one, " ({$decision})",
+		$outcome === 'approved' ? null : ($done ? 'rejected' : 'not approved in time'), $outcome === 'approved' && $user ? $user : null);
 	    //the call listed when it was asked: its outcome
 	    $calls[$p['call']] = [ 'tool' => $p['tool'], 'arguments' => $p['args'], 'error' => $isError, 'approval' => $outcome ] + ($done ? [ 'by' => $who ] : []);
 	    \models\ExecutionLog::record('ai.approval', null, "{$p['tool']} " . \util\JSON::encode($p['args']) . ": {$decision}"

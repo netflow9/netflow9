@@ -18,15 +18,24 @@ $schema = \util\JSON::encode($schema);
 $filter = \util\JSON::encode($sf['filter']);
 
 //CLD: 2026-10-21T00:55:00+03:00: the grid's data: list?data=1 with this log's query string (was /audit/data{$q})
-$dataUrl = '/audit/list' . ($q === '' ? '?data=1' : "{$q}&data=1");
+//CLD: 2026-11-02T10:00:00+02:00: $qData: with the agents' filter
+$dataUrl = '/audit/list' . ($qData === '' ? '?data=1' : "{$qData}&data=1");
 
 $title = $system ? $label : $label . ': ' . \V::app()->html->escape((string)\V::app()->om->findById('Project', \V::app()->user->crtProject));
+
+//CLD: 2026-11-02T10:00:00+02:00: the audit log: all of it, or only the agents' tool calls
+$agentLink = '';
+if ($log == 'AuditLog')
+    $agentLink = \util\VString::insert('<a class=\'btn btn-sm {:cls} ms-3\' href=\'{:href}\'><i class=\'bi bi-robot me-1\'></i>Agent actions</a>', [
+	'cls' => $agent ? 'btn-primary' : 'btn-outline-primary',
+	'href' => '/audit/list' . ($agent ? $q : ($q === '' ? '?agent=1' : "{$q}&agent=1")),
+    ]);
 
 $script = "
 +function() {
     const container = document.getElementById('obj-list');
     new app.GridView(container, {
-	title: `<h5 class='h5 mb-0'>{$title}</h5>`,
+	title: `<h5 class='h5 mb-0'>{$title}</h5>{$agentLink}`,
 	dataUrl: '{$dataUrl}',
 
 	schema: {
