@@ -233,11 +233,18 @@ class WorkflowController extends \sys\BaseController {
 	$check = $source ? $wf->forVersion($source) : $wf;
 	//CLD: 2026-10-19T17:10:00+03:00: issues() (was validateFlow): a draft can be saved with errors in the steps' settings, it is not published with them
 	$errors = array_values(array_filter($check->issues(), fn($i) => $i['level'] == 'error'));
+	//CLD: 2026-11-02T15:46:06+02:00: the tests of the draft (util\AgentEval::gate); when Tests must pass to publish is on, a new version of the draft needs them passed. Not an older version or an unchanged draft published again: a way back stays open
+	$gate = \util\AgentEval::gate($wf);
+	$blocked = \util\AgentEval::blocks($gate, $source, $reuse);
 
 	if ($req->is('post')) {
 	    $params = [ 'id' => (string)$wf->_id ];
 	    if ($errors) {
 		$this->addToast('error', 'Not published', 'The workflow has errors (steps\' settings or connections): fix them and save it first');
+		$this->redirect('/workflow/index', $params);
+	    }
+	    if ($blocked) {
+		$this->addToast('error', 'Not published', 'Tests must pass to publish: ' . $gate['message']);
 		$this->redirect('/workflow/index', $params);
 	    }
 
@@ -277,7 +284,8 @@ class WorkflowController extends \sys\BaseController {
 	}
 
 	$next = (int)$wf->version_count + 1;
-	$this->render('publish', compact('wf', 'source', 'active', 'reuse', 'errors', 'next'));
+	//CLD: 2026-11-02T15:46:06+02:00: + the tests
+	$this->render('publish', compact('wf', 'source', 'active', 'reuse', 'errors', 'next', 'gate', 'blocked'));
     }
 
     //CLD: 2026-10-11T13:51:42+03:00: stop the triggers (POST): the workflow goes back to draft; its versions and `version` are kept. Workflow::update
@@ -423,7 +431,8 @@ class WorkflowController extends \sys\BaseController {
 	$wf = $this->findWorkflow('Workflow::read');
 
 	$list = [];
-	$exes = \V::app()->om->find('WfExecution', [ 'wf' => $wf->_id, 'aid' => $wf->aid ], [ 'sort' => [ '_id' => -1 ], 'limit' => 30, 'projection' => [ 'nodes' => 0, 'log' => 0, 'variables' => 0, 'tokens' => 0, 'input' => 0 ] ]);
+	//CLD: 2026-11-02T15:46:06+02:00: not those of test runs (the Tests panel links to them)
+	$exes = \V::app()->om->find('WfExecution', [ 'wf' => $wf->_id, 'aid' => $wf->aid, 'test_run' => null ], [ 'sort' => [ '_id' => -1 ], 'limit' => 30, 'projection' => [ 'nodes' => 0, 'log' => 0, 'variables' => 0, 'tokens' => 0, 'input' => 0 ] ]);
 	foreach($exes as $exe)
 	    $list[] = $this->executionSummary($exe);
 	$resp->sendJSON([ 'executions' => $list ]);
@@ -516,6 +525,8 @@ class WorkflowController extends \sys\BaseController {
 	    'system' => !empty($t['system']),
 	    'prices' => $t['prices'] ?? null,
 	    'totals' => $totals,
+	    //CLD: 2026-11-02T18:00:00+02:00: what the step was given of the conversation
+	    'conversation' => $t['conversation'] ?? null,
 	    'started' => $this->localTime($start),
 	    'duration' => $start ? (int)(string)($end ?? new \MongoDB\BSON\UTCDateTime()) - (int)(string)$start : null,
 	    'updated' => (string)($t['updated_at'] ?? ''),
@@ -665,7 +676,8 @@ class WorkflowController extends \sys\BaseController {
 	$wf = $this->findWorkflow('Workflow::update');
 	$deleted = 0;
 	$failed = 0;
-	$exes = \V::app()->om->find('WfExecution', [ 'wf' => $wf->_id, 'aid' => $wf->aid, 'version' => null, 'state' => [ '$nin' => [ 'new', 'run', 'sleep' ] ] ], [ 'projection' => [ '_id' => 1, 'aid' => 1, 'version' => 1, 'state' => 1 ] ]);
+	//CLD: 2026-11-02T15:46:06+02:00: not those of test runs: they go with their run
+	$exes = \V::app()->om->find('WfExecution', [ 'wf' => $wf->_id, 'aid' => $wf->aid, 'version' => null, 'test_run' => null, 'state' => [ '$nin' => [ 'new', 'run', 'sleep' ] ] ], [ 'projection' => [ '_id' => 1, 'aid' => 1, 'version' => 1, 'state' => 1 ] ]);
 	foreach($exes as $exe) {
 	    if ($exe->delete())
 		$deleted++;
@@ -763,6 +775,8 @@ class WorkflowController extends \sys\BaseController {
 	    'error' => $exe->error ? (string)$exe->error : null,
 	    //CLD: 2026-11-02T14:00:00+02:00: the execution whose inputs it ran with
 	    'rerun_of' => $exe->rerun_of ? (string)$exe->rerun_of : null,
+	    //CLD: 2026-11-02T15:46:06+02:00: of a test run: not run again, not saved as a test case
+	    'test_run' => $exe->test_run ? (string)$exe->test_run : null,
 	];
     }
 

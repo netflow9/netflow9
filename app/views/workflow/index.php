@@ -35,6 +35,8 @@ $executionKillUrl = \V::app()->createUrl('/workflow/execution_kill', [ 'id' => (
 //CLD: 2026-11-02T14:00:00+02:00: an AI step's trace (app.WfExecutions), Run again; ?execution=&trace= (WorkflowController::trace): the panel opened on them
 $executionTraceUrl = \V::app()->createUrl('/workflow/execution_trace', [ 'id' => (string)$wf->_id ]);
 $executionAgainUrl = \V::app()->createUrl('/workflow/execution_again', [ 'id' => (string)$wf->_id ]);
+//CLD: 2026-11-02T15:46:06+02:00: the Tests panel (app.WfTests; EvalController)
+$testsUrl = fn($action) => \V::app()->createUrl('/eval/' . $action, [ 'id' => (string)$wf->_id ]);
 $openExecution = \util\Validator::rule('oid', (string)(\V::app()->request->query['execution'] ?? '')) ? (string)\V::app()->request->query['execution'] : '';
 $openTrace = $openExecution !== '' && \util\Validator::rule('oid', (string)(\V::app()->request->query['trace'] ?? '')) ? (string)\V::app()->request->query['trace'] : '';
 $canRun = \V::app()->user->can('Workflow::update', [ 'object' => $wf ]) ? 'true' : 'false';
@@ -99,7 +101,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
     //CLD: 2026-10-25T20:30:00+02:00: Run and the Executions panel: app.WfExecutions (app.wfexecutions.js; was the `exec` object here), the Debug panel: app.WfDebug (app.wfdebug.js;
     //was `debug`); one bottom panel at a time, the one last open remembered (bottomPanel)
     const exec = new app.WfExecutions(document.querySelector('.exec-panel'), {
-	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}', kill: '{$executionKillUrl}', trace: '{$executionTraceUrl}', again: '{$executionAgainUrl}' },
+	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}', kill: '{$executionKillUrl}', trace: '{$executionTraceUrl}', again: '{$executionAgainUrl}', saveCase: '{$testsUrl('case_from_execution')}' },
 	canRun: {$canRun},
 	//CLD: 2026-10-12T20:33:47+03:00: the triggers Run can start
 	runTriggers: {$runTriggers},
@@ -107,7 +109,15 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	whenSaved: (fn) => autosave.whenSaved(fn),
 	onOpen: () => {
 	    debug.close();
+	    //CLD: 2026-11-02T15:46:06+02:00: + the Tests panel
+	    tests.close();
 	    bottomPanel.set('exec');
+	},
+	//CLD: 2026-11-02T15:46:06+02:00: Save as test case: it opens in the Tests panel
+	onCaseSaved: (saved) => {
+	    toast('success', 'Saved', 'Test case saved: choose what it must check');
+	    tests.open();
+	    tests.refresh().done(() => tests.editCase(saved));
 	},
 	onClose: () => bottomPanel.closed('exec'),
 	//CLD: 2026-10-29T21:30:00+02:00: the selected execution's steps and connections on the canvas (done, running, waiting, failed; null: none)
@@ -127,9 +137,23 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	onShowNode: (id) => designer && designer.showNode(id),
 	onOpen: () => {
 	    exec.close();
+	    //CLD: 2026-11-02T15:46:06+02:00: + the Tests panel
+	    tests.close();
 	    bottomPanel.set('debug');
 	},
 	onClose: () => bottomPanel.closed('debug'),
+    });
+    //CLD: 2026-11-02T15:46:06+02:00: the Tests panel
+    const tests = new app.WfTests(document.querySelector('.tests-panel'), {
+	urls: { data: '{$testsUrl('data')}', detail: '{$testsUrl('run_detail')}', save: '{$testsUrl('case_save')}', del: '{$testsUrl('case_delete')}', start: '{$testsUrl('start')}', stop: '{$testsUrl('run_stop')}', required: '{$testsUrl('required')}' },
+	whenSaved: (fn) => autosave.whenSaved(fn),
+	onOpen: () => {
+	    exec.close();
+	    debug.close();
+	    bottomPanel.set('tests');
+	},
+	onClose: () => bottomPanel.closed('tests'),
+	onShowExecution: (execution, trace) => exec.openTrace(execution, trace),
     });
 
     //CLD: 2026-10-11T13:51:42+03:00: Publish needs the draft saved (it publishes the saved draft); was the `publish` switch object
@@ -450,6 +474,9 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	    exec.open();
 	else if (bottomPanel.get() === 'debug')
 	    debug.open();
+	//CLD: 2026-11-02T15:46:06+02:00: + the Tests panel
+	else if (bottomPanel.get() === 'tests' && document.querySelector('.btn-tests-toggle'))
+	    tests.open();
 	//CLD: 2026-10-29T21:38:25+02:00: the Executions panel closed: a run still running / waiting is shown on the canvas all the same (the draft, where the panel is)
 	if (!exec.isOpen() && document.querySelector('.btn-exec-toggle'))
 	    //CLD: 2026-11-02T14:00:00+02:00: a link to a trace opens it, else the live run
@@ -628,6 +655,8 @@ $formOptions = [
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-run-wf text-success d-inline" title="Run"><i class="bi bi-play-fill"></i></a>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-exec-toggle d-inline" title="Executions"><i class="bi bi-clock-history"></i></a>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-debug-toggle d-inline" title="Debug: errors and warnings"><i class="bi bi-bug"></i></a>
+	<?php //CLD: 2026-11-02T15:46:06+02:00: the Tests panel ?>
+	<a href="#" class="px-1 btn btn-sm btn-icon btn-tests-toggle d-inline" title="Tests: check the AI steps before publishing"><i class="bi bi-clipboard-check"></i></a>
 	<?php /* <a href="<?= \V::app()->createUrl('/workflow/variables', [ 'id' => $wf->_id ]) ?>" class="px-1 btn btn-sm btn-icon d-inline"><i class="bi bi-code-slash"></i></a> */ ?>
 	<a href="<?= \V::app()->createUrl('/workflow/update_name', [ 'id' => $wf->_id ]) ?>" class="px-1 btn btn-sm btn-icon d-inline"><i class="bi bi-gear"></i></a>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-undo-wf d-inline disabled opacity-50" title="Undo (Ctrl+Z)" aria-disabled="true"><i class="bi bi-arrow-counterclockwise"></i></a>
@@ -674,6 +703,22 @@ $formOptions = [
     <div class="debug-panel-body overflow-auto py-2 px-3">
 	<div class="debug-panel-title mb-1">Errors and warnings</div>
 	<div class="debug-issues"></div>
+    </div>
+</div>
+<?php //CLD: 2026-11-02T15:46:06+02:00: the Tests panel (app.WfTests) ?>
+<div class="debug-panel tests-panel d-none" style="background: var(--netflow9-debug-bg)">
+    <div class="debug-resize-handle"></div>
+    <div class="debug-panel-header">
+	<div class="debug-panel-title"><i class="bi bi-clipboard-check"></i> Tests</div>
+	<div class="debug-panel-actions d-flex align-items-center gap-1">
+	    <span class="tests-actions d-inline-flex align-items-center gap-1"></span>
+	    <button class="debug-icon-btn btn-tests-refresh" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>
+	    <button class="debug-icon-btn btn-tests-close" title="Close panel"><i class="bi bi-x-lg"></i></button>
+	</div>
+    </div>
+    <div class="debug-panel-body d-flex flex-column flex-md-row gap-3 p-0">
+	<div class="tests-cases overflow-auto py-2 ps-3 pe-2 border-end border-secondary flex-shrink-0" style="width: 320px; max-width: 100%"></div>
+	<div class="tests-detail overflow-auto flex-grow-1 py-2 pe-3 ps-3 ps-md-0" style="min-width: 0"></div>
     </div>
 </div>
 <div class="debug-panel exec-panel d-none" style="background: var(--netflow9-debug-bg)">

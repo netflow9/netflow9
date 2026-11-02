@@ -87,7 +87,7 @@ window.app.WfExecutions = (function() {
 	    this.el = typeof panel === 'string' ? document.querySelector(panel) : panel;
 	    //CLD: 2026-10-29T21:30:00+02:00: + onShow
 	    //CLD: 2026-10-29T21:38:25+02:00: + chip
-	    this.o = Object.assign({ urls: {}, canRun: false, runTriggers: [], whenSaved: (fn) => fn(), onOpen: () => {}, onClose: () => {}, onShow: () => {}, chip: () => null }, options || {});
+	    this.o = Object.assign({ urls: {}, canRun: false, runTriggers: [], whenSaved: (fn) => fn(), onOpen: () => {}, onClose: () => {}, onShow: () => {}, chip: () => null, onCaseSaved: () => {} }, options || {});
 	    //baseline: the last saved state (markSaved), current: the latest, dirty: changes not saved yet
 	    this.baseline = null;
 	    this.current = null;
@@ -192,6 +192,11 @@ window.app.WfExecutions = (function() {
 		this.askAgain = null;
 		this.renderDetail();
 	    }, '.btn-exec-again-no');
+	    //CLD: 2026-11-02T15:46:06+02:00: Save as test case
+	    this.on($panel, 'click', (e) => {
+		e.preventDefault();
+		this.saveCase();
+	    }, '.btn-exec-save-case');
 	    this.on($panel, 'click', (e) => {
 		e.preventDefault();
 		this.select(e.currentTarget.dataset.id);
@@ -478,10 +483,12 @@ window.app.WfExecutions = (function() {
 	    const again = !this.againable(e) ? '' : `<span class='exec-again d-inline-flex align-items-center'>` + (this.askAgain === e.id
 		? `<span class='me-1'>Run again on the current draft? Its tools run again too.</span><button type='button' class='debug-icon-btn btn-exec-again-yes' title='Yes, run it again'><i class='bi bi-check-lg'></i></button><button type='button' class='debug-icon-btn btn-exec-again-no' title='No'><i class='bi bi-x-lg'></i></button>`
 		: `<button type='button' class='debug-icon-btn btn-exec-again' title='Run again with the same inputs, on the current draft'><i class='bi bi-arrow-repeat'></i></button>`) + `</span>`;
-	    const from = e.rerun_of ? `, <a href='#' class='exec-rerun-of' data-id='${esc(e.rerun_of)}'>run again of another execution</a>` : '';
+	    //CLD: 2026-11-02T15:46:06+02:00: Save as test case; a test's execution says so
+	    const saveCase = this.againable(e) && this.o.urls.saveCase ? `<button type='button' class='debug-icon-btn btn-exec-save-case' title='Save as test case: its inputs and tool results'><i class='bi bi-clipboard-plus'></i></button>` : '';
+	    const from = e.test_run ? `, a test` : e.rerun_of ? `, <a href='#' class='exec-rerun-of' data-id='${esc(e.rerun_of)}'>run again of another execution</a>` : '';
 	    const top = box.scrollTop;
 	    box.innerHTML = `
-		<div class='mb-1 d-flex flex-wrap align-items-center gap-1'><span>${badge(e.state)} <span style='color: var(--netflow9-debug-muted)'>${esc(e.trigger)} ${esc(versionLabel(e))}, started ${esc(e.started || e.created || '-')}${e.duration !== null ? ', ' + duration(e.duration) : ''}${e.wake_at ? ', wakes at ' + esc(e.wake_at) : ''}${from}</span></span><span class='ms-auto d-inline-flex align-items-center gap-1'>${again}${del}${kill}</span></div>
+		<div class='mb-1 d-flex flex-wrap align-items-center gap-1'><span>${badge(e.state)} <span style='color: var(--netflow9-debug-muted)'>${esc(e.trigger)} ${esc(versionLabel(e))}, started ${esc(e.started || e.created || '-')}${e.duration !== null ? ', ' + duration(e.duration) : ''}${e.wake_at ? ', wakes at ' + esc(e.wake_at) : ''}${from}</span></span><span class='ms-auto d-inline-flex align-items-center gap-1'>${saveCase}${again}${del}${kill}</span></div>
 		${e.error ? `<div class='text-danger mb-1'>${esc(e.error)}</div>` : ''}
 		${this.tracesHtml(e)}
 		<div class='debug-panel-title mt-2 mb-1'>Log</div>
@@ -541,6 +548,9 @@ window.app.WfExecutions = (function() {
 	    const money = costText(totals.cost);
 	    const parts = [ esc(t.provider + (t.model ? ' ' + t.model : '')), `${n(totals.rounds)} round(s)`, `${n(totals.tool_calls)} tool call(s)${totals.write_calls ? ', ' + n(totals.write_calls) + ' write' : ''}`,
 		`${n(totals.input_tokens)} + ${n(totals.output_tokens)} tokens` ];
+	    //CLD: 2026-11-02T18:00:00+02:00: Continue the conversation: what the step was given (a summary made now: its tokens are in the run's usage, not in these rounds)
+	    if (t.conversation)
+		parts.push(`${n(t.conversation.turns)} earlier turn(s)${t.conversation.summary ? ' and a summary' : ''}${t.conversation.summarized ? `, ${n(t.conversation.summarized.turns)} summarized now (${n(t.conversation.summarized.tokens.input)} + ${n(t.conversation.summarized.tokens.output)} tokens)` : ''}`);
 	    parts.push(money ? esc(money) + (t.system ? '' : ' (estimated)') : `<span title='Set the prices of this model: on the step, or in Account settings &gt; AI'>cost not known</span>`);
 	    if (t.duration !== null)
 		parts.push(esc(duration(t.duration)));
@@ -613,7 +623,19 @@ window.app.WfExecutions = (function() {
 	/* ---------------- run again ---------------- */
 	//CLD: 2026-11-02T14:00:00+02:00: new: a finished execution, by a user who may run the workflow
 	againable(e) {
-	    return this.o.canRun && !!this.o.urls.again && ![ 'new', 'run', 'sleep' ].includes(e.state);
+	    //CLD: 2026-11-02T15:46:06+02:00: not one of a test run
+	    return this.o.canRun && !!this.o.urls.again && !e.test_run && ![ 'new', 'run', 'sleep' ].includes(e.state);
+	}
+
+	//CLD: 2026-11-02T15:46:06+02:00: Save as test case: a finished execution that is not itself a test (the Tests panel: app.WfTests)
+	saveCase() {
+	    const id = this.selected;
+	    if (!id || !this.o.urls.saveCase)
+		return;
+	    const url = this.o.urls.saveCase + (this.o.urls.saveCase.includes('?') ? '&' : '?') + 'execution=' + encodeURIComponent(id);
+	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-CSRF-Token': csrf() } })
+		.done((resp) => this.o.onCaseSaved(resp.case))
+		.fail((xhr) => toast('error', 'Not saved', (xhr.responseJSON && xhr.responseJSON.error) || 'The test case could not be saved'));
 	}
 
 	//the selected execution's inputs, as a new execution, once the changes are saved (the change to compare); it is shown

@@ -8,6 +8,7 @@ namespace models\credential;
 
 class CredentialMicrosoftTeams extends \models\credential\CredentialMicrosoftGraph {
     public static $label = 'Microsoft Teams (Microsoft Graph)';
-    public static $permissions = [ 'Team.ReadBasic.All', 'Channel.ReadBasic.All', 'ChannelMessage.Send', 'ChatMessage.Send', 'Chat.ReadBasic' ];
+    //CLD: 2026-11-02T18:00:00+02:00: + Chat.Read: the Teams message trigger reads the messages of the account's chats; a credential connected before asks for its consent again
+    public static $permissions = [ 'Team.ReadBasic.All', 'Channel.ReadBasic.All', 'ChannelMessage.Send', 'ChatMessage.Send', 'Chat.ReadBasic', 'Chat.Read' ];
     public static $provides = [ 'msteams', 'http' ];
 }

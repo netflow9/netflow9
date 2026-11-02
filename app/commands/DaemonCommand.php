@@ -643,6 +643,8 @@ class DaemonCommand extends \sys\BaseController {
 		}
 		//CLD: 2026-11-02T14:00:00+02:00: the AI steps' traces: the same setting
 		\models\AgentTrace::prune($acct);
+		//CLD: 2026-11-02T18:00:00+02:00: the conversations with agents and the runs that hold their text: the same setting
+		\models\AgentConversation::prune($acct);
 	    }
 	});
 

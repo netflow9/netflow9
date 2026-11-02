@@ -202,6 +202,8 @@ class EmailSend {
 	$list = fn($l) => implode(', ', array_map(fn($a) => '<' . $clean($a) . '>', (array)$l));
 	$id = bin2hex(random_bytes(8));
 	$domain = substr(strrchr((string)$m['from'], '@'), 1) ?: 'localhost';
+	//CLD: 2026-11-02T18:00:00+02:00: + message_id (its own Message-ID), in_reply_to, references, auto_submitted: an answer of an agent, threaded, marked so an auto-responder does not answer it
+	$angle = fn($v) => '<' . trim($clean($v), '<> ') . '>';
 	$headers = [
 	    'From: ' . $name($m['from_name'] ?? '') . '<' . $clean($m['from']) . '>',
 	    'To: ' . $list($m['to'] ?? []),
@@ -213,9 +215,15 @@ class EmailSend {
 	$headers = array_merge($headers, [
 	    'Subject: ' . mb_encode_mimeheader($clean($m['subject'] ?? ''), 'UTF-8', 'Q'),
 	    'Date: ' . date(DATE_RFC2822),
-	    'Message-ID: <' . $id . '@' . $domain . '>',
+	    'Message-ID: ' . (!empty($m['message_id']) ? $angle($m['message_id']) : '<' . $id . '@' . $domain . '>'),
 	    'MIME-Version: 1.0',
 	]);
+	if (!empty($m['in_reply_to']))
+	    $headers[] = 'In-Reply-To: ' . $angle($m['in_reply_to']);
+	if (!empty($m['references']))
+	    $headers[] = 'References: ' . implode(' ', array_map($angle, (array)$m['references']));
+	if (!empty($m['auto_submitted']))
+	    $headers[] = 'Auto-Submitted: auto-replied';
 	$qp = fn($s) => str_replace("\n", "\r\n", str_replace("\r\n", "\n", quoted_printable_encode(str_replace([ "\r\n", "\r" ], "\n", (string)$s))));
 	$alt = 'alt-' . $id;
 	$alternative = "--{$alt}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n" . $qp($m['text'] ?? '') . "\r\n"

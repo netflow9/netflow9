@@ -10,6 +10,20 @@ $noteInput = '
     <textarea id="publish-note" name="note" class="form-control" rows="3" maxlength="1000" placeholder="What changed in this version"></textarea>
 </div>';
 
+//CLD: 2026-11-02T15:46:06+02:00: the latest test result, above what the dialog says
+$testState = (string)($gate['latest']['state'] ?? '');
+$testTotals = (array)($gate['latest']['totals'] ?? []);
+$testNote = '';
+if ($gate['cases'] > 0 || $gate['required']) {
+    $testNote = \util\VString::insert('<div class="alert alert-{:kind} small py-2 mb-3"><i class="bi bi-{:icon} me-1"></i>{:message}{:counts}{:why}</div>', [
+	'kind' => $gate['ok'] ? 'success' : ($blocked ? 'danger' : 'warning'),
+	'icon' => $gate['ok'] ? 'check-circle' : 'exclamation-triangle',
+	'message' => \V::app()->html->escape($gate['message']),
+	'counts' => $gate['latest'] && !in_array($testState, \models\WfTestRun::ACTIVE, true) ? \V::app()->html->escape(' (' . (int)($testTotals['passed'] ?? 0) . ' of ' . (int)($testTotals['cases'] ?? 0) . ' passed, ' . (\util\Format::datetime($gate['latest']['ended_at'] ?? null) ?: '') . ')') : '',
+	'why' => $blocked ? '. Tests must pass to publish: run them in the Tests panel.' : ($gate['required'] && !$gate['ok'] ? '. Tests must pass only for a new version of the draft: this is not one.' : ''),
+    ]);
+}
+
 if ($errors) {
     $title = 'Cannot publish';
     $items = implode('', array_map(fn($i) => \util\VString::insert('<li>{:message}</li>', [ 'message' => \V::app()->html->escape($i['message']) ]), $errors));
@@ -38,12 +52,13 @@ if ($errors) {
 	'next' => $next,
 	'note' => $noteInput,
     ]);
-    $footer = "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button><button type='submit' class='btn btn-success'>Publish v{$next}</button>";
+    $footer = $blocked ? "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Close</button><button type='button' class='btn btn-success' disabled>Publish v{$next}</button>"
+	: "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button><button type='submit' class='btn btn-success'>Publish v{$next}</button>";
 }
 
 $modal = new \sys\html\Modal([
     'title' => $title,
-    'body' => $body,
+    'body' => $testNote . $body,
     'footer' => $footer,
     'beforeContent' => $errors ? '' : \V::app()->form->create($wf, [ 'action' => $actionUrl ]),
     'afterContent' => $errors ? '' : \V::app()->form->end(),

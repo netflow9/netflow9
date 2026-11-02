@@ -197,6 +197,40 @@ class WorkflowAssistant {
 	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * \util\AiPrices::CACHE_WRITE) / 1000000; //CLD: 2026-10-23T10:00:00+03:00: (was AssistantSettings::)
     }
 
+    //CLD: 2026-11-02T15:46:06+02:00: new: one question without tools or the Assistant's prompts (the judge of a test: util\AgentEval): the answer's text. cost, usage, credits: of this call. \ErrorException when it fails
+    public function complete($system, $prompt) {
+	$this->usage = [ 'input_tokens' => 0, 'output_tokens' => 0, 'cache_read_input_tokens' => 0, 'cache_creation_input_tokens' => 0 ];
+	$this->cost = 0.0;
+	$this->credits = 0.0;
+	$usage = [];
+	if ($this->protocol === 'openai') {
+	    if ($this->model === '')
+		$this->model = $this->serverModel();
+	    $r = json_decode(\util\JSON::encode($this->request('/chat/completions', $this->cred->httpAuth()['headers'], [ 'model' => $this->model, 'messages' => [ [ 'role' => 'system', 'content' => $system ], [ 'role' => 'user', 'content' => $prompt ] ] ])), true);
+	    if (!is_array($r['choices'][0]['message'] ?? null))
+		throw new \ErrorException('the server answered without a message');
+	    $text = trim(preg_replace('~<think>.*?</think>~s', '', (string)($r['choices'][0]['message']['content'] ?? '')));
+	    $usage = [ 'input_tokens' => (int)($r['usage']['prompt_tokens'] ?? 0), 'output_tokens' => (int)($r['usage']['completion_tokens'] ?? 0) ];
+	} else {
+	    $r = $this->request('/v1/messages', $this->cred->httpAuth()['headers'], [ 'model' => $this->model, 'max_tokens' => self::MAX_TOKENS, 'system' => $system, 'messages' => [ [ 'role' => 'user', 'content' => $prompt ] ], 'output_config' => [ 'effort' => $this->effort ] ]);
+	    foreach([ 'input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens' ] as $k)
+		$usage[$k] = (int)($r->usage->{$k} ?? 0);
+	    if ((string)($r->stop_reason ?? '') === 'refusal')
+		throw new \ErrorException('Claude declined the request');
+	    $text = [];
+	    foreach(is_array($r->content ?? null) ? $r->content : [] as $block)
+		if ((string)($block->type ?? '') === 'text')
+		    $text[] = (string)$block->text;
+	    $text = trim(implode("\n", $text));
+	}
+	foreach($usage as $k => $n)
+	    $this->usage[$k] += $n;
+	$this->cost = $this->costOf($usage);
+	if ($this->rates !== null)
+	    $this->credits = AssistantSystem::provider()->credits($this->rates, $usage);
+	return $text;
+    }
+
     //one request of the person: $message, after the earlier turns $history ([ { role: user | assistant, text } ]), on the designer's current $nodes (a list or a map)
     public function ask(array $history, $message, array $nodes) {
 	$message = trim((string)$message);

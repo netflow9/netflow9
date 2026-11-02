@@ -24,6 +24,8 @@ class NodeTriggerEmail extends \models\WfNode {
 
     //CLD: 2026-10-21T11:30:00+03:00: its token format for the token index (TriggerToken::syncForWorkflow; without it, `hex`: the Email inbound steps were never indexed)
     const TOKEN_FORMAT = 'code';
+    //CLD: 2026-11-02T18:00:00+02:00: the messages of one conversation accepted in an hour (Keep conversations)
+    const MAX_THREAD_RATE = 20;
 
     //CLD: 2026-11-01T16:11:37+02:00: only where Haraka is installed with NetFlow9's plugin (util\InboundMail::found): else not in the palette, and a workflow with it cannot run (Workflow::validateFlow)
     public static function available() {
@@ -88,6 +90,14 @@ class NodeTriggerEmail extends \models\WfNode {
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'variableName' => 'write' ],
 	    ],
+	    //CLD: 2026-11-02T18:00:00+02:00: new: an agent's conversation by email: replies thread into the same conversation; Reply to chat answers the sender
+	    [
+		'key' => 'conversation',
+		'type' => 'switch',
+		'label' => 'Keep conversations',
+		'default' => false,
+		'help' => 'A reply to the workflow\'s answer continues the same conversation (variables message, conversation, user); Reply to chat answers by email',
+	    ],
 	];
     }
 
@@ -124,6 +134,9 @@ class NodeTriggerEmail extends \models\WfNode {
 		. 'headers (lower-case name => value, or a list when repeated), attachments ([ { filename, contentType, size, disposition, file } ]), attachment_count, attachment_files }';
 	    $vars[$name] = $v;
 	}
+	//CLD: 2026-11-02T18:00:00+02:00: + the variables of a conversation
+	if (is_array($config) && !empty($config['conversation']))
+	    $vars += NodeTriggerChat::conversationVariables();
 	return $vars;
     }
 
@@ -160,12 +173,73 @@ class NodeTriggerEmail extends \models\WfNode {
 	    return;
 	}
 
+	//CLD: 2026-11-02T18:00:00+02:00: Keep conversations: an automatic message (or a bounce) is not answered: agents would write to each other without end
+	if (!empty($cfg['conversation']) && self::automatic($file->getContents(), $from)) {
+	    \models\ExecutionLog::record('inbound.refused', $wf, "an automatic message to {$data['rcpt']} was not answered", [], null, $wf->aid);
+	    $file->delete();
+	    return;
+	}
 	$exe = \models\MailPoll::startMessage($live, $node['wfid'], 'email', $file->getContents(), [ 'saveAttachments' => !empty($cfg['saveAttachments'] ?? true),
 	    'variable' => \util\Validator::isIdentifier((string)($cfg['variable'] ?? '')) ? (string)$cfg['variable'] : 'mail',
 	    'mail' => [ 'recipient' => (string)($data['rcpt'] ?? '') ],
 	    'input' => [ 'recipient' => (string)($data['rcpt'] ?? ''), 'mail_from' => $from, 'raw_file' => (string)$file->_id ],
 	    'log' => 'message to ' . ($data['rcpt'] ?? '') ]);
+	//CLD: 2026-11-02T18:00:00+02:00: Keep conversations: the run takes its place in the conversation; refused when too many came too fast
+	if (!empty($cfg['conversation']) && !self::threadEmail($exe, $live, $node, (string)($data['rcpt'] ?? ''))) {
+	    \models\ExecutionLog::record('inbound.refused', $wf, "too many messages in a conversation of {$data['rcpt']}", [], null, $wf->aid);
+	    $exe->delete();
+	    $file->delete();
+	    return;
+	}
 	$exe->run();
+    }
+
+    //CLD: 2026-11-02T18:00:00+02:00: new: whether raw message $raw is an automatic one: a bounce (no envelope sender, $from), Auto-Submitted other than no, Precedence bulk / list / junk / auto_reply, an auto-responder's own headers
+    public static function automatic($raw, $from) {
+	if ($from === '' || preg_match('/^(mailer-daemon|postmaster)@/i', $from))
+	    return true;
+	$h = (new \util\MailParser($raw))->headers();
+	$one = function($name) use ($h) {
+	    $v = $h[$name] ?? '';
+	    return strtolower(trim((string)(is_array($v) ? ($v[0] ?? '') : $v)));
+	};
+	$auto = $one('auto-submitted');
+	return ($auto !== '' && $auto !== 'no') || in_array($one('precedence'), [ 'bulk', 'list', 'junk', 'auto_reply' ], true) || $one('x-autoreply') !== '' || $one('x-autorespond') !== '';
+    }
+
+    //CLD: 2026-11-02T18:00:00+02:00: new: run $exe of an email (MailPoll::startMessage: its variable has the message) in its conversation: the one whose messages it replies to, when it comes from the same sender (an address that knows a
+    //Message-ID does not get into someone else's conversation), else a new one. Sets its variables. False: more than MAX_THREAD_RATE messages of that conversation in the last hour (a loop)
+    public static function threadEmail($exe, $live, array $node, $rcpt) {
+	$name = \util\Validator::isIdentifier((string)($node['config']['variable'] ?? '')) ? (string)$node['config']['variable'] : 'mail';
+	$msg = (array)$exe->getVariable($name, []);
+	$from = strtolower(trim((string)($msg['from'] ?? '')));
+	$own = trim((string)($msg['message_id'] ?? ''), '<> ');
+	$ids = array_values(array_filter(array_map(fn($r) => trim((string)$r, '<> '), array_merge([ (string)($msg['in_reply_to'] ?? '') ], (array)($msg['references'] ?? [])))));
+	$C = \models\AgentConversation::class;
+	$conv = $ids ? $C::coll()->findOne([ 'aid' => $live->aid, 'wf' => $live->_id, 'channel' => 'email', 'refs' => [ '$in' => $ids ], 'user_email' => $from ], $C::ARRAYS) : null;
+	if ($conv) {
+	    $hourAgo = new \MongoDB\BSON\UTCDateTime((time() - 3600) * 1000);
+	    if (\models\AgentMessage::coll()->countDocuments([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'user', 'at' => [ '$gte' => $hourAgo ] ]) >= self::MAX_THREAD_RATE)
+		return false;
+	}
+	$mail = [ 'to' => $from, 'subject' => (string)($msg['subject'] ?? ''), 'reply_to' => (string)$rcpt ];
+	$conv = $conv ?: $C::begin([ 'aid' => $live->aid, 'project' => $live->project, 'wf' => $live->_id, 'node' => $node['wfid'], 'channel' => 'email', 'user_name' => (string)($msg['from_name'] ?? ''), 'user_email' => $from,
+	    'who' => 'm:' . $from, 'refs' => [], 'mail' => $mail ]);
+	$C::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$set' => [ 'mail' => $mail ] ] + ($own !== '' ? [ '$push' => [ 'refs' => [ '$each' => [ $own ], '$slice' => -$C::MAX_REFS ] ] ] : []));
+	//the refs just pushed: the answer's In-Reply-To
+	$conv = $C::read($conv['_id'], $conv['aid']);
+	$text = trim((string)($msg['text'] ?? '')) !== '' ? (string)$msg['text'] : \models\node\NodeAppOutlookMail::htmlToText((string)($msg['html'] ?? ''));
+	$text = \util\EmailHtml::withoutQuote($text);
+	$seq = $C::addMessage($conv, 'user', [ 'text' => mb_substr($text, 0, $C::MAX_MESSAGE) ]);
+	$input = is_array($exe->input) ? $exe->input : [];
+	$exe->input = [ 'conversation' => (string)$conv['_id'], 'turn' => $seq, 'channel' => 'email', 'who' => 'm:' . $from ] + $input;
+	$exe->setVariable('message', mb_substr($text, 0, $C::MAX_MESSAGE));
+	$exe->setVariable('conversation', [ 'id' => (string)$conv['_id'], 'channel' => 'email', 'turn' => $seq, 'title' => (string)($conv['title'] ?: mb_substr((string)($msg['subject'] ?? ''), 0, 80)),
+	    'history' => $C::historyVar($conv, $seq), 'summary' => (string)($conv['summary'] ?? '') ]);
+	$exe->setVariable('user', [ 'id' => null, 'name' => (string)($msg['from_name'] ?? ''), 'email' => $from ]);
+	$exe->save();
+	$C::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$set' => [ 'execution' => (string)$exe->_id ] ]);
+	return true;
     }
 
     public static function afterExecutionEnd($exe) {

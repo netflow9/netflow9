@@ -65,6 +65,14 @@ class NodeAppGemini extends NodeAppAi {
 	return [ 'system' => $system, 'contents' => [ [ 'role' => 'user', 'parts' => $parts ] ], 'calls' => [] ];
     }
 
+    //CLD: 2026-11-02T18:00:00+02:00: new: the earlier turns before the prompt, in Gemini's form (contents; roles user, model)
+    protected function addHistory(array &$state, array $turns) {
+	$prompt = array_pop($state['contents']);
+	foreach($turns as [ $role, $text ])
+	    $state['contents'][] = [ 'role' => $role === 'assistant' ? 'model' : 'user', 'parts' => [ [ 'text' => $text ] ] ];
+	$state['contents'][] = $prompt;
+    }
+
     //CLD: 2026-10-27T23:11:38+02:00: new: Gemini reads PDFs (inlineData)
     protected function pdfAsDocuments($cred) {
 	return true;

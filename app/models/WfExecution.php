@@ -16,6 +16,8 @@ class WfExecution extends \sys\BaseModel {
 	[ [ 'state' => 1, 'wake_at' => 1 ], [] ],
 	//CLD: 2026-10-30T19:00:00+02:00: the workflows a run started and waits for (Run a workflow; kill cancels them)
 	[ [ 'input.caller.execution' => 1 ], [ 'sparse' => true ] ],
+	//CLD: 2026-11-02T18:00:00+02:00: the runs of the conversations with agents, past the retention (models\AgentConversation::prune)
+	[ [ 'aid' => 1, 'input.conversation' => 1, 'end_at' => 1 ], [ 'sparse' => true ] ],
     ];
 
 
@@ -36,6 +38,8 @@ class WfExecution extends \sys\BaseModel {
     //runtime objects, keyed by wfid
     public $__nodes = [];
     public $__edges = [];
+    //CLD: 2026-11-02T15:46:06+02:00: a test case running (util\AgentEvalContext; test_run says it is one): never saved
+    public $__test = null;
 
     //node executions in the current run()
     private $steps = 0;
@@ -123,6 +127,9 @@ class WfExecution extends \sys\BaseModel {
     public function again($wf) {
 	if ($this->canRun())
 	    throw new \ErrorException('the execution has not finished');
+	//CLD: 2026-11-02T15:46:06+02:00: run again outside a test, its tools and steps would really act
+	if (!empty($this->test_run))
+	    throw new \ErrorException('this execution is a test: run the tests again');
 	$trigger = self::triggerOf(is_array($this->nodes) ? $this->nodes : []);
 	$now = self::triggerOf(is_array($wf->nodes) ? $wf->nodes : []);
 	if ($now === null || ($now['fqname'] ?? '') !== ($trigger['fqname'] ?? ''))
@@ -218,6 +225,13 @@ class WfExecution extends \sys\BaseModel {
 		'key' => 'rerun_of',
 		'type' => 'text',
 		'label' => 'Run again of',
+		'help' => false,
+	    ],
+	    //CLD: 2026-11-02T15:46:06+02:00: the test run it belongs to (models\WfTestRun): not listed with the workflow's executions
+	    [
+		'key' => 'test_run',
+		'type' => 'text',
+		'label' => 'Test run',
 		'help' => false,
 	    ],
 	    //variables set by the nodes (Set), read by others (If)
@@ -318,6 +332,11 @@ class WfExecution extends \sys\BaseModel {
 	return in_array($this->state, [ 'new', 'run', 'sleep' ]);
     }
 
+    //CLD: 2026-11-02T15:46:06+02:00: new: an execution of a test case
+    public function isTest() {
+	return !empty($this->test_run);
+    }
+
     //run until the execution ends, fails, or only sleeping tokens are left; saves the execution
     //CLD: 2026-10-11T17:45:25+03:00: the execution log: changes made while running are recorded there (ExecutionLog::$execution, also when a user clicked Run), with
     //execution.start (a new execution; saved first, so the entry has its id) and how the run stopped (end / error / sleep)
@@ -397,8 +416,11 @@ class WfExecution extends \sys\BaseModel {
 		    break;
 	    }
 	    //CLD: 2026-10-30T19:00:00+02:00: ended or failed: the workflow waiting for it (Run a workflow) is resumed
-	    if (in_array($this->state, [ 'end', 'error' ], true))
+	    if (in_array($this->state, [ 'end', 'error' ], true)) {
 		$this->notifyCaller();
+		//CLD: 2026-11-02T18:00:00+02:00: + the hook of a run that stopped however it ended (models\AgentConversation::afterRun)
+		\V::app()->hooks->applyHook('execution:stopped', [ $this ]);
+	    }
 	} finally {
 	    [ \models\ExecutionLog::$execution, \models\ExecutionLog::$step ] = $outer;
 	}
@@ -442,6 +464,8 @@ class WfExecution extends \sys\BaseModel {
 	    'state' => [ '$in' => [ 'new', 'run', 'sleep' ] ] ]) as $child)
 	    $child->kill('the calling workflow was cancelled');
 	$this->notifyCaller();
+	//CLD: 2026-11-02T18:00:00+02:00: as a run that stops by itself
+	\V::app()->hooks->applyHook('execution:stopped', [ $this ]);
 	return true;
     }
 

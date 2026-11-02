@@ -23,6 +23,19 @@
 namespace util;
 
 class EmailHtml {
+    //CLD: 2026-11-02T18:00:00+02:00: new: the text of a reply without what it quotes: from the first "On ... wrote:" line or the first line quoted with >, or a line of underscores / "-----Original Message-----". All of it when nothing else is left
+    public static function withoutQuote($text) {
+	$lines = preg_split('/\R/', (string)$text);
+	$keep = [];
+	foreach($lines as $line) {
+	    if (preg_match('/^\s*>/', $line) || preg_match('/^\s*(On .{5,200} wrote:|-{2,}\s*Original Message\s*-{2,}|_{10,})\s*$/i', $line))
+		break;
+	    $keep[] = $line;
+	}
+	$out = trim(implode("\n", $keep));
+	return $out !== '' ? $out : trim((string)$text);
+    }
+
     const FONT = 'Arial, Helvetica, sans-serif';
     const PADDING = 32;
 

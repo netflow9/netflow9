@@ -42,6 +42,9 @@ class Boot {
 
 	//the Assistant's conversation goes with its workflow (was the Assistant plugin's)
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\AssistantChat::class, 'beforeWorkflowDelete' ]);
+	//CLD: 2026-11-02T18:00:00+02:00: the conversations with an agent go with its workflow; a run that stops ends its turn
+	\V::app()->hooks->addHook('workflow:before-delete', [ \models\AgentConversation::class, 'beforeWorkflowDelete' ]);
+	\V::app()->hooks->addHook('execution:stopped', [ \models\AgentConversation::class, 'afterRun' ]);
 
 	//a completed Email (inbound) run deletes its raw message, in every mode: the daemon runs them (was the InboundMail plugin's)
 	\V::app()->hooks->addHook('execution:end', [ \models\node\NodeTriggerEmail::class, 'afterExecutionEnd' ]);
@@ -120,6 +123,10 @@ class Boot {
 	\V::app()->router->add_rule('fortigate/<id:[a-f0-9]{32}>', 'fortigate/receive', true);
 	\V::app()->router->add_rule('form/<id:[a-f0-9]{32}>', 'form/open', true);
 	\V::app()->router->add_rule('task/<id:[a-f0-9]{24}>', 'task/open', true);
+	//CLD: 2026-11-02T18:00:00+02:00: the chat page of a Chat trigger: `/agent/<32 hex token>`; its embeddable page: `/chat/<32 hex token>`, its token is the credential: no session
+	\V::app()->router->add_rule('agent/<id:[a-f0-9]{32}>', 'agent/open', true);
+	\V::app()->session->noSessionFor('/chat/');
+	\V::app()->router->add_rule('chat/<id:[a-f0-9]{32}>', 'chat/open', true);
 
 	//POST /mcp -> McpController::serve; its callers are tokens, not browser users: no session
 	\V::app()->router->add_rule('mcp', 'mcp/serve', true);

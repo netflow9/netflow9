@@ -95,6 +95,18 @@ class Workflow extends \sys\BaseModel {
 		'showInForms' => false,
 	    ],
 
+	    //CLD: 2026-11-02T15:46:06+02:00: Tests must pass to publish (util\AgentEval::gate; EvalController::required)
+	    [
+		'key' => 'tests_required',
+		'type' => 'checkbox',
+		'label' => 'Tests must pass to publish',
+		'help' => false,
+		'default' => false,
+		'perm:read' => 'everybody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
+	    ],
+
 	    //nodes (the draft)
 	    [
 		'key' => 'nodes',
@@ -217,7 +229,8 @@ class Workflow extends \sys\BaseModel {
 	parent::beforeDelete();
 	\V::app()->hooks->applyHook('workflow:before-delete', [ $this ]);
 	//CLD: 2026-10-12T12:31:46+03:00: through ObjectManager (was the MongoDB collections directly): each deleted with its model (only the ids are read; both are kept out of the logs)
-	foreach([ 'WfExecution', 'WfVersion' ] as $objectName) {
+	//CLD: 2026-11-02T15:46:06+02:00: + its test cases and test runs
+	foreach([ 'WfTestCase', 'WfTestRun', 'WfExecution', 'WfVersion' ] as $objectName) {
 	    foreach(\V::app()->om->find($objectName, [ 'wf' => $this->_id, 'aid' => $this->aid ], [ 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $o)
 		$o->delete();
 	}
@@ -553,6 +566,10 @@ class Workflow extends \sys\BaseModel {
 		    $add('error', $id, "Not connected to the loop's starting step");
 	    }
 	}
+
+	//CLD: 2026-11-02T18:00:00+02:00: a Chat trigger with no Reply to chat: the person would get no answer
+	if (array_filter($def, fn($d) => ($d['type'] ?? '') === 'trigger' && ($d['name'] ?? '') === 'chat') && !array_filter($def, fn($d) => ($d['name'] ?? '') === 'chatreply'))
+	    $add('warning', null, 'A Chat trigger needs a Reply to chat step to answer');
 
 	//several outputs (If): every output should lead somewhere; several inputs (Merge): every input should be fed
 	foreach($def as $id => $d) {
