@@ -25,7 +25,6 @@ class AgentConversation extends \sys\BaseModel {
 	[ [ 'aid' => 1, 'wf' => 1, 'refs' => 1 ], [ 'sparse' => true ] ],
     ];
 
-    const ARRAYS = [ 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ];
     //the longest message of a person (characters), the turns and the text of each in the variable `conversation.history`, the refs kept, the conversations a page lists
     const MAX_MESSAGE = 8000;
     const HISTORY_TURNS = 20;
@@ -76,12 +75,12 @@ class AgentConversation extends \sys\BaseModel {
     public static function read($id, $aid) {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
-	return self::coll()->findOne([ '_id' => new \MongoDB\BSON\ObjectId((string)$id), 'aid' => $aid ], self::ARRAYS);
+	return self::coll()->findOne([ '_id' => new \MongoDB\BSON\ObjectId((string)$id), 'aid' => $aid ], \sys\Mongo::ARRAYS);
     }
 
     //the newest conversations of user $uid with workflow $wf
     public static function mine($wf, $uid) {
-	return iterator_to_array(self::coll()->find([ 'aid' => $wf->aid, 'wf' => $wf->_id, 'user' => (string)$uid ], self::ARRAYS + [ 'sort' => [ 'last_at' => -1 ], 'limit' => self::LIST_LIMIT ]), false);
+	return iterator_to_array(self::coll()->find([ 'aid' => $wf->aid, 'wf' => $wf->_id, 'user' => (string)$uid ], \sys\Mongo::ARRAYS + [ 'sort' => [ 'last_at' => -1 ], 'limit' => self::LIST_LIMIT ]), false);
     }
 
     //whether $key is the key of guest conversation $conv
@@ -114,7 +113,7 @@ class AgentConversation extends \sys\BaseModel {
 
     //hook workflow:before-delete (sys\Boot)
     public static function beforeWorkflowDelete($wf) {
-	foreach(self::coll()->find([ 'wf' => $wf->_id, 'aid' => $wf->aid ], self::ARRAYS + [ 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $c)
+	foreach(self::coll()->find([ 'wf' => $wf->_id, 'aid' => $wf->aid ], \sys\Mongo::ARRAYS + [ 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $c)
 	    self::remove($c);
     }
 
@@ -129,7 +128,7 @@ class AgentConversation extends \sys\BaseModel {
 	if ($role === 'user' && (string)($conv['title'] ?? '') === '')
 	    $set['title'] = mb_substr(trim(preg_replace('/\s+/', ' ', $text)), 0, 80);
 	$after = self::coll()->findOneAndUpdate([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$inc' => [ 'seq' => 1 ] + ($role === 'user' ? [ 'turns' => 1 ] : []), '$set' => $set ],
-	    self::ARRAYS + [ 'returnDocument' => \MongoDB\Operation\FindOneAndUpdate::RETURN_DOCUMENT_AFTER, 'projection' => [ 'seq' => 1 ] ]);
+	    \sys\Mongo::ARRAYS + [ 'returnDocument' => \MongoDB\Operation\FindOneAndUpdate::RETURN_DOCUMENT_AFTER, 'projection' => [ 'seq' => 1 ] ]);
 	if (!$after)
 	    throw new \ErrorException('the conversation is gone');
 	AgentMessage::coll()->insertOne([ 'aid' => $conv['aid'], 'conversation' => $conv['_id'], 'seq' => (int)$after['seq'], 'role' => (string)$role, 'at' => $now ] + $fields);
@@ -139,7 +138,7 @@ class AgentConversation extends \sys\BaseModel {
     //the messages after number $after, as the page shows them: [ seq, role, text, html, buttons, at ]
     public static function messagesAfter(array $conv, $after = 0) {
 	$out = [];
-	foreach(AgentMessage::coll()->find([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'seq' => [ '$gt' => (int)$after ] ], self::ARRAYS + [ 'sort' => [ 'seq' => 1 ], 'limit' => self::MAX_READ ]) as $m)
+	foreach(AgentMessage::coll()->find([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'seq' => [ '$gt' => (int)$after ] ], \sys\Mongo::ARRAYS + [ 'sort' => [ 'seq' => 1 ], 'limit' => self::MAX_READ ]) as $m)
 	    $out[] = [ 'seq' => (int)$m['seq'], 'role' => (string)$m['role'], 'text' => (string)($m['label'] ?? $m['text'] ?? ''), 'html' => (string)($m['html'] ?? ''), 'buttons' => (array)($m['buttons'] ?? []),
 		'at' => ($m['at'] ?? null) instanceof \MongoDB\BSON\UTCDateTime ? $m['at']->toDateTime()->format('c') : null ];
 	return $out;
@@ -230,7 +229,7 @@ class AgentConversation extends \sys\BaseModel {
 
     //whether $value, $label is a button of the conversation's last answer. Else the page shows what was sent: a person's own page cannot make it read as something else to the owners
     private static function isButton(array $conv, $value, $label) {
-	$last = AgentMessage::coll()->findOne([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'assistant' ], self::ARRAYS + [ 'sort' => [ 'seq' => -1 ] ]);
+	$last = AgentMessage::coll()->findOne([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'assistant' ], \sys\Mongo::ARRAYS + [ 'sort' => [ 'seq' => -1 ] ]);
 	foreach((array)($last['buttons'] ?? []) as $b)
 	    if ((string)($b['value'] ?? '') === (string)$value && (string)($b['label'] ?? '') === (string)$label)
 		return true;
@@ -272,7 +271,7 @@ class AgentConversation extends \sys\BaseModel {
     //the turns before message $before (null: all), oldest first: [ seq, last (the number of its last message), user, assistant, tools, at ]. Notices are not part of them
     public static function turns(array $conv, $before = null) {
 	$query = [ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => [ '$in' => [ 'user', 'assistant' ] ] ] + ($before !== null ? [ 'seq' => [ '$lt' => (int)$before ] ] : []);
-	$rows = iterator_to_array(AgentMessage::coll()->find($query, self::ARRAYS + [ 'sort' => [ 'seq' => -1 ], 'limit' => self::MAX_READ ]), false);
+	$rows = iterator_to_array(AgentMessage::coll()->find($query, \sys\Mongo::ARRAYS + [ 'sort' => [ 'seq' => -1 ], 'limit' => self::MAX_READ ]), false);
 	$turns = [];
 	foreach(array_reverse($rows) as $m) {
 	    if ($m['role'] === 'user') {

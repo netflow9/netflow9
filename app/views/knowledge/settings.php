@@ -9,7 +9,7 @@ use models\EmbeddingSettings;
 $this->pageTitle = 'Knowledge base settings';
 
 $model = (string)$settings->model;
-$connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/knowledge/connect'), 'auto' => $model !== '', 'urls' => EmbeddingSettings::DEFAULT_URLS ]);
+$connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/knowledge/connect'), 'auto' => $model !== '', 'urls' => \data\AiProviders::embeddingUrls() ]);
 
 \V::app()->cs->addPageScript("+function(o) {" . <<<'JS'
     const form = document.getElementById('embedding-settings');

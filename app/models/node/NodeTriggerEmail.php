@@ -216,7 +216,7 @@ class NodeTriggerEmail extends \models\WfNode {
 	$own = trim((string)($msg['message_id'] ?? ''), '<> ');
 	$ids = array_values(array_filter(array_map(fn($r) => trim((string)$r, '<> '), array_merge([ (string)($msg['in_reply_to'] ?? '') ], (array)($msg['references'] ?? [])))));
 	$C = \models\AgentConversation::class;
-	$conv = $ids ? $C::coll()->findOne([ 'aid' => $live->aid, 'wf' => $live->_id, 'channel' => 'email', 'refs' => [ '$in' => $ids ], 'user_email' => $from ], $C::ARRAYS) : null;
+	$conv = $ids ? $C::coll()->findOne([ 'aid' => $live->aid, 'wf' => $live->_id, 'channel' => 'email', 'refs' => [ '$in' => $ids ], 'user_email' => $from ], \sys\Mongo::ARRAYS) : null;
 	if ($conv) {
 	    $hourAgo = new \MongoDB\BSON\UTCDateTime((time() - 3600) * 1000);
 	    if (\models\AgentMessage::coll()->countDocuments([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'user', 'at' => [ '$gte' => $hourAgo ] ]) >= self::MAX_THREAD_RATE)

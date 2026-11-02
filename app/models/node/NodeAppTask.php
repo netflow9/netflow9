@@ -31,13 +31,7 @@ class NodeAppTask extends \models\WfNode {
 	]
     ];
 
-    const UNITS = [
-	'none' => 'No time limit',
-	'minutes' => 'Minutes',
-	'hours' => 'Hours',
-	'days' => 'Days'
-    ];
-    const UNIT_SECONDS = [ 'minutes' => 60, 'hours' => 3600, 'days' => 86400 ];
+    const UNITS = [ 'none' => 'No time limit' ] + \data\TimeUnits::LABELS;
 
     //the choices of the current project (the designer's user): its members, the account's roles
     //CLD: 2026-11-01T23:30:00+02:00: public (the AI steps' approvers: util\AgentTools::approvalFields)
@@ -248,7 +242,7 @@ class NodeAppTask extends \models\WfNode {
 	    $users[] = (string)$u->_id;
 	}
 	$unit = (string)$this->cfg('timeoutUnit', 'none');
-	$due = isset(self::UNIT_SECONDS[$unit]) ? new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('timeout', 1)) * self::UNIT_SECONDS[$unit]) * 1000) : null;
+	$due = isset(\data\TimeUnits::SECONDS[$unit]) ? new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('timeout', 1)) * \data\TimeUnits::SECONDS[$unit]) * 1000) : null;
 	$task = \V::app()->om->create('WfTask', [
 	    'aid' => $this->exec->aid,
 	    'project' => $this->exec->project,

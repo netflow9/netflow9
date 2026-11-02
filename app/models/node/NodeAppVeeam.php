@@ -32,7 +32,6 @@ abstract class NodeAppVeeam extends \models\WfNode {
 
     const OPERATIONS = [];
     const LISTS = [];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     const MAX_ITEMS = 10000;
     const MAX_TIMEOUT = 3600;
     const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';

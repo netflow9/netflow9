@@ -48,7 +48,6 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
     const PERIOD = [ 'list', 'freeBusy' ];
 
     const SHOW_AS = [ '' => 'Leave as it is (new: busy)', 'busy' => 'Busy', 'tentative' => 'Tentative', 'free' => 'Free', 'oof' => 'Away (out of office)', 'workingElsewhere' => 'Working elsewhere' ];
-    const BODY_TYPES = [ 'text' => 'Text', 'html' => 'HTML' ];
 
     const MAX_RESULTS = 500;
     const MAX_SCHEDULES = 20;
@@ -203,7 +202,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'Description as',
 		'required' => true,
 		'default' => 'text',
-		'choices' => self::BODY_TYPES,
+		'choices' => \data\Mail::BODY_TYPES,
 		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [

@@ -157,7 +157,7 @@ class AgentController extends \sys\BaseController {
 	    return;
 	}
 	$list = [];
-	foreach(AgentConversation::coll()->find([ 'aid' => $aid ], AgentConversation::ARRAYS + [ 'sort' => [ 'last_at' => -1 ], 'limit' => 200, 'projection' => [ 'guest_key' => 0 ] ]) as $c)
+	foreach(AgentConversation::coll()->find([ 'aid' => $aid ], \sys\Mongo::ARRAYS + [ 'sort' => [ 'last_at' => -1 ], 'limit' => 200, 'projection' => [ 'guest_key' => 0 ] ]) as $c)
 	    $list[] = $c + [ 'agent' => $names($c) ];
 	$this->render('conversations', [ 'list' => $list, 'retention' => (int)(\V::app()->config('rt.account')->execution_log_retention ?? 0) ]);
     }

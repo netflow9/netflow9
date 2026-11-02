@@ -27,7 +27,6 @@ class NodeAppCode extends \models\WfNode {
     public static $outputs = 1;
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];
 
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     //the time limit (seconds) and the J steps (statements + calls) of a run
     const MAX_TIMEOUT = 30;
     const MAX_STEPS = 1000000;

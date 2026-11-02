@@ -19,11 +19,10 @@ class NodeAppProxmoxApi extends NodeAppProxmox {
     const OPERATIONS = [ 'request' => 'Send a request' ];
     //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'request' ];
-    const METHODS = [ 'GET' => 'GET', 'POST' => 'POST', 'PUT' => 'PUT', 'DELETE' => 'DELETE' ];
 
     protected static function operationFields() {
 	return [
-	    self::field('method', 'Method', [ 'request' ], [ 'type' => 'select', 'required' => true, 'default' => 'GET', 'choices' => self::METHODS, 'ui' => [ 'width' => 3 ] ]),
+	    self::field('method', 'Method', [ 'request' ], [ 'type' => 'select', 'required' => true, 'default' => 'GET', 'choices' => \data\Http::METHODS, 'ui' => [ 'width' => 3 ] ]),
 	    self::field('path', 'Path', [ 'request' ], [ 'required' => true, 'help' => 'Under /api2/json, e.g. /nodes/pve1/qemu/100/config ({{ }} allowed)',
 		'ui' => [ 'expression' => 'text', 'width' => 9, 'placeholder' => '/nodes/...' ] ]),
 	    self::field('parameters', 'Parameters', [ 'request' ], [ 'type' => 'textarea', 'help' => 'A JSON object (empty: none), e.g. {"memory": 4096}', 'ui' => [ 'rows' => 4, 'expression' => true, 'code' => true ] ]),
@@ -36,7 +35,7 @@ class NodeAppProxmoxApi extends NodeAppProxmox {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$method = isset(self::METHODS[(string)$this->cfg('method', 'GET')]) ? (string)$this->cfg('method', 'GET') : 'GET';
+	$method = isset(\data\Http::METHODS[(string)$this->cfg('method', 'GET')]) ? (string)$this->cfg('method', 'GET') : 'GET';
 	$path = $text('path');
 	$params = $value('parameters');
 	if (is_string($params)) {

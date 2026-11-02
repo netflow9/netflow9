@@ -19,11 +19,10 @@ class NodeAppFgtApi extends NodeAppFortiGate {
     const OPERATIONS = [ 'request' => 'Send a request' ];
     //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'request' ];
-    const METHODS = [ 'GET' => 'GET', 'POST' => 'POST', 'PUT' => 'PUT', 'DELETE' => 'DELETE' ];
 
     protected static function operationFields() {
 	return [
-	    self::field('method', 'Method', [ 'request' ], [ 'type' => 'select', 'required' => true, 'default' => 'GET', 'choices' => self::METHODS, 'ui' => [ 'width' => 3 ] ]),
+	    self::field('method', 'Method', [ 'request' ], [ 'type' => 'select', 'required' => true, 'default' => 'GET', 'choices' => \data\Http::METHODS, 'ui' => [ 'width' => 3 ] ]),
 	    self::field('path', 'Path', [ 'request' ], [ 'required' => true, 'help' => 'e.g. /api/v2/cmdb/firewall/service/custom ({{ }} allowed)',
 		'ui' => [ 'expression' => 'text', 'width' => 9, 'placeholder' => '/api/v2/...' ] ]),
 	    self::field('query', 'Query', [ 'request' ], [ 'type' => 'textarea', 'help' => 'A JSON object (empty: none), e.g. {"filter": "name=@web"}', 'ui' => [ 'rows' => 2, 'expression' => true, 'code' => true ] ]),
@@ -48,7 +47,7 @@ class NodeAppFgtApi extends NodeAppFortiGate {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$method = isset(self::METHODS[(string)$this->cfg('method', 'GET')]) ? (string)$this->cfg('method', 'GET') : 'GET';
+	$method = isset(\data\Http::METHODS[(string)$this->cfg('method', 'GET')]) ? (string)$this->cfg('method', 'GET') : 'GET';
 	$path = $text('path');
 	$body = trim((string)$this->cfg('body', '')) === '' ? null : self::object($value('body'), 'Body');
 	$r = $this->fgt->request($method, $path, self::object($value('query'), 'Query'), $body, true);

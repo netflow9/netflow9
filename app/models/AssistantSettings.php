@@ -9,7 +9,7 @@
     bring your own key:
 	the providers System (the installation's server, config assistant.system: no key, URL or model here),
 	Claude, OpenAI, Gemini, Ollama, Lemonade;
-	each speaks one protocol (PROTOCOLS: the Anthropic Messages API or OpenAI chat completions).
+	each speaks one protocol (data\AiProviders: the Anthropic Messages API or OpenAI chat completions).
 	+ a monthly budget (USD; the spending: AssistantUsage) and the prices it is counted with (USD per 1M tokens;
 	    empty: PRICES, the known prices of Claude models)
 
@@ -37,36 +37,12 @@ class AssistantSettings extends \sys\BaseModel {
 	[ [ 'aid' => 1 ], [ 'unique' => true ] ],
     ];
 
-    const PROVIDERS = [
-	'system' => 'System AI (provided by this installation)',
-	'anthropic' => 'Claude (Anthropic)',
-	'openai' => 'OpenAI (or another OpenAI-compatible server)',
-	'gemini' => 'Google Gemini',
-	'ollama' => 'Ollama',
-	'lemonade' => 'Lemonade server',
-    ];
-    //the API each provider speaks
-    const PROTOCOLS = [
-	'anthropic' => 'anthropic',
-	'openai' => 'openai',
-	'gemini' => 'openai',
-	'ollama' => 'openai',
-	'lemonade' => 'openai'
-    ];
     const DEFAULT_PROVIDER = 'anthropic';
-    const DEFAULT_URLS = [
-	'anthropic' => 'https://api.anthropic.com',
-	'openai' => 'https://api.openai.com/v1',
-	'gemini' => 'https://generativelanguage.googleapis.com/v1beta/openai',
-	'ollama' => 'http://localhost:11434/v1',
-	'lemonade' => 'http://localhost:8000/api/v1',
-    ];
-    //the providers that cannot work without a key (the others: only when their server asks for one);
-    //local ones cost nothing unless prices are set
-    const KEY_REQUIRED = [ 'anthropic', 'openai', 'gemini' ];
 
-    const DEFAULT_EFFORT = 'high';
-    const DEFAULT_MODEL = 'claude-opus-5-5';
+    //the Assistant's providers: System, then the others
+    public static function providers() {
+	return [ 'system' => 'System AI (provided by this installation)' ] + \data\AiProviders::labels();
+    }
 
     public function getSchema() {
 	$fields = [
@@ -79,7 +55,7 @@ class AssistantSettings extends \sys\BaseModel {
 		'perm:update' => 'everybody',
 		'required' => true,
 		'default' => self::DEFAULT_PROVIDER,
-		'choices' => self::PROVIDERS,
+		'choices' => self::providers(),
 	    ],
 	    [
 		'key' => 'url',
@@ -123,8 +99,8 @@ class AssistantSettings extends \sys\BaseModel {
 		'perm:update' => 'everybody',
 		'required' => true,
 		//CLD: 2026-10-20T10:45:00+03:00: self:: (was WorkflowAssistant::)
-		'default' => self::DEFAULT_EFFORT,
-		'choices' => \models\node\NodeAppClaude::EFFORT,
+		'default' => \data\AiProviders::DEFAULT_EFFORT,
+		'choices' => \data\AiProviders::EFFORT,
 	    ],
 	    //CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read (util\WorkflowAssistant): structure (tables' columns, workflows, step types, file names, variable names) or structure and data
 	    //(rows, file contents, images, executions, variable values); was the account's assistant_data (Account settings, Data access)
@@ -206,8 +182,8 @@ class AssistantSettings extends \sys\BaseModel {
 	    return $ok;
 	}
 	//OpenAI with a Server URL: another OpenAI-compatible server, maybe without keys (as saved before)
-	if (in_array($provider, self::KEY_REQUIRED, true) && !($provider === 'openai' && trim((string)$this->url) !== '') && trim((string)$this->api_key) === '') {
-	    $this->errors('api_key', [ 'Required for ' . (self::PROVIDERS[$provider] ?? $provider) ]);
+	if (\data\AiProviders::isCloud($provider) && !($provider === 'openai' && trim((string)$this->url) !== '') && trim((string)$this->api_key) === '') {
+	    $this->errors('api_key', [ 'Required for ' . \data\AiProviders::label($provider) ]);
 	    $ok = false;
 	}
 	if ((float)$this->budget > 0 && self::pricesOf($this) === null) {

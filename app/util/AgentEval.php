@@ -200,7 +200,7 @@ class AgentEval {
     public static function job($data) {
 	$aid = \V::app()->om->to_oid($data->aid ?? null);
 	$id = \V::app()->om->to_oid($data->run ?? null);
-	$run = WfTestRun::coll()->findOne([ '_id' => $id, 'aid' => $aid ], WfTestRun::ARRAYS);
+	$run = WfTestRun::coll()->findOne([ '_id' => $id, 'aid' => $aid ], \sys\Mongo::ARRAYS);
 	if (!$run || !in_array($run['state'], WfTestRun::ACTIVE, true))
 	    return;
 	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $run['wf'], 'aid' => $aid ]);
@@ -242,7 +242,7 @@ class AgentEval {
 	    return false;
 	if (!empty($run['job']))
 	    \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection())->deleteOne([ '_id' => $run['job'], 'state' => 'new' ]);
-	$now = WfTestRun::coll()->findOne([ '_id' => $run['_id'] ], WfTestRun::ARRAYS);
+	$now = WfTestRun::coll()->findOne([ '_id' => $run['_id'] ], \sys\Mongo::ARRAYS);
 	if (!empty($now['current'])) {
 	    $exe = \V::app()->om->findOne('WfExecution', [ '_id' => $now['current'], 'aid' => $run['aid'] ], [ 'projection' => [ '_id' => 1, 'aid' => 1, 'state' => 1 ] ]);
 	    $exe?->kill($by);

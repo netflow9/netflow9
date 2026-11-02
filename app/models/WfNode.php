@@ -27,6 +27,8 @@ class WfNode extends \sys\NestedModel {
     public static $audience = 'basic';
     public static $category = null;
 
+    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
+
     const CATEGORIES = [
 	'trigger' => 'Triggers',
 	'flow' => 'Flow',

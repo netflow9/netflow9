@@ -16,6 +16,7 @@ class Field extends \sys\BaseModel {
     //stored form of a field with 'encrypt' => true: prefix + \sys\Security::encrypt(json_encode(value)); the prefix tells encrypted
     //values from plain ones (a field may get `encrypt` after values were stored) and versions the format (key rotation)
     const ENC_PREFIX = 'enc:v1:';
+    const EVAL_TEXT = [ 'eq' => 'Is', 'ne' => 'Is not', 'contains' => 'Contains', 'startsWith' => 'Starts with', 'in' => 'Is one of', 'empty' => 'Is empty', 'notEmpty' => 'Is not empty', ];
     public $binding = null;
 
     public $icon = 'bi bi-question';

@@ -200,8 +200,8 @@ class AssistantController extends \sys\BaseController {
 	$data = is_array($req->data) ? $req->data : [];
 	$saved = $this->findSettings();
 	$provider = (string)($data['provider'] ?? '');
-	//AssistantSettings::PROVIDERS
-	if (!array_key_exists($provider, \models\AssistantSettings::PROVIDERS))
+	//AssistantSettings::providers
+	if (!array_key_exists($provider, \models\AssistantSettings::providers()))
 	    $resp->sendJSON([ 'error' => 'Choose a provider' ], true, 400);
 	//System: the installation's model, nothing to connect to (its server and key are never used from here)
 	if ($provider === 'system')

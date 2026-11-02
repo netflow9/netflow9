@@ -16,8 +16,6 @@
 namespace util;
 
 class AgentGuard {
-    //the providers that are someone else's servers (masking applies): the steps' CAPABILITY
-    const CLOUD = [ 'anthropic', 'openai', 'gemini' ];
     const SECTION = 'Guardrails';
     const LIMIT_TOOLS = 'tool_calls';
     const LIMIT_WRITES = 'write_calls';

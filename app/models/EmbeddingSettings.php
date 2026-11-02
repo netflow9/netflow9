@@ -1,10 +1,10 @@
 <?php
 
 /*
-    CLD: 2026-10-31T01:00:00+02:00: new: the embedding model of an account, one document per account: what turns the knowledge bases' texts into vectors (util\Embeddings), for every
+    the embedding model of an account, one document per account: what turns the knowledge bases' texts into vectors (util\Embeddings), for every
     project of the account. Set on the Settings menu's Knowledge bases page (KnowledgeController::settings; Connect lists the server's models: KnowledgeController::connect).
 	provider   ollama | lemonade | openai (or another OpenAI-compatible server) | gemini
-	url        the server (empty: the provider's own, DEFAULT_URLS)
+	url        the server (empty: the provider's own: data\AiProviders)
 	api_key    encrypted; empty keeps the saved one (only for the same provider and server)
 	model      the embedding model; a knowledge base remembers the model it was indexed with (models\KnowledgeBase::$model): another model here means re-indexing it
 */
@@ -17,21 +17,7 @@ class EmbeddingSettings extends \sys\BaseModel {
 	[ [ 'aid' => 1 ], [ 'unique' => true ] ],
     ];
 
-    const PROVIDERS = [
-	'ollama' => 'Ollama',
-	'lemonade' => 'Lemonade server',
-	'openai' => 'OpenAI (or another OpenAI-compatible server)',
-	'gemini' => 'Google Gemini',
-    ];
     const DEFAULT_PROVIDER = 'ollama';
-    const DEFAULT_URLS = [
-	'ollama' => 'http://localhost:11434',
-	'lemonade' => 'http://localhost:8000/api/v1',
-	'openai' => 'https://api.openai.com/v1',
-	'gemini' => 'https://generativelanguage.googleapis.com/v1beta',
-    ];
-    //the providers that cannot work without a key (OpenAI with another Server URL: only when that server asks for one)
-    const KEY_REQUIRED = [ 'openai', 'gemini' ];
 
     public function getSchema() {
 	$fields = [
@@ -44,7 +30,7 @@ class EmbeddingSettings extends \sys\BaseModel {
 		'perm:update' => 'everybody',
 		'required' => true,
 		'default' => self::DEFAULT_PROVIDER,
-		'choices' => self::PROVIDERS,
+		'choices' => \data\AiProviders::forEmbeddings(),
 	    ],
 	    [
 		'key' => 'url',
@@ -87,8 +73,8 @@ class EmbeddingSettings extends \sys\BaseModel {
     public function validates($options = []) {
 	$ok = parent::validates($options);
 	$provider = (string)$this->provider;
-	if (in_array($provider, self::KEY_REQUIRED, true) && !($provider === 'openai' && trim((string)$this->url) !== '') && trim((string)$this->api_key) === '') {
-	    $this->errors('api_key', [ 'Required for ' . (self::PROVIDERS[$provider] ?? $provider) ]);
+	if (\data\AiProviders::isCloud($provider) && !($provider === 'openai' && trim((string)$this->url) !== '') && trim((string)$this->api_key) === '') {
+	    $this->errors('api_key', [ 'Required for ' . \data\AiProviders::label($provider) ]);
 	    $ok = false;
 	}
 	return $ok;
@@ -101,17 +87,17 @@ class EmbeddingSettings extends \sys\BaseModel {
 
     //whether a model is chosen (the knowledge bases can be used)
     public function ready() {
-	return trim((string)$this->model) !== '' && array_key_exists((string)$this->provider, self::PROVIDERS);
+	return trim((string)$this->model) !== '' && array_key_exists((string)$this->provider, \data\AiProviders::forEmbeddings());
     }
 
     //the server's base: the Server URL, else the provider's own (no trailing /)
     public function baseUrl() {
 	$url = rtrim(trim((string)$this->url), '/');
-	return $url !== '' ? $url : self::DEFAULT_URLS[(string)$this->provider] ?? '';
+	return $url !== '' ? $url : \data\AiProviders::DATA[(string)$this->provider]['url'] ?? '';
     }
 
     //a short description: "<model> (<provider>)"
     public function label() {
-	return trim((string)$this->model) . ' (' . (self::PROVIDERS[(string)$this->provider] ?? (string)$this->provider) . ')';
+	return trim((string)$this->model) . ' (' . \data\AiProviders::label((string)$this->provider) . ')';
     }
 }

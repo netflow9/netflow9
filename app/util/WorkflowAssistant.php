@@ -21,7 +21,7 @@
 //CLD: 2026-10-20T10:00:00+03:00: only the Assistant's settings (models\AssistantSettings: provider, url, api_key, model, effort; credentialOf) are used, no longer a credential
 //of the workflow's project; models(): the models of the settings' server (the settings page's Connect)
 //CLD: 2026-10-22T14:00:00+03:00: bring your own key: the settings' provider (System: the installation's server, AssistantSettings::system; Claude, OpenAI, Gemini, Ollama, Lemonade) is
-//resolved to its server (resolve) and spoken to with its protocol (AssistantSettings::PROTOCOLS: anthropic | openai). The cost of each turn is counted (AssistantSettings::pricesOf);
+//resolved to its server (resolve) and spoken to with its protocol (data\AiProviders: anthropic | openai). The cost of each turn is counted (AssistantSettings::pricesOf);
 //with $budget (USD left this month) the loop stops once it is spent: what was built so far is returned, `stopped` says why
 */
 
@@ -96,7 +96,7 @@ class WorkflowAssistant {
 	$settings = self::resolve($settings);
 
 	$this->provider = self::providerOf($settings);
-	$this->protocol = AssistantSettings::PROTOCOLS[$this->provider];
+	$this->protocol = \data\AiProviders::DATA[$this->provider]['protocol'];
 	$this->cred = self::credentialOf($settings);
 	$this->prices = AssistantSettings::pricesOf($settings);
 	//CLD: 2026-10-19T16:05:12+03:00: OpenAI-compatible: the model ('' = the server's first, see turnOpenAI); effort is Claude's only
@@ -105,10 +105,10 @@ class WorkflowAssistant {
 	    return;
 	}
 	$model = trim((string)($settings->model ?? ''));
-	$this->model = $model !== '' ? $model : AssistantSettings::DEFAULT_MODEL;
+	$this->model = $model !== '' ? $model : \data\AiProviders::DEFAULT_MODEL;
 	//CLD: 2026-10-22T14:00:00+03:00: an unknown effort is the default (was sent as it was: the API refuses it)
 	$effort = (string)($settings->effort ?? '');
-	$this->effort = array_key_exists($effort, \models\node\NodeAppClaude::EFFORT) ? $effort : AssistantSettings::DEFAULT_EFFORT;
+	$this->effort = array_key_exists($effort, \data\AiProviders::EFFORT) ? $effort : \data\AiProviders::DEFAULT_EFFORT;
     }
 
     //CLD: 2026-10-20T10:00:00+03:00: the server of the Assistant's settings $settings (provider, url, api_key) as a credential: baseUrl, httpAuth (Anthropic: x-api-key and
@@ -118,11 +118,10 @@ class WorkflowAssistant {
 	$settings = self::resolve($settings);
 	$provider = self::providerOf($settings);
 	$url = trim((string)($settings->url ?? ''));
-	//CLD: 2026-10-20T10:45:00+03:00: AssistantSettings::DEFAULT_URLS (was self::)
-	return new class($provider, $url !== '' ? $url : AssistantSettings::DEFAULT_URLS[$provider], (string)($settings->api_key ?? '')) {
+	return new class($provider, $url !== '' ? $url : \data\AiProviders::chatUrls()[$provider], (string)($settings->api_key ?? '')) {
 	    public function __construct(private $provider, public $baseUrl, private $apiKey) {}
 	    public function httpAuth() {
-		if (AssistantSettings::PROTOCOLS[$this->provider] === 'anthropic')
+		if (\data\AiProviders::DATA[$this->provider]['protocol'] === 'anthropic')
 		    return [ 'headers' => [ 'x-api-key' => $this->apiKey, 'anthropic-version' => \models\credential\CredentialAnthropic::API_VERSION ], 'query' => [] ];
 		return [ 'headers' => $this->apiKey !== '' ? [ 'Authorization' => 'Bearer ' . $this->apiKey ] : [], 'query' => [] ];
 	    }
@@ -155,7 +154,7 @@ class WorkflowAssistant {
     public static function models($settings, $transport = null) {
 	$settings = self::resolve($settings);
 	$provider = self::providerOf($settings);
-	$protocol = AssistantSettings::PROTOCOLS[$provider];
+	$protocol = \data\AiProviders::DATA[$provider]['protocol'];
 	$cred = self::credentialOf($settings);
 	$path = $protocol === 'anthropic' ? '/v1/models?limit=1000' : '/models';
 	$headers = $cred->httpAuth()['headers'];
@@ -179,13 +178,12 @@ class WorkflowAssistant {
     //CLD: 2026-10-19T20:40:00+03:00: of the Assistant's settings $settings (models\AssistantSettings: provider; was the account's field)
     public static function providerOf($settings) {
 	$p = (string)($settings->provider ?? '');
-	//CLD: 2026-10-20T10:30:00+03:00: AssistantSettings' providers (were self::)
-	return array_key_exists($p, AssistantSettings::PROVIDERS) ? $p : AssistantSettings::DEFAULT_PROVIDER;
+	return array_key_exists($p, AssistantSettings::providers()) ? $p : AssistantSettings::DEFAULT_PROVIDER;
     }
 
     //CLD: 2026-10-22T14:00:00+03:00: who answers, in messages
     private static function nameOf($provider) {
-	return [ 'anthropic' => 'Anthropic', 'openai' => 'OpenAI', 'gemini' => 'Gemini', 'ollama' => 'Ollama', 'lemonade' => 'Lemonade' ][$provider] ?? 'The server';
+	return \data\AiProviders::name($provider, 'The server');
     }
 
     //CLD: 2026-10-22T14:00:00+03:00: the cost (USD) of $usage (tokens) at the prices; 0 when they are not known (the settings ask for them when there is a budget)

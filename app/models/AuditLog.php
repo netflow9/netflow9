@@ -260,7 +260,7 @@ class AuditLog extends \sys\BaseModel {
 
     //writes the MAC of entry $id as stored
     protected static function seal($id) {
-	$doc = static::coll()->findOne([ '_id' => $id ], [ 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ]);
+	$doc = static::coll()->findOne([ '_id' => $id ], \sys\Mongo::ARRAYS);
 	if ($doc)
 	    static::coll()->updateOne([ '_id' => $id ], [ '$set' => [ 'mac' => static::macOf($doc) ] ]);
     }
@@ -324,7 +324,7 @@ class AuditLog extends \sys\BaseModel {
 	$expected = $pruned + 1;
 	$prev = null;
 	$cursor = static::coll()->find([ 'aid' => $aid, 'seq' => [ '$exists' => true ] ],
-	    [ 'sort' => [ 'seq' => 1, '_id' => 1 ], 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ]);
+	    [ 'sort' => [ 'seq' => 1, '_id' => 1 ], 'typeMap' => \sys\Mongo::TYPEMAP ]);
 	foreach($cursor as $doc) {
 	    $report['entries']++;
 	    $seq = (int)$doc['seq'];

@@ -41,7 +41,6 @@ abstract class NodeAppMicrosoft extends \models\WfNode {
 
     //operation => label; the subclass's
     const OPERATIONS = [];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
 
     const API = 'https://graph.microsoft.com/v1.0';
     //the largest answer of an API call kept (larger: an error)

@@ -42,7 +42,6 @@ abstract class NodeAppGoogle extends \models\WfNode {
 
     //operation => label; the subclass's
     const OPERATIONS = [];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
 
     //the API's base URL; the subclass's
     const API = '';

@@ -36,7 +36,7 @@ class CredentialAnthropic extends \models\Credential {
 		'type' => 'text',
 		'label' => 'API base URL',
 		'required' => true,
-		'default' => 'https://api.anthropic.com',
+		'default' => \data\AiProviders::DATA['anthropic']['url'],
 		'help' => 'Change it only for a proxy or gateway (requests go to <URL>/v1/messages, ...)',
 		'validate' => [
 		    [ 'url', 'skipEmpty' => true, 'message' => 'An http:// or https:// URL, without ? or #' ]

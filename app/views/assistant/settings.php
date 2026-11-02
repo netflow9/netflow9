@@ -20,7 +20,7 @@ $this->pageTitle = 'Assistant settings';
 $model = (string)$settings->model;
 //CLD: 2026-10-22T14:00:00+03:00: + system (offered), urls (the providers' own), the connected model is the saved one only for the saved provider
 $connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/assistant/connect'), 'auto' => $model !== '' && (string)$settings->provider !== 'system',
-    'system' => $system !== null, 'urls' => AssistantSettings::DEFAULT_URLS ]);
+    'system' => $system !== null, 'urls' => \data\AiProviders::chatUrls() ]);
 $budget = AssistantSettings::budgetOf($settings);
 //CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly (was a $esc wrapper)
 

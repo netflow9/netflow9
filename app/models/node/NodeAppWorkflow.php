@@ -25,9 +25,6 @@ class NodeAppWorkflow extends \models\WfNode {
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];
 
     const MODES = [ 'wait' => 'Wait for it to finish', 'start' => 'Start it and continue' ];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
-    const UNITS = [ 'minutes' => 'Minutes', 'hours' => 'Hours', 'days' => 'Days' ];
-    const UNIT_SECONDS = [ 'minutes' => 60, 'hours' => 3600, 'days' => 86400 ];
     //workflows nested at most (the caller included)
     const MAX_DEPTH = 5;
     //while the workflow is paused, this step checks it at least this often (s; it is resumed when the workflow ends)
@@ -130,7 +127,7 @@ class NodeAppWorkflow extends \models\WfNode {
 		'label' => 'Unit',
 		'required' => true,
 		'default' => 'days',
-		'choices' => self::UNITS,
+		'choices' => \data\TimeUnits::LABELS,
 		'ui' => [ 'limit' => true, 'showIf' => [ 'key' => 'mode', 'operator' => 'eq', 'value' => 'wait' ] ],
 	    ],
 	];
@@ -234,7 +231,7 @@ class NodeAppWorkflow extends \models\WfNode {
 	if ($state === 'sleep') {
 	    $unit = (string)$this->cfg('timeoutUnit', 'days');
 	    $this->child = (string)$child->_id;
-	    $this->deadline = new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('timeout', 1)) * (self::UNIT_SECONDS[$unit] ?? 86400)) * 1000);
+	    $this->deadline = new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('timeout', 1)) * (\data\TimeUnits::SECONDS[$unit] ?? 86400)) * 1000);
 	    return $this->pause();
 	}
 	return $this->finish($child);

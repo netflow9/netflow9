@@ -51,7 +51,6 @@ class NodeAppTable extends \models\WfNode {
 	'deleteMany' => 'Delete rows (filter)',
 	'schema' => 'Get the columns',
     ];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
 
     //rows of a query / a list insert at most
     const MAX_LIMIT = 1000;

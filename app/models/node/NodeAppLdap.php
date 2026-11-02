@@ -53,7 +53,6 @@ class NodeAppLdap extends \models\WfNode {
     const ON_GROUP = [ 'addMember', 'removeMember' ];
     const CHANGES = [ 'replace' => 'Replace', 'add' => 'Add values', 'delete' => 'Delete values' ];
     const MEMBER_ATTRIBUTES = [ 'member' => 'member (a DN: groupOfNames, Active Directory)', 'uniqueMember' => 'uniqueMember (a DN: groupOfUniqueNames)', 'memberUid' => 'memberUid (a name: posixGroup)' ];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     const MAX_ENTRIES = 10000;
     const MAX_ROWS = 100;
 

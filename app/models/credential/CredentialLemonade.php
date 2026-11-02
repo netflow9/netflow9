@@ -19,7 +19,7 @@ class CredentialLemonade extends \models\credential\CredentialOpenAI {
 	$fields = parent::getSchema();
 	foreach($fields as &$f) {
 	    if (($f['key'] ?? null) === 'baseUrl') {
-		$f['default'] = 'http://localhost:8000/api/v1';
+		$f['default'] = \data\AiProviders::DATA['lemonade']['url'];
 		$f['help'] = 'The server\'s OpenAI-compatible API, up to the version (requests go to <URL>/chat/completions, <URL>/models); a Lemonade server: http://<host>:8000/api/v1';
 	    }
 	    if (($f['key'] ?? null) === 'apiKey')

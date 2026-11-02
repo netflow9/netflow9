@@ -23,7 +23,7 @@ class CredentialOllama extends \models\Credential {
 		'type' => 'text',
 		'label' => 'Server URL',
 		'required' => true,
-		'default' => 'http://localhost:11434',
+		'default' => \data\AiProviders::DATA['ollama']['url'],
 		'help' => 'The Ollama server, without /api (requests go to <URL>/api/chat, <URL>/api/tags); e.g. http://localhost:11434, https://ollama.com',
 		'validate' => [
 		    [ 'url', 'skipEmpty' => true, 'message' => 'An http:// or https:// URL, without ? or #' ]

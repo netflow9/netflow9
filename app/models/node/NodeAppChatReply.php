@@ -21,7 +21,6 @@ class NodeAppChatReply extends \models\WfNode {
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];
 
     const FORMATS = [ 'markdown' => 'Markdown', 'text' => 'Text' ];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     const MAX_TEXT = 50000;
     const MAX_BUTTONS = 10;
     const MAX_LABEL = 80;

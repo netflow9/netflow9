@@ -32,7 +32,6 @@ abstract class NodeAppFortiGate extends \models\WfNode {
 
     const OPERATIONS = [];
     const LISTS = [];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     const MAX_ITEMS = 10000;
     const MAX_TIMEOUT = 600;
 

@@ -38,7 +38,6 @@ class NodeAppFtp extends \models\WfNode {
     const ORDER = [ 'oldest' => 'Oldest first', 'newest' => 'Newest first', 'name' => 'By name' ];
     const AFTER = [ 'none' => 'Leave them on the server', 'delete' => 'Delete them from the server', 'move' => 'Move them to a folder on the server' ];
     const DECRYPT = [ 'none' => 'No', 'ext' => 'Files with an encrypted ending (.gpg, .pgp, .asc, .enc, .p7m, ...)', 'all' => 'All files' ];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     //CLD: 2026-10-20T20:00:00+03:00: signature checks
     const VERIFY = [ 'none' => 'No', 'attached' => 'In the file (PGP signed, S/MIME .p7m)', 'detached' => 'A separate signature file next to it (.sig, .asc, .p7s)' ];
     const MISSING_SIGNATURE = [ 'skip' => 'Leave the file for the next run (its signature may still be coming)', 'error' => 'An error' ];

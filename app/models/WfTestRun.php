@@ -20,7 +20,6 @@ class WfTestRun extends \sys\BaseModel {
 
     const KEEP = 20;
     const ACTIVE = [ 'queued', 'running' ];
-    const ARRAYS = [ 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ];
 
     public function getSchema() {
 	return array_merge([
@@ -47,13 +46,13 @@ class WfTestRun extends \sys\BaseModel {
     public static function read($id, $wf) {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
-	return static::fresh(static::coll()->findOne([ '_id' => new \MongoDB\BSON\ObjectId((string)$id), 'wf' => $wf->_id, 'aid' => $wf->aid ], self::ARRAYS));
+	return static::fresh(static::coll()->findOne([ '_id' => new \MongoDB\BSON\ObjectId((string)$id), 'wf' => $wf->_id, 'aid' => $wf->aid ], \sys\Mongo::ARRAYS));
     }
 
     //the runs of workflow $wf, newest first, without their cases
     public static function ofWorkflow($wf, $limit = self::KEEP) {
 	$list = [];
-	foreach(static::coll()->find([ 'wf' => $wf->_id, 'aid' => $wf->aid ], self::ARRAYS + [ 'projection' => [ 'cases' => 0 ], 'sort' => [ '_id' => -1 ], 'limit' => $limit ]) as $run)
+	foreach(static::coll()->find([ 'wf' => $wf->_id, 'aid' => $wf->aid ], \sys\Mongo::ARRAYS + [ 'projection' => [ 'cases' => 0 ], 'sort' => [ '_id' => -1 ], 'limit' => $limit ]) as $run)
 	    $list[] = static::fresh($run);
 	return $list;
     }
@@ -65,7 +64,7 @@ class WfTestRun extends \sys\BaseModel {
 
     //the run before $run that finished: what a run is compared with
     public static function previous(array $run) {
-	return static::coll()->findOne([ 'wf' => $run['wf'], 'aid' => $run['aid'], '_id' => [ '$lt' => $run['_id'] ], 'state' => [ '$in' => [ 'passed', 'failed' ] ] ], self::ARRAYS + [ 'sort' => [ '_id' => -1 ] ]);
+	return static::coll()->findOne([ 'wf' => $run['wf'], 'aid' => $run['aid'], '_id' => [ '$lt' => $run['_id'] ], 'state' => [ '$in' => [ 'passed', 'failed' ] ] ], \sys\Mongo::ARRAYS + [ 'sort' => [ '_id' => -1 ] ]);
     }
 
     //$run as it really is: an active run whose job is gone (its worker died three times, the job was removed) is over
@@ -77,7 +76,7 @@ class WfTestRun extends \sys\BaseModel {
 	    return $run;
 	$changes = [ 'state' => 'error', 'error' => 'the daemon stopped working on this test run', 'ended_at' => new \MongoDB\BSON\UTCDateTime() ];
 	static::coll()->updateOne([ '_id' => $run['_id'], 'state' => [ '$in' => self::ACTIVE ] ], [ '$set' => $changes ]);
-	$now = static::coll()->findOne([ '_id' => $run['_id'] ], self::ARRAYS);
+	$now = static::coll()->findOne([ '_id' => $run['_id'] ], \sys\Mongo::ARRAYS);
 	return $now ?: $changes + $run;
     }
 

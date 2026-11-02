@@ -14,7 +14,7 @@ foreach(\util\AgentTools::FAMILIES as $key => $fam) {
 //CLD: 2026-11-02T14:00:00+02:00: the price table: a row (the empty one: the template Add copies), the posted rows when not saved
 $priceRow = function($i, array $row) {
     $options = '<option value="">Any</option>';
-    foreach(\models\AgentPolicy::PRICE_PROVIDERS as $value => $label)
+    foreach(\data\AiProviders::names() as $value => $label)
 	$options .= \util\VString::insert('<option value="{:value}"{:selected}>{:label}</option>', [ 'value' => \V::app()->html->escape($value), 'label' => \V::app()->html->escape($label), 'selected' => ($row['provider'] ?? '') === $value ? ' selected' : '' ]);
     return \util\VString::insert('<tr><td><select class="form-select form-select-sm" name="price_table[{:i}][provider]" aria-label="Provider">{:options}</select></td>'
 	. '<td><input class="form-control form-control-sm" name="price_table[{:i}][model]" value="{:model}" maxlength="100" aria-label="Model, or the start of its name"></td>'

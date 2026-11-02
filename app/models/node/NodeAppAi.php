@@ -58,7 +58,6 @@ abstract class NodeAppAi extends \models\WfNode {
     const CAPABILITY = '';
     const PROVIDER = '';
 
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     //CLD: 2026-10-23T10:00:00+03:00: the Credential value of the System AI
     const SYSTEM = 'system';
     const OUTPUT = [ 'text' => 'Text', 'json' => 'JSON' ];
@@ -105,7 +104,7 @@ abstract class NodeAppAi extends \models\WfNode {
 
     //CLD: 2026-11-02T10:00:00+02:00: new: whether the provider is someone else's servers (util\AgentGuard: Mask personal data)
     public static function isCloud() {
-	return in_array(static::CAPABILITY, \util\AgentGuard::CLOUD, true);
+	return \data\AiProviders::isCloud(static::CAPABILITY);
     }
 
     public static function projectTools() {
@@ -1231,7 +1230,7 @@ abstract class NodeAppAi extends \models\WfNode {
 	}
 	$fields[] = [ 'type' => 'textarea', 'key' => 'comment', 'label' => 'Comment', 'helpText' => 'Optional: the agent reads it with a rejection', 'rows' => 2 ];
 	$unit = (string)$this->cfg('approvalTimeoutUnit', 'none');
-	$due = isset(NodeAppTask::UNIT_SECONDS[$unit]) ? new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('approvalTimeout', 1)) * NodeAppTask::UNIT_SECONDS[$unit]) * 1000) : null;
+	$due = isset(\data\TimeUnits::SECONDS[$unit]) ? new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('approvalTimeout', 1)) * \data\TimeUnits::SECONDS[$unit]) * 1000) : null;
 	$task = \V::app()->om->create('WfTask', [
 	    'aid' => $exec->aid,
 	    'project' => $exec->project,

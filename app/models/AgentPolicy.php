@@ -26,8 +26,7 @@ class AgentPolicy extends \sys\BaseModel {
     //the entries of allowed_writes that stand for tools with no fixed name
     const WORKFLOWS = '@workflows';
     const MCP = '@mcp';
-    //CLD: 2026-11-02T14:00:00+02:00: the price table: its providers (the AI steps' CAPABILITY), its most rows
-    const PRICE_PROVIDERS = [ 'anthropic' => 'Claude', 'openai' => 'OpenAI', 'gemini' => 'Gemini', 'lemonade' => 'Lemonade', 'ollama' => 'Ollama' ];
+    //CLD: 2026-11-02T14:00:00+02:00: the price table: its most rows
     const MAX_PRICES = 20;
 
     public function getSchema() {
@@ -203,7 +202,7 @@ class AgentPolicy extends \sys\BaseModel {
 		continue;
 	    $provider = (string)($row['provider'] ?? '');
 	    $number = fn($v) => is_numeric($v) && (float)$v >= 0 ? (float)$v : (string)$v;
-	    $rows[] = [ 'provider' => array_key_exists($provider, self::PRICE_PROVIDERS) ? $provider : '', 'model' => mb_substr($model, 0, 100), 'input' => $number($row['input'] ?? 0), 'output' => $number($row['output'] ?? 0) ];
+	    $rows[] = [ 'provider' => array_key_exists($provider, \data\AiProviders::DATA) ? $provider : '', 'model' => mb_substr($model, 0, 100), 'input' => $number($row['input'] ?? 0), 'output' => $number($row['output'] ?? 0) ];
 	}
 	return $rows;
     }
