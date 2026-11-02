@@ -104,6 +104,12 @@ $dd_items = implode('', $dd_items);
 			'/form/list',
 			[ 'class' => 'nav-link ps-2', 'escape' => false ]
 		    );
+		    //CLD: 2026-11-02T18:00:00+02:00: the agents the user may talk to
+		    echo \V::app()->html->link(
+			'<i class="bi bi-chat-dots"></i> Agents',
+			'/agent/list',
+			[ 'class' => 'nav-link ps-2', 'escape' => false ]
+		    );
 		    $openTasks = count(\models\WfTask::openFor(\V::app()->user, $crtProject->aid, null));
 		    echo \V::app()->html->link(
 			\util\VString::insert('<i class="bi bi-person-check"></i> My tasks{:badge}', [

@@ -35,6 +35,9 @@ class McpServerTools {
 	return $result;
     }
 
+    //CLD: 2026-11-02T15:46:06+02:00: only over the MCP server (util\MCPTools leaves them out)
+    const NOT_FOR_MODELS = [ 'run_tests', 'get_test_run' ];
+
     const MAX_DEPTH = 3;
     private static $depth = 0;
 
@@ -234,6 +237,18 @@ class McpServerTools {
 		    'limit' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_PASSAGES, 'default' => 5, 'description' => 'How many passages' ],
 		    'filter' => [ 'type' => 'object', 'description' => 'Optional: { meta name: value or a list of values } the passages must have, e.g. {"category": "hr"}' ],
 		], 'required' => [ 'knowledge_base', 'query' ] ], 'annotations' => $ro ],
+	    //CLD: 2026-11-02T15:46:06+02:00: a workflow's tests (util\AgentEval)
+	    [ 'name' => 'run_tests', 'title' => 'Run a workflow\'s tests',
+		'description' => 'Runs all the test cases of a workflow on its saved draft, in the background, and waits for them: no step or tool that changes something runs, but the models are called (tokens are spent). Returns the run id, its state (passed, failed, stopped, error; queued, running: it takes longer than the request allows, see get_test_run), the totals and per case its result, answer and checks. One already running: that one.',
+		'inputSchema' => [ 'type' => 'object', 'properties' => [
+		    'workflow' => [ 'type' => 'string', 'description' => 'The workflow: its name or id (list_workflows)' ],
+		], 'required' => [ 'workflow' ] ], 'annotations' => [ 'readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => true ] ],
+	    [ 'name' => 'get_test_run', 'title' => 'Get a test run',
+		'description' => 'A test run of a workflow as run_tests gives it, with what changed since the run before it; without id: the workflow\'s latest.',
+		'inputSchema' => [ 'type' => 'object', 'properties' => [
+		    'workflow' => [ 'type' => 'string', 'description' => 'The workflow: its name or id (list_workflows)' ],
+		    'id' => [ 'type' => 'string', 'description' => 'The run id (run_tests)' ],
+		], 'required' => [ 'workflow' ] ], 'annotations' => $ro ],
 	    [ 'name' => 'list_variables', 'title' => 'List project variables',
 		//CLD: 2026-10-22T00:28:13+03:00: they are the credentials of type Variable
 		'description' => 'The variables of the project (credentials of type Variable): name, value, description.',
@@ -264,6 +279,11 @@ class McpServerTools {
 	//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://); was built from the request host
 	return [ 'id' => (string)$wf->_id, 'name' => (string)$wf->name, 'url' => \V::app()->createAbsoluteUrl('/workflow/index', [ 'id' => (string)$wf->_id ]),
 	    'status' => (string)($wf->status ?: \models\Workflow::DRAFT), 'problems' => array_merge($stepProblems, \util\WorkflowSpec::problems($wf)) ];
+    }
+
+    //CLD: 2026-11-02T15:46:06+02:00: test run $run as the tools give it
+    private static function testRun(array $run) {
+	return \util\AgentEval::summary($run) + [ 'cases' => array_values(array_map(fn($c) => array_intersect_key($c, array_flip([ 'name', 'state', 'error', 'answer', 'tokens', 'cost', 'checks', 'notes', 'execution' ])), (array)($run['cases'] ?? []))) ];
     }
 
     //runs tool $name with $args on project $project as the current user
@@ -515,6 +535,33 @@ class McpServerTools {
 		    $wf->name = mb_substr($name, 0, 100);
 		}
 		return self::saveSpec($wf, $args, !empty($args['relayout']));
+
+	    //CLD: 2026-11-02T15:46:06+02:00: a workflow's tests: over MCP the request waits for them as run_workflow does
+	    case 'run_tests':
+		$wf = self::findIn('Workflow', $args['workflow'] ?? '', $project, 'workflow');
+		if (!$can('Workflow::update', $wf))
+		    throw new \ErrorException('you may not run this workflow\'s tests');
+		[ $run, $new ] = \util\AgentEval::start($wf, $user ? (string)$user->name . ' (MCP)' : 'MCP');
+		if ($new && $asUser)
+		    \models\AuditLog::record('workflow.test.run', $wf, 'test run ' . (string)$run['_id'] . ' (MCP)');
+		$until = microtime(true) + \models\WfExecution::WAIT_RESULT;
+		while (in_array((string)$run['state'], \models\WfTestRun::ACTIVE, true) && microtime(true) < $until) {
+		    usleep(\models\WfExecution::WAIT_POLL * 1000);
+		    $run = \models\WfTestRun::read((string)$run['_id'], $wf);
+		}
+		return self::testRun($run);
+
+	    case 'get_test_run':
+		$wf = self::findIn('Workflow', $args['workflow'] ?? '', $project, 'workflow');
+		if (!$can('Workflow::read', $wf))
+		    throw new \ErrorException('you may not read this workflow');
+		$id = trim((string)($args['id'] ?? ''));
+		if ($id === '')
+		    $id = (string)(\models\WfTestRun::latest($wf)['_id'] ?? '');
+		$run = \models\WfTestRun::read($id, $wf);
+		if (!$run)
+		    throw new \ErrorException($id === '' ? 'this workflow has no test runs' : "no test run `{$id}` of this workflow");
+		return self::testRun($run) + [ 'changes' => \util\AgentEval::diff($run, \models\WfTestRun::previous($run)) ];
 
 	    case 'get_execution':
 		$id = (string)($args['id'] ?? '');

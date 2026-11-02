@@ -605,6 +605,9 @@ class Transfer {
 		$config[$key] = str_replace($new, $keep, $value);
 	}
 	$tokens[$keep][$wfId] = true;
+	//CLD: 2026-11-02T18:00:00+02:00: what else a trigger changes when it is brought in (Chat: a new embed token)
+	if (method_exists($class, 'forTransfer'))
+	    $config = $class::forTransfer($config);
 	return $config;
     }
 }

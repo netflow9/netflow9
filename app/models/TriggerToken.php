@@ -4,6 +4,7 @@
     one index of the triggers reached by a token:
 	Webhook (/hook/<token>),
 	Form (/form/<token>),
+	Chat (/agent/<token>; CLD: 2026-11-02T18:00:00+02:00: its embed token in `data`: /chat/<embed token>),
 	Email inbound (<account mail_prefix>-<token>@MAIL_INBOUND_DOMAIN, read by Haraka:
 
     kept while unpublished: the trigger then answers "not published"
@@ -22,6 +23,8 @@ class TriggerToken extends \sys\BaseModel {
 	[ [ 'token' => 1 ], [ 'unique' => true ] ],
 	[ [ 'wf' => 1 ], [] ],
 	[ [ 'aid' => 1, 'project' => 1, 'type' => 1 ], [] ],
+	//CLD: 2026-11-02T18:00:00+02:00: the embeddable page of a Chat trigger (controllers\ChatController)
+	[ [ 'data.embed_token' => 1 ], [ 'sparse' => true ] ],
     ];
 
     public function getSchema() {

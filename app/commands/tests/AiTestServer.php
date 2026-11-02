@@ -14,6 +14,10 @@
     every tool result sent ({ tool_call_id, content }, in order)
     CLD: 2026-11-02T10:00:00+02:00: in a script's arguments @@EMAIL@@ / @@PHONE@@ / @@IBAN@@ is the first such placeholder (util\PersonalData) in the request: a model passing on what it was given (CheckCommand::suiteAgentguard)
     CLD: 2026-11-02T10:00:00+02:00: tool results are sent between untrusted marks (util\AgentGuard): what this server answers quotes them without the marks; the requests in the log have them
+    CLD: 2026-11-02T18:00:00+02:00: a conversation's earlier turns hold earlier SCRIPT lines: the last one is the current turn's (CheckCommand::suiteAgentchat); a request to summarize a conversation (util: NodeAppAi::summarize, its system
+    prompt) answers `SUMMARY-OK`, no tools
+    CLD: 2026-11-02T15:46:06+02:00: a line `ANSWER: <text>` in a message is what a script ends with, instead of the results (CheckCommand::suiteAgenteval: a JSON answer); the judge of a test (util\AgentEval, its system prompt) answers
+    {"pass": true} when the request holds JUDGE-PASS, text that is not JSON with JUDGE-BAD, else {"pass": false}
     CLD: 2026-11-01T23:30:00+02:00: the scripted chat in each API's form (CheckCommand::suiteAgentapproval: every AI step resumes a saved conversation): OpenAI (POST .../chat/completions),
     Claude (POST /v1/messages, key in x-api-key), Gemini (POST .../models/<model>:generateContent, key in x-goog-api-key), Ollama (POST /api/chat). A round may start with a text
     (what the model says with its calls). The results: each tool result sent, an error as `ERROR: <text>` (Claude is_error, Gemini `error`), with the call's id
@@ -67,9 +71,23 @@ $texts = function($v) use (&$texts) {
 	$out = array_merge($out, $texts($x));
     return $out;
 };
+//CLD: 2026-11-02T18:00:00+02:00: the last one (was the first); a tool's result never starts a line with it in the suites
 foreach($texts($body['messages'] ?? $body['contents'] ?? []) as $t) {
-    if ($script === null && preg_match('/^SCRIPT: (.+)$/m', $t, $sm))
-	$script = json_decode($sm[1], true);
+    if (preg_match_all('/^SCRIPT: (.+)$/m', $t, $sm))
+	$script = json_decode(end($sm[1]), true);
+}
+//CLD: 2026-11-02T18:00:00+02:00: asked to summarize: the marker below, whatever the script says
+$summarizing = str_contains((string)$raw, 'You keep the memory of a conversation');
+if ($summarizing)
+    $script = [];
+//CLD: 2026-11-02T15:46:06+02:00: a test's judge; the answer a script ends with
+$judging = str_contains((string)$raw, 'You grade the answer of an AI agent');
+if ($judging)
+    $script = [];
+$ending = null;
+foreach($texts($body['messages'] ?? $body['contents'] ?? []) as $t) {
+    if (preg_match('/^ANSWER: (.+)$/m', $t, $am))
+	$ending = $am[1];
 }
 foreach((array)($body['messages'] ?? $body['contents'] ?? []) as $m) {
     $role = $m['role'] ?? '';
@@ -103,7 +121,12 @@ if (is_array($script) && $api !== '') {
     $mdl = (string)($body['model'] ?? 'scripted');
     $calls = $round < count($script) ? $script[$round] : null;
     $said = is_array($calls) && is_string($calls[0] ?? null) ? array_shift($calls) : '';
-    $final = 'RESULTS: ' . json_encode($results, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $final = $summarizing ? 'SUMMARY-OK' : 'RESULTS: ' . json_encode($results, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    //CLD: 2026-11-02T15:46:06+02:00: a test's judge; the answer a script ends with
+    if ($judging)
+	$final = str_contains((string)$raw, 'JUDGE-BAD') ? 'I think it is fine' : json_encode([ 'pass' => str_contains((string)$raw, 'JUDGE-PASS'), 'reason' => 'by the fake judge' ]);
+    elseif ($ending !== null)
+	$final = $ending;
     //CLD: 2026-11-02T10:00:00+02:00: + @@EMAIL@@ ...: the placeholders seen in the request
     $seen = [];
     foreach([ 'EMAIL', 'PHONE', 'IBAN' ] as $kind)

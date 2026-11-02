@@ -798,6 +798,19 @@ class SysObjects {
 		'class' => 'models\node\NodeAppTask',
 		'wfNode' => true,
 	    ],
+	    //CLD: 2026-11-02T18:00:00+02:00: talking to an agent: the Chat and Teams message triggers, Reply to chat
+	    'NodeTriggerChat' => [
+		'class' => 'models\node\NodeTriggerChat',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerTeams' => [
+		'class' => 'models\node\NodeTriggerTeams',
+		'wfNode' => true,
+	    ],
+	    'NodeAppChatReply' => [
+		'class' => 'models\node\NodeAppChatReply',
+		'wfNode' => true,
+	    ],
 	    //CLD: 2026-10-30T19:00:00+02:00: Run a workflow (starts a workflow that starts with Called by a workflow; waits for its outputs, or continues)
 	    'NodeAppWorkflow' => [
 		'class' => 'models\node\NodeAppWorkflow',
@@ -821,6 +834,24 @@ class SysObjects {
 	    //CLD: 2026-11-02T14:00:00+02:00: the traces of the AI steps' visits (the Executions panel)
 	    'AgentTrace' => [
 		'class' => 'models\AgentTrace',
+		'auditLog' => false,
+	    ],
+	    //CLD: 2026-11-02T15:46:06+02:00: a workflow's test cases and test runs (util\AgentEval); the audit log has named actions for them (EvalController): a case's inputs are large
+	    'WfTestCase' => [
+		'class' => 'models\WfTestCase',
+		'auditLog' => false,
+	    ],
+	    'WfTestRun' => [
+		'class' => 'models\WfTestRun',
+		'auditLog' => false,
+	    ],
+	    //CLD: 2026-11-02T18:00:00+02:00: the conversations with agents, their messages
+	    'AgentConversation' => [
+		'class' => 'models\AgentConversation',
+		'auditLog' => false,
+	    ],
+	    'AgentMessage' => [
+		'class' => 'models\AgentMessage',
 		'auditLog' => false,
 	    ],
 	    //CLD: 2026-11-01T11:55:18+02:00: the tool servers (util\ToolServers): the servers an account may use, the sessions open (were registered by the LocalMCP plugin)

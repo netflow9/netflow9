@@ -370,7 +370,8 @@ class SiteController extends \sys\BaseController {
 	}
 
 	$wfIds = array_map(fn($w) => $w->_id, array_values($workflows));
-	$base = [ 'aid' => $project->aid, 'project' => $project->_id, 'wf' => [ '$in' => $wfIds ] ];
+	//CLD: 2026-11-02T15:46:06+02:00: not the runs of test cases (trigger test): they are not the workflow's work
+	$base = [ 'aid' => $project->aid, 'project' => $project->_id, 'wf' => [ '$in' => $wfIds ], 'test_run' => null ];
 	$fields = [ 'state' => 1, 'trigger' => 1, 'wf' => 1, 'start_at' => 1, 'end_at' => 1, 'error' => 1, 'wake_at' => 1 ];
 
 	//this period
@@ -437,7 +438,7 @@ class SiteController extends \sys\BaseController {
 	$out['workflows'] = [];
 	foreach($workflows as $id => $wf) {
 	    $p = $per[$id] ?? [ 'runs' => 0, 'end' => 0, 'error' => 0, 'durations' => [], 'spark' => array_fill(0, $count, 0) ];
-	    $lastRun = $om->findOne('WfExecution', [ 'aid' => $project->aid, 'wf' => $wf->_id ], [ 'sort' => [ '_id' => -1 ], 'projection' => [ 'state' => 1 ] ]);
+	    $lastRun = $om->findOne('WfExecution', [ 'aid' => $project->aid, 'wf' => $wf->_id, 'test_run' => null ], [ 'sort' => [ '_id' => -1 ], 'projection' => [ 'state' => 1 ] ]);
 	    $version = $wf->publishedVersion();
 	    $out['workflows'][] = [
 		'id' => $id,

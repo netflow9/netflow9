@@ -110,6 +110,11 @@ class AgentTracer {
 	$this->saveRound($n, [ 'model' => $round['model'] ]);
     }
 
+    //CLD: 2026-11-02T18:00:00+02:00: new: what the step was given of the conversation: { turns, summary: whether there is one, summarized: { turns, tokens: { input, output }, cost } when it made one now }
+    public function conversation(array $info) {
+	$this->save([ 'conversation' => $info ]);
+    }
+
     //call $i of round $n, $args as the model wrote them, $access: read | write | unknown
     public function call($n, $i, $tool, $args, $access) {
 	$clean = \models\AuditLog::withoutSecrets(is_array($args) ? $args : [ 'value' => $args ], '', PHP_INT_MAX);

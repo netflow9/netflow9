@@ -117,6 +117,12 @@ class WfTask extends \sys\BaseModel {
 		'type' => 'array',
 		'label' => 'Calls'
 	    ],
+	    //CLD: 2026-11-02T18:00:00+02:00: an agent's approval: the person talking to it (isFor)
+	    [
+		'key' => 'not_by',
+		'type' => 'text',
+		'label' => 'Not by'
+	    ],
 	    [
 		'key' => 'project',
 		'type' => 'object',
@@ -137,8 +143,9 @@ class WfTask extends \sys\BaseModel {
 	    return false;
 	$users = array_map('strval', (array)($this->users ?? []));
 	$roles = array_map('strval', (array)($this->roles ?? []));
+	//CLD: 2026-11-02T18:00:00+02:00: an approval asked by an agent in a conversation, with no approvers chosen: any member but the person talking to it, who could otherwise approve what they asked for themselves
 	if (!$users && !$roles)
-	    return true;
+	    return (string)($this->not_by ?? '') !== (string)$user->_id;
 	return in_array((string)$user->_id, $users, true) || in_array((string)($member['role'] ?? ''), $roles, true) || in_array((string)($user->role ?? ''), $roles, true);
     }
 

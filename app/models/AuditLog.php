@@ -52,8 +52,14 @@ class AuditLog extends \sys\BaseModel {
 	'workflow.executions.delete' => 'Delete executions',
 	//CLD: 2026-10-26T10:06:24+02:00: a running execution killed (WorkflowController::execution_kill, the Overview)
 	'workflow.execution.kill' => 'Kill execution',
+	//CLD: 2026-11-02T15:46:06+02:00: a workflow's tests (EvalController)
+	'workflow.test.run' => 'Run tests',
+	'workflow.test.save' => 'Save test case',
+	'workflow.test.delete' => 'Delete test case',
 	//CLD: 2026-11-01T23:30:00+02:00: an AI step's tool calls approved / rejected in My tasks (TaskController)
 	'ai.approval' => 'Approve agent action',
+	//CLD: 2026-11-02T18:00:00+02:00: an owner deleted a conversation with an agent
+	'agent.conversation.delete' => 'Delete agent conversation',
 	//CLD: 2026-11-02T10:00:00+02:00: a tool call an AI step's agent made (agentCall)
 	self::AGENT_ACTION => 'Agent action',
     ];

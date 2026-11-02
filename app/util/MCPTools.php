@@ -18,8 +18,10 @@ class MCPTools {
 	$tools = new \ArrayObject();
 	//CLD: 2026-10-26T23:56:07+02:00: the MCP server's tools, run as the signed-in user ($asUser: the designer's Assistant) or without permission checks (the AI steps: the workflow's own step)
 	//(were added by the SysMCPTools plugin from the hook)
+	//CLD: 2026-11-02T15:46:06+02:00: not the tools that run a workflow's tests: for people's clients over MCP, an AI step or the Assistant must not start them
 	foreach(McpServerTools::definitions() as $t)
-	    $tools[$t['name']] = $t + [ 'run' => fn(array $args, $project, $asUser = false) => McpServerTools::images(McpServerTools::call($t['name'], $args, $project, $asUser)) ];
+	    if (!in_array($t['name'], McpServerTools::NOT_FOR_MODELS, true))
+		$tools[$t['name']] = $t + [ 'run' => fn(array $args, $project, $asUser = false) => McpServerTools::images(McpServerTools::call($t['name'], $args, $project, $asUser)) ];
 	\V::app()->hooks->applyHook('mcp:tools', [ $tools ]);
 	return $tools->getArrayCopy();
     }

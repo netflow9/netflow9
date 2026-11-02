@@ -26,6 +26,9 @@ class LoginThrottle extends \sys\BaseModel {
 	//CLD: 2026-10-24T00:20:00+03:00: "forgot password" requests (SiteController::forgot; SOC2.md gap 12): per address and per email, in an hour; then an hour's lock
 	'reset_ip' => [ 10, 3600, 3600 ],
 	'reset_email' => [ 3, 3600, 3600 ],
+	//CLD: 2026-11-02T18:00:00+02:00: messages to the agents (each one counts): an embedded page's visitors, per address; a signed-in user
+	'chat_ip' => [ 60, 3600, 900 ],
+	'chat_user' => [ 300, 3600, 300 ],
     ];
 
     public function _init() {

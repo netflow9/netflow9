@@ -14,9 +14,13 @@ $js_assets = [
     'app.workflow.js',
     'app.wfexecutions.js',
     'app.wfdebug.js',
+    //CLD: 2026-11-02T15:46:06+02:00: the designer's Tests panel
+    'app.wftests.js',
     //CLD: 2026-10-26T23:49:50+02:00: the designer's Assistant (was published by the Assistant plugin)
     'app.wfassistant.js',
     'app.dataview.js',
+    //CLD: 2026-11-02T18:00:00+02:00: the chat pages of the agents
+    'app.agentchat.js',
     //last
     'app.js',
 ];
