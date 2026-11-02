@@ -1,8 +1,8 @@
 <?php
 
 /*
-    CLD: 2026-10-30T23:30:00+02:00: new: embeddings (text -> vector) for the knowledge bases (models\KnowledgeBase)
-    CLD: 2026-10-31T01:00:00+02:00: through the account's embedding settings (models\EmbeddingSettings: provider, server, key, model; was an AI credential of the project):
+    embeddings (text -> vector) for the knowledge bases (models\KnowledgeBase)
+    through the account's embedding settings (models\EmbeddingSettings: provider, server, key, model; was an AI credential of the project):
 	ollama        POST <URL>/api/embed { model, input: [ ... ], truncate } -> embeddings; models: GET <URL>/api/tags
 	lemonade,     POST <URL>/embeddings { model, input: [ ... ] } -> data[].embedding (by index); models: GET <URL>/models
 	openai
@@ -68,7 +68,7 @@ class Embeddings {
 	$embed = [];
 	switch($provider) {
 	    case 'ollama':
-		$data = self::request('GET', self::ollamaBase($base) . '/api/tags', $headers, null, 15, 'Ollama');
+		$data = self::request('GET', self::ollamaBase($base) . '/api/tags', $headers, null, 15, \data\AiProviders::name('ollama'));
 		foreach((array)($data['models'] ?? []) as $m)
 		    $ids[] = (string)($m['name'] ?? $m['model'] ?? '');
 		break;
@@ -82,7 +82,7 @@ class Embeddings {
 		}
 		break;
 	    default:
-		$data = self::request('GET', $base . '/models', $headers, null, 15, self::name($provider));
+		$data = self::request('GET', $base . '/models', $headers, null, 15, \data\AiProviders::name($provider));
 		foreach((array)($data['data'] ?? []) as $m)
 		    $ids[] = (string)($m['id'] ?? '');
 	}
@@ -96,12 +96,12 @@ class Embeddings {
     }
 
     private static function ollama($settings, $model, array $texts, $timeout) {
-	$data = self::request('POST', self::ollamaBase($settings->baseUrl()) . '/api/embed', self::headers($settings), [ 'model' => $model, 'input' => $texts, 'truncate' => true ], $timeout, 'Ollama');
+	$data = self::request('POST', self::ollamaBase($settings->baseUrl()) . '/api/embed', self::headers($settings), [ 'model' => $model, 'input' => $texts, 'truncate' => true ], $timeout, \data\AiProviders::name('ollama'));
 	return (array)($data['embeddings'] ?? []);
     }
 
     private static function openai($settings, $model, array $texts, $timeout) {
-	$data = self::request('POST', $settings->baseUrl() . '/embeddings', self::headers($settings), [ 'model' => $model, 'input' => $texts ], $timeout, self::name((string)$settings->provider));
+	$data = self::request('POST', $settings->baseUrl() . '/embeddings', self::headers($settings), [ 'model' => $model, 'input' => $texts ], $timeout, \data\AiProviders::name((string)$settings->provider));
 	$items = (array)($data['data'] ?? []);
 	usort($items, fn($a, $b) => (int)($a['index'] ?? 0) <=> (int)($b['index'] ?? 0));
 	return array_map(fn($i) => $i['embedding'] ?? null, $items);
@@ -124,10 +124,6 @@ class Embeddings {
 	if ($key === '')
 	    return [];
 	return (string)$settings->provider === 'gemini' ? [ 'x-goog-api-key' => $key ] : [ 'Authorization' => 'Bearer ' . $key ];
-    }
-
-    private static function name($provider) {
-	return [ 'ollama' => 'Ollama', 'lemonade' => 'Lemonade', 'openai' => 'OpenAI', 'gemini' => 'Google Gemini' ][$provider] ?? (string)$provider;
     }
 
     //$method $url ($body as JSON): the decoded answer; \ErrorException when there is no answer, an HTTP error (with the server's message) or no JSON

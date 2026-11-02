@@ -42,7 +42,6 @@ abstract class NodeAppDatabase extends \models\WfNode {
     ];
     //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (a query too: its SQL may change data); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'query', 'execute', 'insert' ];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     const MAX_ROWS = 10000;
     const MAX_INSERT = 10000;
     const MAX_TIMEOUT = 600;

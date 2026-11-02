@@ -4300,7 +4300,7 @@ class CheckCommand extends \sys\BaseController {
 		'tools' => [], 'mcp' => [], 'fortigateCredential' => (string)$fgt->_id, 'fortigateTools' => [ 'fgt_addresses_block', 'fgt_addresses_list' ], 'workflows' => [ (string)$child->_id ], 'priceInput' => 2, 'priceOutput' => 10,
 		'maxRounds' => 6, 'onError' => 'output', 'timeout' => 20 ]), $n('ok', 'app::set', [ 'variable' => 'link', 'value' => '{{ ai.trace_id }}' ]), $e('e1', 'm', 's'), $e('e2', 's', 'ok', 0), $e('e3', 's', 'ok', 1) ];
 	    $traceOf = function($exe) use ($T) {
-		$t = $T::coll()->findOne([ 'execution' => $exe->_id ], $T::ARRAYS);
+		$t = $T::coll()->findOne([ 'execution' => $exe->_id ], \sys\Mongo::ARRAYS);
 		return $t;
 	    };
 	    $decide = function($exe, array $answers) use ($om, $user) {
@@ -4718,7 +4718,7 @@ class CheckCommand extends \sys\BaseController {
 	    $savedS = $C::read($convS['_id'], $account->_id);
 	    $this->check('agent chat: past Turns: the older turn summarized by the model, kept on the conversation; sent instead of it, marked; the newest turn whole; the summary\'s tokens counted', [ 'end', 'SUMMARY-OK', true, false, true, true ],
 		[ $third?->state, (string)$savedS['summary'], str_contains($messages[0][1] ?? '', 'SUMMARY-OK') && str_contains($messages[0][1] ?? '', 'untrusted_'), str_contains(json_encode($messages), 'alpha turn'), str_contains(json_encode($messages), 'beta turn'), ($third?->getVariable('ai')['usage']['input_tokens'] ?? 0) > 13 ]);
-	    $trace = \models\AgentTrace::coll()->findOne([ 'execution' => $third->_id ], \models\AgentTrace::ARRAYS);
+	    $trace = \models\AgentTrace::coll()->findOne([ 'execution' => $third->_id ], \sys\Mongo::ARRAYS);
 	    $this->check('agent chat: the trace says what the step was given', [ 1, true, 1 ], [ $trace['conversation']['turns'] ?? null, $trace['conversation']['summary'] ?? null, $trace['conversation']['summarized']['turns'] ?? null ]);
 	    $recent = $C::context($savedS, null, 100, 5)['recent'];
 	    $this->check('agent chat: a limit of tokens: fewer turns; always the newest, cut to fit', [ 1, 'gamma turn' ], [ count($recent), $recent[0]['user'] ]);

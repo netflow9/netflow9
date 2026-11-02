@@ -17,14 +17,13 @@ class NodeAppClaude extends NodeAppAi {
     public static $icon = 'bi-stars';
 
     const CAPABILITY = 'anthropic';
-    const PROVIDER = 'Anthropic';
+    const PROVIDER = \data\AiProviders::DATA[self::CAPABILITY]['name'];
 
-    const EFFORT = [ 'low' => 'Low', 'medium' => 'Medium', 'high' => 'High', 'xhigh' => 'Extra high', 'max' => 'Max' ];
     //the models server-side fallback is offered for (beta server-side-fallback-2026-07-01, fallbacks: "default")
     const FALLBACK_MODELS = '/^claude-(opus-5|sonnet-5-5|fable-5)/';
 
     protected static function defaultModel() {
-	return 'claude-opus-5-5';
+	return \data\AiProviders::DEFAULT_MODEL;
     }
 
     protected static function providerSchema() {
@@ -36,8 +35,8 @@ class NodeAppClaude extends NodeAppAi {
 		'type' => 'select',
 		'label' => 'Effort',
 		'required' => true,
-		'default' => 'high',
-		'choices' => self::EFFORT,
+		'default' => \data\AiProviders::DEFAULT_EFFORT,
+		'choices' => \data\AiProviders::EFFORT,
 		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line (was 6); shorter help (was: How thoroughly the model thinks: higher is better for hard tasks, lower is faster and cheaper)
 		'help' => 'Higher: harder tasks',
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)

@@ -448,7 +448,7 @@ class Transfer {
 		    $batch = [];
 		    $imported = 0;
 		    foreach($t['rows'] as $raw) {
-			$doc = \MongoDB\BSON\Document::fromJSON(\util\JSON::encode($raw))->toPHP([ 'root' => 'array', 'document' => 'array', 'array' => 'array' ]);
+			$doc = \MongoDB\BSON\Document::fromJSON(\util\JSON::encode($raw))->toPHP(\sys\Mongo::TYPEMAP);
 			$batch[] = $om->create($dt->iname, [ 'aid' => $aid ] + $doc);
 			if (count($batch) >= 500) {
 			    $imported += $om->insertMany($dt->iname, $batch);

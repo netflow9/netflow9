@@ -35,7 +35,7 @@ class NodeAppWait extends \models\WfNode {
 		'label' => 'Units',
 		'required' => true,
 		'default' => 'minutes',
-		'choices' => [ 'seconds' => 'Seconds', 'minutes' => 'Minutes', 'hours' => 'Hours', 'days' => 'Days' ],
+		'choices' => \data\TimeUnits::LABELS_ALL,
 		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'width' => 6 ],
 	    ],
@@ -44,7 +44,6 @@ class NodeAppWait extends \models\WfNode {
 
     //CLD: 2026-10-06T23:21:04+03:00: first visit sets resume_at = now + amount x unit and sleeps; continues once the time has come
     //(the execution sleeps meanwhile: its wake_at tells a scheduler when to run it again)
-    const UNIT_SECONDS = [ 'seconds' => 1, 'minutes' => 60, 'hours' => 3600, 'days' => 86400 ];
 
     public function execute($edgeId = null) {
 	$now = time();
@@ -52,10 +51,10 @@ class NodeAppWait extends \models\WfNode {
 	if (!($this->resume_at instanceof \MongoDB\BSON\UTCDateTime)) {
 	    $amount = $this->cfg('amount');
 	    $unit = (string)$this->cfg('unit', 'minutes');
-	    if (!is_numeric($amount) || $amount < 1 || !isset(self::UNIT_SECONDS[$unit]))
+	    if (!is_numeric($amount) || $amount < 1 || !isset(\data\TimeUnits::SECONDS_ALL[$unit]))
 		throw new \ErrorException('Wait: invalid amount or unit');
 
-	    $seconds = (int)round($amount * self::UNIT_SECONDS[$unit]);
+	    $seconds = (int)round($amount * \data\TimeUnits::SECONDS_ALL[$unit]);
 	    $this->resume_at = new \MongoDB\BSON\UTCDateTime(($now + $seconds) * 1000);
 	    $this->exec->log($this->wfid, "wait {$amount} {$unit}");
 	}

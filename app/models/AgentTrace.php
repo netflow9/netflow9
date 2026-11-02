@@ -21,7 +21,6 @@ class AgentTrace extends \sys\BaseModel {
     //the visits an execution's details list (a Loop may make thousands)
     const LIST_LIMIT = 50;
     const OPEN = [ 'running', 'waiting' ];
-    const ARRAYS = [ 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ];
 
     public function getSchema() {
 	return array_merge([
@@ -42,7 +41,7 @@ class AgentTrace extends \sys\BaseModel {
     //the visits of execution $exe, oldest first, without their rounds: [ the first LIST_LIMIT, how many there are ]
     public static function ofExecution($exe) {
 	$query = [ 'execution' => $exe->_id, 'aid' => $exe->aid ];
-	$list = iterator_to_array(static::coll()->find($query, self::ARRAYS + [ 'projection' => [ 'rounds' => 0 ], 'sort' => [ '_id' => 1 ], 'limit' => self::LIST_LIMIT ]), false);
+	$list = iterator_to_array(static::coll()->find($query, \sys\Mongo::ARRAYS + [ 'projection' => [ 'rounds' => 0 ], 'sort' => [ '_id' => 1 ], 'limit' => self::LIST_LIMIT ]), false);
 	return [ $list, count($list) < self::LIST_LIMIT ? count($list) : static::coll()->countDocuments($query) ];
     }
 
@@ -50,7 +49,7 @@ class AgentTrace extends \sys\BaseModel {
     public static function read($id, $aid, $exe = null) {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
-	return static::coll()->findOne([ '_id' => new \MongoDB\BSON\ObjectId((string)$id), 'aid' => $aid ] + ($exe ? [ 'execution' => $exe->_id ] : []), self::ARRAYS);
+	return static::coll()->findOne([ '_id' => new \MongoDB\BSON\ObjectId((string)$id), 'aid' => $aid ] + ($exe ? [ 'execution' => $exe->_id ] : []), \sys\Mongo::ARRAYS);
     }
 
     //the execution was killed: its open traces end

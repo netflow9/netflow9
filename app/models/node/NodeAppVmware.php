@@ -32,7 +32,6 @@ abstract class NodeAppVmware extends \models\WfNode {
 
     const OPERATIONS = [];
     const LISTS = [];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     const MAX_ITEMS = 10000;
     const MAX_TIMEOUT = 3600;
     //what resolve() looks up: REST collection => [ the id's key in its items, the label ]

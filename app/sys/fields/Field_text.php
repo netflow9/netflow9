@@ -8,7 +8,7 @@ class Field_text extends Field {
     public $name = 'Text line';
     public $ops = [
 	//the conditions' operators (util\Conditions): one vocabulary for every type (eq ne gt gte lt lte contains startsWith in empty notEmpty), labels per type;
-	'eval' => [ 'eq' => 'Is', 'ne' => 'Is not', 'contains' => 'Contains', 'startsWith' => 'Starts with', 'in' => 'Is one of', 'empty' => 'Is empty', 'notEmpty' => 'Is not empty', ],
+	'eval' => self::EVAL_TEXT,
 	'set' => [ 'set' => 'Set' ],
     ];
 

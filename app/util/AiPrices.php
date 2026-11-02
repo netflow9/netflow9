@@ -9,8 +9,6 @@
 namespace util;
 
 class AiPrices {
-    //the local servers: cost nothing unless prices are set
-    const LOCAL = [ 'ollama', 'lemonade' ];
     //the prices of Claude models (Anthropic API, USD per 1M tokens: input, output, cache read), by model id prefix (the first that matches; longer ones first).
     //A cache write is 1.25 x input. Other providers' prices change too often to be kept here: they are set (SYSTEM_AI_PRICE_*, the Assistant's settings: price_input, price_output)
     //(were plugins\Assistant\models\AssistantSettings::PRICES, CACHE_WRITE)
@@ -45,7 +43,7 @@ class AiPrices {
 	    return [ $in, $out, $known && $known[0] == $in ? $known[2] : $in * 0.1 ];
 	if ($known)
 	    return $known;
-	if (in_array((string)($settings->provider ?? ''), self::LOCAL, true))
+	if (\data\AiProviders::isLocal((string)($settings->provider ?? '')))
 	    return [ 0, 0, 0 ];
 	return null;
     }

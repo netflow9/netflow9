@@ -27,16 +27,8 @@ class NodeAppHttp extends \models\WfNode {
     public static $outputs = 1;
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];
 
-    const METHODS = [
-	'GET' => 'GET',
-	'POST' => 'POST',
-	'PUT' => 'PUT',
-	'PATCH' => 'PATCH',
-	'DELETE' => 'DELETE',
-	'HEAD' => 'HEAD'
-    ];
+    const METHODS = \data\Http::METHODS_PATCH + [ 'HEAD' => 'HEAD' ];
     const BODY_TYPES = [ 'none' => 'None', 'json' => 'JSON', 'form' => 'Form (urlencoded)', 'text' => 'Text' ];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
 
     //CLD: 2026-10-23T12:30:00+03:00: the JSON-RPC request proposed when JSON-RPC is switched on
     const JSON_RPC_TEMPLATE = "{\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"\",\n    \"params\": {},\n    \"id\": 1\n}";

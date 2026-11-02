@@ -22,7 +22,7 @@ class CredentialOpenAI extends \models\Credential {
 		'type' => 'text',
 		'label' => 'API base URL',
 		'required' => true,
-		'default' => 'https://api.openai.com/v1',
+		'default' => \data\AiProviders::DATA['openai']['url'],
 		//CLD: 2026-10-22T01:53:07+03:00: without the Lemonade example (it has its own credential)
 		'help' => 'The OpenAI API (https://api.openai.com/v1) or another OpenAI-compatible API, up to the version (requests go to <URL>/chat/completions, <URL>/models, ...)',
 		'validate' => [

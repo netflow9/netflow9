@@ -58,11 +58,7 @@ class WfSchedule {
 		'type' => 'select',
 		'label' => 'Units',
 		'default' => 'minutes',
-		'choices' => [
-		    'minutes' => 'Minutes',
-		    'hours' => 'Hours',
-		    'days' => 'Days'
-		],
+		'choices' => \data\TimeUnits::LABELS,
 		'requiredIf' => [ 'if' => 'mode', 'in' => [ 'interval' ] ],
 		'ui' => [
 		    'width' => 6,

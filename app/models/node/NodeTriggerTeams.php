@@ -160,7 +160,7 @@ class NodeTriggerTeams extends \models\WfNode {
 	$from = (array)($m['from']['user'] ?? []);
 	$person = [ 'id' => (string)($from['id'] ?? ''), 'name' => (string)($from['displayName'] ?? ''), 'email' => '' ];
 	$c = \models\AgentConversation::coll();
-	$conv = $c->findOne([ 'aid' => $wf->aid, 'wf' => $wf->_id, 'thread' => (string)$chat ], \models\AgentConversation::ARRAYS)
+	$conv = $c->findOne([ 'aid' => $wf->aid, 'wf' => $wf->_id, 'thread' => (string)$chat ], \sys\Mongo::ARRAYS)
 	    ?: \models\AgentConversation::begin([ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => $node['wfid'], 'channel' => 'teams', 'user_name' => $person['name'], 'who' => 't:' . $person['id'], 'thread' => (string)$chat,
 		'credential' => (string)($node['config']['credential'] ?? '') ]);
 	return \models\AgentConversation::startTurn($wf, $node, $conv, $text, [ 'wait' => false, 'trigger' => 'teams', 'user' => $person, 'input' => [ 'who' => 't:' . $person['id'] ],

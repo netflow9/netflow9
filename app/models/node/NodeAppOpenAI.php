@@ -22,7 +22,7 @@ class NodeAppOpenAI extends NodeAppAi {
     public static $icon = 'bi-openai';
 
     const CAPABILITY = 'openai';
-    const PROVIDER = 'OpenAI'; //CLD: 2026-10-18T12:30:00+03:00: was Lemonade
+    const PROVIDER = \data\AiProviders::DATA[self::CAPABILITY]['name'];
 
     protected static function providerSchema() {
 	return [

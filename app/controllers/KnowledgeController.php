@@ -289,7 +289,7 @@ class KnowledgeController extends \sys\BaseController {
 	$data = is_array($req->data) ? $req->data : [];
 	$saved = EmbeddingSettings::of(\V::app()->var('rt.account')->_id);
 	$provider = (string)($data['provider'] ?? '');
-	if (!array_key_exists($provider, EmbeddingSettings::PROVIDERS))
+	if (!array_key_exists($provider, \data\AiProviders::forEmbeddings()))
 	    $resp->sendJSON([ 'error' => 'Choose a provider' ], true, 400);
 	$url = trim((string)($data['url'] ?? ''));
 	if ($url !== '' && !preg_match('~^https?://[^\s?#]+$~i', $url))

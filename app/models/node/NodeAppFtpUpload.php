@@ -37,7 +37,6 @@ class NodeAppFtpUpload extends \models\WfNode {
 
     const SOURCES = [ 'files' => 'Project files', 'text' => 'A text (CSV, XML, ...)' ];
     const IF_EXISTS = [ 'overwrite' => 'Replace it', 'skip' => 'Leave it, do not send', 'unique' => 'Add a number to the name (report_1.csv)', 'fail' => 'An error' ];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     //CLD: 2026-10-20T19:00:00+03:00: where the signature goes
     const SIGN_MODES = [ 'attached' => 'In the file (signed, then encrypted)', 'detached' => 'A separate signature file next to it (.sig, .asc, .p7s)' ];
 

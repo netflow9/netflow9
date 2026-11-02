@@ -3,6 +3,9 @@
 namespace sys;
 
 class Mongo extends BaseObject {
+    const TYPEMAP = [ 'array' => 'array', 'document' => 'array', 'root' => 'array' ];
+    const ARRAYS = [ 'typeMap' => self::TYPEMAP ];
+
 
     private $client = null;
 
@@ -39,7 +42,7 @@ class Mongo extends BaseObject {
 	    ],
 
 	    'driverOptions' => [
-		'typeMap' => [ 'array' => 'array', 'document' => 'array', 'root' => 'array', ],
+		'typeMap' => self::TYPEMAP,
 	    ],
 	);
 	$config = \util\Set::merge($defaults, $config);

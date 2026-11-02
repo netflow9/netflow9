@@ -31,7 +31,7 @@ class CredentialGemini extends \models\Credential {
 		'type' => 'text',
 		'label' => 'API base URL',
 		'required' => true,
-		'default' => 'https://generativelanguage.googleapis.com/v1beta',
+		'default' => \data\AiProviders::DATA['gemini']['url'],
 		'help' => 'Change it only for a proxy or gateway, up to the version (requests go to <URL>/models/<model>:generateContent, <URL>/models, ...)',
 		'validate' => [
 		    [ 'url', 'skipEmpty' => true, 'message' => 'An http:// or https:// URL, without ? or #' ]

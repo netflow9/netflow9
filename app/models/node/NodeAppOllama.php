@@ -22,7 +22,7 @@ class NodeAppOllama extends NodeAppAi {
     public static $icon = 'bi-robot';
 
     const CAPABILITY = 'ollama';
-    const PROVIDER = 'Ollama';
+    const PROVIDER = \data\AiProviders::DATA[self::CAPABILITY]['name'];
     //CLD: 2026-10-29T22:44:26+02:00: a local server: a long prompt on a local model can take minutes (was 300 s, at most 600)
     const DEFAULT_TIMEOUT = 900;
     const MAX_TIMEOUT = 900;

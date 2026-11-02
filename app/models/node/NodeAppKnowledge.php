@@ -40,7 +40,6 @@ class NodeAppKnowledge extends \models\WfNode {
 	'documents' => 'List the documents',
     ];
     const ADD = [ 'addFiles', 'addUrl', 'addText' ];
-    const ON_ERROR = [ 'fail' => 'Fail the step', 'output' => 'Continue on the `error` output' ];
     const MAX_FILES = 50;
     const MAX_LIST = 1000;
     const DEFAULT_TIMEOUT = 120;

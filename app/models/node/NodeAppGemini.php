@@ -16,7 +16,7 @@ class NodeAppGemini extends NodeAppAi {
     public static $icon = 'bi-google';
 
     const CAPABILITY = 'gemini';
-    const PROVIDER = 'Google Gemini';
+    const PROVIDER = \data\AiProviders::DATA[self::CAPABILITY]['name'];
 
     const THINKING = [ '' => 'Model default', 'minimal' => 'Minimal', 'low' => 'Low', 'medium' => 'Medium', 'high' => 'High' ];
     //the finish reasons of an answer Gemini declined or blocked
