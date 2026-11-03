@@ -31,15 +31,17 @@ class NodeAppWorkflow extends \models\wf\WfNode {
     const CHECK_EVERY = 3600;
 
     //the workflows of the current project (the designer's user) that start with Called by a workflow: [ id => [ name, contract ] ]
+    //CLD: 2026-11-03T16:00:00+02:00: + those shared with it and published, named with their project
     //CLD: 2026-11-01T21:50:00+02:00: public (the AI steps' Workflows setting: util\AgentTools)
     public static function callable() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
 	$list = [];
-	foreach(\V::app()->om->find('Workflow', [ 'aid' => \V::app()->config('rt.account')->_id ?? null, 'project' => \V::app()->user->crtProject ], [ 'sort' => [ 'name' => 1 ] ]) as $wf) {
-	    $contract = NodeTriggerCall::contractOf(($wf->liveCopy() ?: $wf)->nodes);
+	$project = \V::app()->user->crtProject;
+	foreach(\V::app()->om->find('Workflow', [ 'aid' => \V::app()->config('rt.account')->_id ?? null ] + \models\Workflow::visibleInQuery($project), [ 'sort' => [ 'name' => 1 ] ]) as $wf) {
+	    $contract = NodeTriggerCall::contractOf($wf->copyFor($project)?->nodes);
 	    if ($contract !== null)
-		$list[(string)$wf->_id] = [ 'name' => (string)$wf->name, 'contract' => $contract ];
+		$list[(string)$wf->_id] = [ 'name' => (string)$wf->name . ($wf->isHome($project) ? '' : ' (shared from ' . $wf::projectName($wf->project) . ')'), 'contract' => $contract ];
 	}
 	return $list;
     }
@@ -141,7 +143,8 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	    return null;
 	$query = [ '_id' => $id, 'aid' => $aid ?? (\V::app()->config('rt.account')->_id ?? null) ];
 	if ($project !== null)
-	    $query['project'] = $project;
+	    //CLD: 2026-11-03T16:00:00+02:00: or shared with $project
+	    $query += \models\Workflow::visibleInQuery($project);
 	return \V::app()->om->findOne('Workflow', $query);
     }
 
@@ -151,8 +154,11 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	if (!\util\Validator::isIdentifier($name))
 	    return [];
 	$outputs = [];
-	$wf = static::findWorkflow($config['workflow'] ?? '');
-	foreach(($wf ? (NodeTriggerCall::contractOf(($wf->liveCopy() ?: $wf)->nodes)['outputs'] ?? []) : []) as $o)
+	//CLD: 2026-11-03T16:00:00+02:00: for a user, only a workflow of their current project or shared with it (was: any of the account, so its outputs showed through a step's settings)
+	$project = \V::app()->config('app.mode') == 'web' ? \V::app()->user->crtProject : null;
+	$wf = static::findWorkflow($config['workflow'] ?? '', null, $project);
+	$copy = $wf ? ($project ? $wf->copyFor($project) : ($wf->liveCopy() ?: $wf)) : null;
+	foreach((NodeTriggerCall::contractOf($copy?->nodes)['outputs'] ?? []) as $o)
 	    $outputs[$o] = [ 'type' => 'any' ];
 	return [ $name => [ 'type' => 'object', 'info' => 'the run of the workflow: { ok, state, execution, outputs, error }', 'fields' => [
 	    'ok' => [ 'type' => 'boolean', 'info' => 'it ended without an error (start and continue: it was queued)' ], 'state' => [ 'type' => 'string', 'info' => 'end, error, cancel; queued' ],
@@ -167,9 +173,10 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	if ($id === '' || !$this->workflow)
 	    return $valid;
 	$wf = static::findWorkflow($id, $this->workflow->aid, $this->workflow->project);
-	$contract = $wf ? NodeTriggerCall::contractOf(($wf->liveCopy() ?: $wf)->nodes) : null;
+	//CLD: 2026-11-03T16:00:00+02:00: copyFor: a shared workflow counts only while published
+	$contract = $wf ? NodeTriggerCall::contractOf($wf->copyFor($this->workflow->project)?->nodes) : null;
 	if (!$wf || $contract === null) {
-	    $this->errors('config', 'Workflow: choose a workflow of this project that starts with Called by a workflow');
+	    $this->errors('config', 'Workflow: choose a workflow of this project that starts with Called by a workflow, or a published one shared with it');
 	    return false;
 	}
 	if ((string)$wf->_id === (string)$this->workflow->_id) {
@@ -206,7 +213,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	$exec = $this->exec;
 	$wf = static::findWorkflow($this->cfg('workflow', ''), $exec->aid, $exec->project);
 	if (!$wf)
-	    return $this->failed('the workflow is no longer in this project');
+	    return $this->failed('the workflow is no longer in this project, or no longer shared with it');
 	$vars = $exec->expressionVariables();
 	$inputs = [];
 	foreach((array)$this->cfg('inputs', []) as $row) {
@@ -241,7 +248,10 @@ class NodeAppWorkflow extends \models\wf\WfNode {
     //for it (it is queued when the workflow ends: WfExecution::notifyCaller). The checks: it starts with Called by a workflow, has no errors, is not already in the chain of callers,
     //not too deep (MAX_DEPTH). [ the new execution (not saved), null ] or [ null, why it cannot start ]
     public static function startChild($exec, $wf, array $inputs, $wait, $nodeId) {
-	$live = $wf->liveCopy() ?: $wf;
+	//CLD: 2026-11-03T16:00:00+02:00: copyFor: a shared workflow runs only its published version, so the draft its project is working on never reaches other projects
+	$live = $wf->copyFor($exec->project);
+	if ($live === null)
+	    return [ null, "{$wf->name} is shared with this project but not published now" ];
 	$contract = NodeTriggerCall::contractOf($live->nodes);
 	if ($contract === null)
 	    return [ null, "{$wf->name} does not start with Called by a workflow" ];
@@ -259,7 +269,9 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	$caller = \V::app()->om->findOne('Workflow', [ '_id' => $exec->wf, 'aid' => $exec->aid ]);
 	$child = \models\wf\WfExecution::startFor($live, 'call', [ 'vars' => $inputs, 'caller' => [ 'wf' => (string)$exec->wf, 'name' => (string)($caller->name ?? ''),
 	    'execution' => (string)$exec->_id, 'node' => (string)$nodeId, 'chain' => $chain, 'wait' => (bool)$wait ] ], $contract['wfid']);
-	$child->log(null, 'started by the workflow ' . (string)($caller->name ?? $exec->wf) . ' (execution ' . (string)$exec->_id . ')');
+	//CLD: 2026-11-03T16:00:00+02:00: a call from another project says which
+	$from = (string)$exec->project === (string)$wf->project ? '' : ' of project ' . $wf::projectName($exec->project);
+	$child->log(null, 'started by the workflow ' . (string)($caller->name ?? $exec->wf) . $from . ' (execution ' . (string)$exec->_id . ')');
 	return [ $child, null ];
     }
 

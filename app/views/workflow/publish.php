@@ -24,6 +24,10 @@ if ($gate['cases'] > 0 || $gate['required']) {
     ]);
 }
 
+//CLD: 2026-11-03T16:00:00+02:00: shared, and its inputs or outputs change
+if ($callers)
+    $testNote .= \util\VString::insert('<div class="alert alert-warning small py-2 mb-3"><i class="bi bi-exclamation-triangle me-1"></i>This changes the inputs or outputs of a shared workflow. These workflows of other projects call it: {:names}.</div>', [ 'names' => \V::app()->html->escape(implode(', ', $callers)) ]);
+
 if ($errors) {
     $title = 'Cannot publish';
     $items = implode('', array_map(fn($i) => \util\VString::insert('<li>{:message}</li>', [ 'message' => \V::app()->html->escape($i['message']) ]), $errors));

@@ -120,7 +120,8 @@ class Transfer {
 	//CLD: 2026-11-03T14:00:00+02:00: also the tables shared with the project: named in the file, so importing them says they are missing (they are not exported: they stay with their project)
 	foreach($om->find('DataTableDef', [ '$or' => [ [ '_id' => [ '$in' => $oids ] ], [ 'iname' => [ '$in' => $inames ] ] ], 'aid' => $project->aid, '$and' => [ \models\datatable\DataTableDef::visibleInQuery($project->_id) ] ]) as $t)
 	    $bundle['refs']['datatables'][(string)$t->_id] = [ 'name' => (string)$t->name, 'iname' => (string)$t->iname ];
-	foreach($om->find('Workflow', [ '_id' => [ '$in' => $oids ] ] + $inProject) as $w)
+	//CLD: 2026-11-03T16:00:00+02:00: also those shared with the project (as the tables)
+	foreach($om->find('Workflow', [ '_id' => [ '$in' => $oids ], 'aid' => $project->aid ] + \models\Workflow::visibleInQuery($project->_id)) as $w)
 	    $bundle['refs']['workflows'][(string)$w->_id] = [ 'name' => (string)$w->name ];
 
 	$text = \util\JSON::encode($bundle, JSON_PRETTY_PRINT);

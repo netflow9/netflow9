@@ -11,7 +11,7 @@ namespace controllers;
 class ShareController extends \sys\BaseController {
 
     //what can be shared: the `object` parameter
-    const KINDS = [ 'DataTableDef' ];
+    const KINDS = [ 'DataTableDef', 'Workflow' ];
 
     public function _init() {
 	parent::_init();
@@ -25,7 +25,10 @@ class ShareController extends \sys\BaseController {
 	if ($req->is('post')) {
 	    $project = $this->targetProject($resource, (string)($req->data['project'] ?? ''));
 	    $access = (string)($req->data['access'] ?? '');
-	    if (!$project || !isset($resource::SHARE_LEVELS[$access]))
+	    //CLD: 2026-11-03T16:00:00+02:00: what the resource itself refuses (a workflow not published)
+	    if ($resource->shareProblem() !== null)
+		$this->addToast('error', 'Not shared', $resource->shareProblem());
+	    elseif (!$project || !isset($resource::SHARE_LEVELS[$access]))
 		$this->addToast('error', 'Not shared', 'Choose a project and a level');
 	    elseif ($resource->shareOf($project->_id))
 		$this->addToast('warning', 'Not shared', 'It is already shared with that project');

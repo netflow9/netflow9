@@ -229,6 +229,26 @@ class SysPermissions {
 		    'member' => [ 'enabled' => true, 'scope' => 'project' ]
 		]
 	    ],
+	    //CLD: 2026-11-03T16:00:00+02:00: sharing a workflow with other projects of the account (ShareController); owners (also the roles already stored)
+	    [
+		'name' => 'Workflow::share',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'Share workflows with other projects',
+		'defaults' => [
+		    'owner' => [ 'enabled' => true, 'scope' => 'global' ],
+		    'member' => [ 'enabled' => false ]
+		]
+	    ],
+	    //CLD: 2026-11-03T16:00:00+02:00: what a shared workflow offers (WorkflowController::shared): its description, inputs, outputs and step names; not its settings or runs
+	    [
+		'name' => 'Workflow::viewShared',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'See what workflows shared with the project offer: description, inputs, outputs, step names',
+		'defaults' => [
+		    'owner' => [ 'enabled' => true, 'scope' => 'global' ],
+		    'member' => [ 'enabled' => true, 'scope' => 'project' ]
+		]
+	    ],
 	];
 
 	//data tables

@@ -236,6 +236,11 @@ class WorkflowController extends \sys\BaseController {
 	//CLD: 2026-11-02T15:46:06+02:00: the tests of the draft (util\AgentEval::gate); when Tests must pass to publish is on, a new version of the draft needs them passed. Not an older version or an unchanged draft published again: a way back stays open
 	$gate = \util\AgentEval::gate($wf);
 	$blocked = \util\AgentEval::blocks($gate, $source, $reuse);
+	//CLD: 2026-11-03T16:00:00+02:00: shared, and this changes its inputs or outputs: the workflows of other projects that call it (the dialog says)
+	$callers = [];
+	$contractOf = fn($nodes) => array_diff_key((array)\models\node\NodeTriggerCall::contractOf($nodes), [ 'wfid' => 1, 'description' => 1 ]);
+	if (!empty((array)$wf->shares) && $active && $contractOf($check->nodes) != $contractOf($active->nodes))
+	    $callers = array_column($wf->consumers(), 'name');
 
 	if ($req->is('post')) {
 	    $params = [ 'id' => (string)$wf->_id ];
@@ -285,7 +290,7 @@ class WorkflowController extends \sys\BaseController {
 
 	$next = (int)$wf->version_count + 1;
 	//CLD: 2026-11-02T15:46:06+02:00: + the tests
-	$this->render('publish', compact('wf', 'source', 'active', 'reuse', 'errors', 'next', 'gate', 'blocked'));
+	$this->render('publish', compact('wf', 'source', 'active', 'reuse', 'errors', 'next', 'gate', 'blocked', 'callers'));
     }
 
     //CLD: 2026-10-11T13:51:42+03:00: stop the triggers (POST): the workflow goes back to draft; its versions and `version` are kept. Workflow::update
@@ -296,6 +301,9 @@ class WorkflowController extends \sys\BaseController {
 	$wf->status = \models\Workflow::DRAFT;
 	if ($wf->save()) {
 	    $this->addToast('success', 'Unpublished', 'The trigger of this workflow no longer starts runs');
+	    //CLD: 2026-11-03T16:00:00+02:00: shared: calls from the other projects now fail
+	    if (!empty((array)$wf->shares))
+		$this->addToast('warning', 'Shared workflow', 'Other projects can no longer call it until it is published again');
 	    //CLD: 2026-11-01T00:30:00+02:00: the steps' own unpublishing work (e.g. GravityZone event: its push service off)
 	    foreach(self::publishHooks($wf, null, $wf->publishedVersion()) as $message)
 		$this->addToast('info', 'Unpublished', $message);
@@ -390,12 +398,31 @@ class WorkflowController extends \sys\BaseController {
 	$this->redirect('/workflow/index', [ 'id' => (string)$copy->_id ]);
     }
 
+    //CLD: 2026-11-03T16:00:00+02:00: new: what a shared workflow offers, from its published version: description, inputs, outputs, step names (Workflow::viewShared; a dialog). Not its settings: they can hold typed secrets
+    public function shared($req, $resp) {
+	$wf = $this->findWorkflow('Workflow::viewShared');
+	$live = $wf->liveCopy();
+	$contract = \models\node\NodeTriggerCall::contractOf($live?->nodes);
+	$defs = \models\wf\WfNode::getAll();
+	$steps = [];
+	foreach((is_array($live?->nodes) ? $live->nodes : []) as $n) {
+	    if (is_array($n) && !empty($n['isNode']))
+		$steps[] = [ 'title' => (string)($n['title'] ?? ''), 'type' => (string)($defs[$n['fqname'] ?? '']['label'] ?? '') ];
+	}
+	$this->render('shared', compact('wf', 'live', 'contract', 'steps'));
+    }
+
     //CLD: 2026-10-11T14:05:19+03:00: delete (POST): the workflow, its executions and versions (Workflow::beforeDelete; plugins: webhook index, IMAP state). Workflow::delete
     public function delete($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 	$wf = $this->findWorkflow('Workflow::delete');
 	$name = (string)$wf->name;
+	//CLD: 2026-11-03T16:00:00+02:00: not while it is shared: ending each share (the Share dialog) shows which workflows of the other project call it
+	if (!empty((array)$wf->shares)) {
+	    $this->addToast('error', 'Not deleted', 'This workflow is shared with other projects: stop sharing it first');
+	    $this->redirect('/workflow/index', [ 'id' => (string)$wf->_id ]);
+	}
 	if (!$wf->delete()) {
 	    $this->addToast('error', 'Not deleted', 'The workflow could not be deleted');
 	    $this->redirect('/workflow/index', [ 'id' => (string)$wf->_id ]);
