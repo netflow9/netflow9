@@ -340,14 +340,8 @@ class File extends \sys\BaseModel {
 	if (strpos($permName, '::') === false)
 	    $permName = 'File::' . $permName;
 
-	$scope = \V::app()->auth->getUserRole()->getPermissionScope($permName);
-	if ($scope == 'global')
-	    return true;
-	if ($scope != 'project')
-	    return false;
-
-	//CLD: 2026-10-06T23:07:56+03:00: shared Project::isMember
-	return \models\Project::isMember($this->metadata['project'] ?? $this->project, $this->metadata['aid'] ?? $this->aid, $userId);
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the file's project decides (was: any membership)
+	return \models\Project::can($this->metadata['project'] ?? $this->project, $this->metadata['aid'] ?? $this->aid, $userId, $permName);
     }
 
     //label of a file (e.g. in object fields)

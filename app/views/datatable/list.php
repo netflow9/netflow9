@@ -14,6 +14,11 @@ if (\V::app()->user->can('DataTable::create')) {
 }
 
 $dataUrl = \V::app()->createUrl('', [ 'data' => 1 ]);
+//CLD: 2026-11-03T14:00:00+02:00: Share, with DataTable::share (not in a personal project); the second list: the tables shared with this project (open only: the rest is their project's)
+$shareUrl = '/share/manage?object=DataTableDef&id={{item._id}}';
+$shareAction = $canShare ? "share: `<a href='{$shareUrl}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Share'><i class='bi bi-share'></i></a>`,
+		" : '';
+$sharedDataUrl = \V::app()->createUrl('', [ 'data' => 1, 'shared' => 1 ]);
 
 $script = "
 +function(){
@@ -33,6 +38,8 @@ $script = "
 		name: { label: 'Name', type: 'text', filter: true },
 		rows: { label: 'Rows', type: 'number', filter: false },
 		cols: { label: 'Cols', type: 'number', filter: false },
+		//CLD: 2026-11-03T14:00:00+02:00: how many projects it is shared with
+		shares: { label: 'Shared with', type: 'number', filter: false },
 		created_at: { label: 'Created', type: 'datetime', filter: true },
 	    },
 	},
@@ -40,7 +47,7 @@ $script = "
 	    createRowUrl: false,
 	    rowActions: {
 		manage: `<a href='/datatable/manage/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn'><i class='bi bi-table'></i></a>`,
-		update: `<a href='/datatable/update/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn'><i class='bi bi-pencil'></i></a>`,
+		{$shareAction}update: `<a href='/datatable/update/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn'><i class='bi bi-pencil'></i></a>`,
 		delete: `<a href='/datatable/delete/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' data-confirm='Are you sure?' data-method='post'><i class='bi bi-trash'></i></a>`,
 	    }
 	},
@@ -53,6 +60,37 @@ $script = "
 }();
 ";
 \V::app()->cs->addPageScript($script);
+
+if ($sharedCount > 0) {
+    \V::app()->cs->addPageScript("
++function(){
+    const container = document.getElementById('datatables-shared');
+    new app.GridView(container, {
+	filter: false,
+	create: '',
+	title: `<h5 class='h5 mb-0'>Shared with this project</h5>`,
+	dataUrl: '{$sharedDataUrl}',
+	schema: {
+	    readonly: true,
+	    updateColumnUrl: '',
+	    createColumnUrl: '',
+	    data: {
+		name: { label: 'Name', type: 'text', filter: false },
+		project: { label: 'From project', type: 'text', filter: false },
+		access: { label: 'This project may', type: 'text', filter: false },
+		rows: { label: 'Rows', type: 'number', filter: false },
+	    },
+	},
+	grid: {
+	    createRowUrl: false,
+	    rowActions: {
+		manage: `<a href='/datatable/manage/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Open'><i class='bi bi-table'></i></a>`,
+	    }
+	},
+    });
+}();
+");
+}
 
 ?>
 <div class="main-header py-2 px-3">
@@ -74,4 +112,9 @@ $script = "
     <?php endif; ?>
 </div>
 
-<div id="datatables-list" class="main-body p-4"></div>
+<div class="main-body p-4">
+    <div id="datatables-list"></div>
+    <?php if ($sharedCount > 0): ?>
+    <div id="datatables-shared" class="mt-4"></div>
+    <?php endif; ?>
+</div>

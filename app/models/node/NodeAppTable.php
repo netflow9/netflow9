@@ -58,6 +58,8 @@ class NodeAppTable extends \models\wf\WfNode {
 
     //CLD: 2026-10-18T10:45:00+03:00: the operations using the filter / the row data (validateIf and showIf of `filter` / `data`, the column checks of validates())
     const FILTER_OPERATIONS = [ 'query', 'updateMany', 'deleteMany' ];
+    //CLD: 2026-11-03T14:00:00+02:00: the operations that do not change rows: all a table shared at level `read` allows
+    const READ_OPERATIONS = [ 'query', 'get', 'schema' ];
     const DATA_OPERATIONS = [ 'insert', 'upsert', 'update', 'updateMany' ];
 
     //columns every row has (besides the table's)
@@ -264,12 +266,14 @@ class NodeAppTable extends \models\wf\WfNode {
     //CLD: 2026-10-18T10:45:00+03:00: removed rowForm(): the lists are nested fields (their object is the row form)
 
     //the data tables of the current project, for the designer: [ id => name ]
+    //CLD: 2026-11-03T14:00:00+02:00: + those shared with it, named with their project
     protected static function tableChoices() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
 	$choices = [];
-	foreach(\V::app()->om->find('DataTableDef', [ 'aid' => \V::app()->config('rt.account')->_id ?? null, 'project' => \V::app()->om->to_oid(\V::app()->user->crtProject) ], [ 'sort' => [ 'name' => 1 ] ]) as $t)
-	    $choices[(string)$t->_id] = (string)$t->name;
+	$project = \V::app()->user->crtProject;
+	foreach(\V::app()->om->find('DataTableDef', [ 'aid' => \V::app()->config('rt.account')->_id ?? null ] + \models\datatable\DataTableDef::visibleInQuery($project), [ 'sort' => [ 'name' => 1 ] ]) as $t)
+	    $choices[(string)$t->_id] = (string)$t->name . ($t->isHome($project) ? '' : ' (shared from ' . $t::projectName($t->project) . ')');
 	return $choices;
     }
 
@@ -282,8 +286,11 @@ class NodeAppTable extends \models\wf\WfNode {
 	    return [];
 	//CLD: 2026-10-13T12:34:29+03:00: + the fields and their types per operation; a row's fields: id, the table's columns (when the table is found: its account), created_at, updated_at
 	$row = [ 'type' => 'object', 'fields' => [ 'id' => [ 'type' => 'string' ] ] ];
+	//CLD: 2026-11-03T14:00:00+02:00: for a user, only a table of their current project or shared with it (was: any table of the account, so its columns showed through a step's settings)
 	$table = is_array($config) && \util\Validator::rule('oid', (string)($config['table'] ?? '')) && \V::app()->config('rt.account')
-	    ? \V::app()->om->findOne('DataTableDef', [ '_id' => (string)$config['table'], 'aid' => \V::app()->config('rt.account')->_id ]) : null;
+	    ? (\V::app()->config('app.mode') == 'web'
+		? self::findTable((string)$config['table'], \V::app()->config('rt.account')->_id, \V::app()->user->crtProject)
+		: \V::app()->om->findOne('DataTableDef', [ '_id' => (string)$config['table'], 'aid' => \V::app()->config('rt.account')->_id ])) : null;
 	if ($table) {
 	    foreach($table->columns() as $key => $f)
 		$row['fields'][$key] = [ 'type' => [ 'number' => 'number', 'array' => 'array', 'object' => 'object', 'checkbox' => 'any', 'switch' => 'any' ][(string)$f->type] ?? 'string',
@@ -312,7 +319,12 @@ class NodeAppTable extends \models\wf\WfNode {
 	$table = $this->workflow ? self::findTable((string)$this->cfg('table', ''), $this->workflow->aid, $this->workflow->project) : null;
 	//CLD: 2026-10-14T14:18:23+03:00: an empty one is reported by the field's `required` (was reported here too)
 	if (!$table && (string)$this->cfg('table', '') !== '') {
-	    $this->errors('config', 'Table: choose a data table of this project');
+	    $this->errors('config', 'Table: choose a data table of this project, or one shared with it');
+	    $valid = false;
+	}
+	//CLD: 2026-11-03T14:00:00+02:00: a table shared for reading: no operation that changes rows
+	if ($table && !in_array($op, self::READ_OPERATIONS, true) && !$table->shareAllows($this->workflow->project, 'DataTable::writeData')) {
+	    $this->errors('config', "Table: {$table->name} is shared with this project for reading only");
 	    $valid = false;
 	}
 	$columns = $table ? $table->columns() : null;
@@ -346,10 +358,12 @@ class NodeAppTable extends \models\wf\WfNode {
     }
 
     //data table $id of account $aid and project $project, or null
-    public static function findTable($id, $aid, $project) {
+    //CLD: 2026-11-03T14:00:00+02:00: or shared with $project; $homeOnly: its own tables only
+    public static function findTable($id, $aid, $project, $homeOnly = false) {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
-	return \V::app()->om->findOne('DataTableDef', [ '_id' => (string)$id, 'aid' => $aid, 'project' => $project ]);
+	$scope = $homeOnly ? [ 'project' => $project ] : \models\datatable\DataTableDef::visibleInQuery($project);
+	return \V::app()->om->findOne('DataTableDef', [ '_id' => (string)$id, 'aid' => $aid ] + $scope);
     }
 
     // ------------------------------------------------------------------------------------
@@ -377,7 +391,10 @@ class NodeAppTable extends \models\wf\WfNode {
     protected function run($op) {
 	$table = self::findTable((string)$this->cfg('table', ''), $this->exec->aid, $this->exec->project);
 	if (!$table)
-	    throw new \ErrorException('the table is not a data table of this project (deleted?)');
+	    throw new \ErrorException('the table is not a data table of this project (deleted, or no longer shared?)');
+	//CLD: 2026-11-03T14:00:00+02:00: checked again at each run: the level may have changed since the workflow was saved
+	if (!in_array($op, self::READ_OPERATIONS, true) && !$table->shareAllows($this->exec->project, 'DataTable::writeData'))
+	    throw new \ErrorException("the table {$table->name} is shared with this project for reading only");
 	$columns = $table->columns();
 	$iname = $table->iname;
 	$aid = $this->exec->aid;

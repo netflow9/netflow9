@@ -298,11 +298,12 @@ class McpServerTools {
 	switch($name) {
 	    case 'list_tables':
 		$list = [];
-		foreach($om->find('DataTableDef', [ 'aid' => $aid, 'project' => $project->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $t) {
+		//CLD: 2026-11-03T14:00:00+02:00: + the tables shared with the project (with their project and what the project may do)
+		foreach($om->find('DataTableDef', [ 'aid' => $aid ] + \models\datatable\DataTableDef::visibleInQuery($project->_id), [ 'sort' => [ 'name' => 1 ] ]) as $t) {
 		    if (!$can('DataTable::read', $t))
 			continue;
 		    //CLD: 2026-10-22T01:11:17+03:00: tableInfo (+ choices, points_to; shared with the structure tools)
-		    $list[] = self::tableInfo($t);
+		    $list[] = self::tableInfo($t) + ($t->isHome($project->_id) ? [] : [ 'shared_from' => $t::projectName($t->project), 'access' => (string)($t->shareOf($project->_id)['access'] ?? '') ]);
 		}
 		return [ 'tables' => $list ];
 
@@ -648,8 +649,17 @@ class McpServerTools {
 
     //the data table named / with the id in $args['table'], if the user has $permName on it ($can, see call())
     private static function table(array $args, $project, $permName, \Closure $can) {
-	$t = self::findIn('DataTableDef', $args['table'] ?? '', $project, 'table');
-	if (!$can($permName, $t))
+	//CLD: 2026-11-03T14:00:00+02:00: not of the project: one shared with it (by id, or its name when no table of the project has it); what the share's level does not give is refused also for an AI step ($can passes)
+	try {
+	    $t = self::findIn('DataTableDef', $args['table'] ?? '', $project, 'table');
+	} catch (\ErrorException $e) {
+	    $ref = trim((string)($args['table'] ?? ''));
+	    $query = [ 'aid' => $project->aid ] + \models\datatable\DataTableDef::sharedWithQuery($project->_id) + (\util\Validator::rule('oid', $ref) ? [ '_id' => \V::app()->om->to_oid($ref) ] : [ 'name' => $ref ]);
+	    $t = $ref === '' ? null : \V::app()->om->findOne('DataTableDef', $query);
+	    if (!$t)
+		throw $e;
+	}
+	if (!$can($permName, $t) || !$t->shareAllows($project->_id, $permName))
 	    //CLD: 2026-10-22T01:11:17+03:00: + DataTable::update: its structure
 	    throw new \ErrorException('you may not ' . match($permName) { 'DataTable::readData' => "read the rows of table `{$t->name}`", 'DataTable::update' => "change table `{$t->name}`",
 		default => "change the rows of table `{$t->name}`" });

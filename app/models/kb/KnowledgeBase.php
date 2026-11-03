@@ -174,12 +174,8 @@ class KnowledgeBase extends \sys\BaseModel {
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)
 	    $permName = 'KnowledgeBase::' . $permName;
-	$scope = \V::app()->auth->getUserRole()->getPermissionScope($permName);
-	if ($scope == 'global')
-	    return true;
-	if ($scope == 'project')
-	    return \models\Project::isMember($this->project, $this->aid, $userId);
-	return false;
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the project decides (was: any membership)
+	return \models\Project::can($this->project, $this->aid, $userId, $permName);
     }
 
     public function __toString() {

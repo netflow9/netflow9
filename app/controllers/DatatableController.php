@@ -19,6 +19,26 @@ class DatatableController extends \sys\BaseController {
 	if (!\V::app()->user->can('DataTable::list'))
 	    \V::app()->error(403, 'Unauthorized');
 
+	//CLD: 2026-11-03T14:00:00+02:00: ?shared=1: the tables other projects share with this one, those the user may read (the page's second list)
+	$def = \models\datatable\DataTableDef::class;
+	$sharedHere = fn() => array_filter(iterator_to_array(\V::app()->om->find('DataTableDef', [ 'aid' => \V::app()->var('rt.account')->_id ] + $def::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false),
+	    fn($t) => \V::app()->user->can('DataTable::readData', [ 'object' => $t ]));
+
+	if (!empty($req->query['data']) && !empty($req->query['shared'])) {
+	    $data = [];
+	    foreach($sharedHere() as $t) {
+		$level = (string)($t->shareOf($this->project->_id)['access'] ?? '');
+		$data[] = [
+		    '_id' => (string)$t->_id,
+		    'name' => $t->name,
+		    'project' => $t::projectName($t->project),
+		    'access' => $t::SHARE_LEVELS[$level] ?? $level,
+		    'rows' => \V::app()->om->count($t->iname, [ 'aid' => $t->aid ]),
+		];
+	    }
+	    $resp->sendJSON([ 'nRecords' => count($data), 'data' => $data ]);
+	}
+
 	if (!empty($req->query['data'])) {
 	    //populate manually
 	    $account = \V::app()->var('rt.account');
@@ -38,6 +58,8 @@ class DatatableController extends \sys\BaseController {
 		    'name' => $t->name,
 		    'rows' => \V::app()->om->count($t->iname, [ 'aid' => $account->_id ]),
 		    'cols' => \V::app()->om->count('Field', [ 'objectName' => $t->iname ]),
+		    //CLD: 2026-11-03T14:00:00+02:00: how many projects it is shared with
+		    'shares' => count((array)$t->shares),
 		    'created_at' => $t->schema['created_at']->display(),
 		];
 	    }
@@ -45,7 +67,9 @@ class DatatableController extends \sys\BaseController {
 	    $resp->sendJSON($response);
 	}
 
-	$this->render('list');
+	$sharedCount = count($sharedHere());
+	$canShare = !$this->project->personal && \V::app()->user->can('DataTable::share');
+	$this->render('list', compact('sharedCount', 'canShare'));
     }
 
     //CLD: 2026-10-11T21:32:01+03:00: POST only (the Create link has data-method="post"; a GET, e.g. a prefetch or a typed URL, created a table)
@@ -355,6 +379,11 @@ class DatatableController extends \sys\BaseController {
 	$dt = $this->findTable('DataTable::delete');
 
 	if ($req->is('post')) {
+	    //CLD: 2026-11-03T14:00:00+02:00: not while it is shared: ending each share (the Share dialog) shows which workflows of the other project use it
+	    if (!empty((array)$dt->shares)) {
+		$this->addToast('error', 'Not deleted', 'This table is shared with other projects: stop sharing it first');
+		$this->sendEvents();
+	    }
 	    $dt->delete();
 	    $this->addToast('success', 'OK', 'DataTable deleted!');
 	    $this->addEvent('object::deleted', [ 'object' => 'DataTableDef', 'oid' => null ]);
@@ -577,6 +606,9 @@ class DatatableController extends \sys\BaseController {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 	$dt = $this->findTable('DataTable::readData');
+	//CLD: 2026-11-03T14:00:00+02:00: the saved views are its own project's
+	if (!\models\Project::can($dt->project, $dt->aid, \V::app()->user->_id, 'DataTable::readData'))
+	    $resp->sendJSON([ 'error' => 'This table is shared: its saved views are managed by its own project' ], true, 403);
 
 	$name = trim((string)($req->data['name'] ?? ''));
 	if ($name === '' || mb_strlen($name) > 64)
@@ -612,6 +644,9 @@ class DatatableController extends \sys\BaseController {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 	$dt = $this->findTable('DataTable::readData');
+	//CLD: 2026-11-03T14:00:00+02:00: the saved views are its own project's
+	if (!\models\Project::can($dt->project, $dt->aid, \V::app()->user->_id, 'DataTable::readData'))
+	    $resp->sendJSON([ 'error' => 'This table is shared: its saved views are managed by its own project' ], true, 403);
 	$viewId = $this->getOidParam('view');
 	if (empty($viewId))
 	    \V::app()->error(400, 'malformed request: view missing');

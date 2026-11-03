@@ -3,9 +3,21 @@
 namespace models\datatable;
 
 class DataTableDef extends \sys\BaseModel {
+    //CLD: 2026-11-03T14:00:00+02:00: a table can be shared with other projects of the account: rows only; its columns stay with its own project
+    use \models\share\ShareableTrait;
+
+    const SHARE_PERM = 'DataTable::share';
+    const SHARE_WHAT = 'Data table';
+    const SHARE_LEVELS = [ 'read' => 'Read rows', 'write' => 'Read and change rows' ];
+    const SHARE_PERMS = [
+	'read' => [ 'DataTable::read', 'DataTable::readData' ],
+	'write' => [ 'DataTable::read', 'DataTable::readData', 'DataTable::writeData' ],
+    ];
+
     protected static $collection = 'data-tables-defs';
     public static $indexes = [
 	[ [ 'aid' => 1, 'project' => 1 ], [] ],
+	[ [ 'aid' => 1, 'shares.project' => 1 ], [] ],
 	[ [ 'iname' => 1 ], [] ],
     ];
 
@@ -54,6 +66,9 @@ class DataTableDef extends \sys\BaseModel {
 		'perm:update' => 'permission',
 		'showInForms' => false,
 	    ],
+
+	    //CLD: 2026-11-03T14:00:00+02:00: the projects it is shared with
+	    self::sharesField(),
 	];
 	return array_merge($fields, $this->getSystemSchema());
     }
@@ -93,19 +108,25 @@ class DataTableDef extends \sys\BaseModel {
     //CLD: 2026-10-11T21:16:48+03:00: access to a table (was the BaseModel default: always refused, so project-scope users got 403 on every table): global scope = the
     //account's tables, project scope = the tables of the projects the user is a member of. The permissions are named DataTable::* (not DataTableDef::*)
     public function checkAccess($userId, $permName, $params = []) {
-	$role = \V::app()->auth->getUserRole();
-
 	if (strpos($permName, '::') === false)
 	    $permName = 'DataTable::' . $permName;
 
-	$scope = $role->getPermissionScope($permName);
-	if ($scope == 'global')
-	    return true;
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the table's project decides (was: any membership)
+	//CLD: 2026-11-03T14:00:00+02:00: or a share with a project where their role allows it
+	return \models\Project::can($this->project, $this->aid, $userId, $permName) || $this->sharedCan($userId, $permName);
+    }
 
-	if ($scope == 'project')
-	    return \models\Project::isMember($this->project, $this->aid, $userId);
-
-	return false;
+    //CLD: 2026-11-03T14:00:00+02:00: what the Share dialog warns of: object columns pointing to tables that are not shared (their rows' labels are shown to who reads this one)
+    public function shareWarnings() {
+	$names = [];
+	foreach($this->columns() as $f) {
+	    if ($f->type !== 'object')
+		continue;
+	    $target = \V::app()->om->findOne('DataTableDef', [ 'iname' => (string)$f->object, 'aid' => $this->aid ]);
+	    if ($target && (string)$target->_id !== (string)$this->_id)
+		$names[(string)$target->name] = true;
+	}
+	return $names ? [ 'Columns of this table point to ' . implode(', ', array_keys($names)) . ': who reads this table also sees the labels of the rows they point to.' ] : [];
     }
 
     // ------------------------------------------------------------------------------------

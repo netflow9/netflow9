@@ -128,7 +128,7 @@ class AgentMemory {
 	$errors = [];
 	$scope = (string)$step->cfg('memoryScope', 'user');
 	if ($store === 'table') {
-	    $table = (string)$step->cfg('memoryTable', '') === '' ? null : \models\node\NodeAppTable::findTable((string)$step->cfg('memoryTable'), $wf->aid, $wf->project);
+	    $table = (string)$step->cfg('memoryTable', '') === '' ? null : \models\node\NodeAppTable::findTable((string)$step->cfg('memoryTable'), $wf->aid, $wf->project, true);
 	    if (!$table) {
 		$errors[] = 'Long-term memory: choose a data table of this project';
 	    } else {
@@ -169,7 +169,7 @@ class AgentMemory {
 	$at = \models\agent\AgentConversation::ofExecution($ai->exec);
 	$conv = $at ? (string)$at[0]['_id'] : '';
 	if ($store === 'table') {
-	    $table = \models\node\NodeAppTable::findTable((string)$ai->cfg('memoryTable', ''), $project->aid, $project->_id);
+	    $table = \models\node\NodeAppTable::findTable((string)$ai->cfg('memoryTable', ''), $project->aid, $project->_id, true);
 	    if (!$table)
 		throw new \ErrorException('the data table of Long-term memory is no longer in the project');
 	    $on = "data table {$table->name}";

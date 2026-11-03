@@ -267,6 +267,16 @@ class SysPermissions {
 		'scopes' => [ 'global', 'project' ],
 		'desc' => 'Change data table data'
 	    ],
+	    //CLD: 2026-11-03T14:00:00+02:00: sharing a table with other projects of the account (ShareController); owners (also the roles already stored)
+	    [
+		'name' => 'DataTable::share',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'Share data tables with other projects',
+		'defaults' => [
+		    'owner' => [ 'enabled' => true, 'scope' => 'global' ],
+		    'member' => [ 'enabled' => false ]
+		]
+	    ],
 	];
 
 	//CLD: 2026-10-31T01:00:00+02:00: knowledge bases (models\kb\KnowledgeBase; controllers\KnowledgeController); defaults for the roles already stored, as the data tables'
