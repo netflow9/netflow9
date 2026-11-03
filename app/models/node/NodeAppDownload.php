@@ -129,6 +129,9 @@ class NodeAppDownload extends NodeAppHttp {
 	    $cred = \models\Credential::findFor($this->exec, $credId, 'http');
 	    if (empty($cred))
 		throw new \ErrorException('Download File: the credential is no longer available');
+	    //CLD: 2026-11-03T18:00:00+02:00: a credential shared for some hosts: only there, no redirects
+	    if (!$cred->allowsUrlIn($this->exec->project, $url))
+		throw new \ErrorException('Download File: the credential `' . $cred->name . '` is shared with this project for other hosts');
 	    $auth = $cred->httpAuth();
 	    foreach((array)($auth['headers'] ?? []) as $name => $value)
 		$headers[strtolower($name)] = $name . ': ' . $value;
@@ -140,7 +143,7 @@ class NodeAppDownload extends NodeAppHttp {
 	$timeout = max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120)));
 	$stream = fopen('php://temp/maxmemory:' . (2 * 1024 * 1024), 'w+b');
 	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here); public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE
-	$r = \util\Http::request('GET', $url, self::guard() + [ 'headers' => array_values($headers), 'timeout' => $timeout, 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5 ]);
+	$r = \util\Http::request('GET', $url, (!empty($cred) && $cred->hostLockedIn($this->exec->project) ? [ 'redirects' => 0 ] : []) + self::guard() + [ 'headers' => array_values($headers), 'timeout' => $timeout, 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5 ]);
 	[ $status, $size, $contentType, $effective, $respHeaders, $ms ] = [ $r['status'], $r['size'], $r['mime'], $r['url'], $r['headers'], $r['time_ms'] ];
 
 	$error = null;

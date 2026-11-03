@@ -261,6 +261,9 @@ class NodeAppHttp extends \models\wf\WfNode {
 	    $cred = \models\Credential::findFor($this->exec, $credId, 'http');
 	    if (empty($cred))
 		throw new \ErrorException('HTTP Request: the credential is no longer available');
+	    //CLD: 2026-11-03T18:00:00+02:00: a credential shared for some hosts: only there, no redirects
+	    if (!$cred->allowsUrlIn($this->exec->project, $url))
+		throw new \ErrorException('HTTP Request: the credential `' . $cred->name . '` is shared with this project for other hosts');
 	    $auth = $cred->httpAuth();
 	    foreach((array)($auth['headers'] ?? []) as $name => $value)
 		$headers[strtolower($name)] = [ $name, (string)$value ];
@@ -294,7 +297,9 @@ class NodeAppHttp extends \models\wf\WfNode {
 	}
 
 	//CLD: 2026-10-23T15:00:00+03:00: public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE
-	$response = self::request($method, $url, array_map(fn($h) => $h[0] . ': ' . $h[1], array_values($headers)), $body, (int)$this->cfg('timeout', 30), self::guard());
+	$response = self::request($method, $url, array_map(fn($h) => $h[0] . ': ' . $h[1], array_values($headers)), $body, (int)$this->cfg('timeout', 30),
+	    //CLD: 2026-11-03T18:00:00+02:00: a credential shared for some hosts: no redirects
+	    (!empty($cred) && $cred->hostLockedIn($this->exec->project) ? [ 'redirects' => 0 ] : []) + self::guard());
 	$name = (string)$this->cfg('variable', 'response');
 	if (\util\Validator::isIdentifier($name))
 	    $this->exec->setVariable($name, $response);

@@ -57,12 +57,21 @@ class CredentialController extends \sys\BaseController {
 	if (!\V::app()->user->can('Credential::list', [ 'object' => $this->projectCredential() ]))
 	    \V::app()->error(403, 'Unauthorized');
 
+	//CLD: 2026-11-03T18:00:00+02:00: ?shared=1: the credentials other projects share with this one: name, type, project (the page's second list)
+	$sharedHere = fn() => iterator_to_array(\V::app()->om->find('Credential', [ 'aid' => \V::app()->config('rt.account')->_id ] + \models\Credential::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false);
+	if (!empty($req->query['data']) && !empty($req->query['shared'])) {
+	    $data = array_map(fn($c) => [ '_id' => (string)$c->_id, 'name' => (string)$c->name, 'type' => (string)$c::$label, 'project' => $c::projectName($c->project) ], $sharedHere());
+	    $resp->sendJSON([ 'nRecords' => count($data), 'data' => $data ]);
+	}
+
 	if (!empty($req->query['data'])) {
 	    $response = $this->__data('Credential', [ 'project' => $this->project->_id ]);
 	    $resp->sendJSON($response);
 	}
 
-	$this->render('list');
+	$sharedCount = count($sharedHere());
+	$canShare = !$this->project->personal && \V::app()->user->can('Credential::share', [ 'object' => $this->projectCredential() ]);
+	$this->render('list', compact('sharedCount', 'canShare'));
     }
 
     public function create($req, $resp) {
@@ -132,6 +141,11 @@ class CredentialController extends \sys\BaseController {
 	$cred = $this->findOrError('Credential::delete');
 
 	if ($req->is('post')) {
+	    //CLD: 2026-11-03T18:00:00+02:00: not while it is shared: ending each share (the Share dialog) shows which workflows of the other project use it
+	    if (!empty((array)$cred->shares)) {
+		$this->addToast('error', 'Not deleted', 'This credential is shared with other projects: stop sharing it first');
+		$this->sendEvents();
+	    }
 	    $cred->delete();
 	    $this->addToast('success', 'OK', 'Credential deleted');
 	    $this->addEvent('object::deleted', [ 'object' => 'Credential', 'oid' => null ]);
