@@ -1796,6 +1796,17 @@ class CheckCommand extends \sys\BaseController {
 		$om->findOne('File', [ '_id' => $pdf ])?->delete();
 	    }
 
+	    //CLD: 2026-11-03T08:36:38+02:00: LM Studio: the OpenAI requests, at its own default address, a local provider
+	    $lms = $make('CredentialLmStudio', "http://127.0.0.1:{$port}/api/v1", 'check-key');
+	    $this->check('LM Studio: the step type; the credential: what it provides, its default address, its Test; the Assistant\'s address; local', [ true, [ 'lmstudio', 'http' ], 'http://localhost:1234/v1', '2 models: Qwen3-8B-GGUF, Gemma-3-4b-it-GGUF', 'http://localhost:1234/v1', true, 900 ],
+		[ isset($all['app::lmstudio']), \models\credential\CredentialLmStudio::$provides, $om->create('CredentialLmStudio', [ 'aid' => $this->account->_id ])->baseUrl, $refused($lms),
+		\util\WorkflowAssistant::credentialOf((object)[ 'provider' => 'lmstudio' ])->baseUrl, \data\AiProviders::isLocal('lmstudio'), \models\node\NodeAppLmStudio::MAX_TIMEOUT ]);
+	    @unlink($log);
+	    $exe = $flow('lmstudio', 'app::lmstudio', [ 'model' => 'Qwen3-8B-GGUF', 'temperature' => '0.3', 'tools' => [] ], $lms);
+	    $sent = $requests('/api/v1/chat/completions');
+	    $this->check('LM Studio: a run (the answer, the model, the prompt, the temperature)', [ 'success', 'Hello from Qwen3-8B-GGUF', 'Qwen3-8B-GGUF', 'Hi Ana', 0.3 ],
+		[ $exe?->getVariable('route'), $exe?->getVariable('ai')['text'] ?? null, $sent[0]['model'] ?? null, $unmark($sent[0]['messages'][1]['content'] ?? ''), $sent[0]['temperature'] ?? null ]);
+
 	    //Ollama: its own API
 	    @unlink($log);
 	    $exe = $flow('ollama', 'app::ollama', [ 'model' => 'qwen3:8b', 'temperature' => '0.2', 'contextLength' => '8192', 'think' => 'off', 'keepAlive' => '10m', 'maxTokens' => 500 ], $oll);
@@ -4210,8 +4221,8 @@ class CheckCommand extends \sys\BaseController {
 	    $exe = $start('claude', [ [ $list ] ], [ 'prompt' => "Write to {$names}\nSCRIPT: " . json_encode([ [ $list ] ]) ]);
 	    $this->check('agent guard: masking is off by default', $secret, $hasSecret($sentRaw()));
 	    //System AI of a cloud provider: masked, of a local one: not (the provider's kind decides)
-	    $this->check('agent guard: masking: the switch is offered on cloud providers only', [ true, true, true, false, false ], array_map(fn($c) => in_array('maskPersonalData', array_column($c::configSchema(), 'key'), true),
-		[ \models\node\NodeAppClaude::class, \models\node\NodeAppOpenAI::class, \models\node\NodeAppGemini::class, \models\node\NodeAppLemonade::class, \models\node\NodeAppOllama::class ]));
+	    $this->check('agent guard: masking: the switch is offered on cloud providers only', [ true, true, true, false, false, false ], array_map(fn($c) => in_array('maskPersonalData', array_column($c::configSchema(), 'key'), true),
+		[ \models\node\NodeAppClaude::class, \models\node\NodeAppOpenAI::class, \models\node\NodeAppGemini::class, \models\node\NodeAppLemonade::class, \models\node\NodeAppOllama::class, \models\node\NodeAppLmStudio::class ]));
 	    //a tool result, across a wait for approval
 	    $listed = 'wf_check_guard_child';
 	    $clear();

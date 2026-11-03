@@ -8,7 +8,7 @@
 
     bring your own key:
 	the providers System (the installation's server, config assistant.system: no key, URL or model here),
-	Claude, OpenAI, Gemini, Ollama, Lemonade;
+	Claude, OpenAI, Gemini, Ollama, Lemonade, LM Studio;
 	each speaks one protocol (data\AiProviders: the Anthropic Messages API or OpenAI chat completions).
 	+ a monthly budget (USD; the spending: AssistantUsage), counted at the list prices (data\AiProviders)
 
@@ -60,7 +60,7 @@ class AssistantSettings extends \sys\BaseModel {
 		'key' => 'url',
 		'type' => 'text',
 		'label' => 'Server URL',
-		'help' => 'Empty: the provider\'s own API. Otherwise a proxy, or a server up to the version, e.g. http://localhost:8000/api/v1 (Lemonade), http://localhost:11434/v1 (Ollama)',
+		'help' => 'Empty: the provider\'s own API. Otherwise a proxy, or a server up to the version, e.g. http://localhost:8000/api/v1 (Lemonade), http://localhost:11434/v1 (Ollama), http://localhost:1234/v1 (LM Studio)',
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
 		'default' => '',
@@ -72,7 +72,7 @@ class AssistantSettings extends \sys\BaseModel {
 		'key' => 'api_key',
 		'type' => 'password',
 		'label' => 'API key',
-		'help' => 'Claude: console.anthropic.com; OpenAI: platform.openai.com; Gemini: aistudio.google.com; Ollama, Lemonade: only when the server asks for one. Empty keeps the saved one',
+		'help' => 'Claude: console.anthropic.com; OpenAI: platform.openai.com; Gemini: aistudio.google.com; Ollama, Lemonade, LM Studio: only when the server asks for one. Empty keeps the saved one',
 		'perm:update' => 'everybody',
 		'encrypt' => true,
 		'default' => '',

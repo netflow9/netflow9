@@ -59,6 +59,14 @@ class AiProviders {
 	    'embeddings' => true,
 	    'url' => 'http://localhost:8000/api/v1',
 	],
+	'lmstudio' => [
+	    'label' => 'LM Studio',
+	    'name' => 'LM Studio',
+	    'protocol' => 'openai',
+	    'cloud' => false,
+	    'embeddings' => true,
+	    'url' => 'http://localhost:1234/v1',
+	],
     ];
 
     //the list prices of the cloud models, USD per 1M tokens: [ input, output, cached input ], by model id or the start of one (util\AiPrices::of: the longest that matches, followed by

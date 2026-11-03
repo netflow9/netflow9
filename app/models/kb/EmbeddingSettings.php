@@ -3,7 +3,7 @@
 /*
     the embedding model of an account, one document per account: what turns the knowledge bases' texts into vectors (util\Embeddings), for every
     project of the account. Set on the Settings menu's Knowledge bases page (KnowledgeController::settings; Connect lists the server's models: KnowledgeController::connect).
-	provider   ollama | lemonade | openai (or another OpenAI-compatible server) | gemini
+	provider   ollama | lemonade | lmstudio | openai (or another OpenAI-compatible server) | gemini
 	url        the server (empty: the provider's own: data\AiProviders)
 	api_key    encrypted; empty keeps the saved one (only for the same provider and server)
 	model      the embedding model; a knowledge base remembers the model it was indexed with (models\kb\KnowledgeBase::$model): another model here means re-indexing it
@@ -25,7 +25,7 @@ class EmbeddingSettings extends \sys\BaseModel {
 		'key' => 'provider',
 		'type' => 'select',
 		'label' => 'Provider',
-		'help' => 'Who makes the embeddings: a server of your own (Ollama, Lemonade) or a provider\'s API (your key, your costs)',
+		'help' => 'Who makes the embeddings: a server of your own (Ollama, Lemonade, LM Studio) or a provider\'s API (your key, your costs)',
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
 		'required' => true,
@@ -48,7 +48,7 @@ class EmbeddingSettings extends \sys\BaseModel {
 		'key' => 'api_key',
 		'type' => 'password',
 		'label' => 'API key',
-		'help' => 'OpenAI: platform.openai.com; Gemini: aistudio.google.com; Ollama, Lemonade: only when the server asks for one. Empty keeps the saved one',
+		'help' => 'OpenAI: platform.openai.com; Gemini: aistudio.google.com; Ollama, Lemonade, LM Studio: only when the server asks for one. Empty keeps the saved one',
 		'perm:update' => 'everybody',
 		'encrypt' => true,
 		'default' => '',
