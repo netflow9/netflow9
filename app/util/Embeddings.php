@@ -4,7 +4,8 @@
     embeddings (text -> vector) for the knowledge bases (models\kb\KnowledgeBase)
     through the account's embedding settings (models\kb\EmbeddingSettings: provider, server, key, model; was an AI credential of the project):
 	ollama        POST <URL>/api/embed { model, input: [ ... ], truncate } -> embeddings; models: GET <URL>/api/tags
-	lemonade,     POST <URL>/embeddings { model, input: [ ... ] } -> data[].embedding (by index); models: GET <URL>/models
+	lemonade, lmstudio,
+		      POST <URL>/embeddings { model, input: [ ... ] } -> data[].embedding (by index); models: GET <URL>/models
 	openai
 	gemini        POST <URL>/models/<model>:batchEmbedContents { requests: [ { model, content, taskType } ] } -> embeddings[].values; models: GET <URL>/models (embedContent)
     The texts go in batches of BATCH. A document and a query are embedded differently where the model asks for it: Gemini's taskType (RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY), the

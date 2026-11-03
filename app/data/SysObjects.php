@@ -185,6 +185,10 @@ class SysObjects {
 		'class' => 'models\credential\CredentialLemonade',
 		'variant-of' => 'Credential',
 	    ],
+	    'CredentialLmStudio' => [
+		'class' => 'models\credential\CredentialLmStudio',
+		'variant-of' => 'Credential',
+	    ],
 	    'CredentialOllama' => [
 		'class' => 'models\credential\CredentialOllama',
 		'variant-of' => 'Credential',
@@ -712,6 +716,10 @@ class SysObjects {
 	    //CLD: 2026-10-22T01:36:46+03:00: Lemonade AI (the OpenAI step's requests, on a Lemonade server) and Ollama (Ollama's own API)
 	    'NodeAppLemonade' => [
 		'class' => 'models\node\NodeAppLemonade',
+		'wfNode' => true,
+	    ],
+	    'NodeAppLmStudio' => [
+		'class' => 'models\node\NodeAppLmStudio',
 		'wfNode' => true,
 	    ],
 	    'NodeAppOllama' => [

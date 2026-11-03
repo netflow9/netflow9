@@ -157,7 +157,7 @@ JS . "}({$connectJs});");
 	    </div>
 
 	    <?php //CLD: 2026-10-22T14:00:00+03:00: your own server and key: every provider but System ?>
-	    <div data-assistant-provider="anthropic openai gemini ollama lemonade">
+	    <div data-assistant-provider="anthropic openai gemini ollama lemonade lmstudio">
 	    <?= $settings->schema['url']->input([ 'cols' => '3,9' ]) ?>
 	    <?= $settings->schema['api_key']->input([ 'cols' => '3,9', 'input' => [ 'autocomplete' => 'new-password' ] ]) ?>
 
@@ -185,7 +185,7 @@ JS . "}({$connectJs});");
 		<?= $settings->schema['effort']->input([ 'cols' => '3,9' ]) ?>
 	    </div>
 	    <?php //CLD: 2026-10-22T14:00:00+03:00: + gemini, ollama, lemonade ?>
-	    <div data-assistant-provider="openai gemini ollama lemonade">
+	    <div data-assistant-provider="openai gemini ollama lemonade lmstudio">
 		<div class="form-text">The Server URL is reached from this application's server, so localhost means that machine. A local model needs a large context (the step types alone take about 10,000 tokens) and good tool calling.</div>
 	    </div>
 
@@ -193,12 +193,12 @@ JS . "}({$connectJs});");
 	<div class="col-xl-6">
 	    <?php //CLD: 2026-10-22T14:00:00+03:00: new: the monthly budget, this month's spending ?>
 	    <?php //CLD: 2026-10-22T15:00:00+03:00: the budget is for your own key (System: credits, above) ?>
-	    <div data-assistant-provider="anthropic openai gemini ollama lemonade">
+	    <div data-assistant-provider="anthropic openai gemini ollama lemonade lmstudio">
 	    <h6 class="mt-4 mt-xl-2">Budget</h6>
 	    <?= $settings->schema['budget']->input([ 'cols' => '3,9', 'input' => [ 'inputmode' => 'decimal', 'placeholder' => 'No limit' ] ]) ?>
 	    </div>
 	    <?php //CLD: 2026-10-22T15:00:00+03:00: your own key's spending (System: the credits, above) ?>
-	    <div class="form-group row mb-2" data-assistant-provider="anthropic openai gemini ollama lemonade">
+	    <div class="form-group row mb-2" data-assistant-provider="anthropic openai gemini ollama lemonade lmstudio">
 		<label class="col-sm-3 col-form-label">This month</label>
 		<div class="col-sm-9 pt-2">
 		    <?php
