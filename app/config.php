@@ -152,8 +152,6 @@ function get_config($mode = 'web') {
 
     $_config['autoload'] = [
 	'ns_map' => [
-	    'chillerlan\QRCode'		=> BASE . '/app/pkgs/php-qrcode/src/',
-
 	    //ReactPHP and friends
 	    'React\EventLoop'		=> BASE . '/app/pkgs/reactphp-event-loop/src',
 	    'React\ChildProcess'	=> BASE . '/app/pkgs/reactphp-child-process/src',
@@ -169,7 +167,6 @@ function get_config($mode = 'web') {
 	    'ddn\sapp'			=> BASE . '/app/pkgs/sapp-custom',
         ],
 	'class_map' => [
-	    'chillerlan\Settings\SettingsContainerAbstract' => BASE . '/app/util/SettingsContainer.php',
 	],
 	'requires' => [
 	],
