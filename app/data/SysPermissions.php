@@ -163,6 +163,16 @@ class SysPermissions {
 		'scopes' => [ 'global', 'project' ],
 		'desc' => 'Delete credentials'
 	    ],
+	    //CLD: 2026-11-03T18:00:00+02:00: sharing a credential with other projects of the account (ShareController), and allowing it any host; owners (also the roles already stored)
+	    [
+		'name' => 'Credential::share',
+		'scopes' => [ 'global', 'project' ],
+		'desc' => 'Share credentials with other projects',
+		'defaults' => [
+		    'owner' => [ 'enabled' => true, 'scope' => 'global' ],
+		    'member' => [ 'enabled' => false ]
+		]
+	    ],
 	];
 
 	//files

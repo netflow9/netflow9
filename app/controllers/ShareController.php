@@ -11,7 +11,7 @@ namespace controllers;
 class ShareController extends \sys\BaseController {
 
     //what can be shared: the `object` parameter
-    const KINDS = [ 'DataTableDef', 'Workflow' ];
+    const KINDS = [ 'DataTableDef', 'Workflow', 'Credential' ];
 
     public function _init() {
 	parent::_init();
@@ -33,7 +33,7 @@ class ShareController extends \sys\BaseController {
 	    elseif ($resource->shareOf($project->_id))
 		$this->addToast('warning', 'Not shared', 'It is already shared with that project');
 	    else
-		$this->saved($resource, $project, $access);
+		$this->saved($resource, $project, $access, $req->data);
 	}
 	$this->show($resource);
     }
@@ -44,7 +44,7 @@ class ShareController extends \sys\BaseController {
 	$resource = $this->resource();
 	$access = (string)($req->data['access'] ?? '');
 	if (isset($resource::SHARE_LEVELS[$access]))
-	    $this->saved($resource, $this->sharedProject($resource), $access);
+	    $this->saved($resource, $this->sharedProject($resource), $access, $req->data);
 	$this->show($resource);
     }
 
@@ -57,8 +57,14 @@ class ShareController extends \sys\BaseController {
 	$this->show($resource);
     }
 
-    private function saved($resource, $project, $access) {
-	$resource->setShare($project, $access);
+    //CLD: 2026-11-03T18:00:00+02:00: + what the resource asks for (shareOptions: a credential's hosts)
+    private function saved($resource, $project, $access, $data) {
+	[ $options, $error ] = $resource->shareOptions(is_array($data) ? $data : []);
+	if ($error !== null) {
+	    $this->addToast('error', 'Not saved', $error);
+	    return;
+	}
+	$resource->setShare($project, $access, $options);
 	$this->addEvent('object::updated', [ 'object' => $resource->getObjectName(), 'oid' => (string)$resource->_id ]);
     }
 

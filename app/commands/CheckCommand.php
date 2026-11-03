@@ -8607,6 +8607,77 @@ class CheckCommand extends \sys\BaseController {
 	    $homeSecret->delete();
 	    $varHere->delete();
 
+	    //CLD: 2026-11-03T18:00:00+02:00: a credential of the other project: used from here, for the hosts it is shared for
+	    $bearer = $om->create('CredentialBearer', [ 'aid' => $aid, 'project' => $home->_id, 'name' => 'Check shared token', 'token' => 'sh4red-s3cret' ]);
+	    $bearer->save();
+	    $cid = (string)$bearer->_id;
+	    $C = \models\Credential::class;
+	    //what findFor reads of a workflow
+	    [ $inHere, $inThird ] = [ (object)[ 'aid' => $aid, 'project' => $here->_id ], (object)[ 'aid' => $aid, 'project' => $third->_id ] ];
+	    $httpFlow = fn($url, $credential = null) => [ self::node('m', 'trigger::manual'), self::node('h', 'app::http', [ 'method' => 'GET', 'url' => $url, 'credential' => $credential ?? $cid, 'variable' => 'response', 'timeout' => 2 ]), self::edge('e', 'm', 'h') ];
+	    $reloadC = fn() => $om->findById('Credential', $cid);
+	    $errorOf = function($url, $credential = null) use ($httpFlow) {
+		$wf = $this->workflow('share http', $httpFlow($url, $credential));
+		$wf->save();
+		$this->created[] = $wf->_id;
+		$e = \models\wf\WfExecution::startFor($wf, 'console', [ 'vars' => [] ]);
+		$e->run();
+		return (string)$e->error;
+	    };
+	    $this->check('sharing credentials: not shared: not found, not offered', [ null, false ],
+		[ $C::findFor($inHere, $cid, 'http'), in_array($cid, array_column($C::choicesFor('http', $aid, $here->_id), 'value'), true) ]);
+	    $this->check('sharing credentials: a host list or any host is required; bad names refused', [ true, true, [ [ 'hosts' => [ 'api.example.com', '*.example.org' ], 'any_host' => false ], null ], [ [ 'hosts' => [ 'kept.example' ], 'any_host' => true ], null ] ], [
+		$bearer->shareOptions([])[1] !== null, $bearer->shareOptions([ 'hosts' => 'evil.com/x' ])[1] !== null,
+		$bearer->shareOptions([ 'hosts' => 'API.example.com, *.example.org' ]), $bearer->shareOptions([ 'any_host' => '1', 'hosts' => 'kept.example' ]) ]);
+	    $bearer->setShare($here, 'use', $bearer->shareOptions([ 'hosts' => 'api.example.invalid, *.apis.example.invalid' ])[0]);
+	    $bearer = $reloadC();
+	    $found = $C::findFor($inHere, $cid, 'http');
+	    $label = array_column($C::choicesFor('http', $aid, $here->_id), 'label', 'value')[$cid] ?? '';
+	    $this->check('sharing credentials: shared: found with its secret here, not from a third; offered with its project; another capability no', [ 'Bearer sh4red-s3cret', null, true, null ],
+		[ $found?->httpAuth()['headers']['Authorization'] ?? null, $C::findFor($inThird, $cid, 'http'), str_contains($label, 'shared from ' . $home->name), $C::findFor($inHere, $cid, 'imap') ]);
+	    $urls = [ 'https://api.example.invalid/x' => true, 'https://API.Example.invalid:8443/x' => true, 'https://a.apis.example.invalid/' => true, 'https://apis.example.invalid/' => false, 'https://evil.example/' => false,
+		'https://api.example.invalid.evil.example/' => false, 'https://api.example.invalid@evil.example/' => false, 'https://evil.example\\@api.example.invalid/' => false, 'https://evil.example#@api.example.invalid/' => false,
+		'https://evil.example/?x=api.example.invalid' => false, 'https://evilapis.example.invalid/' => false ];
+	    $this->check('sharing credentials: the hosts: exact or under a wildcard, whatever else the address says', $urls, array_map(fn($u) => $bearer->allowsUrlIn($here->_id, $u), array_combine(array_keys($urls), array_keys($urls))));
+	    $this->check('sharing credentials: its own project is not limited; a host list means no redirects', [ true, false, true ], [ $bearer->allowsUrlIn($home->_id, 'https://evil.example/'), $bearer->hostLockedIn($home->_id), $bearer->hostLockedIn($here->_id) ]);
+	    $this->check('sharing credentials: the HTTP step refuses another host, before sending', true, str_contains($errorOf('https://evil.example/'), 'for other hosts'));
+	    $this->check('sharing credentials: the HTTP step goes to a host of the list', false, str_contains($errorOf('https://api.example.invalid/'), 'for other hosts'));
+	    $download = $this->workflow('share download', [ self::node('m', 'trigger::manual'), self::node('d', 'app::download', [ 'url' => 'https://evil.example/f', 'credential' => $cid, 'variable' => 'file' ]), self::edge('e', 'm', 'd') ]);
+	    $download->save();
+	    $this->created[] = $download->_id;
+	    $dl = \models\wf\WfExecution::startFor($download, 'console', [ 'vars' => [] ]);
+	    $dl->run();
+	    $this->check('sharing credentials: the Download step too', true, str_contains((string)$dl->error, 'for other hosts'));
+	    //the owner's override
+	    $bearer->setShare($here, 'use', $bearer->shareOptions([ 'any_host' => '1' ])[0]);
+	    $bearer = $reloadC();
+	    $this->check('sharing credentials: any host (the owner\'s choice): not limited; one share still', [ true, false, 1 ], [ $bearer->allowsUrlIn($here->_id, 'https://evil.example/'), $bearer->hostLockedIn($here->_id), count((array)$bearer->shares) ]);
+	    //a type with its own address: no hosts asked
+	    $mysql = \V::app()->om->isDefined('CredentialMysql') ? $om->create('CredentialMysql', [ 'aid' => $aid, 'project' => $home->_id, 'name' => 'x' ]) : null;
+	    $this->check('sharing credentials: a type with its own address asks for no hosts', [ false, [ [], null ] ], [ $mysql?->shareUsesHosts(), $mysql?->shareOptions([]) ]);
+	    $variable = $om->create('CredentialVariable', [ 'aid' => $aid, 'project' => $home->_id, 'name' => 'chk_nope', 'value' => 'x' ]);
+	    $this->check('sharing credentials: variables are not shared', true, $variable->shareProblem() !== null);
+	    //who: no user permission comes with a share
+	    if (!in_array(null, $roles, true)) {
+		$uid3 = new \MongoDB\BSON\ObjectId();
+		$membersHere = (array)$om->findById('Project', (string)$here->_id)->members;
+		$om->updateMany('Project', [ '_id' => $here->_id ], [ '$set' => [ 'members' => $membersHere + [ (string)$uid3 => [ 'role' => $roles['owner']->_id ] ] ] ]);
+		$auth->userRole = $roles['member'];
+		\V::app()->config('app.mode', 'web');
+		try {
+		    $this->check('sharing credentials: an Owner here: may not open, change, delete or share it', [ false, false, false, false ], array_map(fn($perm) => $auth->checkAccess($uid3, $perm, [ 'object' => $reloadC() ]), [ 'Credential::read', 'Credential::update', 'Credential::delete', 'Credential::share' ]));
+		} finally {
+		    \V::app()->config('app.mode', $mode);
+		    $auth->userRole = $roleBefore;
+		    $om->updateMany('Project', [ '_id' => $here->_id ], [ '$set' => [ 'members' => $membersHere ] ]);
+		}
+	    }
+	    //taken back
+	    $bearer = $reloadC();
+	    $bearer->removeShare($here);
+	    $this->check('sharing credentials: taken back: gone at the next use', [ null, true ], [ $C::findFor($inHere, $cid, 'http'), str_contains($errorOf('https://api.example.invalid/'), 'no longer available') ]);
+	    $reloadC()->delete();
+
 	    //taken back: a workflow already saved fails at its next run
 	    $dt = $reload();
 	    $dt->removeShare($here);

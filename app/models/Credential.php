@@ -4,6 +4,13 @@ namespace models;
 
 class Credential extends \sys\BaseModel {
     use \sys\PolymorphTrait;
+    //CLD: 2026-11-03T18:00:00+02:00: a credential can be shared with other projects of the account: their workflows use it. No permission comes with it: they do not open, test or change it. Variables are not shared
+    use \models\share\ShareableTrait;
+
+    const SHARE_PERM = 'Credential::share';
+    const SHARE_WHAT = 'Credential';
+    const SHARE_LEVELS = [ 'use' => 'Use in workflows' ];
+    const SHARE_PERMS = [ 'use' => [] ];
 
     //CLD: 2026-10-09T17:21:14+03:00: the family's registry name (variants: 'variant-of' => FAMILY)
     const FAMILY = 'Credential';
@@ -11,6 +18,7 @@ class Credential extends \sys\BaseModel {
     protected static $collection = 'credentials';
     public static $indexes = [
 	[ [ 'aid' => 1, 'project' => 1, '__variant' => 1 ], [] ],
+	[ [ 'aid' => 1, 'shares.project' => 1 ], [] ],
     ];
 
     public static $label = '';
@@ -112,7 +120,71 @@ class Credential extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'showInForms' => false,
 	    ],
+	    //CLD: 2026-11-03T18:00:00+02:00: the projects it is shared with
+	    self::sharesField(),
 	];
+    }
+
+    //CLD: 2026-11-03T18:00:00+02:00: variables are read by name in expressions: each project keeps its own
+    public function shareProblem() {
+	return $this instanceof \models\credential\CredentialVariable ? 'Variables are not shared: each project has its own.' : null;
+    }
+
+    //CLD: 2026-11-03T18:00:00+02:00: a credential an HTTP step can send anywhere: the Share dialog asks for its hosts
+    public function shareUsesHosts() {
+	return $this->provides('http');
+    }
+
+    //CLD: 2026-11-03T18:00:00+02:00: the hosts it may be sent to, or any host when the owner says so: [ options, error ]. A host: name or *.name
+    public function shareOptions(array $data) {
+	if (!$this->shareUsesHosts())
+	    return [ [], null ];
+	$hosts = [];
+	foreach(preg_split('/[\s,;]+/', mb_strtolower(trim((string)($data['hosts'] ?? ''))), -1, PREG_SPLIT_NO_EMPTY) as $host) {
+	    if (!preg_match('/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $host))
+		return [ [], "`{$host}` is not a host name: use names like api.example.com or *.example.com" ];
+	    $hosts[] = $host;
+	}
+	$any = !empty($data['any_host']);
+	if (!$hosts && !$any)
+	    return [ [], 'List the hosts it may be sent to, or allow any host' ];
+	//the list stays while any host is allowed, so taking that back needs no typing
+	return [ [ 'hosts' => array_values(array_unique($hosts)), 'any_host' => $any ], null ];
+    }
+
+    //CLD: 2026-11-03T18:00:00+02:00: what the Share dialog says
+    public function shareWarnings() {
+	$warnings = [ 'Workflows there act with its full rights. They do not see its secret or settings, and cannot change, test or delete it.' ];
+	if ($this->shareUsesHosts())
+	    $warnings[] = 'An HTTP Request or Download File step chooses its own address. Without a list of hosts, a workflow editor there can send this secret to a server of theirs and read it.';
+	if ($this->provides('imap'))
+	    $warnings[] = 'If several projects start workflows from this mailbox, each one reads the same mail.';
+	return $warnings;
+    }
+
+    //CLD: 2026-11-03T18:00:00+02:00: whether a share with project $projectId limits it to hosts: such a request follows no redirect (only Authorization and Cookie are dropped on the way to another host, not an API key)
+    public function hostLockedIn($projectId) {
+	if ($this->isHome($projectId) || !$this->shareUsesHosts())
+	    return false;
+	return empty($this->shareOf($projectId)['any_host']);
+    }
+
+    //CLD: 2026-11-03T18:00:00+02:00: whether a request of project $projectId may carry it to $url: its own project, a share with any host, a host on the share's list
+    public function allowsUrlIn($projectId, $url) {
+	if (!$this->hostLockedIn($projectId))
+	    return true;
+	//parsers disagree about a backslash in the address (which host is it?)
+	if (str_contains((string)$url, '\\'))
+	    return false;
+	$host = strtolower((string)parse_url((string)$url, PHP_URL_HOST));
+	if ($host === '')
+	    return false;
+	foreach((array)($this->shareOf($projectId)['hosts'] ?? []) as $allowed) {
+	    $allowed = (string)$allowed;
+	    if ($host === $allowed || (str_starts_with($allowed, '*.') && str_ends_with($host, substr($allowed, 1))))
+		return true;
+	}
+	return false;
     }
 
     //CLD: 2026-10-22T01:58:24+03:00: the model names that are not chat models (embeddings, speech, images, moderation, old completions): left out of the AI steps' choices
@@ -216,12 +288,17 @@ class Credential extends \sys\BaseModel {
     }
 
     //credentials of project $projectId that provide $capability: app.smartform choices for node configs
+    //CLD: 2026-11-03T18:00:00+02:00: + those shared with it, named with their project (only its name and type)
     public static function choicesFor($capability, $aid, $projectId) {
 	$variants = static::variantsProviding($capability);
 	if (empty($variants) || empty($projectId))
 	    return [];
 	$choices = [];
-	foreach(\V::app()->om->find(self::FAMILY, [ 'aid' => $aid, 'project' => \V::app()->om->to_oid($projectId), '__variant' => [ '$in' => $variants ] ]) as $c) {
+	foreach(\V::app()->om->find(self::FAMILY, [ 'aid' => $aid, '__variant' => [ '$in' => $variants ] ] + self::visibleInQuery($projectId)) as $c) {
+	    if (!$c->isHome($projectId)) {
+		$choices[] = [ 'value' => (string)$c->_id, 'label' => (string)$c->name . ' (' . $c::$label . ', shared from ' . self::projectName($c->project) . ')' ];
+		continue;
+	    }
 	    $account = (string)($c->email ?? '');
 	    $choices[] = [ 'value' => (string)$c->_id, 'label' => (string)$c->name . ' (' . $c::$label . ($account !== '' ? ', ' . $account : '') . ')' ];
 	}
@@ -229,10 +306,11 @@ class Credential extends \sys\BaseModel {
     }
 
     //credential $id of the workflow's project, if it provides $capability
+    //CLD: 2026-11-03T18:00:00+02:00: or shared with that project; asked at each use, so a share taken back is gone at the next step that uses it
     public static function findFor($wf, $id, $capability) {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
-	$c = \V::app()->om->findOne('Credential', [ '_id' => $id, 'aid' => $wf->aid, 'project' => $wf->project ]);
+	$c = \V::app()->om->findOne('Credential', [ '_id' => $id, 'aid' => $wf->aid ] + self::visibleInQuery($wf->project));
 	return ($c && $c->provides($capability) && \util\Tiers::allows($wf->aid, $c->getObjectName())) ? $c : null;
     }
 }

@@ -492,8 +492,8 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	$variants = \models\Credential::variantsProviding(static::CAPABILITY);
 	if (!$variants)
 	    return $map;
-	foreach(\V::app()->om->find(\models\Credential::FAMILY, [ 'aid' => \V::app()->config('rt.account')->_id ?? null, 'project' => \V::app()->om->to_oid(\V::app()->user->crtProject),
-	    '__variant' => [ '$in' => $variants ] ]) as $c)
+	//CLD: 2026-11-03T18:00:00+02:00: + the credentials shared with the project
+	foreach(\V::app()->om->find(\models\Credential::FAMILY, [ 'aid' => \V::app()->config('rt.account')->_id ?? null, '__variant' => [ '$in' => $variants ] ] + \models\Credential::visibleInQuery(\V::app()->user->crtProject)) as $c)
 	    $map[(string)$c->_id] = array_values(array_map('strval', (array)($c->models ?? [])));
 	return $map;
     }

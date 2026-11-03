@@ -3,6 +3,7 @@
 /*
     CLD: 2026-11-03T14:00:00+02:00: new: a resource its home project shares with other projects of the account. The grants are on the resource, field `shares`: [ { project, access, by, at } ].
     The class says what each level gives: const SHARE_PERMS = [ level => [ permission, ... ] ], SHARE_LEVELS = [ level => label ] and SHARE_PERM (who may share it).
+    CLD: 2026-11-03T18:00:00+02:00: a share can hold more that the class asks for (shareOptions: the hosts of a credential)
     A share is for a project, not a user: every run has its project and no user, so runs ask shareAllows(); users ask checkAccess(), through sharedCan()
 */
 
@@ -13,6 +14,16 @@ trait ShareableTrait {
     //why it cannot be shared now, null when it can; a class may say
     public function shareProblem() {
 	return null;
+    }
+
+    //CLD: 2026-11-03T18:00:00+02:00: whether the Share dialog asks for hosts (a credential); a class may say
+    public function shareUsesHosts() {
+	return false;
+    }
+
+    //CLD: 2026-11-03T18:00:00+02:00: what the Share dialog's fields ($data) add to a share: [ options, error message or null ]; a class may ask for some
+    public function shareOptions(array $data) {
+	return [ [], null ];
     }
 
     //the `shares` field of the schema
@@ -44,12 +55,20 @@ trait ShareableTrait {
     }
 
     //the share with project $projectId as an array, null when there is none
+    //CLD: 2026-11-03T18:00:00+02:00: all it holds (was the fixed fields)
     public function shareOf($projectId) {
 	foreach((array)$this->shares as $share) {
 	    if ((string)$share['project'] === (string)$projectId)
-		return [ 'project' => $share['project'], 'access' => (string)$share['access'], 'by' => $share['by'] ?? null, 'at' => $share['at'] ?? null ];
+		return self::shareArray($share);
 	}
 	return null;
+    }
+
+    private static function shareArray($share) {
+	$array = [];
+	foreach($share as $key => $value)
+	    $array[$key] = $value instanceof \ArrayObject ? $value->getArrayCopy() : $value;
+	return $array;
     }
 
     //whether project $projectId may do $permName on this resource: anything in its home, what its share's level gives elsewhere
@@ -76,18 +95,20 @@ trait ShareableTrait {
     }
 
     //shares the resource with $project at $access (a new share, or another level); saved directly (only this field), recorded in the log of both projects. The web layer checks the permission
-    public function setShare($project, $access) {
+    //CLD: 2026-11-03T18:00:00+02:00: + $options (shareOptions), named in the logs
+    public function setShare($project, $access, array $options = []) {
 	$list = [];
 	$found = false;
 	foreach((array)$this->shares as $share) {
 	    $same = (string)$share['project'] === (string)$project->_id;
 	    $found = $found || $same;
-	    $list[] = $same ? [ 'project' => $share['project'], 'access' => $access, 'by' => $share['by'] ?? null, 'at' => $share['at'] ?? null ] : $share;
+	    $list[] = $same ? array_merge(self::shareArray($share), [ 'access' => $access ], $options) : $share;
 	}
 	if (!$found)
-	    $list[] = [ 'project' => $project->_id, 'access' => $access, 'by' => \V::app()->user->_id ?? null, 'at' => new \MongoDB\BSON\UTCDateTime() ];
+	    $list[] = [ 'project' => $project->_id, 'access' => $access, 'by' => \V::app()->user->_id ?? null, 'at' => new \MongoDB\BSON\UTCDateTime() ] + $options;
 	$this->storeShares($list);
-	$this->recordShare($found ? 'share.change' : 'share.add', $project, static::SHARE_LEVELS[$access] ?? $access);
+	$detail = !empty($options['any_host']) ? ', any host' : (!empty($options['hosts']) ? ', hosts: ' . implode(', ', $options['hosts']) : '');
+	$this->recordShare($found ? 'share.change' : 'share.add', $project, (static::SHARE_LEVELS[$access] ?? $access) . $detail);
     }
 
     //the share with $project ended

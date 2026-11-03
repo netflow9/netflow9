@@ -115,7 +115,8 @@ class Transfer {
 	}
 	$oids = array_map(fn($id) => $om->to_oid($id), $ids);
 	$inProject = [ 'aid' => $project->aid, 'project' => $project->_id ];
-	foreach($om->find('Credential', [ '_id' => [ '$in' => $oids ] ] + $inProject) as $c)
+	//CLD: 2026-11-03T18:00:00+02:00: also those shared with the project (as the tables)
+	foreach($om->find('Credential', [ '_id' => [ '$in' => $oids ], 'aid' => $project->aid ] + \models\Credential::visibleInQuery($project->_id)) as $c)
 	    $bundle['refs']['credentials'][(string)$c->_id] = [ 'name' => (string)$c->name, 'type' => $c->getObjectName() ];
 	//CLD: 2026-11-03T14:00:00+02:00: also the tables shared with the project: named in the file, so importing them says they are missing (they are not exported: they stay with their project)
 	foreach($om->find('DataTableDef', [ '$or' => [ [ '_id' => [ '$in' => $oids ] ], [ 'iname' => [ '$in' => $inames ] ] ], 'aid' => $project->aid, '$and' => [ \models\datatable\DataTableDef::visibleInQuery($project->_id) ] ]) as $t)
