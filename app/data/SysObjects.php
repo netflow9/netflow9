@@ -295,6 +295,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialZabbix',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-03T10:00:00+02:00: a Wazuh installation (the Wazuh steps and alert trigger), core for every account
+	    'CredentialWazuh' => [
+		'class' => 'models\credential\CredentialWazuh',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-01T06:00:00+02:00: a FortiGate firewall (the FortiGate steps), core for every account
 	    'CredentialFortiGate' => [
 		'class' => 'models\credential\CredentialFortiGate',
@@ -510,6 +515,43 @@ class SysObjects {
 	    ],
 	    'NodeTriggerZabbix' => [
 		'class' => 'models\node\NodeTriggerZabbix',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-03T10:00:00+02:00: Wazuh (one step per area, NodeAppWazuh their base; the alert trigger, polling the indexer), core for every account
+	    'NodeAppWzAlerts' => [
+		'class' => 'models\node\NodeAppWzAlerts',
+		'wfNode' => true,
+	    ],
+	    'NodeAppWzVulnerabilities' => [
+		'class' => 'models\node\NodeAppWzVulnerabilities',
+		'wfNode' => true,
+	    ],
+	    'NodeAppWzAgents' => [
+		'class' => 'models\node\NodeAppWzAgents',
+		'wfNode' => true,
+	    ],
+	    'NodeAppWzResponse' => [
+		'class' => 'models\node\NodeAppWzResponse',
+		'wfNode' => true,
+	    ],
+	    'NodeAppWzScans' => [
+		'class' => 'models\node\NodeAppWzScans',
+		'wfNode' => true,
+	    ],
+	    'NodeAppWzInventory' => [
+		'class' => 'models\node\NodeAppWzInventory',
+		'wfNode' => true,
+	    ],
+	    'NodeAppWzManager' => [
+		'class' => 'models\node\NodeAppWzManager',
+		'wfNode' => true,
+	    ],
+	    'NodeAppWzApi' => [
+		'class' => 'models\node\NodeAppWzApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerWazuh' => [
+		'class' => 'models\node\NodeTriggerWazuh',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-01T06:00:00+02:00: FortiGate (one step per area, NodeAppFortiGate their base; the event trigger: an automation stitch's webhook), core for every account

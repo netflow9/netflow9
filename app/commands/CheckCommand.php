@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -8030,6 +8030,298 @@ class CheckCommand extends \sys\BaseController {
 		    @unlink($f);
 		@rmdir($d);
 	    }
+	}
+    }
+
+    //CLD: 2026-11-03T10:00:00+02:00: Wazuh against a fake one (commands/tests/WazuhTestServer.php: the Server API refuses a parameter its spec does not have; the indexer; util\Wazuh::$testing:
+    //http, no address guard): the client (sign-in, the token kept, signed in again after a 401, Wazuh's errors, pages), the credential's test, every step (an empty agents_list is never
+    //sent: to Wazuh it means every agent; Wazuh's 200 with everything failed is an error), the alert trigger (the first check only notes the time; late alerts; seen; MAX_RUNS)
+    private function suiteWazuh() {
+	$W = \util\Wazuh::class;
+	$N = \models\node\NodeAppWazuh::class;
+	$A = \models\node\NodeAppWzAlerts::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$this->check('wazuh: values: agent ids padded, from agents and alerts; `all` and empty agents; a group\'s name', [
+	    '001', '012', '005', [ '001', '002' ], [ '003', '007' ], null, 'Agents: empty (`all` for every agent)', 'Agents: name the agents, `all` cannot be used here', 'Group: not a group\'s name: `a/b`' ], [
+	    $N::agentId('1'), $N::agentId(12), $N::agentId([ 'agent' => [ 'id' => '005' ] ]), $N::agentList('1, 002'), $N::agentList([ [ 'id' => '003' ], [ 'agent' => [ 'id' => '007' ] ] ]), $N::agentList('all'),
+	    $thrown(fn() => $N::agentList(' ')), $thrown(fn() => $N::agentList('all', false)), $thrown(fn() => $N::group('a/b')) ]);
+	$this->check('wazuh: alert filters: level, ids and names of agents, rules, groups, techniques, a query', [
+	    [ 'range' => [ 'rule.level' => [ 'gte' => 7 ] ] ],
+	    [ 'bool' => [ 'should' => [ [ 'terms' => [ 'agent.id' => [ '001' ] ] ], [ 'terms' => [ 'agent.name' => [ 'web01' ] ] ] ], 'minimum_should_match' => 1 ] ],
+	    [ 'terms' => [ 'rule.id' => [ '5712' ] ] ], [ 'terms' => [ 'rule.groups' => [ 'sshd', 'pam' ] ] ], [ 'terms' => [ 'rule.mitre.id' => [ 'T1110' ] ] ], [ 'query_string' => [ 'query' => 'data.srcip:1.2.3.4', 'analyze_wildcard' => true ] ] ],
+	    $A::filters([ 'minLevel' => 7, 'agents' => '1, web01', 'ruleIds' => '5712', 'groups' => 'sshd,pam', 'mitre' => 'T1110', 'query' => 'data.srcip:1.2.3.4' ]));
+	$this->check('wazuh: level 0 is a filter, empty is not', [ [ [ 'range' => [ 'rule.level' => [ 'gte' => 0 ] ] ] ], [] ], [ $A::filters([ 'minLevel' => 0 ]), $A::filters([ 'minLevel' => '' ]) ]);
+
+	$dir = sys_get_temp_dir() . '/netflow9-check-wz-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('wazuh', 'WazuhTestServer.php', $dir, [ 'WZ_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$W::$testing = true;
+	$W::forgetTokens();
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$alert = fn($id, $at, $level = 10, $agent = 'web01', $rule = '5712') => [ '_id' => $id, 'timestamp' => $at, 'rule' => [ 'id' => $rule, 'level' => $level, 'description' => "Rule {$rule}", 'groups' => [ 'sshd' ], 'mitre' => [ 'id' => [ 'T1110' ] ] ],
+	    'agent' => [ 'id' => $agent === 'web01' ? '001' : '002', 'name' => $agent ], 'data' => [ 'srcip' => '203.0.113.5' ], 'full_log' => "log of {$id}" ];
+	$alerts = fn(array $list) => file_put_contents("{$dir}/alerts.json", json_encode($list));
+	$creds = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function(array $over = []) use ($om, &$creds, $port) {
+		$c = $om->create('CredentialWazuh', $over + [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Wazuh ' . uniqid(), 'serverUrl' => "https://127.0.0.1:{$port}",
+		    'username' => 'wazuh-wui', 'password' => 's3cret', 'indexerUrl' => "https://127.0.0.1:{$port}", 'indexerUsername' => 'admin', 'indexerPassword' => '1ndexer' ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('wazuh: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->serverUrl = "http://127.0.0.1:{$port}";
+		if ($c->indexerUrl)
+		    $c->indexerUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialWazuh', (string)$c->_id);
+	    };
+	    $cred = $make();
+	    $noIndexer = $make([ 'indexerUrl' => '', 'indexerUsername' => '', 'indexerPassword' => '' ]);
+	    $wrong = $make([ 'password' => 'nope' ]);
+	    $wrongIndexer = $make([ 'indexerPassword' => 'nope' ]);
+	    if (!$cred || !$noIndexer || !$wrong || !$wrongIndexer)
+		return;
+	    $bad = $om->create('CredentialWazuh', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'x', 'serverUrl' => 'http://wazuh.example:55000', 'username' => 'u', 'password' => 'p', 'indexerUrl' => 'https://wazuh.example:9200/path' ]);
+	    $bad->validates();
+	    $badKeys = array_keys((array)$bad->errors());
+	    sort($badKeys);
+	    $alerts([ $alert('a1', '2026-11-03T08:00:00.000+0000', 3), $alert('a2', '2026-11-03T09:00:00.000+0000', 12, 'db01', '5501') ]);
+	    $requests();
+	    $this->check('wazuh: the form: https only, no path; Test: version, host, the alerts; signed in with Basic, then Bearer; the indexer with Basic; no indexer said; refused users said', [
+		[ 'indexerUrl', 'serverUrl' ], 'connected to Wazuh 4.14.0 on wazuh-manager; indexer: 2 alerts', 'connected to Wazuh 4.14.0 on wazuh-manager; no indexer: the alerts and the vulnerabilities cannot be read',
+		'sign-in refused: Invalid credentials', true ], [
+		$badKeys, $cred->test(), $noIndexer->test(), $thrown(fn() => $wrong->test()), str_contains($thrown(fn() => $wrongIndexer->test()), 'security_exception') ]);
+	    $W::forgetTokens();
+	    $requests();
+	    $client = $cred->client($this->account->_id, 20);
+	    $client->request('GET', '/');
+	    $client->request('GET', '/');
+	    file_put_contents("{$dir}/expired", '1');
+	    $client->request('GET', '/');
+	    $sent = $requests();
+	    $this->check('wazuh: the token kept across requests; a 401: a new sign-in and the request again', [ '/security/user/authenticate', '/', '/', '/', '/security/user/authenticate', '/' ], array_column($sent, 'path'));
+	    $this->check('wazuh: not an API path; Wazuh\'s error with its code; a page of rows, then the next', [ 'not an API path: `/a/../b`', 'HTTP status 404: The requested URL was not found: GET /nothing', 1200, 1200, 1200, false, [ 500, 500, 500 ] ], (function() use ($client, $thrown, $requests) {
+		$p = $thrown(fn() => $client->request('GET', '/a/../b'));
+		$m = $thrown(fn() => $client->request('GET', '/nothing'));
+		$requests();
+		[ $rows, $total, $cut ] = $client->rows('/syscollector/001/packages', [], 5000);
+		return [ $p, $m, count($rows), count(array_unique(array_column($rows, 'name'))), $total, $cut, array_map(fn($r) => (int)$r['query']['limit'], $requests()) ];
+	    })());
+
+	    $step = function($fq, $cfg, $vars = [], $c = null) use ($n, $e, $cred, $requests) {
+		$requests();
+		$exe = $this->runFlow("wz {$fq}", [ $n('m', 'trigger::manual'), $n('c', $fq, $cfg + [ 'credential' => (string)($c ?? $cred)->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'c'), $e('e2', 'c', 'err', 1) ], $vars);
+		return [ $exe, array_values(array_filter($requests(), fn($r) => $r['path'] !== '/security/user/authenticate')) ];
+	    };
+
+	    //alerts
+	    $recent = gmdate('Y-m-d\TH:i:s.000+0000', time() - 3600);
+	    $alerts([ $alert('a1', $recent, 3), $alert('a2', gmdate('Y-m-d\TH:i:s.000+0000', time() - 1800), 12, 'db01', '5501'), $alert('a3', gmdate('Y-m-d\TH:i:s.000+0000', time() - 600), 10), $alert('old', gmdate('Y-m-d\TH:i:s.000+0000', time() - 3 * 86400), 15) ]);
+	    [ $exe, $sent ] = $step('app::wazuh-alerts', [ 'operation' => 'search', 'minLevel' => 7, 'variable' => 'r' ]);
+	    $r = $exe?->getVariable('r');
+	    $this->check('wazuh: Alerts search: level and worse, of the last 24 hours, newest first, with _id; the index', [ [ 'a3', 'a2' ], 2, 2, false, 'wazuh-alerts-4.x-2026.11.03', '/wazuh-alerts-*/_search' ],
+		[ array_column($r['items'] ?? [], '_id'), $r['count'] ?? null, $r['total'] ?? null, $r['truncated'] ?? null, $r['items'][0]['_index'] ?? null, $sent[0]['path'] ?? null ]);
+	    [ $exe, ] = $step('app::wazuh-alerts', [ 'operation' => 'search', 'agents' => '{{ who }}', 'since' => '-2 days', 'maxItems' => 1, 'variable' => 'r' ], [ 'who' => [ 'web01' ] ]);
+	    $r = $exe?->getVariable('r');
+	    $this->check('wazuh: Alerts search: an agent from a list; truncated at At most', [ [ 'a3' ], 2, true ], [ array_column($r['items'] ?? [], '_id'), $r['total'] ?? null, $r['truncated'] ?? null ]);
+	    [ $exe, ] = $step('app::wazuh-alerts', [ 'operation' => 'get', 'alertId' => 'a2', 'variable' => 'g' ]);
+	    [ $none, ] = $step('app::wazuh-alerts', [ 'operation' => 'get', 'alertId' => 'ghost', 'variable' => 'g' ]);
+	    [ $cnt, ] = $step('app::wazuh-alerts', [ 'operation' => 'count', 'minLevel' => 10, 'variable' => 'c' ]);
+	    [ $top, ] = $step('app::wazuh-alerts', [ 'operation' => 'top', 'field' => 'agent.name', 'variable' => 't' ]);
+	    [ $noIdx, ] = $step('app::wazuh-alerts', [ 'operation' => 'count', 'variable' => 'c' ], [], $noIndexer);
+	    file_put_contents("{$dir}/indexer-error", '1');
+	    [ $badQuery, ] = $step('app::wazuh-alerts', [ 'operation' => 'count', 'query' => 'a:(', 'variable' => 'c' ]);
+	    @unlink("{$dir}/indexer-error");
+	    $this->check('wazuh: Alerts get, not found: the error output; count; top values; no indexer said; the indexer\'s reason', [ 'db01', 'error', [ 'count' => 2 ], [ [ 'value' => 'web01', 'count' => 2 ], [ 'value' => 'db01', 'count' => 1 ] ], true, true ], [
+		$exe?->getVariable('g')['agent']['name'] ?? null, $none?->getVariable('route'), $cnt?->getVariable('c'), $top?->getVariable('t')['items'] ?? null,
+		str_contains((string)self::logLine($noIdx, 'Wazuh Alerts count: '), 'add its address and user to the credential'), str_contains((string)self::logLine($badQuery, 'Wazuh Alerts count: '), 'query_shard_exception: Failed to parse query') ]);
+
+	    //vulnerabilities
+	    file_put_contents("{$dir}/vulnerabilities.json", json_encode([
+		[ '_id' => 'v1', 'timestamp' => '2026-11-03T08:00:00Z', 'agent' => [ 'id' => '001', 'name' => 'web01' ], 'package' => [ 'name' => 'xz' ], 'vulnerability' => [ 'id' => 'CVE-2024-3094', 'severity' => 'Critical', 'score' => [ 'base' => 10 ] ] ],
+		[ '_id' => 'v2', 'timestamp' => '2026-11-03T08:00:00Z', 'agent' => [ 'id' => '002', 'name' => 'db01' ], 'package' => [ 'name' => 'openssl' ], 'vulnerability' => [ 'id' => 'CVE-2023-1', 'severity' => 'High', 'score' => [ 'base' => 7.5 ] ] ],
+		[ '_id' => 'v3', 'timestamp' => '2026-11-03T08:00:00Z', 'agent' => [ 'id' => '001', 'name' => 'web01' ], 'package' => [ 'name' => 'bash' ], 'vulnerability' => [ 'id' => 'CVE-2022-2', 'severity' => 'Low', 'score' => [ 'base' => 2 ] ] ] ]));
+	    [ $vl, $sent ] = $step('app::wazuh-vulnerabilities', [ 'operation' => 'list', 'severities' => [ 'Critical', 'High' ], 'variable' => 'v' ]);
+	    [ $vc, ] = $step('app::wazuh-vulnerabilities', [ 'operation' => 'list', 'cve' => 'CVE-2022-2', 'package' => 'bash', 'agents' => '001', 'severities' => [], 'variable' => 'v' ]);
+	    [ $vs, ] = $step('app::wazuh-vulnerabilities', [ 'operation' => 'summary', 'severities' => [], 'variable' => 's' ]);
+	    $this->check('wazuh: Vulnerabilities: of severities, the highest score first; a CVE, a package, an agent; per severity', [ [ 'v1', 'v2' ], '/wazuh-states-vulnerabilities-*/_search', [ 'v3' ], [ 'total' => 3, 'Critical' => 1, 'High' => 1, 'Medium' => 0, 'Low' => 1 ] ], [
+		array_column($vl?->getVariable('v')['items'] ?? [], '_id'), $sent[0]['path'] ?? null, array_column($vc?->getVariable('v')['items'] ?? [], '_id'), $vs?->getVariable('s') ]);
+
+	    //agents
+	    [ $exe, $sent ] = $step('app::wazuh-agents', [ 'operation' => 'list', 'status' => [ 'active' ], 'group' => 'web', 'search' => 'web', 'variable' => 'a' ]);
+	    $this->check('wazuh: Agents list: status, group, text; wait_for_complete; first page', [ [ '001' ], 'active', 'web', 'true', '0' ], [ array_column($exe?->getVariable('a')['items'] ?? [], 'id'), $sent[0]['query']['status'] ?? null, $sent[0]['query']['group'] ?? null, $sent[0]['query']['wait_for_complete'] ?? null, $sent[0]['query']['offset'] ?? null ]);
+	    [ $get, ] = $step('app::wazuh-agents', [ 'operation' => 'get', 'agent' => '{{ alert }}', 'variable' => 'g' ], [ 'alert' => [ 'agent' => [ 'id' => '002' ] ] ]);
+	    [ $ghost, ] = $step('app::wazuh-agents', [ 'operation' => 'get', 'agent' => '77', 'variable' => 'g' ]);
+	    [ $sum, ] = $step('app::wazuh-agents', [ 'operation' => 'summary', 'variable' => 's' ]);
+	    [ $out, ] = $step('app::wazuh-agents', [ 'operation' => 'outdated', 'variable' => 'o' ]);
+	    [ $cr, $sentCr ] = $step('app::wazuh-agents', [ 'operation' => 'create', 'name' => 'app02', 'ip' => '10.0.0.9', 'variable' => 'c' ]);
+	    [ $dup, ] = $step('app::wazuh-agents', [ 'operation' => 'create', 'name' => 'web01', 'variable' => 'c' ]);
+	    [ $key, ] = $step('app::wazuh-agents', [ 'operation' => 'key', 'agent' => '1', 'variable' => 'k' ]);
+	    $this->check('wazuh: Agents get from an alert; not there: the error output; summary; outdated; create: id and key, name and ip sent; a name that exists: Wazuh\'s error; key', [
+		'db01', 'error', 3, [ '002' ], [ 'id' => '003', 'key' => 'c2VjcmV0a2V5' ], [ 'name' => 'app02', 'ip' => '10.0.0.9' ], true, 'c2VjcmV0a2V5' ], [
+		$get?->getVariable('g')['name'] ?? null, $ghost?->getVariable('route'), $sum?->getVariable('s')['connection']['total'] ?? null, array_column($out?->getVariable('o')['items'] ?? [], 'id'), $cr?->getVariable('c'), $sentCr[0]['body'] ?? null,
+		str_contains((string)self::logLine($dup, 'Wazuh Agents create: '), 'An agent with the same name already exists (error 1708)'), $key?->getVariable('k')['key'] ?? null ]);
+	    [ $rs, $sent ] = $step('app::wazuh-agents', [ 'operation' => 'restart', 'agents' => '1, 2, 99', 'variable' => 'r' ]);
+	    $r = $rs?->getVariable('r');
+	    [ $emptyR, $sentEmpty ] = $step('app::wazuh-agents', [ 'operation' => 'restart', 'agents' => '{{ none }}', 'variable' => 'r' ], [ 'none' => '' ]);
+	    [ $allR, $sentAll ] = $step('app::wazuh-agents', [ 'operation' => 'restart', 'agents' => 'all', 'variable' => 'r' ]);
+	    [ $allFail, ] = $step('app::wazuh-agents', [ 'operation' => 'restart', 'agents' => '98,99', 'variable' => 'r' ]);
+	    $this->check('wazuh: restart: some failed: a result that says so; empty agents: nothing sent; `all`: no list; all failed: the error output with Wazuh\'s message', [
+		'001,002,099', [ '001', '002' ], 1, 'Agent does not exist', 'error', 0, [ 'PUT', false ], 'error', true ], [
+		$sent[0]['query']['agents_list'] ?? null, $r['affected'] ?? null, $r['failedCount'] ?? null, $r['failed'][0]['message'] ?? null, $emptyR?->getVariable('route'), count($sentEmpty), [ $sentAll[0]['method'] ?? null, isset($sentAll[0]['query']['agents_list']) ],
+		$allFail?->getVariable('route'), str_contains((string)self::logLine($allFail, 'Wazuh Agents restart: '), '098: Agent does not exist') ]);
+	    [ $del, $sent ] = $step('app::wazuh-agents', [ 'operation' => 'delete', 'agents' => '2', 'purge' => true, 'variable' => 'd' ]);
+	    [ $delAll, $sentDelAll ] = $step('app::wazuh-agents', [ 'operation' => 'delete', 'agents' => 'all', 'variable' => 'd' ]);
+	    $this->check('wazuh: delete: of any status and age, purged; never `all`', [ [ '002', 'all', '0s', 'true' ], [ '002' ], 'error', 0 ], [ [ $sent[0]['query']['agents_list'] ?? null, $sent[0]['query']['status'] ?? null, $sent[0]['query']['older_than'] ?? null, $sent[0]['query']['purge'] ?? null ],
+		$del?->getVariable('d')['affected'] ?? null, $delAll?->getVariable('route'), count($sentDelAll) ]);
+	    [ $gl, ] = $step('app::wazuh-agents', [ 'operation' => 'groups', 'variable' => 'g' ]);
+	    [ $ga, ] = $step('app::wazuh-agents', [ 'operation' => 'groupAgents', 'group' => 'web', 'variable' => 'g' ]);
+	    [ $gadd, $sentAdd ] = $step('app::wazuh-agents', [ 'operation' => 'assign', 'agents' => '1', 'group' => 'web', 'variable' => 'g' ]);
+	    [ $gdel, $sentDel ] = $step('app::wazuh-agents', [ 'operation' => 'unassign', 'agents' => 'all', 'group' => 'web', 'variable' => 'g' ]);
+	    [ $gnew, $sentNew ] = $step('app::wazuh-agents', [ 'operation' => 'groupCreate', 'group' => 'linux', 'variable' => 'g' ]);
+	    [ $grm, $sentRm ] = $step('app::wazuh-agents', [ 'operation' => 'groupDelete', 'group' => 'linux', 'variable' => 'g' ]);
+	    [ $gbad, $sentBad ] = $step('app::wazuh-agents', [ 'operation' => 'groupDelete', 'group' => '../x', 'variable' => 'g' ]);
+	    $this->check('wazuh: groups: list, agents, assign, unassign (its list is required: all), create, delete; a bad name is not sent', [ [ 'default', 'web' ], [ '001' ], [ 'PUT', '001', 'web' ], [ 'DELETE', 'all' ], [ 'group_id' => 'linux' ], 'linux', 'error', 0 ], [
+		array_column($gl?->getVariable('g')['items'] ?? [], 'name'), array_column($ga?->getVariable('g')['items'] ?? [], 'id'), [ $sentAdd[0]['method'] ?? null, $sentAdd[0]['query']['agents_list'] ?? null, $sentAdd[0]['query']['group_id'] ?? null ],
+		[ $sentDel[0]['method'] ?? null, $sentDel[0]['query']['agents_list'] ?? null ], $sentNew[0]['body'] ?? null, $sentRm[0]['query']['groups_list'] ?? null, $gbad?->getVariable('route'), count($sentBad) ]);
+
+	    //active response
+	    [ $bk, $sent ] = $step('app::wazuh-response', [ 'operation' => 'block', 'agents' => '{{ alert }}', 'ip' => '{{ alert.data.srcip }}', 'variable' => 'r' ], [ 'alert' => $alert('x', $recent) ]);
+	    [ $bIp, $sentIp ] = $step('app::wazuh-response', [ 'operation' => 'block', 'agents' => '1', 'ip' => '1.2.3; rm -rf', 'variable' => 'r' ]);
+	    [ $bNo, $sentNo ] = $step('app::wazuh-response', [ 'operation' => 'block', 'agents' => '{{ none }}', 'ip' => '203.0.113.5', 'variable' => 'r' ], [ 'none' => '' ]);
+	    [ $run, $sentRun ] = $step('app::wazuh-response', [ 'operation' => 'run', 'agents' => 'all', 'command' => '!custom-script', 'arguments' => "a\nb", 'alert' => '{"user": "bob"}', 'variable' => 'r' ]);
+	    [ $rbad, $sentRbad ] = $step('app::wazuh-response', [ 'operation' => 'run', 'agents' => '1', 'command' => '../evil', 'variable' => 'r' ]);
+	    $this->check('wazuh: Active Response: block: the script with the alert\'s address, on the alert\'s agent; a bad address, no agents: not sent; run: on `all`, arguments, alert data; a bad command: not sent', [
+		[ '001', [ 'command' => '!firewall-drop', 'arguments' => [], 'alert' => [ 'data' => [ 'srcip' => '203.0.113.5' ] ] ] ], [ '001' ], 0, 0, [ false, [ 'command' => '!custom-script', 'arguments' => [ 'a', 'b' ], 'alert' => [ 'data' => [ 'user' => 'bob' ] ] ] ], 0 ], [
+		[ $sent[0]['query']['agents_list'] ?? null, $sent[0]['body'] ?? null ], $bk?->getVariable('r')['affected'] ?? null, count($sentIp), count($sentNo), [ isset($sentRun[0]['query']['agents_list']), $sentRun[0]['body'] ?? null ], count($sentRbad) ]);
+
+	    //scans, inventory, manager
+	    [ $sp, ] = $step('app::wazuh-scans', [ 'operation' => 'scaPolicies', 'agent' => '1', 'variable' => 's' ]);
+	    [ $sc, ] = $step('app::wazuh-scans', [ 'operation' => 'scaChecks', 'agent' => '1', 'policy' => 'cis_ubuntu24', 'result' => 'failed', 'variable' => 's' ]);
+	    [ $fi, $sentFi ] = $step('app::wazuh-scans', [ 'operation' => 'fim', 'agent' => '1', 'file' => '/etc/passwd', 'variable' => 's' ]);
+	    [ $fl, ] = $step('app::wazuh-scans', [ 'operation' => 'fimLast', 'agent' => '1', 'variable' => 's' ]);
+	    [ $fr, $sentFr ] = $step('app::wazuh-scans', [ 'operation' => 'fimRun', 'agents' => '1', 'variable' => 's' ]);
+	    [ $ro, ] = $step('app::wazuh-scans', [ 'operation' => 'rootcheck', 'agent' => '1', 'variable' => 's' ]);
+	    [ $rr, $sentRr ] = $step('app::wazuh-scans', [ 'operation' => 'rootcheckRun', 'agents' => '{{ none }}', 'variable' => 's' ], [ 'none' => '' ]);
+	    $this->check('wazuh: Scans: SCA policies, failed checks, FIM files of a path, last scan, FIM started, rootcheck; started without agents: not sent', [ 75, [ 1 ], '/etc/passwd', '2026-11-03T09:05:00Z', [ '/syscheck', '001' ], 'solved', 0 ], [
+		$sp?->getVariable('s')['items'][0]['score'] ?? null, array_column($sc?->getVariable('s')['items'] ?? [], 'id'), $sentFi[0]['query']['file'] ?? null, $fl?->getVariable('s')['end'] ?? null, [ $sentFr[0]['path'] ?? null, $sentFr[0]['query']['agents_list'] ?? null ],
+		$ro?->getVariable('s')['items'][0]['status'] ?? null, count($sentRr) ]);
+	    [ $io, ] = $step('app::wazuh-inventory', [ 'operation' => 'os', 'agent' => '1', 'variable' => 'i' ]);
+	    [ $ip, ] = $step('app::wazuh-inventory', [ 'operation' => 'packages', 'agent' => '1', 'maxItems' => 700, 'variable' => 'i' ]);
+	    $this->check('wazuh: Inventory: one item; a list read in pages up to At most', [ 'os', 700, 1200, true ], [ $io?->getVariable('i')['kind'] ?? null, $ip?->getVariable('i')['count'] ?? null, $ip?->getVariable('i')['total'] ?? null, $ip?->getVariable('i')['truncated'] ?? null ]);
+	    [ $ms, ] = $step('app::wazuh-manager', [ 'operation' => 'status', 'variable' => 'm' ]);
+	    [ $mi, ] = $step('app::wazuh-manager', [ 'operation' => 'info', 'variable' => 'm' ]);
+	    [ $mc, ] = $step('app::wazuh-manager', [ 'operation' => 'cluster', 'variable' => 'm' ]);
+	    [ $ml, $sentMl ] = $step('app::wazuh-manager', [ 'operation' => 'logs', 'logLevel' => 'error', 'tag' => 'wazuh-analysisd', 'variable' => 'm' ]);
+	    [ $mr, $sentMr ] = $step('app::wazuh-manager', [ 'operation' => 'rules', 'ruleIds' => '5712,5501', 'level' => '7-10', 'group' => 'sshd', 'variable' => 'm' ]);
+	    [ $md, ] = $step('app::wazuh-manager', [ 'operation' => 'decoders', 'variable' => 'm' ]);
+	    [ $mx, $sentMx ] = $step('app::wazuh-manager', [ 'operation' => 'restart', 'variable' => 'm' ]);
+	    $this->check('wazuh: Manager: status (a failed daemon said); info; cluster; log of a level; rules: ids, level, group; decoders; restart (takes no wait_for_complete)', [ true, 'v4.14.0', 'no', 'error', [ '5712,5501', '7-10', 'sshd' ], 'sshd', [ 'wazuh-manager' ], [] ], [
+		str_contains((string)self::logLine($ms, 'Wazuh Manager status: '), '2 daemons running, wazuh-db in another state'), $mi?->getVariable('m')['version'] ?? null, $mc?->getVariable('m')['enabled'] ?? null, $sentMl[0]['query']['level'] ?? null,
+		[ $sentMr[0]['query']['rule_ids'] ?? null, $sentMr[0]['query']['level'] ?? null, $sentMr[0]['query']['group'] ?? null ], $md?->getVariable('m')['items'][0]['name'] ?? null, $mx?->getVariable('m')['affected'] ?? null, $sentMx[0]['query'] ?? null ]);
+
+	    //API, Other parameters
+	    [ $as, ] = $step('app::wazuh-api', [ 'operation' => 'server', 'method' => 'GET', 'path' => '/groups', 'query' => '{"limit": 1}', 'variable' => 'a' ]);
+	    [ $ai, $sentAi ] = $step('app::wazuh-api', [ 'operation' => 'indexer', 'method' => 'POST', 'path' => '/wazuh-alerts-*/_search', 'body' => '{"size": 0}', 'variable' => 'a' ]);
+	    [ $an, ] = $step('app::wazuh-api', [ 'operation' => 'server', 'method' => 'GET', 'path' => '/nothing', 'variable' => 'a' ]);
+	    [ $op, $sentOp ] = $step('app::wazuh-agents', [ 'operation' => 'list', 'params' => '{"q": "os.platform=ubuntu"}', 'variable' => 'a' ]);
+	    [ $oa, $sentOa ] = $step('app::wazuh-alerts', [ 'operation' => 'search', 'params' => '{"_source": ["rule"]}', 'variable' => 'a' ]);
+	    [ $ob, ] = $step('app::wazuh-agents', [ 'operation' => 'list', 'params' => '[1]', 'variable' => 'a' ]);
+	    $this->check('wazuh: API: to the server and to the indexer; a path it has not: the error output; Other parameters: in the query, in the search; not an object: the error output', [ 1, [ 'size' => 0 ], 'error', 'os.platform=ubuntu', [ 'rule' ], 'error' ], [
+		count($as?->getVariable('a')['data']['affected_items'] ?? []), $sentAi[0]['body'] ?? null, $an?->getVariable('route'), $sentOp[0]['query']['q'] ?? null, $sentOa[0]['body']['_source'] ?? null, $ob?->getVariable('route') ]);
+
+	    //the trigger
+	    $wf = $this->workflow('wz alert', [ $n('t', 'trigger::wazuh', [ 'credential' => (string)$cred->_id, 'minLevel' => 7, 'runs' => 'each', 'variable' => 'ev', 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]),
+		$n('s', 'app::set', [ 'variable' => 'seen', 'value' => '{{ ev.rule.id }}' ]), $e('e1', 't', 's') ]);
+	    $wfs[] = $wf;
+	    $this->check('wazuh: the alert trigger\'s workflow is valid', true, $wf->validates());
+	    $noIdxWf = $this->workflow('wz alert none', [ $n('t', 'trigger::wazuh', [ 'credential' => (string)$noIndexer->_id, 'variable' => 'ev', 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]) ]);
+	    $wfs[] = $noIdxWf;
+	    $this->check('wazuh: the alert trigger needs a credential with the indexer', [ false, true ], [ $noIdxWf->validates(), str_contains(json_encode($noIdxWf->errors()), 'the credential has no indexer') ]);
+	    $T = \models\node\NodeTriggerWazuh::class;
+	    $node = $wf->nodes['t'];
+	    $at = fn($offset) => gmdate('Y-m-d\TH:i:s', time() + $offset) . '.000+0000';
+	    $show = fn($runs) => array_map(fn($x) => $x->getVariable('ev')['_id'] ?? null, $runs);
+	    //the newest alert of any level sets the floor: the clock of Wazuh, not ours
+	    $alerts([ $alert('b0', $at(-500), 12), $alert('b1', $at(-300), 2) ]);
+	    [ $d0, $r0 ] = $T::check($wf, $node, []);
+	    $floorOk = $d0['since'] === (int)(new \DateTimeImmutable($at(-300)))->format('Uv');
+	    $alerts([ $alert('b0', $at(-500), 12), $alert('b1', $at(-300), 2), $alert('b2', $at(-290), 12), $alert('b3', $at(-280), 3), $alert('b4', $at(-270), 9, 'db01') ]);
+	    [ $d1, $r1 ] = $T::check($wf, $node, $d0);
+	    [ $d2, $r2 ] = $T::check($wf, $node, $d1);
+	    //late: older than the newest started, inside the lag
+	    $alerts([ $alert('b0', $at(-500), 12), $alert('b2', $at(-290), 12), $alert('b4', $at(-270), 9, 'db01'), $alert('b5', $at(-275), 11) ]);
+	    [ $d3, $r3 ] = $T::check($wf, $node, $d2);
+	    //older than the first check: never
+	    $alerts([ $alert('b6', $at(-400), 15) ]);
+	    [ $d4, $r4 ] = $T::check($wf, $node, $d3);
+	    //a flood: MAX_RUNS per check, the others in the next one
+	    $flood = array_map(fn($i) => $alert("f{$i}", $at(-200 + (int)floor($i / 10)), 12), range(1, 250));
+	    $alerts($flood);
+	    [ $d5, $r5 ] = $T::check($wf, $node, $d4);
+	    foreach($r5 as $x)
+		$started[] = $x;
+	    [ $d6, $r6 ] = $T::check($wf, $node, $d5);
+	    $started = array_merge($started, $r0, $r1, $r2, $r3, $r4, $r6);
+	    $this->check('wazuh: alert trigger: the first check notes the time of Wazuh\'s newest alert; then new ones of the level start a run, oldest first, once; a late one too; one older than the first check never', [
+		true, [], [ 'b2', 'b4' ], [], [ 'b5' ], [] ], [ $floorOk, $show($r0), $show($r1), $show($r2), $show($r3), $show($r4) ]);
+	    $this->check('wazuh: alert trigger: a flood: 200 runs in a check, the rest in the next, none twice', [ 200, 50, 250 ], [ count($r5), count($r6), count(array_unique(array_merge($show($r5), $show($r6)))) ]);
+	    $this->check('wazuh: alert trigger: the runs queued, at the trigger, with the alert', [ 'new', 'wazuh', 'Rule 5712' ], [ $r1[0]?->state, $r1[0]?->trigger, $r1[0]?->getVariable('ev')['rule']['description'] ?? null ]);
+	    //what is kept does not grow: nothing older than the lag
+	    $alerts([ $alert('c1', $at(3600), 12) ]);
+	    [ $d7, $r7 ] = $T::check($wf, $node, $d6);
+	    $started = array_merge($started, $r7);
+	    $this->check('wazuh: alert trigger: what it has seen is forgotten after the lag', [ [ 'c1' ], [ 'c1' ] ], [ $show($r7), array_map(fn($s) => $s[0], $d7['seen']) ]);
+	    //batch
+	    $batch = $node;
+	    $batch['config'] = [ 'runs' => 'batch' ] + (array)$node['config'];
+	    $alerts([ $alert('d1', $at(3700), 12), $alert('d2', $at(3701), 12) ]);
+	    [ , $r8 ] = $T::check($wf, $batch, $d7);
+	    $started = array_merge($started, $r8);
+	    $this->check('wazuh: alert trigger: one run per check', [ 1, 2, [ 'd1', 'd2' ] ], [ count($r8), $r8[0]?->getVariable('ev')['count'] ?? null, array_column($r8[0]?->getVariable('ev')['alerts'] ?? [], '_id') ]);
+	    $alerts([ $alert('e1', $at(-100), 12), $alert('e2', $at(-50), 12), $alert('e3', $at(-10), 2) ]);
+	    $now = $T::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('wazuh: alert trigger: Run in the designer: the newest match', [ 1, 'e2' ], [ count($now['executions'] ?? []), ($now['executions'][0] ?? null)?->getVariable('ev')['_id'] ?? null ]);
+	} finally {
+	    $W::$testing = false;
+	    $W::forgetTokens();
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
 	}
     }
 
