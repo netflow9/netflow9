@@ -10,6 +10,11 @@ namespace models\share;
 
 trait ShareableTrait {
 
+    //why it cannot be shared now, null when it can; a class may say
+    public function shareProblem() {
+	return null;
+    }
+
     //the `shares` field of the schema
     protected static function sharesField() {
 	return [

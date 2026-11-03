@@ -622,6 +622,11 @@ $formOptions = [
 		$items .= '<li><hr class="dropdown-divider"></li>';
 	    }
 	    $items .= \util\VString::insert('<li><a class="dropdown-item" href="{:href}"><i class="bi bi-clock me-2"></i>Versions</a></li>', [ 'href' => $versionsUrl ]);
+	    //CLD: 2026-11-03T16:00:00+02:00: Share (ShareController), not in a personal project
+	    if (\V::app()->user->can('Workflow::share', [ 'object' => $wf ]) && !(\V::app()->om->findOne('Project', [ '_id' => $wf->project, 'aid' => $wf->aid ])->personal ?? true))
+		$items .= \util\VString::insert('<li><a class="dropdown-item" href="{:href}"><i class="bi bi-share me-2"></i>Share&hellip;</a></li>', [
+		    'href' => \V::app()->createUrl('/share/manage', [ 'object' => 'Workflow', 'id' => $id ]),
+		]);
 	    if ($canDuplicate)
 		$items .= \util\VString::insert('<li><a class="dropdown-item btn-duplicate-wf" href="{:href}" data-method="post" data-confirm="Create a new workflow from the saved draft?"><i class="bi bi-copy me-2"></i>Duplicate</a></li>', [
 		    'href' => \V::app()->createUrl('/workflow/duplicate', [ 'id' => $id ]),

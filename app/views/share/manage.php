@@ -42,7 +42,11 @@ $list = $rows === ''
 $options = '<option value="">Choose a project...</option>';
 foreach($targets as $id => $label)
     $options .= \util\VString::insert('<option value="{:value}">{:label}</option>', [ 'value' => \V::app()->html->escape($id), 'label' => \V::app()->html->escape($label) ]);
-$add = $targets
+//CLD: 2026-11-03T16:00:00+02:00: what the resource refuses comes first (a workflow not published)
+$problem = $resource->shareProblem();
+$add = $problem !== null
+    ? \util\VString::insert('<div class="alert alert-warning small py-2 mb-0"><i class="bi bi-exclamation-triangle me-2"></i>{:text}</div>', [ 'text' => \V::app()->html->escape($problem) ])
+    : ($targets
     ? \util\VString::insert('
 <form method="post" action="{:action}" class="row g-2 align-items-end">
     <div class="col-sm-6"><label class="form-label small mb-1">Share with</label><select name="project" class="form-select form-select-sm" required>{:options}</select></div>
@@ -53,7 +57,7 @@ $add = $targets
 	'options' => $options,
 	'level' => $levelSelect(array_key_first($resource::SHARE_LEVELS), ''),
     ])
-    : '<p class="text-muted small mb-0">No other project can receive it. Personal projects do not take part in sharing.</p>';
+    : '<p class="text-muted small mb-0">No other project can receive it. Personal projects do not take part in sharing.</p>');
 
 $warnings = '';
 foreach($resource->shareWarnings() as $warning)

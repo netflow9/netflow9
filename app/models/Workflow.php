@@ -3,9 +3,19 @@
 namespace models;
 
 class Workflow extends \sys\BaseModel {
+    //CLD: 2026-11-03T16:00:00+02:00: a published workflow that starts with Called by a workflow can be shared with other projects of the account: they call it and see what it offers (not Workflow::read: that is also its runs,
+    //its settings, its tests). It runs in its own project
+    use \models\share\ShareableTrait;
+
+    const SHARE_PERM = 'Workflow::share';
+    const SHARE_WHAT = 'Workflow';
+    const SHARE_LEVELS = [ 'run' => 'Call and view' ];
+    const SHARE_PERMS = [ 'run' => [ 'Workflow::viewShared' ] ];
+
     protected static $collection = 'workflows';
     public static $indexes = [
 	[ [ 'aid' => 1, 'project' => 1 ], [] ],
+	[ [ 'aid' => 1, 'shares.project' => 1 ], [] ],
 	[ [ 'status' => 1, 'version' => 1 ], [] ],
     ];
 
@@ -55,6 +65,9 @@ class Workflow extends \sys\BaseModel {
 		'perm:read' => 'everybody',
 		'perm:update' => 'permission',
 	    ],
+
+	    //CLD: 2026-11-03T16:00:00+02:00: the projects it is shared with
+	    self::sharesField(),
 
 	    [
 		'key' => 'status',
@@ -127,7 +140,28 @@ class Workflow extends \sys\BaseModel {
 	    $permName = $this->getObjectName() . '::' . $permName;
 
 	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the workflow's project decides (was: any membership)
-	return \models\Project::can($this->project, $this->aid, $userId, $permName);
+	//CLD: 2026-11-03T16:00:00+02:00: or a share with a project where their role allows it (only Workflow::viewShared)
+	return \models\Project::can($this->project, $this->aid, $userId, $permName) || $this->sharedCan($userId, $permName);
+    }
+
+    //CLD: 2026-11-03T16:00:00+02:00: why it cannot be shared now, null when it can (the Share dialog)
+    public function shareProblem() {
+	$live = $this->liveCopy();
+	if (!$live)
+	    return 'Publish it first: other projects only run its published version.';
+	if (\models\node\NodeTriggerCall::contractOf($live->nodes) === null)
+	    return 'Only a workflow that starts with Called by a workflow can be shared: its inputs and outputs are what other projects use.';
+	return null;
+    }
+
+    //CLD: 2026-11-03T16:00:00+02:00: what the Share dialog says
+    public function shareWarnings() {
+	return [ 'It runs in this project, with this project\'s credentials and tables. Who calls it chooses its inputs and gets its outputs and errors. They see its description, inputs, outputs and step names, not its settings or runs.' ];
+    }
+
+    //CLD: 2026-11-03T16:00:00+02:00: the copy of this workflow that a call from project $projectId runs: its published version; in its own project, else its draft. null: a shared workflow not published (now)
+    public function copyFor($projectId) {
+	return $this->liveCopy() ?: ($this->isHome($projectId) ? $this : null);
     }
 
 

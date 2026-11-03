@@ -8526,6 +8526,87 @@ class CheckCommand extends \sys\BaseController {
 		}
 	    }
 
+	    //CLD: 2026-11-03T16:00:00+02:00: a workflow of the other project: called from here, run there
+	    $homeSecret = $om->create('CredentialVariable', [ 'aid' => $aid, 'project' => $home->_id, 'name' => 'chk_where', 'value' => 'home-value' ]);
+	    $homeSecret->save();
+	    $varHere = $om->create('CredentialVariable', [ 'aid' => $aid, 'project' => $here->_id, 'name' => 'chk_where', 'value' => 'caller-value' ]);
+	    $varHere->save();
+	    $service = $om->create('Workflow', [ 'aid' => $aid, 'project' => $home->_id, 'name' => 'Check: shared service', 'nodes' => array_column([
+		self::node('c', 'trigger::call', [ 'inputs' => [ [ 'name' => 'who', 'type' => 'text', 'required' => true ] ], 'outputs' => [ [ 'name' => 'answer' ] ], 'agentDescription' => 'Says hello' ]),
+		self::node('s', 'app::set', [ 'variable' => 'answer', 'value' => 'v1 {{ who }} {{ vars.chk_where }}' ]), self::edge('e', 'c', 's') ], null, 'wfid') ]);
+	    $service->save();
+	    $this->created[] = $service->_id;
+	    $sid = (string)$service->_id;
+	    $node = \models\node\NodeAppWorkflow::class;
+	    $callFlow = [ self::node('m', 'trigger::manual'), self::node('w', 'app::workflow', [ 'workflow' => $sid, 'variable' => 'result', 'inputs' => [ [ 'name' => 'who', 'value' => 'Ana' ] ], 'onError' => 'output' ]), self::edge('e1', 'm', 'w') ];
+	    $errorsCall = fn() => json_encode($this->errorsOf('share call', $callFlow));
+	    $publish = function($wf) use ($om) {
+		$version = $om->create('WfVersion', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'number' => $wf->nextVersionNumber(), 'name' => (string)$wf->name, 'nodes' => $wf->nodes ]);
+		$version->save();
+		$om->updateMany('Workflow', [ '_id' => $wf->_id ], [ '$set' => [ 'status' => \models\Workflow::PUBLISHED, 'version' => $version->_id ] ]);
+		return $om->findById('Workflow', (string)$wf->_id);
+	    };
+	    $this->check('sharing workflows: not shared: refused', [ null, true ], [ $node::findWorkflow($sid, $aid, $here->_id), str_contains($errorsCall(), 'choose a workflow') ]);
+	    $this->check('sharing workflows: a draft cannot be shared', true, str_contains((string)$service->shareProblem(), 'Publish it first'));
+	    $service->setShare($here, 'run');
+	    $service = $om->findById('Workflow', $sid);
+	    $this->check('sharing workflows: shared but only a draft: not offered, not valid; the draft of a project runs for itself', [ null, true, true ],
+		[ $service->copyFor($here->_id), str_contains($errorsCall(), 'choose a workflow'), $service->copyFor($home->_id) !== null ]);
+	    $service = $publish($service);
+	    $this->check('sharing workflows: published: can be shared', null, $service->shareProblem());
+	    $this->check('sharing workflows: found from here, not from a third', [ true, null ], [ (string)($node::findWorkflow($sid, $aid, $here->_id)->_id ?? '') === $sid, $node::findWorkflow($sid, $aid, $third->_id) ]);
+	    //the draft moves on: the callers keep the published version
+	    $service->nodes = array_merge((array)$service->nodes, [ 's' => self::node('s', 'app::set', [ 'variable' => 'answer', 'value' => 'DRAFT' ]) ]);
+	    $service->save();
+	    $service = $om->findById('Workflow', $sid);
+	    $exe = $this->runFlow('share call', $callFlow);
+	    $r = $exe?->getVariable('result');
+	    $child = !empty($r['execution']) ? $om->findOne('WfExecution', [ '_id' => $om->to_oid($r['execution']) ]) : null;
+	    $this->check('sharing workflows: called from here: the published version, with the variables of its own project; its run is in its project', [ 'end', true, 'v1 Ana home-value', (string)$home->_id, (string)$here->_id ],
+		[ $exe?->state, $r['ok'] ?? null, $r['outputs']['answer'] ?? null, (string)($child->project ?? ''), (string)($exe->project ?? '') ]);
+	    $this->check('sharing workflows: the run says the project of its caller', true, (bool)array_filter((array)($child->log ?? []), fn($l) => str_contains((string)($l['message'] ?? ''), (string)$here->name)));
+	    $this->check('sharing workflows: the calling workflows, for the Share dialog', 'Check: share call', $service->consumers($here->_id)[0]['name'] ?? null);
+
+	    //who sees what: the offer, nothing else
+	    if (!in_array(null, $roles, true)) {
+		$uid2 = new \MongoDB\BSON\ObjectId();
+		$membersHere = (array)$om->findById('Project', (string)$here->_id)->members;
+		$as = function($role) use ($om, $here, $uid2, $roles, $membersHere, $auth, $sid) {
+		    $auth->userRole = $roles['member'];
+		    $om->updateMany('Project', [ '_id' => $here->_id ], [ '$set' => [ 'members' => $membersHere + ($role ? [ (string)$uid2 => [ 'role' => $roles[$role]->_id ] ] : []) ] ]);
+		    $w = $om->findById('Workflow', $sid);
+		    return array_map(fn($p) => $auth->checkAccess($uid2, $p, [ 'object' => $w ]), [ 'Workflow::viewShared', 'Workflow::read', 'Workflow::update', 'Workflow::publish', 'Workflow::share', 'Workflow::delete' ]);
+		};
+		\V::app()->config('app.mode', 'web');
+		try {
+		    $this->check('sharing workflows: Member here: its offer only (no Workflow::read: its runs, settings, tests)', [ true, false, false, false, false, false ], $as('member'));
+		    $this->check('sharing workflows: Owner here: the same', [ true, false, false, false, false, false ], $as('owner'));
+		    $this->check('sharing workflows: Participant here, or not a member: nothing', [ [ false, false, false, false, false, false ], [ false, false, false, false, false, false ] ], [ $as('participant'), $as(null) ]);
+		} finally {
+		    \V::app()->config('app.mode', $mode);
+		    $auth->userRole = $roleBefore;
+		    $om->updateMany('Project', [ '_id' => $here->_id ], [ '$set' => [ 'members' => $membersHere ] ]);
+		}
+	    }
+
+	    //unpublished, then taken back: the saved caller fails, at its error output
+	    $callerWf = $om->findOne('Workflow', [ 'aid' => $aid, 'project' => $here->_id, 'name' => 'Check: share call' ]);
+	    $service->status = \models\Workflow::DRAFT;
+	    $service->save();
+	    $run = function() use ($callerWf) {
+		$e = \models\wf\WfExecution::startFor($callerWf, 'console', [ 'vars' => [] ]);
+		$e->run();
+		return $e->getVariable('result');
+	    };
+	    $this->check('sharing workflows: unpublished: the call fails, its draft does not run', [ false, true ], (fn($r) => [ $r['ok'] ?? null, str_contains((string)($r['error'] ?? ''), 'not published') ])($run()));
+	    $service = $publish($om->findById('Workflow', $sid));
+	    $service->removeShare($here);
+	    $this->check('sharing workflows: taken back: the call fails', [ false, true ], (fn($r) => [ $r['ok'] ?? null, str_contains((string)($r['error'] ?? ''), 'no longer shared') ])($run()));
+	    foreach($om->find('WfVersion', [ 'wf' => $service->_id ]) as $v)
+		$v->delete();
+	    $homeSecret->delete();
+	    $varHere->delete();
+
 	    //taken back: a workflow already saved fails at its next run
 	    $dt = $reload();
 	    $dt->removeShare($here);

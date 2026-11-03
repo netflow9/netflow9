@@ -364,8 +364,9 @@ class AgentTools {
 	    if (!$wf)
 		break;
 	    $called = \models\node\NodeAppWorkflow::findWorkflow((string)$id, $wf->aid, $wf->project);
-	    if (!$called || \models\node\NodeTriggerCall::contractOf(($called->liveCopy() ?: $called)->nodes) === null)
-		$errors[] = 'Workflows: choose workflows of this project that start with Called by a workflow';
+	    //CLD: 2026-11-03T16:00:00+02:00: copyFor: a shared workflow counts only while published
+	    if (!$called || \models\node\NodeTriggerCall::contractOf($called->copyFor($wf->project)?->nodes) === null)
+		$errors[] = 'Workflows: choose workflows of this project that start with Called by a workflow, or published ones shared with it';
 	    elseif ((string)$called->_id === (string)$wf->_id)
 		$errors[] = "Workflows: a workflow cannot run itself ({$called->name})";
 	}
@@ -415,9 +416,10 @@ class AgentTools {
 	$taken = [];
 	foreach((array)$ai->cfg(self::WORKFLOWS, []) as $id) {
 	    $wf = \models\node\NodeAppWorkflow::findWorkflow((string)$id, $exec->aid, $exec->project);
-	    $contract = $wf ? \models\node\NodeTriggerCall::contractOf(($wf->liveCopy() ?: $wf)->nodes) : null;
+	    //CLD: 2026-11-03T16:00:00+02:00: copyFor: a shared workflow counts only while published
+	    $contract = $wf ? \models\node\NodeTriggerCall::contractOf($wf->copyFor($exec->project)?->nodes) : null;
 	    if ($contract === null)
-		throw new \ErrorException('a workflow of Workflows is no longer in the project, or no longer starts with Called by a workflow');
+		throw new \ErrorException('a workflow of Workflows is no longer in the project or shared with it, or no longer starts with Called by a workflow');
 	    $name = self::workflowToolName((string)$wf->name, $taken, $tools);
 	    [ $schema, $inputs ] = self::workflowSchema($contract);
 	    $outputs = $contract['outputs'] ? implode(', ', $contract['outputs']) : 'none';

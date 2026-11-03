@@ -100,7 +100,8 @@ foreach($members as $key => $item) {
 	'remove' => $canManage
 	    ? \util\VString::insert($removeTpl, [
 		'href' => \V::app()->createUrl('/project/member_remove', $q),
-		'confirm' => \V::app()->html->escape('Remove ' . $name . ' from the project?'),
+		//CLD: 2026-11-03T16:00:00+02:00: the confirmation is shown as HTML after the attribute is read: escaped for both (was once: a name with markup ran in the box)
+		'confirm' => \V::app()->html->escape('Remove ' . \V::app()->html->escape($name) . ' from the project?'),
 	    ])
 	    : '',
     ]);
