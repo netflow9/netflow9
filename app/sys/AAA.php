@@ -65,8 +65,12 @@ class AAA {
 	if ($enabled && $scope == 'global')
 	    return true;
 
-	if (empty($params['object']))
+	//CLD: 2026-11-03T12:00:00+02:00: no object, a permission with a project scope: it is asked of the current project (was: the account role alone, whatever the user's role there)
+	if (empty($params['object'])) {
+	    if (in_array('project', $this->allPerms[$permName]['scopes'] ?? [], true))
+		return \models\Project::can(\V::app()->user->crtProject, \V::app()->config('rt.account')->_id ?? null, $userId, $permName);
 	    return $enabled;
+	}
 
 	//delegate to object
 	$object = $params['object'];

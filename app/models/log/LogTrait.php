@@ -112,21 +112,13 @@ trait LogTrait {
 	return (string)$this->action . ' ' . (string)$this->name;
     }
 
-    //global scope = the account, project scope = member of the entry's project
+    //global scope = the account, else the user's role in the entry's project
     public function checkAccess($userId, $permName, $params = []) {
-	$role = \V::app()->auth->getUserRole();
-
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
-	$scope = $role->getPermissionScope($permName);
-	if ($scope == 'global')
-	    return true;
-
-	if ($scope == 'project')
-	    return \models\Project::isMember($this->project, $this->aid, $userId);
-
-	return false;
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the entry's project decides (was: any membership); an entry without a project: global scope only
+	return \models\Project::can($this->project, $this->aid, $userId, $permName);
     }
 
     // ------------------------------------------------------------------------------------

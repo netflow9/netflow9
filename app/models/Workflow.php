@@ -122,23 +122,12 @@ class Workflow extends \sys\BaseModel {
     }
 
     public function checkAccess($userId, $permName, $params = []) {
-	$role = \V::app()->auth->getUserRole();
-
 	//build full permission name
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
-	//now get the primary role permission scope
-	$scope = $role->getPermissionScope($permName);
-	if ($scope == 'global')
-	    return true;
-
-	//project scope: the user must be a member of the workflow's project
-	if ($scope == 'project')
-	    return \models\Project::isMember($this->project, $this->aid, $userId);
-
-	//default: false
-	return false;
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the workflow's project decides (was: any membership)
+	return \models\Project::can($this->project, $this->aid, $userId, $permName);
     }
 
 

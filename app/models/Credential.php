@@ -135,21 +135,11 @@ class Credential extends \sys\BaseModel {
 
     //CLD: 2026-10-09T17:21:14+03:00: permissions are the family's (Credential::update, ...) for every variant
     public function checkAccess($userId, $permName, $params = []) {
-	$role = \V::app()->auth->getUserRole();
-
 	if (strpos($permName, '::') === false)
 	    $permName = 'Credential::' . $permName;
 
-	$scope = $role->getPermissionScope($permName);
-
-	if ($scope == 'global')
-	    return true;
-
-	//project scope: the user must be a member of the credential's project
-	if ($scope == 'project')
-	    return \models\Project::isMember($this->project, $this->aid, $userId);
-
-	return false;
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the credential's project decides (was: any membership)
+	return \models\Project::can($this->project, $this->aid, $userId, $permName);
     }
 
     public function __toString() {

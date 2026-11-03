@@ -102,16 +102,11 @@ class McpToken extends \sys\BaseModel {
     //CLD: 2026-10-22T00:28:13+03:00: as models\Credential (was models\Variable, removed)
     //as models\Credential: global scope = the account's tokens, project scope = the tokens of the projects the user is a member of
     public function checkAccess($userId, $permName, $params = []) {
-	$role = \V::app()->auth->getUserRole();
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
-	$scope = $role->getPermissionScope($permName);
-	if ($scope == 'global')
-	    return true;
-	if ($scope == 'project')
-	    return \models\Project::isMember($this->project, $this->aid, $userId);
-	return false;
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the token's project decides (was: any membership)
+	return \models\Project::can($this->project, $this->aid, $userId, $permName);
     }
 
     public function __toString() {

@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'access', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -8328,6 +8328,223 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-11-01T02:00:00+02:00: the account's Data access: the MCP server per project (Account::mcpEnabled; /mcp refuses the tokens of a project whose server is off: a POST to this installation's
     //web server, skipped when it cannot be reached), what the designer's Assistant may read (structure only: the structure tools, a data tool refused, the variables without values,
     //the system prompt says so; structure and data: every tool)
+    //CLD: 2026-11-03T12:00:00+02:00: the user's role in a project decides what they may do there (models\Project::can): the account role's project scope gives nothing by itself, global scope passes
+    //everywhere, a permission asked without an object is asked of the current project. Run with the web rules (the console passes every check); the role is set on sys\AAA
+    private function suiteRoles() {
+	$om = \V::app()->om;
+	$aid = $this->account->_id;
+	$roles = [];
+	foreach([ 'owner', 'member', 'participant' ] as $iname)
+	    $roles[$iname] = $om->findOne('Role', [ 'aid' => $aid, 'iname' => $iname ]);
+	if (in_array(null, $roles, true)) {
+	    echo "  skipped: the account has no owner / member / participant roles\n";
+	    return;
+	}
+	$auth = \V::app()->auth;
+	$user = \V::app()->user;
+	$mode = \V::app()->config('app.mode');
+	[ $roleBefore, $projectBefore ] = [ $auth->userRole, $user->crtProject ];
+	$uid = new \MongoDB\BSON\ObjectId();
+	$project = null;
+	try {
+	    $project = $om->create('Project', [ 'aid' => $aid, 'name' => 'Check roles', 'owner' => $this->project->owner, 'members' => [] ]);
+	    $project->save();
+	    $pid = $project->_id;
+	    //one object of each kind in the project (not saved: the checks read only the project and the account)
+	    $objects = [
+		'Credential::update' => $om->create('Credential', [ 'aid' => $aid, 'project' => $pid ]),
+		'Workflow::update' => $om->create('Workflow', [ 'aid' => $aid, 'project' => $pid ]),
+		'Workflow::publish' => $om->create('Workflow', [ 'aid' => $aid, 'project' => $pid ]),
+		'DataTable::writeData' => $om->create('DataTableDef', [ 'aid' => $aid, 'project' => $pid ]),
+		'File::read' => $om->create('File', [ 'aid' => $aid, 'metadata' => [ 'project' => $pid, 'aid' => $aid ] ]),
+		'KnowledgeBase::update' => $om->create('KnowledgeBase', [ 'aid' => $aid, 'project' => $pid ]),
+		'McpToken::create' => $om->create('McpToken', [ 'aid' => $aid, 'project' => $pid ]),
+	    ];
+	    //[ permission => allowed ] for the account role $account and the project role $inProject (null: not a member)
+	    $allowed = function($account, $inProject) use ($om, $auth, $project, $objects, $uid, $roles) {
+		$auth->userRole = $roles[$account];
+		$project->members = $inProject ? [ (string)$uid => [ 'role' => is_string($inProject) && isset($roles[$inProject]) ? $roles[$inProject]->_id : $inProject ] ] : [];
+		$om->updateMany('Project', [ '_id' => $project->_id ], [ '$set' => [ 'members' => $project->members ] ]);
+		$result = [];
+		foreach($objects as $perm => $o)
+		    $result[$perm] = $auth->checkAccess($uid, $perm, [ 'object' => $o ]);
+		return $result;
+	    };
+	    $all = fn($v) => array_fill_keys(array_keys($objects), $v);
+
+	    \V::app()->config('app.mode', 'web');
+	    $this->check('roles: account Member, project Member: allowed', $all(true), $allowed('member', 'member'));
+	    $this->check('roles: account Member, project Participant: refused (was: allowed, any membership was enough)', $all(false), $allowed('member', 'participant'));
+	    $this->check('roles: account Member, project Owner: allowed', $all(true), $allowed('member', 'owner'));
+	    $this->check('roles: account Participant, project Member: allowed (was: refused)', $all(true), $allowed('participant', 'member'));
+	    $this->check('roles: account Member, not a member of the project: refused', $all(false), $allowed('member', null));
+	    $this->check('roles: account Owner, not a member of the project: allowed (global scope)', $all(true), $allowed('owner', null));
+	    $foreign = new \MongoDB\BSON\ObjectId();
+	    $this->check('roles: a role that is not of the account gives nothing', $all(false), $allowed('member', $foreign));
+
+	    //the logs: off for an account Member, on for the project's Owner
+	    $entry = fn($project) => $om->create('AuditLog', [ 'aid' => $aid, 'project' => $project ]);
+	    $allowed('member', 'owner');
+	    $this->check('roles: the audit log: the project\'s Owner reads its entries, not those without a project', [ true, false ],
+		[ $auth->checkAccess($uid, 'AuditLog::read', [ 'object' => $entry($pid) ]), $auth->checkAccess($uid, 'AuditLog::read', [ 'object' => $entry(null) ]) ]);
+	    $allowed('member', 'member');
+	    $this->check('roles: the audit log: a project Member does not', false, $auth->checkAccess($uid, 'AuditLog::read', [ 'object' => $entry($pid) ]));
+
+	    //no object: asked of the current project; what has no project scope stays the account role's
+	    $user->crtProject = $pid;
+	    $allowed('participant', 'member');
+	    $this->check('roles: no object: the role in the current project (account Participant, project Member); the alias too', [ true, true, false ],
+		[ $auth->checkAccess($uid, 'DataTable::create'), $auth->checkAccess($uid, 'DataTable::list'), $auth->checkAccess($uid, 'Project::create') ]);
+	    $allowed('member', 'participant');
+	    $this->check('roles: no object: account Member, project Participant: refused', [ false, false ], [ $auth->checkAccess($uid, 'DataTable::create'), $auth->checkAccess($uid, 'File::create') ]);
+	    $allowed('owner', 'participant');
+	    $this->check('roles: no object: account Owner: allowed; a permission of the account too', [ true, true ], [ $auth->checkAccess($uid, 'DataTable::create'), $auth->checkAccess($uid, 'Project::create') ]);
+	} finally {
+	    \V::app()->config('app.mode', $mode);
+	    $auth->userRole = $roleBefore;
+	    $user->crtProject = $projectBefore;
+	    $project?->delete();
+	}
+    }
+
+    //CLD: 2026-11-03T14:00:00+02:00: a table of another project shared with this one (models\share\ShareableTrait): found at the level given, by the Data Table step, the MCP tools; taken back: gone at the next run;
+    //who may do what through a share (web rules); what is kept and what the logs say
+    private function suiteSharing() {
+	$om = \V::app()->om;
+	$aid = $this->account->_id;
+	$here = $this->project;
+	$auth = \V::app()->auth;
+	$mode = \V::app()->config('app.mode');
+	$roleBefore = $auth->userRole;
+	$tools = \util\McpServerTools::class;
+	$home = $third = $dt = null;
+	$roles = [];
+	foreach([ 'owner', 'member', 'participant' ] as $iname)
+	    $roles[$iname] = $om->findOne('Role', [ 'aid' => $aid, 'iname' => $iname ]);
+	try {
+	    $home = $om->create('Project', [ 'aid' => $aid, 'name' => 'Check sharing home', 'owner' => $here->owner, 'members' => [] ]);
+	    $home->save();
+	    $third = $om->create('Project', [ 'aid' => $aid, 'name' => 'Check sharing third', 'owner' => $here->owner, 'members' => [] ]);
+	    $third->save();
+	    $name = 'chk_shared_' . substr(uniqid(), -6);
+	    $dt = $om->create('DataTableDef', [ 'aid' => $aid, 'name' => $name, 'iname' => 'data-table-chk-sharing-' . uniqid(), 'project' => $home->_id ]);
+	    $dt->save();
+	    \sys\fields\Field::create([ 'type' => 'text', 'aid' => $aid, 'key' => 'title', 'label' => 'Title', 'objectName' => $dt->iname ])->save();
+	    $om->resetCache();
+	    $om->registerDataTables();
+	    $row = $om->create($dt->iname, [ 'aid' => $aid ]);
+	    $row->assign([ 'title' => 'first' ]);
+	    $row->save();
+	    $table = (string)$dt->_id;
+	    $id = \models\node\NodeAppTable::class;
+	    $flow = fn($op, $data = []) => [ self::node('t', 'trigger::manual'), self::node('s', 'app::table', [ 'table' => $table, 'operation' => $op, 'variable' => 'out', 'data' => $data ]), self::edge('e', 't', 's') ];
+	    $insert = $flow('insert', [ [ 'column' => 'title', 'value' => 'from a share' ] ]);
+	    $listed = fn() => array_column(array_filter($tools::call('list_tables', [], $here, false)['tables'], fn($t) => $t['id'] === $table), 'access');
+	    $refused = function($fn) {
+		try {
+		    $fn();
+		    return false;
+		} catch (\ErrorException $e) {
+		    return true;
+		}
+	    };
+	    $reload = fn() => $om->findById('DataTableDef', $table);
+
+	    //not shared
+	    $this->check('sharing: not shared: not found from this project; the step and the tools refuse it', [ null, true, [], true ],
+		[ $id::findTable($table, $aid, $here->_id), (bool)$this->errorsOf('share none', $flow('query')), $listed(), $refused(fn() => $tools::call('query_table', [ 'table' => $table ], $here, false)) ]);
+
+	    //read
+	    $dt->setShare($here, 'read');
+	    $dt = $reload();
+	    $this->check('sharing: read: found from this project, not from a third; the home only lookup does not find it', [ true, null, null ],
+		[ (string)($id::findTable($table, $aid, $here->_id)->_id ?? '') === $table, $id::findTable($table, $aid, $third->_id), $id::findTable($table, $aid, $here->_id, true) ]);
+	    $exe = $this->runFlow('share read', $flow('query'));
+	    $this->check('sharing: read: the step queries its rows', [ 'end', 1 ], [ $exe?->state, count($exe?->getVariable('out')['rows'] ?? []) ]);
+	    $this->check('sharing: read: a step that changes rows is not valid', true, str_contains(json_encode($this->errorsOf('share read insert', $insert)), 'for reading only'));
+	    $this->check('sharing: read: the tools: listed with the level; rows read, by id and by name; no insert, no column', [ [ 'read' ], 1, 1, true, true ],
+		[ $listed(), $tools::call('query_table', [ 'table' => $table ], $here, false)['count'], $tools::call('query_table', [ 'table' => $name ], $here, false)['count'],
+		$refused(fn() => $tools::call('insert_rows', [ 'table' => $table, 'rows' => [ [ 'title' => 'x' ] ] ], $here, false)),
+		$refused(fn() => $tools::call('add_column', [ 'table' => $table, 'column' => [ 'key' => 'x' ] ], $here, false)) ]);
+
+	    //write: the row goes to the home project's table, its log says who
+	    $dt->setShare($here, 'write');
+	    $dt = $reload();
+	    $this->check('sharing: another level replaces the share', [ 1, 'write' ], [ count((array)$dt->shares), $dt->shareOf($here->_id)['access'] ?? null ]);
+	    $exe = $this->runFlow('share write', $insert);
+	    $newRow = (string)($exe?->getVariable('out')['row']['id'] ?? '');
+	    $this->check('sharing: write: the step inserts; the row is in the table', [ 'end', 2 ], [ $exe?->state, $om->count($dt->iname, [ 'aid' => $aid ]) ]);
+	    $log = $newRow !== '' ? $om->findOne('ExecutionLog', [ 'aid' => $aid, 'oid' => $newRow ]) : null;
+	    $this->check('sharing: write: the execution log: in the home project, says the project of the run', [ (string)$home->_id, true ],
+		[ (string)($log->project ?? ''), str_contains((string)($log->details ?? ''), (string)$here->name) ]);
+	    $this->check('sharing: write: the tools insert; the columns stay with the home project', [ 1, true ],
+		[ $tools::call('insert_rows', [ 'table' => $table, 'rows' => [ [ 'title' => 'y' ] ] ], $here, false)['inserted'], $refused(fn() => $tools::call('add_column', [ 'table' => $table, 'column' => [ 'key' => 'x' ] ], $here, false)) ]);
+
+	    //what uses it
+	    $user = $om->create('Workflow', [ 'aid' => $aid, 'project' => $here->_id, 'name' => 'Check: share user', 'nodes' => array_column($flow('query'), null, 'wfid') ]);
+	    $user->save();
+	    $this->created[] = $user->_id;
+	    $this->check('sharing: the workflows that use it, in that project only', [ true, [] ],
+		[ in_array((string)$user->_id, array_column($reload()->consumers($here->_id), 'id'), true), $reload()->consumers($third->_id) ]);
+
+	    //the save of a table keeps its shares
+	    $dt = $reload();
+	    $dt->save();
+	    $this->check('sharing: saving the table keeps its shares', 'write', $reload()->shareOf($here->_id)['access'] ?? null);
+
+	    //who may do what, for a user of account role Member
+	    if (!in_array(null, $roles, true)) {
+		$uid = new \MongoDB\BSON\ObjectId();
+		$can = function($inHome, $inHere, array $perms) use ($om, $auth, $uid, $roles, $home, $here, $reload) {
+		    $auth->userRole = $roles['member'];
+		    $set = fn($p, $r) => $om->updateMany('Project', [ '_id' => $p->_id ], [ '$set' => [ 'members' => array_merge(array_diff_key((array)$om->findById('Project', (string)$p->_id)->members, [ (string)$uid => 1 ]), $r ? [ (string)$uid => [ 'role' => $roles[$r]->_id ] ] : []) ] ]);
+		    $set($home, $inHome);
+		    $set($here, $inHere);
+		    $t = $reload();
+		    return array_map(fn($p) => $auth->checkAccess($uid, $p, [ 'object' => $t ]), $perms);
+		};
+		$perms = [ 'DataTable::readData', 'DataTable::writeData', 'DataTable::update', 'DataTable::delete', 'DataTable::share' ];
+		$membersBefore = (array)$om->findById('Project', (string)$here->_id)->members;
+		\V::app()->config('app.mode', 'web');
+		try {
+		    $this->check('sharing: Member here, level write: rows only', [ true, true, false, false, false ], $can(null, 'member', $perms));
+		    $this->check('sharing: Participant here: nothing', [ false, false, false, false, false ], $can(null, 'participant', $perms));
+		    $this->check('sharing: not in either project: nothing', [ false, false, false, false, false ], $can(null, null, $perms));
+		    $this->check('sharing: Owner of the home project: all, sharing too', [ true, true, true, true, true ], $can('owner', null, $perms));
+		    $this->check('sharing: Member of the home project: all but sharing', [ true, true, true, true, false ], $can('member', null, $perms));
+		    \V::app()->config('app.mode', $mode);
+		    $dt = $reload();
+		    $dt->setShare($here, 'read');
+		    \V::app()->config('app.mode', 'web');
+		    $this->check('sharing: Member here, level read: no change of rows', [ true, false, false, false, false ], $can(null, 'member', $perms));
+		    //also an Owner here: the level holds, whatever the role
+		    $this->check('sharing: Owner here, level read: no change of rows', [ true, false, false, false, false ], $can(null, 'owner', $perms));
+		} finally {
+		    \V::app()->config('app.mode', $mode);
+		    $auth->userRole = $roleBefore;
+		    $om->updateMany('Project', [ '_id' => $here->_id ], [ '$set' => [ 'members' => $membersBefore ] ]);
+		}
+	    }
+
+	    //taken back: a workflow already saved fails at its next run
+	    $dt = $reload();
+	    $dt->removeShare($here);
+	    $wfGone = $om->findById('Workflow', (string)$user->_id);
+	    $gone = \models\wf\WfExecution::startFor($wfGone, 'console', [ 'vars' => [] ]);
+	    $gone->run();
+	    $this->check('sharing: taken back: no share, the saved workflow fails at its next run, the tools refuse it', [ 0, 'error', true ],
+		[ count((array)$reload()->shares), $gone->state, $refused(fn() => $tools::call('query_table', [ 'table' => $table ], $here, false)) ]);
+	} finally {
+	    \V::app()->config('app.mode', $mode);
+	    $auth->userRole = $roleBefore;
+	    $this->cleanCreated();
+	    if ($dt)
+		$om->findById('DataTableDef', (string)$dt->_id)?->delete();
+	    $home?->delete();
+	    $third?->delete();
+	}
+    }
+
     private function suiteAccess() {
 	$om = \V::app()->om;
 	$A = \models\Account::class;

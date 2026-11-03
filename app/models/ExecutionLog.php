@@ -146,6 +146,12 @@ class ExecutionLog extends \sys\BaseModel {
 	    $fields['started_by'] = $user ? (string)$user : null;
 	    if (!$o)
 		$fields['project'] = $exe->project;
+	    //CLD: 2026-11-03T14:00:00+02:00: the entry is in the log of the object's project: when the run is of another project (a shared table), it says which
+	    elseif (empty($fields['details'])) {
+		$home = static::projectOf($o, $data ?? $o->data());
+		if ($home && (string)$home !== (string)$exe->project)
+		    $fields['details'] = 'By a workflow of project ' . \models\datatable\DataTableDef::projectName($exe->project);
+	    }
 	}
 	if ($o instanceof \models\Workflow)
 	    $fields['workflow'] = $o->_id;

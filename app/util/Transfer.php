@@ -117,7 +117,8 @@ class Transfer {
 	$inProject = [ 'aid' => $project->aid, 'project' => $project->_id ];
 	foreach($om->find('Credential', [ '_id' => [ '$in' => $oids ] ] + $inProject) as $c)
 	    $bundle['refs']['credentials'][(string)$c->_id] = [ 'name' => (string)$c->name, 'type' => $c->getObjectName() ];
-	foreach($om->find('DataTableDef', [ '$or' => [ [ '_id' => [ '$in' => $oids ] ], [ 'iname' => [ '$in' => $inames ] ] ] ] + $inProject) as $t)
+	//CLD: 2026-11-03T14:00:00+02:00: also the tables shared with the project: named in the file, so importing them says they are missing (they are not exported: they stay with their project)
+	foreach($om->find('DataTableDef', [ '$or' => [ [ '_id' => [ '$in' => $oids ] ], [ 'iname' => [ '$in' => $inames ] ] ], 'aid' => $project->aid, '$and' => [ \models\datatable\DataTableDef::visibleInQuery($project->_id) ] ]) as $t)
 	    $bundle['refs']['datatables'][(string)$t->_id] = [ 'name' => (string)$t->name, 'iname' => (string)$t->iname ];
 	foreach($om->find('Workflow', [ '_id' => [ '$in' => $oids ] ] + $inProject) as $w)
 	    $bundle['refs']['workflows'][(string)$w->_id] = [ 'name' => (string)$w->name ];
@@ -149,6 +150,16 @@ class Transfer {
 		$configs[] = $n['config'];
 	}
 	return $configs;
+    }
+
+    //CLD: 2026-11-03T14:00:00+02:00: whether a step of workflow $wf (its draft or its published version) names id $id
+    public static function references($wf, $id) {
+	$texts = [];
+	self::collectTexts(self::configsOf($wf->nodes), $texts);
+	$live = $wf->liveCopy();
+	if ($live)
+	    self::collectTexts(self::configsOf($live->nodes), $texts);
+	return isset($texts[(string)$id]);
     }
 
     //every text in $value, as keys of $texts
