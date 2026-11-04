@@ -20,6 +20,8 @@ $__canvas_pan_y = $__canvas_num('__canvas_pan_y');
 $__canvas_zoom = $__canvas_num('__canvas_zoom');
 
 $nodeInitUrl = \V::app()->createUrl('/workflow/node_init', [ 'id' => (string)$wf->_id ]);
+//CLD: 2026-11-04T08:10:00+02:00: the form of a step, asked when its dialog opens
+$nodeSchemaUrl = \V::app()->createUrl('/workflow/node_schema', [ 'id' => (string)$wf->_id ]);
 $exprUrl = \V::app()->createUrl('/workflow/expression', [ 'id' => (string)$wf->_id ]);
 $runUrl = \V::app()->createUrl('/workflow/start', [ 'id' => (string)$wf->_id ]);
 $runTriggers = \util\JSON::encode(array_keys(array_filter(\models\wf\WfNode::getAll(), fn($d) => $d['type'] === 'trigger' && !empty($d['canRun']))));
@@ -403,6 +405,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	},
 	onCanvasChange: (pan, zoom) => canvasView.store(pan, zoom),
 	nodeInitUrl: '{$nodeInitUrl}',
+	nodeSchemaUrl: '{$nodeSchemaUrl}',
 	exprUrl: '{$exprUrl}',
     };
 

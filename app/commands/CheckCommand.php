@@ -2120,6 +2120,10 @@ class CheckCommand extends \sys\BaseController {
 	//CLD: 2026-10-30T15:00:00+02:00: the step picker's presentation (WfNode audience / category): every step in a known group; HTTP Request advanced, its basic variants not
 	$defs = \models\wf\WfNode::getAll();
 	$this->check('steps: every step in a group of the picker', [], array_keys(array_filter($defs, fn($d) => !isset(\models\wf\WfNode::CATEGORIES[$d['category']]))));
+	//CLD: 2026-11-04T08:10:00+02:00: the definitions hold no forms (they cost ~1.8 s on each opening of the designer); what the canvas needs from the forms comes with the designer's copy
+	$hints = \models\wf\WfNode::withCanvasHints($defs);
+	$this->check('steps: no forms in the definitions; the canvas hints (the variable a step sets, the default of the setting its outputs follow)', [ [], 'variable', 'response', true ],
+	    [ array_keys(array_filter($defs, fn($d) => isset($d['configSchema']))), $hints['app::http']['writeVariable']['key'] ?? null, $hints['app::http']['writeVariable']['default'] ?? null, is_array($hints['core::switch']['portDefault'] ?? null) ]);
 	$this->check('steps: audience and group (HTTP Request, Download File, Read a web page, Webhook, Gmail, Ollama, If)',
 	    [ [ 'advanced', 'developer' ], [ 'basic', 'web' ], [ 'basic', 'web' ], [ 'advanced', 'trigger' ], [ 'basic', 'google' ], [ 'advanced', 'ai' ], [ 'basic', 'flow' ] ],
 	    array_map(fn($fq) => [ $defs[$fq]['audience'] ?? null, $defs[$fq]['category'] ?? null ], [ 'app::http', 'app::download', 'app::webpage', 'trigger::webhook', 'app::gmail', 'app::ollama', 'core::if' ]));

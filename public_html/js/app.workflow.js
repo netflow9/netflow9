@@ -771,18 +771,15 @@ window.app.Workflow = (function() {
 	    //CLD: 2026-10-12T08:26:57+03:00: outputs that depend on a setting ({ field, values: { value: [ labels ] } }; another value = the class's own outputs)
 	    if (p.field) {
 		let value = n.config ? n.config[p.field] : undefined;
-		if (value === undefined || value === null) {
-		    const f = (def.configSchema || []).find(f => f.key === p.field);
-		    value = f ? f.default : undefined;
-		}
+		//CLD: 2026-11-04T08:10:00+02:00: def.portDefault (WfNode::withCanvasHints; was read from def.configSchema, no longer in the definitions: openEditor asks it)
+		if (value === undefined || value === null)
+		    value = def.portDefault;
 		const labels = (p.values || {})[String(value)];
 		return labels ? { count: labels.length, labels: labels } : { count: def.outputs || 0, labels: def.outLabels || null };
 	    }
 	    let rows = n.config ? n.config[p.rows] : undefined;
-	    if (!Array.isArray(rows)) {
-		const f = (def.configSchema || []).find(f => f.key === p.rows);
-		rows = f && Array.isArray(f.default) ? f.default : [];
-	    }
+	    if (!Array.isArray(rows))
+		rows = Array.isArray(def.portDefault) ? def.portDefault : [];
 	    const labels = rows.map((r, i) => (r && r[p.label] !== undefined && r[p.label] !== null && r[p.label] !== '') ? String(r[p.label]) : String(i + 1)).concat(p.after || []);
 	    return { count: labels.length, labels: labels };
 	}
@@ -793,7 +790,8 @@ window.app.Workflow = (function() {
 	    const def = this.nodeDefs[n.fqname] || {};
 	    if (def.isContainer || def.isNote)
 		return '';
-	    const f = (def.configSchema || []).find(f => f.variableName === 'write');
+	    //CLD: 2026-11-04T08:10:00+02:00: def.writeVariable (WfNode::withCanvasHints; was found in def.configSchema)
+	    const f = def.writeVariable;
 	    if (!f)
 		return '';
 	    const value = (n.config && n.config[f.key] !== undefined && n.config[f.key] !== null) ? n.config[f.key] : f.default;
@@ -1706,6 +1704,24 @@ window.app.Workflow = (function() {
 	    if (this.editor)
 		this.closeEditor();
 
+	    //CLD: 2026-11-04T08:10:00+02:00: the step's form is asked now, with the project's current choices (WorkflowController::node_schema; was def.configSchema in the definitions
+	    //kept by the tab, built on each opening of the designer). The dialog opens with the answer, unless another one was asked, the step is gone or the page was left
+	    const asked = this.editorAsked = {};
+	    document.body.style.cursor = 'progress';
+	    $.getJSON(this.options.nodeSchemaUrl, { fqname: node.fqname })
+		.done((resp) => {
+		    if (this.editorAsked === asked && app.Workflow.current === this && this.workflow.includes(node))
+			this.showEditor(node, (resp && resp.configSchema) || []);
+		})
+		.fail((xhr) => app.utils.toast({ type: 'error', title: 'Step', body: 'The settings of this step could not be loaded (' + (xhr.status || 'no connection') + ')', delay: 5000 }))
+		.always(() => {
+		    if (this.editorAsked === asked)
+			document.body.style.cursor = '';
+		});
+	}
+
+	showEditor(node, configSchema) {
+	    const id = node.wfid;
 	    const def = this.nodeDefs[node.fqname];
 	    const readonly = !!this.options.readonly;
 	    const esc = app.utils.escapeHtml;
@@ -1717,7 +1733,7 @@ window.app.Workflow = (function() {
 	    //  settings next to it), Operation (`operation`, 6)
 	    //  then the step's own settings, in their order and widths (`newRow`: a field starts a line)
 	    //  last row: the step's limits (`limit`: max size, max results, ...; 3 wide each, in their order), then Timeout (`timeout`, a number, 3)
-	    const own = (def.configSchema || []).map((f) => Object.assign({}, f));
+	    const own = configSchema.map((f) => Object.assign({}, f));
 	    const take = (test) => {
 		const i = own.findIndex(test);
 		return i < 0 ? null : own.splice(i, 1)[0];
@@ -1762,7 +1778,7 @@ window.app.Workflow = (function() {
 	    //CLD: 2026-10-13T20:23:54+03:00: nearly full screen, a margin all around (.modal-near-fullscreen, theme scss/rail22/_modal.scss; was modal-fullscreen: it did not read as a dialog)
 	    //CLD: 2026-10-19T22:19:24+03:00: + modal-fullscreen-sm-down: the whole screen on phones (the near-fullscreen one too: theme rail22/_modal.scss)
 	    //CLD: 2026-10-24T12:37:37+03:00: two sizes: nearly full screen with a designer, else extra-large (was large, extra-large for the steps that asked: WfNode::$editor, removed)
-	    const dialogSize = (def.configSchema || []).some((f) => [ 'formdesigner', 'emaildesigner' ].includes(f.type)) ? 'modal-near-fullscreen' : 'modal-xl';
+	    const dialogSize = configSchema.some((f) => [ 'formdesigner', 'emaildesigner' ].includes(f.type)) ? 'modal-near-fullscreen' : 'modal-xl';
 	    el.tabIndex = -1;
 	    el.innerHTML = `
 		<!-- CLD: 2026-10-16T12:01:59+03:00: + the email designer (Send Email) -->

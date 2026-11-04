@@ -98,7 +98,18 @@ class WorkflowController extends \sys\BaseController {
     //~85 KB and more): { nodeDefs, version }
     public function node_defs($req, $resp) {
 	$d = \models\wf\WfNode::designerDefs(\V::app()->config('rt.account'));
-	$resp->sendJSON([ 'nodeDefs' => (object)$d['defs'], 'version' => $d['version'] ]);
+	//CLD: 2026-11-04T08:10:00+02:00: + what the canvas needs from the forms (the forms themselves: node_schema)
+	$resp->sendJSON([ 'nodeDefs' => (object)\models\wf\WfNode::withCanvasHints($d['defs']), 'version' => $d['version'] ]);
+    }
+
+    //CLD: 2026-11-04T08:10:00+02:00: new: the form of step type ?fqname, with the choices of the current project (credentials, tables, workflows, ...), asked each time a step's dialog
+    //opens: what was added since is offered (they were in node_defs, kept by the tab). Answers { configSchema }. Workflow::read
+    public function node_schema($req, $resp) {
+	$this->findWorkflow('Workflow::read');
+	$def = \models\wf\WfNode::getAll()[(string)($req->query['fqname'] ?? '')] ?? null;
+	if (empty($def))
+	    \V::app()->error(404, 'Unknown step type');
+	$resp->sendJSON([ 'configSchema' => \models\wf\WfNode::schemaOf(\V::app()->om->getObjectClass($def['objectName'])) ]);
     }
 
     public function update_name($req, $resp) {
