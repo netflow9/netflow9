@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -9712,6 +9712,111 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('read back: a number with more digits than Excel keeps stays exact, as text', '12345678901234567', (string)$rows[3][1]);
 	} finally {
 	    @unlink($path);
+	}
+    }
+
+    //CLD: 2026-11-04T12:00:00+02:00: a data table and a credential moved to another project (models\share\MovableTrait): what goes with them, what the old project loses
+    private function suiteMove() {
+	$om = \V::app()->om;
+	$aid = $this->account->_id;
+	$owner = $this->project->owner;
+	$tag = substr(uniqid(), -6);
+	$made = [];
+	$project = function($name, $personal = false) use ($om, $aid, $owner, &$made) {
+	    $p = $om->create('Project', [ 'aid' => $aid, 'name' => $name, 'owner' => $owner, 'members' => [], 'personal' => $personal ]);
+	    $p->save();
+	    $made[] = $p;
+	    return $p;
+	};
+	try {
+	    $from = $project("Check move from {$tag}");
+	    $to = $project("Check move to {$tag}");
+	    $third = $project("Check move third {$tag}");
+
+	    $dt = $om->create('DataTableDef', [ 'aid' => $aid, 'name' => "chk_move_{$tag}", 'iname' => "data-table-chk-move-{$tag}", 'project' => $from->_id ]);
+	    $dt->save();
+	    $made[] = $dt;
+	    \sys\fields\Field::create([ 'type' => 'text', 'aid' => $aid, 'key' => 'title', 'label' => 'Title', 'objectName' => $dt->iname ])->save();
+	    $om->resetCache();
+	    $om->registerDataTables();
+	    $row = $om->create($dt->iname, [ 'aid' => $aid ]);
+	    $row->assign([ 'title' => 'first' ]);
+	    $row->save();
+	    $view = $om->create('DataTableView', [ 'aid' => $aid, 'table' => $dt->_id, 'name' => 'v', 'filter' => [ [ 'field' => 'title', 'op' => 'eq', 'value' => 'first' ] ] ]);
+	    $view->save();
+	    $tableId = (string)$dt->_id;
+	    $Table = \models\node\NodeAppTable::class;
+
+	    $dt->setShare($to, 'read');
+	    $dt->setShare($third, 'write');
+	    $dt = $om->findById('DataTableDef', $tableId);
+
+	    $wf = $om->create('Workflow', [ 'aid' => $aid, 'project' => $from->_id, 'name' => "chk move {$tag}", 'nodes' => [ self::node('t', 'trigger::manual'), self::node('s', 'app::table', [ 'table' => $tableId, 'operation' => 'query', 'variable' => 'out' ]) ] ]);
+	    $wf->save();
+	    $made[] = $wf;
+	    $this->check('move: the workflows that will break are named', [ "chk move {$tag}" ], $dt->moveBreaks());
+
+	    $personal = $project("Check move personal {$tag}", true);
+	    $auth = \V::app()->auth;
+	    $roleBefore = $auth->userRole;
+	    $roleOf = fn($iname) => $om->findOne('Role', [ 'aid' => $aid, 'iname' => $iname ]);
+	    $uid = (string)new \MongoDB\BSON\ObjectId();
+	    try {
+		$auth->userRole = $roleOf('owner');
+		$targets = array_keys($dt->moveTargets($uid));
+		$this->check('move: an account owner: the other projects, not its own, not a personal one', [ true, true, false, false ],
+		    [ in_array((string)$to->_id, $targets, true), in_array((string)$third->_id, $targets, true), in_array((string)$from->_id, $targets, true), in_array((string)$personal->_id, $targets, true) ]);
+		$auth->userRole = $roleOf('member');
+		$this->check('move: another user: no project without a role there', false, in_array((string)$to->_id, array_keys($dt->moveTargets($uid)), true));
+		$om->updateMany('Project', [ '_id' => $to->_id, 'aid' => $aid ], [ '$set' => [ 'members' => [ $uid => [ 'role' => $roleOf('owner')->_id ] ] ] ]);
+		$this->check('move: another user: the project where their role lets them create it', [ (string)$to->_id ], array_values(array_filter(array_keys($dt->moveTargets($uid)), fn($id) => $id === (string)$to->_id)));
+	    } finally {
+		$auth->userRole = $roleBefore;
+	    }
+
+	    $same = $om->create('DataTableDef', [ 'aid' => $aid, 'name' => "chk_move_{$tag}", 'iname' => "data-table-chk-move-b-{$tag}", 'project' => $third->_id ]);
+	    $same->save();
+	    $made[] = $same;
+	    $this->check('move: a name already there is refused, a free one is not', [ true, null ], [ str_contains((string)$dt->moveNameProblem($third), 'already has a data table named'), $dt->moveNameProblem($to) ]);
+
+	    $dt->moveTo($to);
+	    $moved = $om->findById('DataTableDef', $tableId);
+	    $this->check('move: table: in the new project, the same id and iname', [ (string)$to->_id, "data-table-chk-move-{$tag}" ], [ (string)$moved->project, (string)$moved->iname ]);
+	    $this->check('move: table: the share with the new project ended, the other stays', [ [ (string)$third->_id ], null, 'write' ], [ array_map(fn($s) => (string)$s['project'], (array)$moved->shares), $moved->shareOf($to->_id), $moved->shareOf($third->_id)['access'] ?? null ]);
+	    $om->resetCache();
+	    $om->registerDataTables();
+	    $this->check('move: table: its rows, columns and views go with it', [ 1, [ 'title' ], 1 ], [ $om->count($moved->iname, [ 'aid' => $aid ]), array_keys($moved->columns()), $om->count('DataTableView', [ 'table' => $moved->_id, 'aid' => $aid ]) ]);
+	    $this->check('move: table: found from the new project and a shared one, no longer from the old', [ true, true, null ], [ (bool)$Table::findTable($tableId, $aid, $to->_id), (bool)$Table::findTable($tableId, $aid, $third->_id), $Table::findTable($tableId, $aid, $from->_id) ]);
+	    $moved->setShare($from, 'read');
+	    $this->check('move: table: shared back, the old project finds it again', true, (bool)$Table::findTable($tableId, $aid, $from->_id));
+
+	    $cred = $om->create('CredentialBasicAuth', [ 'aid' => $aid, 'project' => $from->_id, 'name' => "chk_move_c_{$tag}" ]);
+	    $cred->assign([ 'username' => 'u', 'password' => 's3cret-move' ]);
+	    $cred->save();
+	    $made[] = $cred;
+	    $credId = (string)$cred->_id;
+	    $cred->setShare($to, 'use');
+	    $cred->setShare($third, 'use', [ 'any_host' => true ]);
+	    $cred = $om->findById('Credential', $credId);
+	    $other = $om->create('CredentialBearer', [ 'aid' => $aid, 'project' => $third->_id, 'name' => "chk_move_c_{$tag}" ]);
+	    $other->save();
+	    $made[] = $other;
+	    $this->check('move: credential: a name taken by another kind is refused', true, str_contains((string)$cred->moveNameProblem($third), 'already has a credential named'));
+	    $cred->moveTo($to);
+	    $moved = $om->findById('Credential', $credId);
+	    $this->check('move: credential: same kind, new project, secret still reads', [ \models\credential\CredentialBasicAuth::class, (string)$to->_id, 's3cret-move' ], [ get_class($moved), (string)$moved->project, $moved->password ]);
+	    $this->check('move: credential: the share with the new project ended, the other keeps its options', [ null, true ], [ $moved->shareOf($to->_id), $moved->shareOf($third->_id)['any_host'] ?? null ]);
+	    $this->check('move: credential: visible in the new project, no longer in the old', [ 1, 0 ], [ $om->count('Credential', [ '_id' => $moved->_id, 'aid' => $aid ] + $moved::visibleInQuery($to->_id)), $om->count('Credential', [ '_id' => $moved->_id, 'aid' => $aid ] + $moved::visibleInQuery($from->_id)) ]);
+
+	    $var = $om->create('CredentialVariable', [ 'aid' => $aid, 'project' => $from->_id, 'name' => "chk_move_v_{$tag}" ]);
+	    $this->check('move: a variable is refused', [ true, null ], [ str_contains((string)$var->moveProblem(), 'Variables are not moved'), $moved->moveProblem() ]);
+	} finally {
+	    foreach(array_reverse($made) as $o) {
+		if ($o instanceof \models\datatable\DataTableDef)
+		    $o->shares = [];
+		$o->delete();
+	    }
+	    $om->resetCache();
 	}
     }
 

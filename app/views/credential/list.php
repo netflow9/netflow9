@@ -55,6 +55,11 @@ $filter = \util\JSON::encode($sf['filter']);
 $shareAction = $canShare ? "share: `{% if ((app.credentialTypes[item.__variant] || {}).shareable) { %}<a href='/share/manage?object=Credential&id={{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Share'><i class='bi bi-share'></i></a>{% } %}`,
 		    " : '';
 
+//CLD: 2026-11-04T12:00:00+02:00: Move, as Delete: it leaves this project (not the variables, as Share)
+$moveAction = \V::app()->user->can('Credential::delete', [ 'object' => \V::app()->om->create(\models\Credential::FAMILY, [ 'aid' => \V::app()->config('rt.account')->_id, 'project' => \V::app()->user->crtProject ]) ])
+    ? "move: `{% if ((app.credentialTypes[item.__variant] || {}).shareable) { %}<a href='/move/manage?object=Credential&id={{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Move to another project'><i class='bi bi-folder-symlink'></i></a>{% } %}`,
+		    " : '';
+
 $script = "
 +function() {
     const container = document.getElementById('obj-list');
@@ -79,7 +84,7 @@ $script = "
 		rowActions: {
 		    test: `{% if ((app.credentialTypes[item.__variant] || {}).testable) { %}<a href='/credential/test/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' data-method='post' title='Test'><i class='bi bi-plug'></i></a>{% } %}`,
 		    connect: `{% if ((app.credentialTypes[item.__variant] || {}).oauth) { %}<a href='/credential/connect/{{item._id}}' no-pjax class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Connect (sign in at the provider)'><i class='bi bi-box-arrow-in-right'></i></a>{% } %}`,
-		    {$shareAction}update: `<a href='/credential/update/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn'><i class='bi bi-pencil'></i></a>`,
+		    {$shareAction}{$moveAction}update: `<a href='/credential/update/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn'><i class='bi bi-pencil'></i></a>`,
 		    delete: `<a href='/credential/delete/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' data-confirm='Are you sure?' data-method='post'><i class='bi bi-trash'></i></a>`,
 		}
 	},
