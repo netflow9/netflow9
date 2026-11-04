@@ -47,6 +47,8 @@ class AuditLog extends \sys\BaseModel {
 	'credential.test' => 'Test credential',
 	//CLD: 2026-10-11T20:51:55+03:00: a data table created from a file (DatatableController::import)
 	'datatable.import' => 'Import data table',
+	//CLD: 2026-11-04T10:00:00+02:00: a data table's rows downloaded as an Excel file (DatatableController::export)
+	'datatable.export' => 'Export data table',
 	//CLD: 2026-10-24T00:04:00+03:00: executions of the draft deleted from the Executions panel (WorkflowController::execution_delete, executions_delete; executions themselves are not recorded)
 	'workflow.execution.delete' => 'Delete execution',
 	'workflow.executions.delete' => 'Delete executions',

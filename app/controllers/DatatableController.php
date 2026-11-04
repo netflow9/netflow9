@@ -673,4 +673,74 @@ class DatatableController extends \sys\BaseController {
 	$this->render('manage', compact('dt'));
     }
 
+    //CLD: 2026-11-04T10:00:00+02:00: the rows as an Excel (.xlsx) download: those the grid finds with its current search and filter (the same __search / __filter / sort parameters),
+    //all pages; the columns the user may read, in the grid's order. DataTable::readData; one audit entry `datatable.export`
+    public function export($req, $resp) {
+	$dt = $this->findTable('DataTable::readData');
+	$account = \V::app()->var('rt.account');
+
+	$o = \V::app()->om->create($dt->iname, [ 'aid' => $account->_id ]);
+	[ $query, $options ] = $this->__listQuery($o);
+	unset($options['skip'], $options['limit']);
+
+	$nRows = \V::app()->om->count($dt->iname, $query);
+	if ($nRows >= \util\TableExport::MAX_ROWS)
+	    \V::app()->error(422, 'Too many rows for an Excel sheet (' . \util\Format::number($nRows) . '): filter the table first');
+
+	$columns = [];
+	foreach($o->schema as $key => $f) {
+	    if (!in_array($key, [ '_id', 'aid' ], true) && $f->checkAccess(\V::app()->user->_id, 'read'))
+		$columns[$key] = [ 'label' => (string)$f->label, 'format' => $f instanceof \sys\fields\Field_date ? 'date' : 'datetime' ];
+	}
+
+	//a long export is not cut by the time limit
+	set_time_limit(0);
+	$x = new \util\TableExport($dt->name, array_values($columns));
+	$labels = [];
+	foreach(\V::app()->om->find($dt->iname, $query, $options) as $row) {
+	    $cells = [];
+	    foreach($columns as $key => $c)
+		$cells[] = $this->exportCell($row, $row->schema[$key], $labels);
+	    $x->addRow($cells);
+	}
+	$path = $x->finish();
+
+	\models\AuditLog::record('datatable.export', $dt, \util\Format::plural($x->count(), 'row'));
+
+	$name = preg_replace('/[^A-Za-z0-9_-]+/', '_', (string)$dt->name) . '-' . date('Ymd-His') . '.xlsx';
+	header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+	header('Content-Length: ' . filesize($path));
+	header('Content-Disposition: attachment; filename="' . $name . '"');
+	header('X-Content-Type-Options: nosniff');
+	header('Cache-Control: no-store');
+	readfile($path);
+	@unlink($path);
+	exit(0);
+    }
+
+    //a row's value for the export: numbers, dates and yes / no as such, the rest as the text the grid shows (display() is HTML: back to text; a secret stays masked);
+    //$labels: the labels of the object columns' targets, each looked up once
+    private function exportCell($row, $field, array &$labels) {
+	$key = $field->key;
+	$value = $row->data($key);
+
+	if (!empty($field->encrypt) || $field instanceof \sys\fields\Field_password)
+	    return html_entity_decode(strip_tags((string)$field->display()), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+	if ($field instanceof \sys\fields\Field_checkbox || $field instanceof \sys\fields\Field_switch)
+	    return (bool)$value;
+	if ($value === null || $value === '')
+	    return null;
+	if ($field instanceof \sys\fields\Field_number)
+	    return is_numeric($value) ? 1 * $value : (string)$value;
+	if ($field instanceof \sys\fields\Field_datetime)
+	    return \util\Format::toDateTime($value);
+	if ($field instanceof \sys\fields\Field_oid)
+	    return (string)$value;
+	if ($field instanceof \sys\fields\Field_object || $field instanceof \sys\fields\Field_select) {
+	    $id = is_array($value) ? \util\JSON::encode($value) : (string)$value;
+	    return $labels[$key][$id] ??= html_entity_decode(strip_tags((string)$field->display()), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+	}
+	return is_scalar($value) ? (string)$value : html_entity_decode(strip_tags((string)$field->display()), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
 }

@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -9670,6 +9670,48 @@ class CheckCommand extends \sys\BaseController {
 		    $o->delete();
 	    $account->delete();
 	    $Auth::reset();
+	}
+    }
+
+    //CLD: 2026-11-04T10:00:00+02:00: util\TableExport: the file is read back with util\TableImport; the XML of its parts is well-formed, text never becomes a formula
+    private function suiteTableexport() {
+	$X = \util\TableExport::class;
+	$this->check('column names', [ 'A', 'Z', 'AA', 'XFD' ], [ $X::colName(0), $X::colName(25), $X::colName(26), $X::colName(16383) ]);
+	$this->check('sheet names', [ 'a b c', 'Sheet1', 31 ], [ trim($X::sheetName('a/b:c')), $X::sheetName(' ?* '), mb_strlen($X::sheetName(str_repeat('x', 40))) ]);
+	$this->check('text: control characters removed, invalid UTF-8 replaced, the limit in UTF-16 units, no half character', [ "ab\ncd", 'x?', 32767, 32766 ],
+	    [ $X::text("a\x01b\ncd"), $X::text("x\xff"), strlen($X::text(str_repeat('x', 40000))), intdiv(strlen(mb_convert_encoding($X::text(str_repeat("\u{1F600}", 20000)), 'UTF-16LE', 'UTF-8')), 2) ]);
+
+	$utc = new \DateTimeImmutable('2026-03-04 15:30:00', new \DateTimeZone('UTC'));
+	$x = new $X('check', [ [ 'label' => 'Text & <name>' ], [ 'label' => 'N' ], [ 'label' => 'Yes' ], [ 'label' => 'Day', 'format' => 'date' ], [ 'label' => 'When', 'format' => 'datetime' ] ]);
+	$x->addRow([ '=1+1', 42, true, $utc, $utc ]);
+	$x->addRow([ "two\nlines <&>", 1.5, false, null, new \DateTimeImmutable('1890-01-02 00:00:00', new \DateTimeZone('UTC')) ]);
+	$x->addRow([ 'big', 12345678901234567, null, null, null ]);
+	$this->check('rows counted without the header', 3, $x->count());
+	$path = $x->finish();
+	try {
+	    $xlsx = $path . '.xlsx';
+	    rename($path, $xlsx);
+	    $path = $xlsx;
+	    $zip = new \ZipArchive();
+	    $this->check('a zip with the parts Excel needs', [ true, true, true, true, true, true ], [ $zip->open($path) === true, $zip->locateName('[Content_Types].xml') !== false,
+		$zip->locateName('_rels/.rels') !== false, $zip->locateName('xl/workbook.xml') !== false, $zip->locateName('xl/styles.xml') !== false, $zip->locateName('xl/worksheets/sheet1.xml') !== false ]);
+	    $wellFormed = [];
+	    for($i = 0; $i < $zip->numFiles; $i++)
+		$wellFormed[] = simplexml_load_string($zip->getFromIndex($i)) !== false;
+	    $this->check('every part is well-formed XML', array_fill(0, 6, true), $wellFormed);
+	    $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+	    $zip->close();
+	    $this->check('text is never a formula, the filter on the header', [ false, true, true, true ], [ str_contains($sheetXml, '<f>'), str_contains($sheetXml, '<autoFilter ref="A1:E4"/>'),
+		str_contains($sheetXml, '<pane ySplit="1"'), str_contains($sheetXml, '<dimension ref="A1:E4"/>') ]);
+
+	    $rows = (new \util\TableImport($path, 'xlsx'))->rows();
+	    $this->check('read back: the header', [ 'Text & <name>', 'N', 'Yes', 'Day', 'When' ], $rows[0]);
+	    $this->check('read back: values keep their types', [ '=1+1', 42, true ], array_slice($rows[1], 0, 3));
+	    $this->check('read back: a date / a datetime', [ '2026-03-04', '2026-03-04 15:30:00' ], [ substr((string)$rows[1][3], 0, 10), substr((string)$rows[1][4], 0, 19) ]);
+	    $this->check('read back: lines and XML characters, a date before Excel\'s calendar as text', [ "two\nlines <&>", 1.5, false, '1890-01-02 00:00:00' ], [ $rows[2][0], $rows[2][1], $rows[2][2], $rows[2][4] ]);
+	    $this->check('read back: a number with more digits than Excel keeps stays exact, as text', '12345678901234567', (string)$rows[3][1]);
+	} finally {
+	    @unlink($path);
 	}
     }
 
