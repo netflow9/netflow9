@@ -227,6 +227,12 @@ $dd_items = implode('', $dd_items);
 			    'href' => \V::app()->createUrl('/share/manage', [ 'object' => 'Workflow', 'id' => (string)$wf->_id ]),
 			]);
 
+		    //CLD: 2026-11-04T17:00:00+02:00: Move (MoveController), as Delete: it leaves this project
+		    if (\V::app()->user->can('Workflow::delete', [ 'object' => $wf ]))
+			$items .= \util\VString::insert('<a class="dropdown-item px-2" href="{:href}"><i class="bi bi-folder-symlink me-2"></i>Move to project&hellip;</a>', [
+			    'href' => \V::app()->createUrl('/move/manage', [ 'object' => 'Workflow', 'id' => (string)$wf->_id ]),
+			]);
+
 		    if (\V::app()->user->can('Workflow::delete', [ 'object' => $wf ]))
 			$items .= \util\VString::insert('<a class="dropdown-item text-danger px-2" href="{:href}" data-method="post" data-confirm="Delete this workflow with all its versions and executions? This cannot be undone."><i class="bi bi-trash me-2"></i>Delete</a>', [
 			    'href' => \V::app()->createUrl('/workflow/delete', [ 'id' => (string)$wf->_id ]),
