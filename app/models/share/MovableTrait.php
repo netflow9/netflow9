@@ -3,6 +3,7 @@
 /*
     CLD: 2026-11-04T12:00:00+02:00: new: a resource that can move to another project of the account (the Move dialog, controllers\MoveController). Keeps its id, its rows or secrets and its shares;
     a share with the new project ends, as it is at home there. The workflows of its old project keep pointing to it but no longer find it (lookups are by project), so the dialog names them.
+    CLD: 2026-11-04T15:00:00+02:00: + workflows: what is linked to it moves too (moveRelated)
     The class says who may move it: const MOVE_PERMS = [ 'from' => permission in its project, 'to' => permission in the new one ], and the audit action: const MOVE_ACTION.
     Needs models\share\ShareableTrait
 */
@@ -25,7 +26,7 @@ trait MovableTrait {
     public function moveBreaks() {
 	$names = [];
 	foreach(\V::app()->om->find('Workflow', [ 'aid' => $this->aid, 'project' => $this->project ], [ 'sort' => [ 'name' => 1 ] ]) as $wf) {
-	    if (\util\Transfer::references($wf, $this->_id))
+	    if ((string)$wf->_id !== (string)$this->_id && \util\Transfer::references($wf, $this->_id))
 		$names[] = (string)$wf->name;
 	}
 	return $names;
@@ -35,10 +36,19 @@ trait MovableTrait {
     public function moveTargets($userId) {
 	$targets = [];
 	foreach(\V::app()->om->find('Project', [ 'aid' => $this->aid ], [ 'sort' => [ 'name' => 1 ] ]) as $p) {
-	    if (!$p->personal && !$this->isHome($p->_id) && \models\Project::can($p->_id, $this->aid, $userId, static::MOVE_PERMS['to']))
+	    if (!$p->personal && !$this->isHome($p->_id) && $this->moveAllowedIn($p, $userId))
 		$targets[(string)$p->_id] = $p;
 	}
 	return $targets;
+    }
+
+    //whether user $userId may have it in $project; a class may ask for more
+    protected function moveAllowedIn($project, $userId) {
+	return \models\Project::can($project->_id, $this->aid, $userId, static::MOVE_PERMS['to']);
+    }
+
+    //the records that follow it to $project; a class may have some
+    protected function moveRelated($project) {
     }
 
     //why it cannot have its name in $project, null when it can
@@ -51,6 +61,7 @@ trait MovableTrait {
     public function moveTo($project) {
 	$from = self::projectName($this->project);
 	$shares = array_values(array_filter((array)$this->shares, fn($s) => (string)$s['project'] !== (string)$project->_id));
+	$this->moveRelated($project);
 	\V::app()->om->updateMany($this->getObjectName(), [ '_id' => $this->_id, 'aid' => $this->aid ], [ '$set' => [ 'project' => $project->_id, 'shares' => $shares ] ]);
 	$this->project = $project->_id;
 	$this->shares = $shares;

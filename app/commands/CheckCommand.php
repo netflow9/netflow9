@@ -9810,10 +9810,67 @@ class CheckCommand extends \sys\BaseController {
 
 	    $var = $om->create('CredentialVariable', [ 'aid' => $aid, 'project' => $from->_id, 'name' => "chk_move_v_{$tag}" ]);
 	    $this->check('move: a variable is refused', [ true, null ], [ str_contains((string)$var->moveProblem(), 'Variables are not moved'), $moved->moveProblem() ]);
+
+	    //a workflow: back in the first project the table and the credential are gone, so make what it uses there
+	    $fromTable = $om->create('DataTableDef', [ 'aid' => $aid, 'name' => "chk_move_u_{$tag}", 'iname' => "data-table-chk-move-u-{$tag}", 'project' => $from->_id ]);
+	    $fromTable->save();
+	    $made[] = $fromTable;
+	    $fromCred = $om->create('CredentialBearer', [ 'aid' => $aid, 'project' => $from->_id, 'name' => "chk_move_uc_{$tag}" ]);
+	    $fromCred->save();
+	    $made[] = $fromCred;
+	    $fromVar = $om->create('CredentialVariable', [ 'aid' => $aid, 'project' => $from->_id, 'name' => "chk_move_v_{$tag}" ]);
+	    $fromVar->assign([ 'value' => 'x' ]);
+	    $fromVar->save();
+	    $made[] = $fromVar;
+	    $sub = $om->create('Workflow', [ 'aid' => $aid, 'project' => $from->_id, 'name' => "chk move sub {$tag}", 'nodes' => [] ]);
+	    $sub->save();
+	    $made[] = $sub;
+	    $flow = $om->create('Workflow', [ 'aid' => $aid, 'project' => $from->_id, 'name' => "chk move flow {$tag}", 'nodes' => [ self::node('t', 'trigger::manual'),
+		self::node('s', 'app::table', [ 'table' => (string)$fromTable->_id, 'credential' => (string)$fromCred->_id, 'workflow' => (string)$sub->_id, 'value' => "{{ vars.chk_move_v_{$tag} }}" ]) ] ]);
+	    $flow->save();
+	    $made[] = $flow;
+	    $caller = $om->create('Workflow', [ 'aid' => $aid, 'project' => $from->_id, 'name' => "chk move caller {$tag}", 'nodes' => [ self::node('c', 'app::workflow', [ 'workflow' => (string)$flow->_id ]) ] ]);
+	    $caller->save();
+	    $made[] = $caller;
+
+	    $warned = implode(' ', $flow->moveWarnings());
+	    $this->check('move: workflow: warns of what stays: each kind, the files', [ true, true, true, true, true ], [ str_contains($warned, "credentials: chk_move_uc_{$tag}"), str_contains($warned, "data tables: chk_move_u_{$tag}"),
+		str_contains($warned, "workflows: chk move sub {$tag}"), str_contains($warned, "variables: chk_move_v_{$tag}"), str_contains($warned, 'files its runs saved') ]);
+	    $this->check('move: workflow: names the callers that break, not itself', [ "chk move caller {$tag}" ], $flow->moveBreaks());
+	    $this->check('move: workflow: any name goes', null, $flow->moveNameProblem($third));
+
+	    $linked = [];
+	    foreach(\models\Workflow::MOVE_RELATED as $objectName) {
+		$class = $om->getObjectClass($objectName);
+		$coll = \V::app()->mongo->selectCollection($class::_database(), $class::_collection());
+		$linked[$objectName] = [ $coll, $coll->insertOne([ 'aid' => $aid, 'wf' => $flow->_id, 'project' => $from->_id, 'name' => "chk_{$tag}", 'state' => 'end', 'key' => "chk_{$tag}_{$objectName}" ])->getInsertedId() ];
+	    }
+	    try {
+		$this->check('move: workflow: finished runs do not stop it', null, $flow->moveProblem());
+		$exeColl = $linked['WfExecution'][0];
+		$exeColl->updateOne([ '_id' => $linked['WfExecution'][1] ], [ '$set' => [ 'state' => 'sleep' ] ]);
+		$this->check('move: workflow: a waiting run stops it', true, str_contains((string)$flow->moveProblem(), 'in progress or waiting'));
+		$exeColl->updateOne([ '_id' => $linked['WfExecution'][1] ], [ '$set' => [ 'state' => 'end' ] ]);
+
+		$flow->setShare($to, 'run');
+		$flow->setShare($third, 'run');
+		$flow = $om->findById('Workflow', (string)$flow->_id);
+		$flow->moveTo($to);
+		$after = $om->findById('Workflow', (string)$flow->_id);
+		$this->check('move: workflow: in the new project, the share with it ended, the other stays', [ (string)$to->_id, null, 'run' ], [ (string)$after->project, $after->shareOf($to->_id), $after->shareOf($third->_id)['access'] ?? null ]);
+		$projects = [];
+		foreach($linked as $objectName => [ $coll, $id ])
+		    $projects[$objectName] = (string)$coll->findOne([ '_id' => $id ])['project'];
+		$this->check('move: workflow: everything linked to it follows', array_fill_keys(array_keys($linked), (string)$to->_id), $projects);
+		$Wf = \models\node\NodeAppWorkflow::class;
+		$this->check('move: workflow: found from the new project and a shared one, no longer from the old', [ true, true, null ], [ (bool)$Wf::findWorkflow((string)$flow->_id, $aid, $to->_id), (bool)$Wf::findWorkflow((string)$flow->_id, $aid, $third->_id), $Wf::findWorkflow((string)$flow->_id, $aid, $from->_id) ]);
+	    } finally {
+		foreach($linked as [ $coll, $id ])
+		    $coll->deleteOne([ '_id' => $id ]);
+	    }
+
 	} finally {
 	    foreach(array_reverse($made) as $o) {
-		if ($o instanceof \models\datatable\DataTableDef)
-		    $o->shares = [];
 		$o->delete();
 	    }
 	    $om->resetCache();

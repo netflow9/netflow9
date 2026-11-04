@@ -6,6 +6,13 @@ class Workflow extends \sys\BaseModel {
     //CLD: 2026-11-03T16:00:00+02:00: a published workflow that starts with Called by a workflow can be shared with other projects of the account: they call it and see what it offers (not Workflow::read: that is also its runs,
     //its settings, its tests). It runs in its own project
     use \models\share\ShareableTrait;
+    //CLD: 2026-11-04T15:00:00+02:00: and moved to another project
+    use \models\share\MovableTrait;
+
+    const MOVE_PERMS = [ 'from' => 'Workflow::delete', 'to' => 'Workflow::create' ];
+    const MOVE_ACTION = 'workflow.move';
+    //what follows it, by their `wf`: its versions and runs, its tests, its tasks, its triggers' state and token, its conversations and traces. The logs stay as written
+    const MOVE_RELATED = [ 'WfVersion', 'WfExecution', 'WfTestCase', 'WfTestRun', 'WfTask', 'TriggerToken', 'TriggerState', 'MailPoll', 'RemoteFileState', 'AgentConversation', 'AgentTrace' ];
 
     const SHARE_PERM = 'Workflow::share';
     const SHARE_WHAT = 'Workflow';
@@ -157,6 +164,64 @@ class Workflow extends \sys\BaseModel {
     //CLD: 2026-11-03T16:00:00+02:00: what the Share dialog says
     public function shareWarnings() {
 	return [ 'It runs in this project, with this project\'s credentials and tables. Who calls it chooses its inputs and gets its outputs and errors. They see its description, inputs, outputs and step names, not its settings or runs.' ];
+    }
+
+    //CLD: 2026-11-04T15:00:00+02:00: a run in progress holds its project: it would go on with the old one's credentials and tables, and a waiting one's task would be left behind
+    public function moveProblem() {
+	if (\V::app()->om->count('WfExecution', [ 'wf' => $this->_id, 'aid' => $this->aid, 'state' => [ '$in' => [ 'new', 'run', 'sleep' ] ] ]) > 0)
+	    return 'It has runs in progress or waiting: let them finish or stop them first (Executions).';
+	if (\V::app()->om->count('WfTestRun', [ 'wf' => $this->_id, 'aid' => $this->aid, 'state' => [ '$in' => \models\wf\WfTestRun::ACTIVE ] ]) > 0)
+	    return 'Its tests are running: let them finish first.';
+	return null;
+    }
+
+    //CLD: 2026-11-04T15:00:00+02:00: a published one keeps running there: that needs the right to publish there too
+    protected function moveAllowedIn($project, $userId) {
+	return \models\Project::can($project->_id, $this->aid, $userId, self::MOVE_PERMS['to'])
+	    && (!$this->liveCopy() || \models\Project::can($project->_id, $this->aid, $userId, 'Workflow::publish'));
+    }
+
+    //CLD: 2026-11-04T15:00:00+02:00: any number of workflows may have the same name
+    public function moveNameProblem($project) {
+	return null;
+    }
+
+    protected function moveRelated($project) {
+	foreach(self::MOVE_RELATED as $objectName)
+	    \V::app()->om->updateMany($objectName, [ 'wf' => $this->_id, 'aid' => $this->aid ], [ '$set' => [ 'project' => $project->_id ] ]);
+    }
+
+    //CLD: 2026-11-04T15:00:00+02:00: what the Move dialog warns of: what its steps use stays in this project; the files its runs saved too
+    public function moveWarnings() {
+	$warnings = [];
+	$used = $this->moveUses();
+	if ($used)
+	    $warnings[] = 'It uses these of this project, which stay here: ' . implode('; ', $used) . '. Those steps fail in the new project until these are moved, shared with it or made again there.';
+	$warnings[] = 'The files its runs saved stay in this project.';
+	return $warnings;
+    }
+
+    //what its draft and published version point to in this project: [ '<kind>: <names>' ]; the variables are read by name (vars.<name>), the knowledge bases named in the step
+    private function moveUses() {
+	$om = \V::app()->om;
+	$home = [ 'aid' => $this->aid, 'project' => $this->project ];
+	$versions = array_filter([ $this, $this->liveCopy() ]);
+	$texts = \util\Transfer::textsOf($versions);
+	$names = fn($list) => array_values(array_unique(array_map(fn($o) => (string)$o->name, $list)));
+
+	[ $credentials, $tables ] = \util\Transfer::usedBy($om->findOne('Project', [ '_id' => $this->project, 'aid' => $this->aid ]), $versions);
+	$ids = array_values(array_filter($texts, fn($t) => \util\Validator::rule('oid', $t) && $t !== (string)$this->_id));
+	$workflows = $ids ? iterator_to_array($om->find('Workflow', $home + [ '_id' => [ '$in' => array_map(fn($id) => $om->to_oid($id), $ids) ] ]), false) : [];
+	$bases = $texts ? iterator_to_array($om->find('KnowledgeBase', $home + [ 'name' => [ '$in' => $texts ] ]), false) : [];
+	preg_match_all('/\b' . \models\credential\CredentialVariable::EXPRESSION_NAME . '\.([A-Za-z_]\w*)/', implode("\n", $texts), $m);
+	$variables = $m[1] ? iterator_to_array($om->find('CredentialVariable', $home + [ 'name' => [ '$in' => array_values(array_unique($m[1])) ] ]), false) : [];
+
+	$used = [];
+	foreach([ 'credentials' => $credentials, 'data tables' => $tables, 'workflows' => $workflows, 'knowledge bases' => $bases, 'variables' => $variables ] as $kind => $list) {
+	    if ($list)
+		$used[] = $kind . ': ' . implode(', ', $names($list));
+	}
+	return $used;
     }
 
     //CLD: 2026-11-03T16:00:00+02:00: the copy of this workflow that a call from project $projectId runs: its published version; in its own project, else its draft. null: a shared workflow not published (now)

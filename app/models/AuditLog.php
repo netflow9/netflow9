@@ -52,6 +52,7 @@ class AuditLog extends \sys\BaseModel {
 	//CLD: 2026-11-04T12:00:00+02:00: moved to another project (MoveController)
 	'datatable.move' => 'Move data table',
 	'credential.move' => 'Move credential',
+	'workflow.move' => 'Move workflow',
 	//CLD: 2026-10-24T00:04:00+03:00: executions of the draft deleted from the Executions panel (WorkflowController::execution_delete, executions_delete; executions themselves are not recorded)
 	'workflow.execution.delete' => 'Delete execution',
 	'workflow.executions.delete' => 'Delete executions',
