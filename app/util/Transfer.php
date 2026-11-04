@@ -39,10 +39,7 @@ class Transfer {
     //the credentials and tables of $project the steps of $workflows point to: [ credentials, tables ] (models)
     public static function usedBy($project, array $workflows) {
 	$om = \V::app()->om;
-	$texts = [];
-	foreach($workflows as $wf)
-	    self::collectTexts(self::configsOf($wf->nodes), $texts);
-	$ids = array_values(array_filter(array_keys($texts), fn($t) => \util\Validator::rule('oid', (string)$t)));
+	$ids = array_values(array_filter(self::textsOf($workflows), fn($t) => \util\Validator::rule('oid', $t)));
 	if (empty($ids))
 	    return [ [], [] ];
 	$query = [ '_id' => [ '$in' => array_map(fn($id) => $om->to_oid($id), $ids) ], 'aid' => $project->aid, 'project' => $project->_id ];
@@ -152,6 +149,14 @@ class Transfer {
 		$configs[] = $n['config'];
 	}
 	return $configs;
+    }
+
+    //every text in the step settings of $workflows
+    public static function textsOf(array $workflows) {
+	$texts = [];
+	foreach($workflows as $wf)
+	    self::collectTexts(self::configsOf($wf->nodes), $texts);
+	return array_map('strval', array_keys($texts));
     }
 
     //CLD: 2026-11-03T14:00:00+02:00: whether a step of workflow $wf (its draft or its published version) names id $id

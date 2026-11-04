@@ -10,7 +10,7 @@ namespace controllers;
 class MoveController extends \sys\BaseController {
 
     //what can be moved: the `object` parameter
-    const KINDS = [ 'DataTableDef', 'Credential' ];
+    const KINDS = [ 'DataTableDef', 'Credential', 'Workflow' ];
 
     public function _init() {
 	parent::_init();
@@ -39,6 +39,11 @@ class MoveController extends \sys\BaseController {
 	    } else {
 		$resource->moveTo($project);
 		$this->addToast('success', 'Moved', (string)$resource->name . ' is now in project ' . $project->name);
+		//CLD: 2026-11-04T15:00:00+02:00: its designer is open behind the dialog and would go on saving: as a delete, away from it
+		if ($resource instanceof \models\Workflow) {
+		    $this->addEvent('sidebar::refresh');
+		    $this->redirect('/site/index');
+		}
 		//as a delete: it left this list
 		$this->addEvent('object::deleted', [ 'object' => $resource->getObjectName(), 'oid' => (string)$resource->_id ]);
 		$this->sendEvents();
