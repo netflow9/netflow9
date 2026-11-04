@@ -1134,7 +1134,8 @@ window.app.GridView = (function() {
 
     	const addTh = document.createElement("th");
     	addTh.className = "col-th sticky-top p-0";
-    	addTh.style.width = "100px";
+    	//CLD: 2026-11-04T08:27:09+02:00: as wide as the add-column button (was 100px, for the row actions, which now float over the row)
+    	addTh.style.width = "48px";
 
     	//CLD: 2026-10-05T21:06:21+03:00: show the add-column button only when there is a URL for it
         	if (!this.schema.readonly && this.schema.createColumnUrl) {
@@ -1210,8 +1211,7 @@ window.app.GridView = (function() {
         		});
 
         		const opsTd = document.createElement("td");
-        		opsTd.className = "tools-wrap px-2 py-1";
-        		opsTd.setAttribute('align', 'right');
+        		opsTd.className = "tools-wrap";
 
     		if (this.gridOptions.rowActions && Object.keys(this.gridOptions.rowActions).length) {
     		    const rowActionsTpl = {};
@@ -1221,7 +1221,13 @@ window.app.GridView = (function() {
     			    rowActionsTpl[key] = app.template.compile(this.gridOptions.rowActions[key]);
     			rowActionsHtml += rowActionsTpl[key]({item: row});
     		    });
-    		    opsTd.innerHTML = rowActionsHtml;
+    		    //CLD: 2026-11-04T08:27:09+02:00: in a panel floating over the right edge of the visible part of the table (the cell is sticky); no panel when this row has no actions
+    		    if (rowActionsHtml.trim() !== '') {
+    			const actions = document.createElement("div");
+    			actions.className = "row-actions";
+    			actions.innerHTML = rowActionsHtml;
+    			opsTd.appendChild(actions);
+    		    }
     		}
 
         		tr.appendChild(opsTd);
