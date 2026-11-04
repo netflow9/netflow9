@@ -388,9 +388,33 @@ class WfNode extends \sys\NestedModel {
     //forget the cached step definitions (a long-running process before work for another account / user: the daemon's jobs)
     public static function resetCache() {
 	self::$nodeDefs = null;
+	self::$choices = [];
+    }
+
+    //CLD: 2026-11-04T08:10:00+02:00: the database choices of the config forms, read once per web request (each AI step's form asks the same lists; a workflow with several AI steps
+    //builds its form for each step). Not in the console: the daemon's jobs and the check suites change the data they read back
+    private static $choices = [];
+    public static $rememberChoices = PHP_SAPI !== 'cli';
+
+    public static function rememberedChoices($key, $build) {
+	if (!self::$rememberChoices)
+	    return $build();
+	return self::$choices[$key] ??= $build();
+    }
+
+    //a model was saved or deleted (Boot): the lists may have changed
+    public static function forgetChoices() {
+	self::$choices = [];
+    }
+
+    //CLD: 2026-11-04T08:10:00+02:00: the config form of step class $class as app.smartform fields, with the choices of the current project (was `configSchema` in getAll(), built for all
+    //the step types: ~1.8 s and 430 queries on a project with many workflows, on each opening of the designer and each save)
+    public static function schemaOf($class) {
+	return \util\SmartForm::modelFields($class::configForm());
     }
 
     //we need to build a list of available nodes
+    //CLD: 2026-11-04T08:10:00+02:00: what the classes declare: no config form, nothing read from the database (the form of one step: schemaOf)
     public static function getAll() {
 	if (self::$nodeDefs !== null)
 	    return self::$nodeDefs;
@@ -436,8 +460,6 @@ class WfNode extends \sys\NestedModel {
 		'canRun' => (new \ReflectionMethod($__class, 'startNow'))->getDeclaringClass()->getName() !== self::class,
 		//CLD: 2026-10-19T08:51:16+03:00: scheduled step (WfNode::$scheduled): util\Scheduler queues it when its schedule matches
 		'scheduled' => !empty($__class::$scheduled),
-		//CLD: 2026-10-09T08:10:30+03:00: app.smartform fields made from the config form (configSchema() holds model field definitions now)
-		'configSchema' => \util\SmartForm::modelFields($__class::configForm()),
 	    ];
 	}
 	//CLD: 2026-10-18T11:55:00+03:00: cached for the request
@@ -456,6 +478,34 @@ class WfNode extends \sys\NestedModel {
 	    if (!$class::available())
 		$defs[$fq]['unavailable'] = true;
 	}
-	return [ 'defs' => $defs, 'version' => md5(\util\JSON::encode($defs)) ];
+	//CLD: 2026-11-04T08:10:00+02:00: + the app's version (the forms are no longer in $defs: a deploy can change them). Depends on the code and the tier only: a new credential or workflow
+	//no longer makes each tab ask the definitions again; the dialog of a step asks its form when it opens (WorkflowController::node_schema)
+	return [ 'defs' => $defs, 'version' => md5(\data\Version::NUMBER . \util\JSON::encode($defs)) ];
+    }
+
+    //CLD: 2026-11-04T08:10:00+02:00: what the canvas needs from the config forms, for designerDefs' $defs: portDefault (the default of the setting the outputs follow), writeVariable (the setting
+    //with the variable the step sets, shown in its box). Built as for nobody signed in: no database choices, they are not used here (the same forms as in the console)
+    public static function withCanvasHints($defs) {
+	$user = \V::app()->user;
+	$isGuest = $user->isGuest;
+	$user->isGuest = true;
+	try {
+	    foreach($defs as $fq => $def) {
+		$class = \V::app()->om->getObjectClass($def['objectName']);
+		$fields = array_column(self::schemaOf($class), null, 'key');
+		$port = $def['outPorts']['field'] ?? $def['outPorts']['rows'] ?? null;
+		if ($port !== null)
+		    $defs[$fq]['portDefault'] = $fields[$port]['default'] ?? null;
+		foreach($fields as $key => $f) {
+		    if (($f['variableName'] ?? null) === 'write') {
+			$defs[$fq]['writeVariable'] = [ 'key' => $key, 'default' => $f['default'] ?? null ];
+			break;
+		    }
+		}
+	    }
+	} finally {
+	    $user->isGuest = $isGuest;
+	}
+	return $defs;
     }
 }

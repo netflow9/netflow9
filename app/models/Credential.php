@@ -293,16 +293,19 @@ class Credential extends \sys\BaseModel {
 	$variants = static::variantsProviding($capability);
 	if (empty($variants) || empty($projectId))
 	    return [];
-	$choices = [];
-	foreach(\V::app()->om->find(self::FAMILY, [ 'aid' => $aid, '__variant' => [ '$in' => $variants ] ] + self::visibleInQuery($projectId)) as $c) {
-	    if (!$c->isHome($projectId)) {
-		$choices[] = [ 'value' => (string)$c->_id, 'label' => (string)$c->name . ' (' . $c::$label . ', shared from ' . self::projectName($c->project) . ')' ];
-		continue;
+	//CLD: 2026-11-04T08:10:00+02:00: read once per request (each AI step's form asks the same ones)
+	return \models\wf\WfNode::rememberedChoices("credentials:{$aid}:{$projectId}:{$capability}", function() use ($variants, $aid, $projectId) {
+	    $choices = [];
+	    foreach(\V::app()->om->find(self::FAMILY, [ 'aid' => $aid, '__variant' => [ '$in' => $variants ] ] + self::visibleInQuery($projectId)) as $c) {
+		if (!$c->isHome($projectId)) {
+		    $choices[] = [ 'value' => (string)$c->_id, 'label' => (string)$c->name . ' (' . $c::$label . ', shared from ' . self::projectName($c->project) . ')' ];
+		    continue;
+		}
+		$account = (string)($c->email ?? '');
+		$choices[] = [ 'value' => (string)$c->_id, 'label' => (string)$c->name . ' (' . $c::$label . ($account !== '' ? ', ' . $account : '') . ')' ];
 	    }
-	    $account = (string)($c->email ?? '');
-	    $choices[] = [ 'value' => (string)$c->_id, 'label' => (string)$c->name . ' (' . $c::$label . ($account !== '' ? ', ' . $account : '') . ')' ];
-	}
-	return $choices;
+	    return $choices;
+	});
     }
 
     //credential $id of the workflow's project, if it provides $capability

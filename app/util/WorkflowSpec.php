@@ -36,7 +36,8 @@ class WorkflowSpec {
 	    $class = \V::app()->om->getObjectClass($def['objectName']);
 	    $ports = $class::$outPorts;
 	    $settings = [];
-	    foreach($def['configSchema'] as $f)
+	    //CLD: 2026-11-04T08:10:00+02:00: WfNode::schemaOf (was $def['configSchema'], no longer in getAll())
+	    foreach(\models\wf\WfNode::schemaOf($class) as $f)
 		$settings[] = self::setting($f);
 	    $vars = [];
 	    foreach($class::outputVariables([]) as $name => $v)

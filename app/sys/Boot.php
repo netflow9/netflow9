@@ -19,6 +19,9 @@ class Boot {
 	\V::app()->hooks->addHook('model:after-delete', [ \models\AuditLog::class, 'afterModelDelete' ]);
 	\V::app()->hooks->addHook('model:after-save', [ \models\ExecutionLog::class, 'afterModelSave' ]);
 	\V::app()->hooks->addHook('model:after-delete', [ \models\ExecutionLog::class, 'afterModelDelete' ]);
+	//CLD: 2026-11-04T08:10:00+02:00: the choices of the step forms read in this request may have changed
+	\V::app()->hooks->addHook('model:after-save', [ \models\wf\WfNode::class, 'forgetChoices' ]);
+	\V::app()->hooks->addHook('model:after-delete', [ \models\wf\WfNode::class, 'forgetChoices' ]);
 
 	//each minute of the daemon (commands/DaemonCommand.php, daemon:tick): start the scheduled steps whose schedule matches
 	//and continue the sleeping executions whose time has come

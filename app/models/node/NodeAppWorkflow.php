@@ -36,12 +36,43 @@ class NodeAppWorkflow extends \models\wf\WfNode {
     public static function callable() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
-	$list = [];
 	$project = \V::app()->user->crtProject;
-	foreach(\V::app()->om->find('Workflow', [ 'aid' => \V::app()->config('rt.account')->_id ?? null ] + \models\Workflow::visibleInQuery($project), [ 'sort' => [ 'name' => 1 ] ]) as $wf) {
-	    $contract = NodeTriggerCall::contractOf($wf->copyFor($project)?->nodes);
+	$aid = \V::app()->config('rt.account')->_id ?? null;
+	return \models\wf\WfNode::rememberedChoices("callable:{$aid}:{$project}", fn() => self::readCallable($aid, $project));
+    }
+
+    //CLD: 2026-11-04T08:10:00+02:00: the documents as read, the published versions read together (was a model per workflow, with a query per published one: Workflow::copyFor,
+    //~70 ms for 270 workflows): the steps are those a call runs, as copyFor(): the published version, else the draft in the workflow's own project
+    private static function readCallable($aid, $project) {
+	$arrays = [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ];
+	$mongo = \V::app()->mongo;
+	$workflows = $mongo->selectCollection(\models\Workflow::_database(), \models\Workflow::_collection())->find(
+	    [ 'aid' => $aid ] + \models\Workflow::visibleInQuery($project),
+	    [ 'sort' => [ 'name' => 1 ], 'typeMap' => $arrays, 'projection' => [ 'name' => 1, 'project' => 1, 'status' => 1, 'version' => 1, 'nodes' => 1 ] ]
+	)->toArray();
+
+	$published = fn($w) => ($w['status'] ?? '') === \models\Workflow::PUBLISHED && !empty($w['version']);
+	$versionIds = array_column(array_filter($workflows, $published), 'version');
+	$versions = [];
+	if ($versionIds) {
+	    $class = \V::app()->om->getObjectClass('WfVersion');
+	    foreach($mongo->selectCollection($class::_database(), $class::_collection())->find([ '_id' => [ '$in' => $versionIds ], 'aid' => $aid ], [ 'typeMap' => $arrays, 'projection' => [ 'wf' => 1, 'nodes' => 1 ] ]) as $v)
+		$versions[(string)$v['_id']] = $v;
+	}
+
+	$list = [];
+	foreach($workflows as $w) {
+	    $home = (string)$w['project'] === (string)$project;
+	    $version = $published($w) ? ($versions[(string)$w['version']] ?? null) : null;
+	    if ($version && (string)$version['wf'] === (string)$w['_id'])
+		$nodes = $version['nodes'] ?? null;
+	    elseif ($home)
+		$nodes = $w['nodes'] ?? null;
+	    else
+		continue;
+	    $contract = NodeTriggerCall::contractOf($nodes);
 	    if ($contract !== null)
-		$list[(string)$wf->_id] = [ 'name' => (string)$wf->name . ($wf->isHome($project) ? '' : ' (shared from ' . $wf::projectName($wf->project) . ')'), 'contract' => $contract ];
+		$list[(string)$w['_id']] = [ 'name' => (string)($w['name'] ?? '') . ($home ? '' : ' (shared from ' . \models\Workflow::projectName($w['project']) . ')'), 'contract' => $contract ];
 	}
 	return $list;
     }

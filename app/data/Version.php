@@ -3,5 +3,5 @@
 namespace data;
 
 class Version {
-    const NUMBER = '0.99.810';
+    const NUMBER = '0.99.811';
 }
