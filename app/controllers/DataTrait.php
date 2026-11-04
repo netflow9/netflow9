@@ -49,13 +49,10 @@ trait DataTrait {
 	return $query;
     }
 
-    private function __data($objectName, $sys_query = []) {
+    //the request's search, filter, sort and page as [ query, options ] for om->find on the objects of $o
+    private function __listQuery($o, $sys_query = []) {
 	$req = \V::app()->request;
 	$account = \V::app()->config('rt.account');
-
-	$response = [ 'nRecords' => 0, 'data' => [] ];
-
-	$o = \V::app()->om->create($objectName, [ 'aid' => $account->_id ]);
 
 	$options = [];
 	$skip = $req->query['__skip'] ?? null;
@@ -99,6 +96,17 @@ trait DataTrait {
 
 	//add system query
 	$query = array_merge($query, $sys_query);
+
+	return [ $query, $options ];
+    }
+
+    private function __data($objectName, $sys_query = []) {
+	$account = \V::app()->config('rt.account');
+
+	$response = [ 'nRecords' => 0, 'data' => [] ];
+
+	$o = \V::app()->om->create($objectName, [ 'aid' => $account->_id ]);
+	[ $query, $options ] = $this->__listQuery($o, $sys_query);
 
 	$response['nRecords'] = \V::app()->om->count($objectName, $query);
 	$objs = \V::app()->om->find($objectName, $query, $options);

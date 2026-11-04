@@ -37,6 +37,9 @@ $viewsUrl = \V::app()->createUrl('/datatable/views', [ 'id' => $dt->_id ]);
 $createViewUrl = \V::app()->createUrl('/datatable/create_view', [ 'id' => $dt->_id ]);
 $deleteViewUrl = \V::app()->createUrl('/datatable/delete_view', [ 'id' => $dt->_id, 'view' => '__VIEW__' ]);
 
+//CLD: 2026-11-04T10:00:00+02:00: the Excel export; the grid adds its current search and filter
+$exportUrl = \V::app()->createUrl('/datatable/export', [ 'id' => $dt->_id ]);
+
 //CLD: 2026-10-05T21:30:59+03:00: row editing URLs; rowActions templates get the row id from {{item._id}}
 $createRowUrl = \V::app()->createUrl('/datatable/create_row', [ 'id' => $dt->_id ]);
 $updateRowUrl = str_replace('__ROW__', '{{item._id}}', \V::app()->createUrl('/datatable/update_row', [ 'id' => $dt->_id, 'row' => '__ROW__' ]));
@@ -76,6 +79,8 @@ $script = "
 		    deleteUrl: '{$deleteViewUrl}',
 		},
 	    },
+	    //CLD: 2026-11-04T10:00:00+02:00: the Export button
+	    exporter: { url: '{$exportUrl}' },
 	    //CLD: 2026-10-30T17:18:20+02:00: the page size kept in this browser, the same for every data table
 	    pager: {
 		storeKey: 'netflow9.datatable.pageSize',

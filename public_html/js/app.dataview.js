@@ -161,6 +161,29 @@ window.app.BaseDataView = (function() {
     }
 
 
+    //CLD: 2026-11-04T10:00:00+02:00: the Export button: downloads options.url with the current search and filter (all the pages: no pager); no button without options.url
+    class Exporter {
+	constructor(parent, options) {
+	    this.parent = parent;
+	    this.url = options.url || '';
+	    this.label = options.label || 'Export';
+	    this.title = options.title || 'Download the rows found as an Excel file';
+	}
+
+	render() {
+	    if (!this.url)
+		return '';
+	    return `<button type="button" class="btn btn-sm btn-outline-info btn-grid-export" title="${this.title}"><i class="bi bi-file-earmark-excel"></i> ${this.label}</button>`;
+	}
+
+	postRender() {
+	    this.parent.container.querySelector('.btn-grid-export')?.addEventListener('click', () => {
+		window.location.assign(this.parent.widgetsUrl(this.url, [ 'pager' ]));
+	    });
+	}
+    }
+
+
     class Filter {
 	crtFilter = [];
 	draftFilter = [];
@@ -802,6 +825,7 @@ window.app.BaseDataView = (function() {
 		search: Search,
 		filter: Filter,
 		sorter: Sorter,
+		exporter: Exporter,
 	    };
 	    const layoutVars = app.template.vars(this.layout);
 	    layoutVars.forEach((lv) => {
@@ -836,17 +860,20 @@ window.app.BaseDataView = (function() {
 	    this.spinner.classList.add('d-none');
 	}
 
+	//let each widget alter url, but those named in `except`
+	widgetsUrl(url, except = []) {
+	    for (const [key, widget] of Object.entries(this.widgets)) {
+		if (typeof widget == 'object' && typeof widget.processDataUrl == 'function' && !except.includes(key))
+		    url = widget.processDataUrl(url);
+	    }
+	    return url;
+	}
+
 	loadData() {
 	    //setup a timer to render a spinner if loading takes longer than...
 	    this.timer = setTimeout(() => { this.showSpinner(); }, 100);
 
-	    var url = this.options.dataUrl;
-
-	    //let each widget alter url
-	    for (const [key, widget] of Object.entries(this.widgets)) {
-		if (typeof widget == 'object' && typeof widget.processDataUrl == 'function')
-		    url = widget.processDataUrl(url);
-	    }
+	    const url = this.widgetsUrl(this.options.dataUrl);
 
 	    fetch(url, { method: 'GET' }).then((response) => {
 		response.json().then((data) => {
@@ -979,7 +1006,7 @@ window.app.GridView = (function() {
     	<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
     	    {{title}}
     	    <div class='flex-fill'></div>
-    	    {{search}}{{filter}}{{create}}
+    	    {{search}}{{filter}}{{exporter}}{{create}}
     	</div>
     	<div class="datagrid-wrap items-container position-relative overflow-auto" tabindex="0">
     	    <table class="datagrid table table-bordered table-hover mb-0 w-100 small user-select-none">
