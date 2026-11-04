@@ -5,6 +5,11 @@ namespace models\datatable;
 class DataTableDef extends \sys\BaseModel {
     //CLD: 2026-11-03T14:00:00+02:00: a table can be shared with other projects of the account: rows only; its columns stay with its own project
     use \models\share\ShareableTrait;
+    //CLD: 2026-11-04T12:00:00+02:00: and moved to another project
+    use \models\share\MovableTrait;
+
+    const MOVE_PERMS = [ 'from' => 'DataTable::delete', 'to' => 'DataTable::create' ];
+    const MOVE_ACTION = 'datatable.move';
 
     const SHARE_PERM = 'DataTable::share';
     const SHARE_WHAT = 'Data table';
@@ -127,6 +132,22 @@ class DataTableDef extends \sys\BaseModel {
 		$names[(string)$target->name] = true;
 	}
 	return $names ? [ 'Columns of this table point to ' . implode(', ', array_keys($names)) . ': who reads this table also sees the labels of the rows they point to.' ] : [];
+    }
+
+    //CLD: 2026-11-04T12:00:00+02:00: what the Move dialog warns of: object columns in both directions (they point by iname, which stays, so they keep working)
+    public function moveWarnings() {
+	$warnings = $this->shareWarnings();
+	$names = [];
+	foreach(\V::app()->om->find('Field', [ 'aid' => $this->aid, 'object' => $this->iname ]) as $f) {
+	    if ($f->objectName !== $this->iname) {
+		$table = \V::app()->om->findOne('DataTableDef', [ 'iname' => (string)$f->objectName, 'aid' => $this->aid ]);
+		if ($table)
+		    $names[(string)$table->name] = true;
+	    }
+	}
+	if ($names)
+	    $warnings[] = 'Columns of ' . implode(', ', array_keys($names)) . ' point to this table: they keep their values, but choosing a new row there needs access to the new project.';
+	return $warnings;
     }
 
     // ------------------------------------------------------------------------------------
