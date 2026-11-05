@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #the installation updated to what is pushed (run it in the installation that is deployed to, e.g. /home/app): the repository with its submodules, the MultiTenant
-#plugin's own repository when it has it, the new indexes, then PHP-FPM and the daemon restarted.
+#plugin's own repository when it has it, the new indexes, the data migrations (sys::migrate), then PHP-FPM and the daemon restarted.
 #The repositories are fetched first and only fast-forwarded, so a remote that cannot be reached or a local commit stops it before anything changes.
 #Every step can be run again: after a failure, fix it and run it again.
 #CLD: 2026-11-02T21:00:00+02:00: new
@@ -125,6 +125,10 @@ run() {
 
     echo "== indexes"
     (cd "$BASE/app/commands" && as_user ../v sys::indexes)
+
+    #CLD: 2026-11-05T16:00:00+02:00: the data migrations of the versions pulled (util\Migrations), before the restart: the new code expects the migrated data
+    echo "== migrations"
+    (cd "$BASE/app/commands" && as_user ../v sys::migrate)
 
     fpm=$(fpm_unit)
     if [ -z "$fpm" ]; then

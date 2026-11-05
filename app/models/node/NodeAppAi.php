@@ -34,7 +34,7 @@
 	    The provider classes build the requests: startConversation(), callModel(), addToolResults().
 	The variable (default `ai`): { text, json, model, stop_reason, rounds, tool_calls: [ { tool, arguments, error } ], usage: { input_tokens, output_tokens } }; on error { error }
 	//CLD: 2026-10-23T01:10:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page or an HTTP request
-	//CLD: 2026-10-23T02:30:00+03:00: in an email {{ ai.html }} shows it formatted (util\EmailHtml; was escaped: {{ markdown(ai.text) }} only)
+	//CLD: 2026-10-23T02:30:00+03:00: in an email {{ ai.html }} shows it formatted (util\EmailHtml; was escaped: {{ markdown2html(ai.text) }} only)
     //CLD: 2026-11-02T10:00:00+02:00: what keeps the agent in bounds: util\AgentGuard (limits, the account's policy, untrusted content marked, lockdown, masking), each tool call in the audit log
     //CLD: 2026-11-02T14:00:00+02:00: each visit writes its trace (util\AgentTracer, models\agent\AgentTrace; the Executions panel): rounds, tool calls, approvals, tokens, cost; its id in the variable (trace_id)
     //CLD: 2026-11-02T18:00:00+02:00: Continue the conversation: in a run started by a chat message, the earlier turns go to the model (addConversation, addHistory; older ones summarized); remember, recall: util\AgentMemory

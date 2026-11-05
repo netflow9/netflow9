@@ -40,7 +40,9 @@ class Expression {
 
     //CLD: 2026-10-23T01:00:00+03:00: the app's own functions in every expression (functions()), with their help: name => text. A variable of the same name hides one
     const FUNCTIONS = [
-	'markdown' => 'markdown(text): Markdown as safe HTML; in an email, {{ markdown(...) }} alone in its {{ }} shows it formatted (an AI step\'s answer: also {{ ai.html }})',
+	'markdown2html' => 'markdown2html(text): Markdown as safe HTML; in an email, {{ markdown2html(...) }} alone in its {{ }} shows it formatted (an AI step\'s answer: also {{ ai.html }})',
+	//CLD: 2026-11-05T15:00:00+02:00: HTML from elsewhere (an AI step asked for HTML, a web page) into an email
+	'html' => 'html(text): HTML cleaned to formatting only (no styles, scripts or images); in an email, {{ html(...) }} alone in its {{ }} shows it formatted (e.g. an AI step that answers in HTML)',
     ];
 
     //J's global names (built-ins) and their members, computed once per process
@@ -590,7 +592,9 @@ class Expression {
     //CLD: 2026-10-23T01:00:00+03:00: the app's functions (FUNCTIONS) as J may call them: name => \Closure
     public static function functions() {
 	return [
-	    'markdown' => fn($text = '') => \util\Markdown::toHtml($text),
+	    'markdown2html' => fn($text = '') => \util\Markdown::toHtml($text),
+	    //CLD: 2026-11-05T15:00:00+02:00
+	    'html' => fn($text = '') => \util\HtmlSafe::clean($text),
 	];
     }
 
