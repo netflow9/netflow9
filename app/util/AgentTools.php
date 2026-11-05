@@ -32,6 +32,8 @@ class AgentTools {
 	'sophos' => [ 'label' => 'Sophos Firewall', 'prefix' => 'sfos', 'capability' => 'sophos', 'base' => \models\node\NodeAppSophos::class ],
 	//CLD: 2026-11-03T10:00:00+02:00: Wazuh's steps as tools
 	'wazuh' => [ 'label' => 'Wazuh', 'prefix' => 'wazuh', 'capability' => 'wazuh', 'base' => \models\node\NodeAppWazuh::class ],
+	//CLD: 2026-11-05T13:00:00+02:00: Namecheap's steps as tools
+	'namecheap' => [ 'label' => 'Namecheap', 'prefix' => 'namecheap', 'capability' => 'namecheap', 'base' => \models\node\NodeAppNamecheap::class ],
 	'veeam' => [ 'label' => 'Veeam Backup & Replication', 'prefix' => 'veeam', 'capability' => 'veeam', 'base' => \models\node\NodeAppVeeam::class ],
 	'vmware' => [ 'label' => 'VMware vCenter', 'prefix' => 'vmware', 'capability' => 'vmware', 'base' => \models\node\NodeAppVmware::class ],
 	'proxmox' => [ 'label' => 'Proxmox VE', 'prefix' => 'proxmox', 'capability' => 'proxmox', 'base' => \models\node\NodeAppProxmox::class ],

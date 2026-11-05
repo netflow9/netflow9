@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -8319,6 +8319,212 @@ class CheckCommand extends \sys\BaseController {
 	    }
 	    foreach($wfs as $wf)
 		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-05T13:00:00+02:00: Namecheap against a fake one (commands/tests/NamecheapTestServer.php; util\Namecheap::$testUrl: http, no address guard): the values (domains, hosts,
+    //records, the email type), the client (POST with the caller's fields, Namecheap's errors with what they mean), the credential's form and test, every step; the DNS changes keep
+    //the records they do not name (setHosts replaces them all) and send EmailType MX with MX records; unchanged records are not written
+    private function suiteNamecheap() {
+	$NC = \util\Namecheap::class;
+	$D = \models\node\NodeAppNcDns::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$this->check('namecheap: values: a domain\'s name (sld, tld; of a list item), a host, a record, the email type', [
+	    [ 'example.co.uk', 'example', 'co.uk' ], [ 'example.com', 'example', 'com' ], 'Domain: not a domain\'s name: `localhost`', 'Domain: empty', '@', '@', 'www', 'a.b', '*', 'Host: not a host\'s name: `a b`',
+	    [ 'Name' => 'mail', 'Type' => 'MX', 'Address' => 'mx.example.net', 'TTL' => 300, 'MXPref' => 5 ], 'Record: type: not a record type Namecheap has: `SRV`',
+	    'MX', 'MXE', 'NONE', 'FWD', null, true, false, true ], [
+	    $NC::domain(' Example.CO.uk. '), $NC::domain([ 'Name' => 'example.com', 'Expires' => '01/01/2030' ]), $thrown(fn() => $NC::domain('localhost')), $thrown(fn() => $NC::domain('')),
+	    $D::host('', 'example.com'), $D::host('example.com', 'example.com'), $D::host('WWW.example.com', 'example.com'), $D::host('a.b', 'example.com'), $D::host('*', 'example.com'), $thrown(fn() => $D::host('a b', 'example.com')),
+	    $D::record([ 'host' => 'mail.example.com', 'type' => 'mx', 'value' => 'mx.example.net', 'ttl' => '300', 'mxPref' => 5 ], 'example.com'), $thrown(fn() => $D::record([ 'type' => 'SRV', 'value' => 'x' ], 'example.com')),
+	    $D::emailType([ [ 'Type' => 'A' ], [ 'Type' => 'MX' ] ], 'FWD'), $D::emailType([ [ 'Type' => 'MXE' ] ], ''), $D::emailType([ [ 'Type' => 'A' ] ], 'MX'), $D::emailType([], 'fwd'), $D::emailType([], ''),
+	    $D::sameRecord([ 'Name' => 'WWW', 'Type' => 'CNAME', 'Address' => 'Host.example.net.' ], [ 'Name' => 'www', 'Type' => 'CNAME', 'Address' => 'host.example.net' ]),
+	    $D::sameRecord([ 'Name' => '@', 'Type' => 'TXT', 'Address' => 'A' ], [ 'Name' => '@', 'Type' => 'TXT', 'Address' => 'a' ]),
+	    $D::sameRecord([ 'Name' => '@', 'Type' => 'A', 'Address' => '1.2.3.4' ], [ 'Name' => '@', 'Type' => 'A', 'Address' => ' 1.2.3.4 ' ]) ]);
+	$xml = $NC::parse('<?xml version="1.0"?><ApiResponse Status="OK" xmlns="http://api.namecheap.com/xml.response"><CommandResponse><R A="true" B="x"><C>1</C><C>2</C><D E="false">t</D></R></CommandResponse></ApiResponse>');
+	$this->check('namecheap: the answer read: attributes (booleans), repeated children a list, text; a DOCTYPE refused', [ [ 'A' => true, 'B' => 'x', 'C' => [ '1', '2' ], 'D' => [ 'E' => false, 'value' => 't' ] ], null ],
+	    [ $NC::toArray($xml->CommandResponse->R), $NC::parse('<!DOCTYPE x [<!ENTITY a "b">]><ApiResponse Status="OK"/>') ]);
+
+	$dir = sys_get_temp_dir() . '/netflow9-check-nc-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('namecheap', 'NamecheapTestServer.php', $dir, [ 'NC_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$NC::$testUrl = "http://127.0.0.1:{$port}/xml.response";
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$put = fn($name, $v) => file_put_contents("{$dir}/{$name}.json", json_encode($v));
+	$get = fn($name) => json_decode((string)@file_get_contents("{$dir}/{$name}.json"), true);
+	$creds = [];
+	try {
+	    $make = function(array $over = []) use ($om, &$creds) {
+		$c = $om->create('CredentialNamecheap', $over + [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Namecheap ' . uniqid(), 'apiUser' => 'nfuser', 'apiKey' => 'k3y', 'clientIp' => '203.0.113.10' ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('namecheap: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		return $om->findById('CredentialNamecheap', (string)$c->_id);
+	    };
+	    $cred = $make();
+	    $wrongKey = $make([ 'apiKey' => 'nope' ]);
+	    $wrongIp = $make([ 'clientIp' => '198.51.100.1' ]);
+	    if (!$cred || !$wrongKey || !$wrongIp)
+		return;
+	    $bad = $om->create('CredentialNamecheap', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'x', 'apiUser' => 'a b', 'apiKey' => 'k', 'clientIp' => '300.1.1.1' ]);
+	    $bad->validates();
+	    $badKeys = array_keys((array)$bad->errors());
+	    sort($badKeys);
+	    $requests();
+	    $this->check('namecheap: the form: user names, an IPv4 address; Test: the balance; the caller\'s fields by POST, the key not in the address; a wrong key, an IP not whitelisted said', [
+		[ 'apiUser', 'clientIp' ], 'connected to Namecheap as nfuser; balance 42.50 USD', [ 'POST', '/xml.response', 'nfuser', 'nfuser', '203.0.113.10', 'namecheap.users.getBalances' ],
+		'Parameter APIKey is invalid (error 1011102): the API key is wrong, or API access is not enabled for the user',
+		'Parameter RequestIP is invalid (error 1011150): the credential\'s client IP is not whitelisted for the API user (Namecheap: Profile > Tools > API Access)' ], [
+		$badKeys, $cred->test(), (function() use ($requests) {
+		    $r = $requests()[0] ?? [];
+		    return [ $r['method'] ?? null, $r['path'] ?? null, $r['form']['ApiUser'] ?? null, $r['form']['UserName'] ?? null, $r['form']['ClientIp'] ?? null, $r['form']['Command'] ?? null ];
+		})(), $thrown(fn() => $wrongKey->test()), $thrown(fn() => $wrongIp->test()) ]);
+	    $client = $cred->client($this->account->_id, 20);
+	    $this->check('namecheap: not a command; an unknown one: Namecheap\'s error; the caller\'s fields not changed by the parameters', [ 'not a Namecheap command: `users.getBalances`',
+		'Command namecheap.nothing.here not found (error 1010000)', 'k3y' ], [ $thrown(fn() => $client->call('users.getBalances')), $thrown(fn() => $client->call('namecheap.nothing.here')),
+		(function() use ($client, $requests) {
+		    $requests();
+		    $client->call('namecheap.users.getBalances', [ 'ApiKey' => 'other' ]);
+		    return $requests()[0]['form']['ApiKey'] ?? null;
+		})() ]);
+
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $cred, $requests) {
+		$requests();
+		$exe = $this->runFlow("nc {$fq}", [ $n('m', 'trigger::manual'), $n('c', $fq, $cfg + [ 'credential' => (string)$cred->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 'c'), $e('e2', 'c', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $commands = fn($sent) => array_map(fn($r) => $r['form']['Command'] ?? null, $sent);
+
+	    //domains
+	    $day = 86400;
+	    $domains = [];
+	    for ($i = 0; $i < 130; $i++)
+		$domains[] = [ 'Name' => sprintf('d%03d.com', $i), 'Expires' => gmdate('m/d/Y', time() + (200 + $i) * $day) ];
+	    $domains[] = [ 'Name' => 'example.com', 'Expires' => gmdate('m/d/Y', time() + 10 * $day) ];
+	    $domains[] = [ 'Name' => 'soon.ro', 'Expires' => gmdate('m/d/Y', time() + 25 * $day + 3600) ];
+	    $domains[] = [ 'Name' => 'gone.net', 'Expires' => gmdate('m/d/Y', time() - 5 * $day) ];
+	    $put('domains', $domains);
+	    [ $l, $sent ] = $step('app::namecheap-domains', [ 'operation' => 'list', 'variable' => 'r' ]);
+	    $r = $l?->getVariable('r');
+	    [ $l2, ] = $step('app::namecheap-domains', [ 'operation' => 'list', 'search' => 'd12', 'maxItems' => 5, 'variable' => 'r' ]);
+	    $r2 = $l2?->getVariable('r');
+	    $this->check('namecheap: Domains list: pages of 100, all of them; the attributes, booleans; containing a text; truncated at At most', [ 133, 133, false, [ 1, 2 ], 'd000.com', false, [ 10, 5, true ] ], [
+		$r['count'] ?? null, $r['total'] ?? null, $r['truncated'] ?? null, array_map(fn($s) => (int)$s['form']['Page'], $sent), $r['items'][0]['Name'] ?? null, $r['items'][0]['IsLocked'] ?? null,
+		[ $r2['total'] ?? null, $r2['count'] ?? null, $r2['truncated'] ?? null ] ]);
+	    [ $x, $sent ] = $step('app::namecheap-domains', [ 'operation' => 'expiring', 'days' => 30, 'variable' => 'r' ]);
+	    [ $x2, ] = $step('app::namecheap-domains', [ 'operation' => 'expiring', 'days' => 30, 'includeExpired' => false, 'variable' => 'r' ]);
+	    $this->check('namecheap: Domains expiring: within the days, soonest first, with daysLeft; expired ones too or not; only the first page read (sorted by expiry)', [
+		[ 'gone.net', 'example.com', 'soon.ro' ], [ -5, 10, 25 ], [ 'example.com', 'soon.ro' ], [ 'EXPIREDATE' ] ], [
+		array_column($x?->getVariable('r')['items'] ?? [], 'Name'), array_column($x?->getVariable('r')['items'] ?? [], 'daysLeft'), array_column($x2?->getVariable('r')['items'] ?? [], 'Name'),
+		array_map(fn($s) => $s['form']['SortBy'] ?? null, $sent) ]);
+	    [ $g, ] = $step('app::namecheap-domains', [ 'operation' => 'get', 'domain' => '{{ d }}', 'variable' => 'g' ], [ 'd' => [ 'Name' => 'example.com' ] ]);
+	    [ $ghost, ] = $step('app::namecheap-domains', [ 'operation' => 'get', 'domain' => 'ghost.com', 'variable' => 'g' ]);
+	    [ $chk, $sent ] = $step('app::namecheap-domains', [ 'operation' => 'check', 'domains' => 'new-name.com, taken.com', 'variable' => 'c' ]);
+	    [ $tooMany, ] = $step('app::namecheap-domains', [ 'operation' => 'check', 'domains' => implode(',', array_map(fn($i) => "n{$i}.com", range(1, 51))), 'variable' => 'c' ]);
+	    $this->check('namecheap: Domains get (of a list item), not found: the error output; check: which are available, at most 50', [ [ 'example.com', true, 'dns1.registrar-servers.com' ], 'error',
+		'Domain not found (error 2019166)', [ 'new-name.com' ], 'new-name.com,taken.com', 'Names: at most 50 in one check, not 51' ], [
+		[ $g?->getVariable('g')['DomainName'] ?? null, $g?->getVariable('g')['IsOwner'] ?? null, $g?->getVariable('g')['DnsDetails']['Nameserver'][0] ?? null ], $ghost?->getVariable('route'),
+		str_replace('Namecheap Domains get: ', '', (string)self::logLine($ghost, 'Namecheap Domains get: ')), $chk?->getVariable('c')['available'] ?? null, $sent[0]['form']['DomainList'] ?? null,
+		str_replace('Namecheap Domains check: ', '', (string)self::logLine($tooMany, 'Namecheap Domains check: ')) ]);
+	    [ $lk, ] = $step('app::namecheap-domains', [ 'operation' => 'lock', 'domain' => 'example.com', 'variable' => 'l' ]);
+	    [ $ls, ] = $step('app::namecheap-domains', [ 'operation' => 'lockStatus', 'domain' => 'example.com', 'variable' => 'l' ]);
+	    [ $ul, $sent ] = $step('app::namecheap-domains', [ 'operation' => 'unlock', 'domain' => 'example.com', 'variable' => 'l' ]);
+	    [ $ls2, ] = $step('app::namecheap-domains', [ 'operation' => 'lockStatus', 'domain' => 'example.com', 'variable' => 'l' ]);
+	    [ $rn, $rsent ] = $step('app::namecheap-domains', [ 'operation' => 'renew', 'domain' => 'example.com', 'years' => 2, 'variable' => 'n' ]);
+	    [ $ct, ] = $step('app::namecheap-domains', [ 'operation' => 'contacts', 'domain' => 'example.com', 'variable' => 'c' ]);
+	    [ $tl, ] = $step('app::namecheap-domains', [ 'operation' => 'tlds', 'maxItems' => 2, 'variable' => 't' ]);
+	    $this->check('namecheap: Domains lock, its state, unlock; renew: the years, what was charged; contacts; TLDs, truncated', [ true, 'UNLOCK', false, '2', '21.96', 'Ana', [ 'com', 'ro' ], [ 3, true ] ], [
+		$ls?->getVariable('l')['locked'] ?? null, $sent[0]['form']['LockAction'] ?? null, $ls2?->getVariable('l')['locked'] ?? null, $rsent[0]['form']['Years'] ?? null, $rn?->getVariable('n')['ChargedAmount'] ?? null,
+		$ct?->getVariable('c')['Registrant']['FirstName'] ?? null, array_column($tl?->getVariable('t')['items'] ?? [], 'Name'), [ $tl?->getVariable('t')['total'] ?? null, $tl?->getVariable('t')['truncated'] ?? null ] ]);
+
+	    //DNS
+	    $put('hosts', [ 'example.com' => [ 'emailType' => 'FWD', 'records' => [ [ 'Name' => '@', 'Type' => 'A', 'Address' => '192.0.2.1', 'TTL' => 1800 ], [ 'Name' => 'www', 'Type' => 'CNAME', 'Address' => 'example.com.', 'TTL' => 1800 ],
+		[ 'Name' => '@', 'Type' => 'TXT', 'Address' => 'v=spf1 -all', 'TTL' => 3600 ] ] ] ]);
+	    $records = fn() => array_map(fn($r) => "{$r['Name']} {$r['Type']} {$r['Address']} {$r['TTL']}" . (isset($r['MXPref']) ? " {$r['MXPref']}" : ''), $get('hosts')['example.com']['records'] ?? []);
+	    [ $ls, ] = $step('app::namecheap-dns', [ 'operation' => 'records', 'domain' => 'example.com', 'variable' => 'd' ]);
+	    [ $lsA, $sent ] = $step('app::namecheap-dns', [ 'operation' => 'records', 'domain' => 'example.com', 'host' => 'example.com', 'type' => 'A', 'variable' => 'd' ]);
+	    $this->check('namecheap: DNS records: all; of a host (its full name) and type; the email type; SLD / TLD sent', [ 3, [ '192.0.2.1' ], 'FWD', [ 'example', 'com' ] ], [
+		$ls?->getVariable('d')['count'] ?? null, array_column($lsA?->getVariable('d')['records'] ?? [], 'Address'), $ls?->getVariable('d')['emailType'] ?? null, [ $sent[0]['form']['SLD'] ?? null, $sent[0]['form']['TLD'] ?? null ] ]);
+	    [ $add, $sent ] = $step('app::namecheap-dns', [ 'operation' => 'add', 'domain' => 'example.com', 'host' => 'api', 'type' => 'A', 'address' => '192.0.2.9', 'ttl' => 300, 'variable' => 'd' ]);
+	    $after = $records();
+	    [ $again, $sent2 ] = $step('app::namecheap-dns', [ 'operation' => 'add', 'domain' => 'example.com', 'host' => 'api', 'type' => 'A', 'address' => '192.0.2.9', 'ttl' => 300, 'variable' => 'd' ]);
+	    $this->check('namecheap: DNS add: the others kept, the email type kept; the same record again: not written', [
+		[ '@ A 192.0.2.1 1800', 'www CNAME example.com. 1800', '@ TXT v=spf1 -all 3600', 'api A 192.0.2.9 300' ], [ 'namecheap.domains.dns.getHosts', 'namecheap.domains.dns.setHosts' ], 'FWD', true,
+		[ 'namecheap.domains.dns.getHosts' ], false ], [ $after, $commands($sent), $sent[1]['form']['EmailType'] ?? null, $add?->getVariable('d')['changed'] ?? null, $commands($sent2), $again?->getVariable('d')['changed'] ?? null ]);
+	    [ $mx, $sent ] = $step('app::namecheap-dns', [ 'operation' => 'add', 'domain' => 'example.com', 'host' => '@', 'type' => 'MX', 'address' => 'mx1.example.net', 'mxPref' => 5, 'variable' => 'd' ]);
+	    $this->check('namecheap: DNS add an MX record: EmailType MX, its priority', [ 'MX', '5', 'MX', '@ MX mx1.example.net 1800 5' ], [ $sent[1]['form']['EmailType'] ?? null, $sent[1]['form']['MXPref5'] ?? null, $get('hosts')['example.com']['emailType'] ?? null, $records()[4] ?? null ]);
+	    $step('app::namecheap-dns', [ 'operation' => 'add', 'domain' => 'example.com', 'host' => 'api', 'type' => 'A', 'address' => '192.0.2.10', 'variable' => 'd' ]);
+	    [ $set, ] = $step('app::namecheap-dns', [ 'operation' => 'set', 'domain' => 'example.com', 'host' => 'api', 'type' => 'A', 'address' => '{{ ip }}', 'ttl' => 60, 'variable' => 'd' ], [ 'ip' => '198.51.100.20' ]);
+	    $apiA = array_values(array_filter($records(), fn($r) => str_starts_with($r, 'api ')));
+	    [ $same, $sent ] = $step('app::namecheap-dns', [ 'operation' => 'set', 'domain' => 'example.com', 'host' => 'api', 'type' => 'A', 'address' => '198.51.100.20', 'ttl' => 60, 'variable' => 'd' ]);
+	    $this->check('namecheap: DNS set: the host\'s records of the type replaced by one; the same again: not written', [ [ 'api A 198.51.100.20 60' ], 2, [ 'namecheap.domains.dns.getHosts' ], 6 - 2 + 1 ], [
+		$apiA, count($set?->getVariable('d')['removed'] ?? []), $commands($sent), count($records()) ]);
+	    [ $rm, ] = $step('app::namecheap-dns', [ 'operation' => 'remove', 'domain' => 'example.com', 'host' => '@', 'type' => 'MX', 'variable' => 'd' ]);
+	    [ $rm0, $sent ] = $step('app::namecheap-dns', [ 'operation' => 'remove', 'domain' => 'example.com', 'host' => 'nothing', 'type' => 'A', 'variable' => 'd' ]);
+	    $this->check('namecheap: DNS remove: the MX records gone, EmailType back to NONE; none matching: nothing written', [ 1, false, 'NONE', 0, [ 'namecheap.domains.dns.getHosts' ] ], [
+		count($rm?->getVariable('d')['removed'] ?? []), in_array('@ MX mx1.example.net 1800 5', $records(), true), $get('hosts')['example.com']['emailType'] ?? null, count($rm0?->getVariable('d')['removed'] ?? []), $commands($sent) ]);
+	    [ $rp, ] = $step('app::namecheap-dns', [ 'operation' => 'replace', 'domain' => 'example.com', 'records' => '{{ list }}', 'variable' => 'd' ], [ 'list' => [ [ 'host' => '@', 'type' => 'A', 'value' => '203.0.113.1' ],
+		[ 'Name' => 'www', 'Type' => 'CNAME', 'Address' => 'example.com.', 'TTL' => 600, 'HostId' => 101 ] ] ]);
+	    [ $rpBad, ] = $step('app::namecheap-dns', [ 'operation' => 'replace', 'domain' => 'example.com', 'records' => '[{"type": "A"}]', 'variable' => 'd' ]);
+	    $this->check('namecheap: DNS replace: exactly the list (records of List records work too); a record without a value: the error output, nothing written', [
+		[ '@ A 203.0.113.1 1800', 'www CNAME example.com. 600' ], 'error', 'Records: item 1: no value' ], [ $records(), $rpBad?->getVariable('route'), str_replace('Namecheap DNS replace: ', '', (string)self::logLine($rpBad, 'Namecheap DNS replace: ')) ]);
+	    [ $ns0, ] = $step('app::namecheap-dns', [ 'operation' => 'nameservers', 'domain' => 'example.com', 'variable' => 'n' ]);
+	    [ , $sent ] = $step('app::namecheap-dns', [ 'operation' => 'setNameservers', 'domain' => 'example.com', 'nameservers' => 'NS1.example.net, ns2.example.net', 'variable' => 'n' ]);
+	    [ $ns1, ] = $step('app::namecheap-dns', [ 'operation' => 'nameservers', 'domain' => 'example.com', 'variable' => 'n' ]);
+	    [ $one, ] = $step('app::namecheap-dns', [ 'operation' => 'setNameservers', 'domain' => 'example.com', 'nameservers' => 'ns1.example.net', 'variable' => 'n' ]);
+	    $step('app::namecheap-dns', [ 'operation' => 'resetNameservers', 'domain' => 'example.com', 'variable' => 'n' ]);
+	    [ $ns2, ] = $step('app::namecheap-dns', [ 'operation' => 'nameservers', 'domain' => 'example.com', 'variable' => 'n' ]);
+	    $this->check('namecheap: DNS name servers: Namecheap\'s; custom ones (at least 2); Namecheap\'s again', [ true, 'ns1.example.net,ns2.example.net', [ 'ns1.example.net', 'ns2.example.net' ], false, 'error', true ], [
+		$ns0?->getVariable('n')['usingNamecheapDns'] ?? null, $sent[0]['form']['Nameservers'] ?? null, $ns1?->getVariable('n')['nameservers'] ?? null, $ns1?->getVariable('n')['usingNamecheapDns'] ?? null,
+		$one?->getVariable('route'), $ns2?->getVariable('n')['usingNamecheapDns'] ?? null ]);
+	    [ $sf, $sent ] = $step('app::namecheap-dns', [ 'operation' => 'setForwarding', 'domain' => 'example.com', 'forwards' => '[{"mailbox": "Info", "forwardTo": "ana@example.org"}, {"mailbox": "sales", "forwardTo": "bob@example.org"}]', 'variable' => 'f' ]);
+	    [ $gf, ] = $step('app::namecheap-dns', [ 'operation' => 'forwarding', 'domain' => 'example.com', 'variable' => 'f' ]);
+	    [ $bf, ] = $step('app::namecheap-dns', [ 'operation' => 'setForwarding', 'domain' => 'example.com', 'forwards' => '[{"mailbox": "x", "forwardTo": "not an address"}]', 'variable' => 'f' ]);
+	    $this->check('namecheap: DNS email forwarding: set, read back; a wrong address refused', [ [ 'info', 'ana@example.org' ], [ [ 'mailbox' => 'info', 'forwardTo' => 'ana@example.org' ], [ 'mailbox' => 'sales', 'forwardTo' => 'bob@example.org' ] ], 'error' ], [
+		[ $sent[0]['form']['MailBox1'] ?? null, $sent[0]['form']['ForwardTo1'] ?? null ], $gf?->getVariable('f')['forwards'] ?? null, $bf?->getVariable('route') ]);
+
+	    //account, API, Other parameters
+	    [ $b, ] = $step('app::namecheap-account', [ 'operation' => 'balances', 'variable' => 'a' ]);
+	    [ $p, $sent ] = $step('app::namecheap-account', [ 'operation' => 'pricing', 'tld' => '.COM', 'action' => 'RENEW', 'variable' => 'a' ]);
+	    [ $p0, ] = $step('app::namecheap-account', [ 'operation' => 'pricing', 'tld' => 'nope', 'variable' => 'a' ]);
+	    [ $ssl, ] = $step('app::namecheap-account', [ 'operation' => 'ssl', 'variable' => 'a' ]);
+	    $this->check('namecheap: Account balances; prices of a TLD, per years; none: an error; SSL certificates', [ '42.50', [ 'DOMAIN', 'RENEW', 'com' ], [ [ 'com', 'renew', '1', '10.98' ], [ 'com', 'renew', '2', '21.96' ] ], 'error', [ 'www.example.com' ] ], [
+		$b?->getVariable('a')['AvailableBalance'] ?? null, [ $sent[0]['form']['ProductType'] ?? null, $sent[0]['form']['ActionName'] ?? null, $sent[0]['form']['ProductName'] ?? null ],
+		array_map(fn($i) => [ $i['tld'], $i['action'], $i['Duration'], $i['Price'] ], $p?->getVariable('a')['items'] ?? []), $p0?->getVariable('route'), array_column($ssl?->getVariable('a')['items'] ?? [], 'HostName') ]);
+	    [ $api, $sent ] = $step('app::namecheap-api', [ 'operation' => 'command', 'command' => 'namecheap.domains.ns.getInfo', 'parameters' => '{"SLD": "example", "TLD": "com", "Nameserver": "ns1.example.com"}', 'variable' => 'x' ]);
+	    [ $apiBad, ] = $step('app::namecheap-api', [ 'operation' => 'command', 'command' => 'namecheap.domains.ns.getInfo', 'parameters' => '[1]', 'variable' => 'x' ]);
+	    [ , $osent ] = $step('app::namecheap-domains', [ 'operation' => 'list', 'search' => 'example', 'params' => '{"SortBy": "NAME_DESC"}', 'variable' => 'r' ]);
+	    $this->check('namecheap: API: a command, its parameters, the answer as an array; parameters not an object refused; Other parameters added to a step\'s', [ [ '198.51.100.7', [ 'OK', 'Linked' ] ], 'ns1.example.com', 'error', 'NAME_DESC' ], [
+		[ $api?->getVariable('x')['DomainNSInfoResult']['IP'] ?? null, $api?->getVariable('x')['DomainNSInfoResult']['NameserverStatuses']['Status'] ?? null ], $sent[0]['form']['Nameserver'] ?? null,
+		$apiBad?->getVariable('route'), $osent[0]['form']['SortBy'] ?? null ]);
+	} finally {
+	    $NC::$testUrl = null;
 	    foreach($creds as $c)
 		$c->delete();
 	    proc_terminate($proc);
