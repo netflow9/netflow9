@@ -927,6 +927,11 @@ class SysObjects {
 		'auditLog' => false,
 	    ],
 	    //CLD: 2026-11-01T11:55:18+02:00: the tool servers (util\ToolServers): the servers an account may use, the sessions open (were registered by the LocalMCP plugin)
+	    //CLD: 2026-11-05T16:00:00+02:00: the data migrations done in this database (util\Migrations, sys::migrate); not in the audit log: the installation's, not an account's
+	    'Migration' => [
+		'class' => 'models\Migration',
+		'auditLog' => false,
+	    ],
 	    'ToolServerAccess' => [
 		'class' => 'models\ToolServerAccess',
 	    ],

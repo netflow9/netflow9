@@ -13,10 +13,11 @@
     $r = \util\EmailHtml::render($email, $vars, $subject);  ->  [ html, text, images: [ cid => file id ] ]
 	{{ }} in the HTML blocks, image links and the preheader are evaluated with $vars (util\Expression) and HTML-escaped;
 	links are checked again once filled (only http(s) / mailto).
-	//CLD: 2026-10-23T01:00:00+03:00: except, in an HTML block, a {{ }} that is only a call of markdown(...): its text as HTML (util\Markdown: safe, everything of the text escaped),
+	//CLD: 2026-10-23T01:00:00+03:00: except, in an HTML block, a {{ }} that is only a call of markdown2html(...): its text as HTML (util\Markdown: safe, everything of the text escaped),
 	//styled as the block's own tags (headings, lists, tables, code, ...); its text version as plain text
 	//CLD: 2026-10-23T02:30:00+03:00: and a {{ }} that is only a field named html (e.g. {{ ai.html }}: an AI step's answer as HTML): its HTML cleaned to formatting only
 	//(util\HtmlSafe: whatever made it), then styled as the block's tags
+	//CLD: 2026-11-05T15:00:00+02:00: and a {{ }} that is only a call of html(...) (e.g. {{ html(ai.text) }}: an AI step that answers in HTML): cleaned the same way
 
     Throws on an expression that fails (as the steps' other settings)
 */
@@ -51,7 +52,7 @@ class EmailHtml {
 	'li' => 'margin: 0 0 6px 0;',
 	'blockquote' => 'margin: 0 0 16px 0; padding: 0 0 0 12px; border-left: 3px solid #d0d5dd; color: #555555;',
 	'a' => 'color: #1a73e8; text-decoration: underline;',
-	//CLD: 2026-10-23T01:00:00+03:00: + what markdown(...) gives (util\Markdown)
+	//CLD: 2026-10-23T01:00:00+03:00: + what markdown2html(...) gives (util\Markdown)
 	'h4' => 'margin: 0 0 10px 0; font-size: 16px; line-height: 1.4; font-weight: bold;',
 	'h5' => 'margin: 0 0 8px 0; font-size: 14px; line-height: 1.4; font-weight: bold;',
 	'h6' => 'margin: 0 0 8px 0; font-size: 13px; line-height: 1.4; font-weight: bold; color: #555555;',
@@ -140,11 +141,19 @@ HTML;
 	    if (!$p['closed'])
 		break;
 	    $code = html_entity_decode(substr($html, $p['start'], $p['end'] - $p['start']), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-	    //CLD: 2026-10-23T01:00:00+03:00: {{ markdown(x) }}: x as HTML (util\Markdown makes it safe), not escaped
-	    $md = array_key_exists('markdown', $vars) ? null : self::markdownArgument($code);
+	    //CLD: 2026-10-23T01:00:00+03:00: {{ markdown2html(x) }}: x as HTML (util\Markdown makes it safe), not escaped
+	    $md = array_key_exists('markdown2html', $vars) ? null : self::callArgument($code, 'markdown2html');
 	    if ($md !== null) {
 		$value = \util\Expression::render(\sys\J\Template::OPEN . $md . \sys\J\Template::CLOSE, $vars);
 		$out .= substr($html, $at, $p['open'] - $at) . \util\Markdown::toHtml($value);
+		$at = $p['end'] + strlen(\sys\J\Template::CLOSE);
+		continue;
+	    }
+	    //CLD: 2026-11-05T15:00:00+02:00: {{ html(x) }}: x as HTML, cleaned (util\HtmlSafe), not escaped
+	    $raw = array_key_exists('html', $vars) ? null : self::callArgument($code, 'html');
+	    if ($raw !== null) {
+		$value = \util\Expression::render(\sys\J\Template::OPEN . $raw . \sys\J\Template::CLOSE, $vars);
+		$out .= substr($html, $at, $p['open'] - $at) . \util\HtmlSafe::clean($value);
 		$at = $p['end'] + strlen(\sys\J\Template::CLOSE);
 		continue;
 	    }
@@ -161,16 +170,17 @@ HTML;
 	return $out . substr($html, $at);
     }
 
-    //CLD: 2026-10-23T01:00:00+03:00: when expression $code is only a call of markdown() with one argument (the parsed expression, not the text: `markdown(a) + b` is not),
-    //the argument's code; else null (fill() does not ask when a variable named markdown hides the function)
-    public static function markdownArgument($code) {
-	if (!str_contains($code, 'markdown'))
+    //CLD: 2026-10-23T01:00:00+03:00: when expression $code is only a call of markdown2html() with one argument (the parsed expression, not the text: `markdown2html(a) + b` is not),
+    //the argument's code; else null (fill() does not ask when a variable of that name hides the function)
+    //CLD: 2026-11-05T15:00:00+02:00: of any function $name (markdown2html, html)
+    public static function callArgument($code, $name) {
+	if (!str_contains($code, $name))
 	    return null;
 	$parsed = \sys\J\Parser::parse($code, [ 'mode' => 'expression' ]);
 	if ($parsed->hasErrors())
 	    return null;
 	$e = $parsed->ast['body'][0]['expression'] ?? null;
-	if (($e['type'] ?? '') !== 'CallExpression' || ($e['callee']['type'] ?? '') !== 'Identifier' || ($e['callee']['name'] ?? '') !== 'markdown' || count($e['arguments'] ?? []) !== 1)
+	if (($e['type'] ?? '') !== 'CallExpression' || ($e['callee']['type'] ?? '') !== 'Identifier' || ($e['callee']['name'] ?? '') !== $name || count($e['arguments'] ?? []) !== 1)
 	    return null;
 	$arg = $e['arguments'][0];
 	return substr($code, (int)$arg['start'], (int)$arg['end'] - (int)$arg['start']);
@@ -224,7 +234,7 @@ HTML;
 	    if ($tag === 'table')
 		$el->setAttribute('cellpadding', '6');
 	}
-	//CLD: 2026-10-23T01:00:00+03:00: paragraphs left empty (the editor's <p> around a {{ markdown(...) }}: its headings / lists end the paragraph) are dropped
+	//CLD: 2026-10-23T01:00:00+03:00: paragraphs left empty (the editor's <p> around a {{ markdown2html(...) }}: its headings / lists end the paragraph) are dropped
 	foreach(iterator_to_array($root->getElementsByTagName('p')) as $el) {
 	    if (trim($el->textContent) === '' && !$el->getElementsByTagName('img')->length && !$el->getElementsByTagName('br')->length)
 		$el->parentNode->removeChild($el);
@@ -244,7 +254,7 @@ HTML;
 	}, $html);
 	$html = preg_replace('~<li\b[^>]*>~i', "\n- ", $html);
 	$html = preg_replace('~<br\s*/?>~i', "\n", $html);
-	//CLD: 2026-10-23T01:00:00+03:00: + rules, table cells / rows, h4-h6, pre, table (markdown(...))
+	//CLD: 2026-10-23T01:00:00+03:00: + rules, table cells / rows, h4-h6, pre, table (markdown2html(...))
 	$html = preg_replace('~<hr\b[^>]*>~i', "\n----\n", $html);
 	$html = preg_replace('~</t[hd]>\s*<t[hd]\b[^>]*>~i', ' | ', $html);
 	$html = preg_replace('~</tr>~i', "\n", $html);

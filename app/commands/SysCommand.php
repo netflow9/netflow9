@@ -22,6 +22,10 @@ namespace commands;
 	../v sys::indexes     creates the indexes every model declares (static $indexes of its class, plugins' models included); creating an index that exists does nothing,
 			      so it can be run again (e.g. after an update); the indexes are made by ObjectManager::createIndexes (shared with util\Setup::install); exits
 			      with 1 when one fails
+	../v sys::migrate [--dry-run] [--list]     (CLD: 2026-11-05T16:00:00+02:00) the data migrations this version needs and this database has not had (util\Migrations: those of
+			      versions up to data\Version::NUMBER, without a record in models\Migration), oldest first, each recorded once done; --dry-run says what each
+			      would change and records nothing; --list shows every migration and when it ran. Stops at the first that fails (exit 1); run it again once
+			      fixed. scripts/deploy.sh runs it after sys::indexes
 	../v sys::audit [--account=<id>]     checks the audit log's seal (models\AuditLog::verify): changed or forged entries, missing ones, entries without a MAC; every account,
 			      or one; exits with 1 when a problem is found
 	../v sys::run --id=<workflow id>     starts an execution of the workflow (its draft) and runs it; not when its connections or steps' settings have errors
@@ -83,6 +87,40 @@ class SysCommand extends \sys\BaseController {
 	echo count($collections) . " collections" . ($failed ? ", {$failed} failed" : '') . "\n";
 	if ($failed)
 	    exit(1);
+    }
+
+    //CLD: 2026-11-05T16:00:00+02:00: the data migrations (util\Migrations), as sys::indexes only once the app is set up
+    public function migrate($req = null, $resp = null) {
+	if (\V::app()->config('app.setup'))
+	    $this->fail('the app is not set up yet (app.env is missing)');
+	$params = $req->params ?? [];
+	if (isset($params['list'])) {
+	    $applied = \util\Migrations::applied();
+	    foreach(\util\Migrations::LIST as $m) {
+		$at = $applied[$m['id']] ?? null;
+		echo str_pad($m['version'], 10) . str_pad($m['id'], 24) . ($at instanceof \MongoDB\BSON\UTCDateTime ? 'run ' . $at->toDateTime()->format('Y-m-d H:i') : 'not run') . "  {$m['label']}\n";
+	    }
+	    exit(0);
+	}
+	$dryRun = isset($params['dry-run']);
+	$pending = \util\Migrations::pending();
+	if (!$pending) {
+	    echo 'no migration to run (version ' . \data\Version::NUMBER . ")\n";
+	    exit(0);
+	}
+	foreach($pending as $m) {
+	    try {
+		$summary = \util\Migrations::run($m, $dryRun);
+		if (!$dryRun)
+		    \util\Migrations::record($m, $summary);
+	    } catch (\Throwable $e) {
+		echo "FAIL  {$m['version']} {$m['id']}: " . $e->getMessage() . "\n";
+		echo "the migrations after it were not run; fix it and run sys::migrate again\n";
+		exit(1);
+	    }
+	    echo ($dryRun ? 'dry   ' : 'ok    ') . "{$m['version']} {$m['id']} ({$m['label']}): {$summary}\n";
+	}
+	exit(0);
     }
 
     //the answers on stdin, checked as the browser's forms: [ the server's values, the owner ] (util\Setup::install's arguments); stops when they are not valid
