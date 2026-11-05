@@ -93,22 +93,23 @@ $dd_items = implode('', $dd_items);
 	<div class="flex-shrink-0">
 	    <nav class="nav flex-column d-flex min-height-0 overflow-hidden flex-fill">
 		<?php
+		//CLD: 2026-11-05T12:00:00+02:00: Overview, Forms, Agents, My tasks padded as the project workspace and workflow items (nav-link py-1; were ps-2 with the default py)
 		echo \V::app()->html->link(
 		    '<i class="bi bi-speedometer"></i> ' . \V::t('Overview'),
 		    \V::app()->createUrl('/site/index'),
-		    [ 'class' => 'nav-link ps-2', 'escape' => false ]
+		    [ 'class' => 'nav-link py-1', 'escape' => false ]
 		);
 		{
 		    echo \V::app()->html->link(
 			'<i class="bi bi-ui-checks"></i> Forms',
 			'/form/list',
-			[ 'class' => 'nav-link ps-2', 'escape' => false ]
+			[ 'class' => 'nav-link py-1', 'escape' => false ]
 		    );
 		    //CLD: 2026-11-02T18:00:00+02:00: the agents the user may talk to
 		    echo \V::app()->html->link(
 			'<i class="bi bi-chat-dots"></i> Agents',
 			'/agent/list',
-			[ 'class' => 'nav-link ps-2', 'escape' => false ]
+			[ 'class' => 'nav-link py-1', 'escape' => false ]
 		    );
 		    $openTasks = count(\models\wf\WfTask::openFor(\V::app()->user, $crtProject->aid, null));
 		    echo \V::app()->html->link(
@@ -116,7 +117,7 @@ $dd_items = implode('', $dd_items);
 			    'badge' => $openTasks ? \util\VString::insert(' <span class="badge rounded-pill text-bg-primary ms-1">{:n}</span>', [ 'n' => $openTasks ]) : '',
 			]),
 			'/task/list',
-			[ 'class' => 'nav-link ps-2', 'escape' => false ]
+			[ 'class' => 'nav-link py-1', 'escape' => false ]
 		    );
 		}
 		?>
