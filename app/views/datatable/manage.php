@@ -3,16 +3,6 @@
 
 $this->pageTitle = 'Manage Data Table: ' . $dt->name;
 
-$createBtn = '';
-if (\V::app()->user->can('DataTable::create')) {
-    $createBtn = \V::app()->html->link(
-	'Create',
-	\V::app()->createUrl('/datatable/create'),
-	//CLD: 2026-10-11T21:32:01+03:00: data-method post: Create makes a table, so it is a POST (app.pjax sends the link's data-method; was a GET)
-	[ 'class' => 'btn btn-primary btn-sm', 'escape' => false, 'data-method' => 'post' ]
-    );
-}
-
 //schema and filtering
 $sf = \util\WidgetsUtil::getSchema($dt->iname);
 //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
@@ -45,6 +35,8 @@ $createRowUrl = \V::app()->createUrl('/datatable/create_row', [ 'id' => $dt->_id
 $updateRowUrl = str_replace('__ROW__', '{{item._id}}', \V::app()->createUrl('/datatable/update_row', [ 'id' => $dt->_id, 'row' => '__ROW__' ]));
 $deleteRowUrl = str_replace('__ROW__', '{{item._id}}', \V::app()->createUrl('/datatable/delete_row', [ 'id' => $dt->_id, 'row' => '__ROW__' ]));
 //CLD: 2026-10-11T22:10:29+03:00: row editing (add-row button, edit / delete actions) only with DataTable::writeData
+//CLD: 2026-11-05T10:00:00+02:00: Create adds a record to this table (the row form in a modal), so it needs DataTable::writeData; it made a new table before
+$createBtn = $canWrite ? \V::app()->html->link('Create', $createRowUrl, [ 'class' => 'btn btn-primary btn-sm', 'escape' => false ]) : '';
 $createRowJs = $canWrite ? "'{$createRowUrl}'" : 'false';
 $rowActionsJs = $canWrite ? "{
 		    edit: `<a href='{$updateRowUrl}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Edit row'><i class='bi bi-pencil'></i></a>`,
