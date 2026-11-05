@@ -47,6 +47,8 @@ class WfNode extends \sys\NestedModel {
 	'monitoring' => 'Monitoring',
 	//CLD: 2026-11-01T12:00:00+02:00: the VMware steps (CLD: 2026-11-01T14:00:00+02:00: and the Proxmox VE steps; CLD: 2026-11-01T16:00:00+02:00: and the Hyper-V steps)
 	'virtualization' => 'Virtualization',
+	//CLD: 2026-11-05T13:00:00+02:00: the Namecheap steps
+	'domains' => 'Domains & DNS',
 	'ai' => 'AI',
 	'developer' => 'Developer',
     ];

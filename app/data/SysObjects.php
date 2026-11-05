@@ -300,6 +300,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialWazuh',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-05T13:00:00+02:00: a Namecheap account's API access (the Namecheap steps), core for every account
+	    'CredentialNamecheap' => [
+		'class' => 'models\credential\CredentialNamecheap',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-01T06:00:00+02:00: a FortiGate firewall (the FortiGate steps), core for every account
 	    'CredentialFortiGate' => [
 		'class' => 'models\credential\CredentialFortiGate',
@@ -552,6 +557,23 @@ class SysObjects {
 	    ],
 	    'NodeTriggerWazuh' => [
 		'class' => 'models\node\NodeTriggerWazuh',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-05T13:00:00+02:00: Namecheap (one step per area, NodeAppNamecheap their base), core for every account
+	    'NodeAppNcDomains' => [
+		'class' => 'models\node\NodeAppNcDomains',
+		'wfNode' => true,
+	    ],
+	    'NodeAppNcDns' => [
+		'class' => 'models\node\NodeAppNcDns',
+		'wfNode' => true,
+	    ],
+	    'NodeAppNcAccount' => [
+		'class' => 'models\node\NodeAppNcAccount',
+		'wfNode' => true,
+	    ],
+	    'NodeAppNcApi' => [
+		'class' => 'models\node\NodeAppNcApi',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-01T06:00:00+02:00: FortiGate (one step per area, NodeAppFortiGate their base; the event trigger: an automation stitch's webhook), core for every account
