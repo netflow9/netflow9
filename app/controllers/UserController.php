@@ -10,6 +10,8 @@ class UserController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
     }
 
     public function list($req, $resp) {
@@ -65,8 +67,7 @@ class UserController extends \sys\BaseController {
 	    if (isset($data['state']) && $user->schema['state']->checkAccess(\V::app()->user->_id, 'update') && isset($user->schema['state']->choices[(string)$data['state']]))
 		$user->state = (string)$data['state'];
 
-	    $account = \V::app()->config('rt.account');
-	    if (!empty($user->role) && empty(\V::app()->om->findOne('Role', [ '_id' => $user->role, 'aid' => $account->_id ])))
+	    if (!empty($user->role) && empty(\V::app()->om->findOne('Role', [ '_id' => $user->role, 'aid' => $this->account->_id ])))
 		\V::app()->error(400, 'malformed request: unknown role');
 
 	    $valid = $user->validates();
@@ -104,7 +105,7 @@ class UserController extends \sys\BaseController {
     //the user ?id of the current account, if the current user may update it (404 / 403 otherwise)
     protected function accountUser() {
 	$id = $this->getOidOrError('id');
-	$user = \V::app()->om->findOne('User', [ '_id' => new \MongoDB\BSON\ObjectId($id), 'aid' => \V::app()->config('rt.account')->_id ]);
+	$user = \V::app()->om->findOne('User', [ '_id' => new \MongoDB\BSON\ObjectId($id), 'aid' => $this->account->_id ]);
 	if (empty($user))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can('User::update', [ 'object' => $user ]))
@@ -122,29 +123,28 @@ class UserController extends \sys\BaseController {
 
     //the account's active users with the Owner role, other than $exceptId
     protected function activeOwners($exceptId) {
-	$owner = \V::app()->om->findOne('Role', [ 'aid' => \V::app()->config('rt.account')->_id, 'iname' => 'owner' ]);
+	$owner = \V::app()->om->findOne('Role', [ 'aid' => $this->account->_id, 'iname' => 'owner' ]);
 	if (empty($owner))
 	    return 0;
-	return (int)\V::app()->om->count('User', [ 'aid' => \V::app()->config('rt.account')->_id, 'role' => $owner->_id, 'state' => 'active', '_id' => [ '$ne' => $exceptId ] ]);
+	return (int)\V::app()->om->count('User', [ 'aid' => $this->account->_id, 'role' => $owner->_id, 'state' => 'active', '_id' => [ '$ne' => $exceptId ] ]);
     }
 
     public function create($req, $resp) {
 	if (!\V::app()->user->can('User::create'))
 	    \V::app()->error(403, 'Unauthorized');
 
-	$account = \V::app()->config('rt.account');
-	$user = \V::app()->om->create('User', [ 'aid' => $account->_id ]);
+	$user = \V::app()->om->create('User', [ 'aid' => $this->account->_id ]);
 
 	if ($req->is('post')) {
 	    $user->assign($req->data, true);
 
 	    //the role must belong to this account; roles are looked up by id only when checking permissions
-	    if (!empty($user->role) && empty(\V::app()->om->findOne('Role', [ '_id' => $user->role, 'aid' => $account->_id ])))
+	    if (!empty($user->role) && empty(\V::app()->om->findOne('Role', [ '_id' => $user->role, 'aid' => $this->account->_id ])))
 		\V::app()->error(400, 'malformed request: unknown role');
 
 	    if ($user->validates()) {
 		$user->save();
-		//the new user gets a link to choose a password (was: no password, no email: they could not sign in)
+		//the new user gets a link to choose a password
 		if ($user->sendPasswordLink(\V::app()->user))
 		    $this->addToast('success', 'OK', 'User created. An email with a link to choose a password was sent to ' . $user->email);
 		else
@@ -225,7 +225,7 @@ class UserController extends \sys\BaseController {
 	if (empty($user))
 	    \V::app()->error(404, 'Not found');
 
-	if (!empty(\V::app()->config('rt.account')->enforce_mfa))
+	if (!empty($this->account->enforce_mfa))
 	    \V::app()->error(403, 'Two-factor authentication is required by your account');
 
 	if ($req->is('get')) {

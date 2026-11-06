@@ -1,8 +1,8 @@
 <?php
 
 /*
-    the requests of the Assistant plugin, served at /assistant/<action>:
-	ask      the designer's Assistant (was WorkflowController::assistant)
+    the requests of the Assistant, served at /assistant/<action>:
+	ask      the designer's Assistant
 	chat_add, chat_clear  CLD: 2026-10-23T23:45:00+03:00: the conversation of the workflow, kept (models\assistant\AssistantChat)
 	settings the Assistant's settings of the account
 	connect  the models of a server (the settings page's Connect)
@@ -23,12 +23,14 @@ class AssistantController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
     }
 
     //workflow ?id of the current account that the user may $permName, else 404 / 403 (as WorkflowController::findWorkflow)
     private function findWorkflow($permName) {
 	$oid = $this->getOidOrError();
-	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => \V::app()->config('rt.account')->_id ]);
+	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $this->account->_id ]);
 	if (empty($wf))
 	    \V::app()->error(404, 'Not found');
 
@@ -181,15 +183,14 @@ class AssistantController extends \sys\BaseController {
 	//this month's spending, the installation's server (System; null: none)
 	$usage = AssistantUsage::current($settings->aid);
 	$system = AssistantSettings::system();
-	//the System part of the page is the provider's (util\AssistantSystem::settingsHtml: the model, the credits, the monthly limit; was $wallet, $rates
-	//from the MultiTenant plugin's SystemAiWallet)
+	//the System part of the page is the provider's (util\AssistantSystem::settingsHtml: the model, the credits, the monthly limit)
 	$systemHtml = $system !== null ? \util\AssistantSystem::provider()->settingsHtml($settings) : null;
 	$this->render('settings', compact('settings', 'usage', 'system', 'systemHtml'));
     }
 
     //the Assistant's settings of the current account; new (not saved) when it has none yet
     private function findSettings() {
-	$aid = \V::app()->config('rt.account')->_id;
+	$aid = $this->account->_id;
 	return \V::app()->om->findOne('AssistantSettings', [ 'aid' => $aid ]) ?: \V::app()->om->create('AssistantSettings', [ 'aid' => $aid ]);
     }
 

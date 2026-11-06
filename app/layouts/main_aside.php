@@ -93,7 +93,7 @@ $dd_items = implode('', $dd_items);
 	<div class="flex-shrink-0">
 	    <nav class="nav flex-column d-flex min-height-0 overflow-hidden flex-fill">
 		<?php
-		//CLD: 2026-11-05T12:00:00+02:00: Overview, Forms, Agents, My tasks padded as the project workspace and workflow items (nav-link py-1; were ps-2 with the default py)
+		//CLD: 2026-11-05T12:00:00+02:00: Overview, Forms, Agents, My tasks padded as the project workspace and workflow items (nav-link py-1)
 		echo \V::app()->html->link(
 		    '<i class="bi bi-speedometer"></i> ' . \V::t('Overview'),
 		    \V::app()->createUrl('/site/index'),
@@ -167,8 +167,8 @@ $dd_items = implode('', $dd_items);
 		    );
 		}
 
-		//CLD: 2026-10-26T23:56:07+02:00: the MCP server link (its tokens; was the SysMCPTools plugin's), hidden for the moment (McpController::SHOW_MENU); /mcp and /token/list still work
-		//CLD: 2026-11-01T02:00:00+02:00: when the project's MCP server is on (Account::mcpEnabled; was McpController::SHOW_MENU, false)
+		//CLD: 2026-10-26T23:56:07+02:00: the MCP server link (its tokens)
+		//CLD: 2026-11-01T02:00:00+02:00: when the project's MCP server is on (Account::mcpEnabled)
 		if (\models\Account::mcpEnabled(\V::app()->config('rt.account'), $crtProject->_id) && \V::app()->user->can('McpToken::list', [ 'object' => \V::app()->om->create('McpToken', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-plug"></i> MCP server',
@@ -269,7 +269,7 @@ $dd_items = implode('', $dd_items);
 	<!-- two-level menu, pinned to the bottom of the sidebar -->
 	<div class="sidebar-bottom-menu">
 	    <div class="d-flex align-items-center justify-content-between px-2 pt-2 pb-1">
-		<?php //CLD: 2026-11-02T21:30:00+02:00: the app's version, left of the theme switch (was the switch alone, on the right) ?>
+		<?php //CLD: 2026-11-02T21:30:00+02:00: the app's version, left of the theme switch ?>
 		<span class="small text-muted">v<?= \V::app()->html->escape(\data\Version::NUMBER) ?></span>
 		<div class="btn-group btn-group-sm" role="group" aria-label="Theme">
 		    <button type="button" class="btn btn-outline-secondary py-0" data-theme-value="light" title="Light" aria-pressed="false"><i class="bi bi-sun" aria-hidden="true"></i><span class="visually-hidden">Light</span></button>
@@ -278,7 +278,7 @@ $dd_items = implode('', $dd_items);
 		</div>
 	    </div>
 	    <nav class="nav flex-column">
-		<?php //CLD: 2026-10-28T23:55:00+02:00: the documentation inside the app (DocsController; was https://www.netflow9.io, in a new tab) ?>
+		<?php //CLD: 2026-10-28T23:55:00+02:00: the documentation inside the app (DocsController) ?>
 		<a href="<?= \V::app()->createUrl('/docs/index') ?>" class="nav-link px-2">
 		    <i class="bi bi-book"></i> Documentation
 		</a>
@@ -306,13 +306,13 @@ $dd_items = implode('', $dd_items);
 		<i class="bi bi-person-lines-fill"></i> Roles
 	    </a>
 	    <?php endif; ?>
-	    <?php //CLD: 2026-10-31T11:32:07+02:00: Account settings with its Usage tab (was a menu entry of its own): for who may see either ?>
+	    <?php //CLD: 2026-10-31T11:32:07+02:00: Account settings with its Usage tab: for who may see either ?>
 	    <?php if (\V::app()->user->can('Account::update') || \V::app()->user->can('Account::usage')): ?>
 	    <a href="<?= \V::app()->createUrl('/account/settings') ?>" class="nav-link">
 		<i class="bi bi-house-gear"></i> Account settings
 	    </a>
 	    <?php endif; ?>
-	    <?php //CLD: 2026-10-26T23:49:50+02:00: Assistant settings (was the Assistant plugin's, hook layout:settings-menu) ?>
+	    <?php //CLD: 2026-10-26T23:49:50+02:00: Assistant settings ?>
 	    <?php if (\V::app()->user->can('Account::update')): ?>
 	    <a href="<?= \V::app()->createUrl('/assistant/settings') ?>" class="nav-link">
 		<i class="bi bi-stars"></i> Assistant
@@ -332,8 +332,8 @@ $dd_items = implode('', $dd_items);
 		<i class="bi bi-shield-lock"></i> SAML single sign-on
 	    </a>
 	    <?php endif; ?>
-	    <?php //CLD: 2026-10-31T11:05:39+02:00: the installation's services (util\Services::allowed: the owners; with the Admin plugin, its super-admins) ?>
-	    <?php //CLD: 2026-10-31T19:30:00+02:00: only with the Admin plugin (its super-admins' page); without it the services are a tab of the account's settings ?>
+	    <?php //CLD: 2026-10-31T11:05:39+02:00: the installation's services (util\Services::allowed: the owners; with the MultiTenant plugin, its super-admins) ?>
+	    <?php //CLD: 2026-10-31T19:30:00+02:00: only with the MultiTenant plugin (its super-admins' page); without it the services are a tab of the account's settings ?>
 	    <?php if (\util\Services::adminPlugin() && \util\Services::allowed()): ?>
 	    <a href="<?= \V::app()->createUrl('/services/index') ?>" class="nav-link">
 		<i class="bi bi-gear-wide-connected"></i> Services

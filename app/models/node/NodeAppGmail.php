@@ -17,8 +17,6 @@
     On error (Gmail API errors, e.g. not found, no access; a project file missing; attachments too large) - fail the step, or continue on a second output `error` (as HTTP Request)
 */
 
-//CLD: 2026-10-22T00:35:40+03:00: moved to the GoogleIntegration plugin (was models\node\NodeAppGmail); core classes fully qualified
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\GoogleIntegration\models): the Google credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 class NodeAppGmail extends NodeAppGoogle {
@@ -68,7 +66,6 @@ class NodeAppGmail extends NodeAppGoogle {
 	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 
 	return [
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: A Google Mail (OAuth) credential of the project (menu: Credentials); the Google app needs the Gmail API enabled)
 	    static::credentialField('A Google Mail (OAuth) credential of the project; the Gmail API enabled'),
 	    static::operationField(),
 	    [
@@ -84,7 +81,7 @@ class NodeAppGmail extends NodeAppGoogle {
 
 	    //send / draft
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line; shorter help (was: Addresses separated by commas (Name <a@x.com> too), or {{ ... }} giving a list)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
 		'key' => 'to',
 		'type' => 'text',
 		'label' => 'To',
@@ -93,7 +90,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
 		'key' => 'cc',
 		'type' => 'text',
 		'label' => 'Cc',
@@ -101,7 +98,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
 		'key' => 'bcc',
 		'type' => 'text',
 		'label' => 'Bcc',
@@ -118,7 +115,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
 		'key' => 'fromName',
 		'type' => 'text',
 		'label' => 'Sender name',
@@ -127,7 +124,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Body',
@@ -138,7 +135,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line; shorter help (was: Optional: the Gmail message id answered (same thread, "Re: " subject, to its sender when To is empty); {{ ... }} for expressions)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
 		'key' => 'replyTo',
 		'type' => 'text',
 		'label' => 'In reply to',
@@ -147,7 +144,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '{{ msg.id }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide; shorter help (was: Project file ids separated by commas, or {{ ... }} giving one or a list, e.g. {{ file.id }}, {{ mail.attachment_files }})
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide
 		'key' => 'attachments',
 		'type' => 'text',
 		'label' => 'Attachments',
@@ -167,7 +164,6 @@ class NodeAppGmail extends NodeAppGoogle {
 
 	    //search
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: shorter help (was: Gmail search, as in Gmail's search box: from:ana@x.com subject:invoice has:attachment newer_than:2d; empty: all; {{ ... }} for expressions)
 		'key' => 'query',
 		'type' => 'text',
 		'label' => 'Search',
@@ -176,7 +172,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'placeholder' => 'from:billing@example.com has:attachment', 'expression' => true, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line; shorter help (was: Label names separated by commas (all of them), e.g. INBOX, Invoices; empty: any)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
 		'key' => 'labelFilter',
 		'type' => 'text',
 		'label' => 'In labels',
@@ -196,7 +192,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide (was 6)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide
 		'key' => 'markAfter',
 		'type' => 'select',
 		'label' => 'Then mark them as',
@@ -206,7 +202,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide, on a new line
 		'key' => 'unreadOnly',
 		'type' => 'switch',
 		'label' => 'Unread only',
@@ -214,7 +210,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'spamTrash',
 		'type' => 'switch',
@@ -223,7 +219,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
 		'key' => 'saveAttachments',
 		'type' => 'switch',
 		'label' => 'Save attachments as project files',
@@ -244,7 +240,7 @@ class NodeAppGmail extends NodeAppGoogle {
 
 	    //modify
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide, on a new line
 		'key' => 'mark',
 		'type' => 'select',
 		'label' => 'Mark as',
@@ -254,7 +250,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
 		'key' => 'archive',
 		'type' => 'switch',
 		'label' => 'Archive (out of the inbox)',
@@ -262,7 +258,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide (was 6)
+		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide
 		'key' => 'addLabels',
 		'type' => 'text',
 		'label' => 'Add labels',
@@ -280,9 +276,7 @@ class NodeAppGmail extends NodeAppGoogle {
 	    ],
 
 	    static::timeoutField(60),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: Search: a list of messages; get: the message; send / draft / modify: { id, thread_id, labels }; labels: a list)
 	    static::variableField('Messages, a message, or { id, thread_id }'),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Gmail (e.g. not found, no access, a refused address), a project file missing, attachments too large)
 	    static::onErrorField('Gmail errors, a missing file, too large'),
 	];
     }
@@ -582,7 +576,6 @@ class NodeAppGmail extends NodeAppGoogle {
     //messages
 
     //project file ids of a setting's value: one id, a list, or ids separated by commas; files of objects ({ id } of Download File / Google Drive) too
-    //CLD: 2026-10-22T00:35:40+03:00: models\File::idsOf (moved to the core: the FTP / SFTP Upload step uses it too)
     public static function fileIds($value) {
 	return \models\File::idsOf($value);
     }

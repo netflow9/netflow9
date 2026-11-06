@@ -29,7 +29,6 @@ class View extends \sys\BaseObject {
 	//resolve template file
 	$tpl_file = BASE . '/app/';
 	//CLD: 2026-10-08T09:04:38+03:00: the module (plugin) folder only for relative templates: absolute ones (/layouts/...) are relative to the app directory
-	//(were looked up in the plugin folder too, so a plugin page and then its error page failed in a loop)
 	if (!empty($this->_config['module_path']) && $template[0] != '/')
 	    $tpl_file .= $this->_config['module_path'] . '/';
 	if ($template[0] != '/')

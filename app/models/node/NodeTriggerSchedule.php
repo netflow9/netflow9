@@ -14,9 +14,9 @@ class NodeTriggerSchedule extends \models\wf\WfNode {
 
     public static $scheduled = true;
 
-    //CLD: 2026-10-08T22:57:28+03:00: the schedule fields, matching and checks moved to models\wf\WfSchedule (shared with the other scheduled steps, e.g. the Email
+    //CLD: 2026-10-08T22:57:28+03:00: the schedule fields, matching and checks are in models\wf\WfSchedule (shared with the other scheduled steps, e.g. the Email
     //(IMAP) trigger); this step has nothing else
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfSchedule::schema; was fields())
+    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfSchedule::schema)
     public static function configSchema() {
 	return \models\wf\WfSchedule::schema();
     }
@@ -36,7 +36,7 @@ class NodeTriggerSchedule extends \models\wf\WfNode {
 	return $valid;
     }
 
-    //CLD: 2026-10-08T22:57:28+03:00: on schedule: start the workflow at this step (was plugins\BaseNodes\Scheduler::run)
+    //CLD: 2026-10-08T22:57:28+03:00: on schedule: start the workflow at this step
     //CLD: 2026-10-11T22:38:36+03:00: the variable a scheduled run starts with (runScheduled)
     public static function outputVariables($config) {
 	return [
@@ -58,7 +58,7 @@ class NodeTriggerSchedule extends \models\wf\WfNode {
 	], $node['wfid']);
 	$exe->log($node['wfid'], 'scheduled run ' . $at);
 	$exe->save();
-	//CLD: 2026-10-23T12:00:00+03:00: log the start too (was only the end)
+	//CLD: 2026-10-23T12:00:00+03:00: log the start too
 	\V::app()->log->info("Scheduler: workflow `{$wf->name}`: execution {$exe->_id}: start");
 	$state = $exe->run();
 	\V::app()->log->info("Scheduler: workflow `{$wf->name}`: execution {$exe->_id}: {$state}");

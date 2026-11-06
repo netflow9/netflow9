@@ -5,7 +5,7 @@
 #+ the polkit rule of the installation, 49-netflow9-services-<user>.rules: the app's user (the web server's PHP: the Services page) may start / stop / restart
 #its units, nfn-<name>-<user>.service (the daemon, the web browser's nfn-playwright-<user>, ...), and nfn-haraka.service when the installation has it.
 #The other services write their own units (scripts/haraka.sh, scripts/playwright-mcp.sh install) and the rule again (rule).
-#CLD: 2026-11-01T22:00:00+02:00: commands, as the other scripts; was scripts/4_services-install.sh (the old start / stop scripts/daemon.sh moved to attic/)
+#CLD: 2026-11-01T22:00:00+02:00: commands, as the other scripts
 #Run as root:
 #   sudo scripts/daemon.sh install                          the unit and the rule, start at boot, start now (a daemon started by hand: stopped first)
 #   sudo scripts/daemon.sh start | stop | restart | uninstall

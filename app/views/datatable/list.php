@@ -1,5 +1,4 @@
 <?php
-//CLD: 2026-10-11T22:01:40+03:00: app.GridView (was the global gridView of data.grid.js, now in app.dataview.js)
 
 $this->pageTitle = 'Data Tables - list';
 
@@ -8,7 +7,7 @@ if (\V::app()->user->can('DataTable::create')) {
     $createBtn = \V::app()->html->link(
 	'Create',
 	\V::app()->createUrl('/datatable/create'),
-	//CLD: 2026-10-11T21:32:01+03:00: data-method post: Create makes a table, so it is a POST (app.pjax sends the link's data-method; was a GET)
+	//CLD: 2026-10-11T21:32:01+03:00: data-method post: Create makes a table, so it is a POST (app.pjax sends the link's data-method)
 	[ 'class' => 'btn btn-primary btn-sm', 'escape' => false, 'data-method' => 'post' ]
     );
 }

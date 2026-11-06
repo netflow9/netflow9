@@ -146,7 +146,7 @@ class Workflow extends \sys\BaseModel {
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the workflow's project decides (was: any membership)
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the workflow's project decides
 	//CLD: 2026-11-03T16:00:00+02:00: or a share with a project where their role allows it (only Workflow::viewShared)
 	return \models\Project::can($this->project, $this->aid, $userId, $permName) || $this->sharedCan($userId, $permName);
     }
@@ -268,7 +268,6 @@ class Workflow extends \sys\BaseModel {
 	    $ok = $node->validates();
 	    //CLD: 2026-10-13T15:24:28+03:00: `vars` is the project variables ({{ vars.<name> }}): no step may set a variable of that name
 	    $class = get_class($node);
-	    //CLD: 2026-10-22T00:28:13+03:00: CredentialVariable::EXPRESSION_NAME (was models\Variable's)
 	    if (array_key_exists(\models\credential\CredentialVariable::EXPRESSION_NAME, $class::outputVariables($data['config'] ?? []) + $class::innerVariables($data['config'] ?? []))) {
 		$node->errors('config', '`' . \models\credential\CredentialVariable::EXPRESSION_NAME . '` is the name of the project variables ({{ vars.<name> }}): choose another variable name');
 		$ok = false;
@@ -294,7 +293,7 @@ class Workflow extends \sys\BaseModel {
 	return array_merge($this->validateSteps(), $this->validateFlow());
     }
 
-    //generic save hooks (the webhook token / index logic moved to plugins\Webhook\Plugin);
+    //generic save hooks (the webhook token / index logic: plugins\Webhook\Plugin);
     //handlers receive the workflow and may change it in workflow:before-save
     public function beforeSave() {
 	//CLD: 2026-10-11T13:51:42+03:00: a version copy (forVersion) holds a version's steps: saving it would overwrite the draft
@@ -316,7 +315,7 @@ class Workflow extends \sys\BaseModel {
 	    throw new \LogicException('a copy of a published version cannot be deleted');
 	parent::beforeDelete();
 	\V::app()->hooks->applyHook('workflow:before-delete', [ $this ]);
-	//CLD: 2026-10-12T12:31:46+03:00: through ObjectManager (was the MongoDB collections directly): each deleted with its model (only the ids are read; both are kept out of the logs)
+	//CLD: 2026-10-12T12:31:46+03:00: through ObjectManager: each deleted with its model (only the ids are read; both are kept out of the logs)
 	//CLD: 2026-11-02T15:46:06+02:00: + its test cases and test runs
 	foreach([ 'WfTestCase', 'WfTestRun', 'WfExecution', 'WfVersion' ] as $objectName) {
 	    foreach(\V::app()->om->find($objectName, [ 'wf' => $this->_id, 'aid' => $this->aid ], [ 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $o)
@@ -369,7 +368,7 @@ class Workflow extends \sys\BaseModel {
 
     //CLD: 2026-10-11T13:51:42+03:00: whether the saved draft has the same steps as $version (nothing new to publish)
     public function draftMatches($version) {
-	//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+	//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 	return \util\JSON::encode(is_array($this->nodes) ? $this->nodes : []) === \util\JSON::encode(is_array($version->nodes) ? $version->nodes : []);
     }
 
@@ -409,7 +408,7 @@ class Workflow extends \sys\BaseModel {
 	    return $def ? \V::app()->om->getObjectClass($def['objectName']) : null;
 	};
 	$vars = [];
-	//CLD: 2026-10-13T12:34:29+03:00: the whole type description (+ fields, items: util\Expression::typeAt; was type and info, then + keys); a variable with `from` (a value text, e.g. the
+	//CLD: 2026-10-13T12:34:29+03:00: the whole type description (+ fields, items: util\Expression::typeAt); a variable with `from` (a value text, e.g. the
 	//Set step's) gets the type of that value among the variables at its step (util\Expression::typeOf; nested at most MAX_TYPE_DEPTH steps deep)
 	$add = function(array $list, $n) use (&$vars, $nodes, $depth) {
 	    $title = trim((string)($n['title'] ?? ''));
@@ -572,7 +571,7 @@ class Workflow extends \sys\BaseModel {
 	    $outputsUsed[$from][(int)$fromPort] = true;
 	}
 
-	//CLD: 2026-10-11T13:46:00+03:00: computed for every level (was inside the trigger check)
+	//CLD: 2026-10-11T13:46:00+03:00: computed for every level
 	$hasIncoming = [];
 	foreach($adjacent as $from => $tos)
 	    foreach($tos as $to)

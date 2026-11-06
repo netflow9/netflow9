@@ -8,7 +8,6 @@
 //beta server-side-fallback-2026-07-01; for the models that support it)
 //CLD: 2026-10-27T23:11:38+02:00: files: images as image blocks, PDFs as document blocks (PDFs as Auto: documents), text files as text blocks
 
-//CLD: 2026-10-17T13:24:18+03:00: moved from the BaseNodes plugin into the core (was plugins\BaseNodes\app)
 namespace models\node;
 
 class NodeAppClaude extends NodeAppAi {
@@ -29,7 +28,7 @@ class NodeAppClaude extends NodeAppAi {
     protected static function providerSchema() {
 	return [
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3), not on a new line; shorter help (was: Higher: hard tasks; lower: faster, cheaper)
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide, not on a new line
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'effort',
 		'type' => 'select',
@@ -37,19 +36,18 @@ class NodeAppClaude extends NodeAppAi {
 		'required' => true,
 		'default' => \data\AiProviders::DEFAULT_EFFORT,
 		'choices' => \data\AiProviders::EFFORT,
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line (was 6); shorter help (was: How thoroughly the model thinks: higher is better for hard tasks, lower is faster and cheaper)
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line
 		'help' => 'Higher: harder tasks',
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3); no help text (was: On a refusal, retry on the model Anthropic recommends)
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'fallback',
 		'type' => 'switch',
 		'label' => 'Fallback on refusal',
 		'default' => true,
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide (was 6); shorter help (was: When the model declines, the API retries on the model Anthropic recommends (Claude Opus 5 / 5.5, Sonnet 5.5, Fable 5))
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide
 		'help' => false,
 		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
@@ -57,7 +55,7 @@ class NodeAppClaude extends NodeAppAi {
     }
 
     //CLD: 2026-10-17T21:00:54+03:00: + $images: image blocks before the prompt's text
-    //CLD: 2026-10-27T23:11:38+02:00: $files (was $images): their blocks before the prompt's text (fileBlock)
+    //CLD: 2026-10-27T23:11:38+02:00: $files: their blocks before the prompt's text (fileBlock)
     protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	if ($schema === true)
 	    $system = trim($system . "\n\n" . self::jsonInstruction(true));
@@ -128,7 +126,7 @@ class NodeAppClaude extends NodeAppAi {
 	    if (($block->type ?? '') === 'text')
 		$text[] = (string)$block->text;
 	    elseif (($block->type ?? '') === 'tool_use')
-		//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+		//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 		$calls[] = [ (string)$block->id, (string)$block->name, is_object($block->input ?? null) ? json_decode(\util\JSON::encode($block->input), true) ?: [] : null ];
 	}
 	if ($stop === 'max_tokens')

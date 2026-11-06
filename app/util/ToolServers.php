@@ -2,7 +2,7 @@
 
 /*
     CLD: 2026-11-01T11:55:18+02:00: new: the installation's tool servers (MCP servers, Streamable HTTP, usually on this machine), offered to the AI steps (Tool servers) of the accounts that
-    may use them; core (was the LocalMCP plugin: plugins\LocalMCP\Plugin::servers, its servers.php and its hook ai:mcp-servers).
+    may use them.
     The servers are in mcp.json, next to app.env (not in git; the app's user's, 0640: headers may hold tokens), as other MCP clients write them:
 	{ "mcpServers": { "<id>": {
 	    "type": "http",                         the only one (a server the app would start itself, "command", is not supported)
@@ -38,7 +38,7 @@ class ToolServers {
     private static $cacheKey = null;
 
     public static function file() {
-	//CLD: 2026-11-01T19:00:00+02:00: in V::configDir() (NFN_CONFIG_DIR, else BASE; was BASE)
+	//CLD: 2026-11-01T19:00:00+02:00: in V::configDir() (NFN_CONFIG_DIR, else BASE)
 	return self::$file ?? \V::configDir() . '/mcp.json';
     }
 
@@ -219,7 +219,7 @@ class ToolServers {
 	return [ $failed === 0, $lines, $tools ?? [] ];
     }
 
-    //CLD: 2026-11-01T11:55:18+02:00: a web browser's checks (was the LocalMCP plugin's ServersCommand::test): a public page opens (https://example.com), the cloud metadata address
+    //CLD: 2026-11-01T11:55:18+02:00: a web browser's checks: a public page opens (https://example.com), the cloud metadata address
     //does not (the browser service's firewall, scripts/playwright-mcp.sh): [ [ text, ok ] ]
     public static function browserTest(McpClient $c) {
 	$r = $c->callTool('browser_navigate', [ 'url' => 'https://example.com' ]);

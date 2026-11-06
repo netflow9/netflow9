@@ -30,7 +30,7 @@ class BaseController extends \sys\BaseObject {
 	}
 	\V::app()->request->removeDataParam(\V::app()->csrf->getKey());
 
-	//CLD: 2026-10-05T20:20:40+03:00: constant-time, type-strict comparison in CSRF::validate (was `!=` against getToken(), which also created a token when missing)
+	//CLD: 2026-10-05T20:20:40+03:00: constant-time, type-strict comparison in CSRF::validate
 	if (!\V::app()->csrf->validate($csrf_token))
 	    \V::app()->error(401, 'Unable to validate your request');
     }
@@ -95,7 +95,7 @@ class BaseController extends \sys\BaseObject {
 	    \V::app()->end();
 	}
 
-	//a full-page redirect: the events (e.g. toasts) are kept for the next page (were lost)
+	//a full-page redirect: the events (e.g. toasts) are kept for the next page
 	if ($this->events)
 	    \V::app()->session->setState(self::FLASH_EVENTS, array_merge((array)\V::app()->session->getState(self::FLASH_EVENTS), $this->events));
 	return \V::app()->response->redirect($url);

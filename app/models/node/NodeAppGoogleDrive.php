@@ -17,8 +17,6 @@
     On error (Drive API errors, not found, too large, a type that may not be saved) - fail the step, or continue on a second output `error` (as HTTP Request: $outPorts)
 */
 
-//CLD: 2026-10-22T00:35:40+03:00: moved to the GoogleIntegration plugin (was models\node\NodeAppGoogleDrive); core classes fully qualified
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\GoogleIntegration\models): the Google credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 class NodeAppGoogleDrive extends NodeAppGoogle {
@@ -134,7 +132,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: The file id or its Drive link (https://drive.google.com/file/d/...); {{ ... }} for expressions, e.g. {{ drive[0].id }})
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
 		'key' => 'fileId',
 		'type' => 'text',
 		'label' => 'File',
@@ -144,7 +142,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://drive.google.com/...', 'expression' => true, 'showIf' => $op(self::ON_FILE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: The folder id or its Drive link; empty: list: the whole Drive, upload / create: My Drive)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'folderId',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -165,7 +163,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'fileType',
 		'type' => 'select',
 		'label' => 'Type',
@@ -175,7 +173,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'orderBy',
 		'type' => 'select',
@@ -186,7 +184,6 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: shorter help (was: More conditions in the Drive search syntax (q), e.g. modifiedTime > '2026-01-01T00:00:00' and starred = true)
 		'key' => 'query',
 		'type' => 'text',
 		'label' => 'Drive query',
@@ -216,7 +213,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
 	    //download
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: Docs, Sheets, Slides and Drawings have no file of their own: they are exported (10 MB at most); other files are downloaded as they are)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
 		'key' => 'exportFormat',
 		'type' => 'select',
 		'label' => 'Google files as',
@@ -227,7 +224,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'showIf' => $op([ 'download' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: The name of the saved file; empty: the name in Drive (+ the extension of the export))
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'filename',
 		'type' => 'text',
 		'label' => 'Save as',
@@ -238,7 +235,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
 	    //upload
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
 		'key' => 'source',
 		'type' => 'select',
 		'label' => 'Upload',
@@ -248,7 +245,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'upload' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6); shorter help (was: Word, text, HTML -> Docs; Excel, CSV -> Sheets; PowerPoint -> Slides)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'convert',
 		'type' => 'switch',
@@ -258,7 +255,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'upload' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: Upload: the name in Drive (empty: the project file's name); create folder: the folder's name)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'name',
 		'type' => 'text',
 		'label' => 'Name',
@@ -296,7 +293,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
 	    //share
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
 		'key' => 'shareWith',
 		'type' => 'select',
 		'label' => 'Share with',
@@ -306,7 +303,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'share' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'role',
 		'type' => 'select',
 		'label' => 'As',
@@ -360,11 +357,8 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'delete' ]) ],
 	    ],
 
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request to Drive (API calls: ' . \models\node\NodeAppHttp::MAX_TIMEOUT . ' at most)'))
 	    static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request'),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: List: a list of files; download: the saved project file (its Drive file in `drive`); else the Drive file)
 	    static::variableField('Files, the saved file, or the Drive file'),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Google Drive (e.g. not found, no access), a file larger than the limit, or a type that may not be saved in the project)
 	    static::onErrorField('Drive errors, too large, type not allowed'),
 	];
     }
@@ -692,7 +686,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
     //GET $url into a temporary stream (not kept in memory): [ stream, size, content type ]
     protected function fetch($url, $maxBytes) {
 	$stream = fopen('php://temp/maxmemory:' . (2 * 1024 * 1024), 'w+b');
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http
 	$r = \util\Http::request('GET', $url, [ 'headers' => $this->authHeaders(), 'timeout' => max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120))), 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5, 'https' => true ]);
 	[ $status, $size, $contentType, $tooLarge, $curlError ] = [ $r['status'], $r['size'], $r['mime'], $r['tooLarge'], $r['tooLarge'] ? '' : (string)$r['error'] ];
 
@@ -709,7 +703,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
     //PUT the $size bytes of $stream to the upload session $url: the decoded answer (the file)
     protected function put($url, $stream, $size, $contentType) {
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http
 	$r = \util\Http::request('PUT', $url, [ 'headers' => [ "Content-Type: {$contentType}" ], 'upload' => [ $stream, $size ], 'timeout' => max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120))), 'https' => true ]);
 	[ $answer, $status, $curlError ] = [ $r['body'], $r['status'], (string)$r['error'] ];
 	$data = json_decode((string)$answer, true);

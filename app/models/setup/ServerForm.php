@@ -1,7 +1,7 @@
 <?php
 
 //CLD: 2026-10-19T14:09:20+03:00: new form model: step 2 of the initial setup (SetupController::server) - the server's settings written to app.env: the public address, the database,
-//the outgoing email (was the first part of SetupForm). Values written to app.env are single-quoted there, so they may not hold a quote or a line break
+//the outgoing email. Values written to app.env are single-quoted there, so they may not hold a quote or a line break
 
 namespace models\setup;
 
@@ -31,7 +31,6 @@ class ServerForm extends \sys\BaseModel {
 	    [ 'key' => 'smtp_password', 'type' => 'password', 'label' => 'SMTP password', 'validate' => [ self::NO_QUOTE ] ],
 	    [ 'key' => 'mail_from', 'type' => 'text', 'label' => 'Emails come from',
 		'validate' => [ [ 'email', 'skipEmpty' => true, 'message' => 'An email address' ], self::NO_QUOTE ] ],
-	    //CLD: 2026-10-19T14:18:52+03:00: removed mail_inbound_domain (the inbound email is not set up here)
 	];
     }
 

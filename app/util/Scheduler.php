@@ -35,7 +35,6 @@ class Scheduler {
 		if (!\models\wf\WfSchedule::matches($cfg, $t))
 		    continue;
 
-		//CLD: 2026-10-09T12:07:59+03:00: models\Job (was models\Event)
 		$id = \models\Job::submit('\util\Scheduler::run', [
 		    'wf' => (string)$wf['_id'],
 		    'node' => (string)$node['wfid'],
@@ -115,7 +114,7 @@ class Scheduler {
     }
 
     //scheduled steps of a workflow's nodes (the designer saves a list or a map); $types: scheduledTypes()
-    //CLD: 2026-10-08T22:57:28+03:00: all scheduled types (was trigger::schedule only)
+    //CLD: 2026-10-08T22:57:28+03:00: all scheduled types
     public static function scheduleNodes($nodes, ?array $types = null) {
 	$types ??= self::scheduledTypes();
 	$found = [];
@@ -130,7 +129,7 @@ class Scheduler {
     //CLD: 2026-10-08T22:57:28+03:00: done by the step's class (runScheduled); the step must still be there, with the same type
     public static function run($data) {
 	$wf = \V::app()->om->findOne('Workflow', [ '_id' => \V::app()->om->to_oid($data->wf ?? null), 'aid' => $data->aid ?? null ]);
-	//CLD: 2026-10-11T14:05:19+03:00: deleted after the job was queued: skipped (was an error, reported by mail)
+	//CLD: 2026-10-11T14:05:19+03:00: deleted after the job was queued: skipped
 	if (empty($wf)) {
 	    \V::app()->log->info('Scheduler: workflow ' . ($data->wf ?? '?') . ' no longer exists, skipped');
 	    return;

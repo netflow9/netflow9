@@ -23,7 +23,7 @@ class NodeAppOllama extends NodeAppAi {
 
     const CAPABILITY = 'ollama';
     const PROVIDER = \data\AiProviders::DATA[self::CAPABILITY]['name'];
-    //CLD: 2026-10-29T22:44:26+02:00: a local server: a long prompt on a local model can take minutes (was 300 s, at most 600)
+    //CLD: 2026-10-29T22:44:26+02:00: a local server: a long prompt on a local model can take minutes
     const DEFAULT_TIMEOUT = 900;
     const MAX_TIMEOUT = 900;
 
@@ -36,20 +36,20 @@ class NodeAppOllama extends NodeAppAi {
     protected static function providerSchema() {
 	return [
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3), not on a new line; shorter help (was: 0 - 2; empty: the model's default)
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide, not on a new line
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'temperature',
 		'type' => 'text',
 		'label' => 'Temperature',
 		'default' => '',
-		//CLD: 2026-10-24T12:42:45+03:00: the four settings 3 wide on one line (were 6); shorter helps
+		//CLD: 2026-10-24T12:42:45+03:00: the four settings 3 wide on one line
 		'help' => '0 - 2; empty: default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (was: default)
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
 		'ui' => [ 'advanced' => true, 'width' => 2, 'placeholder' => 'Model default' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3); shorter help (was: Thinking models (qwen3, deepseek-r1))
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'think',
 		'type' => 'select',
@@ -68,7 +68,7 @@ class NodeAppOllama extends NodeAppAi {
 		'default' => '',
 		'help' => 'num_ctx; empty: the server\'s default',
 		'validate' => [ [ 'regex', 'pattern' => '^[1-9][0-9]{2,6}$', 'skipEmpty' => true, 'message' => 'A number of tokens, e.g. 8192' ] ],
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (was: default)
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
 		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'Server default' ],
 	    ],
 	    [
@@ -85,9 +85,9 @@ class NodeAppOllama extends NodeAppAi {
 	];
     }
 
-    //CLD: 2026-10-22T01:58:24+03:00: configSchema() removed: the Model field (a select of the credential's recorded models) is NodeAppAi's
+    //CLD: 2026-10-22T01:58:24+03:00: the Model field (a select of the credential's recorded models) is NodeAppAi's configSchema()
 
-    //CLD: 2026-10-27T23:11:38+02:00: $files (was $images): the images in `images`, the text files before the prompt (no PDF parts: PDF_PARTS)
+    //CLD: 2026-10-27T23:11:38+02:00: $files: the images in `images`, the text files before the prompt (no PDF parts: PDF_PARTS)
     protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	if ($schema !== null)
 	    $system = trim($system . "\n\n" . self::jsonInstruction($schema));

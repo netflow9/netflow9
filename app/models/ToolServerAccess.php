@@ -2,14 +2,13 @@
 
 /*
     the installation's tool servers an account may use (util\ToolServers ids), one document per account (_id: the account's id).
-    Set by the account's owners (Account settings > Tool servers), by the super-admins with the MultiTenant plugin (its account page), or ./v mcp::servers::enable / disable
-    CLD: 2026-11-01T11:55:18+02:00: core (was plugins\LocalMCP\models\LocalMcpAccess, collection localmcp_access)
+    Set by the account's owners (Account settings > Tool servers), by the super-admins with the MultiTenant plugin (its account page), or ./v mcpserver::enable / disable
 */
 
 namespace models;
 
 class ToolServerAccess extends \sys\BaseModel {
-    //CLD: 2026-11-01T11:55:18+02:00: toolserver_access (was localmcp_access)
+    //CLD: 2026-11-01T11:55:18+02:00: toolserver_access
     protected static $collection = 'toolserver_access';
 
     //CLD: 2026-10-22T23:00:00+03:00: global: set by super-admins for any account (the administration), always read by the account's id

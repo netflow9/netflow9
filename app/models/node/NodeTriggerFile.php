@@ -38,7 +38,6 @@ class NodeTriggerFile extends \models\wf\WfNode {
 		'ui' => [ 'placeholder' => 'Any file' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: The uploaded file, e.g. {{ file.id }}, {{ file.filename }}, {{ file.type }})
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'File variable',
@@ -51,7 +50,7 @@ class NodeTriggerFile extends \models\wf\WfNode {
 	];
     }
 
-    //CLD: 2026-10-18T13:30:00+03:00: removed validates(): its check of `types` against typeChoices() is the select field's own `choices` rule (sys\fields\Field_select::bindTo)
+    //CLD: 2026-10-18T13:30:00+03:00: the check of `types` against typeChoices() is the select field's own `choices` rule (sys\fields\Field_select::bindTo)
 
     public static function outputVariables($config) {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'file') : 'file';

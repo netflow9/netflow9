@@ -3,8 +3,8 @@
 #the app's nginx site, written from the template below (@BASE@: the app's folder, @SERVER_NAME@: the host of BASE_URL in app.env), over
 #<app>/etc/nginx.conf (a link to /etc/nginx/conf.d/<user>.conf; made when missing), then checked (nginx -t) and nginx reloaded.
 #The file there is kept as <file>.bak-<time> (not loaded by nginx: conf.d/*.conf only) and put back when the check fails; the changes are shown first.
-#CLD: 2026-11-01T20:00:00+02:00: commands, as scripts/playwright-mcp.sh (was: only writing the site); named nginx.sh (was 0_nginx-install.sh): install (nginx too), setup (the site only), start / stop / restart /
-#reload / status / test / uninstall (the site out); the template inline (was scripts/nginx/app.conf). nginx is the server's: start / stop / restart apply to every site on it (other installations' too)
+#CLD: 2026-11-01T20:00:00+02:00: commands, as scripts/playwright-mcp.sh: install (nginx too), setup (the site only), start / stop / restart /
+#reload / status / test / uninstall (the site out); the template inline. nginx is the server's: start / stop / restart apply to every site on it (other installations' too)
 #Run as root:
 #   sudo scripts/nginx.sh install [--server-name=<host>]              nginx (when missing), the site, nginx started at boot and now
 #   sudo scripts/nginx.sh setup [--server-name=<host>] [--dry-run]    the site written again (after a change of the template or of BASE_URL)

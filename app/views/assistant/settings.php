@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number (was number_format)
+//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number
 /*
     the Assistant's settings page (AssistantController::settings;
     Only the settings of the chosen provider are shown (all are saved)
@@ -22,7 +22,7 @@ $model = (string)$settings->model;
 $connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/assistant/connect'), 'auto' => $model !== '' && (string)$settings->provider !== 'system',
     'system' => $system !== null, 'urls' => \data\AiProviders::chatUrls() ]);
 $budget = AssistantSettings::budgetOf($settings);
-//CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly (was a $esc wrapper)
+//CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly
 
 //CLD: 2026-10-20T10:00:00+03:00: nowdoc: the script's text as is
 \V::app()->cs->addPageScript("+function(o) {" . <<<'JS'
@@ -36,7 +36,7 @@ $budget = AssistantSettings::budgetOf($settings);
     const esc = (v) => app.utils.escapeHtml(String(v ?? ''));
 
     //the settings of the chosen provider only
-    //CLD: 2026-10-22T14:00:00+03:00: data-assistant-provider: the providers it is for (space-separated; was one); the Server URL shows the provider's own
+    //CLD: 2026-10-22T14:00:00+03:00: data-assistant-provider: the providers it is for (space-separated); the Server URL shows the provider's own
     const urlInput = form.querySelector('[name=url]');
     const show = () => {
 	form.querySelectorAll('[data-assistant-provider]').forEach((el) => el.classList.toggle('d-none', !el.dataset.assistantProvider.split(' ').includes(provider.value)));
@@ -137,13 +137,13 @@ JS . "}({$connectJs});");
 	    <div class="flex-fill"></div>
 	</div>
 
-	<?php //CLD: 2026-10-31T20:30:00+02:00: two columns, to fit one screen: the provider and its server on the left, the budget on the right (was one column, w-50) ?>
+	<?php //CLD: 2026-10-31T20:30:00+02:00: two columns, to fit one screen: the provider and its server on the left, the budget on the right ?>
 	<div class="row gx-5 pt-4">
 	<div class="col-xl-6">
 	    <?= $settings->schema['provider']->input([ 'cols' => '3,9' ]) ?>
 
 	    <?php //CLD: 2026-10-22T14:00:00+03:00: System: what the installation provides ?>
-	    <?php //CLD: 2026-10-31T22:00:00+02:00: the provider's part ($systemHtml: util\AssistantSystem::settingsHtml, the plugin's view: the model, the credits, the monthly limit; was here) ?>
+	    <?php //CLD: 2026-10-31T22:00:00+02:00: the provider's part ($systemHtml: util\AssistantSystem::settingsHtml, the plugin's view: the model, the credits, the monthly limit) ?>
 	    <div data-assistant-provider="system">
 		<?php if ($systemHtml !== null): ?>
 		<?= $systemHtml ?>
@@ -215,7 +215,7 @@ JS . "}({$connectJs});");
 		</div>
 	    </div>
 
-	    <?php //CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read (data_access; was in the account settings' Data access tab), for every provider ?>
+	    <?php //CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read (data_access), for every provider ?>
 	    <h6 class="mt-4">Data access</h6>
 	    <?= $settings->schema['data_access']->input([ 'cols' => '3,9' ]) ?>
 	    <div class="form-text">

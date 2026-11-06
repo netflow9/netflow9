@@ -313,7 +313,7 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (keyIdQuery)
 	$query = self::keyIdQuery($query, __METHOD__);
 
 	if ($this->isVariant($objectName))
@@ -430,7 +430,7 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (keyIdQuery)
 	$query = self::keyIdQuery($query, __METHOD__);
 	//a variant changes only its own objects (as find)
 	if ($this->isVariant($objectName))
@@ -459,7 +459,7 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (keyIdQuery)
 	$query = self::keyIdQuery($query, __METHOD__);
 	if ($this->isVariant($objectName))
 	    $query['__variant'] = $objectName;
@@ -487,7 +487,7 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (keyIdQuery)
 	$query = self::keyIdQuery($query, __METHOD__);
 	if ($this->isVariant($objectName))
 	    $query['__variant'] = $objectName;
@@ -515,7 +515,7 @@ class ObjectManager {
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
 
 	//special case for id
-	//a string _id that is not an ObjectId is kept (keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (keyIdQuery)
 	$query = self::keyIdQuery($query, __METHOD__);
 	if ($this->isVariant($objectName))
 	    $query['__variant'] = $objectName;

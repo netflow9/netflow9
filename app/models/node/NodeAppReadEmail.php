@@ -1,14 +1,10 @@
 <?php
 /*
-    checks a folder of a mail account (IMAP) and starts one execution of the workflow per message
-//(plugins\Mail\Poller does the work; run now by `app/v Mail::poll::run`, later by the scheduler daemon). Options: which messages (new since
+    checks a folder of a mail account (IMAP) and gives its messages to the steps after it (models\MailPoll::read). Options: which messages (new since
 //the last check / unread / all) and what to do with them afterwards (nothing / mark read / move / delete)
 
-//CLD: 2026-10-14T07:45:58+03:00: moved from the Mail plugin into BaseNodes (was plugins\Mail\models); the check is util\MailPoller, the console command `v mail::poll`
-//CLD: 2026-10-17T13:24:18+03:00: moved from the BaseNodes plugin into the core (was plugins\BaseNodes\trigger)
-
-//CLD: 2026-10-17T14:20:00+03:00: a regular step, Read emails (was NodeTriggerImap, trigger::imap: one execution per message, on its own schedule): each run checks the folder
-//(models\MailPoll::read; CLD: 2026-10-18T10:00:00+03:00: was util\MailPoller::read) and puts the messages it picks into one list variable (default `mails`) for the steps after it (e.g. a Loop over {{ mails }}); runs on a schedule come
+//CLD: 2026-10-17T14:20:00+03:00: a regular step, Read emails: each run checks the folder
+//(models\MailPoll::read) and puts the messages it picks into one list variable (default `mails`) for the steps after it (e.g. a Loop over {{ mails }}); runs on a schedule come
 //from a Schedule trigger before it. The check state (last UID, lock) is still kept per workflow and step (models\MailPoll)
 
 */
@@ -69,14 +65,14 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 	return $valid;
     }
 
-    //CLD: 2026-10-08T14:37:58+03:00: credentials of the current project providing `imap` (were mail accounts), for the designer
+    //CLD: 2026-10-08T14:37:58+03:00: credentials of the current project providing `imap`, for the designer
     protected static function credentialChoices() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
 	return \models\Credential::choicesFor('imap', \V::app()->config('rt.account')->_id ?? null, \V::app()->user->crtProject);
     }
 
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel; were app.smartform fields): credential and folder, then the
+    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel): credential and folder, then the
     //schedule of the checks (WfSchedule::schema, default every 5 minutes), then the message options
     //CLD: 2026-10-17T14:20:00+03:00: without the schedule fields (a regular step)
     public static function configSchema() {
@@ -86,7 +82,6 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 
 	return [
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: shorter help (was: IMAP, Google Mail or Microsoft 365 Mail credentials of the project (menu: Credentials))
 		'key' => 'credential',
 		'type' => 'select',
 		'label' => 'Mail credential',
@@ -104,7 +99,6 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: shorter help (was: The messages read, a list of objects, e.g. {{ mails.length }}, {{ mails[0].subject }}; a Loop over {{ mails }} handles them one by one)
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Messages variable',
@@ -115,7 +109,7 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'ui' => [ 'variableName' => 'write' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 6 wide, on a new line; shorter help (was: New: the first run only notes where the folder is (an empty list); messages arriving after it are read by the next runs)
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 6 wide, on a new line
 		'key' => 'which',
 		'type' => 'select',
 		'label' => 'Read',
@@ -123,7 +117,6 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'default' => 'new',
 		'choices' => self::WHICH,
 		'help' => 'New: the first run notes where the folder ends; the next runs read what arrives',
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'width' => 6, 'newRow' => true ],
 	    ],
 	    [
@@ -134,7 +127,6 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'none',
 		'choices' => self::AFTER,
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
@@ -179,26 +171,21 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 	];
     }
 
-    //CLD: 2026-10-08T22:57:28+03:00: on schedule: one check of the mailbox (plugins\Mail\Poller: one execution per message)
-    //CLD: 2026-10-11T22:38:36+03:00: the variables a received message starts the run with (Mail\Poller)
-    //CLD: 2026-10-11T22:58:51+03:00: several values are lists (addresses, references, attachment files); + mail_in_reply_to, mail_references, mail_headers, mail_attachments (list of
-    //objects; was the count, now mail_attachment_count)
-    //CLD: 2026-10-13T08:15:00+03:00: one variable, an object, named by the step's `variable` setting (default `mail`; were separate mail_* variables)
-    //CLD: 2026-10-17T14:20:00+03:00: a list of message objects (messageType()), default `mails`
+    //CLD: 2026-10-17T14:20:00+03:00: a list of message objects (messageType()), named by the step's `variable` setting (default `mails`)
     public static function outputVariables($config) {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'mails') : 'mails';
 	return \util\Validator::isIdentifier($name) ? [ $name => [ 'type' => 'array', 'info' => 'the messages read (oldest first; empty when there are none): [ { subject, from, text, html, attachments, ... } ]',
 	    'items' => self::messageType() ] ] : [];
     }
 
-    //CLD: 2026-10-17T14:20:00+03:00: the type of a message object (was in outputVariables(); also the Email inbound trigger's variable)
+    //CLD: 2026-10-17T14:20:00+03:00: the type of a message object
     public static function messageType() {
 	return [
 	    'type' => 'object',
 	    'info' => 'a received message: { account, folder, uid, message_id, from, from_name, to, cc, reply_to (lists), subject, date (ISO 8601), text, html, in_reply_to, '
 		. 'references (list), headers (lower-case name => value, or a list when repeated), attachments ([ { filename, contentType, size, disposition, file } ]), '
 		. 'attachment_count, attachment_files (saved file ids) }',
-	    //CLD: 2026-10-13T12:34:29+03:00: the fields and their types (util\Expression::typeAt: suggested after `mail.`, `mail.attachments[0].`; was a list of names)
+	    //CLD: 2026-10-13T12:34:29+03:00: the fields and their types (util\Expression::typeAt: suggested after `mail.`, `mail.attachments[0].`)
 	    'fields' => [
 		'account' => [
 		    'type' => 'string',
@@ -265,10 +252,10 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 	    ] ];
     }
 
-    //CLD: 2026-10-17T14:20:00+03:00: the step's work (were runScheduled() / startNow(): one execution per message): one check of the mailbox, the messages picked go into the list
+    //CLD: 2026-10-17T14:20:00+03:00: the step's work: one check of the mailbox, the messages picked go into the list
     //variable (empty when none, e.g. the first run of `new`); a failed check, or another run checking this step at the same time, fails the step
     public function execute($edgeId = null) {
-	//CLD: 2026-10-18T10:00:00+03:00: models\MailPoll::read(), the log callable as an argument (was util\MailPoller, its `out` property)
+	//CLD: 2026-10-18T10:00:00+03:00: models\MailPoll::read(), the log callable as an argument
 	$result = \models\MailPoll::read($this->exec, $this->wfid, is_array($this->config) ? $this->config : [], function($message) {
 	    $this->exec->log($this->wfid, $message);
 	});

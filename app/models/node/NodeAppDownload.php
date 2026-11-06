@@ -5,7 +5,6 @@
 //(an expression; empty: from the response's Content-Disposition, else from the URL; an extension from the content type when it has none) and the
 //largest size. CLD: 2026-10-12T08:55:21+03:00: only file types that may be uploaded (File::$extensions), else an error. The variable (default `file`) gets { id, filename, size, contentType }. The download goes to a temporary stream (not kept in memory)
 
-//CLD: 2026-10-17T13:24:18+03:00: moved from the BaseNodes plugin into the core (was plugins\BaseNodes\app)
 //CLD: 2026-10-17T21:08:58+03:00: images: the URL may be a data: URL (data:image/png;base64,...: e.g. an image an API or another step returned; no request is made); the variable says whether the
 //file is an image, read from its content (not its name): isImage, width, height, imageType (the real type, e.g. image/png; SVG: no size)
 namespace models\node;
@@ -50,7 +49,7 @@ class NodeAppDownload extends NodeAppHttp {
 	    $http[$f['key']] = $f;
 
 	//CLD: 2026-10-17T21:08:58+03:00: + data: URLs
-	//CLD: 2026-10-24T12:55:47+03:00: shorter (was: The file to download (GET), http:// or https://, or a data: URL (data:image/png;base64,...); {{ ... }} for expressions); 8 wide, next to the
+	//CLD: 2026-10-24T12:55:47+03:00: 8 wide, next to the
 	//credential (HTTP's: 4), on line 2; the query parameters on a new line
 	$http['url']['help'] = 'The file (GET): http(s):// or a data: URL';
 	$http['url']['ui']['width'] = 8;
@@ -58,7 +57,6 @@ class NodeAppDownload extends NodeAppHttp {
 	$http['timeout']['default'] = 120;
 	$http['variable']['label'] = 'File variable';
 	$http['variable']['default'] = 'file';
-	//CLD: 2026-10-24T12:55:47+03:00: shorter (was: No answer, timeout, a status of 400 or more, or a file larger than the limit)
 	$http['onError']['help'] = 'No answer, timeout, status 400+, too large';
 
 	return [
@@ -80,8 +78,8 @@ class NodeAppDownload extends NodeAppHttp {
 		'required' => true,
 		'default' => 25,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
-		//CLD: 2026-10-24T12:55:47+03:00: a limit: the designer puts it on the last line (was 6 wide)
+		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
+		//CLD: 2026-10-24T12:55:47+03:00: a limit: the designer puts it on the last line
 		'ui' => [ 'limit' => true ],
 	    ],
 	    $http['timeout'],
@@ -113,7 +111,7 @@ class NodeAppDownload extends NodeAppHttp {
 	    throw new \ErrorException('Download File: the URL must start with http:// or https:// or be a data: URL (got `' . mb_substr($url, 0, 100) . '`)');
 	$shownUrl = preg_replace('/[?#].*$/', '', $url);
 
-	//CLD: 2026-10-28T08:30:00+02:00: query parameters as [ name, value ] pairs (was by name): a repeated name sends each row
+	//CLD: 2026-10-28T08:30:00+02:00: query parameters as [ name, value ] pairs: a repeated name sends each row
 	$query = [];
 	foreach((array)$this->cfg('query', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
@@ -136,13 +134,13 @@ class NodeAppDownload extends NodeAppHttp {
 	    foreach((array)($auth['headers'] ?? []) as $name => $value)
 		$headers[strtolower($name)] = $name . ': ' . $value;
 	}
-	//CLD: 2026-10-28T08:30:00+02:00: NodeAppHttp::withQuery (was http_build_query: one value per name)
+	//CLD: 2026-10-28T08:30:00+02:00: NodeAppHttp::withQuery
 	$url = NodeAppHttp::withQuery($url, $query, (array)($auth['query'] ?? []));
 
 	$maxBytes = max(1, min(self::MAX_SIZE_MB, (int)$this->cfg('maxSize', 25))) * 1024 * 1024;
 	$timeout = max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120)));
 	$stream = fopen('php://temp/maxmemory:' . (2 * 1024 * 1024), 'w+b');
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here); public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http; public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE
 	$r = \util\Http::request('GET', $url, (!empty($cred) && $cred->hostLockedIn($this->exec->project) ? [ 'redirects' => 0 ] : []) + self::guard() + [ 'headers' => array_values($headers), 'timeout' => $timeout, 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5 ]);
 	[ $status, $size, $contentType, $effective, $respHeaders, $ms ] = [ $r['status'], $r['size'], $r['mime'], $r['url'], $r['headers'], $r['time_ms'] ];
 
@@ -154,7 +152,7 @@ class NodeAppDownload extends NodeAppHttp {
 	elseif ($status >= 400)
 	    $error = "HTTP status {$status}";
 
-	//CLD: 2026-10-12T08:55:21+03:00: only the file types that may be uploaded (File::$extensions; was any type)
+	//CLD: 2026-10-12T08:55:21+03:00: only the file types that may be uploaded (File::$extensions)
 	$filename = self::filename($text($this->cfg('filename', '')), $respHeaders['content-disposition'] ?? '', $effective ?: $shownUrl, $contentType);
 	if ($error === null && !\models\File::isAllowedName($filename))
 	    $error = "file type not allowed: `{$filename}` (allowed: " . implode(', ', array_keys(\models\File::$extensions)) . ')';

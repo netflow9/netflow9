@@ -9,14 +9,16 @@ class AccountController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
     }
 
     //several tabs (?__tab=):
-    // general (the settings, Account::update) and usage (was the action usage, Account::usage); the first one the user may see by default
-    // services (the installation's services, util\Services): without the Admin plugin, for the account's owners (with it: the super-admins' page /services/index)
+    // general (the settings, Account::update) and usage (Account::usage); the first one the user may see by default
+    // services (the installation's services, util\Services): without the MultiTenant plugin, for the account's owners (with it: the super-admins' page /services/index)
     // access (Data access: the projects' MCP server, what the Assistant may read; Account::update, the owners)
     //     the MCP server only (what the Assistant may read: its settings)
-    // inbound (the account's inbound mail prefix, InboundMailSettings; was the InboundMail plugin's page): for who may change the account, where Haraka is found
+    // inbound (the account's inbound mail prefix, InboundMailSettings): for who may change the account, where Haraka is found
     // tools (the installation's tool servers, util\ToolServers): without the MultiTenant plugin, for the owners (with it: /toolservers/index)
     // ai (what the agents may do: models\agent\AgentPolicy): for the owners (util\Services::ownerSignedIn: the role `owner`)
     public function settings($req, $resp) {
@@ -30,7 +32,7 @@ class AccountController extends \sys\BaseController {
 	if (!in_array($tab, $tabs, true))
 	    $tab = $tabs[0];
 
-	$account = \V::app()->config('rt.account');
+	$account = $this->account;
 
 	if ($tab === 'inbound') {
 	    //new settings (not saved yet) for an account without them

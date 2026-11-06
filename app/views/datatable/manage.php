@@ -1,13 +1,12 @@
 <?php
-//CLD: 2026-10-11T22:01:40+03:00: app.GridView (was the global gridView of data.grid.js, now in app.dataview.js)
 
 $this->pageTitle = 'Manage Data Table: ' . $dt->name;
 
 //schema and filtering
 $sf = \util\WidgetsUtil::getSchema($dt->iname);
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $schema = \util\JSON::encode($sf['schema']);
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $filter = \util\JSON::encode($sf['filter']);
 
 $dataUrl = \V::app()->createUrl('', [ 'id' => $dt->_id, 'data' => 1 ]);
@@ -54,9 +53,9 @@ $script = "
 	    title: `<h5 class='h5 mb-0'>Manage Data Table: \${dtName}</h5>`,
 	    dataUrl: '{$dataUrl}',
 	    schema: {
-		//CLD: 2026-10-11T22:10:29+03:00: read-only without DataTable::update (was always false)
+		//CLD: 2026-10-11T22:10:29+03:00: read-only without DataTable::update
 		readonly: {$readonly},
-		//CLD: 2026-10-05T21:06:21+03:00: real column designer URLs (was a non-existent action with a literal {{item._id}})
+		//CLD: 2026-10-05T21:06:21+03:00: real column designer URLs
 		updateColumnUrl: '{$updateColumnUrl}',
 		createColumnUrl: '{$createColumnUrl}',
 		deleteColumnUrl: '{$deleteColumnUrl}',

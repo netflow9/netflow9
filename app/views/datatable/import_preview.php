@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-24T16:30:00+03:00: the rows / columns: util\Format::plural (was number_format, columns always plural)
+//CLD: 2026-10-24T16:30:00+03:00: the rows / columns: util\Format::plural
 //CLD: 2026-10-11T20:51:55+03:00: new view: Import, step 2 (DatatableController::import): the table's name, the sheet (Excel), whether the first row is a header, the
 //columns found (import or not, name, key, type; sample values) and the first rows; changing the sheet or the header choice posts step=preview (the
 //columns are guessed again); Import posts step=import. $errors: [ 'name' | column index => [ messages ] ]

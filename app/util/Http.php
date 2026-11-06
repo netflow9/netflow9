@@ -340,7 +340,7 @@ class Http {
 	return $lines;
     }
 
-    //CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes (was MB, or KB under 1 MB)
+    //CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes
     protected static function mb($bytes) {
 	return Format::bytes($bytes);
     }

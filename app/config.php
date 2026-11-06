@@ -7,7 +7,7 @@ function get_config($mode = 'web') {
     // loaded in this order; "enabled": false keeps a plugin's settings but leaves it out.
     // No file: no plugins
     $plugins = (function() {
-	//CLD: 2026-11-01T19:00:00+02:00: in V::configDir() (NFN_CONFIG_DIR, else the app's folder; was always the app's folder)
+	//CLD: 2026-11-01T19:00:00+02:00: in V::configDir() (NFN_CONFIG_DIR, else the app's folder)
 	$f = \V::configDir() . '/plugins.json';
 	if (!is_file($f))
 	    return [];
@@ -20,7 +20,6 @@ function get_config($mode = 'web') {
     })();
 
     $_config = [
-	//CLD: 2026-11-06T12:00:00+02:00: the development-only DataController (data/get) is removed: app.debug now only shows error details
 	//development switch: error details on the pages - set false outside development
 	'app.debug' => defined('APP_DEBUG') && filter_var(APP_DEBUG, FILTER_VALIDATE_BOOLEAN),
 	'app.name' => 'NetFlow9',
@@ -45,8 +44,8 @@ function get_config($mode = 'web') {
 	//ntp
 	'app.ntp.server' => 'local', // or 'time.google.com:123'
 
-	//CLD: 2026-11-01T16:00:27+02:00: the daemon's port for its commands (NEWJOB, KILLJOB), on 127.0.0.1 only: DAEMON_PORT of app.env, default 9000 (was the unix socket
-	//app.job_socket_path, run/job-notify.sock). Several installations on one server: a port each
+	//CLD: 2026-11-01T16:00:27+02:00: the daemon's port for its commands (NEWJOB, KILLJOB), on 127.0.0.1 only: DAEMON_PORT of app.env, default 9000.
+	//Several installations on one server: a port each
 	'app.daemon_port' => defined('DAEMON_PORT') && (int)DAEMON_PORT > 0 ? (int)DAEMON_PORT : 9000,
 	//CLD: 2026-11-01T19:00:00+02:00: where the daemon listens (DAEMON_LISTEN, default 127.0.0.1; Docker: 0.0.0.0, the containers' private network only) and where the app finds
 	//it (DAEMON_HOST, default 127.0.0.1; Docker: daemon), from app.env or the environment (compose.yaml)
@@ -79,7 +78,6 @@ function get_config($mode = 'web') {
 	'mail.inbound_domain' => defined('MAIL_INBOUND_DOMAIN') ? MAIL_INBOUND_DOMAIN : null,
 	//CLD: 2026-10-31T12:12:05+02:00: an empty MAIL_FROM (app.env.example's placeholder) is as none
 	'mail.from' => defined('MAIL_FROM') && MAIL_FROM !== '' ? MAIL_FROM : 'noreply@' . (defined('SMTP_DOMAIN') && SMTP_DOMAIN ? SMTP_DOMAIN : 'localhost'),
-	//CLD: 2026-10-30T15:00:00+02:00: app.executions.max_sync (MAX_SYNC_EXECUTIONS) and app.executions.sync_timeout (SYNC_EXECUTION_TIMEOUT) removed: every execution runs in the daemon
 	//the HTTP Request and Download File steps may call this machine and its network (private / internal addresses): HTTP_STEPS_ALLOW_PRIVATE in app.env
 	//(default false: public addresses only, checked by util\Http for each redirect too)
 	'http.steps.allow_private' => defined('HTTP_STEPS_ALLOW_PRIVATE') && filter_var(HTTP_STEPS_ALLOW_PRIVATE, FILTER_VALIDATE_BOOLEAN),
@@ -114,7 +112,7 @@ function get_config($mode = 'web') {
 	    'log' => [
 		'class' => '\sys\Logger',
 		'enabled' => true,
-		//CLD: 2026-10-23T23:30:00+03:00: LOG_LEVEL in app.env (ERROR, WARN, INFO or DEBUG; was DEBUG here): INFO when it is missing or not one of them
+		//CLD: 2026-10-23T23:30:00+03:00: LOG_LEVEL in app.env (ERROR, WARN, INFO or DEBUG): INFO when it is missing or not one of them
 		'level' => defined('LOG_LEVEL') && in_array(strtoupper(trim((string)LOG_LEVEL)), [ 'ERROR', 'WARN', 'INFO', 'DEBUG' ], true) ? strtoupper(trim((string)LOG_LEVEL)) : 'INFO',
 	    ],
 	    'mongo' => [

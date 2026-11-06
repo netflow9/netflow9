@@ -18,9 +18,9 @@ if (!window.app)
 	setStepIssues(issues),
 	destroy(),
 	setRun(run): an execution shown on the canvas (WorkflowController::runStatus; null: none)
-//app.Workflow.current: the designer of the page (e.g. for the Assistant plugin). A new one destroys the previous one: its listeners on the document removed, its editor / picker closed
-//CLD: 2026-10-19T22:30:00+03:00: the designer's state and functions are the class's fields and methods (were the variables and functions of a closure run once per designer,
-//designer()); the steps / connections (WfNode, WfEdge) reach their designer through `d` (not enumerable: not in their JSON, the saved steps); the helpers without state
+//app.Workflow.current: the designer of the page (e.g. for the Assistant). A new one destroys the previous one: its listeners on the document removed, its editor / picker closed
+//CLD: 2026-10-19T22:30:00+03:00: the designer's state and functions are the class's fields and methods;
+//the steps / connections (WfNode, WfEdge) reach their designer through `d` (not enumerable: not in their JSON, the saved steps); the helpers without state
 //(curves, the picker's markup and placement, the drag preview) stay functions of the module
 
 */
@@ -133,7 +133,7 @@ window.app.Workflow = (function() {
 	    return d;
 	}
 
-	//CLD: 2026-10-17T10:59:58+03:00: the header classes are shared with the step boxes (were loop-header*)
+	//CLD: 2026-10-17T10:59:58+03:00: the header classes are shared with the step boxes
 	renderContainer(def) {
     	    const title = window.app.utils.escapeHtml(this.title);
 	    return `
@@ -158,7 +158,7 @@ window.app.Workflow = (function() {
 	}
 
 	render() {
-	    //CLD: 2026-10-19T22:30:00+03:00: the designer's state through this.d (were the module's variables)
+	    //CLD: 2026-10-19T22:30:00+03:00: the designer's state through this.d
 	    const d = this.d;
     	    const def = d.nodeDefs[this.fqname];
 	    //CLD: 2026-10-11T20:24:33+03:00: the step's outputs; tall enough for them (e.g. a Switch with many cases)
@@ -185,8 +185,8 @@ window.app.Workflow = (function() {
     		case def.isNote:
     		    el.innerHTML = this.renderNote(def);
     		    break;
-    		//CLD: 2026-10-17T10:59:58+03:00: laid out like the loop: icon and title in a header at the top of the box (were a large icon in the middle, the title
-    		//under the box); below it, the variable the step sets (variableOf)
+    		//CLD: 2026-10-17T10:59:58+03:00: laid out like the loop: icon and title in a header at the top of the box;
+    		//below it, the variable the step sets (variableOf)
     		default:
     		    const title = window.app.utils.escapeHtml(this.title);
     		    const variable = d.variableOf(this);
@@ -264,7 +264,7 @@ window.app.Workflow = (function() {
         	    <button type="button" class="btn btn-light text-danger tool-delete" title="Delete step"><i class="bi bi-trash"></i></button>
         	</div>
     		`;
-    		//CLD: 2026-10-12T15:21:00+03:00: opens the step's editor (a dialog; was: focus the inspector's name input)
+    		//CLD: 2026-10-12T15:21:00+03:00: opens the step's editor (a dialog)
     		toolbar.querySelector('.tool-edit').addEventListener('click', (e)=>{
         	    e.stopPropagation();
         	    d.openEditor(this.wfid);
@@ -354,7 +354,7 @@ window.app.Workflow = (function() {
     		    btn.className='btn btn-sm btn-circle-xs btn-outline-primary add-btn';
     		    btn.style.position = 'absolute';
     		    btn.style.zIndex = 6;
-    		    //CLD: 2026-10-11T20:24:33+03:00: after the output's label (was over it)
+    		    //CLD: 2026-10-11T20:24:33+03:00: after the output's label
     		    btn.style.left = (p.x + 14 + (outs.labels ? String(outs.labels[i]).length * 5 + 6 : 0))+'px';
 		    btn.style.top = (p.y-10)+'px';
     		    btn.innerHTML = '<i class="bi bi-plus-lg"></i>';
@@ -478,7 +478,7 @@ window.app.Workflow = (function() {
 	    css: { position: 'fixed', top: '-1000px', left: '-1000px', '--type-color': def.color, },
 	    class: 'node',
 	});
-	//CLD: 2026-10-17T10:59:58+03:00: the step box's header (icon and name), as on the canvas (was the large icon)
+	//CLD: 2026-10-17T10:59:58+03:00: the step box's header (icon and name), as on the canvas
 	const inner = $('<div>', { class: 'node-box step-box', width: def.defaultWidth + 'px', height: def.defaultHeight + 'px', })
 	    .append($(`<div class="node-header"><span class="node-header-icon"><i class="bi ${def.icon}"></i></span><span class="node-header-title"></span></div>`))
 	    .appendTo(el);
@@ -488,9 +488,9 @@ window.app.Workflow = (function() {
     }
 
 
-    //CLD: 2026-10-19T22:30:00+03:00: the designer of one canvas; its state is in its fields, its functions are its methods (were a closure per designer: designer())
+    //CLD: 2026-10-19T22:30:00+03:00: the designer of one canvas; its state is in its fields, its functions are its methods
     class Workflow {
-	//CLD: 2026-10-19T22:30:00+03:00: was mount() (+ the "start clean" of the module shared by the designer pages: a new instance starts clean)
+	//CLD: 2026-10-19T22:30:00+03:00: a new instance starts clean
 	constructor(root, options) {
 	    if (current)
 		current.destroy();
@@ -550,10 +550,9 @@ window.app.Workflow = (function() {
 	    //CLD: 2026-10-12T15:21:00+03:00: an editor left open by a previous page goes away
 	    document.querySelectorAll('.modal.wf-editor').forEach((m) => m.remove());
 
-	    //CLD: 2026-10-06T23:33:47+03:00: problems are computed live in render() (validateFlow); options.issues (server) is no longer needed here
-	    //CLD: 2026-10-25T20:00:00+02:00: removed the console.log of nodeDefs
+	    //CLD: 2026-10-06T23:33:47+03:00: problems are computed live in render() (validateFlow)
 
-	    //CLD: 2026-10-19T22:00:00+03:00: the element, or the element of id `root` (was: #canvas-wrap whatever the string)
+	    //CLD: 2026-10-19T22:00:00+03:00: the element, or the element of id `root`
 	    this.wrapEl = typeof root === 'string' ? document.getElementById(root) : root;
 	    this.worldEl = this.wrapEl.getElementsByClassName('canvas-main')[0];
 	    this.svgEl = this.wrapEl.getElementsByClassName('canvas-edges')[0];
@@ -771,7 +770,7 @@ window.app.Workflow = (function() {
 	    //CLD: 2026-10-12T08:26:57+03:00: outputs that depend on a setting ({ field, values: { value: [ labels ] } }; another value = the class's own outputs)
 	    if (p.field) {
 		let value = n.config ? n.config[p.field] : undefined;
-		//CLD: 2026-11-04T08:10:00+02:00: def.portDefault (WfNode::withCanvasHints; was read from def.configSchema, no longer in the definitions: openEditor asks it)
+		//CLD: 2026-11-04T08:10:00+02:00: def.portDefault (WfNode::withCanvasHints; the definitions have no configSchema: openEditor asks it)
 		if (value === undefined || value === null)
 		    value = def.portDefault;
 		const labels = (p.values || {})[String(value)];
@@ -790,7 +789,7 @@ window.app.Workflow = (function() {
 	    const def = this.nodeDefs[n.fqname] || {};
 	    if (def.isContainer || def.isNote)
 		return '';
-	    //CLD: 2026-11-04T08:10:00+02:00: def.writeVariable (WfNode::withCanvasHints; was found in def.configSchema)
+	    //CLD: 2026-11-04T08:10:00+02:00: def.writeVariable (WfNode::withCanvasHints)
 	    const f = def.writeVariable;
 	    if (!f)
 		return '';
@@ -839,7 +838,7 @@ window.app.Workflow = (function() {
 
 	/* ---------------- Canvas pan & zoom ---------------- */
 	setupPan() {
-	    //CLD: 2026-10-19T22:00:00+03:00: listen() (was wrapEl.addEventListener)
+	    //CLD: 2026-10-19T22:00:00+03:00: listen()
 	    this.listen(this.wrapEl, 'pointerdown', (e) => {
 		let panState = null;
 
@@ -954,16 +953,16 @@ window.app.Workflow = (function() {
 	}
 
 	setupZoom() {
-	    //CLD: 2026-10-19T22:00:00+03:00: listen() (was wrapEl.addEventListener)
+	    //CLD: 2026-10-19T22:00:00+03:00: listen()
 	    this.listen(this.wrapEl, 'wheel', (e)=>{
 		e.preventDefault();
 		const r = this.wrapEl.getBoundingClientRect();
-		//CLD: 2026-10-24T00:30:00+03:00: zoomAt (shared with zoomBy; was written here)
+		//CLD: 2026-10-24T00:30:00+03:00: zoomAt (shared with zoomBy)
 		this.zoomAt(e.clientX - r.left, e.clientY - r.top, this.canvas.zoom * (e.deltaY>0 ? 0.9 : 1.1));
 	    }, {passive:false});
 	}
 
-	//CLD: 2026-10-24T00:30:00+03:00: new (was in the wheel handler): zoom to `zoom` (kept within 0.4 - 1.6) with the canvas point at (cx, cy) staying where it is
+	//CLD: 2026-10-24T00:30:00+03:00: new: zoom to `zoom` (kept within 0.4 - 1.6) with the canvas point at (cx, cy) staying where it is
 	zoomAt(cx, cy, zoom) {
 	    const canvas = this.canvas;
 	    const worldX = (cx - canvas.pan.x) / canvas.zoom, worldY = (cy - canvas.pan.y) / canvas.zoom;
@@ -1029,7 +1028,7 @@ window.app.Workflow = (function() {
 	/* ---------------- Keyboard ---------------- */
 	//CLD: 2026-10-11T14:09:51+03:00: the document listener is added once (mount() runs on every designer page: it was added again each time); the read-only and
 	//"designer still on the page" checks are made per key press (after leaving the designer, Delete must not act on its old selection)
-	//CLD: 2026-10-19T22:00:00+03:00: once per designer, removed by destroy() (was once for the module: keyboardReady)
+	//CLD: 2026-10-19T22:00:00+03:00: once per designer, removed by destroy()
 	setupKeyboard() {
 	    this.listen(document, 'keydown', (e)=>{
 		if (this.options.readonly || !this.wrapEl || !document.body.contains(this.wrapEl))
@@ -1111,7 +1110,7 @@ window.app.Workflow = (function() {
 	}
 
 	//CLD: 2026-10-19T18:05:00+03:00: pointers held anywhere (a drag, resize or new connection is not committed halfway); Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y, Ctrl+S (commit now) on the canvas
-	//CLD: 2026-10-19T22:00:00+03:00: once per designer, removed by destroy() (was once for the module: historyReady)
+	//CLD: 2026-10-19T22:00:00+03:00: once per designer, removed by destroy()
 	setupHistory() {
 	    this.listen(document, 'pointerdown', () => { this.pointerHeld = true; }, true);
 	    const release = () => {
@@ -1160,7 +1159,7 @@ window.app.Workflow = (function() {
 	}
 
 	/* ---------------- Dragging nodes ---------------- */
-	//CLD: 2026-10-11T13:46:00+03:00: module level (was inside startNodeDrag): also places new steps in the loop they are added to
+	//CLD: 2026-10-11T13:46:00+03:00: module level: also places new steps in the loop they are added to
 	// find the innermost loop container whose bounds contain a node's center
 	findContainerFor(node, excludeIds){
 	    const nodeDefs = this.nodeDefs;
@@ -1211,8 +1210,6 @@ window.app.Workflow = (function() {
 	    const childOrigins = def.isContainer ? descendants.map(n=>({n, ox:n.geometry.x, oy:n.geometry.y})) : null;
 	    const excludeIds = new Set([node.wfid, ...descendants.map(n=>n.wfid)]);
 	    this.dragState = { node, startX:e.clientX, startY:e.clientY, ox:node.geometry.x, oy:node.geometry.y, childOrigins, excludeIds, dropTargetId:node.parentId };
-
-	    //CLD: 2026-10-11T13:46:00+03:00: findContainerFor() moved to the module (also used when steps are added)
 
 	    const onNodeDrag = (e) => {
 		const dragState = this.dragState;
@@ -1469,7 +1466,7 @@ window.app.Workflow = (function() {
 		(outputsUsed[from] = outputsUsed[from] || {})[fromPort] = true;
 	    });
 
-	    //CLD: 2026-10-11T13:46:00+03:00: computed for every level (was inside the trigger check)
+	    //CLD: 2026-10-11T13:46:00+03:00: computed for every level
 	    const hasIncoming = {};
 	    Object.keys(adjacent).forEach((from) => adjacent[from].forEach((to) => { hasIncoming[to] = true; }));
 
@@ -1621,7 +1618,7 @@ window.app.Workflow = (function() {
 		svg += edge.render();
 	    });
 
-	    //CLD: 2026-10-24T11:20:00+03:00: the edges' color of the theme (--wf-edge: the dark mode; was fill="#b8bdc4")
+	    //CLD: 2026-10-24T11:20:00+03:00: the edges' color of the theme (--wf-edge: the dark mode)
 	    //CLD: 2026-10-29T21:30:00+02:00: + arrowhead-passed: of a connection passed in the execution shown (setRun)
 	    svg += `<defs><marker id="arrowhead" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" style="fill:var(--wf-edge)"></path></marker><marker id="arrowhead-passed" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" style="fill:var(--wf-run-done)"></path></marker></defs>`;
 	    this.svgEl.innerHTML = svg;
@@ -1646,8 +1643,6 @@ window.app.Workflow = (function() {
 	    if (emptyEl)
 		emptyEl.classList.toggle('d-none', this.workflow.some(n => n.isNode));
 
-	    //CLD: %s: removed the inspector refresh: steps are edited in a dialog (openEditor)
-
 	    if (typeof this.options.onDataChange === 'function')
 		this.options.onDataChange(this.workflow);
 	    //CLD: 2026-10-19T18:05:00+03:00: undo / redo, autosave
@@ -1658,7 +1653,7 @@ window.app.Workflow = (function() {
 
 
 
-	//CLD: 2026-10-11T20:24:33+03:00: after the outputs of step `node` changed (were labelled `before`): each connection follows its output's label; a renamed output (no
+	//CLD: 2026-10-11T20:24:33+03:00: after the outputs of step `node` changed: each connection follows its output's label; a renamed output (no
 	//label match, the same position holds a new label) keeps its connections; connections of removed outputs are removed
 	remapOutputs(node, before) {
 	    //CLD: 2026-10-12T08:26:57+03:00: outputs without labels (e.g. HTTP Request back to one output): the connections of the outputs that remain are kept
@@ -1686,7 +1681,7 @@ window.app.Workflow = (function() {
 	}
 
 	/* ---------------- Step editor ---------------- */
-	//CLD: 2026-10-12T15:21:00+03:00: steps are edited in a dialog (was the inspector panel, too narrow for steps with many settings; the panel is kept for a later feature):
+	//CLD: 2026-10-12T15:21:00+03:00: steps are edited in a dialog:
 	//opened by a double click on the step, its toolbar's pencil, or when a step is added. OK applies the values to the step (saved with the workflow),
 	//Cancel / Escape leaves it unchanged, Delete removes the step. Read-only (a version): the values only, Close
 	closeEditor() {
@@ -1704,8 +1699,8 @@ window.app.Workflow = (function() {
 	    if (this.editor)
 		this.closeEditor();
 
-	    //CLD: 2026-11-04T08:10:00+02:00: the step's form is asked now, with the project's current choices (WorkflowController::node_schema; was def.configSchema in the definitions
-	    //kept by the tab, built on each opening of the designer). The dialog opens with the answer, unless another one was asked, the step is gone or the page was left
+	    //CLD: 2026-11-04T08:10:00+02:00: the step's form is asked now, with the project's current choices (WorkflowController::node_schema).
+	    //The dialog opens with the answer, unless another one was asked, the step is gone or the page was left
 	    const asked = this.editorAsked = {};
 	    document.body.style.cursor = 'progress';
 	    $.getJSON(this.options.nodeSchemaUrl, { fqname: node.fqname })
@@ -1727,7 +1722,7 @@ window.app.Workflow = (function() {
 	    const esc = app.utils.escapeHtml;
 
 	    //the step name is stored in node.title, everything else in node.config
-	    //CLD: 2026-10-24T12:37:37+03:00: the settings every step places the same way (was the step's own order; HTTP's widths from WfNode::$editor, removed):
+	    //CLD: 2026-10-24T12:37:37+03:00: the settings every step places the same way:
 	    //  row 1: Step name, the output variable (`variable` written by the step: variableName write; 3 wide), On error (`onError`, 3); the name takes the rest
 	    //  row 2: Credential (`credential`, or what the step works on: `resource`, e.g. the data table; 6; without an operation, the step's width for it, the step's first
 	    //  settings next to it), Operation (`operation`, 6)
@@ -1773,11 +1768,8 @@ window.app.Workflow = (function() {
 
 	    const el = document.createElement('div');
 	    el.className = 'modal fade wf-editor';
-	    //CLD: 2026-10-13T18:23:00+03:00: a step with a form designer (Form trigger, Human task) gets an extra-large dialog
-	    //CLD: 2026-10-13T20:12:00+03:00: full screen (Bootstrap modal-fullscreen; was modal-xl)
-	    //CLD: 2026-10-13T20:23:54+03:00: nearly full screen, a margin all around (.modal-near-fullscreen, theme scss/netflow9/_modal.scss; was modal-fullscreen: it did not read as a dialog)
-	    //CLD: 2026-10-19T22:19:24+03:00: + modal-fullscreen-sm-down: the whole screen on phones (the near-fullscreen one too: theme netflow9/_modal.scss)
-	    //CLD: 2026-10-24T12:37:37+03:00: two sizes: nearly full screen with a designer, else extra-large (was large, extra-large for the steps that asked: WfNode::$editor, removed)
+	    //CLD: 2026-10-24T12:37:37+03:00: two sizes: nearly full screen with a designer (.modal-near-fullscreen: a margin all around; the whole screen on phones,
+	    //modal-fullscreen-sm-down: theme netflow9/_modal.scss), else extra-large
 	    const dialogSize = configSchema.some((f) => [ 'formdesigner', 'emaildesigner' ].includes(f.type)) ? 'modal-near-fullscreen' : 'modal-xl';
 	    el.tabIndex = -1;
 	    el.innerHTML = `
@@ -1887,10 +1879,9 @@ window.app.Workflow = (function() {
 
 
 	/* ---------------- Node Picker ---------------- */
-	//CLD: 2026-10-11T13:34:03+03:00: the items carry what the search box matches (name, label, type, fqname); groups / items get classes for filtering
-	//CLD: 2026-10-14T21:06:38+03:00: insideLoop: the step goes inside a loop, so no loop is offered (a loop cannot be inside another loop)
-	//CLD: 2026-10-30T15:00:00+02:00: grouped by the steps' category (WfNode::CATEGORIES, in their order; was by type: Trigger / Core / App); the advanced steps (audience) get
-	//the picker-advanced class and an "advanced" badge: showPicker lists them or not. No trigger offered when the workflow has one (was: the trigger group left out)
+	//CLD: 2026-10-30T15:00:00+02:00: grouped by the steps' category (WfNode::CATEGORIES, in their order); the items carry what the search box matches (name, label, type,
+	//fqname), groups / items get classes for filtering; the advanced steps (audience) get the picker-advanced class and an "advanced" badge: showPicker lists them or not.
+	//No trigger offered when the workflow has one; insideLoop: the step goes inside a loop, so no loop is offered (a loop cannot be inside another loop)
 	buildPickerContent(picker, insideLoop) {
 	    const nodeDefs = this.nodeDefs;
 	    const main_ul = $('<ul>', { class: "list-unstyled p-0 m-0" });
@@ -1931,7 +1922,7 @@ window.app.Workflow = (function() {
 		    const def = nodeDefs[fqname];
 		    const advanced = def.audience === 'advanced';
 		    const search = [ def.name, def.label, def.type, def.categoryLabel || '', advanced ? 'advanced' : '', fqname ].join(' ').toLowerCase();
-		    //CLD: 2026-10-17T19:41:38+03:00: the step's label (was its name, e.g. `download` for Download File); the name when it has no label
+		    //CLD: 2026-10-17T19:41:38+03:00: the step's label; the name when it has no label
 		    const item = $('<li>', { class: 'list-group-item list-group-item-action picker-item d-flex align-items-center gap-2' + (advanced ? ' picker-advanced' : ''), 'data-fqname': fqname, 'data-search': search, draggable: true })
 			.html(`<span class="d-inline-flex align-items-center justify-content-center rounded-2 text-white" style="width:20px;height:20px;background:${def.color};font-size:11px;"><i class="bi ${def.icon}"></i></span>`)
 			.append(document.createTextNode(def.label || def.name))
@@ -2167,8 +2158,8 @@ window.app.Workflow = (function() {
 	    });
 	    btnPalette.appendTo(this.wrapEl);
 
-	    //CLD: 2026-10-11T13:34:03+03:00: steps dragged from the palette: one handler, set once (was added at each opening of the palette)
-	    //CLD: 2026-10-19T22:00:00+03:00: listen() (was wrapEl.addEventListener)
+	    //CLD: 2026-10-11T13:34:03+03:00: steps dragged from the palette: one handler, set once
+	    //CLD: 2026-10-19T22:00:00+03:00: listen()
 	    this.listen(this.wrapEl, 'dragover', e=>e.preventDefault());
 	    this.listen(this.wrapEl, 'drop', e => {
 		e.preventDefault();
@@ -2227,7 +2218,7 @@ window.app.Workflow = (function() {
 
 	    //CLD: 2026-10-19T22:00:00+03:00: namespaced, removed by destroy()
 	    this.unlisten.push(() => handle.off('.wfdesigner'));
-	    //CLD: 2026-10-19T23:05:00+03:00: pointer events (mouse, touch and pen; were mouse events), as setupPanelResize: the pointer is captured by the handle,
+	    //CLD: 2026-10-19T23:05:00+03:00: pointer events (mouse, touch and pen), as setupPanelResize: the pointer is captured by the handle,
 	    //pointercancel ends the drag like pointerup; touch-action none on the handle (theme netflow9/_workflow.scss)
 	    handle.on('pointerdown.wfdesigner', (e) => {
 		//main button only (a touch or a pen contact is button 0 too)
@@ -2239,7 +2230,7 @@ window.app.Workflow = (function() {
 		    handle[0].setPointerCapture(pointerId);
 		} catch (err) {}
 
-		//CLD: 2026-10-19T20:10:00+03:00: from the panel's width now (it may have been hidden when the designer opened: the Assistant plugin's panel; a click without a drag stores that)
+		//CLD: 2026-10-19T20:10:00+03:00: from the panel's width now (it may have been hidden when the designer opened: the Assistant's panel; a click without a drag stores that)
 		lastWidth = Math.max(minWidth, Math.min(maxWidth, Math.round(el.outerWidth()) || minWidth));
 		handle.addClass('dragging');
 		el.removeClass('collapsed');
@@ -2269,7 +2260,7 @@ window.app.Workflow = (function() {
 	    });
 	}
 
-	//CLD: 2026-10-10T19:08:46+03:00: each bottom panel (debug, executions) resizes on its own (was: all .debug-panel elements together)
+	//CLD: 2026-10-10T19:08:46+03:00: each bottom panel (debug, executions) resizes on its own
 	setupDebugResize() {
 	    $('.debug-panel').each((i, el) => {
 		this.setupPanelResize($(el));
@@ -2304,7 +2295,7 @@ window.app.Workflow = (function() {
 
 	    //CLD: 2026-10-19T22:00:00+03:00: namespaced, removed by destroy()
 	    this.unlisten.push(() => handle.off('.wfdesigner'));
-	    //CLD: 2026-10-19T22:55:00+03:00: pointer events (mouse, touch and pen; were mouse events: no resize on touch screens). The pointer is captured by the
+	    //CLD: 2026-10-19T22:55:00+03:00: pointer events (mouse, touch and pen). The pointer is captured by the
 	    //handle, so its moves come to the handle even outside it; pointercancel (e.g. the browser takes the gesture) ends the drag like pointerup.
 	    //The handle has touch-action none (theme netflow9/_debug.scss), so a touch drag does not scroll the page
 	    handle.on('pointerdown.wfdesigner', (e) => {

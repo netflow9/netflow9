@@ -221,7 +221,7 @@ final class Builtins
             }),
             'parse' => self::fn('parse', function (array $a, Interpreter $vm) {
                 $text = Values::toString(self::arg($a, 0));
-                //CLD: 2026-10-20T22:45:00+03:00: util\JSON (the app's tolerant parser: comments, single quotes, keys without quotes, a last comma; was json_decode)
+                //CLD: 2026-10-20T22:45:00+03:00: util\JSON (the app's tolerant parser: comments, single quotes, keys without quotes, a last comma)
                 try {
                     $decoded = \util\JSON::json_decode($text, true, true);
                 } catch (\ErrorException $e) {
@@ -274,7 +274,7 @@ final class Builtins
             return is_finite($v) ? Values::numberToString($v) : 'null';
         }
         if (is_string($v)) {
-            //CLD: 2026-10-20T22:45:00+03:00: util\JSON (the app's escaping: < > & ' " as \u00XX, safe in HTML; invalid UTF-8 dropped; was json_encode)
+            //CLD: 2026-10-20T22:45:00+03:00: util\JSON (the app's escaping: < > & ' " as \u00XX, safe in HTML; invalid UTF-8 dropped)
             return Values::json($v);
         }
 
@@ -296,7 +296,7 @@ final class Builtins
             foreach ($v->props as $k => $item) {
                 $enc = self::jsonEncode($item, $indent, $inner, $stack, $vm);
                 if ($enc !== null) {
-                    $key = Values::json((string) $k); //CLD: 2026-10-20T22:45:00+03:00: util\JSON (was json_encode)
+                    $key = Values::json((string) $k); //CLD: 2026-10-20T22:45:00+03:00: util\JSON
                     $parts[] = $inner . $key . ($indent === '' ? ':' : ': ') . $enc;
                 }
             }
@@ -739,7 +739,7 @@ final class Builtins
                 return new JsArray($parts);
             },
             'replace', 'replaceAll' => function (array $a, Interpreter $vm) use ($s, $name) {
-                //CLD: 2026-10-20T22:10:00+03:00: by a regular expression; a replacement text may use $& $1 $<name> $` $' $$ (self::substitute; was used as it is)
+                //CLD: 2026-10-20T22:10:00+03:00: by a regular expression; a replacement text may use $& $1 $<name> $` $' $$ (self::substitute)
                 if (self::arg($a, 0) instanceof JsRegExp) {
                     return self::regexpReplace($a[0], $s, self::arg($a, 1), $name === 'replaceAll', $vm);
                 }

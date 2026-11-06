@@ -230,7 +230,7 @@ window.app.pjax = (function() {
 	init: function() {
 
 
-	    //CLD: 2026-10-16T13:33:48+03:00: confirm in a small popover next to the clicked element (below it, above when there is no room; Popper), was a modal. Closed by the
+	    //CLD: 2026-10-16T13:33:48+03:00: confirm in a small popover next to the clicked element (below it, above when there is no room; Popper). Closed by the
 	    //buttons, Escape, a click elsewhere or scrolling; one open at a time. An element in a dropdown menu (hidden once clicked) anchors to the menu's toggle
 	    let confirmBox = null;
 	    const closeConfirm = () => {

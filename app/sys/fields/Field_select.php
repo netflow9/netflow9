@@ -11,14 +11,14 @@ class Field_select extends Field {
 	'set' => [ 'set' => 'Set' ],
     ];
 
-    //`multiple`: a list of choice values (strings; blanks and repeats dropped); was always one string, which broke multiple selects
+    //`multiple`: a list of choice values (strings; blanks and repeats dropped)
     public function cast($value) {
 	if (empty($this->multiple)) {
 	    $value = $this->__cast_string($value);
 	    if (empty($value))
 		return null;
 
-	    //kept when there are no choices (e.g. depending on the user, outside a web request), as the multiple select (was dropped: null)
+	    //kept when there are no choices (e.g. depending on the user, outside a web request), as the multiple select
 	    $choices = $this->choicesToArray();
 	    if (!empty($choices) && !isset($choices[$value]))
 		return null;
@@ -135,7 +135,7 @@ class Field_select extends Field {
 
 	$choices = $this->choicesToArray();
 
-	//escaped (display() is HTML, as Field_text's; the label, or a value not in the choices, was as is)
+	//escaped (display() is HTML, as Field_text's)
 	if (!$this->multiple)
 	    return \V::app()->html->escape($choices[$value] ?? $value);
 

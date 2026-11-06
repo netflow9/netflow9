@@ -90,7 +90,7 @@ class Project extends \sys\BaseModel {
     }
 
     //CLD: 2026-11-03T12:00:00+02:00: new: the access rule of everything that belongs to a project: `global` scope in the user's account role passes everywhere; else the user's role in that project decides
-    //(it must be of the project's account and have the permission on). The account role's `project` scope gives nothing by itself (was: it was enough, with any role in the project)
+    //(it must be of the project's account and have the permission on). The account role's `project` scope gives nothing by itself
     public static function can($projectId, $aid, $userId, $permName) {
 	if (\V::app()->auth->getUserRole()?->getPermissionScope($permName) == 'global')
 	    return true;
@@ -109,7 +109,7 @@ class Project extends \sys\BaseModel {
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: Project::can (was the same checks here)
+	//CLD: 2026-11-03T12:00:00+02:00: Project::can
 	return self::can($this->_id, $this->aid, $userId, $permName);
     }
 

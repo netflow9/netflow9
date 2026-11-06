@@ -24,13 +24,15 @@ class SamlController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
     }
 
     //saved, or made now (off) with its key pair
     protected function settingsOfAccount() {
-	$aid = \V::app()->config('rt.account')->_id;
+	$aid = $this->account->_id;
 	$s = \V::app()->om->findOne('SamlSettings', [ 'aid' => $aid ]) ?: \V::app()->om->create('SamlSettings', [ 'aid' => $aid ]);
 	if (empty($s->_id) || trim((string)$s->spCert) === '') {
 	    $s->keys();
@@ -114,7 +116,7 @@ class SamlController extends \sys\BaseController {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 	$oid = $this->getOidOrError();
-	$aid = \V::app()->config('rt.account')->_id;
+	$aid = $this->account->_id;
 	$user = \V::app()->om->findOne('User', [ '_id' => $oid, 'aid' => $aid ]);
 	if (empty($user))
 	    \V::app()->error(404, 'Not found');

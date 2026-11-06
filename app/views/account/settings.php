@@ -20,17 +20,15 @@ $this->pageTitle = 'Account::Settings';
 </div>
 
 <div class="main-body p-4">
-    <?php //CLD: 2026-10-31T11:51:30+02:00: as the project's settings (views/project/_header.php): the account's name, then the tabs (was a title and a description) ?>
+    <?php //CLD: 2026-10-31T11:51:30+02:00: as the project's settings (views/project/_header.php): the account's name, then the tabs ?>
     <div class="d-flex align-items-center w-100 align-items-top">
 	<h5 class="mb-0"><i class="bi bi-house-gear"></i> <?= \V::app()->html->escape((string)$account->name !== '' ? (string)$account->name : 'Account settings') ?></h5>
 	<div class="flex-fill"></div>
     </div>
     <?php
-    //CLD: 2026-10-31T19:30:00+02:00: + Services (_services.php: $services; without the Admin plugin)
-    //CLD: 2026-11-01T02:00:00+02:00: + Data access (_access.php: $projects)
-    //CLD: 2026-11-01T11:55:18+02:00: + Tool servers (_tools.php: $servers, $open, $enabled; without the MultiTenant plugin)
-    //CLD: 2026-11-01T16:11:37+02:00: + Inbound mail (_inbound.php: $settings, $domain; where Haraka is found)
-    //CLD: 2026-11-02T10:00:00+02:00: + AI (_ai.php: $policy, $spent; the owners)
+    //CLD: 2026-11-02T10:00:00+02:00: the tabs besides Settings and Usage: Services (_services.php: $services) and Tool servers (_tools.php: $servers, $open, $enabled)
+    //without the MultiTenant plugin; Data access (_access.php: $projects); Inbound mail (_inbound.php: $settings, $domain; where Haraka is found); AI (_ai.php:
+    //$policy, $spent; the owners)
     $labels = [ 'general' => 'Settings', 'access' => 'Data access', 'ai' => 'AI', 'inbound' => 'Inbound mail', 'usage' => 'Usage', 'services' => 'Services', 'tools' => 'Tool servers' ];
     $items = [];
     foreach($tabs as $t)

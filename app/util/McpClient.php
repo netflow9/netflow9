@@ -43,7 +43,7 @@ class McpClient {
 	$result = $this->request('initialize', [
 	    'protocolVersion' => self::PROTOCOL_VERSION,
 	    'capabilities' => (object)[],
-	    'clientInfo' => [ 'name' => 'netflow9', 'title' => 'NetFlow9 workflows', 'version' => \data\Version::NUMBER ], //CLD: 2026-11-02T21:30:00+02:00: the app's version (was 1.0)
+	    'clientInfo' => [ 'name' => 'netflow9', 'title' => 'NetFlow9 workflows', 'version' => \data\Version::NUMBER ], //CLD: 2026-11-02T21:30:00+02:00: the app's version
 	]);
 	$this->protocolVersion = (string)($result['protocolVersion'] ?? self::PROTOCOL_VERSION);
 	$this->serverInfo = is_array($result['serverInfo'] ?? null) ? $result['serverInfo'] : [];
@@ -162,7 +162,7 @@ class McpClient {
 	foreach($this->headers as $name => $value)
 	    $lines[] = $name . ': ' . str_replace([ "\r", "\n" ], ' ', (string)$value);
 
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here; the message still util\JSON::encode)
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http
 	$o = [ 'headers' => $lines, 'timeout' => $this->timeout, 'maxBytes' => self::MAX_RESPONSE ];
 	if ($msg !== null)
 	    $o['json'] = $msg;

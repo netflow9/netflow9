@@ -17,7 +17,6 @@
     On error (Graph errors, e.g. not found, no access, a bad range, the workbook locked) - fail the step, or continue on a second output `error`
 */
 
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 class NodeAppExcel extends NodeAppMicrosoft {
@@ -66,7 +65,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: Empty: your OneDrive; a SharePoint site (https://contoso.sharepoint.com/sites/Team: its documents) or a drive id)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'drive',
 		'type' => 'text',
 		'label' => 'Drive',
@@ -75,7 +74,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'https://contoso.sharepoint.com/sites/Team', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: The .xlsx file: its id, path in the drive (/Reports/2026.xlsx) or a sharing link; {{ ... }} for expressions, e.g. {{ files.id }})
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'workbook',
 		'type' => 'text',
 		'label' => 'Workbook',
@@ -85,7 +84,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'placeholder' => '/Reports/2026.xlsx', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		'key' => 'sheet',
 		'type' => 'text',
 		'label' => 'Worksheet',
@@ -95,7 +94,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'Sheet1', 'expression' => true, 'showIf' => $op(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6); shorter help (was: A1 notation, e.g. A1:D100; update: the first cell written (e.g. A5); empty: the used cells (update: A1))
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'range',
 		'type' => 'text',
 		'label' => 'Cells',
@@ -105,7 +104,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'placeholder' => 'A1:D100', 'expression' => true, 'showIf' => $op([ 'read', 'update', 'clear' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: Optional: the name of a table (Insert > Table) to add the rows to; empty: after the last used row of the worksheet)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'table',
 		'type' => 'text',
 		'label' => 'Table',
@@ -116,7 +115,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 
 	    //read
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line; shorter help (was: The rows are also given as objects keyed by the header, e.g. {{ excel.rows[0].Email }})
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		'key' => 'header',
 		'type' => 'switch',
 		'label' => 'First row is the header',
@@ -137,7 +136,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 	    ],
 
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line; shorter help (was: Rows as objects: keys not in the header become new columns (else they are left out; a table's columns are not added))
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		'key' => 'addColumns',
 		'type' => 'switch',
 		'label' => 'Add the missing columns to the header',
@@ -158,7 +157,6 @@ class NodeAppExcel extends NodeAppMicrosoft {
 
 	    static::timeoutField(60),
 	    static::variableField(),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Excel, e.g. not found, no access, a worksheet or range that does not exist, the workbook locked)
 	    static::onErrorField('Excel errors, no such range, locked'),
 	];
     }

@@ -1,7 +1,7 @@
 if (!window.app)
     window.app = {};
 
-//CLD: 2026-10-25T20:30:00+02:00: the designer's Run and Executions panel, a class as app.Workflow / app.WfAssistant (was the `exec` object of the page script, views/workflow/index.php):
+//CLD: 2026-10-25T20:30:00+02:00: the designer's Run and Executions panel, a class as app.Workflow / app.WfAssistant:
 //
 //   const executions = new app.WfExecutions(panel, options);     (the panel element: .exec-panel, or its selector)
 //
@@ -658,7 +658,7 @@ window.app.WfExecutions = (function() {
 	    });
 	}
 
-	//CLD: 2026-10-29T21:38:25+02:00: the canvas: hide() (was here)
+	//CLD: 2026-10-29T21:38:25+02:00: the canvas: hide()
 	clearDetail() {
 	    this.selected = null;
 	    this.detail = null;

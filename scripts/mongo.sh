@@ -10,7 +10,7 @@
 #  secure  users, then auth, then the app's services restarted (they reconnect with their users)
 #  start | stop | restart   mongod: the server's, every database on it (other installations' too)
 #  status  mongod, sign-in on or off, whether the app signs in with its user
-#CLD: 2026-11-01T20:30:00+02:00: commands, as scripts/nginx.sh and playwright-mcp.sh; named mongo.sh (was 3_mongo-auth-setup.sh: its users only; enabling sign-in was install.sh's)
+#CLD: 2026-11-01T20:30:00+02:00: commands, as scripts/nginx.sh and playwright-mcp.sh
 #Run as root:
 #   sudo scripts/mongo.sh secure | users | auth | start | stop | restart | status
 #mm (/mm/index.php) signs in as nfn_admin, with the password in <app>/.mongodb-admin (the database field empty).

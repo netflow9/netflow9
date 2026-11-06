@@ -53,7 +53,7 @@ class NodeAppHttp extends \models\wf\WfNode {
 	$credentials = [];
 	foreach(static::credentialChoices() as $c)
 	    $credentials[$c['value']] = $c['label'];
-	//CLD: 2026-10-18T10:45:00+03:00: nested lists (sys\fields\Field_nested; were arrays checked row by row in validates()): each row cast and validated by pairSchema() (headers:
+	//CLD: 2026-10-18T10:45:00+03:00: nested lists (sys\fields\Field_nested): each row cast and validated by pairSchema() (headers:
 	//a valid name), its expressions checked, errors as "<itemLabel> <n>: <field>: <message>"; the edit grid's columns come from pairSchema()
 	$pairs = fn($key, $label, $itemLabel, $addLabel, $extra = []) => [
 	    'key' => $key,
@@ -67,10 +67,9 @@ class NodeAppHttp extends \models\wf\WfNode {
 	];
 
 	//CLD: 2026-10-24T12:38:06+03:00: the designer places the step name / response variable / on error (row 1), the credential (row 2, here 4 wide: method and URL next to it) and the timeout
-	//(last); method 2 + URL 6 (was 8: the timeout no longer next to it)
+	//(last); method 2 + URL 6
 	//CLD: 2026-10-24T12:07:28+03:00: laid out for the wide dialog ($editor: xl, the step name 6 wide), less scrolling: step name / response variable / on error; method / URL /
-	//timeout; query parameters | headers side by side; credential / body / JSON-RPC; the content (or the form fields) full width (was one setting per line, the response
-	//variable and On error last)
+	//timeout; query parameters | headers side by side; credential / body / JSON-RPC; the content (or the form fields) full width
 	return [
 	    [
 		'key' => 'variable',
@@ -88,7 +87,6 @@ class NodeAppHttp extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'fail',
 		'choices' => self::ON_ERROR,
-		//CLD: 2026-10-24T12:13:10+03:00: shorter (one line in the narrow column; was: No answer, timeout, or a status of 400 or more)
 		'help' => 'No answer, timeout, status 400+',
 		'ui' => [ 'width' => 3 ],
 	    ],
@@ -99,7 +97,6 @@ class NodeAppHttp extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'GET',
 		'choices' => self::METHODS,
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'width' => 2 ],
 	    ],
 	    [
@@ -117,10 +114,10 @@ class NodeAppHttp extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 30,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_TIMEOUT, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_TIMEOUT ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
+		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'width' => 2 ],
 	    ],
-	    //CLD: 2026-10-24T12:19:00+03:00: query parameters | headers before the credential / body row (was after it): the body type and JSON-RPC stay next to the content
+	    //CLD: 2026-10-24T12:19:00+03:00: query parameters | headers before the credential / body row: the body type and JSON-RPC stay next to the content
 	    $pairs('query', 'Query parameters', 'Query parameter', 'Add parameter', [ 'width' => 6 ]),
 	    //CLD: 2026-10-29T10:30:00+02:00: the headers under "Advanced…" (the designer's closed section of the technical settings; the Download step's too)
 	    $pairs('headers', 'Headers', 'Header', 'Add header', [ 'width' => 6, 'advanced' => true ]),
@@ -130,7 +127,6 @@ class NodeAppHttp extends \models\wf\WfNode {
 		'label' => 'Credential',
 		'default' => '',
 		'choices' => $credentials,
-		//CLD: 2026-10-24T12:13:10+03:00: shorter (one line; was: API key, Basic, Bearer or OAuth credential of the project (menu: Credentials), added to the request)
 		'help' => 'API key, Basic, Bearer or OAuth credential of the project (menu: Credentials)',
 		'ui' => [ 'placeholder' => 'None', 'width' => 4 ],
 	    ],
@@ -153,7 +149,6 @@ class NodeAppHttp extends \models\wf\WfNode {
 		'type' => 'switch',
 		'label' => 'JSON-RPC 2.0',
 		'default' => false,
-		//CLD: 2026-10-24T12:20:52+03:00: no help text (was: The content is checked as a JSON-RPC request: { "jsonrpc": "2.0", "method": ..., "params": ..., "id": ... }, or a list of them (a batch))
 		'help' => false,
 		'ui' => [
 		    'advanced' => true,
@@ -169,7 +164,6 @@ class NodeAppHttp extends \models\wf\WfNode {
 		'type' => 'textarea',
 		'label' => 'Content',
 		'help' => 'JSON: a JSON text, or {{ ... }} giving an object / list',
-		//CLD: 2026-10-24T12:13:10+03:00: 6 lines (was 8: the dialog scrolled)
 		'ui' => [ 'rows' => 6, 'expression' => 'text', 'code' => true,
 		    'syntaxBy' => [
 			[ 'syntax' => 'jsonrpc', 'if' => [ [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'json' ], [ 'key' => 'jsonRpc', 'operator' => 'eq', 'value' => true ] ] ],
@@ -182,7 +176,7 @@ class NodeAppHttp extends \models\wf\WfNode {
     }
 
     //one row of query parameters / headers / form fields
-    //CLD: 2026-10-18T10:45:00+03:00: + $header: the name must be a header name (was checked by validates()); the name is trimmed by the field (was by validates())
+    //CLD: 2026-10-18T10:45:00+03:00: + $header: the name must be a header name; the name is trimmed by the field
     public static function pairSchema($header = false) {
 	return [
 	    [ 'key' => 'name', 'type' => 'text', 'label' => 'Name', 'required' => true, 'transform' => 'trim', 'ui' => [ 'width' => 5 ] ]
@@ -245,7 +239,7 @@ class NodeAppHttp extends \models\wf\WfNode {
 	$shownUrl = preg_replace('/[?#].*$/', '', $url);
 
 	//query parameters, headers (the credential's added after them: it wins)
-	//CLD: 2026-10-28T08:30:00+02:00: query parameters as [ name, value ] pairs (was by name): a repeated name sends each row (e.g. CheckMK's columns=a&columns=b)
+	//CLD: 2026-10-28T08:30:00+02:00: query parameters as [ name, value ] pairs: a repeated name sends each row (e.g. CheckMK's columns=a&columns=b)
 	$query = [];
 	foreach((array)$this->cfg('query', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
@@ -268,7 +262,7 @@ class NodeAppHttp extends \models\wf\WfNode {
 	    foreach((array)($auth['headers'] ?? []) as $name => $value)
 		$headers[strtolower($name)] = [ $name, (string)$value ];
 	}
-	//CLD: 2026-10-28T08:30:00+02:00: self::withQuery (was http_build_query: one value per name)
+	//CLD: 2026-10-28T08:30:00+02:00: self::withQuery
 	$url = self::withQuery($url, $query, (array)($auth['query'] ?? []));
 
 	//body
@@ -318,7 +312,7 @@ class NodeAppHttp extends \models\wf\WfNode {
     }
 
     //one request (redirects followed, http / https only): [ ok, status, headers, body, error, time_ms ]
-    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here); + $opts: more util\Http options (the step: `public` unless app.env HTTP_STEPS_ALLOW_PRIVATE)
+    //CLD: 2026-10-23T15:00:00+03:00: through util\Http; + $opts: more util\Http options (the step: `public` unless app.env HTTP_STEPS_ALLOW_PRIVATE)
     //CLD: 2026-10-28T08:30:00+02:00: new: $url with the query parameters added - $pairs: [ name, value ] (a repeated name sent once per pair), $override: name => value
     //(the credential's: replaces the pairs of its name); also used by Download File
     public static function withQuery($url, array $pairs, array $override = []) {

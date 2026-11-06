@@ -83,11 +83,10 @@ class TriggerToken extends \sys\BaseModel {
 	foreach((is_array($version->nodes ?? null) ? $version->nodes : []) as $n) {
 	    $def = empty($n['isNode']) ? null : ($defs[$n['fqname'] ?? ''] ?? null);
 	    $class = $def ? \V::app()->om->getObjectClass($def['objectName']) : null;
-	    //CLD: 2026-10-18T15:00:00+03:00: self::isToken (was $class::isToken)
+	    //CLD: 2026-10-18T15:00:00+03:00: self::isToken
 	    if (!$class || !method_exists($class, 'tokenData'))
 		continue;
-	    //CLD: 2026-10-21T11:30:00+03:00: the class's TOKEN_FORMAT, default `hex`, read here (was self::formatOf($class), never defined: saving a workflow whose published version
-	    //had a Webhook / Form / Email inbound step was a fatal error)
+	    //CLD: 2026-10-21T11:30:00+03:00: the class's TOKEN_FORMAT, default `hex`, read here
 	    $format = defined($class . '::TOKEN_FORMAT') ? constant($class . '::TOKEN_FORMAT') : 'hex';
 	    if (!self::isToken($n['config']['token'] ?? null, $format))
 		continue;

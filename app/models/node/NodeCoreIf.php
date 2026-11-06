@@ -14,13 +14,13 @@ class NodeCoreIf extends \models\wf\WfNode {
     public static $outLabels = [ 'true', 'false' ];
 
     //CLD: 2026-10-06T23:21:04+03:00: condition: <variable> <operator> <value>; output 0 = true, 1 = false
-    //CLD: 2026-10-14T20:17:14+03:00: the operators are the fields' (util\Conditions::operators(): the base field's, every one; was OPERATORS here)
+    //CLD: 2026-10-14T20:17:14+03:00: the operators are the fields' (util\Conditions::operators(): the base field's, every one)
 
     const MAX_CONDITIONS = 20;
 
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel; were app.smartform fields)
-    //CLD: 2026-10-13T09:52:24+03:00: several conditions (were one: variable, operator, value), all or any of them (match); a condition's left side is an expression ({{ mail.subject }},
-    //{{ mail.to.length }}: object variables and their fields; was a variable name); shown as the rows of the data grid filter (editgrid layout `rows`)
+    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel)
+    //CLD: 2026-10-13T09:52:24+03:00: several conditions, all or any of them (match); a condition's left side is an expression ({{ mail.subject }},
+    //{{ mail.to.length }}: object variables and their fields); shown as the rows of the data grid filter (editgrid layout `rows`)
     public static function configSchema() {
 	return [
 	    [
@@ -34,7 +34,7 @@ class NodeCoreIf extends \models\wf\WfNode {
 		    'any' => 'Any condition holds'
 		],
 	    ],
-	    //CLD: 2026-10-18T10:20:00+03:00: a nested list (sys\fields\Field_nested; was an array checked row by row in validates()): each condition cast and validated by
+	    //CLD: 2026-10-18T10:20:00+03:00: a nested list (sys\fields\Field_nested): each condition cast and validated by
 	    //conditionSchema(), its expressions checked (WfNode::expressionErrors), errors as "Condition <n>: <field>: <message>"; the editgrid's columns come from it
 	    [
 		'key' => 'conditions',
@@ -100,7 +100,7 @@ class NodeCoreIf extends \models\wf\WfNode {
 
     //CLD: 2026-10-13T09:52:24+03:00: at least one condition; each through its form (required, operator), its expressions checked; the left side must be an expression (a plain text
     //would always compare the same)
-    //CLD: 2026-10-13T12:17:47+03:00: the left side's syntax is checked by expressionErrors (field syntax `reference`: plain text is refused by the parser; was checked here)
+    //CLD: 2026-10-13T12:17:47+03:00: the left side's syntax is checked by expressionErrors (field syntax `reference`: plain text is refused by the parser)
     //CLD: 2026-10-18T10:20:00+03:00: each condition (required fields, operator, expressions) is checked by parent::validates (the nested field); here only how many there are
     public function validates($options = []) {
 	$valid = parent::validates($options);
@@ -131,7 +131,7 @@ class NodeCoreIf extends \models\wf\WfNode {
 	$log = [];
 	foreach($conditions as $i => $c) {
 	    $operator = (string)($c['operator'] ?? 'eq');
-	    //CLD: 2026-10-14T20:17:14+03:00: the fields' operators, compared by util\Conditions::holds (were OPERATORS / compare() here)
+	    //CLD: 2026-10-14T20:17:14+03:00: the fields' operators, compared by util\Conditions::holds
 	    if (!array_key_exists($operator, \util\Conditions::operators()))
 		throw new \ErrorException('If: condition ' . ($i + 1) . ": unknown operator `{$operator}`");
 	    //the left side keeps its type (a list for contains / is empty); the value is text

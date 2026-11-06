@@ -85,7 +85,7 @@ class Field_object extends Field {
     public function getSchema() {
 	$schema = parent::getSchema();
 
-	//CLD: 2026-10-06T08:51:09+03:00: a select of the user-selectable objects (was a free text), as `choices` in Field_select
+	//CLD: 2026-10-06T08:51:09+03:00: a select of the user-selectable objects, as `choices` in Field_select
 	$schema['object'] = [
 	    'key' => 'object',
 	    'help' => false,

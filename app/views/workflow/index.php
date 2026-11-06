@@ -4,7 +4,7 @@ $this->pageTitle = 'Workflow: ' . (string)$wf;
 
 //we need to build a list of available nodes for the builder
 //CLD: 2026-10-25T20:00:00+02:00: only their version here (WfNode::designerDefs, which builds them): the designer asks them when this tab does not have that version (nodeDefs below,
-//WorkflowController::node_defs); were in each page (~85 KB, ~250 KB in the pjax answer)
+//WorkflowController::node_defs)
 $nodeDefsVersion = \models\wf\WfNode::designerDefs(\V::app()->config('rt.account'))['version'];
 $nodeDefsUrl = \V::app()->createUrl('/workflow/node_defs');
 //the canvas of this page (mount: not one of a page loaded since, while the definitions were asked); hex only, safe in the script
@@ -54,11 +54,9 @@ $canPublish = \V::app()->user->can('Workflow::publish', [ 'object' => $wf ]);
 $canDelete = \V::app()->user->can('Workflow::delete', [ 'object' => $wf ]);
 $canDuplicate = \V::app()->user->can('Workflow::create', [ 'object' => \V::app()->om->create('Workflow', [ 'aid' => $wf->aid, 'project' => $wf->project ]) ]);
 
-//CLD: 2026-10-06T23:25:57+03:00: connection problems of the saved workflow (Workflow::validateFlow): marked on the nodes, counted in the header
-//CLD: 2026-10-11T13:51:42+03:00: of the version being viewed, if any
-//CLD: 2026-10-19T17:10:00+03:00: + errors in the steps' settings (a draft is saved with them); the designer marks them until the step is changed (options.stepIssues)
-//CLD: 2026-10-25T19:30:00+02:00: the errors in the steps' settings are asked once the designer is shown (WorkflowController::step_issues, stepCheck below): validateSteps
-//was the slowest part of this page; the header badges start with the connection problems
+//CLD: 2026-10-25T19:30:00+02:00: the connection problems of the version shown (Workflow::validateFlow): marked on the nodes, counted in the header. The errors in the
+//steps' settings (a draft is saved with them) are asked once the designer is shown (WorkflowController::step_issues, stepCheck below: validateSteps was the slowest
+//part of this page) and marked until the step is changed (options.stepIssues)
 $issues = $shown->validateFlow();
 $issuesJs = \util\JSON::encode($issues);
 $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'id' => $wf->_id, 'version' => $viewVersion ? $viewVersion->_id : null ]));
@@ -95,18 +93,18 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	},
     };
 
-    //CLD: 2026-10-25T20:30:00+02:00: a toast with plain texts (was exec.toast)
+    //CLD: 2026-10-25T20:30:00+02:00: a toast with plain texts
     const toast = (type, title, body) => app.utils.toast({ type: type, title: app.utils.escapeHtml(title), body: app.utils.escapeHtml(body), delay: 5000 });
     const csrf = () => $('meta[name=csrf-token]').attr('content');
 
-    //CLD: 2026-10-25T20:30:00+02:00: Run and the Executions panel: app.WfExecutions (app.wfexecutions.js; was the `exec` object here), the Debug panel: app.WfDebug (app.wfdebug.js;
+    //CLD: 2026-10-25T20:30:00+02:00: Run and the Executions panel: app.WfExecutions (app.wfexecutions.js), the Debug panel: app.WfDebug (app.wfdebug.js;
     //was `debug`); one bottom panel at a time, the one last open remembered (bottomPanel)
     const exec = new app.WfExecutions(document.querySelector('.exec-panel'), {
 	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}', kill: '{$executionKillUrl}', trace: '{$executionTraceUrl}', again: '{$executionAgainUrl}', saveCase: '{$testsUrl('case_from_execution')}' },
 	canRun: {$canRun},
 	//CLD: 2026-10-12T20:33:47+03:00: the triggers Run can start
 	runTriggers: {$runTriggers},
-	//CLD: 2026-10-19T18:05:00+03:00: started once the changes are saved (autosave; was refused until saved)
+	//CLD: 2026-10-19T18:05:00+03:00: started once the changes are saved (autosave)
 	whenSaved: (fn) => autosave.whenSaved(fn),
 	onOpen: () => {
 	    debug.close();
@@ -157,9 +155,8 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	onShowExecution: (execution, trace) => exec.openTrace(execution, trace),
     });
 
-    //CLD: 2026-10-11T13:51:42+03:00: Publish needs the draft saved (it publishes the saved draft); was the `publish` switch object
-    //CLD: 2026-10-11T14:01:52+03:00: + Duplicate (copies the saved draft); stopImmediatePropagation: the data-confirm handler is on the document too
-    //CLD: 2026-10-19T18:05:00+03:00: with changes not saved yet: done once they are saved (autosave; was refused until saved)
+    //CLD: 2026-10-19T18:05:00+03:00: Publish and Duplicate act on the saved draft: with changes not saved yet, done once they are saved (autosave);
+    //stopImmediatePropagation: the data-confirm handler is on the document too
     $('.btn-duplicate-wf, .btn-publish-draft').on('click', (e) => {
 	if (exec.dirty || designer.hasPendingChange()) {
 	    e.preventDefault();
@@ -453,7 +450,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 
 	designer = new app.Workflow('canvas-wrap', options);
 
-	//CLD: 2026-10-25T19:30:00+02:00: the errors in the steps' settings, asked once the designer is shown (were computed in the page, delaying it); not used when
+	//CLD: 2026-10-25T19:30:00+02:00: the errors in the steps' settings, asked once the designer is shown; not used when
 	//the page was left (another designer is the current one) or the steps were changed since (a save answers with its own; a change not committed yet would
 	//take them as about its new config)
 	const stepCheck = {
@@ -552,7 +549,7 @@ $formOptions = [
     ?>
     <div>
 	<?php
-	//CLD: 2026-10-11T13:51:42+03:00: versions (was the draft / published switch): viewing a version shows what it is and its actions; else a menu with the
+	//CLD: 2026-10-11T13:51:42+03:00: versions: viewing a version shows what it is and its actions; else a menu with the
 	//published version (if any), whether the draft differs, Publish, Unpublish and the Versions dialog
 	$id = (string)$wf->_id;
 	$versionsUrl = \V::app()->createUrl('/workflow/versions', [ 'id' => $id ]);
@@ -674,7 +671,7 @@ $formOptions = [
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-redo-wf d-inline disabled opacity-50" title="Redo (Ctrl+Shift+Z)" aria-disabled="true"><i class="bi bi-arrow-clockwise"></i></a>
 	<a href="#" class="wf-save-status small px-1 text-nowrap text-muted text-decoration-none" title="All changes are saved"><i class="bi bi-cloud-check me-1"></i><span class="btn-label">Saved</span></a>
 	<?php endif; ?>
-	<?php //CLD: 2026-10-26T23:49:50+02:00: the Assistant's button: opens / closes its panel (app.WfAssistant; was the Assistant plugin's, hook workflow:designer-toolbar) ?>
+	<?php //CLD: 2026-10-26T23:49:50+02:00: the Assistant's button: opens / closes its panel (app.WfAssistant) ?>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-assistant-toggle d-inline" title="Assistant: describe the workflow or a change" aria-pressed="false"><i class="bi bi-stars"></i></a>
 	<?php \V::app()->hooks->applyHook('workflow:designer-toolbar', [ $wf, $viewVersion ]); ?>
     </div>
@@ -696,7 +693,7 @@ $formOptions = [
 	    </div>
 	</div>
 
-	<?php //CLD: 2026-10-26T23:49:50+02:00: the Assistant's panel (was the Assistant plugin's, hook workflow:designer-panels) ?>
+	<?php //CLD: 2026-10-26T23:49:50+02:00: the Assistant's panel ?>
 	<?= $this->renderFile('/views/assistant/_designer_panel', [ 'wf' => $wf, 'viewVersion' => $viewVersion ]) ?>
 	<?php \V::app()->hooks->applyHook('workflow:designer-panels', [ $wf, $viewVersion ]); ?>
     <?= \V::app()->form->end(); ?>
@@ -744,7 +741,7 @@ $formOptions = [
 	    <button class="debug-icon-btn btn-exec-close" title="Close panel"><i class="bi bi-x-lg"></i></button>
 	</div>
     </div>
-    <?php //CLD: 2026-10-19T22:19:24+03:00: the list's width is in the theme (netflow9/_workflow.scss: .exec-panel .exec-list; was style width 380px): the list goes above the details on phones ?>
+    <?php //CLD: 2026-10-19T22:19:24+03:00: the list's width is in the theme (netflow9/_workflow.scss: .exec-panel .exec-list): the list goes above the details on phones ?>
     <div class="debug-panel-body d-flex gap-3 p-0">
 	<div class="exec-list overflow-auto py-2 ps-3 pe-2 border-end border-secondary"></div>
 	<div class="exec-detail overflow-auto flex-grow-1 py-2 pe-3"><span style="color: var(--netflow9-debug-muted)">Select an execution</span></div>

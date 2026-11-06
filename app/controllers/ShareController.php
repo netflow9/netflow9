@@ -18,6 +18,8 @@ class ShareController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
     }
 
     public function manage($req, $resp) {
@@ -69,10 +71,9 @@ class ShareController extends \sys\BaseController {
     }
 
     private function show($resource) {
-	$account = \V::app()->config('rt.account');
 	$names = [];
 	$targets = [];
-	foreach(\V::app()->om->find('Project', [ 'aid' => $account->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $p) {
+	foreach(\V::app()->om->find('Project', [ 'aid' => $this->account->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $p) {
 	    $names[(string)$p->_id] = (string)$p->name;
 	    if (!$p->personal && !$resource->isHome($p->_id) && !$resource->shareOf($p->_id))
 		$targets[(string)$p->_id] = (string)$p->name;
@@ -86,7 +87,7 @@ class ShareController extends \sys\BaseController {
 	$object = (string)(\V::app()->request->query['object'] ?? '');
 	if (!in_array($object, self::KINDS, true))
 	    \V::app()->error(404, 'Not found');
-	$resource = \V::app()->om->findOne($object, [ '_id' => $this->getOidOrError(), 'aid' => \V::app()->config('rt.account')->_id ]);
+	$resource = \V::app()->om->findOne($object, [ '_id' => $this->getOidOrError(), 'aid' => $this->account->_id ]);
 	if (empty($resource))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can($resource::SHARE_PERM, [ 'object' => $resource ]))

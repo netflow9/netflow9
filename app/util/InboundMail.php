@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T16:11:37+02:00: new (was plugins\InboundMail\Plugin): inbound mail, the Email (inbound) trigger's: mail to <prefix>-<code>@MAIL_INBOUND_DOMAIN starts a workflow.
+    CLD: 2026-11-01T16:11:37+02:00: new: inbound mail, the Email (inbound) trigger's: mail to <prefix>-<code>@MAIL_INBOUND_DOMAIN starts a workflow.
     Haraka receives it (haraka/plugins/nfn.js: checks the address, stores the message, submits the job models\node\NodeTriggerEmail::deliver, wakes the daemon on DAEMON_PORT).
     Without Haraka (found()) the step is not available (NodeTriggerEmail::available: not in the palette, a workflow with it cannot run) and the account settings have no Inbound mail tab.
 	InboundMail::found()      Haraka is installed here with NetFlow9's plugin listed in its config/plugins
@@ -67,7 +67,7 @@ class InboundMail {
 	    'unit' => 'nfn-haraka.service',
 	    'pidfile' => BASE . '/run/haraka.pid',
 	    'health' => function() {
-		//CLD: 2026-11-01T19:00:00+02:00: on HARAKA_HOST (was 127.0.0.1)
+		//CLD: 2026-11-01T19:00:00+02:00: on HARAKA_HOST
 		$s = @stream_socket_client('tcp://' . self::host() . ':25', $errno, $errstr, 2);
 		if (!$s)
 		    return [ false, 'port 25 does not answer' . ($errstr ? ": {$errstr}" : '') ];

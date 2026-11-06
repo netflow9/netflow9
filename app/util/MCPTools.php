@@ -1,8 +1,7 @@
 <?php
 
 /*
-    the project's own tools a model may use, given by the plugins (the SysMCPTools plugin gives its MCP server's tools; none without it).
-    CLD: 2026-10-26T23:56:07+02:00: the MCP server's tools are core again (util\McpServerTools, first); plugins may add more
+    the project's own tools a model may use: the MCP server's tools (util\McpServerTools, first); plugins may add more.
     Used by the AI steps (models\node\NodeAppAi: without permission checks, the workflow's own step) and the designer's Assistant (util\WorkflowAssistant: as the user).
     MCPTools::all()
 	[
@@ -17,7 +16,6 @@ class MCPTools {
     public static function all() {
 	$tools = new \ArrayObject();
 	//CLD: 2026-10-26T23:56:07+02:00: the MCP server's tools, run as the signed-in user ($asUser: the designer's Assistant) or without permission checks (the AI steps: the workflow's own step)
-	//(were added by the SysMCPTools plugin from the hook)
 	//CLD: 2026-11-02T15:46:06+02:00: not the tools that run a workflow's tests: for people's clients over MCP, an AI step or the Assistant must not start them
 	foreach(McpServerTools::definitions() as $t)
 	    if (!in_array($t['name'], McpServerTools::NOT_FOR_MODELS, true))

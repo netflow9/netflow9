@@ -17,6 +17,8 @@ class CredentialController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
 
 	$this->project = \V::app()->om->findById('Project', \V::app()->user->crtProject);
 	if (empty($this->project))
@@ -26,7 +28,7 @@ class CredentialController extends \sys\BaseController {
     //an unsaved credential of the current project: the object for list/create checks (project scope = membership)
     private function projectCredential($variant = null) {
 	return \V::app()->om->create($variant ?: \models\Credential::FAMILY, [
-	    'aid' => \V::app()->config('rt.account')->_id,
+	    'aid' => $this->account->_id,
 	    'project' => $this->project->_id,
 	]);
     }
@@ -36,7 +38,7 @@ class CredentialController extends \sys\BaseController {
 	$oid = $this->getOidOrError();
 	$cred = \V::app()->om->findOne('Credential', [
 	    '_id' => \V::app()->om->to_oid($oid),
-	    'aid' => \V::app()->config('rt.account')->_id,
+	    'aid' => $this->account->_id,
 	    'project' => $this->project->_id,
 	]);
 	if (empty($cred))
@@ -48,9 +50,8 @@ class CredentialController extends \sys\BaseController {
 
     //a credential of a feature the account's tier does not have (util\Tiers): not changed, tested nor connected (it may be deleted)
     private function requireFeatureOf($cred) {
-	$account = \V::app()->config('rt.account');
-	if (!\util\Tiers::allows($account, $cred->getObjectName()))
-	    \V::app()->error(403, \util\Tiers::featureMessage($account, \V::app()->om->registry[$cred->getObjectName()]['feature']));
+	if (!\util\Tiers::allows($this->account, $cred->getObjectName()))
+	    \V::app()->error(403, \util\Tiers::featureMessage($this->account, \V::app()->om->registry[$cred->getObjectName()]['feature']));
     }
 
     public function list($req, $resp) {
@@ -58,7 +59,7 @@ class CredentialController extends \sys\BaseController {
 	    \V::app()->error(403, 'Unauthorized');
 
 	//CLD: 2026-11-03T18:00:00+02:00: ?shared=1: the credentials other projects share with this one: name, type, project (the page's second list)
-	$sharedHere = fn() => iterator_to_array(\V::app()->om->find('Credential', [ 'aid' => \V::app()->config('rt.account')->_id ] + \models\Credential::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false);
+	$sharedHere = fn() => iterator_to_array(\V::app()->om->find('Credential', [ 'aid' => $this->account->_id ] + \models\Credential::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false);
 	if (!empty($req->query['data']) && !empty($req->query['shared'])) {
 	    $data = array_map(fn($c) => [ '_id' => (string)$c->_id, 'name' => (string)$c->name, 'type' => (string)$c::$label, 'project' => $c::projectName($c->project) ], $sharedHere());
 	    $resp->sendJSON([ 'nRecords' => count($data), 'data' => $data ]);
@@ -79,8 +80,8 @@ class CredentialController extends \sys\BaseController {
 	if (!\V::app()->om->isDefined($type))
 	    \V::app()->error(400, 'Unknown credential type');
 	//a type of a feature the account's tier does not have (util\Tiers)
-	if (!\util\Tiers::allows(\V::app()->config('rt.account'), $type))
-	    \V::app()->error(403, \util\Tiers::featureMessage(\V::app()->config('rt.account'), \V::app()->om->registry[$type]['feature']));
+	if (!\util\Tiers::allows($this->account, $type))
+	    \V::app()->error(403, \util\Tiers::featureMessage($this->account, \V::app()->om->registry[$type]['feature']));
 	//a type this PHP cannot use (Credential::available(): e.g. a database type without its PDO driver)
 	$class = \models\Credential::classFor($type);
 	if ($class !== null && !$class::available())
@@ -208,7 +209,7 @@ class CredentialController extends \sys\BaseController {
 
 	$cred = \V::app()->om->findOne('Credential', [
 	    '_id' => \V::app()->om->to_oid($pending['credential']),
-	    'aid' => \V::app()->config('rt.account')->_id,
+	    'aid' => $this->account->_id,
 	    'project' => $this->project->_id,
 	]);
 	if (empty($cred) || !$cred::isOAuth() || !\V::app()->user->can('Credential::update', [ 'object' => $cred ])) {

@@ -32,7 +32,7 @@ class NodeCoreLoop extends \models\wf\WfNode {
 
     public static function configSchema() {
 	$identifier = [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ];
-	//CLD: 2026-10-14T14:27:53+03:00: pattern from the validate rule (util\WidgetsUtil; was repeated here)
+	//CLD: 2026-10-14T14:27:53+03:00: pattern from the validate rule (util\WidgetsUtil)
 	$nameUi = [ 'width' => 6, 'variableName' => 'write' ];
 	return [
 	    [

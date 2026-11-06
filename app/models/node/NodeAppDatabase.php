@@ -1,7 +1,5 @@
 <?php
 
-//CLD: 2026-10-25T20:00:00+02:00: moved from the Database plugin to the core (the Database step and its credentials are core, for every account: no plan feature): models\node (was plugins\Database\models)
-
 //CLD: 2026-10-25T17:40:00+02:00: new step: Database - runs SQL on a database through a database credential of the project (CredentialMysql, CredentialPostgres, CredentialMssql,
 //CredentialOracle, CredentialFirebird, CredentialOdbc; provide `database`). Operations (setting `operation`):
 //	query       a SELECT (or anything giving rows): { rows: [ { column: value } ], count, columns, truncated }, at most `maxRows` rows
@@ -54,7 +52,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 	return 'database:' . static::TYPE;
     }
 
-    //CLD: 2026-10-31T23:30:00+02:00: this PHP has the PDO driver of the step's type (was: of some type)
+    //CLD: 2026-10-31T23:30:00+02:00: this PHP has the PDO driver of the step's type
     public static function available() {
 	return SqlDb::driver(static::TYPE) !== null;
     }
@@ -218,7 +216,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 	} finally {
 	    $pdo = null;
 	}
-	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it; was the variable only)
+	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it)
 	$this->setResult($name, $result);
 	$this->exec->log($this->wfid, static::$label . " {$operation} on " . $cred->describe() . ": {$summary} (" . (int)round((microtime(true) - $start) * 1000) . ' ms)');
 	return [ 0 ];
@@ -277,7 +275,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 		$table = trim((string)($cfg['table'] ?? ''));
 		if (!SqlDb::isIdentifier($table, 3))
 		    throw new \RuntimeException("not a table name: `{$table}`");
-		//CLD: 2026-11-01T21:50:00+02:00: a list as it is (an AI step's tool: the model's argument); the setting's text rendered (was always rendered)
+		//CLD: 2026-11-01T21:50:00+02:00: a list as it is (an AI step's tool: the model's argument); the setting's text rendered
 		$list = is_array($cfg['rows'] ?? null) ? $cfg['rows'] : \util\Expression::render((string)($cfg['rows'] ?? ''), $vars);
 		if ($list === null || $list === '' || $list === [])
 		    return [ [ 'affected' => 0 ], 'no rows to insert' ];

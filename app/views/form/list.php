@@ -17,7 +17,7 @@ $rowTpl = '
 ';
 echo "<div class='list-group'>";
 foreach($forms as $f) {
-    //CLD: 2026-10-15T11:54:00+03:00: the access is in the entry's data (TriggerToken; was FormLink.access)
+    //CLD: 2026-10-15T11:54:00+03:00: the access is in the entry's data (TriggerToken)
     $public = ($f['link']->data['access'] ?? 'members') === 'public';
     echo \util\VString::insert($rowTpl, [
 	'token' => \V::app()->html->escape($f['link']->token),

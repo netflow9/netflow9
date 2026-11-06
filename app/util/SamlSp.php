@@ -338,7 +338,7 @@ class SamlSp {
 	if (!filter_var($url, FILTER_VALIDATE_URL) || strtolower($parts['scheme'] ?? '') !== 'https' || empty($parts['host']))
 	    throw new SamlException('not an https:// address');
 	//a public address only (not this machine, nor its network), the one connected to
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (its `public` guard; was curl and the address check here)
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (its `public` guard)
 	$r = \util\Http::request('GET', $url, [ 'headers' => [ 'Accept: application/samlmetadata+xml, application/xml, text/xml' ], 'timeout' => 15, 'maxBytes' => self::MAX_METADATA, 'https' => true, 'public' => true ]);
 	if ($r['tooLarge'])
 	    throw new SamlException('the metadata is too large');

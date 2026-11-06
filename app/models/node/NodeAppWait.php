@@ -1,6 +1,5 @@
 <?php
 
-//CLD: 2026-10-17T13:24:18+03:00: moved from the BaseNodes plugin into the core (was plugins\BaseNodes\app)
 namespace models\node;
 
 class NodeAppWait extends \models\wf\WfNode {
@@ -15,7 +14,7 @@ class NodeAppWait extends \models\wf\WfNode {
     public static $inputs = 1;
     public static $outputs = 1;
 
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel; were app.smartform fields)
+    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel)
     public static function configSchema() {
 	return [
 	    [
@@ -26,7 +25,7 @@ class NodeAppWait extends \models\wf\WfNode {
 		'default' => 1,
 		//CLD: 2026-10-09T08:35:15+03:00: required again (notEmpty accepts 0); the range rule skips the empty value (one message)
 		'validate' => [ [ 'inRange', 'lower' => 1, 'skipEmpty' => true, 'message' => 'must be 1 or more' ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
+		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'step' => 1, 'width' => 6 ],
 	    ],
 	    [
@@ -36,7 +35,6 @@ class NodeAppWait extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'minutes',
 		'choices' => \data\TimeUnits::LABELS_ALL,
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'width' => 6 ],
 	    ],
 	];

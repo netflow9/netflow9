@@ -12,9 +12,7 @@
 window.app.Overview = (function() {
 
     const PERIODS = { '24h': '24 hours', '7d': '7 days', '30d': '30 days', '90d': '90 days' };
-    //CLD: 2026-10-15T11:56:59+03:00: + inbound (the Email inbound trigger)
-    //CLD: 2026-10-17T15:35:00+03:00: its runs have trigger `email` (was `inbound`)
-    //CLD: 2026-10-17T20:40:00+03:00: + file (the File upload trigger)
+    //CLD: 2026-10-17T20:40:00+03:00: the triggers of the runs (`email`: the Email inbound trigger, `file`: the File upload trigger)
     const TRIGGERS = { manual: 'Manual', schedule: 'Schedule', webhook: 'Webhook', imap: 'Email (IMAP)', email: 'Email (inbound)', form: 'Form', file: 'File upload' };
     //state -> [ label, icon, text class ]: never color alone
     const STATES = {
@@ -340,7 +338,7 @@ window.app.Overview = (function() {
 		el.innerHTML = '';
 		return;
 	    }
-	    //CLD: 2026-10-24T17:30:00+03:00: app.formatter.timeAgoHtml: the date and time in the account's format as a tooltip (was timeAgo, escaped here)
+	    //CLD: 2026-10-24T17:30:00+03:00: app.formatter.timeAgoHtml: the date and time in the account's format as a tooltip
 	    const stuck = (s) => {
 		const since = s.since ? window.app.formatter.timeAgoHtml(s.since, false) : '';
 		if (s.kind === 'task')

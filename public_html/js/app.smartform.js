@@ -290,7 +290,7 @@ window.app.smartform = (function() {
     	    this._visible = visible;
     	    if (this.el)
     		this.el.classList.toggle(this._hiddenDisplayClass, !visible);
-	    //CLD: 2026-10-24T12:48:19+03:00: its column too, in a row of narrow fields (the fields after it on the line move up; was an empty column left in place)
+	    //CLD: 2026-10-24T12:48:19+03:00: its column too, in a row of narrow fields (the fields after it on the line move up)
 	    flowColVisible(this.el, visible);
 
     	    const required = !!this.schema.required || evalExpr(this.schema.requiredIf, context, false);
@@ -336,7 +336,7 @@ window.app.smartform = (function() {
 		this.setInvalid('This field is required.');
 		return false;
 	    }
-	    //CLD: 2026-10-14T14:54:31+03:00: the whole value must match (anchored, as the HTML pattern attribute and the server: util\FormSchema, the Validator's regex rule); was any part of it
+	    //CLD: 2026-10-14T14:54:31+03:00: the whole value must match (anchored, as the HTML pattern attribute and the server: util\FormSchema, the Validator's regex rule)
 	    if (this.schema.pattern && typeof value === 'string' && value !== '' && !new RegExp('^(?:' + this.schema.pattern + ')$').test(value)) {
 		this.setInvalid(this.schema.patternMessage || 'Invalid format.');
 		return false;
@@ -900,7 +900,7 @@ window.app.smartform = (function() {
     	    const dep = String(((context || {}).data || {})[by.key] ?? '');
     	    if (this._choicesFor === dep)
     		return;
-    	    //CLD: 2026-10-22T02:10:00+03:00: cleared only when switching from one value to another (was: after the first render, which runs before setData: the saved value was lost)
+    	    //CLD: 2026-10-22T02:10:00+03:00: cleared only when switching from one value to another
     	    const switched = !!this._choicesFor && dep !== '';
     	    this._choicesFor = dep;
     	    const list = normalizeChoices((by.choices || {})[dep] || []);
@@ -1979,7 +1979,7 @@ window.app.smartform = (function() {
     		if (node.width && node.width < 12) {
         	    // Simple 2/3/4-column helper: give the field's own row a width and
         	    // let sibling fields with widths flow onto the same line.
-		    //CLD: 2026-10-24T12:41:42+03:00: + newRow: the field starts a new line (was always after the narrow fields before it)
+		    //CLD: 2026-10-24T12:41:42+03:00: + newRow: the field starts a new line
         	    this._appendToFlowRow(targetEl, colWrap(el, node.width), !!node.newRow);
     		} else {
         	    targetEl.appendChild(el);
@@ -2001,7 +2001,7 @@ window.app.smartform = (function() {
 	    }
     	    if (!isFlowRow) {
     		lastRow = document.createElement('div');
-    		//CLD: 2026-10-24T12:52:25+03:00: no vertical gutter (gy-0; was g-3): the fields' own bottom margin spaces the lines, as it spaces the fields one under the other (the lines were twice as far apart)
+    		//CLD: 2026-10-24T12:52:25+03:00: no vertical gutter (gy-0): the fields' own bottom margin spaces the lines, as it spaces the fields one under the other (the lines were twice as far apart)
     		lastRow.className = 'row gx-3 gy-0';
     		lastRow.dataset.flowRow = '1';
     		targetEl.appendChild(lastRow);
@@ -2018,7 +2018,7 @@ window.app.smartform = (function() {
 	/** Re-run show-if/hide-if/required-if across every top-level field. */
 	recomputeVisibility() {
 	    //CLD: 2026-10-24T12:50:55+03:00: in their order, a hidden field's value is empty for the conditions of the fields after it (a field shown by a hidden one's value is hidden too: e.g.
-	    //the link's scope when the share settings are hidden; was the hidden field's value, often its default)
+	    //the link's scope when the share settings are hidden)
 	    const data = Object.assign({}, this.data);
     	    const context = { data: data, row: null, index: null };
     	    this.fields.forEach((f) => {
@@ -2125,7 +2125,7 @@ window.app.smartform = (function() {
      */
     //CLD: 2026-10-14T20:17:14+03:00: a condition { key, operator, value, scope } (scope 'row': the field's editgrid row, else the form's data): evaluated as util\Conditions::holds on
     //the server (the fields' operators eq ne gt gte lt lte contains startsWith in empty notEmpty; numbers when both sides are numeric, else text; contains / startsWith
-    //ignore case; `in` takes a list or comma-separated text); conditions need no JS written by the server (were JS strings made by util\SmartForm::showIf)
+    //ignore case; `in` takes a list or comma-separated text); conditions need no JS written by the server
     const toText = (v) => v === undefined || v === null ? '' : (typeof v === 'boolean' ? (v ? 'true' : 'false') : (typeof v === 'object' ? JSON.stringify(v) : String(v)));
     const isNumeric = (s) => s.trim() !== '' && isFinite(Number(s));
     function holds(left, operator, right) {

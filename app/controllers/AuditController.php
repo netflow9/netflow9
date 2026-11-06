@@ -26,6 +26,8 @@ class AuditController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
 
 	$this->project = \V::app()->om->findById('Project', \V::app()->user->crtProject);
 	if ((\V::app()->request->query['log'] ?? '') === 'execution')
@@ -38,12 +40,12 @@ class AuditController extends \sys\BaseController {
     //system log: an entry without a project (only global scope may list it)
     private function projectEntry() {
 	return \V::app()->om->create($this->log, [
-	    'aid' => \V::app()->config('rt.account')->_id,
+	    'aid' => $this->account->_id,
 	    'project' => $this->system ? null : ($this->project->_id ?? null),
 	]);
     }
 
-    //the system log: the whole account; the project log: only the current project's entries (was: the whole account for global scope)
+    //the system log: the whole account; the project log: only the current project's entries
     private function scopeQuery() {
 	return ($this->system ? [] : [ 'project' => $this->project->_id ?? null ]) + ($this->agent ? [ 'action' => \models\AuditLog::AGENT_ACTION ] : []);
     }
@@ -77,7 +79,7 @@ class AuditController extends \sys\BaseController {
     //one entry (dialog): who / what acted, when, what, and the changed values
     public function view($req, $resp) {
 	$oid = $this->getOidOrError();
-	$entry = \V::app()->om->findOne($this->log, [ '_id' => $oid, 'aid' => \V::app()->config('rt.account')->_id ]);
+	$entry = \V::app()->om->findOne($this->log, [ '_id' => $oid, 'aid' => $this->account->_id ]);
 	if (empty($entry))
 	    \V::app()->error(404, 'Not found');
 

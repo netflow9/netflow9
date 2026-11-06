@@ -3,8 +3,6 @@
 //CLD: 2026-10-20T10:00:00+03:00: new credential variant: Google Drive (OAuth); the Google app needs the Google Drive API enabled and the scope
 //https://www.googleapis.com/auth/drive (all the files the account can open). Provides `gdrive` (the Google Drive step) and `http` (HTTP Request: a bearer token for other Google APIs)
 
-//CLD: 2026-10-22T00:35:40+03:00: moved to the GoogleIntegration plugin (was models\credential\CredentialGoogleDrive); core classes fully qualified
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\GoogleIntegration\models): the Google credentials and steps are core, for every account (no plan feature)
 namespace models\credential;
 
 class CredentialGoogleDrive extends \models\credential\CredentialGoogleOAuth2 {

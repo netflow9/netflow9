@@ -17,7 +17,7 @@
     + building workflows (user's choice: create and update drafts, people publish): list_step_types, get_workflow, create_workflow, update_workflow (util\WorkflowSpec)
 */
 
-//CLD: 2026-10-26T23:56:07+02:00: moved to the core (was plugins\SysMCPTools\util\McpTools; util\McpTools would clash with util\MCPTools: PHP class names ignore case)
+//CLD: 2026-10-26T23:56:07+02:00: named McpServerTools: util\McpTools would clash with util\MCPTools (PHP class names ignore case)
 namespace util;
 
 class McpServerTools {
@@ -55,7 +55,7 @@ class McpServerTools {
     //log lines get_execution returns (the last ones)
     const MAX_LOG = 50;
     //CLD: 2026-10-17T21:00:54+03:00: largest image read_image returns / an AI step sends (bytes; the providers' limit)
-    //CLD: 2026-10-20T23:40:00+03:00: the largest image is the AI steps' (models\node\NodeAppAi::MAX_IMAGE, was here: the AI steps use it without this plugin)
+    //CLD: 2026-10-20T23:40:00+03:00: the largest image is the AI steps' (models\node\NodeAppAi::MAX_IMAGE)
     const MAX_IMAGE = \models\node\NodeAppAi::MAX_IMAGE;
     //CLD: 2026-10-17T21:00:54+03:00: the key of a result holding images: [ [ mimeType, data (base64) ] ]; sent as image content (McpController, the AI steps), not as text (images())
     const IMAGES = '_images';
@@ -258,13 +258,13 @@ class McpServerTools {
 
 
     //CLD: 2026-10-13T15:17:12+03:00: $wf with the steps / connections of $args (when given) as its draft, checked (wrong settings: \ErrorException with the reasons) and saved; the answer:
-    //CLD: 2026-10-19T17:25:00+03:00: wrong step settings no longer refuse the save (they are in `problems`)
+    //CLD: 2026-10-19T17:25:00+03:00: wrong step settings do not refuse the save (they are in `problems`)
     //{ id, name, url (the designer), status, problems }
     private static function saveSpec($wf, array $args, $relayout) {
 	if (array_key_exists('steps', $args) || array_key_exists('connections', $args)) {
 	    $wf->nodes = \util\WorkflowSpec::nodesFrom(self::listArg($args, 'steps'), self::listArg($args, 'connections'), is_array($wf->nodes) ? array_values($wf->nodes) : [], $relayout);
 	}
-	//CLD: 2026-10-19T17:25:00+03:00: validatesDraft (was validates): saved even with errors in the steps' settings (as the designer); they are returned in `problems`
+	//CLD: 2026-10-19T17:25:00+03:00: validatesDraft: saved even with errors in the steps' settings (as the designer); they are returned in `problems`
 	//and stop publishing / running; only the workflow's own rules refuse the save
 	if (!$wf->validatesDraft()) {
 	    $messages = [];
@@ -276,7 +276,7 @@ class McpServerTools {
 	$wf->save();
 	//CLD: 2026-10-19T17:25:00+03:00: + the errors in the steps' settings, first (WorkflowSpec::problems has the connections only)
 	$stepProblems = array_map(fn($i) => array_filter([ 'level' => $i['level'], 'step' => $i['node'] ?? null, 'message' => $i['message'] ], fn($v) => $v !== null), $wf->stepIssues);
-	//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://); was built from the request host
+	//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
 	return [ 'id' => (string)$wf->_id, 'name' => (string)$wf->name, 'url' => \V::app()->createAbsoluteUrl('/workflow/index', [ 'id' => $wf->_id ]),
 	    'status' => (string)($wf->status ?: \models\Workflow::DRAFT), 'problems' => array_merge($stepProblems, \util\WorkflowSpec::problems($wf)) ];
     }
@@ -463,7 +463,7 @@ class McpServerTools {
 		$trigger = self::triggerOf($live);
 		if (($trigger['fqname'] ?? '') !== 'trigger::manual')
 		    throw new \ErrorException('only workflows with a Manual trigger can be run (this one starts by ' . ($trigger['fqname'] ?? 'nothing') . ')');
-		//CLD: 2026-10-19T17:10:00+03:00: issues() (was validateFlow): a draft may be saved with errors in the steps' settings
+		//CLD: 2026-10-19T17:10:00+03:00: issues(): a draft may be saved with errors in the steps' settings
 		if (array_filter($live->issues(), fn($i) => $i['level'] == 'error'))
 		    throw new \ErrorException('the workflow has errors (steps\' settings or connections)');
 		$vars = $args['variables'] ?? [];
@@ -473,7 +473,6 @@ class McpServerTools {
 		    if (!\util\Validator::isIdentifier((string)$v))
 			throw new \ErrorException("variables: `{$v}` is not a valid name");
 		    //CLD: 2026-10-13T15:24:28+03:00: the project variables' name
-		    //CLD: 2026-10-22T00:28:13+03:00: CredentialVariable::EXPRESSION_NAME (was models\Variable's)
 		    if ((string)$v === \models\credential\CredentialVariable::EXPRESSION_NAME)
 			throw new \ErrorException('variables: `' . \models\credential\CredentialVariable::EXPRESSION_NAME . '` is the name of the project variables');
 		}
@@ -481,7 +480,7 @@ class McpServerTools {
 		    throw new \ErrorException('workflows started from tools are nested too deep (at most ' . self::MAX_DEPTH . ')');
 		//CLD: 2026-10-30T15:00:00+02:00: the caller waits for the result. Called by an AI step of a running execution (a daemon worker): run here, nested (waiting for another
 		//worker could wait for ever when the account's are all busy); over MCP (a web request): queued for the daemon, waited for (WfExecution::waitFor, at most
-		//WAIT_RESULT s; were run here, in a sync slot: models\ExecutionSlot, removed)
+		//WAIT_RESULT s)
 		$exe = \models\wf\WfExecution::startFor($live, $asUser ? 'mcp' : 'ai', [ 'user' => $user ? (string)$user->_id : null, 'vars' => $vars ], (string)$trigger['wfid']);
 		$exe->log(null, $asUser ? 'started by ' . (string)$user->name . ' over MCP' : 'started by an AI step');
 		$exe->save();
@@ -637,7 +636,7 @@ class McpServerTools {
 
 	    case 'list_variables':
 		$list = [];
-		//CLD: 2026-10-22T00:28:13+03:00: the credentials of type Variable, with Credential::read (was models\Variable, Variable::read)
+		//CLD: 2026-10-22T00:28:13+03:00: the credentials of type Variable, with Credential::read
 		foreach($om->find('CredentialVariable', [ 'aid' => $aid, 'project' => $project->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $v) {
 		    if ($can('Credential::read', $v))
 			$list[] = [ 'name' => (string)$v->name, 'value' => $v->value, 'description' => (string)$v->description ];

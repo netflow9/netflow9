@@ -6,7 +6,7 @@
 #Run as a user of the docker group (or root):
 #   scripts/docker.sh setup [--dev] [--tls] [--no-browser] [--no-mail]   .env written (random passwords, your uid / gid), the submodules checked out;
 #                                                                   an existing .env: only the files and profiles changed
-#CLD: 2026-11-01T23:50:00+02:00: the web browser (playwright) and inbound mail (haraka) by default (were --browser, --mail); --no-browser / --no-mail leave them out
+#CLD: 2026-11-01T23:50:00+02:00: the web browser (playwright) and inbound mail (haraka) by default; --no-browser / --no-mail leave them out
 #   scripts/docker.sh build [service...]                           the images (all of the setup's, or the ones named)
 #   scripts/docker.sh install [setup's options]                    setup when there is no .env, build, start
 #   scripts/docker.sh start | stop | restart [service...]

@@ -71,7 +71,7 @@ $texts = function($v) use (&$texts) {
 	$out = array_merge($out, $texts($x));
     return $out;
 };
-//CLD: 2026-11-02T18:00:00+02:00: the last one (was the first); a tool's result never starts a line with it in the suites
+//CLD: 2026-11-02T18:00:00+02:00: the last one; a tool's result never starts a line with it in the suites
 foreach($texts($body['messages'] ?? $body['contents'] ?? []) as $t) {
     if (preg_match_all('/^SCRIPT: (.+)$/m', $t, $sm))
 	$script = json_decode(end($sm[1]), true);

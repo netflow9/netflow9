@@ -69,7 +69,7 @@ class SysCommand extends \sys\BaseController {
 	exit(0);
     }
 
-    //CLD: 2026-10-31T12:00:00+02:00: moved here from SeedCommand::indexes (was `../v seed::indexes`); only once the app is set up (sys::install creates them itself)
+    //CLD: 2026-10-31T12:00:00+02:00: only once the app is set up (sys::install creates them itself)
     public function indexes($req = null, $resp = null) {
 	if (\V::app()->config('app.setup'))
 	    $this->fail('the app is not set up yet (app.env is missing): sys::install creates the indexes');
@@ -210,7 +210,7 @@ class SysCommand extends \sys\BaseController {
 	$this->setAccount($wf->aid);
 
 	//CLD: 2026-10-06T23:25:57+03:00: do not run a workflow whose connections have errors (warnings are printed)
-	//CLD: 2026-10-19T17:10:00+03:00: issues() (was validateFlow): + errors in the steps' settings (a draft may be saved with them)
+	//CLD: 2026-10-19T17:10:00+03:00: issues(): + errors in the steps' settings (a draft may be saved with them)
 	$issues = $wf->issues();
 	foreach($issues as $i)
 	    echo $i['level'] . ': ' . $i['message'] . ($i['node'] ? " [{$i['node']}]" : '') . "\n";
@@ -219,7 +219,7 @@ class SysCommand extends \sys\BaseController {
 	    exit(1);
 	}
 
-	//CLD: 2026-10-11T17:45:25+03:00: started from the console (was the default `manual`: the execution log and Executions panel showed a designer Run)
+	//CLD: 2026-10-11T17:45:25+03:00: started from the console
 	$exe = \models\wf\WfExecution::startFor($wf, 'console');
 	$exe->save();
 	echo "execution " . $exe->_id . " of workflow `" . $wf->name . "`\n";

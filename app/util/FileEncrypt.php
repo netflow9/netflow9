@@ -55,7 +55,7 @@ class FileEncrypt extends FileDecrypt {
 	[ $code, $err ] = self::run(array_merge($base, [ '--import', $file ]));
 	if ($code !== 0)
 	    throw new \RuntimeException('the public key could not be read: ' . self::toolMessage($err));
-	//CLD: 2026-10-20T20:00:00+03:00: the keys of $text only (--show-keys), not of the whole keyring (was --list-keys): a private key imported into the same keyring
+	//CLD: 2026-10-20T20:00:00+03:00: the keys of $text only (--show-keys), not of the whole keyring: a private key imported into the same keyring
 	//(decrypting, signing) must never count as a trusted signer or become a recipient
 	[ , , $listing ] = self::run(array_merge($base, [ '--with-colons', '--show-keys', $file ]));
 	$keys = [];
@@ -180,7 +180,7 @@ class FileEncrypt extends FileDecrypt {
 	    try {
 		$keys = self::importPublicKeys([ self::tool('gpg'), '--homedir', $home, '--batch', '--no-tty', '--no-permission-warning' ], $work, $cred->publicKey);
 		$uids = array_merge(...array_map(fn($k) => $k['uids'] ?: [ substr($k['fpr'], -16) ], $keys));
-		//CLD: 2026-10-24T16:30:00+03:00: Format::plural (was key(s))
+		//CLD: 2026-10-24T16:30:00+03:00: Format::plural
 		return Format::plural(count($keys), 'recipient key') . ': ' . implode(', ', array_slice($uids, 0, 5));
 	    } finally {
 		$gpgconf = self::tool('gpgconf', false);
@@ -202,7 +202,7 @@ class FileEncrypt extends FileDecrypt {
 	    }
 	    if (!$names)
 		throw new \RuntimeException('no certificate');
-	    //CLD: 2026-10-24T16:30:00+03:00: Format::plural (was certificate(s))
+	    //CLD: 2026-10-24T16:30:00+03:00: Format::plural
 	    return Format::plural(count($names), 'recipient certificate') . ': ' . implode(', ', $names);
 	}
 	if ((string)$cred->passphrase === '')

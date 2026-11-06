@@ -295,11 +295,11 @@ class WfExecution extends \sys\BaseModel {
     //---------------------------------------------------------------------------------------------------------------
     //variables and log (used by the nodes)
 
-    //CLD: 2026-10-13T15:24:28+03:00: the names expressions see: the execution's variables and `vars` = the project variables (models\Variable; loaded once per run, never saved with the
+    //CLD: 2026-10-13T15:24:28+03:00: the names expressions see: the execution's variables and `vars` = the project variables (credentials of type Variable; loaded once per run, never saved with the
     //execution: a resumed run sees their current values)
     private $projectVars = null;
 
-    //CLD: 2026-10-22T00:28:13+03:00: the project variables are credentials of type Variable (models\credential\CredentialVariable; was models\Variable)
+    //CLD: 2026-10-22T00:28:13+03:00: the project variables are credentials of type Variable (models\credential\CredentialVariable)
     public function expressionVariables() {
 	if ($this->projectVars === null)
 	    $this->projectVars = \models\credential\CredentialVariable::expressionValues($this->aid, $this->project);
@@ -353,7 +353,7 @@ class WfExecution extends \sys\BaseModel {
 		\models\ExecutionLog::record('execution.start', null, 'trigger: ' . $this->trigger . ($this->version ? ', v' . (int)$this->version : ', draft'));
 	    }
 
-	    //CLD: 2026-10-23T00:40:00+03:00: saved as running at once (was: `new` in the database until the whole run ended - minutes with a long AI step), then after the passes,
+	    //CLD: 2026-10-23T00:40:00+03:00: saved as running at once, then after the passes,
 	    //at most every SAVE_EVERY s (the designer's Executions panel shows the steps as they run)
 	    if ($this->state == 'new') {
 		$this->state = 'run';
@@ -491,8 +491,8 @@ class WfExecution extends \sys\BaseModel {
     //---------------------------------------------------------------------------------------------------------------
     //hand the run to the daemon (saved first)
     //CLD: 2026-10-26T09:58:28+02:00: + $reason, the log message (default: the account's sync executions were all running)
-    //CLD: 2026-10-30T15:00:00+02:00: every execution started by a web request (designer Run, Webhook, Form, Human task, MCP run_workflow) is queued here (were run in the request:
-    //runSync, the sync slots models\ExecutionSlot, removed); Job::submit wakes the daemon (NEWJOB on its socket), so an idle worker starts it at once
+    //CLD: 2026-10-30T15:00:00+02:00: every execution started by a web request (designer Run, Webhook, Form, Human task, MCP run_workflow) is queued here;
+    //Job::submit wakes the daemon (NEWJOB on its socket), so an idle worker starts it at once
     public function queue($reason = null) {
 	$this->log(null, $reason ?? 'queued for the daemon');
 	$this->save();
@@ -685,7 +685,7 @@ class WfExecution extends \sys\BaseModel {
     }
 
     //whether step $nodeId is inside loop $loopId
-    //CLD: 2026-10-14T21:17:55+03:00: its parent (a loop cannot be inside another loop; was any depth)
+    //CLD: 2026-10-14T21:17:55+03:00: its parent (a loop cannot be inside another loop)
     private function inside($nodeId, $loopId) {
 	return (string)($this->__nodes[$nodeId]->parentId ?? '') === (string)$loopId;
     }
@@ -699,7 +699,7 @@ class WfExecution extends \sys\BaseModel {
     }
 
     //CLD: 2026-10-13T13:15:14+03:00: the innermost active loop around step $nodeId (null: none)
-    //CLD: 2026-10-14T21:17:55+03:00: its parent, when that is an active loop (a loop cannot be inside another loop; was searched through the loops around it)
+    //CLD: 2026-10-14T21:17:55+03:00: its parent, when that is an active loop (a loop cannot be inside another loop)
     private function activeLoop($nodeId) {
 	$loop = $this->__nodes[(string)($this->__nodes[$nodeId]->parentId ?? '')] ?? null;
 	return $loop !== null && !empty($loop->active) && method_exists($loop, 'next') ? $loop : null;

@@ -9,7 +9,7 @@ if (\V::app()->user->can('File::create')) {
 	\V::app()->createUrl('/file/upload'),
 	[ 'id' => 'btn-upload', 'class' => 'btn btn-primary btn-sm', 'escape' => false ]
     );
-    //CLD: 2026-10-06T21:33:37+03:00: allowed file types (was images only); also filters dropped files (app.FileUpload checks `accept`)
+    //CLD: 2026-10-06T21:33:37+03:00: allowed file types; also filters dropped files (app.FileUpload checks `accept`)
     $createBtn .= '<input id="file-input" type="file" hidden multiple accept="' . \models\File::acceptAttribute() . '">';
 }
 

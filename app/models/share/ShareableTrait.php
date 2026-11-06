@@ -55,7 +55,7 @@ trait ShareableTrait {
     }
 
     //the share with project $projectId as an array, null when there is none
-    //CLD: 2026-11-03T18:00:00+02:00: all it holds (was the fixed fields)
+    //CLD: 2026-11-03T18:00:00+02:00: all it holds
     public function shareOf($projectId) {
 	foreach((array)$this->shares as $share) {
 	    if ((string)$share['project'] === (string)$projectId)

@@ -38,7 +38,7 @@ class Field_number extends Field {
 	    return '';
 	$value = $this->binding->data($this->key);
 	switch($this->format) {
-	    //util\Format::bytes: "1.5 MB" (was "1.50M", the unit from the number of digits: 1000 bytes were "0.98K")
+	    //util\Format::bytes: "1.5 MB"
 	    case 'bytes-human':
     		return \util\Format::bytes($value, 2);
 	    default:

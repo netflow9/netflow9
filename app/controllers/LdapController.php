@@ -22,13 +22,15 @@ class LdapController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
     }
 
     protected function settingsOfAccount() {
-	//CLD: 2026-10-21T11:30:00+03:00: found here (LdapSettings::forAccount removed): saved, or new with the defaults (not saved)
-	$aid = \V::app()->config('rt.account')->_id;
+	//CLD: 2026-10-21T11:30:00+03:00: saved, or new with the defaults (not saved)
+	$aid = $this->account->_id;
 	return \V::app()->om->findOne('LdapSettings', [ 'aid' => $aid ]) ?: \V::app()->om->create('LdapSettings', [ 'aid' => $aid ]);
     }
 
@@ -116,7 +118,7 @@ class LdapController extends \sys\BaseController {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 	$oid = $this->getOidOrError();
-	$aid = \V::app()->config('rt.account')->_id;
+	$aid = $this->account->_id;
 	$user = \V::app()->om->findOne('User', [ '_id' => $oid, 'aid' => $aid ]);
 	if (empty($user))
 	    \V::app()->error(404, 'Not found');

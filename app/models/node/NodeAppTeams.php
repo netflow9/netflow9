@@ -13,7 +13,6 @@
     On error (Graph errors, e.g. not found, no access, a permission the admin has not granted) - fail the step, or continue on a second output `error`
 */
 
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 class NodeAppTeams extends NodeAppMicrosoft {
@@ -66,7 +65,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'sendChannel', 'reply', 'channels' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: The channel id, e.g. 19:...@thread.tacv2 (List the channels gives them))
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'channel',
 		'type' => 'text',
 		'label' => 'Channel',
@@ -76,7 +75,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::IN_CHANNEL) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: The id of the channel message to reply to, e.g. {{ teams.id }} of a Send a channel message)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'messageId',
 		'type' => 'text',
 		'label' => 'Message',
@@ -86,7 +85,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'reply' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: The chat id, e.g. 19:...@thread.v2 (List my chats gives them))
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'chat',
 		'type' => 'text',
 		'label' => 'Chat',
@@ -105,7 +104,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'sendChannel' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Message as',
@@ -115,7 +114,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => $op(self::SEND) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'importance',
 		'type' => 'select',
@@ -137,7 +136,6 @@ class NodeAppTeams extends NodeAppMicrosoft {
 
 	    static::timeoutField(60),
 	    static::variableField(),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Teams, e.g. not found, no access, a permission the admin has not granted)
 	    static::onErrorField('Teams errors, a permission not granted'),
 	];
     }

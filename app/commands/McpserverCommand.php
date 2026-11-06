@@ -7,7 +7,7 @@ use models\ToolServerAccess;
 use models\ToolServerSlot;
 
 //CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers (util\ToolServers) and the accounts that may use them
-//CLD: 2026-11-01T11:55:18+02:00: core: ./v mcpserver::<action> (was the LocalMCP plugin's ./v LocalMCP::servers::<action>, plugins\LocalMCP\commands\ServersCommand); the servers are in
+//CLD: 2026-11-01T11:55:18+02:00: core: ./v mcpserver::<action>; the servers are in
 //mcp.json (next to app.env): + add / remove (the installers use them, e.g. scripts/playwright-mcp.sh: the only writers of the file, with Settings > Tool servers)
 //  ../v mcpserver::list                                  the servers: reachable?, the accounts enabled, the sessions open
 //  ../v mcpserver::add --id=<id> [--file=<a JSON entry>] [--url=] [--label=] [--description=] [--tools=a,b,...] [--headers=<a JSON object>] [--max-sessions=]

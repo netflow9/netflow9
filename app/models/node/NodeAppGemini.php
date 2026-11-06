@@ -29,36 +29,35 @@ class NodeAppGemini extends NodeAppAi {
     protected static function providerSchema() {
 	return [
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3), not on a new line; shorter help (was: Gemini 3+; Minimal / Medium: Flash only)
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide, not on a new line
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'thinking',
 		'type' => 'select',
 		'label' => 'Thinking',
 		'default' => '',
 		'choices' => self::THINKING,
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line (was 6); shorter help (was: How much the model thinks (Gemini 3 and later): higher is better for hard tasks, lower is faster and cheaper;
-		//Minimal / Medium: Flash models only)
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line
 		'help' => 'Gemini 3+',
 		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide (was 3); shorter help (was: 0 - 2; empty: the default (best))
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'temperature',
 		'type' => 'text',
 		'label' => 'Temperature',
 		'default' => '',
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide (was 6); shorter help (was: Optional, 0 - 2; empty: the model default (recommended for Gemini 3))
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide
 		'help' => '0 - 2; empty: default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means, as the Thinking choice (was: default)
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means, as the Thinking choice
 		'ui' => [ 'advanced' => true, 'width' => 2, 'placeholder' => 'Model default' ],
 	    ],
 	];
     }
 
     //the system prompt apart (systemInstruction); the images before the prompt's text
-    //CLD: 2026-10-27T23:11:38+02:00: $files (was $images): their parts before the prompt's text (filePart)
+    //CLD: 2026-10-27T23:11:38+02:00: $files: their parts before the prompt's text (filePart)
     protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	$parts = array_map([ self::class, 'filePart' ], $files);
 	$parts[] = [ 'text' => $prompt ];

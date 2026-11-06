@@ -11,7 +11,7 @@ class HookController extends \sys\APIController {
     //largest accepted request body (bytes)
     const MAX_BODY = 1048576;
 
-    //CLD: 2026-10-17T10:46:42+03:00: limits of the request variable (were MAX_VARS, the number of query_ / body_ variables): headers kept, levels of query / body data
+    //CLD: 2026-10-17T10:46:42+03:00: limits of the request variable: headers kept, levels of query / body data
     const MAX_HEADERS = 100;
     const REFUSED = 'webhook.refused';
 
@@ -43,8 +43,7 @@ class HookController extends \sys\APIController {
 	$this->requireRunnable($wf, $live);
 
 	//start: the request is kept as JSON text (any keys allowed)
-	//CLD: 2026-10-17T10:46:42+03:00: the whole request goes into one variable, an object named by the step's `variable` setting (default `webhook`; were webhook_method,
-	//query_<name>, body_<name>)
+	//CLD: 2026-10-17T10:46:42+03:00: the whole request goes into one variable, an object named by the step's `variable` setting (default `webhook`)
 	$query = $_GET;
 	$name = (string)($cfg['variable'] ?? 'webhook');
 	if (!\util\Validator::isIdentifier($name))
@@ -54,7 +53,6 @@ class HookController extends \sys\APIController {
 	$vars = [ $name => [
 	    'method' => $method,
 	    'path' => '/hook/' . $token,
-	    //CLD: 2026-10-18T23:07:51+03:00: V::createAbsoluteUrl (was NodeTriggerWebhook::urlFor, removed)
 	    'url' => \V::app()->createAbsoluteUrl('/hook/' . $token) . (($_SERVER['QUERY_STRING'] ?? '') !== '' ? '?' . $_SERVER['QUERY_STRING'] : ''),
 	    'query' => $this->clean($query),
 	    'headers' => $this->requestHeaders($cfg),
@@ -74,10 +72,8 @@ class HookController extends \sys\APIController {
 	    'vars' => $vars,
 	];
 
-	//CLD: 2026-10-10T19:08:46+03:00: started at this webhook step only (was every trigger step of the workflow: Manual, Schedule, IMAP, ... ran too)
-	//CLD: 2026-10-11T13:51:42+03:00: the published version (records its number)
-	//CLD: 2026-10-30T15:00:00+02:00: always run by the daemon (queued); answered with its result: waits for it (WfExecution::waitFor, at most WAIT_RESULT s; was run here, in a sync slot:
-	//429 when the account's were all running)
+	//CLD: 2026-10-30T15:00:00+02:00: the published version (records its number), started at this webhook step only; always run by the daemon (queued); answered with
+	//its result: waits for it (WfExecution::waitFor, at most WAIT_RESULT s)
 	$respWhenFinished = ($cfg['respond'] ?? 'received') === 'finished';
 
 	$exe = \models\wf\WfExecution::startFor($live, 'webhook', $input, $hook->node);
@@ -156,7 +152,6 @@ class HookController extends \sys\APIController {
 	$isForm = in_array($contentType, [ 'application/x-www-form-urlencoded', 'multipart/form-data' ], true);
 	$isText = (strpos($contentType, 'text/') === 0);
 
-	//CLD: 2026-10-18T18:34:20+03:00: refuse() (was reply(), removed with the output buffer handling)
 	if (($expected === 'json' && !$isJson) || ($expected === 'form' && !$isForm) || ($expected === 'text' && !$isText))
 	    $this->refuse(415, 'Unsupported content type, expected ' . (NodeTriggerWebhook::CONTENT_TYPES[$expected] ?? $expected));
 

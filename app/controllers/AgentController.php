@@ -24,20 +24,22 @@ class AgentController extends \sys\BaseController {
 		\V::app()->response->sendJSON([ 'ok' => false, 'error' => 'Log in first.' ], true, 401);
 	    $this->redirect(\V::app()->user->getLoginUrl());
 	}
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
     }
 
     //the index entry of the Chat trigger $token in this account, when the user may talk to it; null: not
     private function agent($token) {
 	if (!\models\TriggerToken::isToken((string)$token, 'hex'))
 	    return null;
-	$link = \V::app()->om->findOne('TriggerToken', [ 'type' => 'trigger::chat', 'token' => (string)$token, 'aid' => \V::app()->config('rt.account')->_id ?? null ]);
+	$link = \V::app()->om->findOne('TriggerToken', [ 'type' => 'trigger::chat', 'token' => (string)$token, 'aid' => $this->account->_id ?? null ]);
 	return $link && NodeTriggerChat::allows(\V::app()->user, $link) ? $link : null;
     }
 
     public function list($req, $resp) {
 	$agents = [];
 	$projects = [];
-	foreach(\V::app()->om->find('TriggerToken', [ 'aid' => \V::app()->config('rt.account')->_id ?? null, 'type' => 'trigger::chat' ], [ 'sort' => [ 'title' => 1 ] ]) as $link) {
+	foreach(\V::app()->om->find('TriggerToken', [ 'aid' => $this->account->_id ?? null, 'type' => 'trigger::chat' ], [ 'sort' => [ 'title' => 1 ] ]) as $link) {
 	    if (!NodeTriggerChat::allows(\V::app()->user, $link))
 		continue;
 	    $wf = \V::app()->om->findOne('Workflow', [ '_id' => $link->wf, 'aid' => $link->aid ]);
@@ -111,7 +113,7 @@ class AgentController extends \sys\BaseController {
 
     //the user's own conversation ?conversation / $id, else 404
     private function own($id, $resp) {
-	$conv = AgentConversation::read((string)$id, \V::app()->config('rt.account')->_id ?? null);
+	$conv = AgentConversation::read((string)$id, $this->account->_id ?? null);
 	if (!$conv || (string)$conv['user'] !== (string)\V::app()->user->_id)
 	    $resp->sendJSON([ 'ok' => false, 'error' => 'This conversation is not yours.' ], true, 404);
 	return $conv;
@@ -137,7 +139,7 @@ class AgentController extends \sys\BaseController {
     public function conversations($req, $resp) {
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
-	$aid = \V::app()->config('rt.account')->_id ?? null;
+	$aid = $this->account->_id ?? null;
 	$names = fn($c) => (string)(\V::app()->om->findOne('Workflow', [ '_id' => $c['wf'], 'aid' => $aid ])->name ?? '');
 	if (isset($req->query['id'])) {
 	    $conv = AgentConversation::read((string)$req->query['id'], $aid);
@@ -155,6 +157,6 @@ class AgentController extends \sys\BaseController {
 	$list = [];
 	foreach(AgentConversation::coll()->find([ 'aid' => $aid ], \sys\Mongo::ARRAYS + [ 'sort' => [ 'last_at' => -1 ], 'limit' => 200, 'projection' => [ 'guest_key' => 0 ] ]) as $c)
 	    $list[] = $c + [ 'agent' => $names($c) ];
-	$this->render('conversations', [ 'list' => $list, 'retention' => (int)(\V::app()->config('rt.account')->execution_log_retention ?? 0) ]);
+	$this->render('conversations', [ 'list' => $list, 'retention' => (int)($this->account->execution_log_retention ?? 0) ]);
     }
 }

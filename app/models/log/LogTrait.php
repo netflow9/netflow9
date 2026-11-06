@@ -117,7 +117,7 @@ trait LogTrait {
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the entry's project decides (was: any membership); an entry without a project: global scope only
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the entry's project decides; an entry without a project: global scope only
 	return \models\Project::can($this->project, $this->aid, $userId, $permName);
     }
 

@@ -1,7 +1,6 @@
 <?php
 
 //CLD: 2026-10-18T12:00:00+03:00: was CredentialLemonade; now any OpenAI-compatible API
-//CLD: 2026-10-22T01:53:07+03:00: Lemonade no longer named here or in the form (a Lemonade server has its own credential and step: CredentialLemonade, NodeAppLemonade)
 //an OpenAI-compatible API: the API's base URL (default https://api.openai.com/v1)
 //and an API key (optional: servers that do not ask for one), sent as `Authorization: Bearer`.
 //Provides `openai` (steps calling an OpenAI-compatible API: baseUrl + httpAuth) and `http` (the HTTP Request step). Test: GET <base URL>/models
@@ -51,7 +50,7 @@ class CredentialOpenAI extends \models\Credential {
 	//CLD: 2026-10-22T01:58:24+03:00: recorded: the choices of the AI steps' Model
 	$this->recordModels($ids);
 	$shown = array_slice($ids, 0, 10);
-	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was (s))
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural
 	return \util\Format::plural(count($ids), 'model') . ($shown ? ': ' . implode(', ', $shown) . (count($ids) > count($shown) ? ', ...' : '') : '');
     }
 }

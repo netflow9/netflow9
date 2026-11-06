@@ -106,7 +106,7 @@ exports.hook_rcpt = async function (next, connection, params) {
     if (!d)
         return next(DENYSOFT, 'temporarily unavailable');
     try {
-        // CLD: 2026-10-17T15:35:00+03:00: the step type is trigger::email (was trigger::inbound)
+        // CLD: 2026-10-17T15:35:00+03:00: the step type is trigger::email
         const entry = await d.collection('trigger_tokens').findOne({ type: 'trigger::email', token: m[2] });
         const account = entry ? await d.collection('accounts').findOne({ _id: entry.aid }) : null;
         const settings = entry ? await d.collection('inbound_mail_settings').findOne({ aid: entry.aid }) : null;
@@ -218,9 +218,9 @@ exports.store = async function (txn, raw, targets) {
         return false;
     }
     // wake the daemon; when it does not run, it finds the jobs when it starts
-    // CLD: 2026-11-01T16:00:27+02:00: on 127.0.0.1:<job_port> (nfn.ini [nfn] job_port = NetFlow9's DAEMON_PORT, default 9000; was the unix socket job_socket)
+    // CLD: 2026-11-01T16:00:27+02:00: on 127.0.0.1:<job_port> (nfn.ini [nfn] job_port = NetFlow9's DAEMON_PORT, default 9000)
     const port = parseInt(cfg.nfn.job_port, 10) || 9000;
-    // CLD: 2026-11-01T19:00:00+02:00: on nfn.ini [nfn] job_host (NetFlow9's DAEMON_HOST; Docker: daemon), default 127.0.0.1 (was always 127.0.0.1)
+    // CLD: 2026-11-01T19:00:00+02:00: on nfn.ini [nfn] job_host (NetFlow9's DAEMON_HOST; Docker: daemon), default 127.0.0.1
     const s = net.createConnection({ host: String(cfg.nfn.job_host || '127.0.0.1'), port: port }, () => s.end('NEWJOB\n'));
     s.on('error', () => {});
     return true;

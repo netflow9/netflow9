@@ -9,7 +9,7 @@ window.app.sidebar = (function() {
     let sidebar;
     let lastWidth = 0;
 
-    //CLD: 2026-10-30T12:00:00+02:00: the width set by the resize handle is kept for the user (User sidebar_width: every browser; was localStorage, this browser only):
+    //CLD: 2026-10-30T12:00:00+02:00: the width set by the resize handle is kept for the user (User sidebar_width: every browser):
     //rendered by the layout (aside data-width), saved by /site/sidebar
     const storedWidth = () => {
 	const w = parseInt(sidebar.attr('data-width'), 10);
@@ -27,7 +27,7 @@ window.app.sidebar = (function() {
 	store({ width: w, collapsed: 0 });
     };
 
-    //CLD: 2026-10-19T22:19:24+03:00: the width goes in the --sidebar-w custom property (was inline width/min-width), so the theme's media queries can replace it
+    //CLD: 2026-10-19T22:19:24+03:00: the width goes in the --sidebar-w custom property, so the theme's media queries can replace it
     const setWidth = (w) => {
 	if (sidebar && sidebar[0])
 	    sidebar[0].style.setProperty('--sidebar-w', w + 'px');
@@ -123,9 +123,9 @@ window.app.sidebar = (function() {
 	    window.addEventListener('popstate', closeDrawer);
 	    mobileQuery.addEventListener('change', closeDrawer);
 
-	    //CLD: 2026-10-19T23:05:00+03:00: pointer events (mouse, touch and pen; were mouse events: no resize on touch screens), as the designer's panels
+	    //CLD: 2026-10-19T23:05:00+03:00: pointer events (mouse, touch and pen), as the designer's panels
 	    //(app.workflow.js setupPanelResize): the pointer is captured by the handle, pointercancel ends the drag like pointerup; touch-action none on the
-	    //handle (theme netflow9/_app.scss). Delegated on the sidebar (was bound to the handle): the handle is new after the aside is rendered again (sidebar::refresh)
+	    //handle (theme netflow9/_app.scss). Delegated on the sidebar: the handle is new after the aside is rendered again (sidebar::refresh)
 	    sidebar.on('pointerdown', '.sidebar-resize-handle', (e) => {
 		//main button only (a touch or a pen contact is button 0 too)
 		if (e.button !== 0)
@@ -195,7 +195,7 @@ window.app.sidebar = (function() {
 })();
 
 
-//CLD: 2026-10-19T12:05:32+03:00: timeAgo is app.formatter.timeAgo(past, short) (was the app.timeAgo module, app.timeAgo.inWords; the PHP util\TimeAgo is removed):
+//CLD: 2026-10-19T12:05:32+03:00: timeAgo is app.formatter.timeAgo(past, short):
 //past is a date or ISO 8601 text; short: 1d, ~1h, <1m... instead of `1 day ago`; empty past -> ''
 app.formatter = (function() {
     const __texts = {
@@ -291,7 +291,7 @@ app.formatter = (function() {
 
     return {
 	//CLD: 2026-10-24T18:00:00+03:00: as util\Format::bytes: 1536 -> "1.5 KB", 0 -> "0 B"; binary (1024) or decimal (1000) units, KB / MB / GB / TB / PB;
-	//trailing zeros dropped, rounding up to the next unit (1023.96 KB -> "1 MB"); empty or not a number -> '' (was "0 B"; always 1 decimal, up to TB)
+	//trailing zeros dropped, rounding up to the next unit (1023.96 KB -> "1 MB"); empty or not a number -> ''
 	bytes: function(bytes, decimals = 1, binary = true) {
 	    if (bytes === null || bytes === undefined || bytes === '' || isNaN(bytes))
 		return '';

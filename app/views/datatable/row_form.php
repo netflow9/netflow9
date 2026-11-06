@@ -14,7 +14,7 @@ if ($row->exists()) {
 $containerId = 'row-form-' . uniqid();
 $formId = $containerId . '-form';
 //CLD: 2026-10-14T14:38:46+03:00: the fields and their values from the row's model through util\WidgetsUtil (smartFormFields / formValues: types, choices, rules, date formats,
-//object columns, value conversion; was a hand mapping here); only the search URL of object columns with many targets is the data table's
+//object columns, value conversion); only the search URL of object columns with many targets is the data table's
 $fields = \util\SmartForm::modelFields($row, [ 'objectSearchUrl' => fn($f) => \V::app()->createUrl('/datatable/object_choices', [ 'id' => $dt->_id, 'key' => $f->key ]) ]);
 $values = \util\SmartForm::modelValues($row);
 

@@ -490,7 +490,7 @@ class DaemonCommand extends \sys\BaseController {
 	//what this process changes is recorded in the execution log as the daemon's
 	\models\ExecutionLog::$source = 'daemon';
     	//parse params, set some defaults
-	//min / max workers, per account / project limits, idle and job timeouts (were `workers` = 5 and the single / multi class limits)
+	//min / max workers, per account / project limits, idle and job timeouts
 	$this->config = [
 	    'debug' => false,
 	    'logfile' => 'daemon',
@@ -617,7 +617,7 @@ class DaemonCommand extends \sys\BaseController {
 		[ '$set' => [ 'state' => 'new', 'worker_pid' => null ] ],
 		[ 'writeConcern' => new \MongoDB\Driver\WriteConcern(\MongoDB\Driver\WriteConcern::MAJORITY) ]
 	    );
-	    //CLD: 2026-11-02T21:50:00+02:00: logged only when there are some (was every 5 minutes, mostly 0)
+	    //CLD: 2026-11-02T21:50:00+02:00: logged only when there are some
 	    if ($result->getModifiedCount() > 0) {
 		\V::app()->log->info("re-run failed jobs count: " . $result->getModifiedCount());
 		$this->dispatch_jobs();
@@ -632,7 +632,7 @@ class DaemonCommand extends \sys\BaseController {
 	    foreach($accounts as $acct) {
 		//audit log
 		//AuditLog::prune: at least 1 year (AuditLog::MIN_RETENTION_DAYS), the seal keeps what the retention removed, and its state
-		//is logged (was: the account's setting, as short as 30 days, applied here)
+		//is logged
 		\models\AuditLog::prune($acct);
 		//execution log
 		if ($acct->execution_log_retention > 0) {

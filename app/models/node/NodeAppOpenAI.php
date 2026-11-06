@@ -2,7 +2,7 @@
 
 /*
 OpenAI - an AI step (NodeAppAi: prompt, tools, agent loop) on the OpenAI API or a compatible server (POST <base URL>/chat/completions)
-    //CLD: 2026-10-18T12:30:00+03:00: was NodeAppLemonade (step app::lemonade, now app::openai); with a CredentialOpenAI (was CredentialLemonade)
+    //CLD: 2026-10-18T12:30:00+03:00: was NodeAppLemonade (step app::lemonade, now app::openai); with a CredentialOpenAI
     with an OpenAI API credential (models\credential\CredentialOpenAI):
     the model is one the server has (credential Test lists them); optional temperature.
     Tools are offered as functions (tool_calls, results as `tool` messages).
@@ -27,25 +27,25 @@ class NodeAppOpenAI extends NodeAppAi {
     protected static function providerSchema() {
 	return [
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 4 wide (was 3), not on a new line
+		//CLD: 2026-10-24T13:05:14+03:00: layout: 4 wide, not on a new line
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'temperature',
 		'type' => 'text',
 		'label' => 'Temperature',
 		'default' => '',
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line (was 6); shorter help (was: Optional, 0 - 2: lower is more predictable; empty: the server default)
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line
 		'help' => '0 - 2; empty: the default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (was: default)
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
 		'ui' => [ 'advanced' => true, 'width' => 4, 'placeholder' => 'Provider default' ],
 	    ],
 	];
     }
 
-    //CLD: 2026-10-22T01:58:24+03:00: configSchema() removed: the Model field (a select of the credential's recorded models) is NodeAppAi's
+    //CLD: 2026-10-22T01:58:24+03:00: the Model field (a select of the credential's recorded models) is NodeAppAi's configSchema()
 
     //CLD: 2026-10-17T21:00:54+03:00: + $images: image parts before the prompt's text
-    //CLD: 2026-10-27T23:11:38+02:00: $files (was $images): their parts before the prompt's text (filePart)
+    //CLD: 2026-10-27T23:11:38+02:00: $files: their parts before the prompt's text (filePart)
     protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	if ($schema !== null)
 	    $system = trim($system . "\n\n" . self::jsonInstruction($schema));

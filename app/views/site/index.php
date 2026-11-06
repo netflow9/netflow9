@@ -25,7 +25,7 @@ $this->pageTitle = 'Overview';
     <div class="d-flex align-items-center w-100 align-items-top mb-3">
 	<div>
 	    <h5>Overview</h5>
-	    <?php //CLD: 2026-10-14T21:44:49+03:00: how the project's workflows run (was: All the workflows, variables and tables you can access) ?>
+	    <?php //CLD: 2026-10-14T21:44:49+03:00: how the project's workflows run ?>
 	    <span class="text-muted">How this project's workflows run</span>
 	</div>
 	<div class="flex-fill"></div>

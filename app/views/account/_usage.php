@@ -1,12 +1,12 @@
 <?php
-//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number (was number_format)
+//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number
 /*
     CLD: 2026-10-24T09:45:36+03:00: new: the account's usage (AccountController::settings, its Usage tab): $account, $usage (util\Tiers::usage), $limits (util\Tiers::limits), $projects ([ id => Project ]);
     each limit with what is used (yellow from 80%, red at the limit), the tier's features, the usage per project (a breakdown: the limits are the account's)
 */
 use util\Tiers;
 
-//CLD: 2026-10-31T11:32:07+02:00: the Usage tab of the account's settings (was the page account/usage; AccountController::settings): no page header of its own;
+//CLD: 2026-10-31T11:32:07+02:00: the Usage tab of the account's settings: no page header of its own;
 //the plan's badge only with tiers (the MultiTenant plugin: Tiers::enabled; without it there is no plan to show)
 $showTier = Tiers::enabled();
 
@@ -21,7 +21,7 @@ foreach(Tiers::LIMITS as $key => [ $label, $unit ]) {
 $recordsLimit = $limits['datatable_records'];
 ?>
 
-    <?php //CLD: 2026-10-31T11:58:40+02:00: the plan and its text only with the Admin plugin (self-hosted without it: no plan to speak of) ?>
+    <?php //CLD: 2026-10-31T11:58:40+02:00: the plan and its text only with the MultiTenant plugin (self-hosted without it: no plan to speak of) ?>
     <?php if ($showTier): ?>
     <div class="pt-4 mb-4">
 	<span class="badge text-bg-primary align-middle me-1"><?= \V::app()->html->escape(Tiers::labelOf($account)) ?></span>

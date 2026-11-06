@@ -46,7 +46,7 @@ class CredentialVeeam extends \models\Credential {
 		'encrypt' => true,
 		'ui' => [ 'width' => 6 ],
 	    ],
-	    //CLD: 2026-11-01T05:00:00+02:00: a choice of the releases (VBR 13 and 12.0 to 12.3: util\Veeam::VERSIONS; was a text, 1.3-rev1)
+	    //CLD: 2026-11-01T05:00:00+02:00: a choice of the releases (VBR 13 and 12.0 to 12.3: util\Veeam::VERSIONS)
 	    [
 		'key' => 'apiVersion',
 		'type' => 'select',

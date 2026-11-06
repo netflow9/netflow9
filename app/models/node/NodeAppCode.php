@@ -10,7 +10,6 @@ User's choice: the workflow variables are plain names in the code and assigning 
 //message. Suggestions in later steps: the names the code assigns (util\Expression::assignedNames). The designer edits the code with app.CodeEditor (CodeMirror)
 
 */
-//CLD: 2026-10-17T13:24:18+03:00: moved from the BaseNodes plugin into the core (was plugins\BaseNodes\app)
 namespace models\node;
 
 class NodeAppCode extends \models\wf\WfNode {
@@ -59,7 +58,7 @@ class NodeAppCode extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 5,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_TIMEOUT, 'skipEmpty' => true, 'message' => 'Between 1 and ' . self::MAX_TIMEOUT ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
+		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'step' => 1, 'width' => 6 ],
 	    ],
 	    [
@@ -70,7 +69,6 @@ class NodeAppCode extends \models\wf\WfNode {
 		'default' => 'fail',
 		'choices' => self::ON_ERROR,
 		'help' => 'An error in the code, or a limit reached',
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'width' => 6 ],
 	    ],
 	];
@@ -84,7 +82,6 @@ class NodeAppCode extends \models\wf\WfNode {
 	if (trim($code) !== '') {
 	    $parsed = \util\Expression::parse($code, 'script');
 	    foreach(\util\Expression::assignedNames($parsed->ast) as $name) {
-		//CLD: 2026-10-22T00:28:13+03:00: CredentialVariable::EXPRESSION_NAME (was models\Variable's)
 		if ($name !== \models\credential\CredentialVariable::EXPRESSION_NAME)
 		    $vars[$name] = [ 'type' => 'any', 'info' => 'set by a Code step' ];
 	    }
@@ -104,7 +101,7 @@ class NodeAppCode extends \models\wf\WfNode {
 	    }
 	    $before = $this->exec->expressionVariables();
 	    //CLD: 2026-10-20T21:40:00+03:00: dates are J Dates (hostValue with dates), given back as expressions give them (dateFormat, util\Expression::LIMITS)
-	    //CLD: 2026-10-22T00:28:13+03:00: readOnly: CredentialVariable::EXPRESSION_NAME (was models\Variable's)
+	    //CLD: 2026-10-22T00:28:13+03:00: readOnly: CredentialVariable::EXPRESSION_NAME
 	    $vm = new \sys\J\Interpreter([ 'maxSteps' => self::MAX_STEPS, 'timeLimit' => (float)max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 5))),
 		'writable' => true, 'readOnly' => [ \models\credential\CredentialVariable::EXPRESSION_NAME ], 'implicitGlobals' => true, 'dateFormat' => \util\Expression::LIMITS['dateFormat'] ]);
 	    $context = [];
@@ -132,10 +129,9 @@ class NodeAppCode extends \models\wf\WfNode {
 	//the changed / new top-level names become workflow variables (functions are not values)
 	$set = [];
 	foreach($vm->globals() as $name => $value) {
-	    //CLD: 2026-10-22T00:28:13+03:00: CredentialVariable::EXPRESSION_NAME (was models\Variable's)
 	    if ($name === \models\credential\CredentialVariable::EXPRESSION_NAME || $value instanceof \Closure)
 		continue;
-	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 	    //CLD: 2026-10-20T21:40:00+03:00: compared with the value as J gives it back (a date is text then)
 	    if (array_key_exists($name, $context) && \util\JSON::encode($vm->toPhp($vm->toJs($context[$name]))) === \util\JSON::encode($value))
 		continue;

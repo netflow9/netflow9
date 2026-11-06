@@ -175,7 +175,7 @@ class Validator {
 			return (boolean) filter_var($value, FILTER_VALIDATE_IP, $options);
 	    },
 
-	    //CLD: 2026-10-09T08:35:15+03:00: missing = null, '', false or []; 0 and '0' are values (was !empty(), so a required number could not be 0)
+	    //CLD: 2026-10-09T08:35:15+03:00: missing = null, '', false or []; 0 and '0' are values
 	    'notEmpty' => function($value) {
 		return !($value === null || $value === '' || $value === false || $value === []);
 	    },
@@ -207,7 +207,7 @@ class Validator {
 	    },
 
 	    'lengthBetween' => function($value, $format, $options) {
-			//CLD: 2026-10-14T14:54:31+03:00: characters (mb_strlen; was bytes: strlen, so UTF-8 text counted longer)
+			//CLD: 2026-10-14T14:54:31+03:00: characters (mb_strlen)
 			$length = mb_strlen((string)$value);
 			$options += array('min' => 1, 'max' => 255);
 			return ($length >= $options['min'] && $length <= $options['max']);
@@ -642,7 +642,7 @@ class Validator {
 			'message' => null,
 			'required' => true,
 			'skipEmpty' => false,
-			//CLD: 2026-10-09T08:29:52+03:00: removed skipBlank (skipEmpty itself no longer skips 0 / '0')
+			//CLD: 2026-10-09T08:29:52+03:00: skipEmpty does not skip 0 / '0'
 			'format' => 'any',
 			'on' => null,
 			'last' => false,
@@ -692,7 +692,7 @@ class Validator {
 			    continue;
 			}
 
-			//CLD: 2026-10-14T14:18:23+03:00: `requiredIf` runs on any value: a missing one (empty; was skipped, so fields needed 'default' => '') and a list (was skipped)
+			//CLD: 2026-10-14T14:18:23+03:00: `requiredIf` runs on any value: a missing one (empty) and a list
 			$__anyValue = $name === 'requiredIf';
 
 			//SC: 2022-03-17: check flatten and original values for key existence

@@ -1,6 +1,6 @@
 <?php
-//CLD: 2026-10-13T12:17:47+03:00: new class: the {{ }} parts of a text (a J template: text with expressions between {{ and }}, e.g. "INVOICE-{{ mail.date }}"); moved here from
-//util\Expression (parts, scan) so the parser (Parser::parse mode `template`) and the editors' help find them the same way
+//CLD: 2026-10-13T12:17:47+03:00: new class: the {{ }} parts of a text (a J template: text with expressions between {{ and }}, e.g. "INVOICE-{{ mail.date }}"), in one place so
+//the parser (Parser::parse mode `template`) and the editors' help find them the same way
 
 declare(strict_types=1);
 

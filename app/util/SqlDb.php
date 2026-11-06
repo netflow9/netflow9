@@ -1,7 +1,5 @@
 <?php
 
-//CLD: 2026-10-25T20:00:00+02:00: moved from the Database plugin to the core (the Database step and its credentials are core, for every account: no plan feature): util\SqlDb (was plugins\Database\util\Db)
-
 /*
     CLD: 2026-10-25T17:40:00+02:00: new: what the database credentials and the Database step share: the database types and their PDO drivers, the SQL of a step ({{ }} values sent
     as parameters), the values bound and read back

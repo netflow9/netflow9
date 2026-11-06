@@ -213,7 +213,7 @@ abstract class NodeAppVmware extends \models\wf\WfNode {
 		return [ 1 ];
 	    throw new \ErrorException(static::$label . ": {$operation}: " . $e->getMessage());
 	}
-	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it; was the variable only)
+	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it)
 	$this->setResult($name, $result);
 	$this->exec->log($this->wfid, static::$label . " {$operation}: {$summary} (" . (int)round((microtime(true) - $start) * 1000) . ' ms)');
 	return [ 0 ];

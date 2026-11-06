@@ -51,14 +51,14 @@ class Account extends \sys\BaseModel {
 		'choices' => [
 		    'incomplete' => 'Incomplete',
 		    'active' => 'Active',
-		    //CLD: 2026-10-22T23:00:00+03:00: suspended by a super-admin (the Admin plugin): no sign-in, no new executions, its queued jobs wait (isSuspended)
+		    //CLD: 2026-10-22T23:00:00+03:00: suspended by a super-admin (the MultiTenant plugin): no sign-in, no new executions, its queued jobs wait (isSuspended)
 		    'disabled' => 'Suspended',
 		],
 		'showInForms' => false,
 	    ],
 	    //CLD: 2026-10-24T09:45:36+03:00: the account's tier (util\Tiers, app/tiers.php; empty: the default) and its own changes of the tier's limits / features ({ limits, features });
 	    //set by a super-admin only (the MultiTenant plugin, ./v MultiTenant::tiers::set)
-	    //CLD: 2026-10-31T11:53:38+02:00: the tiers are the Admin plugin's (plugins/MultiTenant/tiers.php; ./v MultiTenant::tiers::set); without it, none
+	    //CLD: 2026-10-31T11:53:38+02:00: the tiers are the MultiTenant plugin's (plugins.json: tiers); without it, none
 	    [
 		'key' => 'tier',
 		'type' => 'select',
@@ -125,7 +125,7 @@ class Account extends \sys\BaseModel {
 	    //CLD: 2026-10-11T17:45:25+03:00: how long the audit log / execution log keep entries (days, 0 = forever; models\log\LogTrait::RETENTION); a change applies to the
 	    //entries already written too (Account::afterSave)
 	    //CLD: 2026-10-22T00:00:00+03:00: the audit log: 1 year at least (models\AuditLog::MIN_RETENTION_DAYS, also for a shorter value already saved; SOC2.md gap 6), applied by
-	    //the daemon (AuditLog::prune; there is no Account::afterSave); was 30 / 90 days / 1 year / forever
+	    //the daemon (AuditLog::prune; there is no Account::afterSave)
 	    [
 		'key' => 'audit_log_retention',
 		'type' => 'select',
@@ -222,7 +222,7 @@ class Account extends \sys\BaseModel {
 	return $choices;
     }
 
-    //CLD: 2026-10-16T12:14:57+03:00: the system roles of a new account (data\SysRoles: Owner, Member, Participant); [ iname => Role ] (was written in the seed command; also used by
+    //CLD: 2026-10-16T12:14:57+03:00: the system roles of a new account (data\SysRoles: Owner, Member, Participant); [ iname => Role ] (also used by
     //the sign-up)
     //CLD: 2026-10-22T23:00:00+03:00: the ids of the suspended accounts (state `disabled`), read again after 30 s (the daemon runs for days; $fresh: now): [ id => true ]
     public static function suspendedIds($fresh = false) {

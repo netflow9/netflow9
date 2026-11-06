@@ -257,7 +257,7 @@ class File extends \sys\BaseModel {
 	return false;
     }
 
-    //CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes: "1.5 MB" (was "1.50M", the unit from the number of digits)
+    //CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes: "1.5 MB"
     function getSizeHuman($decimals = 2) {
         return \util\Format::bytes($this->length, $decimals);
     }
@@ -333,14 +333,14 @@ class File extends \sys\BaseModel {
     }
 
 
-    //CLD: 2026-10-06T21:53:44+03:00: access to a file (was BaseModel's default: always false, so project-scoped roles - Members - got 403 on delete):
+    //CLD: 2026-10-06T21:53:44+03:00: access to a file (BaseModel's default is always false):
     //role scope `global` -> yes; `project` -> only if the user is a member of the file's project (same account); else no.
     //AAA::checkAccess passes the full name (File::delete), field checks the short one (read, update)
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)
 	    $permName = 'File::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the file's project decides (was: any membership)
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the file's project decides
 	return \models\Project::can($this->metadata['project'] ?? $this->project, $this->metadata['aid'] ?? $this->aid, $userId, $permName);
     }
 
