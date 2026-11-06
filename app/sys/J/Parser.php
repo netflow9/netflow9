@@ -88,7 +88,7 @@ final class Parser
      */
     public static function parse(string $source, array $options = []): ParseResult
     {
-        //CLD: 2026-10-13T12:17:47+03:00: the mode switch (was: scripts only)
+        //CLD: 2026-10-13T12:17:47+03:00: the mode switch
         $mode = $options['mode'] ?? 'script';
         if (!in_array($mode, self::MODES, true)) {
             throw new \InvalidArgumentException("Unknown parse mode `{$mode}`");
@@ -1309,7 +1309,7 @@ final class Parser
         }
 
         if ($whole && trim($text) !== '') {
-            //CLD: 2026-10-13T12:43:20+03:00: a plain text in a whole expression field: write it between {{ }} (was the "only one" message)
+            //CLD: 2026-10-13T12:43:20+03:00: a plain text in a whole expression field: write it between {{ }}
             $example = $reference ? '{{ mail.subject }}' : '{{ mail.attachments }}';
             $message = 'Only one {{ }} and nothing around it is allowed here, e.g. ' . $example;
             $seen = 0;

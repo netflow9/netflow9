@@ -4,7 +4,6 @@
 //permissions of the subclass (static::$permissions) + User.Read; the test reads the signed-in account. The Entra app (App registrations, platform: Web) needs these delegated
 //Microsoft Graph permissions; work / school accounts may need an admin's consent for some of them
 
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\credential;
 
 abstract class CredentialMicrosoftGraph extends \models\credential\CredentialMicrosoftOAuth2 {

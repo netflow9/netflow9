@@ -2,10 +2,8 @@
 
 //CLD: 2026-10-08T14:34:02+03:00: new class: base of the Microsoft identity platform credential types (Microsoft 365 / Outlook.com); tenant field, endpoints;
 //subclasses give the scopes. The app is registered in Microsoft Entra admin center > App registrations (platform: Web)
-//CLD: 2026-10-09T17:21:14+03:00: base of Microsoft OAuth credential variants (was CredentialTypeMicrosoftOAuth2); instance methods (were static, given the credential)
+//CLD: 2026-10-09T17:21:14+03:00: base of Microsoft OAuth credential variants; instance methods
 
-//CLD: 2026-10-22T00:41:28+03:00: moved to the MicrosoftIntegration plugin (was models\credential\CredentialMicrosoftOAuth2); core classes fully qualified
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\credential;
 
 abstract class CredentialMicrosoftOAuth2 extends \models\credential\CredentialOAuth2 {

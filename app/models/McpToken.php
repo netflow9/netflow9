@@ -4,8 +4,6 @@
 //token itself is shown once, only its SHA-256 hash is kept (token_hash) with its first characters (token_prefix) to recognise it. A call with the token acts
 //as the user who made it (`user`), within that user's permissions, on this project's data only. last_used_at is written directly (om->updateMany: not an audit entry)
 
-//CLD: 2026-10-20T23:40:00+03:00: moved to the SysMCPTools plugin (was models\McpToken; the object name McpToken and the collection stay)
-//CLD: 2026-10-26T23:56:07+02:00: moved back to the core (was the SysMCPTools plugin's)
 namespace models;
 
 class McpToken extends \sys\BaseModel {
@@ -99,13 +97,12 @@ class McpToken extends \sys\BaseModel {
 	return \V::app()->om->findOne('McpToken', [ 'token_hash' => hash('sha256', $token) ]);
     }
 
-    //CLD: 2026-10-22T00:28:13+03:00: as models\Credential (was models\Variable, removed)
     //as models\Credential: global scope = the account's tokens, project scope = the tokens of the projects the user is a member of
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the token's project decides (was: any membership)
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the token's project decides
 	return \models\Project::can($this->project, $this->aid, $userId, $permName);
     }
 

@@ -78,7 +78,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line; shorter help (was: /out/reports from the server's root, out/reports from the folder you start in; empty: that folder)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -87,7 +87,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '/outgoing', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide; shorter help (was: Comma separated: *.csv, report_????.xlsx, 2026/*.csv (a path under the folder); /^inv_\d+\.xml$/i for a regular expression; not case sensitive)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
 		'key' => 'pattern',
 		'type' => 'text',
 		'label' => 'File names',
@@ -96,7 +96,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'placeholder' => '*.csv, *.csv.gpg', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line; shorter help (was: Names not taken, as File names (e.g. files still being uploaded, hidden files))
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'exclude',
 		'type' => 'text',
@@ -106,7 +106,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 6, 'newRow' => true, 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		'key' => 'subfolders',
 		'type' => 'switch',
 		'label' => 'Include subfolders',
@@ -114,7 +114,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'depth',
 		'type' => 'number',
@@ -124,7 +124,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'step' => 1, 'showIf' => [ 'key' => 'subfolders', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: A date (2026-10-01, 2026-10-01T08:00:00Z) or relative (-24 hours, yesterday, -7 days); {{ ... }}; empty: any)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
 		'key' => 'modifiedAfter',
 		'type' => 'text',
 		'label' => 'Modified after',
@@ -133,7 +133,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '-24 hours', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		'key' => 'modifiedBefore',
 		'type' => 'text',
 		'label' => 'Modified before',
@@ -142,7 +142,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'placeholder' => 'today', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: Leaves files modified in the last minutes (still being written); 0: none left)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'minAge',
 		'type' => 'number',
@@ -153,7 +153,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'step' => 1 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: Files this step has not taken in an earlier run (or changed since); a file that failed is tried again)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		'key' => 'onlyNew',
 		'type' => 'switch',
 		'label' => 'Only new files',
@@ -162,7 +162,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'order',
 		'type' => 'select',
@@ -173,7 +173,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'minSizeKb',
 		'type' => 'number',
@@ -206,7 +206,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'limit' => true, 'width' => 6, 'step' => 1 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line; shorter help (was: The ending is removed from the saved name: report.csv.gpg -> report.csv)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
 		'key' => 'decrypt',
 		'type' => 'select',
 		'label' => 'Decrypt',
@@ -217,7 +217,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $download ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide; shorter help (was: A Decryption key credential of the project: PGP / GPG, OpenSSL or S/MIME)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
 		'key' => 'decryptCredential',
 		'type' => 'select',
 		'label' => 'Decryption key',
@@ -238,7 +238,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 	    ],
 	    //CLD: 2026-10-20T20:00:00+03:00: signature checks
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line; shorter help (was: A file whose signature is bad, or made by another key, is not saved)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
 		'key' => 'verifySignature',
 		'type' => 'select',
 		'label' => 'Check signature',
@@ -249,7 +249,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $download ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide; shorter help (was: A Verification key credential of the project: the sender's PGP public key, trusted S/MIME certificates, or a public key)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
 		'key' => 'verifyCredential',
 		'type' => 'select',
 		'label' => 'Verification key',
@@ -260,7 +260,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'verifySignature', 'operator' => 'ne', 'value' => 'none' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'missingSignature',
 		'type' => 'select',
@@ -271,7 +271,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => [ 'key' => 'verifySignature', 'operator' => 'eq', 'value' => 'detached' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
 		'key' => 'after',
 		'type' => 'select',
 		'label' => 'Afterwards',
@@ -301,7 +301,6 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: shorter help (was: e.g. a Loop over {{ ftp.files }}; {{ ftp.files[0].id }} is the saved file)
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Result variable',
@@ -312,7 +311,6 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: shorter help (was: No connection, a folder that cannot be read, or a file that failed (the other files are still taken))
 		'key' => 'onError',
 		'type' => 'select',
 		'label' => 'On error',
@@ -765,7 +763,6 @@ class NodeAppFtp extends \models\wf\WfNode {
 	    $size = (int)filesize($current);
 	    $stream = fopen($current, 'rb');
 	    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-	    //CLD: 2026-10-22T00:35:40+03:00: models\File::CONTENT_TYPES (was NodeAppGoogle's, now in the GoogleIntegration plugin)
 	    $contentType = \models\File::CONTENT_TYPES[$ext] ?? 'application/octet-stream';
 	    try {
 		$id = \models\File::createFromStream($filename, $stream, [ 'metadata' => [

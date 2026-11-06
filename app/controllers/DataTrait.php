@@ -38,7 +38,7 @@ trait DataTrait {
 	    if (empty($f))
 		continue;
 
-	    //a condition of util\Conditions with the field's operators (was its own list: is / !is / before / after / ... here); an operator the field
+	    //a condition of util\Conditions with the field's operators; an operator the field
 	    //does not have is ignored, as an unknown one was
 	    $op = (string)($fRow['op'] ?? '');
 	    if (!isset($f->ops['eval'][$op]))
@@ -52,7 +52,6 @@ trait DataTrait {
     //the request's search, filter, sort and page as [ query, options ] for om->find on the objects of $o
     private function __listQuery($o, $sys_query = []) {
 	$req = \V::app()->request;
-	$account = \V::app()->config('rt.account');
 
 	$options = [];
 	$skip = $req->query['__skip'] ?? null;
@@ -70,12 +69,12 @@ trait DataTrait {
 
 	$query = [];
 	if (!$o->config('global'))
-	    $query['aid'] = $account->_id;
+	    $query['aid'] = $this->account->_id;
 
 	$search = $req->query['__search'] ?? '';
-	//search only readable fields, as literal text (was every text field, e.g. tfa_secret, with a client-supplied regex)
+	//search only readable fields, as literal text
 	if (is_string($search) && $search !== '') {
-	    //`contains` conditions on the fields, any of them (util\Conditions; was the regex written here); a field without `contains` is not searched
+	    //`contains` conditions on the fields, any of them (util\Conditions); a field without `contains` is not searched
 	    $sq = [];
 	    foreach($o->schema as $f) {
 		if (!in_array($f->type, [ 'text', 'textarea', 'email', 'select' ]) || !isset($f->ops['eval']['contains']))
@@ -101,11 +100,10 @@ trait DataTrait {
     }
 
     private function __data($objectName, $sys_query = []) {
-	$account = \V::app()->config('rt.account');
 
 	$response = [ 'nRecords' => 0, 'data' => [] ];
 
-	$o = \V::app()->om->create($objectName, [ 'aid' => $account->_id ]);
+	$o = \V::app()->om->create($objectName, [ 'aid' => $this->account->_id ]);
 	[ $query, $options ] = $this->__listQuery($o, $sys_query);
 
 	$response['nRecords'] = \V::app()->om->count($objectName, $query);
@@ -113,7 +111,7 @@ trait DataTrait {
 
 	foreach($objs as $o) {
 	    $record = [];
-	    //only the readable fields (were all: e.g. Credential secrets went to the browser)
+	    //only the readable fields
 	    foreach($o->schema as $key => $field) {
 		if ($field->checkAccess(\V::app()->user->_id, 'read')) {
 		    $record[$key] = $field->display();

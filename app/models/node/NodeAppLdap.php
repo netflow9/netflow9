@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-25T19:30:00+02:00: moved from the Ldap plugin to the core (the LDAP step and credential are core, the plugin is the LDAP sign-in): namespace models\node (was plugins\Ldap\models); registered in data\SysObjects, for every account (no plan feature)
+//CLD: 2026-10-25T19:30:00+02:00: registered in data\SysObjects, for every account (no plan feature)
 
 //CLD: 2026-10-21T10:00:00+03:00: new step: LDAP - reads and changes a directory (Active Directory, OpenLDAP, ...) through an LDAP server credential of the project (CredentialLdap,
 //provides `ldap`). Operations (setting `operation`):
@@ -88,7 +88,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'label' => 'Base DN',
 		'default' => '',
 		'help' => 'Empty: the credential\'s Base DN',
-		//CLD: 2026-10-29T10:30:00+02:00: full width (was 8: the scope next to it is under "Advanced…")
+		//CLD: 2026-10-29T10:30:00+02:00: full width
 		'ui' => [ 'placeholder' => 'OU=People,DC=example,DC=com', 'expression' => true, 'width' => 12, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
@@ -116,12 +116,12 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'type' => 'text',
 		'label' => 'Attributes',
 		'default' => '',
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (was the example, now in the help)
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
 		'help' => 'The attributes to read, separated by commas, e.g. cn, mail, memberOf',
 		'ui' => [ 'advanced' => true, 'placeholder' => 'All', 'width' => 8, 'showIf' => $op([ 'search', 'get' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-29T10:30:00+02:00: a limit: under "Advanced…", in its last row (was 4 wide next to the attributes)
+		//CLD: 2026-10-29T10:30:00+02:00: a limit: under "Advanced…", in its last row
 		'key' => 'sizeLimit',
 		'type' => 'number',
 		'label' => 'At most',
@@ -200,7 +200,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'default' => '',
 		'help' => 'A DN (member, uniqueMember) or a name (memberUid)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_GROUP ],
-		//CLD: 2026-10-29T10:30:00+02:00: full width (was 8: the member attribute next to it is under "Advanced…")
+		//CLD: 2026-10-29T10:30:00+02:00: full width
 		'ui' => [ 'expression' => true, 'width' => 12, 'placeholder' => '{{ entry.dn }}', 'showIf' => $op(self::ON_GROUP) ],
 	    ],
 	    [
@@ -249,7 +249,6 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'ui' => [ 'expression' => true, 'showIf' => $op([ 'setPassword' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: Search: { entries, count, truncated }; get: the entry or null; checkPassword: { valid, dn }; else { dn })
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Result variable',
@@ -260,7 +259,6 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: An error from the directory (e.g. no such entry, no access, already exists) or no connection)
 		'key' => 'onError',
 		'type' => 'select',
 		'label' => 'On error',

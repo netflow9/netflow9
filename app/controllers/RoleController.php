@@ -11,6 +11,8 @@ class RoleController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
     }
 
     public function list($req, $resp) {
@@ -32,7 +34,6 @@ class RoleController extends \sys\BaseController {
 	    \V::app()->error(405, 'Method not allowed');
 	if (!\V::app()->user->can('Role::create'))
 	    \V::app()->error(403, 'Unauthorized');
-	$account = \V::app()->var('rt.account');
 	$permissions = [];
 	foreach(\data\SysPermissions::get() as $objectName => $perms) {
 	    foreach($perms as $p) {
@@ -40,7 +41,7 @@ class RoleController extends \sys\BaseController {
 		    $permissions[$p['name']] = [ 'enabled' => false ];
 	    }
 	}
-	$role = \V::app()->om->create('Role', [ 'aid' => $account->_id, 'name' => 'New role ' . (\V::app()->om->count('Role', [ 'aid' => $account->_id ]) + 1),
+	$role = \V::app()->om->create('Role', [ 'aid' => $this->account->_id, 'name' => 'New role ' . (\V::app()->om->count('Role', [ 'aid' => $this->account->_id ]) + 1),
 	    'permissions' => $permissions, 'override' => [] ]);
 	if (!$role->validates() || !$role->save())
 	    \V::app()->error(400, 'The role could not be created');
@@ -50,8 +51,7 @@ class RoleController extends \sys\BaseController {
 
     public function update($req, $resp) {
 	$oid = $this->getOidOrError();
-	$account = \V::app()->var('rt.account');
-	$role = \V::app()->om->findOne('Role', [ '_id' => $oid, 'aid' => $account->_id ]);
+	$role = \V::app()->om->findOne('Role', [ '_id' => $oid, 'aid' => $this->account->_id ]);
 	if (empty($role))
 	    \V::app()->error(404, 'Not found');
 

@@ -57,13 +57,13 @@
 	//(the only one it uses; its build script warns when an upgrade uses others). Editors start after DOMContentLoaded (Bootstrap adds its jQuery plugins then: Summernote's tooltips, dropdowns) ?>
 	<script>if (window.jQuery && !jQuery.now) jQuery.now = Date.now;</script>
 	<script src="/js/vendor/summernote-0.9.1/summernote-bs5.min.js"></script>
-	<?php //CLD: 2026-10-13T16:48:57+03:00: the previewers' libraries (were added by app.xlsxviewer.js / app.docxviewer.js when first used): SheetJS -> window.XLSX; JSZip -> window.JSZip, before docx-preview -> window.docx (it looks for JSZip) ?>
+	<?php //CLD: 2026-10-13T16:48:57+03:00: the previewers' libraries: SheetJS -> window.XLSX; JSZip -> window.JSZip, before docx-preview -> window.docx (it looks for JSZip) ?>
 	<script src="/js/vendor/sheetjs/xlsx.full.min.js"></script>
 	<script src="/js/vendor/jszip/jszip.min.js"></script>
 	<script src="/js/vendor/docx-preview/docx-preview.min.js"></script>
 	<?php //CLD: 2026-10-14T21:41:02+03:00: Chart.js 4.5.1 (UMD) -> window.Chart: the charts of the project overview ?>
 	<script src="/js/vendor/chartjs-4.5.1/chart.umd.min.js"></script>
-	<?php //CLD: 2026-10-13T16:34:15+03:00: the ES module libraries (were imported by the components when first used): pdf.js -> window.pdfjsLib (app.pdfviewer.js), CodeMirror 6 -> window.CodeMirror6 (app.codeeditor.js; built by frontend/standalone-packages/CodeMirror6/rail22_build.sh) ?>
+	<?php //CLD: 2026-10-13T16:34:15+03:00: the ES module libraries: pdf.js -> window.pdfjsLib (app.pdfviewer.js), CodeMirror 6 -> window.CodeMirror6 (app.codeeditor.js; built by frontend/standalone-packages/CodeMirror6/rail22_build.sh) ?>
 	<script type="module" src="/js/vendor/pdfjs/pdf.mjs"></script>
 	<script type="module" src="/js/vendor/codemirror-6/codemirror.mjs"></script>
 

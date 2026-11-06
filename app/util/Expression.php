@@ -34,7 +34,7 @@ class Expression {
     //suggestions returned at most
     const MAX_ITEMS = 50;
 
-    //CLD: 2026-10-20T21:40:00+03:00: the methods offered after `x.` come from J (sys\J\Builtins::METHODS; were listed here: STRING_METHODS, ARRAY_METHODS, NUMBER_METHODS)
+    //CLD: 2026-10-20T21:40:00+03:00: the methods offered after `x.` come from J (sys\J\Builtins::METHODS)
 
     const LITERALS = [ 'true', 'false', 'null', 'undefined' ];
 
@@ -81,7 +81,7 @@ class Expression {
     //$text with its {{ }} parts evaluated against $vars (the execution's variables, the expressions' names): a text that is a single expression
     //(`{{ x }}`, spaces around allowed) gives its value as it is (number, list, object, ...); else the parts become text (lists and objects as JSON, null /
     //undefined as nothing) inside the text. A text without {{ is returned unchanged. \ErrorException for a broken or failing expression
-    //CLD: 2026-10-13T12:17:47+03:00: parsed and run by J as a template (Parser mode `template`, Interpreter::evalTemplate; were the parts found here and run one by one), in the syntax of
+    //CLD: 2026-10-13T12:17:47+03:00: parsed and run by J as a template (Parser mode `template`, Interpreter::evalTemplate), in the syntax of
     //the field ($syntax, SYNTAX): a reference field refuses anything but {{ variable(.field) }}
     public static function render($text, array $vars, $syntax = 'text') {
 	if (!is_string($text) || ($syntax === 'text' && !str_contains($text, \sys\J\Template::OPEN)))
@@ -329,7 +329,7 @@ class Expression {
     //the suggestions at the cursor of $text ($before: the text up to the cursor): [ replace => characters before the cursor the chosen item replaces,
     //items => [ [ label, kind variable|global|method|property|literal, detail ] ] ]; none outside {{ }} and inside strings or comments
     //CLD: 2026-10-13T12:17:47+03:00: $syntax (SYNTAX) as check(): a reference gets the variables and their fields only (no built-ins, literals or methods); the {{ }} parts found by J
-    //(sys\J\Template; were found here)
+    //(sys\J\Template)
     public static function complete($text, $before, array $vars = [], $syntax = 'text') {
 	$reference = $syntax === 'reference';
 	$none = [ 'replace' => 0, 'items' => [] ];
@@ -352,7 +352,7 @@ class Expression {
 	$code = substr($before, $part['start']);
 
 	//after `name.` (or `name?.`): its members
-	//CLD: 2026-10-13T12:34:29+03:00: after a path (`mail.attachments[0].`): the members of the type found there (typeAt; was: of the last name's variable)
+	//CLD: 2026-10-13T12:34:29+03:00: after a path (`mail.attachments[0].`): the members of the type found there (typeAt)
 	if (preg_match('/(?<![\w$.\])])(' . self::PATH . ')\s*\??\.\s*([A-Za-z_$][\w$]*)?$/', $code, $m)) {
 	    $prefix = $m[2] ?? '';
 	    $path = self::path($m[1]);
@@ -404,7 +404,7 @@ class Expression {
     }
 
     //CLD: 2026-10-11T23:02:07+03:00: the problems of a variable name field that reads a variable (If, Switch): a name no step before sets (a warning: it may come from the caller,
-    //e.g. a variable set by a step it cannot see) //CLD: 2026-10-17T10:46:42+03:00: example updated (webhook query_<name> variables are gone)
+    //e.g. a variable set by a step it cannot see)
     public static function checkName($name, array $vars) {
 	$name = trim((string)$name);
 	if ($name === '' || isset($vars[$name]) || !\util\Validator::isIdentifier($name))
@@ -413,7 +413,7 @@ class Expression {
     }
 
     //CLD: 2026-10-13T12:34:29+03:00: the members of a value of type $t (a description, see typeAt; null: unknown, none): an object's declared fields, a list's methods and length, a number's
-    //methods, else (text, any) the text methods and length (the values set by steps are mostly texts); was by the variable's top-level type
+    //methods, else (text, any) the text methods and length (the values set by steps are mostly texts)
     private static function members($t) {
 	if (!is_array($t))
 	    return [];
@@ -426,7 +426,7 @@ class Expression {
 	}
 	if ($type === 'boolean')
 	    return [];
-	//CLD: 2026-10-20T21:40:00+03:00: the methods J has for the type (sys\J\Builtins::METHODS; were listed here and checked against J); + date
+	//CLD: 2026-10-20T21:40:00+03:00: the methods J has for the type (sys\J\Builtins::METHODS); + date
 	$kind = in_array($type, [ 'array', 'number', 'date' ], true) ? $type : 'string';
 	if ($kind === 'array' || $kind === 'string')
 	    $items[] = [ 'label' => 'length', 'kind' => 'property', 'detail' => $kind === 'array' ? 'number of items' : 'number of characters' ];
@@ -535,7 +535,7 @@ class Expression {
 	//CLD: 2026-10-20T22:10:00+03:00: the regular expression methods of texts
 	'match' => 'array', 'matchAll' => 'array', 'search' => 'number' ];
 
-    //CLD: 2026-10-13T12:47:09+03:00: the type of a J expression node among $vars (null: unknown): a path, a literal, or a method call on a list / text (was typeOf: paths and literals only)
+    //CLD: 2026-10-13T12:47:09+03:00: the type of a J expression node among $vars (null: unknown): a path, a literal, or a method call on a list / text
     private static function nodeType(array $e, array $vars) {
 	if (($path = self::nodePath($e)) !== null)
 	    return self::typeAt($vars, $path);

@@ -17,8 +17,6 @@
     On error (Sheets API errors, e.g. not found, no access, a bad range) - fail the step, or continue on a second output `error` (as HTTP Request: $outPorts)
 */
 
-//CLD: 2026-10-22T00:35:40+03:00: moved to the GoogleIntegration plugin (was models\node\NodeAppGoogleSheets); core classes fully qualified
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\GoogleIntegration\models): the Google credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 class NodeAppGoogleSheets extends NodeAppGoogle {
@@ -77,7 +75,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: The spreadsheet id or its link (https://docs.google.com/spreadsheets/d/...); {{ ... }} for expressions, e.g. {{ drive.id }})
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
 		'key' => 'spreadsheetId',
 		'type' => 'text',
 		'label' => 'Spreadsheet',
@@ -87,7 +85,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://docs.google.com/spreadsheets/d/...', 'expression' => true, 'showIf' => $op($notCreate) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'sheet',
 		'type' => 'text',
 		'label' => 'Sheet',
@@ -97,7 +95,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'placeholder' => 'Sheet1', 'expression' => true, 'showIf' => $op(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6); shorter help (was: A1 notation, e.g. A1:D100, A:C, 5:5; update: the first cell written (e.g. A5); empty: the whole sheet (update: A1))
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'range',
 		'type' => 'text',
 		'label' => 'Cells',
@@ -109,7 +107,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 
 	    //read
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line; shorter help (was: The rows are also given as objects keyed by the header, e.g. {{ sheet.rows[0].Email }})
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
 		'key' => 'header',
 		'type' => 'switch',
 		'label' => 'First row is the header',
@@ -140,7 +138,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'append', 'update' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide; shorter help (was: Rows as objects: keys not in the header become new columns (else they are left out))
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'addColumns',
 		'type' => 'switch',
 		'label' => 'Add the missing columns to the header',
@@ -171,7 +169,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'Report {{ date }}', 'expression' => true, 'showIf' => $op([ 'create' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: The sheet names, separated by commas; empty: one sheet, Sheet1)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'sheets',
 		'type' => 'text',
 		'label' => 'Sheets',
@@ -182,7 +180,6 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 
 	    static::timeoutField(60),
 	    static::variableField(),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Google Sheets, e.g. not found, no access, a sheet or range that does not exist)
 	    static::onErrorField('Sheets errors, no such sheet / range'),
 	];
     }
@@ -373,7 +370,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 
     // ------------------------------------------------------------------------------------
     //rows and cells
-    //CLD: 2026-10-22T00:41:28+03:00: util\SheetRows (moved to the core: the Excel step of the MicrosoftIntegration plugin uses them too); kept here by name
+    //CLD: 2026-10-22T00:41:28+03:00: util\SheetRows (the Excel step uses them too); kept here by name
 
     public static function columnName($i) {
 	return \util\SheetRows::columnName($i);

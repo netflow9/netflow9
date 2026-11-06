@@ -83,13 +83,13 @@ class WfSchedule {
 		],
 		'requiredIf' => [ 'if' => 'mode', 'in' => [ 'weekly' ], 'message' => 'Choose the days of the week' ],
 		'ui' => [
-		    //CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		    //CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		    'showIf' => [ 'key' => 'mode', 'operator' => 'eq', 'value' => 'weekly' ],
 		],
 	    ],
 
 	    //daily, weekly, monthly; placed before `day` so it stays left-aligned when `day` is hidden
-	    //CLD: 2026-10-29T22:12:26+02:00: one or more times, comma-separated (e.g. 09:00, 18:00: runs at each); a text input (was inputType time: one time only)
+	    //CLD: 2026-10-29T22:12:26+02:00: one or more times, comma-separated (e.g. 09:00, 18:00: runs at each); a text input
 	    [
 		'key' => 'time',
 		'type' => 'text',
@@ -137,7 +137,7 @@ class WfSchedule {
 		],
 		'ui' => [
 		    'placeholder' => '*/15 * * * *',
-		    //CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		    //CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		    'showIf' => [ 'key' => 'mode', 'operator' => 'eq', 'value' => 'cron' ],
 		    'pattern' => '^\s*[0-9A-Za-z*,/-]+(\s+[0-9A-Za-z*,/-]+){4}\s*$',
 		    'patternMessage' => 'Use 5 fields: minute hour day-of-month month day-of-week',
@@ -156,7 +156,7 @@ class WfSchedule {
     //does the schedule $cfg match the minute of $t (local time; seconds ignored)?
     public static function matches(array $cfg, \DateTimeInterface $t) {
 	$minute = (int)$t->format('G') * 60 + (int)$t->format('i');
-	//CLD: 2026-10-29T22:12:26+02:00: any of the times (comma-separated; was one)
+	//CLD: 2026-10-29T22:12:26+02:00: any of the times (comma-separated)
 	$atTime = function() use ($cfg, $t) {
 	    foreach(explode(',', (string)($cfg['time'] ?? '')) as $time) {
 		if (preg_match('/^(\d{1,2}):(\d{2})$/', trim($time), $m) === 1 && (int)$m[1] === (int)$t->format('G') && (int)$m[2] === (int)$t->format('i'))
@@ -197,8 +197,7 @@ class WfSchedule {
 	return false;
     }
 
-    //only what the schema's rules cannot check (they skip lists): the weekly days; null when valid (was: every check of the
-    //schedule, now rules of schema())
+    //only what the schema's rules cannot check (they skip lists): the weekly days; null when valid
     public static function validate(array $cfg) {
 	if (($cfg['mode'] ?? '') !== 'weekly')
 	    return null;

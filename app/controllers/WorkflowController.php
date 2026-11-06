@@ -9,16 +9,17 @@ class WorkflowController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
     }
 
     public function create($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
-	$account = \V::app()->config('rt.account');
-	$n = \V::app()->om->count('Workflow', [ 'aid' => $account->_id ]);
+	$n = \V::app()->om->count('Workflow', [ 'aid' => $this->account->_id ]);
 
 	$wf = \V::app()->om->create('Workflow', [
-	    'aid' => $account->_id,
+	    'aid' => $this->account->_id,
 	    'name' => 'Workflow ' . ++$n,
 	    'project' => \V::app()->user->crtProject,
 	]);
@@ -38,15 +39,14 @@ class WorkflowController extends \sys\BaseController {
 
     public function index($req, $resp) {
 	$oid = $this->getOidOrError();
-	$account = \V::app()->config('rt.account');
-	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $account->_id ]);
+	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $this->account->_id ]);
 	if (empty($wf))
 	    \V::app()->error(404, 'Not found');
 
 	if (!\V::app()->user->can('Workflow::read', [ 'object' => $wf ]))
 	    \V::app()->error(403, 'Unauthorized');
 
-	//CLD: 2026-10-19T18:40:00+03:00: the designer only (GET); removed the form-post save of the canvas: it is saved by the autosave (save())
+	//CLD: 2026-10-19T18:40:00+03:00: the designer only (GET): the canvas is saved by the autosave (save())
 	if ($req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 
@@ -94,10 +94,10 @@ class WorkflowController extends \sys\BaseController {
 	$resp->sendJSON([ 'stepIssues' => $shown->validateSteps() ]);
     }
 
-    //CLD: 2026-10-25T20:00:00+02:00: the step definitions of the designer (WfNode::designerDefs), asked once per browser tab and kept there (were in each designer page,
-    //~85 KB and more): { nodeDefs, version }
+    //CLD: 2026-10-25T20:00:00+02:00: the step definitions of the designer (WfNode::designerDefs), asked once per browser tab and kept there
+    //(~85 KB and more): { nodeDefs, version }
     public function node_defs($req, $resp) {
-	$d = \models\wf\WfNode::designerDefs(\V::app()->config('rt.account'));
+	$d = \models\wf\WfNode::designerDefs($this->account);
 	//CLD: 2026-11-04T08:10:00+02:00: + what the canvas needs from the forms (the forms themselves: node_schema)
 	$resp->sendJSON([ 'nodeDefs' => (object)\models\wf\WfNode::withCanvasHints($d['defs']), 'version' => $d['version'] ]);
     }
@@ -114,8 +114,7 @@ class WorkflowController extends \sys\BaseController {
 
     public function update_name($req, $resp) {
 	$oid = $this->getOidOrError();
-	$account = \V::app()->config('rt.account');
-	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $account->_id ]);
+	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $this->account->_id ]);
 	if (empty($wf))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can('Workflow::read', [ 'object' => $wf ]))
@@ -143,8 +142,7 @@ class WorkflowController extends \sys\BaseController {
 
     public function variables($req, $resp) {
 	$oid = $this->getOidOrError();
-	$account = \V::app()->config('rt.account');
-	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $account->_id ]);
+	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $this->account->_id ]);
 	if (empty($wf))
 	    \V::app()->error(404, 'Not found');
 	//CLD: 2026-10-06T23:10:30+03:00: pass the object, so its checkAccess applies (project scope: membership of its project)
@@ -164,7 +162,7 @@ class WorkflowController extends \sys\BaseController {
     //?id=<workflow>&fqname=<type::name>, the user must be allowed to update the workflow
     public function node_init($req, $resp) {
 	$oid = $this->getOidOrError();
-	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => \V::app()->config('rt.account')->_id ]);
+	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $this->account->_id ]);
 	if (empty($wf))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can('Workflow::update', [ 'object' => $wf ]))
@@ -188,7 +186,7 @@ class WorkflowController extends \sys\BaseController {
 	$wf = $this->findWorkflow('Workflow::update');
 
 	//a workflow has one trigger (Workflow::validateFlow)
-	//CLD: 2026-10-12T20:33:47+03:00: any trigger whose class has its own startNow() (was the Manual trigger only): Manual / Schedule start one execution, Email (IMAP)
+	//CLD: 2026-10-12T20:33:47+03:00: any trigger whose class has its own startNow(): Manual / Schedule start one execution, Email (IMAP)
 	//checks the mailbox now (one execution per message); the trigger's class makes the executions, they run after the answer
 	$start = null;
 	$class = null;
@@ -205,7 +203,7 @@ class WorkflowController extends \sys\BaseController {
 	if ($start === null)
 	    $resp->sendJSON([ 'error' => 'Run cannot start this workflow: its trigger is not started from here' ], true, 409);
 
-	//CLD: 2026-10-19T17:10:00+03:00: issues() (was validateFlow): a draft can be saved with errors in the steps' settings, it is not run with them
+	//CLD: 2026-10-19T17:10:00+03:00: issues(): a draft can be saved with errors in the steps' settings, it is not run with them
 	if (array_filter($wf->issues(), fn($i) => $i['level'] == 'error'))
 	    $resp->sendJSON([ 'error' => 'The workflow has errors (steps\' settings or connections): fix them and save it first' ], true, 409);
 
@@ -215,7 +213,7 @@ class WorkflowController extends \sys\BaseController {
 	    $resp->sendJSON([ 'error' => $e->getMessage() ], true, 409);
 	}
 	$executions = $started['executions'] ?? [];
-	//CLD: 2026-10-30T15:00:00+02:00: each one queued for the daemon (saved; was run here after the answer: runSync)
+	//CLD: 2026-10-30T15:00:00+02:00: each one queued for the daemon (saved)
 	foreach($executions as $exe) {
 	    $exe->log(null, 'started by ' . (string)\V::app()->user->name);
 	    $exe->queue();
@@ -223,7 +221,6 @@ class WorkflowController extends \sys\BaseController {
 	    \models\AuditLog::record('workflow.run', $wf, 'execution ' . (string)$exe->_id);
 	}
 	if (empty($executions))
-	    //CLD: 2026-10-18T12:49:28+03:00: $resp->sendJSON (was $this->json, removed)
 	    $resp->sendJSON([ 'execution' => null, 'executions' => [], 'message' => (string)($started['message'] ?? 'Nothing was started') ]);
 
 	//CLD: 2026-10-12T20:33:47+03:00: + executions (all ids, first = execution) and message
@@ -231,18 +228,18 @@ class WorkflowController extends \sys\BaseController {
 	    'message' => $started['message'] ?? null ]);
     }
 
-    //CLD: 2026-10-11T13:51:42+03:00: publish (was a JSON draft/published switch, 2026-10-11T13:29:36+03:00): GET shows the dialog, POST publishes. The saved draft
+    //CLD: 2026-10-11T13:51:42+03:00: publish: GET shows the dialog, POST publishes. The saved draft
     //becomes a new version (models\wf\WfVersion, v<n>, optional note), or ?version=<id> publishes an older version again as a new number; when the draft has
     //not changed since the version in `version`, that version is made active again (no new number). The workflow's triggers then run that version.
     //Refused while the steps to publish have connection errors. Workflow::update
-    //CLD: 2026-10-11T19:47:51+03:00: Workflow::publish (was Workflow::update)
+    //CLD: 2026-10-11T19:47:51+03:00: Workflow::publish
     public function publish($req, $resp) {
 	$wf = $this->findWorkflow('Workflow::publish');
 	$source = isset($req->query['version']) ? $this->findVersion($wf) : null;
 	$active = $wf->publishedVersion();
 	$reuse = $source === null && $active !== null && $wf->draftMatches($active);
 	$check = $source ? $wf->forVersion($source) : $wf;
-	//CLD: 2026-10-19T17:10:00+03:00: issues() (was validateFlow): a draft can be saved with errors in the steps' settings, it is not published with them
+	//CLD: 2026-10-19T17:10:00+03:00: issues(): a draft can be saved with errors in the steps' settings, it is not published with them
 	$errors = array_values(array_filter($check->issues(), fn($i) => $i['level'] == 'error'));
 	//CLD: 2026-11-02T15:46:06+02:00: the tests of the draft (util\AgentEval::gate); when Tests must pass to publish is on, a new version of the draft needs them passed. Not an older version or an unchanged draft published again: a way back stays open
 	$gate = \util\AgentEval::gate($wf);
@@ -501,7 +498,6 @@ class WorkflowController extends \sys\BaseController {
 		'message' => (string)($entry['message'] ?? ''),
 	    ];
 	}
-	//CLD: 2026-10-18T12:49:28+03:00: $resp->sendJSON (was $this->json, removed)
 	//CLD: 2026-10-29T21:30:00+02:00: + run: where each step and connection is (the designer shows it on the canvas: runStatus)
 	//CLD: 2026-11-02T14:00:00+02:00: + traces: its AI steps' visits without their rounds (execution_trace), traces_total
 	[ $traces, $tracesTotal ] = \models\agent\AgentTrace::ofExecution($exe);
@@ -532,7 +528,7 @@ class WorkflowController extends \sys\BaseController {
 
     //CLD: 2026-11-02T14:00:00+02:00: new: a link to a trace (?id=<trace_id>, e.g. from the variable of the AI step in a later step's message): the designer, its Executions panel on it. Workflow::read
     public function trace($req, $resp) {
-	$trace = \models\agent\AgentTrace::read((string)($req->query['id'] ?? ''), \V::app()->config('rt.account')->_id);
+	$trace = \models\agent\AgentTrace::read((string)($req->query['id'] ?? ''), $this->account->_id);
 	if (!$trace)
 	    \V::app()->error(404, 'This agent trace is no longer kept');
 	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $trace['wf'], 'aid' => $trace['aid'] ]);
@@ -724,7 +720,7 @@ class WorkflowController extends \sys\BaseController {
 	}
 	//CLD: 2026-10-24T00:04:00+03:00: audit log: how many were deleted (SOC2.md gap 4)
 	if ($deleted)
-	    //CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was the plural inline)
+	    //CLD: 2026-10-24T16:30:00+03:00: util\Format::plural
 	    \models\AuditLog::record('workflow.executions.delete', $wf, \util\Format::plural($deleted, 'execution') . ' of the draft' . ($failed ? ", {$failed} not deleted" : ''));
 	$kept = \V::app()->om->count('WfExecution', [ 'wf' => $wf->_id, 'aid' => $wf->aid ]);
 	if ($failed && !$deleted)
@@ -742,7 +738,6 @@ class WorkflowController extends \sys\BaseController {
 	$data = is_array($req->data) ? $req->data : [];
 	$text = (string)($data['text'] ?? '');
 	if (strlen($text) > 20000)
-	    //CLD: 2026-10-18T12:49:28+03:00: $resp->sendJSON (was $this->json, removed)
 	    $resp->sendJSON([ 'problems' => [], 'completion' => null ]);
 
 	$nodes = isset($data['nodes']) ? json_decode((string)$data['nodes'], true) : null;
@@ -750,7 +745,7 @@ class WorkflowController extends \sys\BaseController {
 	    $nodes = is_array($wf->nodes) ? $wf->nodes : [];
 	$vars = \models\Workflow::variablesAt($nodes, (string)($data['node'] ?? ''));
 	//CLD: 2026-10-13T15:24:28+03:00: + the project variables ({{ vars.<name> }}: suggested, a name the project does not have flagged)
-	//CLD: 2026-10-22T00:28:13+03:00: from the credentials of type Variable (was models\Variable)
+	//CLD: 2026-10-22T00:28:13+03:00: from the credentials of type Variable
 	$vars[\models\credential\CredentialVariable::EXPRESSION_NAME] = \models\credential\CredentialVariable::expressionType($wf->aid, $wf->project);
 
 	//CLD: 2026-10-11T23:02:07+03:00: mode `name`: a variable name field (suggestions of the variables; usage `read` warns about a name no step before sets)
@@ -769,8 +764,6 @@ class WorkflowController extends \sys\BaseController {
 	$resp->sendJSON($response);
     }
 
-    //CLD: 2026-10-19T20:10:00+03:00: assistant() moved into the Assistant plugin (plugins\Assistant\controllers\AssistantController::ask)
-
     //CLD: 2026-10-11T13:51:42+03:00: version ?version=<id> of workflow $wf, else 400 / 404
     private function findVersion($wf) {
 	$vid = (string)(\V::app()->request->query['version'] ?? '');
@@ -785,7 +778,7 @@ class WorkflowController extends \sys\BaseController {
     //the workflow `id` of the current account, if the user has $permName on it
     private function findWorkflow($permName) {
 	$oid = $this->getOidOrError();
-	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => \V::app()->config('rt.account')->_id ]);
+	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $this->account->_id ]);
 	if (empty($wf))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can($permName, [ 'object' => $wf ]))

@@ -2,7 +2,7 @@
 
 /*
     Human task - the run waits until a person completes the step's form (assigned users / roles of the project, in "My tasks").
-    The first visit creates a task (plugins\Forms\models\wf\WfTask: title and instructions with their {{ }} rendered, the form,
+    The first visit creates a task (models\wf\WfTask: title and instructions with their {{ }} rendered, the form,
     who may complete it, the due time) and sleeps;
     completing it (TaskController) resumes the run:
 	the answers go into one variable (default `task`), who gave them into `<variable>_user`, and the run goes on at `done`.
@@ -135,7 +135,6 @@ class NodeAppTask extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => false, 'width' => 4, 'showIf' => [ 'key' => 'timeoutUnit', 'operator' => 'ne', 'value' => 'none' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: The answers, by key; who gave them: <variable>_user)
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Answers variable',

@@ -16,7 +16,6 @@
     On error (Graph errors, e.g. not found, no access, a bad time) - fail the step, or continue on a second output `error`
 */
 
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 class NodeAppOutlookCalendar extends NodeAppMicrosoft {
@@ -64,7 +63,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: Empty: the account's calendar; or a calendar id (List the calendars gives them))
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'calendarId',
 		'type' => 'text',
 		'label' => 'Calendar',
@@ -73,7 +72,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'list', 'create' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: The event id, e.g. {{ calendar.id }} of a create, {{ calendar[0].id }} of a list)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'eventId',
 		'type' => 'text',
 		'label' => 'Event',
@@ -85,7 +84,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 
 	    //list / freeBusy
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		'key' => 'timeMin',
 		'type' => 'text',
 		'label' => 'From',
@@ -94,7 +93,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'timeMax',
 		'type' => 'text',
 		'label' => 'Until',
@@ -103,7 +102,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: Words in the title, location or the start of the description; empty: all)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Search',
@@ -150,7 +149,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: ISO 8601 or 2026-10-21 14:00 (all day: 2026-10-21))
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		'key' => 'start',
 		'type' => 'text',
 		'label' => 'Start',
@@ -160,7 +159,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6); shorter help (was: Empty: Start + Duration (all day: the same day))
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'end',
 		'type' => 'text',
 		'label' => 'End',
@@ -169,7 +168,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'duration',
 		'type' => 'number',
 		'label' => 'Duration (minutes)',
@@ -179,7 +178,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'step' => 5, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'allDay',
 		'type' => 'switch',
 		'label' => 'All day',
@@ -187,7 +186,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'showAs',
 		'type' => 'select',
@@ -197,7 +196,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Description as',
@@ -207,7 +206,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'teams',
 		'type' => 'switch',
 		'label' => 'Add a Teams meeting',
@@ -216,13 +215,13 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'timeZone',
 		'type' => 'text',
 		'label' => 'Time zone',
 		'default' => '',
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (was the example, kept in the help)
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
 		'help' => 'e.g. Europe/Bucharest',
 		'ui' => [ 'advanced' => true, 'width' => 3, 'placeholder' => 'App\'s time zone', 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
 	    ],
@@ -234,7 +233,6 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'rows' => 3, 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: shorter help (was: Addresses separated by commas (they get an invitation); update: added to the attendees)
 		'key' => 'attendees',
 		'type' => 'text',
 		'label' => 'Attendees',
@@ -245,7 +243,6 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 
 	    static::timeoutField(60),
 	    static::variableField(),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Outlook, e.g. not found, no access, a time that cannot be read)
 	    static::onErrorField('Outlook errors, times not read'),
 	];
     }

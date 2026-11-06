@@ -1,9 +1,6 @@
 <?php
-//CLD: 2026-10-14T16:01:34+03:00: util\FormSchema and WidgetsUtil::smartFormFields / formValues are util\SmartForm (::showIf, ::modelFields, ::modelValues, ...)
-//CLD: 2026-10-05T21:06:21+03:00: new view: create/update a data table column (modal), same pattern as variable/form.php
-//CLD: 2026-10-05T21:34:43+03:00: form rendered with app.smartform (choices: showIf/requiredIf on type == select) instead of
-//server-side inputs + toggle script; server errors shown on the fields
-//CLD: 2026-10-05T21:39:55+03:00: submitted as a regular form through app.pjax's submit handler (was app.pjax.fetch from a click handler)
+//CLD: 2026-10-14T16:01:34+03:00: create / update a data table column (modal): the form rendered with app.smartform (util\SmartForm; the choices shown and required
+//when type == select), server errors on the fields; submitted as a regular form through app.pjax's submit handler
 $isEdit = !empty($field);
 if ($isEdit) {
     $t_ok = 'Update';
@@ -20,7 +17,7 @@ $containerId = 'column-form-' . uniqid();
 $formId = $containerId . '-form';
 
 //CLD: 2026-10-14T14:18:23+03:00: the fields come from the form model (models\datatable\FieldForm: labels, help, choices, rules -> required / requiredIf, ui settings) through
-//util\SmartForm::modelFields; key, type and target are not editable once the column exists (their perm:update); was a hand-written schema
+//util\SmartForm::modelFields; key, type and target are not editable once the column exists (their perm:update)
 $schema = [
     'id' => $formId,
     'action' => $actionUrl,

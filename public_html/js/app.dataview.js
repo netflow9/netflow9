@@ -53,7 +53,7 @@ window.app.BaseDataView = (function() {
 	constructor(parent, options) {
 	    this.parent = parent;
 
-	    //CLD: 2026-10-19T22:19:24+03:00: grows up to 20rem, never under 8rem (was w-25: a quarter of the toolbar, too narrow on phones)
+	    //CLD: 2026-10-19T22:19:24+03:00: grows up to 20rem, never under 8rem
 	    const defLayout = `
 	    <input type="text" class="form-control form-control-sm flex-grow-1 search-input" style="max-width: 20rem; min-width: 8rem; flex-basis: 12rem" placeholder="Search..." value="{{search}}">
 	    `;
@@ -991,8 +991,7 @@ window.app.ListView = (function() {
     return ListView;
 })();
 
-//CLD: 2026-10-11T22:01:40+03:00: the grid view (a table: columns from the schema, column designer, row actions, add-row button, empty filler rows), moved here from
-//data.grid.js (was the global class `gridView`; the views use app.GridView now)
+//CLD: 2026-10-11T22:01:40+03:00: the grid view (a table: columns from the schema, column designer, row actions, add-row button, empty filler rows)
 window.app.GridView = (function() {
     class GridView extends app.BaseDataView {
 
@@ -1161,7 +1160,7 @@ window.app.GridView = (function() {
 
     	const addTh = document.createElement("th");
     	addTh.className = "col-th sticky-top p-0";
-    	//CLD: 2026-11-04T08:27:09+02:00: as wide as the add-column button (was 100px, for the row actions, which now float over the row)
+    	//CLD: 2026-11-04T08:27:09+02:00: as wide as the add-column button
     	addTh.style.width = "48px";
 
     	//CLD: 2026-10-05T21:06:21+03:00: show the add-column button only when there is a URL for it
@@ -1216,7 +1215,7 @@ window.app.GridView = (function() {
         		    td.className = 'p-0 position-relative';
         		    //td.style.width = col.width + "px";
 
-        		    //CLD: 2026-10-30T00:00:00Z: boolean columns (checkbox / switch) shown as text, as any other field (were a checkbox)
+        		    //CLD: 2026-10-30T00:00:00Z: boolean columns (checkbox / switch) shown as text, as any other field
         		    const content = document.createElement("div");
         		    content.className = "cell-content px-2 py-1 text-truncate w-100 h-100";
         		    content.textContent = row[colName];

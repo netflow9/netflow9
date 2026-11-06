@@ -2,10 +2,8 @@
 
 //CLD: 2026-10-08T14:34:02+03:00: new class: base of the Google OAuth credential types (Gmail, later Drive, ...): Google endpoints, offline access; subclasses
 //give the scopes. The OAuth client (web application) is created in Google Cloud Console > APIs & Services > Credentials
-//CLD: 2026-10-09T17:21:14+03:00: base of Google OAuth credential variants (was CredentialTypeGoogleOAuth2); instance methods (were static, given the credential)
+//CLD: 2026-10-09T17:21:14+03:00: base of Google OAuth credential variants; instance methods
 
-//CLD: 2026-10-22T00:35:40+03:00: moved to the GoogleIntegration plugin (was models\credential\CredentialGoogleOAuth2); core classes fully qualified
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\GoogleIntegration\models): the Google credentials and steps are core, for every account (no plan feature)
 namespace models\credential;
 
 abstract class CredentialGoogleOAuth2 extends \models\credential\CredentialOAuth2 {

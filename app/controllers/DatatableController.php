@@ -11,6 +11,8 @@ class DatatableController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
 
 	$this->project = \V::app()->om->findById('Project', \V::app()->user->crtProject);
     }
@@ -21,7 +23,7 @@ class DatatableController extends \sys\BaseController {
 
 	//CLD: 2026-11-03T14:00:00+02:00: ?shared=1: the tables other projects share with this one, those the user may read (the page's second list)
 	$def = \models\datatable\DataTableDef::class;
-	$sharedHere = fn() => array_filter(iterator_to_array(\V::app()->om->find('DataTableDef', [ 'aid' => \V::app()->var('rt.account')->_id ] + $def::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false),
+	$sharedHere = fn() => array_filter(iterator_to_array(\V::app()->om->find('DataTableDef', [ 'aid' => $this->account->_id ] + $def::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false),
 	    fn($t) => \V::app()->user->can('DataTable::readData', [ 'object' => $t ]));
 
 	if (!empty($req->query['data']) && !empty($req->query['shared'])) {
@@ -41,9 +43,8 @@ class DatatableController extends \sys\BaseController {
 
 	if (!empty($req->query['data'])) {
 	    //populate manually
-	    $account = \V::app()->var('rt.account');
 	    $query = [
-		'aid' => $account->_id,
+		'aid' => $this->account->_id,
 		'project' => $this->project->_id,
 	    ];
 	    $response = [
@@ -56,7 +57,7 @@ class DatatableController extends \sys\BaseController {
 		$response['data'][] = [
 		    '_id' => (string)$t->_id,
 		    'name' => $t->name,
-		    'rows' => \V::app()->om->count($t->iname, [ 'aid' => $account->_id ]),
+		    'rows' => \V::app()->om->count($t->iname, [ 'aid' => $this->account->_id ]),
 		    'cols' => \V::app()->om->count('Field', [ 'objectName' => $t->iname ]),
 		    //CLD: 2026-11-03T14:00:00+02:00: how many projects it is shared with
 		    'shares' => count((array)$t->shares),
@@ -79,19 +80,18 @@ class DatatableController extends \sys\BaseController {
 	if (!\V::app()->user->can('DataTable::create'))
 	    \V::app()->error(403, 'Unauthorized');
 
-	$account = \V::app()->var('rt.account');
 	//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of data tables (util\Tiers)
 	try {
-	    \util\Tiers::check($account, 'datatables');
+	    \util\Tiers::check($this->account, 'datatables');
 	} catch (\util\LimitException $e) {
 	    $this->addToast('danger', 'Limit reached', $e->getMessage());
 	    $this->redirect(\V::app()->createUrl('/datatable/list'));
 	    return;
 	}
-	$n = \V::app()->om->count('DataTableDef', [ 'aid' => $account->_id ]);
+	$n = \V::app()->om->count('DataTableDef', [ 'aid' => $this->account->_id ]);
 
 	$dt = \V::app()->om->create('DataTableDef', [
-	    'aid' => $account->_id,
+	    'aid' => $this->account->_id,
 	    'name' => 'data_table_' . ++$n,
 	    'iname' => "data-table-{$n}-{$this->project->_id}",
 	    'project' => $this->project->_id,
@@ -105,7 +105,7 @@ class DatatableController extends \sys\BaseController {
 	//CLD: 2026-10-11T22:10:29+03:00: deletable from the grid like the columns made in the designer (Field defaults perm:delete to nobody)
 	$f = \sys\fields\Field::create([
 	    'type' => 'text',
-	    'aid' => $account->_id,
+	    'aid' => $this->account->_id,
 	    'key' => 'name',
 	    'label' => 'Name',
 	    'objectName' => $dt->iname,
@@ -140,7 +140,7 @@ class DatatableController extends \sys\BaseController {
 	}
 	//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of data tables (util\Tiers), before the file is uploaded
 	try {
-	    \util\Tiers::check(\V::app()->var('rt.account'), 'datatables');
+	    \util\Tiers::check($this->account, 'datatables');
 	} catch (\util\LimitException $e) {
 	    $this->render('import_upload', [ 'error' => $e->getMessage() ]);
 	    return;
@@ -148,7 +148,7 @@ class DatatableController extends \sys\BaseController {
 
 	$data = is_array($req->data) ? $req->data : [];
 	$step = (string)($data['step'] ?? '');
-	$aid = (string)\V::app()->var('rt.account')->_id;
+	$aid = (string)$this->account->_id;
 
 	//upload: keep the file, then the preview
 	if ($step === '') {
@@ -160,7 +160,7 @@ class DatatableController extends \sys\BaseController {
 	    elseif ($file['error'] > 0)
 		$error = 'The file could not be uploaded';
 	    elseif ($file['size'] > \util\TableImport::MAX_BYTES)
-		//CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes (was the MB inline)
+		//CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes
 		$error = 'The file is larger than ' . \util\Format::bytes(\util\TableImport::MAX_BYTES);
 	    elseif ($ext === 'xls')
 		$error = 'Old Excel files (.xls) cannot be read: save the file as .xlsx or CSV';
@@ -173,7 +173,7 @@ class DatatableController extends \sys\BaseController {
 
 	    $token = bin2hex(random_bytes(16));
 	    move_uploaded_file($file['tmp_name'], "{$dir}/{$token}.{$ext}");
-	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 	    file_put_contents("{$dir}/{$token}.json", \util\JSON::encode([ 'aid' => $aid, 'user' => (string)\V::app()->user->_id, 'name' => (string)$file['name'], 'ext' => $ext ]));
 	    $data = [ 'token' => $token ];
 	    $step = 'preview';
@@ -247,24 +247,23 @@ class DatatableController extends \sys\BaseController {
     //creates the table, its columns and rows; null when done (toast + redirect to the table), else the errors [ 'name' | column index => [ messages ] ];
     //$firstRow: the file's row number of the first data row (skipped rows are reported by it); $files: the uploaded file's paths, removed once imported
     private function importTable(array $meta, $name, array $columns, array $dataRows, $firstRow, array $files) {
-	$account = \V::app()->var('rt.account');
 	$errors = [];
 
 	//the table: the next free iname (as create())
-	$n = \V::app()->om->count('DataTableDef', [ 'aid' => $account->_id ]);
+	$n = \V::app()->om->count('DataTableDef', [ 'aid' => $this->account->_id ]);
 	do {
 	    $iname = 'data-table-' . ++$n . '-' . $this->project->_id;
 	} while (\V::app()->om->count('DataTableDef', [ 'iname' => $iname ]) > 0);
-	$dt = \V::app()->om->create('DataTableDef', [ 'aid' => $account->_id, 'name' => $name, 'iname' => $iname, 'project' => $this->project->_id ]);
+	$dt = \V::app()->om->create('DataTableDef', [ 'aid' => $this->account->_id, 'name' => $name, 'iname' => $iname, 'project' => $this->project->_id ]);
 	if (!$dt->validates())
 	    $errors['name'] = array_merge(...array_values(array_map(fn($m) => (array)$m, (array)$dt->errors())));
 	//CLD: 2026-10-24T09:45:36+03:00: the tier's limits (util\Tiers): one more table, and its rows (all the file's: some may be skipped)
 	try {
-	    \util\Tiers::check($account, 'datatables');
-	    $limit = \util\Tiers::limit($account, 'datatable_records');
+	    \util\Tiers::check($this->account, 'datatables');
+	    $limit = \util\Tiers::limit($this->account, 'datatable_records');
 	    if ($limit !== null && count($dataRows) > $limit)
-		//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was number_format)
-		throw new \util\LimitException(\util\Tiers::limitMessage($account, 'datatable_records') . ' The file has ' . \util\Format::plural(count($dataRows), 'row') . '.', 'datatable_records', $limit, 0);
+		//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural
+		throw new \util\LimitException(\util\Tiers::limitMessage($this->account, 'datatable_records') . ' The file has ' . \util\Format::plural(count($dataRows), 'row') . '.', 'datatable_records', $limit, 0);
 	} catch (\util\LimitException $e) {
 	    $errors['name'][] = $e->getMessage();
 	}
@@ -284,7 +283,7 @@ class DatatableController extends \sys\BaseController {
 		if (count($values) > 100)
 		    $errors[$i][] = 'Too many different values for a select (more than 100)';
 	    }
-	    $form = \models\datatable\FieldForm::create([ 'objectName' => $iname, 'aid' => $account->_id ]);
+	    $form = \models\datatable\FieldForm::create([ 'objectName' => $iname, 'aid' => $this->account->_id ]);
 	    $form->assign([ 'label' => $col['label'], 'key' => $col['key'], 'type' => $col['type'], 'choices' => implode("\n", array_keys($values)) ], true);
 	    if (!$form->validates()) {
 		foreach((array)$form->errors() as $key => $messages) {
@@ -308,7 +307,7 @@ class DatatableController extends \sys\BaseController {
 	\V::app()->om->registerDataTables();
 
 	//the rows: values the column cannot read are left empty; rows the column rules refuse are skipped
-	//CLD: 2026-10-12T13:54:43+03:00: stored with om->insertMany in batches of 500 (was the MongoDB collection directly)
+	//CLD: 2026-10-12T13:54:43+03:00: stored with om->insertMany in batches of 500
 	$batch = [];
 	$imported = 0;
 	$unread = 0;
@@ -325,7 +324,7 @@ class DatatableController extends \sys\BaseController {
 		if ($v !== null)
 		    $values[$col['key']] = $v;
 	    }
-	    $row = \V::app()->om->create($iname, [ 'aid' => $account->_id ]);
+	    $row = \V::app()->om->create($iname, [ 'aid' => $this->account->_id ]);
 	    $row->assign($values);
 	    if (!$row->validates()) {
 		$skipped[] = $r + $firstRow;
@@ -345,7 +344,7 @@ class DatatableController extends \sys\BaseController {
 	foreach($files as $f)
 	    @unlink($f);
 
-	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was the plural inline)
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural
 	$message = \util\Format::plural($imported, 'row') . ' imported';
 	if ($skipped)
 	    $message .= '; skipped (not valid): row' . (count($skipped) > 1 ? 's ' : ' ') . implode(', ', array_slice($skipped, 0, 10)) . (count($skipped) > 10 ? '…' : '');
@@ -361,8 +360,8 @@ class DatatableController extends \sys\BaseController {
 	$dt = $this->findTable('DataTable::update');
 
 	if ($req->is('post')) {
-	    //CLD: 2026-10-05T20:44:56+03:00: only the form's field; `iname` is part of the data collection name and `project` must not move (was the whole POST)
-	    //CLD: 2026-10-10T18:57:33+03:00: assign with permissions (the form fields the user may update; was onlyFields name)
+	    //CLD: 2026-10-05T20:44:56+03:00: only the form's field; `iname` is part of the data collection name and `project` must not move
+	    //CLD: 2026-10-10T18:57:33+03:00: assign with permissions (the form fields the user may update)
 	    $dt->assign($req->data, true);
 	    if ($dt->validates()) {
 		$dt->save();
@@ -400,7 +399,7 @@ class DatatableController extends \sys\BaseController {
     private function findTable($permName = 'DataTable::update') {
 	$oid = $this->getOidOrError();
 
-	$dt = \V::app()->om->findOne('DataTableDef', [ '_id' => $oid, 'aid' => \V::app()->var('rt.account')->_id ]);
+	$dt = \V::app()->om->findOne('DataTableDef', [ '_id' => $oid, 'aid' => $this->account->_id ]);
 	if (empty($dt))
 	    \V::app()->error(404, 'Not found');
 
@@ -420,12 +419,10 @@ class DatatableController extends \sys\BaseController {
 	return $field;
     }
 
-    //CLD: 2026-10-06T09:23:42+03:00: removed validateColumn(): the checks are validation rules of models\datatable\FieldForm
-
     public function create_column($req, $resp) {
 	$dt = $this->findTable();
-	//CLD: 2026-10-06T09:23:42+03:00: FieldForm (was ColumnForm) for this table; assign with permission check + the form's own validation rules
-	$form = \models\datatable\FieldForm::create([ 'objectName' => $dt->iname, 'aid' => \V::app()->var('rt.account')->_id ]);
+	//CLD: 2026-10-06T09:23:42+03:00: FieldForm for this table; assign with permission check + the form's own validation rules
+	$form = \models\datatable\FieldForm::create([ 'objectName' => $dt->iname, 'aid' => $this->account->_id ]);
 
 	if ($req->is('post')) {
 	    $form->assign(is_array($req->data) ? $req->data : [], true);
@@ -481,9 +478,9 @@ class DatatableController extends \sys\BaseController {
 	$field->delete();
 
 	//remove the column's values from the rows
-	//CLD: 2026-10-12T13:54:43+03:00: through ObjectManager (om->updateMany; was the MongoDB collection directly)
+	//CLD: 2026-10-12T13:54:43+03:00: through ObjectManager (om->updateMany)
 	if (\V::app()->om->isDefined($dt->iname))
-	    \V::app()->om->updateMany($dt->iname, [ 'aid' => \V::app()->var('rt.account')->_id ], [ '$unset' => [ $key => '' ] ]);
+	    \V::app()->om->updateMany($dt->iname, [ 'aid' => $this->account->_id ], [ '$unset' => [ $key => '' ] ]);
 
 	$this->addToast('success', 'OK', 'Column deleted!');
 	$this->redirect(\V::app()->createUrl('/datatable/manage', [ 'id' => $dt->_id ]));
@@ -492,15 +489,13 @@ class DatatableController extends \sys\BaseController {
     //---------------------------------------------------------------------------------------------------------------
     //CLD: 2026-10-05T21:30:59+03:00: row editing: a row is an object of the table's iname (collection "<hostname>-<iname>"); DataTable::writeData required
 
-    //CLD: 2026-10-11T22:14:58+03:00: removed rowKeys() (never called; it used FieldForm::RESERVED_KEYS, which does not exist)
-
     //the row `row` (query) of table $dt within the current account, or 400/404
     private function findRowOrError($dt) {
 	$rowId = $this->getOidParam('row');
 	if (empty($rowId))
 	    \V::app()->error(400, 'malformed request: row missing');
 
-	$row = \V::app()->om->findOne($dt->iname, [ '_id' => $rowId, 'aid' => \V::app()->var('rt.account')->_id ]);
+	$row = \V::app()->om->findOne($dt->iname, [ '_id' => $rowId, 'aid' => $this->account->_id ]);
 	if (empty($row))
 	    \V::app()->error(404, 'Row not found');
 	return $row;
@@ -508,14 +503,14 @@ class DatatableController extends \sys\BaseController {
 
     public function create_row($req, $resp) {
 	$dt = $this->findTable('DataTable::writeData');
-	$row = \V::app()->om->create($dt->iname, [ 'aid' => \V::app()->var('rt.account')->_id ]);
+	$row = \V::app()->om->create($dt->iname, [ 'aid' => $this->account->_id ]);
 
 	if ($req->is('post')) {
 	    $row->assign($req->data, true);
 	    //CLD: 2026-10-24T09:45:36+03:00: the tier's limit of rows in a data table (util\Tiers)
 	    $over = null;
 	    try {
-		\util\Tiers::check(\V::app()->var('rt.account'), 'datatable_records', 1, $dt->iname);
+		\util\Tiers::check($this->account, 'datatable_records', 1, $dt->iname);
 	    } catch (\util\LimitException $e) {
 		$over = $e->getMessage();
 		$this->addToast('danger', 'Limit reached', $over);
@@ -535,20 +530,20 @@ class DatatableController extends \sys\BaseController {
     //on the table; a data table as target also needs DataTable::readData on it
     public function object_choices($req, $resp) {
 	$dt = $this->findTable('DataTable::writeData');
-	$row = \V::app()->om->create($dt->iname, [ 'aid' => \V::app()->var('rt.account')->_id ]);
+	$row = \V::app()->om->create($dt->iname, [ 'aid' => $this->account->_id ]);
 	$field = $row->schema[(string)($req->query['key'] ?? '')] ?? null;
 	if (empty($field) || $field->type !== 'object')
 	    \V::app()->error(404, 'Column not found');
 
 	$targetDef = \V::app()->om->getObjectDef((string)$field->object);
 	if (is_array($targetDef) && !empty($targetDef['_id'])) {
-	    $target = \V::app()->om->findOne('DataTableDef', [ '_id' => $targetDef['_id'], 'aid' => \V::app()->var('rt.account')->_id ]);
+	    $target = \V::app()->om->findOne('DataTableDef', [ '_id' => $targetDef['_id'], 'aid' => $this->account->_id ]);
 	    if (empty($target) || !\V::app()->user->can('DataTable::readData', [ 'object' => $target ]))
 		\V::app()->error(403, 'Unauthorized');
 	}
 
 	[ $results, $more ] = $field->searchChoices($req->query['q'] ?? '', $req->query['page'] ?? 1);
-	//CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON (was write + end: sent as text/html)
+	//CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON
 	$resp->sendJSON([ 'results' => $results, 'pagination' => [ 'more' => $more ] ]);
     }
 
@@ -659,14 +654,14 @@ class DatatableController extends \sys\BaseController {
     }
 
     public function manage($req, $resp) {
-	//CLD: 2026-10-05T21:24:12+03:00: shared lookup + permission check; also restricts to the current account (was findById)
-	//CLD: 2026-10-11T22:10:29+03:00: viewing the table and its rows needs DataTable::readData (was DataTable::update); the view offers the column designer only with
+	//CLD: 2026-10-05T21:24:12+03:00: shared lookup + permission check; also restricts to the current account
+	//CLD: 2026-10-11T22:10:29+03:00: viewing the table and its rows needs DataTable::readData; the view offers the column designer only with
 	//DataTable::update and the row editing only with DataTable::writeData
 	$dt = $this->findTable('DataTable::readData');
 
 	if (!empty($req->query['data'])) {
 	    $response = $this->__data($dt->iname);
-	    //CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON (was write + end: sent as text/html)
+	    //CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON
 	    $resp->sendJSON($response);
 	}
 
@@ -677,9 +672,8 @@ class DatatableController extends \sys\BaseController {
     //all pages; the columns the user may read, in the grid's order. DataTable::readData; one audit entry `datatable.export`
     public function export($req, $resp) {
 	$dt = $this->findTable('DataTable::readData');
-	$account = \V::app()->var('rt.account');
 
-	$o = \V::app()->om->create($dt->iname, [ 'aid' => $account->_id ]);
+	$o = \V::app()->om->create($dt->iname, [ 'aid' => $this->account->_id ]);
 	[ $query, $options ] = $this->__listQuery($o);
 	unset($options['skip'], $options['limit']);
 

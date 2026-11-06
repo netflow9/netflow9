@@ -185,7 +185,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	if (!\util\Validator::isIdentifier($name))
 	    return [];
 	$outputs = [];
-	//CLD: 2026-11-03T16:00:00+02:00: for a user, only a workflow of their current project or shared with it (was: any of the account, so its outputs showed through a step's settings)
+	//CLD: 2026-11-03T16:00:00+02:00: for a user, only a workflow of their current project or shared with it
 	$project = \V::app()->config('app.mode') == 'web' ? \V::app()->user->crtProject : null;
 	$wf = static::findWorkflow($config['workflow'] ?? '', null, $project);
 	$copy = $wf ? ($project ? $wf->copyFor($project) : ($wf->liveCopy() ?: $wf)) : null;
@@ -252,7 +252,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 		$inputs[(string)$row['name']] = \util\Expression::render((string)($row['value'] ?? ''), $vars);
 	}
 	$wait = $this->cfg('mode', 'wait') !== 'start';
-	//CLD: 2026-11-01T21:50:00+02:00: the checks and the new execution in startChild() (was here: the AI steps' workflow tools start them the same way)
+	//CLD: 2026-11-01T21:50:00+02:00: the checks and the new execution in startChild() (the AI steps' workflow tools start them the same way)
 	[ $child, $error ] = static::startChild($exec, $wf, $inputs, $wait, (string)$this->wfid);
 	if ($child === null)
 	    return $this->failed($error);
@@ -275,7 +275,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	return $this->finish($child);
     }
 
-    //CLD: 2026-11-01T21:50:00+02:00: new (was in execute()): workflow $wf started by execution $exec (its step $nodeId) with $inputs (the inputs' values, cast by its trigger), $wait: the caller waits
+    //CLD: 2026-11-01T21:50:00+02:00: new: workflow $wf started by execution $exec (its step $nodeId) with $inputs (the inputs' values, cast by its trigger), $wait: the caller waits
     //for it (it is queued when the workflow ends: WfExecution::notifyCaller). The checks: it starts with Called by a workflow, has no errors, is not already in the chain of callers,
     //not too deep (MAX_DEPTH). [ the new execution (not saved), null ] or [ null, why it cannot start ]
     public static function startChild($exec, $wf, array $inputs, $wait, $nodeId) {
@@ -306,7 +306,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	return [ $child, null ];
     }
 
-    //CLD: 2026-11-01T21:50:00+02:00: new (was in finish()): the outputs of ended execution $child (its trigger's outputs: [ name => value ], null when it did not set one)
+    //CLD: 2026-11-01T21:50:00+02:00: new: the outputs of ended execution $child (its trigger's outputs: [ name => value ], null when it did not set one)
     public static function outputsOf($child) {
 	$outputs = [];
 	$variables = is_array($child->variables) ? $child->variables : [];

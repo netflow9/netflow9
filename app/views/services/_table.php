@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-10-31T19:30:00+02:00: the services' table (was in index.php): the Services page (index.php, with the Admin plugin) and the account settings' tab (views/account/_services.php, without it):
+    CLD: 2026-10-31T19:30:00+02:00: the services' table: the Services page (index.php, with the MultiTenant plugin) and the account settings' tab (views/account/_services.php, without it):
     $services, each with its `status` (util\Services::withStatus); start / stop / restart (ServicesController::control)
 */
 $csrf = '<input type="hidden" name="' . \V::app()->csrf->csrf_key . '" value="' . \V::app()->html->escape(\V::app()->csrf->getToken(false)) . '">';

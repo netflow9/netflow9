@@ -213,7 +213,7 @@ class AgentTools {
 		'help' => 'The credential the model uses',
 		'ui' => [ 'section' => self::SECTION, 'width' => 4, 'newRow' => true, 'placeholder' => 'Not used' ],
 	    ];
-	    //CLD: 2026-11-01T23:30:00+02:00: 4 wide (was 8): the approvals next to it
+	    //CLD: 2026-11-01T23:30:00+02:00: 4 wide: the approvals next to it
 	    $fields[] = [
 		'key' => "{$key}Tools",
 		'type' => 'select',
@@ -739,7 +739,7 @@ class AgentTools {
 	return [ $schema, $inputs ];
     }
 
-    //CLD: 2026-11-01T23:30:00+02:00: new (was in runWorkflow): the arguments $args checked against $inputs, cast to their types: [ the inputs given, null ] or [ null, what is wrong ]
+    //CLD: 2026-11-01T23:30:00+02:00: new: the arguments $args checked against $inputs, cast to their types: [ the inputs given, null ] or [ null, what is wrong ]
     public static function workflowInputs(array $inputs, array $args) {
 	$given = [];
 	if ($args && array_is_list($args))
@@ -766,7 +766,7 @@ class AgentTools {
     //runs workflow $wf for AI step $ai with the arguments $args (checked against $inputs, cast to their types): nested, as Run a workflow (NodeAppWorkflow::startChild) =>
     //[ { ok, state, execution, outputs, error } as JSON, isError, images ]
     protected static function runWorkflow($ai, $wf, array $inputs, array $args) {
-	//CLD: 2026-11-01T23:30:00+02:00: workflowInputs() (was here: also the check of a call waiting for approval)
+	//CLD: 2026-11-01T23:30:00+02:00: workflowInputs() (also the check of a call waiting for approval)
 	[ $given, $error ] = self::workflowInputs($inputs, $args);
 	if ($error !== null)
 	    return [ $error, true, [] ];

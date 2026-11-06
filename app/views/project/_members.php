@@ -81,7 +81,7 @@ if ($canManage) {
     ]);
 }
 
-//CLD: 2026-10-25T21:30:00+02:00: the members as a table (was \sys\widgets\GridView, which no longer exists: the tab failed with "class not found"), as the invitations below
+//CLD: 2026-10-25T21:30:00+02:00: the members as a table, as the invitations below
 echo "<div class='table-responsive'><table class='table table-sm align-middle'><thead><tr><th>User</th><th style='width: 16rem'>Role</th><th style='width: 8rem'></th></tr></thead><tbody>";
 $memberTpl = '<tr><td>{:name}</td><td>{:role}</td><td class="text-end">{:remove}</td></tr>';
 $roleFormTpl = '<form method="post" action="{:action}" class="m-0" style="max-width: 14rem">{:select}</form>';
@@ -100,7 +100,7 @@ foreach($members as $key => $item) {
 	'remove' => $canManage
 	    ? \util\VString::insert($removeTpl, [
 		'href' => \V::app()->createUrl('/project/member_remove', $q),
-		//CLD: 2026-11-03T16:00:00+02:00: the confirmation is shown as HTML after the attribute is read: escaped for both (was once: a name with markup ran in the box)
+		//CLD: 2026-11-03T16:00:00+02:00: the confirmation is shown as HTML after the attribute is read: escaped for both
 		'confirm' => \V::app()->html->escape('Remove ' . \V::app()->html->escape($name) . ' from the project?'),
 	    ])
 	    : '',
@@ -127,7 +127,7 @@ if ($invites) {
     foreach($invites as $inv) {
 	$by = $inv->invited_by ? \V::app()->om->findById('User', $inv->invited_by) : null;
 	$q = [ 'id' => (string)$project->_id, 'invite' => (string)$inv->_id ];
-	//CLD: 2026-10-24T16:30:00+03:00: the invitation's end in the account's datetime format (util\Format; was Y-m-d H:i)
+	//CLD: 2026-10-24T16:30:00+03:00: the invitation's end in the account's datetime format (util\Format)
 	echo \util\VString::insert($inviteRowTpl, [
 	    'email' => \V::app()->html->escape($inv->email),
 	    'role' => \V::app()->html->escape($roles[(string)$inv->role] ?? ''),

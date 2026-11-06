@@ -11,6 +11,8 @@ class FileController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
 
 	$this->project = \V::app()->om->findById('Project', \V::app()->user->crtProject);
 
@@ -36,7 +38,7 @@ class FileController extends \sys\BaseController {
 	if (!\V::app()->user->can('File::create', [ 'project' => $this->project ]))
 	    \V::app()->error(403, 'Unauthorized');
 
-	//CLD: 2026-10-06T21:33:37+03:00: errors as JSON { error } with a 4xx status (were plain text with 200, so the uploader saw a success)
+	//CLD: 2026-10-06T21:33:37+03:00: errors as JSON { error } with a 4xx status
 	$file = $req->files['file'] ?? null;
 	if (empty($file))
 	    $resp->sendJSON([ 'error' => 'No file uploaded' ], true, 400);
@@ -67,7 +69,7 @@ class FileController extends \sys\BaseController {
 	    'metadata' => [
 		'project' => $this->project->_id,
 		'owner' => \V::app()->user->_id,
-		'aid' => \V::app()->config('rt.account')->_id,
+		'aid' => $this->account->_id,
 		'created_at' => new \MongoDB\BSON\UTCDateTime(),
 	    ],
 	];
@@ -90,7 +92,7 @@ class FileController extends \sys\BaseController {
 
 	$file = \V::app()->om->findOne('File', [
 	    '_id' => $oid,
-	    'metadata.aid' => \V::app()->var('rt.account')->_id,
+	    'metadata.aid' => $this->account->_id,
 	    'metadata.project' => $this->project->_id,
 	]);
 	if (empty($file))
@@ -122,7 +124,6 @@ class FileController extends \sys\BaseController {
 	$stream = \models\File::_bucket()->openDownloadStream($file->_id);
 
 	//stream directly: no buffering of the whole file
-	//CLD: 2026-10-18T18:34:20+03:00: output buffers are no longer used by the framework (was: ob_end_clean() of every level)
 
 	header('Content-Type: ' . ($inline ? $mime : 'application/octet-stream'));
 	header('Content-Length: ' . (int)$file->length);
@@ -139,11 +140,10 @@ class FileController extends \sys\BaseController {
 	    return;
 
 	$oid = $this->getOidOrError();
-	$account = \V::app()->var('rt.account');
 
 	//CLD: 2026-10-05T20:35:40+03:00: restrict to the current account (files keep it in metadata.aid); a global-scope role passes
 	//File::delete without looking at the object, so without this a known file id from another account could be deleted
-	$file = \V::app()->om->findOne('File', [ '_id' => $oid, 'metadata.aid' => $account->_id ]);
+	$file = \V::app()->om->findOne('File', [ '_id' => $oid, 'metadata.aid' => $this->account->_id ]);
 	if (empty($file))
 	    \V::app()->error(404, 'Not found');
 

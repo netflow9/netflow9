@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-19T14:09:20+03:00: new view: the initial setup is done (SetupController::account; was part of views/setup/index.php): a link to sign in (the next request
+//CLD: 2026-10-19T14:09:20+03:00: new view: the initial setup is done (SetupController::account): a link to sign in (the next request
 //runs with the app.env just written); $user: the owner
 $this->pageTitle = \V::t('Setup');
 ?>

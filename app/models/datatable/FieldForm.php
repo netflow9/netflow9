@@ -82,12 +82,11 @@ class FieldForm extends \sys\BaseModel {
 		'choices' => \V::app()->om->getSelectableObjects(),
 		//CLD: 2026-10-06T21:22:22+03:00: required for object columns, and one of the user-selectable objects (checked on create: it is locked afterwards
 		//and may no longer be listed, e.g. a deleted table)
-		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule; was the requiredIf rule in `validate`)
+		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule)
 		'requiredIf' => [ 'if' => 'type', 'in' => [ 'object' ], 'message' => 'Choose what this column points to' ],
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo), on create only (as the rule was)
 		'choicesOn' => 'create',
 		//CLD: 2026-10-14T14:18:23+03:00: shown for object columns (required there by the rule above: util\WidgetsUtil makes the form's requiredIf from it)
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'showIf' => [ 'key' => 'type', 'operator' => 'eq', 'value' => 'object' ] ],
 	    ],
 	    //required

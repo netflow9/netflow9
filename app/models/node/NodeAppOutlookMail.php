@@ -17,7 +17,6 @@
     On error (Graph errors, e.g. not found, no access; a project file missing; attachments too large) - fail the step, or continue on a second output `error`
 */
 
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 class NodeAppOutlookMail extends NodeAppMicrosoft {
@@ -68,7 +67,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 
 	    //get / modify / delete
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: The message id; {{ ... }} for expressions, e.g. {{ outlook[0].id }})
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'messageId',
 		'type' => 'text',
 		'label' => 'Message',
@@ -78,7 +77,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::ON_MESSAGE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: Addresses separated by commas; {{ ... }} for expressions, e.g. {{ mail.from }})
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'to',
 		'type' => 'text',
 		'label' => 'To',
@@ -87,7 +86,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, Ion <ion@example.com>', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'cc',
 		'type' => 'text',
 		'label' => 'Cc',
@@ -95,7 +94,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'bcc',
 		'type' => 'text',
 		'label' => 'Bcc',
@@ -112,7 +111,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 9, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Body',
@@ -123,7 +122,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 	    ],
 	    //send / draft
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: Optional: the id of a message to answer (same conversation; to its sender when To is empty); {{ ... }} for expressions, e.g. {{ outlook[0].id }})
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'replyTo',
 		'type' => 'text',
 		'label' => 'In reply to',
@@ -132,7 +131,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: Project file ids, separated by commas, or a list; e.g. {{ file.id }} (Download File) or {{ mail.attachment_files }}; 3 MB in all)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'attachments',
 		'type' => 'text',
 		'label' => 'Attachments',
@@ -151,7 +150,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 
 	    //search
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 4 wide (was 6), on a new line; shorter help (was: inbox, archive, sentitems, drafts, deleteditems, junkemail or a folder id; empty: the whole mailbox)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 4 wide, on a new line
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -160,7 +159,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 4, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 8 wide; shorter help (was: Outlook's search, e.g. from:ana@example.com, subject:invoice, hasattachments:yes, or words; empty: the newest messages)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 8 wide
 		'key' => 'query',
 		'type' => 'text',
 		'label' => 'Search',
@@ -179,7 +178,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		'key' => 'unreadOnly',
 		'type' => 'switch',
 		'label' => 'Unread only',
@@ -187,7 +186,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6); shorter help (was: Allowed file types only; their ids in attachment_files)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'saveAttachments',
 		'type' => 'switch',
 		'label' => 'Save the attachments in the project Files',
@@ -209,7 +208,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 
 	    //modify
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		'key' => 'mark',
 		'type' => 'select',
 		'label' => 'Mark as',
@@ -219,7 +218,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6); shorter help (was: e.g. archive, or a folder id; empty: not moved)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'moveTo',
 		'type' => 'text',
 		'label' => 'Move to folder',
@@ -228,7 +227,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'addCategories',
 		'type' => 'text',
 		'label' => 'Add categories',
@@ -237,7 +236,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'removeCategories',
 		'type' => 'text',
 		'label' => 'Remove categories',
@@ -247,7 +246,6 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 
 	    static::timeoutField(60),
 	    static::variableField(),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Outlook, e.g. not found, no access, attachments too large)
 	    static::onErrorField('Outlook errors, attachments too large'),
 	];
     }

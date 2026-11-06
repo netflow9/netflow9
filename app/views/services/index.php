@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-10-31T11:05:39+02:00: new (was the Services section of the Admin plugin's installation page): the installation's services (ServicesController::index):
+    CLD: 2026-10-31T11:05:39+02:00: new: the installation's services (ServicesController::index):
     $services, each with its `status` (util\Services::status); start / stop / restart (ServicesController::control)
 */
 $this->pageTitle = 'Services';

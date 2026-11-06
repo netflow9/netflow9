@@ -8,7 +8,6 @@
 	run_count, worker_pid, start_run_at, delete_on_done, error
 
     \models\Job::submit('\models\node\NodeTriggerEmail::deliver', [ 'aid' => $aid, 'project' => $project, ... ]);
-    //CLD: 2026-10-18T10:00:00+03:00: example: an existing method (util\MailPoller::pollStep is gone)
 */
 namespace models;
 
@@ -125,7 +124,7 @@ class Job extends \sys\BaseModel {
 	$coll = \V::app()->mongo->selectCollection(self::_database(), self::_collection());
 	if (!empty($options['key'])) {
 	    $doc['key'] = (string)$options['key'];
-	    //CLD: 2026-10-12T12:20:20+03:00: the unique `key` index (one job per key) comes from `v sys::indexes` (was created here before the first keyed insert)
+	    //CLD: 2026-10-12T12:20:20+03:00: the unique `key` index (one job per key) comes from `v sys::indexes`
 	}
 	try {
 	    $id = $coll->insertOne($doc)->getInsertedId();
@@ -139,7 +138,7 @@ class Job extends \sys\BaseModel {
 	return $id;
     }
 
-    //CLD: 2026-11-01T16:00:27+02:00: new: where the daemon takes its commands: tcp://127.0.0.1:<app.daemon_port> (DAEMON_PORT of app.env; was the unix socket run/job-notify.sock)
+    //CLD: 2026-11-01T16:00:27+02:00: new: where the daemon takes its commands: tcp://127.0.0.1:<app.daemon_port> (DAEMON_PORT of app.env)
     //CLD: 2026-11-01T19:00:00+02:00: $listen: the daemon's own address (app.daemon_listen), else where others reach it (app.daemon_host); both 127.0.0.1 unless set (Docker)
     public static function daemonAddress($listen = false) {
 	$host = (string)\V::app()->config($listen ? 'app.daemon_listen' : 'app.daemon_host');
@@ -147,7 +146,7 @@ class Job extends \sys\BaseModel {
     }
 
     //wake the daemon (NEWJOB on its local port); nothing happens when it does not run
-    //CLD: 2026-11-01T16:00:27+02:00: on 127.0.0.1:<app.daemon_port> (was the unix socket app.job_socket_path)
+    //CLD: 2026-11-01T16:00:27+02:00: on 127.0.0.1:<app.daemon_port>
     public static function notify() {
 	$conn = @stream_socket_client(self::daemonAddress(), $errno, $errstr, 1);
 	if (!$conn)
@@ -158,7 +157,7 @@ class Job extends \sys\BaseModel {
     }
 
     //CLD: 2026-10-26T10:06:24+02:00: stop the worker running job $jid (KILLJOB on the daemon's port); nothing happens when the daemon does not run
-    //CLD: 2026-11-01T16:00:27+02:00: on 127.0.0.1:<app.daemon_port> (was the unix socket app.job_socket_path)
+    //CLD: 2026-11-01T16:00:27+02:00: on 127.0.0.1:<app.daemon_port>
     public static function kill($jid) {
 	$conn = @stream_socket_client(self::daemonAddress(), $errno, $errstr, 1);
 	if (!$conn)

@@ -3,7 +3,6 @@
 //CLD: 2026-10-22T00:41:28+03:00: new credential variant: OneDrive and SharePoint files over Microsoft Graph (OAuth); delegated permissions Files.ReadWrite.All, Sites.ReadWrite.All (the document
 //libraries of SharePoint sites). Provides `msfiles` (the OneDrive / SharePoint step), `msexcel` (the Excel step: workbooks are files) and `http`
 
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\credential;
 
 class CredentialMicrosoftFiles extends \models\credential\CredentialMicrosoftGraph {

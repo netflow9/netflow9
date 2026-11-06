@@ -24,7 +24,6 @@ class SysRoles {
 		'Role::read' =>			[ 'enabled' => true, 'scope' => 'global', ],
 		'Role::update' =>		[ 'enabled' => true, 'scope' => 'global' ],
 		'Role::delete' =>		[ 'enabled' => true, 'scope' => 'global' ],
-		//CLD: 2026-10-22T00:28:13+03:00: Variable::* removed: the project variables are credentials (type Variable), permitted with Credential::*
 		//CLD: 2026-10-08T14:36:10+03:00: credentials
 		'Credential::create' =>		[ 'enabled' => true, 'scope' => 'global' ],
 		'Credential::read' =>		[ 'enabled' => true, 'scope' => 'global', ],
@@ -70,7 +69,6 @@ class SysRoles {
 		'Project::read' =>		[ 'enabled' => true, 'scope' => 'project', ],
 		'Project::update' =>		[ 'enabled' => false, ],
 		'Project::delete' =>		[ 'enabled' => false, ],
-		//CLD: 2026-10-22T00:28:13+03:00: Variable::* removed: the project variables are credentials (type Variable), permitted with Credential::*
 		//CLD: 2026-10-08T14:36:10+03:00: credentials
 		'Credential::create' =>		[ 'enabled' => true, 'scope' => 'project' ],
 		'Credential::read' =>		[ 'enabled' => true, 'scope' => 'project', ],
@@ -101,7 +99,7 @@ class SysRoles {
 	],
 
 	//CLD: 2026-10-13T21:12:34+03:00: Participant - participant (user's choice): fills in the project's forms and completes the tasks assigned to them; both need only the
-	//project's membership (plugins\Forms: FormController / TaskController), so every permission is off but their own user account and seeing their projects
+	//project's membership (FormController / TaskController), so every permission is off but their own user account and seeing their projects
 	[
 	    'name' => 'Participant',
 	    'iname' => 'participant',
@@ -121,7 +119,6 @@ class SysRoles {
 		'Role::read' =>			[ 'enabled' => false, ],
 		'Role::update' =>		[ 'enabled' => false, ],
 		'Role::delete' =>		[ 'enabled' => false, ],
-		//CLD: 2026-10-22T00:28:13+03:00: Variable::* removed: the project variables are credentials (type Variable), permitted with Credential::*
 		'Credential::create' =>		[ 'enabled' => false, ],
 		'Credential::read' =>		[ 'enabled' => false, ],
 		'Credential::update' =>		[ 'enabled' => false, ],

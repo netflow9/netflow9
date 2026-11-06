@@ -19,18 +19,20 @@ class TokenController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
 
 	$this->project = \V::app()->om->findById('Project', \V::app()->user->crtProject);
 	if (empty($this->project))
 	    \V::app()->error(404, 'No current project');
 	//CLD: 2026-11-01T02:00:00+02:00: the tokens only of a project whose MCP server is on (Account::mcpEnabled)
-	if (!\models\Account::mcpEnabled(\V::app()->config('rt.account'), $this->project->_id))
+	if (!\models\Account::mcpEnabled($this->account, $this->project->_id))
 	    \V::app()->error(403, 'The MCP server of this project is off: the account\'s owners turn it on in Account settings, Data access');
     }
 
     public function list($req, $resp) {
 	//an unsaved token of the current project: the object for the check (project scope = membership)
-	$token = \V::app()->om->create('McpToken', [ 'aid' => \V::app()->config('rt.account')->_id, 'project' => $this->project->_id ]);
+	$token = \V::app()->om->create('McpToken', [ 'aid' => $this->account->_id, 'project' => $this->project->_id ]);
 	if (!\V::app()->user->can('McpToken::list', [ 'object' => $token ]))
 	    \V::app()->error(403, 'Unauthorized');
 
@@ -42,7 +44,7 @@ class TokenController extends \sys\BaseController {
 
     public function create($req, $resp) {
 	//unsaved until it is valid: first the object for the check (project scope = membership)
-	$token = \V::app()->om->create('McpToken', [ 'aid' => \V::app()->config('rt.account')->_id, 'project' => $this->project->_id ]);
+	$token = \V::app()->om->create('McpToken', [ 'aid' => $this->account->_id, 'project' => $this->project->_id ]);
 	if (!\V::app()->user->can('McpToken::create', [ 'object' => $token ]))
 	    \V::app()->error(403, 'Unauthorized');
 
@@ -64,7 +66,7 @@ class TokenController extends \sys\BaseController {
 
     public function delete($req, $resp) {
 	$oid = $this->getOidOrError();
-	$token = \V::app()->om->findOne('McpToken', [ '_id' => $oid, 'aid' => \V::app()->config('rt.account')->_id, 'project' => $this->project->_id ]);
+	$token = \V::app()->om->findOne('McpToken', [ '_id' => $oid, 'aid' => $this->account->_id, 'project' => $this->project->_id ]);
 	if (empty($token))
 	    \V::app()->error(404, 'Not found');
 

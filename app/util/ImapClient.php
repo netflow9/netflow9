@@ -2,7 +2,7 @@
 
 /*
     minimal IMAP4rev1 client in pure PHP (no ext-imap: it cannot do XOAUTH2),
-    used by the Mail plugin to fetch raw messages (parsed by \util\MailParser).
+    used by the IMAP credentials (models\credential\ImapConnect) to fetch raw messages (parsed by \util\MailParser).
     TLS / STARTTLS, LOGIN, AUTHENTICATE XOAUTH2 (Google, Microsoft 365),LIST, SELECT, UID SEARCH / FETCH / STORE / MOVE (COPY + delete when MOVE is missing), literals in both directions.
 
     $imap = new \util\ImapClient([ 'timeout' => 30 ]);

@@ -1,12 +1,11 @@
 <?php
 
 //CLD: 2026-10-19T21:10:00+03:00: new: the inbound mail settings of an account, one document per account: `prefix`, the start of its addresses <prefix>-<code>@MAIL_INBOUND_DOMAIN
-//(was the account field mail_prefix). Read by the Email (inbound) step (its address) and by Haraka (haraka/plugins/nfn.js, collection inbound_mail_settings, by aid);
+//. Read by the Email (inbound) step (its address) and by Haraka (haraka/plugins/nfn.js, collection inbound_mail_settings, by aid);
 //changed on the plugin's page (InboundController::settings, linked from the Settings menu).
-//CLD: 2026-11-01T16:11:37+02:00: in the core (was plugins\InboundMail\models\InboundMailSettings), per account (with or without the MultiTenant plugin); changed on the Inbound mail tab of the
-//account's settings (AccountController::settings; was the plugin's page)
+//CLD: 2026-11-01T16:11:37+02:00: per account (with or without the MultiTenant plugin); changed on the Inbound mail tab of the
+//account's settings (AccountController::settings)
 //  $prefix = InboundMailSettings::prefixOf($aid);   the account's; the first time its settings are saved (Haraka reads them), with defaultPrefixFor($aid)
-//  CLD: 2026-10-21T11:30:00+03:00: forAccount() removed from the comment (it was never defined: prefixOf() called it); the settings are found with om->findOne
 
 namespace models;
 
@@ -21,7 +20,6 @@ class InboundMailSettings extends \sys\BaseModel {
 
     public function getSchema() {
 	$fields = [
-	    //moved from models\Account (mail_prefix)
 	    [
 		'key' => 'prefix',
 		'type' => 'text',
@@ -42,7 +40,7 @@ class InboundMailSettings extends \sys\BaseModel {
     }
 
     //the prefix of account $aid; an account without settings yet gets them saved now (Haraka reads them), with defaultPrefixFor($aid)
-    //CLD: 2026-10-21T11:30:00+03:00: found / created here (was self::forAccount(), never defined: a fatal error)
+    //CLD: 2026-10-21T11:30:00+03:00: found / created here
     public static function prefixOf($aid) {
 	$om = \V::app()->om;
 	$settings = $om->findOne('InboundMailSettings', [ 'aid' => $om->to_oid($aid) ]);

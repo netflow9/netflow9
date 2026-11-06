@@ -10,8 +10,7 @@
 #Nothing that is there is overwritten (listed as kept), except Rail22's plugin code (plugins/nfn.js), replaced when it differs: run install again after an update of the app.
 #Then, as root: the unit (Haraka runs as root for port 25; it forks and writes run/haraka.pid), started at boot and now; the polkit rule again when the app's
 #services are installed (scripts/daemon.sh rule: the Services page controls it). uninstall removes the unit only: the files stay.
-#CLD: 2026-11-01T21:30:00+02:00: commands, as scripts/playwright-mcp.sh; was scripts/2_haraka-install.sh (the files) and 4_services-install.sh (the unit; now daemon.sh); the old
-#start / stop script (scripts/haraka.sh) moved to attic/
+#CLD: 2026-11-01T21:30:00+02:00: commands, as scripts/playwright-mcp.sh
 #Run as root:
 #   sudo scripts/haraka.sh install [--version=<vX.Y.Z>] [--domain=<inbound domain>] [--dir=<folder>] [--dry-run]   install / update, start at boot, start now
 #   sudo scripts/haraka.sh start | stop | restart | status | uninstall

@@ -19,7 +19,6 @@
     On error (Graph errors, not found, too large, a type that may not be saved) - fail the step, or continue on a second output `error`
 */
 
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 class NodeAppOneDrive extends NodeAppMicrosoft {
@@ -73,7 +72,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: Empty: your OneDrive; a SharePoint site (https://contoso.sharepoint.com/sites/Team: its documents) or a drive id)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'drive',
 		'type' => 'text',
 		'label' => 'Drive',
@@ -82,7 +81,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'https://contoso.sharepoint.com/sites/Team', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: The file / folder id, its path in the drive (/Reports/2026.xlsx) or a sharing link; {{ ... }} for expressions, e.g. {{ files[0].id }})
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'itemId',
 		'type' => 'text',
 		'label' => 'File',
@@ -92,7 +91,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'placeholder' => '/Reports/2026.xlsx', 'expression' => true, 'showIf' => $op(self::ON_ITEM) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: A folder id, path (/Reports) or sharing link; empty: the top of the drive)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -103,7 +102,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 
 	    //list
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: Words in the names and contents, in the whole drive (the folder is not used); empty: the files of the folder)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Search',
@@ -124,7 +123,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 
 	    //download / upload
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line; shorter help (was: The name in the project Files; empty: the file's)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
 		'key' => 'filename',
 		'type' => 'text',
 		'label' => 'Save as',
@@ -133,7 +132,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'download' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		'key' => 'source',
 		'type' => 'select',
 		'label' => 'Upload',
@@ -143,7 +142,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'upload' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide; shorter help (was: upload: the name in the drive (empty: the project file's); create folder: the folder's; move: a new name (empty: kept))
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
 		'key' => 'name',
 		'type' => 'text',
 		'label' => 'Name',
@@ -153,7 +152,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'upload', 'createFolder', 'move' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'conflict',
 		'type' => 'select',
@@ -192,7 +191,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 
 	    //share
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		'key' => 'shareWith',
 		'type' => 'select',
 		'label' => 'Share with',
@@ -202,7 +201,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'share' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'linkType',
 		'type' => 'select',
 		'label' => 'Access',
@@ -232,7 +231,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'people' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
 		'key' => 'notify',
 		'type' => 'switch',
 		'label' => 'Send them an email',
@@ -250,7 +249,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 
 	    //delete
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line; shorter help (was: Else to the recycle bin; permanently: work / school accounts only)
+		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
 		'key' => 'permanent',
 		'type' => 'switch',
 		'label' => 'Delete permanently',
@@ -259,10 +258,8 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'delete' ]) ],
 	    ],
 
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request (API calls: ' . \models\node\NodeAppHttp::MAX_TIMEOUT . ' at most)'))
 	    static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request'),
 	    static::variableField(),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from OneDrive / SharePoint, e.g. not found, no access, too large, a type that may not be saved)
 	    static::onErrorField('OneDrive errors, too large, type not allowed'),
 	];
     }
@@ -533,7 +530,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
     //GET of a signed download address into a temporary stream: [ stream, size, content type ]; \RuntimeException when larger than $maxBytes or refused
     protected function fetch($url, $maxBytes) {
 	$stream = fopen('php://temp/maxmemory:' . (2 * 1024 * 1024), 'w+b');
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http
 	$r = \util\Http::request('GET', $url, [ 'headers' => [], 'timeout' => $this->transferTimeout(), 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5, 'https' => true ]);
 	[ $status, $size, $contentType, $tooLarge, $curlError ] = [ $r['status'], $r['size'], $r['mime'], $r['tooLarge'], $r['tooLarge'] ? '' : (string)$r['error'] ];
 
@@ -563,7 +560,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	    if ($chunk === '')
 		throw new \RuntimeException('the file could not be read');
 	    $end = $offset + strlen($chunk) - 1;
-	    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+	    //CLD: 2026-10-23T15:00:00+03:00: through util\Http
 	    $r = \util\Http::request('PUT', $url, [ 'headers' => [ 'Content-Length: ' . strlen($chunk), "Content-Range: bytes {$offset}-{$end}/{$size}" ], 'body' => $chunk, 'timeout' => $this->transferTimeout(), 'https' => true ]);
 	    [ $answer, $status, $curlError ] = [ $r['body'], $r['status'], (string)$r['error'] ];
 	    $data = json_decode((string)$answer, true);

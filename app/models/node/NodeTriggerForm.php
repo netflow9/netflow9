@@ -41,7 +41,6 @@ class NodeTriggerForm extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'members',
 		'choices' => self::ACCESS,
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'width' => 4 ],
 	    ],
 	    [
@@ -69,7 +68,6 @@ class NodeTriggerForm extends \models\wf\WfNode {
 		'ui' => [ 'width' => 8 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: The answers, by key ({{ form.amount }}); who sent them: <variable>_user)
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Answers variable',
@@ -99,7 +97,7 @@ class NodeTriggerForm extends \models\wf\WfNode {
 	    $this->errors('config', 'Form: add at least one field');
 	    $valid = false;
 	}
-	//CLD: 2026-10-18T14:40:00+03:00: the token checks are TriggerToken::checkToken (were here)
+	//CLD: 2026-10-18T14:40:00+03:00: the token checks are TriggerToken::checkToken
 	return \models\TriggerToken::checkToken($this, 'hex') && $valid;
     }
 

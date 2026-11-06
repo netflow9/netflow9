@@ -80,7 +80,7 @@ $pageLink = function($item) {
 		<?php endif; ?>
 
 		<!-- the page's own HTML (app/data/docs.json, written by the docs site's editor: its links and headings prepared by the controller) -->
-		<?php //CLD: 2026-10-29T10:00:00+02:00: .docs-content (the theme's page typography: headings, code, tables, callouts; _docs.scss); was .docs-page, the docs site's flex row (article + "On this page"): every paragraph / table became a column side by side ?>
+		<?php //CLD: 2026-10-29T10:00:00+02:00: .docs-content (the theme's page typography: headings, code, tables, callouts; _docs.scss) ?>
 		<div class="docs-content">
 		    <?= $html ?>
 		</div>

@@ -46,8 +46,7 @@ class SmartForm {
     // ------------------------------------------------------------------------------------
     //the stored form
 
-    //CLD: 2026-10-18T14:20:00+03:00: $form as plain arrays (the MongoDB type map, json_decode(..., true)); removed plain(): it turned BSON documents / stdClass into arrays, which
-    //never reach here
+    //CLD: 2026-10-18T14:20:00+03:00: $form as plain arrays (the MongoDB type map, json_decode(..., true))
     public static function normalize($form) {
 	$form = is_array($form) ? $form : [];
 	$out = [ 'direction' => ($form['direction'] ?? '') === 'horizontal' ? 'horizontal' : 'vertical', 'fields' => [] ];
@@ -81,7 +80,6 @@ class SmartForm {
 			if (is_numeric($v))
 			    $c[$k] = $v + 0;
 			break;
-		    //CLD: 2026-10-14T19:54:21+03:00: removed the inputType case (no INPUT_TYPES any more)
 		    case 'level':
 			if (in_array($v, [ 'h4', 'h5', 'h6' ], true))
 			    $c[$k] = $v;
@@ -178,7 +176,7 @@ class SmartForm {
     //answers
 
     //[ answers, [ key => message ] ]: $data checked against the (normalized) form
-    //CLD: 2026-10-18T14:00:00+03:00: checked and cast by a sys\NestedModel of the visible fields (fieldDef: the form's rules as field definitions; was checked by hand in value()):
+    //CLD: 2026-10-18T14:00:00+03:00: checked and cast by a sys\NestedModel of the visible fields (fieldDef: the form's rules as field definitions):
     //validated as given (a select's unknown choice is refused, not dropped by the cast), then cast; the first message of a field is its error
     public static function answers(array $form, array $data) {
 	$inputs = self::inputs($form);
@@ -210,7 +208,7 @@ class SmartForm {
     }
 
     //a node is shown when its condition holds and the node its condition reads is shown
-    //CLD: 2026-10-14T20:17:14+03:00: the condition is the node's showIf, tested by util\Conditions::holds (was compared here)
+    //CLD: 2026-10-14T20:17:14+03:00: the condition is the node's showIf, tested by util\Conditions::holds
     private static function visible(array $n, array $raw, array $form, $depth = 0) {
 	if (empty($n['showIf']) || $depth > 20)
 	    return true;
@@ -225,7 +223,7 @@ class SmartForm {
 	return \util\Conditions::holds($raw[$c['key']] ?? null, $c['operator'], $c['value']);
     }
 
-    //CLD: 2026-10-18T14:00:00+03:00: the submitted value as the form's inputs send it (was part of value()): a checkbox / switch true or false, a multiple select a list of texts,
+    //CLD: 2026-10-18T14:00:00+03:00: the submitted value as the form's inputs send it: a checkbox / switch true or false, a multiple select a list of texts,
     //a single select its text, other inputs their text trimmed (a date and time up to the minutes); anything else is blank
     private static function raw(array $n, $v) {
 	switch($n['type']) {
@@ -241,7 +239,7 @@ class SmartForm {
 	return $n['type'] === 'datetime' ? substr($s, 0, 16) : $s;
     }
 
-    //CLD: 2026-10-18T14:00:00+03:00: the field definition of an input (sys\fields\Field_<type>, its rules in `validate`; was checked by hand in value()): required, the choices,
+    //CLD: 2026-10-18T14:00:00+03:00: the field definition of an input (sys\fields\Field_<type>, its rules in `validate`): required, the choices,
     //min / max, the date format the pickers send, length, e-mail, url, pattern. Its own rules run before the type's (Field_number, Field_email, ...), with the form's messages
     private static function fieldDef(array $n) {
 	$skip = [ 'skipEmpty' => true ];
@@ -288,7 +286,7 @@ class SmartForm {
     }
 
     //a browser pattern (anchored, as the HTML pattern attribute) as a PHP regex
-    //CLD: 2026-10-14T14:54:31+03:00: built as the Validator's `regex` rule builds it (value() runs that rule; was another delimiter)
+    //CLD: 2026-10-14T14:54:31+03:00: built as the Validator's `regex` rule builds it (value() runs that rule)
     private static function regex($pattern) {
 	return '/' . str_replace('/', '\/', '^(?:' . (string)$pattern . ')$') . '/u';
     }
@@ -297,7 +295,7 @@ class SmartForm {
     public static function type(array $form, $info = 'the answers') {
 	$fields = [];
 	foreach(self::inputs($form) as $n) {
-	    //CLD: 2026-10-20T21:40:00+03:00: + date: a date answer is a J Date in expressions (util\Expression::hostValue; was ISO 8601 text, type string)
+	    //CLD: 2026-10-20T21:40:00+03:00: + date: a date answer is a J Date in expressions (util\Expression::hostValue)
 	    $type = match($n['type']) { 'number' => 'number', 'checkbox', 'switch' => 'boolean', 'select' => !empty($n['multiple']) ? 'array' : 'string', 'date', 'datetime' => 'date', default => 'string' };
 	    $fields[$n['key']] = [ 'type' => $type, 'info' => trim((string)($n['label'] ?? '')) !== '' ? (string)$n['label'] : $n['type'] ] + ($type === 'array' ? [ 'items' => [ 'type' => 'string' ] ] : []);
 	}
@@ -320,7 +318,7 @@ class SmartForm {
 
 	    $type = $f->type;
 	    $sf = [ 'key' => $f->key, 'label' => (string)$f->label ];
-	    //CLD: 2026-10-10T18:27:49+03:00: app.smartform `password` field (show/hide button, no autofill; was text with inputType password); also for any write-only
+	    //CLD: 2026-10-10T18:27:49+03:00: app.smartform `password` field (show/hide button, no autofill); also for any write-only
 	    //encrypted field (its value is never shown)
 	    //CLD: 2026-10-20T16:00:00+03:00: an encrypted textarea stays a (write-only) textarea: multi-line secrets, e.g. PEM / PGP keys, keep their lines (a password input drops them)
 	    if ($type === 'textarea' && $writeOnly) {
@@ -329,8 +327,8 @@ class SmartForm {
 	    } elseif ($type === 'password' || $writeOnly) {
 		$sf['type'] = 'password';
 	    } else {
-		//CLD: 2026-10-13T20:43:19+03:00: + email (app.smartform EmailField: an e-mail input checked in the browser; was a text input)
-		//CLD: 2026-10-14T14:54:31+03:00: the app.smartform input types are util\FormSchema::INPUTS (were listed again here)
+		//CLD: 2026-10-13T20:43:19+03:00: + email (app.smartform EmailField: an e-mail input checked in the browser)
+		//CLD: 2026-10-14T14:54:31+03:00: the app.smartform input types are util\FormSchema::INPUTS
 		$sf['type'] = in_array($type, self::INPUTS, true) ? $type : 'text';
 	    }
 	    //CLD: 2026-10-14T14:38:46+03:00: the date picker's display format (app.format.date / app.format.datetime)
@@ -355,13 +353,12 @@ class SmartForm {
 	    }
 	    if (!empty($f->required))
 		$sf['required'] = true;
-	    //CLD: 2026-10-14T15:30:03+03:00: from the field's `requiredIf` property (was read from its requiredIf rule)
+	    //CLD: 2026-10-14T15:30:03+03:00: from the field's `requiredIf` property
 	    if (!empty($f->requiredIf['if']))
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by showIf())
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		$sf['requiredIf'] = [ 'key' => (string)$f->requiredIf['if'], 'operator' => 'in', 'value' => (array)($f->requiredIf['in'] ?? []) ];
-	    //CLD: 2026-10-14T14:18:23+03:00: the model's `requiredIf` rule is the form's requiredIf (util\FormSchema::showIf): the browser asks what the server checks (was written
-	    //again in each field's `ui`, as `required` or a hand-made requiredIf)
-	    //CLD: 2026-10-14T14:27:53+03:00: likewise `identifier` / `regex` -> pattern + patternMessage, `inRange` -> min / max (were written again in `ui`)
+	    //CLD: 2026-10-14T14:18:23+03:00: the model's `requiredIf` rule is the form's requiredIf (util\FormSchema::showIf): the browser asks what the server checks
+	    //CLD: 2026-10-14T14:27:53+03:00: likewise `identifier` / `regex` -> pattern + patternMessage, `inRange` -> min / max
 	    foreach((array)($f->validate ?? []) as $rule) {
 		if (!is_array($rule))
 		    continue;
@@ -405,7 +402,7 @@ class SmartForm {
 		$sf['choices'] = [];
 		foreach($f->choicesToArray() as $value => $label)
 		    $sf['choices'][] = [ 'value' => (string)$value, 'label' => (string)$label ];
-		//CLD: 2026-10-14T13:56:48+03:00: a `multiple` select field is a multiple select in the form (was set only through `ui`)
+		//CLD: 2026-10-14T13:56:48+03:00: a `multiple` select field is a multiple select in the form
 		if (!empty($f->multiple))
 		    $sf['multiple'] = true;
 	    }
@@ -430,8 +427,8 @@ class SmartForm {
 		    foreach(\util\Conditions::operators($t) as $op => $label)
 			$sf['operators'][$t][] = [ 'value' => $op, 'label' => $label ];
 	    }
-	    //CLD: 2026-10-10T09:14:41+03:00: a stored encrypted value is kept when its input stays empty (BaseModel::assign skips it): not required then (was Credential::formFields)
-	    //CLD: 2026-10-10T18:27:49+03:00: `stored` makes the password field say so (its placeholder; was appended to the help text)
+	    //CLD: 2026-10-10T09:14:41+03:00: a stored encrypted value is kept when its input stays empty (BaseModel::assign skips it): not required then
+	    //CLD: 2026-10-10T18:27:49+03:00: `stored` makes the password field say so (its placeholder)
 	    if ($writeOnly && !in_array($model->$key, [ null, '' ], true)) {
 		unset($sf['required'], $sf['requiredIf']);
 		$sf['stored'] = true;
@@ -447,7 +444,7 @@ class SmartForm {
 	    if (!$f->showInForms)
 		continue;
 	    $value = $model->$key ?? $f->default ?? '';
-	    //CLD: 2026-10-14T14:38:46+03:00: values as the inputs expect them (were converted in views/datatable/row_form.php): checkbox / switch -> boolean, date / datetime -> local
+	    //CLD: 2026-10-14T14:38:46+03:00: values as the inputs expect them: checkbox / switch -> boolean, date / datetime -> local
 	    //Y-m-d / Y-m-d\TH:i (stored as UTC; Field_datetime::cast parses the posted one in the app timezone), object -> the id as text
 	    switch($f->type) {
 		case 'checkbox':

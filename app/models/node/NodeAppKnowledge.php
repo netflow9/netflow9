@@ -217,8 +217,6 @@ class NodeAppKnowledge extends \models\wf\WfNode {
 	return [ $name => [ 'type' => 'object', 'info' => "the Knowledge base result: {$shape}", 'fields' => $fields + [ 'error' => [ 'type' => 'string', 'info' => 'on error only' ] ] ] ];
     }
 
-    //CLD: 2026-10-31T01:00:00+02:00: validates() removed: it checked the Embedding credential (the embedding model is the account's)
-
     // ------------------------------------------------------------------------------------
     //running
 
@@ -248,8 +246,8 @@ class NodeAppKnowledge extends \models\wf\WfNode {
 	$project = $this->exec->project;
 
 	if (in_array($op, self::ADD, true)) {
-	    //CLD: 2026-10-31T01:00:00+02:00: made with the account's embedding model (was the step's credential and model)
-	    //CLD: 2026-10-31T02:10:00+02:00: and the default chunk size / overlap (were settings of the step: changed on the Knowledge bases page only)
+	    //CLD: 2026-10-31T01:00:00+02:00: made with the account's embedding model
+	    //CLD: 2026-10-31T02:10:00+02:00: and the default chunk size / overlap (changed on the Knowledge bases page only)
 	    [ $kb, $created ] = \models\kb\KnowledgeBase::open($kbName, $aid, $project);
 	    if ($created)
 		$this->exec->log($this->wfid, static::$label . ": made `{$kb->name}` ({$kb->model})");
@@ -303,7 +301,7 @@ class NodeAppKnowledge extends \models\wf\WfNode {
     }
 
     //the documents to add: [ [ key, title, text, source: [ type, file, url ] ] ]
-    //CLD: 2026-10-31T01:00:00+02:00: through models\kb\KnowledgeBase::textSource / urlSource / fileSource (were read here: the Knowledge bases page adds documents too)
+    //CLD: 2026-10-31T01:00:00+02:00: through models\kb\KnowledgeBase::textSource / urlSource / fileSource (the Knowledge bases page adds documents too)
     protected function sources($op, $timeout) {
 	if ($op === 'addText') {
 	    try {

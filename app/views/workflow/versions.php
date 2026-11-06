@@ -35,7 +35,7 @@ foreach($versions as $v) {
 	'attrs' => '',
 	'icon' => 'bi-eye',
     ]) ];
-    //CLD: 2026-10-11T19:47:51+03:00: publish again needs Workflow::publish (was Workflow::update); copy into the draft stays Workflow::update
+    //CLD: 2026-10-11T19:47:51+03:00: publish again needs Workflow::publish; copy into the draft stays Workflow::update
     if ($canPublish && !($isCurrent && $published))
 	$actions[] = \util\VString::insert($actionTpl, [
 	    'class' => 'btn-outline-success',

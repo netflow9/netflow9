@@ -1,6 +1,6 @@
 <?php
-//CLD: 2026-10-31T11:32:07+02:00: the Settings tab of the account's settings (was the whole page: views/account/settings.php)
-//CLD: 2026-11-01T00:30:00+02:00: two columns (security and logs on the left, dates and integrations on the right; one column below xl), to fit one screen (were one w-50 column);
+//CLD: 2026-10-31T11:32:07+02:00: the Settings tab of the account's settings
+//CLD: 2026-11-01T00:30:00+02:00: two columns (security and logs on the left, dates and integrations on the right; one column below xl), to fit one screen;
 //+ Integrations: private network addresses (Account allow_private_addresses)
 ?>
     <?= \V::app()->form->create($account) ?>
@@ -44,7 +44,7 @@
 	    </div>
 	</div>
 
-	<?php //CLD: 2026-11-01T16:11:37+02:00: the inbound mail prefix is on the Inbound mail tab (_inbound.php; was the InboundMail plugin's page) ?>
+	<?php //CLD: 2026-11-01T16:11:37+02:00: the inbound mail prefix is on the Inbound mail tab (_inbound.php) ?>
 
 	<div class="pt-4">
 	    <button type="submit" class="btn btn-primary">Save</button>

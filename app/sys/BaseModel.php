@@ -619,7 +619,7 @@ class BaseModel {
 	}
 
 	//convert id to a MongoId Object
-	//a string _id that is not an ObjectId is kept (ObjectManager::keyIdQuery; was refused as invalid)
+	//a string _id that is not an ObjectId is kept (ObjectManager::keyIdQuery)
 	$id = \sys\ObjectManager::keyIdQuery([ '_id' => $this->_data['_id'] ], __METHOD__)['_id'];
 
 	$this->beforeDelete();

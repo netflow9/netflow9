@@ -4,7 +4,7 @@
 //once app.env exists it is not found. It shows the system prerequisites (util\Setup::checks); when the required ones pass, it asks the server's settings and the first
 //user, then: connects to the database (it must have no account yet), creates the indexes, the account (its system roles) and its owner (active; the Personal project
 //is made at the first sign-in), and writes app.env (with a new APP_SECRET). When app.env cannot be written, the account is removed again
-//CLD: 2026-10-19T14:09:20+03:00: in steps (was one page): 1. /setup the prerequisites; 2. /setup/server the server's settings (models\setup\ServerForm; the database is
+//CLD: 2026-10-19T14:09:20+03:00: in steps: 1. /setup the prerequisites; 2. /setup/server the server's settings (models\setup\ServerForm; the database is
 //checked here, the settings are kept in the setup session); 3. /setup/account the first account (models\setup\AccountForm), which installs. A step whose earlier one is
 //not done goes back to it; the last step checks the prerequisites and the database again
 
@@ -51,7 +51,7 @@ class SetupController extends \sys\BaseController {
 	    if ($passwordKept && (string)$form->smtp_password === '')
 		$form->smtp_password = $_SESSION['setup']['server']['smtp_password'];
 	    if ($form->validates()) {
-		//CLD: 2026-10-29T02:00:00+02:00: util\Setup::database (was this controller's; shared with the command-line setup: commands\SysCommand)
+		//CLD: 2026-10-29T02:00:00+02:00: util\Setup::database (shared with the command-line setup: commands\SysCommand)
 		$problem = \util\Setup::database($form->values());
 		if ($problem) {
 		    $form->errors($problem[0], $problem[1]);
@@ -78,7 +78,7 @@ class SetupController extends \sys\BaseController {
 	if ($req->is('post')) {
 	    $form->assign($req->data);
 	    if ($form->validates()) {
-		//CLD: 2026-10-29T02:00:00+02:00: util\Setup::install (was this controller's; shared with the command-line setup: commands\SysCommand)
+		//CLD: 2026-10-29T02:00:00+02:00: util\Setup::install (shared with the command-line setup: commands\SysCommand)
 		$user = \util\Setup::install($server, [ 'account_name' => $form->account_name, 'username' => $form->username, 'email' => $form->email,
 		    'firstname' => $form->firstname, 'lastname' => $form->lastname, 'password' => $form->new_password ], $error);
 		if ($user) {

@@ -8,7 +8,7 @@
 	- documents / chunks: the counts (updated after each change)
     The documents: models\kb\KbDocument (one per key: a file, a web page, a text), the chunks: models\kb\KbChunk (written and read in bulk through the collection: never one by one).
     Deleted with its documents and chunks (beforeDelete).
-    CLD: 2026-10-31T01:00:00+02:00: the embedding model is the account's (models\kb\EmbeddingSettings; was a credential + model of the knowledge base): `model` / dims are those it was
+    CLD: 2026-10-31T01:00:00+02:00: the embedding model is the account's (models\kb\EmbeddingSettings): `model` / dims are those it was
     indexed with; once the account uses another model it must be re-indexed (reindex(): a job re-embeds every chunk, then switches) before it is searched or added to again.
     Made on the Knowledge bases page (controllers\KnowledgeController) or by the Knowledge base step's first Add to a new name (open()). Documents added on the page are indexed
     by the daemon (queue(): a pending document, then indexJob); `state`: ready | reindexing, `state_message`: the last re-index's error. Permissions KnowledgeBase::* (checkAccess)
@@ -174,7 +174,7 @@ class KnowledgeBase extends \sys\BaseModel {
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)
 	    $permName = 'KnowledgeBase::' . $permName;
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the project decides (was: any membership)
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the project decides
 	return \models\Project::can($this->project, $this->aid, $userId, $permName);
     }
 

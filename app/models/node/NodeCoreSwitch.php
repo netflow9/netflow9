@@ -37,7 +37,7 @@ class NodeCoreSwitch extends \models\wf\WfNode {
 		    'expression' => 'reference'
 		],
 	    ],
-	    //CLD: 2026-10-18T10:45:00+03:00: a nested list (sys\fields\Field_nested; was an array checked case by case in validates()): each case cast and validated by caseSchema(),
+	    //CLD: 2026-10-18T10:45:00+03:00: a nested list (sys\fields\Field_nested): each case cast and validated by caseSchema(),
 	    //its expressions checked, errors as "Case <n>: <field>: <message>"; the edit grid's columns come from caseSchema()
 	    [
 		'key' => 'cases',
@@ -67,7 +67,7 @@ class NodeCoreSwitch extends \models\wf\WfNode {
 		'type' => 'text',
 		'label' => 'Output',
 		'required' => true,
-		//CLD: 2026-10-18T10:45:00+03:00: trimmed by the field (was by validates())
+		//CLD: 2026-10-18T10:45:00+03:00: trimmed by the field
 		'transform' => 'trim',
 		'validate' => [ [ 'regex', 'pattern' => '^[A-Za-z0-9_ .-]{1,30}$', 'skipEmpty' => true, 'message' => 'Up to 30 letters, digits, spaces or _ . -' ] ],
 		'ui' => [ 'width' => 4, 'placeholder' => 'name' ],
@@ -79,7 +79,6 @@ class NodeCoreSwitch extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'eq',
 		'choices' => \util\Conditions::operators(),
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'width' => 5 ],
 	    ],
 	    [
@@ -87,18 +86,14 @@ class NodeCoreSwitch extends \models\wf\WfNode {
 		'type' => 'text',
 		'label' => 'Value',
 		'help' => false,
-		//CLD: 2026-10-11T22:38:36+03:00: may hold expressions ({{ }}): live help in the designer
-		//CLD: 2026-10-14T14:08:12+03:00: condition made by util\FormSchema::showIf (was JS written here)
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T20:17:14+03:00: may hold expressions ({{ }}: live help in the designer); hidden by a condition array (app.smartform evaluates it)
 		'ui' => [ 'width' => 3, 'hideIf' => [ 'key' => 'operator', 'operator' => 'in', 'value' => [ 'empty', 'notEmpty' ], 'scope' => 'row' ], 'expression' => true ],
 	    ],
 	];
     }
 
-    //CLD: 2026-10-18T10:45:00+03:00: removed caseForm(): the cases are a nested field (its object is the case form)
-
     //CLD: 2026-10-18T10:45:00+03:00: each case (required fields, operator, label format, expressions) is checked and normalized by parent::validates (the nested field); here
-    //how many there are and the output labels used twice (was: each case through the case form, errors as "Case <n>: <field>: <message>")
+    //how many there are and the output labels used twice
     public function validates($options = []) {
 	$valid = parent::validates($options);
 	$cases = $this->cfg('cases');
@@ -122,7 +117,7 @@ class NodeCoreSwitch extends \models\wf\WfNode {
 	return $valid;
     }
 
-    //CLD: 2026-10-13T12:25:23+03:00: the variable is a reference ({{ mail.subject }}): its value, typed (a list for contains / is empty), by util\Expression::render (was the variable named)
+    //CLD: 2026-10-13T12:25:23+03:00: the variable is a reference ({{ mail.subject }}): its value, typed (a list for contains / is empty), by util\Expression::render
     public function execute($edgeId = null) {
 	$name = trim((string)$this->cfg('variable', ''));
 	$cases = array_values(is_array($this->cfg('cases')) ? $this->cfg('cases') : []);
@@ -130,7 +125,7 @@ class NodeCoreSwitch extends \models\wf\WfNode {
 	$left = \util\Expression::render($name, $this->exec->expressionVariables(), 'reference');
 	foreach($cases as $i => $case) {
 	    $operator = (string)($case['operator'] ?? 'eq');
-	    //CLD: 2026-10-14T20:17:14+03:00: the fields' operators, compared by util\Conditions::holds (were NodeCoreIf::OPERATORS / compare())
+	    //CLD: 2026-10-14T20:17:14+03:00: the fields' operators, compared by util\Conditions::holds
 	    if (!array_key_exists($operator, \util\Conditions::operators()))
 		throw new \ErrorException("Switch: unknown operator `{$operator}`");
 	    //CLD: 2026-10-11T22:53:04+03:00: {{ }} expressions evaluated, compared as text (or as numbers)

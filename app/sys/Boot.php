@@ -43,13 +43,13 @@ class Boot {
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\TriggerState::class, 'beforeWorkflowDelete' ]);
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\wf\WfTask::class, 'beforeWorkflowDelete' ]);
 
-	//the Assistant's conversation goes with its workflow (was the Assistant plugin's)
+	//the Assistant's conversation goes with its workflow
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\assistant\AssistantChat::class, 'beforeWorkflowDelete' ]);
 	//CLD: 2026-11-02T18:00:00+02:00: the conversations with an agent go with its workflow; a run that stops ends its turn
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\agent\AgentConversation::class, 'beforeWorkflowDelete' ]);
 	\V::app()->hooks->addHook('execution:stopped', [ \models\agent\AgentConversation::class, 'afterRun' ]);
 
-	//a completed Email (inbound) run deletes its raw message, in every mode: the daemon runs them (was the InboundMail plugin's)
+	//a completed Email (inbound) run deletes its raw message, in every mode: the daemon runs them
 	\V::app()->hooks->addHook('execution:end', [ \models\node\NodeTriggerEmail::class, 'afterExecutionEnd' ]);
 
 	//the LDAP and SAML sign-ins: a deleted user's link; the sign-in (sys\Identity::authenticate) and who keeps a password here (password reset / change);
@@ -61,12 +61,12 @@ class Boot {
 	\V::app()->hooks->addHook('identity:authenticate', [ \util\SamlAuth::class, 'onAuthenticate' ]);
 	\V::app()->hooks->addHook('identity:password-source', [ \util\SamlAuth::class, 'onPasswordSource' ]);
 
-	//the workflow daemon, a service of the Services page (util\Services; was the Admin plugin's); the plugins add theirs
+	//the workflow daemon, a service of the Services page (util\Services); the plugins add theirs
 	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
 	    $services['daemon'] = [
 		'label' => 'Workflow daemon',
 		'description' => 'Runs the queued jobs: scheduled and background workflow runs, emails, timers',
-		//the installation's own unit (util\Services::unit: nfn-daemon-<user>; was nfn-daemon.service)
+		//the installation's own unit (util\Services::unit: nfn-daemon-<user>)
 		'unit' => \util\Services::unit('daemon'),
 		'pidfile' => BASE . '/run/daemon.pid',
 		//on its port, 127.0.0.1:<DAEMON_PORT>
@@ -100,7 +100,7 @@ class Boot {
 	    }
 	}, 6);
 
-	//Haraka, inbound mail (util\InboundMail::service: when found and its unit is this installation's; was the InboundMail plugin's)
+	//Haraka, inbound mail (util\InboundMail::service: when found and its unit is this installation's)
 	\V::app()->hooks->addHook('app:services', function(\ArrayObject $services) {
 	    if (($s = \util\InboundMail::service()) !== null)
 		$services['haraka'] = $s;
@@ -135,7 +135,7 @@ class Boot {
 	\V::app()->router->add_rule('mcp', 'mcp/serve', true);
 	\V::app()->session->noSessionFor('/mcp');
 
-	//the account's Assistant in the administration (the Admin plugin's account page): its provider, its spending on its own key
+	//the account's Assistant in the administration (the MultiTenant plugin's account page): its provider, its spending on its own key
 	\V::app()->hooks->addHook('admin:account-panels', function($account) {
 	    $om = \V::app()->om;
 	    $data = $om->acrossAccounts(fn() => [
@@ -148,7 +148,7 @@ class Boot {
 
     public function after_user_login() {
 	//the session keeps the user's data from the sign-in: check the stored user at each request, so that a user deleted, disabled or moved to
-	//another account is signed out at once (was: kept the access until the session expired, up to 30 days with "remember me")
+	//another account is signed out at once
 	$user = \V::app()->om->findById('User', \V::app()->user->_id);
 	if (empty($user) || $user->state != 'active' || (string)$user->aid !== (string)\V::app()->user->aid) {
 	    \V::app()->log->info('Boot: signed out user ' . \V::app()->user->_id . ': deleted, not active, or of another account');
@@ -181,7 +181,7 @@ class Boot {
 	\V::app()->config('rt.account', $account);
 
 	//the account's session limits (Account `session_idle`, minutes, and `session_max`, hours), for every session, "remember me" too
-	//(that one only survives closing the browser): a session unused for longer, or signed in longer ago, is signed out (was: 24 hours idle, 30 days with "remember me")
+	//(that one only survives closing the browser): a session unused for longer, or signed in longer ago, is signed out
 	$now = time();
 	$loginTs = (int)\V::app()->session->getState(Session::KEY_LOGIN_TS);
 	$activeTs = (int)\V::app()->session->getState(Session::KEY_ACTIVE_TS);
@@ -217,7 +217,7 @@ class Boot {
 
     }
 
-    //hook on:before-action: when the account enforces MFA (Account `enforce_mfa`, was saved but never checked), a signed-in user without 2FA can
+    //hook on:before-action: when the account enforces MFA (Account `enforce_mfa`), a signed-in user without 2FA can
     //only set it up (MFA_SETUP_ROUTES): pages go to the profile, other requests (ajax) are refused
     public function enforce_mfa() {
 	if (\V::app()->user->isGuest || empty($this->user) || !empty($this->user->tfa_secret))

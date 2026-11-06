@@ -47,7 +47,7 @@ class Identity {
 	if (empty($password))
 	    return false;
 
-	//the plugins' sign-in first (hook identity:authenticate, e.g. the Ldap plugin): a plugin that handles the name sets `handled`, then `user` (the
+	//the plugins' sign-in first (hook identity:authenticate: util\LdapAuth, util\SamlAuth): a plugin that handles the name sets `handled`, then `user` (the
 	//user signed in) or `reason` (why not: shown on the login page); not handled: the password stored here, below
 	$ctx = new \ArrayObject([ 'login' => (string)$username, 'password' => (string)$password, 'handled' => false, 'user' => null, 'reason' => null ]);
 	\V::app()->hooks->applyHook('identity:authenticate', [ $ctx ]);
@@ -93,7 +93,7 @@ class Identity {
     }
 
 
-    //the system that keeps user $user's password when it is not this application (hook identity:password-source: e.g. 'LDAP', the Ldap plugin's users),
+    //the system that keeps user $user's password when it is not this application (hook identity:password-source: e.g. 'LDAP' for util\LdapAuth's users),
     //else null; such a user has no password reset or change here
     public static function passwordSource($user) {
 	if (empty($user))

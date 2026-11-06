@@ -136,8 +136,6 @@ class SysPermissions {
 	    ],
 	];
 
-	//CLD: 2026-10-22T00:28:13+03:00: Variable::* removed: the project variables are credentials (type Variable), permitted with Credential::*
-
 	$data['Credential'] = [
 	    [
 		'name' => 'Credential::create',
@@ -229,7 +227,7 @@ class SysPermissions {
 		'scopes' => [ 'global', 'project' ],
 		'desc' => 'Delete workflows'
 	    ],
-	    //CLD: 2026-10-11T19:47:51+03:00: publish / unpublish (was Workflow::update): who may make a version live; defaults as Workflow::update (also for the roles already stored)
+	    //CLD: 2026-10-11T19:47:51+03:00: publish / unpublish: who may make a version live; defaults as Workflow::update (also for the roles already stored)
 	    [
 		'name' => 'Workflow::publish',
 		'scopes' => [ 'global', 'project' ],
@@ -375,8 +373,7 @@ class SysPermissions {
 	    ],
 	];
 
-	//CLD: 2026-10-20T23:40:00+03:00: McpToken's permissions are registered by the SysMCPTools plugin (register)
-	//CLD: 2026-10-26T23:56:07+02:00: core again (were the SysMCPTools plugin's): access tokens of the project's MCP server (a token acts as the user who made it, within that user's permissions);
+	//CLD: 2026-10-26T23:56:07+02:00: access tokens of the project's MCP server (a token acts as the user who made it, within that user's permissions);
 	//defaults: also for the roles already stored
 	$data['McpToken'] = [
 	    [

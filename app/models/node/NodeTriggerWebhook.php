@@ -74,13 +74,13 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 
     //CLD: 2026-10-08T08:19:49+03:00: the step's own checks (called by Workflow::validates): a well-formed token, not used by another workflow
     //(else saving it would take over that workflow's webhook) and not shared with another step of this workflow
-    //CLD: 2026-10-18T14:40:00+03:00: the checks are TriggerToken::checkToken (were here)
+    //CLD: 2026-10-18T14:40:00+03:00: the checks are TriggerToken::checkToken
     public function validates($options = []) {
 	$valid = parent::validates($options);
 	return \models\TriggerToken::checkToken($this, 'hex') && $valid;
     }
 
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel; were app.smartform fields); the token is not a field (set by
+    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel); the token is not a field (set by
     //initConfig, checked in validates()); the URL is shown read-only (perm:update nobody: a posted URL is ignored)
     public static function configSchema() {
 	return [
@@ -94,7 +94,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'ui' => [ 'placeholder' => 'Generating…' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide, on a new line
 		'key' => 'method',
 		'type' => 'select',
 		'label' => 'HTTP method',
@@ -104,7 +104,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'contentType',
 		'type' => 'select',
@@ -144,7 +144,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'label' => 'Header name',
 		'default' => '',
 		'help' => 'HMAC: the header carries the hex signature (or sha256=<hex>)',
-		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule; was the requiredIf rule in `validate`)
+		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule)
 		'requiredIf' => [ 'if' => 'auth', 'in' => [ 'header', 'hmac' ] ],
 		'validate' => [
 		    [ 'regex', 'pattern' => '^[A-Za-z0-9-]+$', 'skipEmpty' => true, 'message' => 'Letters, digits and dashes' ],
@@ -154,7 +154,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		    'showIf' => [ 'key' => 'auth', 'operator' => 'in', 'value' => [ 'header', 'hmac' ] ] ],
 	    ],
 	    //a text field shown as a password input: the step's config is edited in the designer, so the secret is part of it
-	    //CLD: 2026-10-10T18:32:31+03:00: app.smartform `password` field (show/hide button, no autofill of saved logins; was a text input with inputType password)
+	    //CLD: 2026-10-10T18:32:31+03:00: app.smartform `password` field (show/hide button, no autofill of saved logins)
 	    [
 		//CLD: 2026-10-24T12:55:48+03:00: layout: 6 wide
 		'key' => 'authSecret',
@@ -165,7 +165,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'type' => 'password', 'showIf' => [ 'key' => 'auth', 'operator' => 'in', 'value' => [ 'header', 'bearer', 'hmac' ] ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide
 		'key' => 'authUser',
 		'type' => 'text',
 		'label' => 'Username',
@@ -174,7 +174,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'auth', 'operator' => 'eq', 'value' => 'basic' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide
 		'key' => 'authPassword',
 		'type' => 'text',
 		'label' => 'Password',
@@ -184,7 +184,6 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 	    ],
 	    //CLD: 2026-10-17T10:46:42+03:00: the variable the request goes into (one object, see outputVariables)
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: shorter help (was: The request as one object, e.g. {{ webhook.body }}, {{ webhook.query.id }}, {{ webhook.headers["user-agent"] }})
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Request variable',

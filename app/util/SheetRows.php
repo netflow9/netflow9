@@ -1,8 +1,7 @@
 <?php
 
 /*
-    the rows and cells of a spreadsheet step, shared by Google Sheets (GoogleIntegration plugin) and Excel (MicrosoftIntegration
-    plugin); were NodeAppGoogleSheets' own (columnName, headerOf, objectsOf, rowsOf, matrixFor, cellValue), which now call these
+    the rows and cells of a spreadsheet step, shared by Google Sheets and Excel
 	columnName / columnIndex   A <-> 0, Z <-> 25, AA <-> 26
 	headerOf                   the header of a first row (empty / repeated names: the column name)
 	objectsOf                  rows of cells -> objects keyed by the header (empty rows left out)

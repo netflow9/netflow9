@@ -11,9 +11,9 @@
 	the model,
 	a system prompt and the prompt ({{ }} expressions),
 	the answer as text or JSON (an optional JSON schema),
-	tools the model may use - this project's tools (util\McpTools, run directly, without permission checks: the workflow's own step) and the tools of MCP server credentials(util\McpClient) -,
-	//CLD: 2026-10-20T23:40:00+03:00: this project's tools come from the plugins (util\MCPTools; the SysMCPTools plugin gives its MCP server's tools), none without them
-	//CLD: 2026-10-22T22:00:00+03:00: + the installation's tool servers (`servers`: MCP servers the plugins run on this machine, e.g. a web browser - the LocalMCP plugin), those the
+	tools the model may use - this project's tools (util\MCPTools, run directly, without permission checks: the workflow's own step) and the tools of MCP server credentials(util\McpClient) -,
+	//CLD: 2026-10-20T23:40:00+03:00: this project's tools: util\MCPTools (the MCP server's tools, util\McpServerTools; plugins may add more)
+	//CLD: 2026-10-22T22:00:00+03:00: + the installation's tool servers (`servers`: MCP servers on this machine, e.g. a web browser: util\ToolServers), those the
 	//administrator enabled for the account (hook ai:mcp-servers, localServers()); one session each per run, closed after it
 	//CLD: 2026-11-01T11:55:18+02:00: the tool servers are core (util\ToolServers: mcp.json, e.g. the web browser of scripts/playwright-mcp.sh), those enabled for the
 	//account by its owners or the super-admins
@@ -33,8 +33,8 @@
 	The agent loop: the model is called, the tools it asks for are run and their results sent back, until it answers (at most `maxRounds` calls).
 	    The provider classes build the requests: startConversation(), callModel(), addToolResults().
 	The variable (default `ai`): { text, json, model, stop_reason, rounds, tool_calls: [ { tool, arguments, error } ], usage: { input_tokens, output_tokens } }; on error { error }
-	//CLD: 2026-10-23T01:10:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page or an HTTP request
-	//CLD: 2026-10-23T02:30:00+03:00: in an email {{ ai.html }} shows it formatted (util\EmailHtml; was escaped: {{ markdown2html(ai.text) }} only)
+	//CLD: 2026-10-23T02:30:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page, an HTTP request or an email
+	//({{ ai.html }} formatted: util\EmailHtml)
     //CLD: 2026-11-02T10:00:00+02:00: what keeps the agent in bounds: util\AgentGuard (limits, the account's policy, untrusted content marked, lockdown, masking), each tool call in the audit log
     //CLD: 2026-11-02T14:00:00+02:00: each visit writes its trace (util\AgentTracer, models\agent\AgentTrace; the Executions panel): rounds, tool calls, approvals, tokens, cost; its id in the variable (trace_id)
     //CLD: 2026-11-02T18:00:00+02:00: Continue the conversation: in a run started by a chat message, the earlier turns go to the model (addConversation, addHistory; older ones summarized); remember, recall: util\AgentMemory
@@ -73,7 +73,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
     const MAX_RESPONSE = 10 * 1024 * 1024;
 
     const DEFAULT_TOOLS = [ 'list_tables', 'query_table', 'list_workflows', 'get_execution', 'list_files', 'read_file', 'read_image', 'list_variables' ];
-    //CLD: 2026-10-27T23:11:38+02:00: MAX_FILES (was MAX_IMAGES): the files sent with the prompt
+    //CLD: 2026-10-27T23:11:38+02:00: MAX_FILES: the files sent with the prompt
     const MAX_FILES = 20;
     const MAX_IMAGE = 5242880;
     const IMAGE_TYPES = [ 'image/png', 'image/jpeg', 'image/gif', 'image/webp' ];
@@ -113,7 +113,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 
     //CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers account $aid may use: [ id => [ id, label, description, open: fn(int $timeout) => an MCP client (initialize,
     //listTools, callTool, close: as util\McpClient), tools: the tool names the model may use (null: all the server lists) ] ]. $aid null: none (outside an account)
-    //CLD: 2026-11-01T11:55:18+02:00: the core's (util\ToolServers::ofAccount; was given by the LocalMCP plugin through the hook), then the hook `ai:mcp-servers` (its arguments
+    //CLD: 2026-11-01T11:55:18+02:00: the core's (util\ToolServers::ofAccount), then the hook `ai:mcp-servers` (its arguments
     //are an \ArrayObject the servers are added to, and $aid; e.g. the check suite's server)
     public static function localServers($aid) {
 	if (empty($aid))
@@ -144,7 +144,6 @@ abstract class NodeAppAi extends \models\wf\WfNode {
     }
 
     //CLD: 2026-10-17T21:00:54+03:00: image file $f as [ mimeType, data (base64) ]; \ErrorException when it is not an image the models read (File::$imageMimeTypes) or is too large
-    //CLD: 2026-10-20T23:40:00+03:00: here (was util\McpTools::fileImage: the AI steps send images without the SysMCPTools plugin)
     public static function fileImage($f) {
 	$mime = $f->imageMimeType();
 	if ($mime === null)
@@ -248,7 +247,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    $credentials[self::SYSTEM] = $system['label'];
 	foreach(static::choices(static::CAPABILITY) as $c)
 	    $credentials[$c['value']] = $c['label'];
-	//CLD: 2026-10-14T14:27:53+03:00: [ value => label ] (the choices of `select` fields; were smartform lists for `ui`)
+	//CLD: 2026-10-14T14:27:53+03:00: [ value => label ] (the choices of `select` fields)
 	$mcp = [];
 	foreach(static::choices('mcp') as $c)
 	    $mcp[$c['value']] = $c['label'];
@@ -267,27 +266,25 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'label' => 'Credential',
 		'choices' => $credentials,
 		//CLD: 2026-10-23T10:00:00+03:00: + System AI
-		//CLD: 2026-10-24T12:42:45+03:00: shorter (one line; was: ... credential of the project (menu: Credentials), or System AI: this installation's, paid with the account's credits (Settings menu: AI credits))
-		//CLD: 2026-10-24T13:04:58+03:00: shorter (one line, 4 wide; was: ... credential of the project, or System AI (paid with the account's AI credits)); 4 wide: the model and the provider's
+		//CLD: 2026-10-24T13:04:58+03:00: 4 wide: the model and the provider's
 		//settings next to it on line 2
 		'help' => static::PROVIDER . ' credential' . ($system ? ', or System AI (AI credits)' : ''),
 		'ui' => [ 'width' => 4 ],
-		//CLD: 2026-10-14T14:18:23+03:00: required by the model (was only in the browser: `required` in ui); validates() checks it is a credential of the project
+		//CLD: 2026-10-14T14:18:23+03:00: required by the model; validates() checks it is a credential of the project
 		'required' => true,
 	    ],
 	    //CLD: 2026-10-22T01:58:24+03:00: in the form, a select of the models the chosen credential recorded (its Test: Credential::recordModels), a name not listed can be typed; on the server
 	    //it stays text (any model name: workflows made by the MCP tools / the Assistant, a list not refreshed yet)
 	    [
-		//CLD: 2026-10-24T13:04:58+03:00: layout: 4 wide (was 6); shorter help (was: Recorded by the credential's Test; or type a name)
+		//CLD: 2026-10-24T13:04:58+03:00: layout: 4 wide
 		'key' => 'model',
 		'type' => 'text',
 		'label' => 'Model',
 		'required' => true,
 		'default' => static::defaultModel(),
-		//CLD: 2026-10-24T12:44:00+03:00: shorter (one line; was: The models of the credential (Test on the credential records them); or type a model name)
 		'help' => 'Or type a name',
 		//CLD: 2026-10-24T12:42:45+03:00: next to the credential (the designer: 6 wide)
-		//CLD: 2026-10-29T10:30:00+02:00: 8 wide (was 4): the provider's settings next to it (providerSchema) are under "Advanced…"
+		//CLD: 2026-10-29T10:30:00+02:00: 8 wide: the provider's settings next to it (providerSchema) are under "Advanced…"
 		'ui' => [ 'width' => 8, 'type' => 'select', 'allowCustom' => true, 'placeholder' => 'Choose a model...', 'choicesBy' => [ 'key' => 'credential', 'choices' => (object)static::modelChoices(),
 		    'empty' => 'No models recorded: Test the credential, or type a name' ] ],
 	    ],
@@ -297,7 +294,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'key' => 'system',
 		'type' => 'textarea',
 		'label' => 'System prompt',
-		//CLD: 2026-10-24T12:42:45+03:00: next to the prompt, as tall (was full width, 3 lines; the prompt 5 lines, was 6); shorter help (was: Who the model is and how it should work (optional); {{ ... }} for expressions)
+		//CLD: 2026-10-24T12:42:45+03:00: next to the prompt, as tall
 		'help' => 'Who the model is and how it works (optional)',
 		'ui' => [ 'rows' => 4, 'expression' => true, 'width' => 6, 'newRow' => true ],
 	    ],
@@ -307,7 +304,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'type' => 'textarea',
 		'label' => 'Prompt',
 		'required' => true,
-		//CLD: 2026-10-13T08:15:00+03:00: the example after the Email trigger's message variable (mail.text; was mail_text)
+		//CLD: 2026-10-13T08:15:00+03:00: the example after the Email trigger's message variable (mail.text)
 		'help' => 'The request; {{ ... }} for expressions, e.g. {{ mail.text }}',
 		//CLD: 2026-10-24T12:42:45+03:00: next to the system prompt
 		'ui' => [ 'rows' => 4, 'expression' => true, 'width' => 6 ],
@@ -319,20 +316,18 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'text',
 		'choices' => self::OUTPUT,
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		//CLD: 2026-10-24T13:04:58+03:00: not on a new line (line 2 is full: the credential, the model, the provider's settings)
-		//CLD: 2026-10-24T12:42:45+03:00: before the images, 3 wide on a new line (was 6, after them); shorter help (was: JSON: the answer is parsed (variable .json); a schema makes its shape precise)
+		//CLD: 2026-10-24T12:42:45+03:00: before the images, 3 wide on a new line
 		'help' => 'JSON: parsed (variable .json)',
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    //CLD: 2026-10-17T21:00:54+03:00: image files sent with the prompt
-	    //CLD: 2026-10-27T23:11:38+02:00: Files (was Images, key images): images, PDF, text and Office files; 6 wide (was 9), PDFs as next to it
+	    //CLD: 2026-10-27T23:11:38+02:00: Files: images, PDF, text and Office files; 6 wide, PDFs as next to it
 	    [
 		'key' => 'files',
 		'type' => 'text',
 		'label' => 'Files',
-		//CLD: 2026-10-24T12:42:45+03:00: next to the answer; shorter help (was: Optional: image files of the project the model looks at with the prompt (PNG, JPEG, GIF, WebP; at most ...), e.g. {{ file.id }},
-		//a list such as {{ mail.attachment_files }}, or file ids separated by commas)
+		//CLD: 2026-10-24T12:42:45+03:00: next to the answer
 		'help' => 'Optional: images, PDF, text or Office files (at most ' . self::MAX_FILES . '): {{ file.id }}, a list, or file ids',
 		'ui' => [ 'expression' => true, 'width' => 6 ],
 	    ],
@@ -354,7 +349,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'ai',
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: pattern from the validate rule (util\WidgetsUtil; was repeated here)
+		//CLD: 2026-10-14T14:27:53+03:00: pattern from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
 	    [
@@ -362,31 +357,31 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'type' => 'textarea',
 		'label' => 'JSON schema',
 		'help' => 'Optional: the JSON schema the answer must follow, e.g. {"type": "object", "properties": {"category": {"type": "string"}}, "required": ["category"], "additionalProperties": false}',
-		//CLD: 2026-10-14T14:08:12+03:00: condition made by util\FormSchema::showIf (was JS written here)
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T14:08:12+03:00: condition made by util\FormSchema::showIf
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'rows' => 4, 'showIf' => [ 'key' => 'output', 'operator' => 'eq', 'value' => 'json' ] ],
 	    ],
 	    [
 		'key' => 'tools',
-		//CLD: 2026-10-14T14:27:53+03:00: a `select` field with `multiple` and its choices (was an `array` field shown as a select through `ui`)
+		//CLD: 2026-10-14T14:27:53+03:00: a `select` field with `multiple` and its choices
 		'type' => 'select',
 		'multiple' => true,
 		'choices' => $tools,
 		'label' => 'Use these tools',
-		'default' => array_values(array_intersect(self::DEFAULT_TOOLS, array_keys($tools))), //CLD: 2026-10-20T23:40:00+03:00: those there are (was DEFAULT_TOOLS)
-		//CLD: 2026-10-24T12:42:45+03:00: the tools in a row (tools 6 wide, MCP servers and tool servers 3); shorter help (was: What the model may do in this project (run by the workflow, without the users' permission checks))
+		'default' => array_values(array_intersect(self::DEFAULT_TOOLS, array_keys($tools))), //CLD: 2026-10-20T23:40:00+03:00: those there are
+		//CLD: 2026-10-24T12:42:45+03:00: the tools in a row (tools 6 wide, MCP servers and tool servers 3)
 		'help' => 'What the model may do in this project',
 		'ui' => [ 'placeholder' => 'None', 'width' => 6, 'newRow' => true ],
 	    ],
 	    [
 		'key' => 'mcp',
-		//CLD: 2026-10-14T14:27:53+03:00: a `select` field with `multiple` and its choices (was an `array` field shown as a select through `ui`)
+		//CLD: 2026-10-14T14:27:53+03:00: a `select` field with `multiple` and its choices
 		'type' => 'select',
 		'multiple' => true,
 		'choices' => $mcp,
 		'label' => 'MCP servers',
 		'default' => [],
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide; shorter help (was: MCP server credentials of the project whose tools the model may use)
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide
 		'help' => 'The project\'s MCP credentials',
 		'ui' => [ 'placeholder' => 'None', 'width' => 3 ],
 	    ],
@@ -398,7 +393,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'choices' => $servers,
 		'label' => 'Tool servers',
 		'default' => [],
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide; shorter help (was: Tools this installation runs for the account (e.g. a web browser); each run gets its own session, closed after it)
+		//CLD: 2026-10-24T12:42:45+03:00: 3 wide
 		'help' => 'E.g. a web browser',
 		'ui' => [ 'placeholder' => $servers ? 'None' : 'None enabled', 'width' => 3 ],
 	    ],
@@ -426,7 +421,6 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'ui' => [ 'limit' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T13:06:25+03:00: shorter help (was: Most calls to the model (each tool use is one more))
 		'key' => 'maxRounds',
 		'type' => 'number',
 		'label' => 'Rounds',
@@ -434,8 +428,8 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'default' => 10,
 		'help' => 'Calls to the model (tool uses too)',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_ROUNDS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_ROUNDS ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
-		//CLD: 2026-10-24T12:42:45+03:00: a limit: the designer puts it on the last line, before the timeout (was 4 wide)
+		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
+		//CLD: 2026-10-24T12:42:45+03:00: a limit: the designer puts it on the last line, before the timeout
 		'ui' => [ 'limit' => true ],
 	    ],
 	    [
@@ -446,8 +440,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'default' => 16000,
 		'help' => 'Longest answer per call',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_TOKENS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_TOKENS ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
-		//CLD: 2026-10-24T12:42:45+03:00: a limit (was 4 wide)
+		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'limit' => true ],
 	    ],
 	    [
@@ -455,11 +448,11 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'type' => 'number',
 		'label' => 'Timeout (s)',
 		'required' => true,
-		//CLD: 2026-10-29T22:44:26+02:00: the step's DEFAULT_TIMEOUT / MAX_TIMEOUT (static::; was 300 / self::)
+		//CLD: 2026-10-29T22:44:26+02:00: the step's DEFAULT_TIMEOUT / MAX_TIMEOUT (static::)
 		'default' => static::DEFAULT_TIMEOUT,
 		'help' => 'Per call to the model',
 		'validate' => [ [ 'inRange', 'lower' => 5, 'upper' => static::MAX_TIMEOUT, 'skipEmpty' => true, 'message' => 'from 5 to ' . static::MAX_TIMEOUT ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
+		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'width' => 4 ],
 	    ],
 	    [
@@ -469,14 +462,10 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'fail',
 		'choices' => self::ON_ERROR,
-		//CLD: 2026-10-24T12:42:45+03:00: shorter (one line in the narrow column; was: The model could not be reached, declined, was cut off, or a JSON answer did not parse)
 		'help' => 'Unreachable, declined, cut off, bad JSON',
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 	    ],
-	//CLD: 2026-11-01T21:50:00+02:00: + the integrations the model may use (section Integrations; in the designer, the families with a credential in the project: util\AgentTools)
-	//CLD: 2026-11-01T23:30:00+02:00: + the approvals (section Approvals)
-	//CLD: 2026-11-02T10:00:00+02:00: + the limits and defences (section Guardrails)
-	//CLD: 2026-11-02T18:00:00+02:00: + the conversation and the long-term memory (their sections)
+	//CLD: 2026-11-02T18:00:00+02:00: + the sections Integrations (in the designer, the families with a credential in the project: util\AgentTools), Approvals, Guardrails
+	//(the limits and defences), the conversation and the long-term memory
 	], \util\AgentMemory::fields(static::designerAccount(), static::designerAccount() ? \V::app()->user->crtProject : null), \util\AgentTools::familyFields(static::designerAccount(), static::designerAccount() ? \V::app()->user->crtProject : null), \util\AgentTools::approvalFields(), \util\AgentGuard::fields(static::isCloud()));
     }
 
@@ -509,7 +498,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'ai') : 'ai';
 	return \util\Validator::isIdentifier($name) ? [ $name => [ 'type' => 'object',
 	    'info' => 'the answer: { text, html, json, model, stop_reason, rounds, tool_calls, usage, trace_id }; on error { error, trace_id }',
-	    //CLD: 2026-10-13T12:34:29+03:00: the fields and their types (suggested after `ai.`; was a list of names)
+	    //CLD: 2026-10-13T12:34:29+03:00: the fields and their types (suggested after `ai.`)
 	    'fields' => [
 		'text' => [ 'type' => 'string', 'info' => 'the answer' ],
 		//CLD: 2026-10-23T01:10:00+03:00: the answer's Markdown as HTML
@@ -535,7 +524,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	}
 	$valid = parent::validates($options);
 	$cred = (string)$this->cfg('credential', '');
-	//CLD: 2026-10-14T14:18:23+03:00: an empty one is reported by the field's `required` (was reported here too)
+	//CLD: 2026-10-14T14:18:23+03:00: an empty one is reported by the field's `required`
 	//CLD: 2026-10-23T10:00:00+03:00: System AI: when the installation's is of this provider
 	if ($cred === self::SYSTEM) {
 	    if (!static::systemProvider($this->workflow->aid ?? null)) {
@@ -572,14 +561,12 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	$known = array_keys(static::projectTools());
 	foreach((array)$this->cfg('tools', []) as $name) {
 	    if (!in_array($name, $known, true)) {
-		//CLD: 2026-10-26T23:56:07+02:00: the tools are core (util\McpServerTools): no longer "is SysMCPTools enabled?" when there are none
 		$this->errors('config', "Use these tools: unknown tool `{$name}`");
 		$valid = false;
 	    }
 	}
-	//CLD: 2026-11-01T21:50:00+02:00: the integrations (a credential of the project, known operations) and the workflows (of the project, called by a workflow)
-	//CLD: 2026-11-02T10:00:00+02:00: + the guardrails, and what the account's AI policy does not allow (it says why)
-	//CLD: 2026-11-02T18:00:00+02:00: + the long-term memory
+	//CLD: 2026-11-02T18:00:00+02:00: the integrations (a credential of the project, known operations), the workflows (of the project, called by a workflow), the guardrails,
+	//what the account's AI policy does not allow (it says why), the long-term memory
 	foreach(array_merge(\util\AgentTools::errors($this), \util\AgentGuard::errors($this), \models\agent\AgentPolicy::stepErrors($this), \util\AgentMemory::errors($this)) as $message) {
 	    $this->errors('config', $message);
 	    $valid = false;
@@ -597,7 +584,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 
     //a new conversation: the provider's state (messages, ...)
     //CLD: 2026-10-17T21:00:54+03:00: + $images: sent with the prompt, [ [ mimeType, data (base64) ] ]
-    //CLD: 2026-10-27T23:11:38+02:00: $files (was $images): the parts sent before the prompt (promptFiles): [ type: image, mime, data (base64), name ], [ type: pdf, data (base64), name ],
+    //CLD: 2026-10-27T23:11:38+02:00: $files: the parts sent before the prompt (promptFiles): [ type: image, mime, data (base64), name ], [ type: pdf, data (base64), name ],
     //[ type: text, text, name ] (fileAsText)
     abstract protected function startConversation($cred, $system, $prompt, $schema, array $files = []);
 
@@ -775,17 +762,17 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	$json = $this->cfg('output', 'text') === 'json';
 	$schema = $json && trim((string)$this->cfg('jsonSchema', '')) !== '' ? json_decode((string)$this->cfg('jsonSchema')) : null;
 	//CLD: 2026-10-17T21:00:54+03:00: the images sent with the prompt
-	//CLD: 2026-10-27T23:11:38+02:00: the files (promptFiles; was promptImages)
+	//CLD: 2026-10-27T23:11:38+02:00: the files (promptFiles)
 	$files = $resume ? [] : $this->guard->files($this->promptFiles($project, $cred));
 
-	//CLD: 2026-10-22T22:00:00+03:00: collectTools() (was here)
+	//CLD: 2026-10-22T22:00:00+03:00: collectTools()
 	//CLD: 2026-11-02T10:00:00+02:00: only those the account's policy allows (govern())
 	$tools = $this->guard->govern($this->collectTools($clients, $project));
 	//CLD: 2026-11-02T15:46:06+02:00: a test case: recorded results, no write tool runs (util\AgentEvalContext)
 	if ($this->exec->__test)
 	    $tools = $this->exec->__test->tools($this, $tools);
 
-	//CLD: 2026-10-23T10:00:00+03:00: $systemPrompt (was $system: now the System AI)
+	//CLD: 2026-10-23T10:00:00+03:00: $systemPrompt
 	//CLD: 2026-11-02T10:00:00+02:00: the prompts through the guard (the values from outside marked, masked; the rules in the system prompt); only for a new conversation (a resumed one has them)
 	$state = $resume ? $resume['state'] : null;
 	if (!$resume) {
@@ -810,7 +797,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	}
     }
 
-    //CLD: 2026-10-23T10:00:00+03:00: new (was in run()): the calls to the model and the tool calls, until it answers => the variable's value. $session: the System AI's (null: a credential
+    //CLD: 2026-10-23T10:00:00+03:00: new: the calls to the model and the tool calls, until it answers => the variable's value. $session: the System AI's (null: a credential
     //of the project): each call's tokens counted, no call once its credits are used up
     //CLD: 2026-11-01T23:30:00+02:00: + $resume (loadWait: a round waiting for an approval, decided): its results completed (decided()) and sent, then the next rounds; a round with calls that
     //ask for approval: saved, the task made, self::SLEEP (askApproval)
@@ -896,7 +883,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		    $took = (int)((microtime(true) - $started) * 1000);
 		}
 		$this->tracer->result($round, count($results), $text, $isError, $took, count((array)$toolImages));
-		//CLD: 2026-11-01T23:30:00+02:00: toolResult() (was here)
+		//CLD: 2026-11-01T23:30:00+02:00: toolResult()
 		$results[] = $this->toolResult($id, $tool, $args, $text, $isError, (array)$toolImages, $calls);
 	    }
 	    if ($pending)
@@ -923,7 +910,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return $result;
     }
 
-    //CLD: 2026-10-22T22:00:00+03:00: new (was in run()): the tools the model may use: [ name => [ name, description, schema (object), run: fn(args) => [ text, isError, images ] ] ];
+    //CLD: 2026-10-22T22:00:00+03:00: new: the tools the model may use: [ name => [ name, description, schema (object), run: fn(args) => [ text, isError, images ] ] ];
     //$clients gets the MCP sessions opened (closed by execute()). The project's tools, the MCP server credentials' tools (mcp<n>_<tool>), the installation's tool servers' tools
     //(<server>_<tool>: only those the server allows)
     //CLD: 2026-11-01T21:50:00+02:00: + the integrations' operations (<prefix>_<step>_<operation>) and the workflows (wf_<name>): util\AgentTools
@@ -935,14 +922,14 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	foreach(static::projectTools() as $t) {
 	    if (!in_array($t['name'], $wanted, true))
 		continue;
-	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 	    //CLD: 2026-11-02T10:00:00+02:00: + kind, title, writes: not marked read-only
 	    $tools[$t['name']] = [ 'name' => $t['name'], 'kind' => 'project', 'title' => $t['title'] ?? $t['name'], 'writes' => ($t['annotations']['readOnlyHint'] ?? false) !== true,
 		'description' => $t['description'], 'schema' => json_decode(\util\JSON::encode($t['inputSchema'])),
 		'run' => function(array $args) use ($t, $project) {
 		    try {
 			//CLD: 2026-10-17T21:00:54+03:00: the images of the result (read_image) apart
-			//CLD: 2026-10-20T23:40:00+03:00: the tool's run (projectTools; was util\McpTools::images(call()))
+			//CLD: 2026-10-20T23:40:00+03:00: the tool's run (projectTools)
 			[ $result, $images ] = ($t['run'])($args, $project);
 			return [ json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), false, $images ];
 		    } catch (\ErrorException $e) {
@@ -950,7 +937,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		    }
 		} ];
 	}
-	//CLD: 2026-10-29T22:44:26+02:00: the step's default (was 300)
+	//CLD: 2026-10-29T22:44:26+02:00: the step's default
 	$timeout = (int)$this->cfg('timeout', static::DEFAULT_TIMEOUT);
 	//CLD: 2026-10-30T23:30:00+02:00: the knowledge bases: one tool searching them (knowledgeTool)
 	$tools += $this->knowledgeTool($project, $timeout);
@@ -1025,7 +1012,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    } ] ];
     }
 
-    //CLD: 2026-10-22T22:00:00+03:00: new (was in run(), for the MCP server credentials): the tools of MCP session $client (initialized here) named <$prefix>_<tool>, described with [$label];
+    //CLD: 2026-10-22T22:00:00+03:00: new: the tools of MCP session $client (initialized here) named <$prefix>_<tool>, described with [$label];
     //$allow: the tool names offered (null: all); $what names the server in errors
     protected function mcpTools($client, $prefix, $what, $label, $allow) {
 	try {
@@ -1048,11 +1035,11 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		    $parts = [];
 		    $images = [];
 		    foreach((array)($r['content'] ?? []) as $c) {
-			//CLD: 2026-10-17T21:00:54+03:00: image content goes as an image (was its JSON, base64 included), when it is a type the models read and not too large
+			//CLD: 2026-10-17T21:00:54+03:00: image content goes as an image, when it is a type the models read and not too large
 			if (($c['type'] ?? '') === 'image') {
 			    $mime = strtolower((string)($c['mimeType'] ?? ''));
 			    $size = (int)(strlen((string)($c['data'] ?? '')) * 3 / 4);
-			    if (in_array($mime, self::IMAGE_TYPES, true) && $size <= self::MAX_IMAGE) //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::MAX_IMAGE)
+			    if (in_array($mime, self::IMAGE_TYPES, true) && $size <= self::MAX_IMAGE)
 				$images[] = [ $mime, (string)$c['data'] ];
 			    else
 				$parts[] = "[an image ({$mime}, {$size} bytes) the model cannot be sent]";
@@ -1070,14 +1057,14 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 
     //CLD: 2026-10-17T21:00:54+03:00: the image files of setting Images (file ids: one, a list, objects with `id` / `file` - e.g. an attachment -, or text with ids) of project $project:
     //[ [ mimeType, data (base64) ] ]; \ErrorException for a file that is not there or not an image
-    //CLD: 2026-10-27T23:11:38+02:00: promptFiles (was promptImages): the files of setting Files (else of a saved step's Images), as the parts startConversation sends: images
+    //CLD: 2026-10-27T23:11:38+02:00: promptFiles: the files of setting Files (else of a saved step's Images), as the parts startConversation sends: images
     //(fileImage), PDFs (the PDF itself, or its text and images: setting PDFs as, pdfAsDocuments($cred)), Office and text files (fileText); \ErrorException for a file that is not
     //there, not of these types, too large, or more than MAX_SEND bytes in all
     protected function promptFiles($project, $cred) {
 	$value = $this->expr('files', '');
 	if ($value === '' || $value === null || $value === [])
 	    $value = $this->expr('images', '');
-	//CLD: 2026-10-30T23:30:00+02:00: fileIds() (was here: the Knowledge base step reads its Files the same way)
+	//CLD: 2026-10-30T23:30:00+02:00: fileIds() (the Knowledge base step reads its Files the same way)
 	$ids = array_fill_keys(self::fileIds($value), true);
 	if (count($ids) > self::MAX_FILES)
 	    throw new \ErrorException('Files: ' . count($ids) . ' files, at most ' . self::MAX_FILES);
@@ -1097,7 +1084,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    $name = (string)$f->filename;
 	    $before = count($parts);
 	    if ($f->imageMimeType() !== null) {
-		[ $mime, $data ] = self::fileImage($f); //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::fileImage)
+		[ $mime, $data ] = self::fileImage($f);
 		$parts[] = [ 'type' => 'image', 'mime' => $mime, 'data' => $data, 'name' => $name ];
 		$kinds[] = 'image';
 	    } elseif ($f->extension() === 'pdf' && $mode === 'document') {
@@ -1135,7 +1122,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return $parts;
     }
 
-    //CLD: 2026-10-30T23:30:00+02:00: new (was in promptFiles): the file ids in $value - one, a list, objects with `id` / `file` (e.g. an attachment), or text with ids -, each once
+    //CLD: 2026-10-30T23:30:00+02:00: new: the file ids in $value - one, a list, objects with `id` / `file` (e.g. an attachment), or text with ids -, each once
     public static function fileIds($value) {
 	$ids = [];
 	$collect = function($v) use (&$collect, &$ids) {
@@ -1160,7 +1147,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return array_keys($ids);
     }
 
-    //CLD: 2026-11-01T23:30:00+02:00: new (was in loop()): a tool's result as sent to the model: cut at MAX_TOOL_RESULT, logged ($note after the tool's name), listed in $calls =>
+    //CLD: 2026-11-01T23:30:00+02:00: new: a tool's result as sent to the model: cut at MAX_TOOL_RESULT, logged ($note after the tool's name), listed in $calls =>
     //[ id, text, isError, images ]
     //CLD: 2026-11-02T10:00:00+02:00: masked and marked as untrusted (AgentGuard::result: the cut too); + in the audit log: $status (default: ok / error), $by: who approved it
     protected function toolResult($id, $tool, $args, $text, $isError, array $images, array &$calls, $note = '', $status = null, $by = null) {
@@ -1205,7 +1192,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
     protected function askApproval(array $state, $round, array $answer, array $results, array $pending, array $calls, array $usage, array $tools) {
 	$items = [];
 	foreach($pending as $p) {
-	    //CLD: 2026-11-02T10:00:00+02:00: $p['meta'] (was the tool's `approval`: a lockdown asks too); the model's words with the masked values back; in the audit log
+	    //CLD: 2026-11-02T10:00:00+02:00: $p['meta']; the model's words with the masked values back; in the audit log
 	    $meta = $p['meta'];
 	    $args = \util\AgentTools::withoutReason($p['args'], $meta['reason']);
 	    $reason = trim(\util\Expression::toText($p['args'][$meta['reason']] ?? ''));
@@ -1438,9 +1425,9 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 
     //POST $body as JSON to $url: the decoded answer ($assoc = false: as objects, to send parts of it back unchanged); \ErrorException when there is no answer, an HTTP
     //error (with the provider's message) or no JSON
-    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here; the body still util\JSON::encode)
+    //CLD: 2026-10-23T15:00:00+03:00: through util\Http
     protected function postJson($url, array $headers, array $body, $assoc = true) {
-	//CLD: 2026-10-29T22:44:26+02:00: the step's limits (static::; were self::MAX_TIMEOUT, 300)
+	//CLD: 2026-10-29T22:44:26+02:00: the step's limits (static::)
 	$timeout = max(5, min(static::MAX_TIMEOUT, (int)$this->cfg('timeout', static::DEFAULT_TIMEOUT)));
 	$r = \util\Http::json('POST', $url, [ 'headers' => $headers, 'json' => $body, 'timeout' => $timeout, 'maxBytes' => self::MAX_RESPONSE ]);
 	if ($r['tooLarge'])

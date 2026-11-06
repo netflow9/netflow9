@@ -3,8 +3,6 @@
 //Gmail / Google Workspace mailbox over IMAP with OAuth (XOAUTH2); the Google app needs the Gmail API scope https://mail.google.com/
 //CLD: 2026-10-09T17:21:14+03:00: a variant of models\Credential (base CredentialGoogleOAuth2);
 
-//CLD: 2026-10-22T00:35:40+03:00: moved to the GoogleIntegration plugin (was models\credential\CredentialGoogleMail); core classes fully qualified
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\GoogleIntegration\models): the Google credentials and steps are core, for every account (no plan feature)
 namespace models\credential;
 
 class CredentialGoogleMail extends \models\credential\CredentialGoogleOAuth2 {

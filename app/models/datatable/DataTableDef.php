@@ -90,7 +90,7 @@ class DataTableDef extends \sys\BaseModel {
     }
 
     //CLD: 2026-10-11T21:28:07+03:00: a deleted table takes its columns (Field records with objectName = iname) and its rows (the collection named iname, see
-    //ObjectManager::registerDataTables) with it (were left behind). Removed directly: the audit log keeps the table's own delete entry, not one per column.
+    //ObjectManager::registerDataTables) with it. Removed directly: the audit log keeps the table's own delete entry, not one per column.
     //The columns are matched by iname only (it holds the project id, so it is unique)
     public function beforeDelete() {
 	parent::beforeDelete();
@@ -98,7 +98,7 @@ class DataTableDef extends \sys\BaseModel {
 	\V::app()->om->resetCache();
 	if (empty($this->iname))
 	    return;
-	//CLD: 2026-10-12T12:21:36+03:00: through ObjectManager (was the MongoDB collections directly): the columns deleted one by one, the rows with om->drop()
+	//CLD: 2026-10-12T12:21:36+03:00: through ObjectManager: the columns deleted one by one, the rows with om->drop()
 	foreach(\V::app()->om->find('Field', [ 'objectName' => $this->iname ]) as $field)
 	    $field->delete();
 	//CLD: 2026-10-30T17:18:20+02:00: and its saved views
@@ -110,13 +110,13 @@ class DataTableDef extends \sys\BaseModel {
 	    \V::app()->om->drop($this->iname);
     }
 
-    //CLD: 2026-10-11T21:16:48+03:00: access to a table (was the BaseModel default: always refused, so project-scope users got 403 on every table): global scope = the
+    //CLD: 2026-10-11T21:16:48+03:00: access to a table (BaseModel's default always refuses): global scope = the
     //account's tables, project scope = the tables of the projects the user is a member of. The permissions are named DataTable::* (not DataTableDef::*)
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)
 	    $permName = 'DataTable::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the table's project decides (was: any membership)
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the table's project decides
 	//CLD: 2026-11-03T14:00:00+02:00: or a share with a project where their role allows it
 	return \models\Project::can($this->project, $this->aid, $userId, $permName) || $this->sharedCan($userId, $permName);
     }
@@ -151,8 +151,8 @@ class DataTableDef extends \sys\BaseModel {
     }
 
     // ------------------------------------------------------------------------------------
-    //CLD: 2026-10-12T21:51:51+03:00: rows, shared by the Data Table step (models\node\NodeAppTable; CLD: 2026-10-17T13:24:18+03:00: was plugins\BaseNodes\app) and the MCP server's data table tools (util\McpTools);
-    //moved from NodeAppTable (columnsOf, filterQuery, assignRow, rowValue). Messages are \ErrorException for the user
+    //CLD: 2026-10-12T21:51:51+03:00: rows, shared by the Data Table step (models\node\NodeAppTable) and the MCP server's data table tools (util\McpServerTools);
+    //messages are \ErrorException for the user
 
     //the table's columns: [ key => Field ] (its row model's schema, without the system fields)
     public function columns() {
@@ -181,7 +181,7 @@ class DataTableDef extends \sys\BaseModel {
 
     //the MongoDB query of $conditions ([ { column, operator, value } ], values through $render), $match all | any, within account $aid
     //CLD: 2026-10-14T20:17:14+03:00: the query is util\Conditions::query with the columns' fields (their operators, their casts); id is the row's _id (an oid field), created_at /
-    //updated_at dates (was the query and the operators written here)
+    //updated_at dates
     public static function conditionsQuery(array $conditions, $match, array $columns, \Closure $render, $aid) {
 	$list = [];
 	foreach($conditions as $cond) {

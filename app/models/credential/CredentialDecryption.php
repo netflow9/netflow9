@@ -37,7 +37,7 @@ class CredentialDecryption extends \models\Credential {
 		'encrypt' => true,
 		'requiredIf' => [ 'if' => 'method', 'in' => $keyMethods ],
 		'help' => 'PGP: -----BEGIN PGP PRIVATE KEY BLOCK----- (gpg --armor --export-secret-keys); S/MIME: -----BEGIN (ENCRYPTED) PRIVATE KEY----- (PEM)',
-		//CLD: 2026-10-20T14:03:59+03:00: util\Validator key rules (were checked in validates())
+		//CLD: 2026-10-20T14:03:59+03:00: util\Validator key rules
 		'validate' => [
 		    [ 'notPublicKey', 'when' => [ 'method' => [ 'pgp' ] ], 'skipEmpty' => true, 'last' => true, 'message' => 'this is a public key: decrypting needs the private one' ],
 		    [ 'pgpPrivateKey', 'when' => [ 'method' => [ 'pgp' ] ], 'skipEmpty' => true, 'message' => 'not an armored PGP private key (-----BEGIN PGP PRIVATE KEY BLOCK-----)' ],
@@ -59,7 +59,7 @@ class CredentialDecryption extends \models\Credential {
 		'label' => 'Certificate',
 		'default' => '',
 		'help' => 'Optional: the recipient\'s certificate (PEM), when the files were encrypted for several recipients',
-		//CLD: 2026-10-20T14:03:59+03:00: util\Validator certificate rule (was checked in validates())
+		//CLD: 2026-10-20T14:03:59+03:00: util\Validator certificate rule
 		'validate' => [
 		    [ 'pemCertificate', 'when' => [ 'method' => [ 'cms' ] ], 'multiple' => false, 'skipEmpty' => true, 'message' => 'not a PEM certificate (-----BEGIN CERTIFICATE-----)' ],
 		],
@@ -92,8 +92,6 @@ class CredentialDecryption extends \models\Credential {
 	    ],
 	]);
     }
-
-    //CLD: 2026-10-20T14:03:59+03:00: validates() removed: the keys and certificates are checked by the fields' util\Validator rules
 
     public function test() {
 	return \util\FileDecrypt::check($this);

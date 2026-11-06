@@ -1,4 +1,4 @@
-//CLD: 2026-10-19T16:05:12+03:00: the model may also be an OpenAI-compatible one (the chosen credential's; texts no longer name Claude)
+//CLD: 2026-10-19T16:05:12+03:00: the model may also be an OpenAI-compatible one (the chosen credential's)
 //CLD: 2026-10-19T15:26:28+03:00: new: the Assistant of the workflow designer (the right-side inspector): the person describes the workflow or a change, Claude builds it on the
 //canvas (WorkflowController::assistant, util\WorkflowAssistant). The designer's current steps go with each request (unsaved changes included); the answer's steps replace
 //the canvas (app.workflow.setNodes), not saved: the person reviews and saves them. Each change can be undone (the steps before it, kept while the page lives).
@@ -6,14 +6,11 @@
 //The conversation is kept per workflow in sessionStorage (saving reloads the designer)
 //CLD: 2026-10-23T23:45:00+03:00: kept on the server instead (models\AssistantChat, shared by the people who may change the workflow): options.messages (the page's), each new
 //message sent to options.chatUrl, New conversation to options.clearUrl; options.uid: the viewer (the others' requests show who wrote them)
-//CLD: 2026-10-19T20:10:00+03:00: moved into the Assistant plugin (app/plugins/Assistant/js; was public_html/js): served by AssistantController::script, the requests go to
-//AssistantController::ask; + panel(): the panel is opened / closed by the designer's top-bar button, open or closed as last time
-//CLD: 2026-10-26T23:49:50+02:00: back in public_html/js (the Assistant is core), loaded with the app (layouts/_scripts.php)
-//CLD: 2026-10-19T21:40:00+03:00: a class, as app.CodeEditor / app.ExprInput (was the app.wfassistant module with panel() and mount()):
+//CLD: 2026-10-26T23:49:50+02:00: a class, as app.CodeEditor / app.ExprInput, loaded with the app (layouts/_scripts.php); the requests go to AssistantController::ask:
 //
 //   new app.WfAssistant(panel, { wfid, url })
-//CLD: 2026-10-19T22:00:00+03:00: + options.designer: the app.Workflow it works on (default: app.Workflow.current, the page's; was the app.workflow module)
-//CLD: 2026-10-20T10:00:00+03:00: no credentials: the server and model are those of Assistant settings (options.credentials, .wfa-credential and the stored credential are gone)
+//
+//options.designer: the app.Workflow it works on (default: app.Workflow.current, the page's). The server and model are those of Assistant settings.
 //
 //panel: the Assistant's panel of the designer (#wf-assistant-panel, views/assistant/_designer_panel.php). It is open or closed as last time, the top-bar buttons
 //(.btn-assistant-toggle) toggle it, .wfa-close closes it; the conversation is set up when the panel has one (.wfa-messages: the draft, who may change it, Assistant settings set up).
@@ -85,7 +82,7 @@ window.app.WfAssistant = (function() {
 	}
 
 	/* ---------------- the panel ---------------- */
-	//CLD: 2026-10-19T20:10:00+03:00: as last time; the top-bar button toggles it, .wfa-close closes it (was panel())
+	//CLD: 2026-10-19T20:10:00+03:00: as last time; the top-bar button toggles it, .wfa-close closes it
 	setupPanel() {
 	    let open = false;
 	    try {
@@ -129,12 +126,12 @@ window.app.WfAssistant = (function() {
 	    return this.o.designer || app.Workflow.current;
 	}
 
-	//CLD: 2026-10-23T23:45:00+03:00: the conversation kept on the server (options.messages; was sessionStorage)
+	//CLD: 2026-10-23T23:45:00+03:00: the conversation kept on the server (options.messages)
 	load() {
 	    this.state = { messages: Array.isArray(this.o.messages) ? this.o.messages.slice(-MAX_KEPT) : [] };
 	}
 
-	//CLD: 2026-10-23T23:45:00+03:00: message m sent to the server (AssistantController::chat_add); only the last MAX_KEPT are kept here too (was the whole conversation in sessionStorage)
+	//CLD: 2026-10-23T23:45:00+03:00: message m sent to the server (AssistantController::chat_add); only the last MAX_KEPT are kept here too
 	store(m) {
 	    if (this.state.messages.length > MAX_KEPT)
 		this.state.messages = this.state.messages.slice(-MAX_KEPT);
@@ -322,7 +319,7 @@ window.app.WfAssistant = (function() {
 		if (!this.state.messages.length || !confirm('Start a new conversation? The canvas is not changed.'))
 		    return;
 		this.state.messages = [];
-		//CLD: 2026-10-23T23:45:00+03:00: on the server too (AssistantController::chat_clear; was sessionStorage)
+		//CLD: 2026-10-23T23:45:00+03:00: on the server too (AssistantController::chat_clear)
 		if (this.o.clearUrl)
 		    $.ajax({ url: this.o.clearUrl, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content') } })
 			.fail((x) => console.warn('Assistant: the conversation was not cleared', x.status));

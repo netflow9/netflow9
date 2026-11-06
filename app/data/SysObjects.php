@@ -68,7 +68,6 @@ class SysObjects {
 		'class' => 'models\User',
 		'userSelectable' => true,
 	    ],
-	    //CLD: 2026-10-24T08:20:00+03:00: removed PasswordReset: the "forgot password" link is the user's (User reset_*)
 	    'ProjectInvite' => [
 		'class' => 'models\user\ProjectInvite',
 		'auditLog' => false,
@@ -89,7 +88,6 @@ class SysObjects {
 	    'Project' => [
 		'class' => 'models\Project',
 	    ],
-	    //CLD: 2026-10-22T00:28:13+03:00: Variable removed: the project variables are credentials of type Variable (CredentialVariable, below)
 	    'Workflow' => [
 		'class' => 'models\Workflow',
 	    ],
@@ -121,14 +119,13 @@ class SysObjects {
 		'class' => 'models\Job',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-16T11:26:09+03:00: the token index of the token triggers (Webhook, Form, Email inbound; was registered by the BaseNodes plugin); rebuilt from the workflows: not in
+	    //CLD: 2026-10-16T11:26:09+03:00: the token index of the token triggers (Webhook, Form, Email inbound); rebuilt from the workflows: not in
 	    //the audit log
 	    //CLD: 2026-10-19T11:21:19+03:00: Signup is registered by the Registration plugin
 	    'TriggerToken' => [
 		'class' => 'models\TriggerToken',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-30T15:00:00+02:00: ExecutionSlot removed (sync executions: every execution runs in the daemon)
 	    'DataTableDef' => [
 		'class' => 'models\datatable\DataTableDef',
 	    ],
@@ -153,8 +150,7 @@ class SysObjects {
 	    'EmbeddingSettings' => [
 		'class' => 'models\kb\EmbeddingSettings',
 	    ],
-	    //CLD: 2026-10-20T23:40:00+03:00: McpToken (access tokens of the project's MCP server) is registered by the SysMCPTools plugin
-	    //CLD: 2026-10-26T23:56:07+02:00: core again (the project's MCP server, controllers\McpController; same object name: stored tokens, audit entries and roles keep working)
+	    //CLD: 2026-10-26T23:56:07+02:00: the project's MCP server (controllers\McpController)
 	    'McpToken' => [
 		'class' => 'models\McpToken',
 	    ],
@@ -211,7 +207,7 @@ class SysObjects {
 		'class' => 'models\credential\CredentialImap',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-26T23:39:49+02:00: the Google credentials (OAuth: Mail, Drive, Sheets, Calendar, Docs), core for every account again (were registered by the GoogleIntegration plugin, plan feature google)
+	    //CLD: 2026-10-26T23:39:49+02:00: the Google credentials (OAuth: Mail, Drive, Sheets, Calendar, Docs), core for every account
 	    'CredentialGoogleMail' => [
 		'class' => 'models\credential\CredentialGoogleMail',
 		'variant-of' => 'Credential',
@@ -233,7 +229,7 @@ class SysObjects {
 		'variant-of' => 'Credential',
 	    ],
 	    //CLD: 2026-10-26T23:39:49+02:00: the Microsoft credentials (Microsoft 365 Mail over IMAP, and the Microsoft Graph ones: Outlook Mail, Outlook Calendar, OneDrive & SharePoint, Teams), core for every
-	    //account again (were registered by the MicrosoftIntegration plugin, plan feature microsoft)
+	    //account
 	    'CredentialMicrosoftMail' => [
 		'class' => 'models\credential\CredentialMicrosoftMail',
 		'variant-of' => 'Credential',
@@ -259,7 +255,7 @@ class SysObjects {
 		'class' => 'models\credential\CredentialFtp',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-25T20:00:00+02:00: the databases (the Database step), core for every account (were registered by the Database plugin, plan feature database); each offered when PHP
+	    //CLD: 2026-10-25T20:00:00+02:00: the databases (the Database step), core for every account; each offered when PHP
 	    //has its PDO driver (Credential::available())
 	    'CredentialMysql' => [
 		'class' => 'models\credential\CredentialMysql',
@@ -340,7 +336,7 @@ class SysObjects {
 		'class' => 'models\\credential\\CredentialGravityZone',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-25T19:30:00+02:00: an LDAP server (the LDAP step), core for every account (was registered by the Ldap plugin, plan feature ldap_step)
+	    //CLD: 2026-10-25T19:30:00+02:00: an LDAP server (the LDAP step), core for every account
 	    'CredentialLdap' => [
 		'class' => 'models\credential\CredentialLdap',
 		'variant-of' => 'Credential',
@@ -364,7 +360,7 @@ class SysObjects {
 		'class' => 'models\credential\CredentialVerification',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-22T00:28:13+03:00: a project variable, {{ vars.<name> }} (was the Variable object)
+	    //CLD: 2026-10-22T00:28:13+03:00: a project variable, {{ vars.<name> }}
 	    'CredentialVariable' => [
 		'class' => 'models\credential\CredentialVariable',
 		'variant-of' => 'Credential',
@@ -373,7 +369,7 @@ class SysObjects {
 
 
 
-	    //CLD: 2026-10-17T13:24:18+03:00: the workflow steps (models\node; were registered by the BaseNodes plugin, removed); the order is the step picker's
+	    //CLD: 2026-10-17T13:24:18+03:00: the workflow steps (models\node); the order is the step picker's
 	    'NodeCoreIf' => [
 		'class' => 'models\node\NodeCoreIf',
 		'wfNode' => true,
@@ -402,7 +398,7 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerWebhook',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T16:11:37+02:00: Email (inbound) in the core (was registered by the InboundMail plugin, only when Haraka was found); available() when Haraka is found
+	    //CLD: 2026-11-01T16:11:37+02:00: Email (inbound): available() when Haraka is found
 	    'NodeTriggerEmail' => [
 		'class' => 'models\node\NodeTriggerEmail',
 		'wfNode' => true,
@@ -425,7 +421,6 @@ class SysObjects {
 		'class' => 'models\node\NodeAppSet',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-30T00:00:00Z: the Action step (NodeAppAction: an empty step, it did nothing) removed
 	    'NodeAppCode' => [
 		'class' => 'models\node\NodeAppCode',
 		'wfNode' => true,
@@ -453,9 +448,9 @@ class SysObjects {
 		'class' => 'models\node\NodeAppFtpUpload',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-25T20:00:00+02:00: Database (query and change SQL databases), core for every account (was registered by the Database plugin, plan feature database); not in the
+	    //CLD: 2026-10-25T20:00:00+02:00: Database (query and change SQL databases), core for every account; not in the
 	    //palette when PHP has no PDO driver of its types (WfNode::available())
-	    //CLD: 2026-10-31T23:30:00+02:00: one step per database type (was NodeAppDatabase, now their base); each not in the palette when PHP has no PDO driver of its type
+	    //CLD: 2026-10-31T23:30:00+02:00: one step per database type; each not in the palette when PHP has no PDO driver of its type
 	    'NodeAppMysql' => [
 		'class' => 'models\node\NodeAppMysql',
 		'wfNode' => true,
@@ -763,7 +758,7 @@ class SysObjects {
 		'class' => 'models\\node\\NodeTriggerGravityZone',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-25T19:30:00+02:00: LDAP (search and change a directory), core for every account (was registered by the Ldap plugin, plan feature ldap_step)
+	    //CLD: 2026-10-25T19:30:00+02:00: LDAP (search and change a directory), core for every account
 	    'NodeAppLdap' => [
 		'class' => 'models\node\NodeAppLdap',
 		'wfNode' => true,
@@ -813,13 +808,13 @@ class SysObjects {
 		'class' => 'models\node\NodeAppWait',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-17T14:20:00+03:00: the IMAP trigger is a regular step, Read emails (was NodeTriggerImap)
+	    //CLD: 2026-10-17T14:20:00+03:00: the IMAP trigger is a regular step, Read emails
 	    //CLD: 2026-10-17T14:45:00+03:00: renamed NodeAppImap -> NodeAppReadEmail
 	    'NodeAppReadEmail' => [
 		'class' => 'models\node\NodeAppReadEmail',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-26T23:39:49+02:00: the Google steps (Drive, Sheets, Gmail, Calendar, Docs), core for every account again (were registered by the GoogleIntegration plugin, plan feature google)
+	    //CLD: 2026-10-26T23:39:49+02:00: the Google steps (Drive, Sheets, Gmail, Calendar, Docs), core for every account
 	    'NodeAppGoogleDrive' => [
 		'class' => 'models\node\NodeAppGoogleDrive',
 		'wfNode' => true,
@@ -840,8 +835,7 @@ class SysObjects {
 		'class' => 'models\node\NodeAppGoogleDocs',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-26T23:39:49+02:00: the Microsoft steps (Outlook Mail, Outlook Calendar, OneDrive / SharePoint, Excel, Teams), core for every account again (were registered by the MicrosoftIntegration
-	    //plugin, plan feature microsoft)
+	    //CLD: 2026-10-26T23:39:49+02:00: the Microsoft steps (Outlook Mail, Outlook Calendar, OneDrive / SharePoint, Excel, Teams), core for every account
 	    'NodeAppOutlookMail' => [
 		'class' => 'models\node\NodeAppOutlookMail',
 		'wfNode' => true,
@@ -888,7 +882,7 @@ class SysObjects {
 		'class' => 'models\node\NodeAppWorkflow',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-26T23:49:50+02:00: the designer's Assistant, core (were registered by the Assistant plugin): the account's settings, its spending per month, the conversation of each workflow
+	    //CLD: 2026-10-26T23:49:50+02:00: the designer's Assistant: the account's settings, its spending per month, the conversation of each workflow
 	    'AssistantSettings' => [
 		'class' => 'models\assistant\AssistantSettings',
 	    ],
@@ -926,7 +920,7 @@ class SysObjects {
 		'class' => 'models\agent\AgentMessage',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-11-01T11:55:18+02:00: the tool servers (util\ToolServers): the servers an account may use, the sessions open (were registered by the LocalMCP plugin)
+	    //CLD: 2026-11-01T11:55:18+02:00: the tool servers (util\ToolServers): the servers an account may use, the sessions open
 	    //CLD: 2026-11-05T16:00:00+02:00: the data migrations done in this database (util\Migrations, sys::migrate); not in the audit log: the installation's, not an account's
 	    'Migration' => [
 		'class' => 'models\Migration',
@@ -939,7 +933,7 @@ class SysObjects {
 		'class' => 'models\ToolServerSlot',
 	    ],
 	    //CLD: 2026-11-01T04:00:00+02:00: what a polling trigger remembers between its checks (Veeam event)
-	    //CLD: 2026-11-01T16:11:37+02:00: an account's inbound mail prefix (the Email inbound addresses; was the InboundMail plugin's)
+	    //CLD: 2026-11-01T16:11:37+02:00: an account's inbound mail prefix (the Email inbound addresses)
 	    'InboundMailSettings' => [
 		'class' => 'models\InboundMailSettings',
 	    ],
@@ -951,7 +945,7 @@ class SysObjects {
 		'class' => 'models\assistant\AssistantChat',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-17T13:24:18+03:00: the IMAP trigger's check state and the Human task's tasks (were registered by the BaseNodes plugin); the check state is not in the audit log
+	    //CLD: 2026-10-17T13:24:18+03:00: the IMAP trigger's check state and the Human task's tasks; the check state is not in the audit log
 	    'MailPoll' => [
 		'class' => 'models\MailPoll',
 		'auditLog' => false,

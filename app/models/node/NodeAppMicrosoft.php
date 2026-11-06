@@ -14,7 +14,6 @@
 	- helpers: addresses(), recipients() (Graph's [ { emailAddress: { address } } ]), names(), the content types by extension (models\File::CONTENT_TYPES)
 */
 
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 abstract class NodeAppMicrosoft extends \models\wf\WfNode {
@@ -168,7 +167,7 @@ abstract class NodeAppMicrosoft extends \models\wf\WfNode {
 		return [ 1 ];
 	    throw new \ErrorException(static::$label . ": {$operation}: " . $e->getMessage());
 	}
-	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it; was the variable only)
+	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it)
 	$this->setResult($name, $result);
 	$this->exec->log($this->wfid, static::$label . " {$operation}: {$summary} (" . (int)round((microtime(true) - $start) * 1000) . ' ms)');
 	return [ 0 ];
@@ -222,7 +221,7 @@ abstract class NodeAppMicrosoft extends \models\wf\WfNode {
 
     //one request (https): the answer decoded as JSON ([] when it is not, e.g. 202 / 204), kept up to $maxBytes; \RuntimeException on no answer or a status of 400 or more
     protected function call($method, $url, array $headers, $body, $maxBytes = self::MAX_ANSWER) {
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+	//CLD: 2026-10-23T15:00:00+03:00: through util\Http
 	$r = \util\Http::request($method, $url, [ 'headers' => $headers, 'body' => $body, 'timeout' => $this->apiTimeout(), 'maxBytes' => $maxBytes, 'https' => true, 'compressed' => true ]);
 	if ($r['tooLarge'])
 	    throw new \RuntimeException('the answer is larger than ' . (int)($maxBytes / 1048576) . ' MB');

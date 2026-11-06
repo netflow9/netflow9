@@ -248,7 +248,7 @@ class WfNode extends \sys\NestedModel {
     }
 
     //CLD: 2026-10-11T22:53:04+03:00: the syntax errors of the expression fields (ui `expression`) of form $form with values $values: [ "<label>: <message>" ] (unknown names are
-    //only warnings in the designer: a variable may come from somewhere the check cannot see) //CLD: 2026-10-17T10:46:42+03:00: example updated (webhook query_<name> variables are gone)
+    //only warnings in the designer: a variable may come from somewhere the check cannot see)
     public static function expressionErrors($form, array $values) {
 	$errors = [];
 	foreach($form->schema as $key => $f) {
@@ -282,7 +282,7 @@ class WfNode extends \sys\NestedModel {
     }
 
     //SmartForm fields used by the designer's inspector to edit `config`; override in node classes
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions of `config` (sys\NestedModel, was models\WfNodeConfig: cast by the Field_* classes, checked by validates() through the
+    //CLD: 2026-10-09T08:10:30+03:00: model field definitions of `config` (sys\NestedModel: cast by the Field_* classes, checked by validates() through the
     //rules: required, validate => [ requiredIf, inList, inRange, regex, identifier, cron, ... ]); browser-only settings of a field (showIf,
     //hideIf, required of a field shown only in some cases, pattern, placeholder, width, rows, ...) go in its `ui` array; the designer gets
     //them as app.smartform fields (util\SmartForm::modelFields)
@@ -291,7 +291,7 @@ class WfNode extends \sys\NestedModel {
     }
 
     //CLD: 2026-10-09T08:10:30+03:00: the config form of this step class (defaults bound)
-    //CLD: 2026-10-18T13:00:00+03:00: a sys\NestedModel of configSchema() (was models\WfNodeConfig::forClass, the same model under another name)
+    //CLD: 2026-10-18T13:00:00+03:00: a sys\NestedModel of configSchema()
     public static function configForm() {
 	return \sys\NestedModel::forFields(static::configSchema());
     }
@@ -468,7 +468,7 @@ class WfNode extends \sys\NestedModel {
 	return self::$nodeDefs = $nodeDefs;
     }
 
-    //CLD: 2026-10-25T20:00:00+02:00: the step definitions of the designer (moved from views/workflow/index.php): getAll(), `unavailable` the steps of a feature $account's tier
+    //CLD: 2026-10-25T20:00:00+02:00: the step definitions of the designer: getAll(), `unavailable` the steps of a feature $account's tier
     //does not have (not in the palette; those already in a workflow are still shown) and those this PHP cannot run (available(): e.g. Database without a PDO driver of its types);
     //[ 'defs' => ..., 'version' => a hash of them ]: the designer page sends the version only, the designer asks the definitions when it does not have them (WorkflowController::node_defs)
     public static function designerDefs($account) {
@@ -480,7 +480,7 @@ class WfNode extends \sys\NestedModel {
 	    if (!$class::available())
 		$defs[$fq]['unavailable'] = true;
 	}
-	//CLD: 2026-11-04T08:10:00+02:00: + the app's version (the forms are no longer in $defs: a deploy can change them). Depends on the code and the tier only: a new credential or workflow
+	//CLD: 2026-11-04T08:10:00+02:00: + the app's version (the forms are not in $defs: a deploy can change them). Depends on the code and the tier only: a new credential or workflow
 	//no longer makes each tab ask the definitions again; the dialog of a step asks its form when it opens (WorkflowController::node_schema)
 	return [ 'defs' => $defs, 'version' => md5(\data\Version::NUMBER . \util\JSON::encode($defs)) ];
     }

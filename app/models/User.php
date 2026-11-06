@@ -13,7 +13,7 @@ class User extends \sys\BaseModel {
 	[ [ 'reset_token_hash' => 1 ], [ 'unique' => true, 'sparse' => true ] ],
     ];
 
-    //CLD: 2026-10-24T08:20:00+03:00: how long a "forgot password" link works (was PasswordReset::VALID)
+    //CLD: 2026-10-24T08:20:00+03:00: how long a "forgot password" link works
     const RESET_VALID = 86400;
     //CLD: 2026-10-25T11:20:00+02:00: how long the link of a new user's welcome email works (UserController::create / send_link), as a project invitation's
     const WELCOME_VALID = 7 * 86400;
@@ -113,7 +113,7 @@ class User extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-10-24T08:20:00+03:00: the pending "forgot password" link (was the model models\user\PasswordReset; replaces conf_code, never used): the SHA-256 hash of its token (the
+	    //CLD: 2026-10-24T08:20:00+03:00: the pending "forgot password" link: the SHA-256 hash of its token (the
 	    //token is only in the email), when it stops working, the address that asked. Written by startPasswordReset / clearPasswordReset only (not save(): no audit entry)
 	    [
 		'key' => 'reset_token_hash',
@@ -230,7 +230,7 @@ class User extends \sys\BaseModel {
 	return $this->firstname . ' ' . $this->lastname;
     }
 
-    //CLD: 2026-10-24T08:20:00+03:00: new (was PasswordReset::start): a new "forgot password" link for this user, valid RESET_VALID seconds, asked from $ip; replaces the user's earlier one.
+    //CLD: 2026-10-24T08:20:00+03:00: new: a new "forgot password" link for this user, valid RESET_VALID seconds, asked from $ip; replaces the user's earlier one.
     //Returns the token (for the email; only its hash is kept)
     //CLD: 2026-10-25T11:20:00+02:00: + $valid: seconds the link works (default RESET_VALID; a new user's first password: WELCOME_VALID)
     public function startPasswordReset($ip = null, $valid = null) {

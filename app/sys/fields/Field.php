@@ -114,7 +114,7 @@ class Field extends \sys\BaseModel {
 	}
 
 	//`requiredIf` => [ 'if' => <field>, 'in' => [ values ], 'message' => optional ]: required when field `if` has one of the values (the
-	//Validator's requiredIf rule; was written as that rule in each field's `validate`); the form's requiredIf is made from it (util\WidgetsUtil)
+	//Validator's requiredIf rule); the form's requiredIf is made from it (util\WidgetsUtil)
 	if (!empty($this->requiredIf['if'])) {
 	    if (empty($object->validates[$this->key]))
 		$object->validates[$this->key] = [];
@@ -208,7 +208,7 @@ class Field extends \sys\BaseModel {
     public function encryptValue($value) {
 	if ($value === null || $value === '' || (is_string($value) && str_starts_with($value, self::ENC_PREFIX)))
 	    return $value;
-	//util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+	//util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 	return self::ENC_PREFIX . \V::app()->security->encrypt(\util\JSON::encode($value));
     }
 

@@ -13,8 +13,6 @@
     On error (Docs / Drive API errors, e.g. not found, no access, a credential without the Drive scope for copy) - fail the step, or continue on the `error` output (NodeAppGoogle)
 */
 
-//CLD: 2026-10-22T00:35:40+03:00: moved to the GoogleIntegration plugin (was models\node\NodeAppGoogleDocs); core classes fully qualified
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\GoogleIntegration\models): the Google credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 class NodeAppGoogleDocs extends NodeAppGoogle {
@@ -58,7 +56,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: The document id or its link (https://docs.google.com/document/d/...); {{ ... }} for expressions, e.g. {{ doc.id }})
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
 		'key' => 'documentId',
 		'type' => 'text',
 		'label' => 'Document',
@@ -78,7 +76,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'placeholder' => 'Offer {{ client.name }}', 'expression' => true, 'showIf' => $op([ 'create', 'copy' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
 		'key' => 'format',
 		'type' => 'select',
 		'label' => 'Content is',
@@ -107,7 +105,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'ui' => [ 'addLabel' => 'Add replacement', 'compact' => true, 'maxRows' => self::MAX_REPLACE, 'showIf' => $op([ 'replace' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 9 wide, on a new line; shorter help (was: Optional: {{ ... }} giving an object, e.g. {{ row }}: each key's placeholder {{key}} in the document is replaced by its value)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 9 wide, on a new line
 		'key' => 'placeholders',
 		'type' => 'text',
 		'label' => 'Placeholders',
@@ -118,7 +116,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		    'agent' => [ 'type' => 'object', 'help' => 'Optional: each {{key}} in the document gets its value' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'matchCase',
 		'type' => 'switch',
@@ -127,9 +125,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'replace' ]) ],
 	    ],
 	    static::timeoutField(60),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: Read: { id, title, url, text, markdown }; replace: { id, url, replaced, counts }; else { id, title, url })
 	    static::variableField('The document: { id, title, url, ... }'),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Google Docs (e.g. not found, no access); copy: a credential without the Drive scope)
 	    static::onErrorField('Docs errors; copy: no Drive scope'),
 	];
     }

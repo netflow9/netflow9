@@ -31,7 +31,7 @@ class SiteController extends \sys\BaseController {
 		$identity = new \sys\Identity();
 		if ($identity->authenticate($form->username, $form->password)) {
 		    \models\user\LoginThrottle::clear($nameKey);
-		    //CLD: 2026-10-16T13:15:57+03:00: signIn() (the 2FA step when the user has one, the login, the audit entry; shared with the sign-up and the password reset; was here)
+		    //CLD: 2026-10-16T13:15:57+03:00: signIn() (the 2FA step when the user has one, the login, the audit entry; shared with the sign-up and the password reset)
 		    $this->signIn(\V::app()->om->findById('User', $identity->data()['_id']), !empty($form->rememberme));
 		} elseif (!empty($identity->choices)) {
 		    //CLD: 2026-10-21T20:10:00+03:00: the name and password fit users of several accounts: the user picks one (choose_account); the password was right
@@ -105,7 +105,7 @@ class SiteController extends \sys\BaseController {
     }
 
     //CLD: 2026-10-16T13:15:57+03:00: signs user $user in and goes to the app: first the 2FA step when the user has one (unless $tfaDone), else the login (persistent: $remember) and its
-    //audit entry ($details); was written in login(), tfa() and register_confirm()
+    //audit entry ($details)
     //CLD: 2026-10-19T11:21:19+03:00: public static: also used by the Registration plugin's sign-up (uses no controller state; $this->signIn() calls still work)
     public static function signIn($user, $remember = false, $details = null, $tfaDone = false) {
 	if (!$tfaDone && !empty($user->tfa_secret)) {
@@ -117,7 +117,7 @@ class SiteController extends \sys\BaseController {
 	$identity = new \sys\Identity();
 	if (!$identity->authenticateById((string)$user->_id))
 	    \V::app()->response->redirect('/site/login');
-	//CLD: 2026-10-05T20:02:30+03:00: persistent session only with "remember me" (was: always a 30 days identity cookie)
+	//CLD: 2026-10-05T20:02:30+03:00: persistent session only with "remember me"
 	\V::app()->user->login($identity, $remember);
 	\models\AuditLog::record('login', $user, $details);
 	\V::app()->response->redirect('/site/index');
@@ -147,12 +147,12 @@ class SiteController extends \sys\BaseController {
 		$emailLocked = \models\user\LoginThrottle::lockedFor($emailKey) > 0;
 		if (!$emailLocked && \models\user\LoginThrottle::fail($emailKey))
 		    \V::app()->log->warn('SiteController: password reset emails locked for ' . $emailKey);
-		//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://); was built from the request host
+		//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
 		foreach($emailLocked ? [] : \V::app()->om->find('User', [ 'email' => (string)$form->email, 'state' => 'active' ]) as $user) {
 		    //CLD: 2026-10-21T10:00:00+03:00: not for a user whose password is kept elsewhere (e.g. an LDAP user: the directory's password)
 		    if (\sys\Identity::passwordSource($user) !== null)
 			continue;
-		    //CLD: 2026-10-24T08:20:00+03:00: User::startPasswordReset (was PasswordReset::start)
+		    //CLD: 2026-10-24T08:20:00+03:00: User::startPasswordReset
 		    $token = $user->startPasswordReset(\V::app()->request->userIP);
 		    $account = \V::app()->om->findById('Account', (string)$user->aid);
 		    \util\EmailSend::system('password_reset', (string)$user->email, [ 'username' => (string)($user->username ?: $user->email), 'email' => (string)$user->email,
@@ -172,7 +172,7 @@ class SiteController extends \sys\BaseController {
 	$this->layout = 'bare';
 	$token = (string)($req->query['t'] ?? '');
 
-	//CLD: 2026-10-24T08:20:00+03:00: User::findByResetToken (was a PasswordReset, then its user)
+	//CLD: 2026-10-24T08:20:00+03:00: User::findByResetToken
 	$user = \models\User::findByResetToken($token);
 	//CLD: 2026-10-21T10:00:00+03:00: a link of a user whose password is now kept elsewhere (e.g. became an LDAP user) no longer works
 	if ($user && \sys\Identity::passwordSource($user) !== null)
@@ -185,11 +185,11 @@ class SiteController extends \sys\BaseController {
 		$user->password = \V::app()->security->generatePasswordHash((string)$form->new_password);
 		if (!$user->save())
 		    throw new \ErrorException('reset: the password was not saved: ' . json_encode($user->errors()));
-		//CLD: 2026-10-24T08:20:00+03:00: User::clearPasswordReset (were the user's PasswordReset deleted)
+		//CLD: 2026-10-24T08:20:00+03:00: User::clearPasswordReset
 		$user->clearPasswordReset();
 		\V::app()->session->endFor($user->_id);
 		\models\AuditLog::record('password.reset', $user, 'with a "forgot" link; the other sessions ended', [], null, $user);
-		//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://); was built from the request host
+		//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
 		\util\EmailSend::system('password_changed', (string)$user->email, [ 'email' => (string)$user->email, 'login' => \V::app()->createAbsoluteUrl('/site/login') ]);
 		$this->signIn($user, false, 'after a password reset');
 	    }
@@ -252,10 +252,10 @@ class SiteController extends \sys\BaseController {
 	    if ($lockedFor > 0) {
 		$error = \models\user\LoginThrottle::message($lockedFor);
 		$resp->status = 429;
-	    //CLD: 2026-10-24T00:20:00+03:00: a code is accepted once (User::useTfaCode; was TOTP::verifyCode: a code could be used again within its window); a reused one counts as wrong
+	    //CLD: 2026-10-24T00:20:00+03:00: a code is accepted once (User::useTfaCode); a reused one counts as wrong
 	    } elseif (!empty($user) && $user->useTfaCode($code)) {
 		\models\user\LoginThrottle::clear($tfaKey);
-		//CLD: 2026-10-16T13:15:57+03:00: signIn() (was the login written here)
+		//CLD: 2026-10-16T13:15:57+03:00: signIn()
 		$this->signIn($user, $remember, 'with a 2FA code', true);
 	    } elseif (!empty($user)) {
 		//CLD: 2026-10-11T17:35:22+03:00: audit log
@@ -270,7 +270,7 @@ class SiteController extends \sys\BaseController {
 	    }
 	}
 
-	//CLD: 2026-10-21T18:00:00+03:00: $error: a wrong code or a lock (was: the page shown again without a word)
+	//CLD: 2026-10-21T18:00:00+03:00: $error: a wrong code or a lock
 	$this->render('tfa', [ 'error' => $error ?? null ]);
     }
 
@@ -300,7 +300,7 @@ class SiteController extends \sys\BaseController {
     //per workflow (runs, success, p50 / p95, last run, runs per bucket), failing steps, stuck work (long runs, late wake-ups, overdue tasks), recent executions.
     //Only the workflows the user may read (Workflow::read); without any, only the user's open tasks. Buckets and durations in ms; moments (at, since) as ISO 8601
     //(app.formatter.timeAgo takes them)
-    //CLD: 2026-10-19T12:05:32+03:00: app.formatter.timeAgo (was app.timeAgo.inWords)
+    //CLD: 2026-10-19T12:05:32+03:00: app.formatter.timeAgo
     const OVERVIEW_PERIODS = [ '24h' => [ 86400, 3600 ], '7d' => [ 7 * 86400, 86400 ], '30d' => [ 30 * 86400, 86400 ], '90d' => [ 90 * 86400, 86400 ] ];
     const OVERVIEW_MAX = 50000;
     //a run (not sleeping) this long is listed as stuck
@@ -359,13 +359,12 @@ class SiteController extends \sys\BaseController {
 	    foreach($om->find('WfTask', [ 'aid' => $project->aid, 'project' => $project->_id, 'state' => 'open', 'wf' => [ '$in' => array_map(fn($w) => $w->_id, array_values($workflows)) ] ]) as $t)
 		$tasks[] = $t;
 	} else {
-	    //CLD: 2026-10-17T13:24:18+03:00: WfTask is a core model (was plugins\BaseNodes\models)
 	    $tasks = \models\wf\WfTask::openFor($user, $project->aid, $project->_id);
 	}
 	$overdueTasks = array_values(array_filter($tasks, fn($t) => ($ms($t->due_at) ?? PHP_INT_MAX) < $now * 1000));
 	$out['tiles']['tasks'] = [ 'open' => count($tasks), 'overdue' => count($overdueTasks) ];
 	if (!$workflows) {
-	    //CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON (was addHeader + write + end)
+	    //CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON
 	    $resp->sendJSON($out);
 	}
 
@@ -492,7 +491,7 @@ class SiteController extends \sys\BaseController {
 		'state' => (string)$e->state, 'duration' => $start !== null && $end !== null ? $end - $start : null, 'at' => $iso($e->_id) ];
 	}
 
-	//CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON (was addHeader + write + end)
+	//CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON
 	$resp->sendJSON($out);
     }
 
@@ -516,8 +515,8 @@ class SiteController extends \sys\BaseController {
 	$resp->redirect('/site/index');
     }
 
-    //CLD: 2026-10-30T12:00:00+02:00: new: the sidebar's width (px) set by its resize handle (app.sidebar), kept for the user (User sidebar_width; was this browser only: localStorage)
-    //CLD: 2026-10-30T13:00:00+02:00: renamed (was sidebar_width): + `collapsed` (0 / 1: User sidebar_collapsed); each one optional
+    //CLD: 2026-10-30T12:00:00+02:00: new: the sidebar's width (px) set by its resize handle (app.sidebar), kept for the user (User sidebar_width)
+    //CLD: 2026-10-30T13:00:00+02:00: renamed: + `collapsed` (0 / 1: User sidebar_collapsed); each one optional
     public function sidebar($req, $resp) {
 	if (\V::app()->user->isGuest)
 	    \V::app()->error(401, 'Unauthorized');

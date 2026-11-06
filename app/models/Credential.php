@@ -225,7 +225,7 @@ class Credential extends \sys\BaseModel {
 	if (strpos($permName, '::') === false)
 	    $permName = 'Credential::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the credential's project decides (was: any membership)
+	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the credential's project decides
 	return \models\Project::can($this->project, $this->aid, $userId, $permName);
     }
 
@@ -267,7 +267,7 @@ class Credential extends \sys\BaseModel {
 
     //CLD: 2026-10-12T21:15:28+03:00: for the connection tests of HTTP API credentials (AI servers): GET $url with $headers (name => value), the decoded JSON
     //answer; an exception when there is no answer, the status is 400 or more (with the server's error message when it gives one) or the answer is not JSON
-    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here)
+    //CLD: 2026-10-23T15:00:00+03:00: through util\Http
     protected static function getJson($url, array $headers = [], $timeout = 15) {
 	$r = \util\Http::json('GET', $url, [ 'headers' => $headers, 'timeout' => $timeout ]);
 	if ($r['error'] !== null)
@@ -284,9 +284,9 @@ class Credential extends \sys\BaseModel {
     }
 
     //the form's app.smartform fields
-    //CLD: 2026-10-10T09:14:41+03:00: util\WidgetsUtil handles the encrypted fields (write-only inputs, "leave empty to keep"; was done here for password fields)
+    //CLD: 2026-10-10T09:14:41+03:00: util\WidgetsUtil handles the encrypted fields (write-only inputs, "leave empty to keep")
     public function formFields() {
-	//CLD: 2026-10-10T18:44:22+03:00: the fields with showInForms (was formKeys())
+	//CLD: 2026-10-10T18:44:22+03:00: the fields with showInForms
 	return \util\SmartForm::modelFields($this);
     }
 

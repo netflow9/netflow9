@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-24T16:30:00+03:00: the certificate's end in the account's date format (util\Format::date; was Y-m-d)
+//CLD: 2026-10-24T16:30:00+03:00: the certificate's end in the account's date format (util\Format::date)
 /*
     CLD: 2026-10-23T12:00:00+03:00: new: the SAML single sign-on settings page (SamlController::settings): the settings (app.smartform of models\saml\SamlSettings, in sections; posted
     as one JSON value `settings_json`: the groups' rows are an edit grid), Import of the IdP's metadata into the form (SamlController::import: nothing saved), the details of

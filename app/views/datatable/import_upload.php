@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-24T16:30:00+03:00: the limits: util\Format::bytes / plural (were MB inline, number_format)
+//CLD: 2026-10-24T16:30:00+03:00: the limits: util\Format::bytes / plural
 //CLD: 2026-10-11T20:51:55+03:00: new view: Import, step 1 (DatatableController::import): choose a CSV or Excel file; $error: why the last file was refused
 $actionUrl = \V::app()->createUrl('/datatable/import');
 $formId = 'dt-import-' . uniqid();

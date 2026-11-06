@@ -8,9 +8,8 @@
 //  the system prompt holds the rules and the step types (util\WorkflowSpec::stepTypes; cached: it is the same for every request of the project),
 //  the last user turn holds the designer's current steps (unsaved changes included) as a spec (util\WorkflowSpec::toSpec), then the request;
 //  tools: set_workflow (the whole new canvas: steps + connections, built by util\WorkflowSpec::nodesFrom and checked by Workflow::validates, as when saving in the designer;
-//  refused settings go back to the model with the reasons, it fixes them) and some read-only project tools (util\McpTools, as the user: their permissions apply).
-//CLD: 2026-10-20T23:40:00+03:00: the project tools come from the plugins (util\MCPTools; the SysMCPTools plugin's MCP tools): without them, set_workflow only
-//CLD: 2026-10-23T23:30:00+03:00: all of them (was a read-only few, PROJECT_TOOLS): tables and rows, files and images, workflows (but not update_workflow of this one: set_workflow), runs;
+//  refused settings go back to the model with the reasons, it fixes them) and some read-only project tools (util\MCPTools, as the user: their permissions apply).
+//CLD: 2026-10-23T23:30:00+03:00: all of them: tables and rows, files and images, workflows (but not update_workflow of this one: set_workflow), runs;
 //images in their results go to the model as images (as models\node\NodeAppClaude / NodeAppOpenAI)
 //Nothing is saved here: the designer shows the new steps, the person reviews and saves them (and publishes) as always.
 //The conversation is kept by the designer and sent back as text turns ([ { role, text } ]); thinking blocks are kept only within one request's loop.
@@ -18,14 +17,14 @@
 //CLD: 2026-10-19T16:05:12+03:00: + an OpenAI-compatible model (OpenAI, or a local server: Lemonade, Ollama, vLLM, ...), with an OpenAI API credential of the project
 //(models\credential\CredentialOpenAI): POST <base URL>/chat/completions, tools as functions, results as `tool` messages (as models\node\NodeAppOpenAI); the model from the
 //account settings (assistant_openai_model), else the first one the server lists. The provider follows the credential; the loop is the same (turnAnthropic / turnOpenAI)
-//CLD: 2026-10-20T10:00:00+03:00: only the Assistant's settings (models\assistant\AssistantSettings: provider, url, api_key, model, effort; credentialOf) are used, no longer a credential
+//CLD: 2026-10-20T10:00:00+03:00: only the Assistant's settings (models\assistant\AssistantSettings: provider, url, api_key, model, effort; credentialOf) are used, not a credential
 //of the workflow's project; models(): the models of the settings' server (the settings page's Connect)
 //CLD: 2026-10-22T14:00:00+03:00: bring your own key: the settings' provider (System: the installation's server, AssistantSettings::system; Claude, OpenAI, Gemini, Ollama, Lemonade) is
 //resolved to its server (resolve) and spoken to with its protocol (data\AiProviders: anthropic | openai). The cost of each turn is counted (AssistantSettings::pricesOf);
 //with $budget (USD left this month) the loop stops once it is spent: what was built so far is returned, `stopped` says why
 */
 
-//CLD: 2026-10-26T23:49:50+02:00: moved to the core (was the Assistant plugin's); its System provider only while the SystemAI plugin is enabled
+//CLD: 2026-10-26T23:49:50+02:00: its System provider only while a plugin offers one (util\AssistantSystem)
 namespace util;
 
 use models\assistant\AssistantSettings;
@@ -50,7 +49,7 @@ class WorkflowAssistant {
     //the models server-side fallback is offered for (as NodeAppClaude::FALLBACK_MODELS)
     const FALLBACK_MODELS = '/^claude-(opus-5|sonnet-5-5|fable-5)/';
 
-    //CLD: 2026-10-23T23:30:00+03:00: removed PROJECT_TOOLS (the read-only project tools): every tool of util\MCPTools is offered, as the user
+    //CLD: 2026-10-23T23:30:00+03:00: every tool of util\MCPTools is offered, as the user
 
     private $wf;
     //CLD: 2026-11-01T02:00:00+02:00: whether the account lets the Assistant read the project's data (AssistantSettings::readsData; CLD: 2026-11-01T03:00:00+02:00: was Account::assistantReadsData), else its structure only (McpServerTools::STRUCTURE_TOOLS)
@@ -68,7 +67,7 @@ class WorkflowAssistant {
     private $model;
     private $effort;
     private $provider;
-    //CLD: 2026-10-22T14:00:00+03:00: the API the provider speaks: anthropic | openai (was $provider itself); the prices [ input, output, cache read ] USD per 1M tokens (null: not known)
+    //CLD: 2026-10-22T14:00:00+03:00: the API the provider speaks: anthropic | openai; the prices [ input, output, cache read ] USD per 1M tokens (null: not known)
     private $protocol;
     private $prices;
 
@@ -86,7 +85,7 @@ class WorkflowAssistant {
 
     //CLD: 2026-10-19T20:40:00+03:00: + $settings: the Assistant's settings (models\assistant\AssistantSettings, or an object with the same fields); default: those of the workflow's account (were
     //the account's assistant_* fields)
-    //CLD: 2026-10-20T10:00:00+03:00: no $cred: the server and its key are the settings' (credentialOf); the provider is the settings' (was the credential's)
+    //CLD: 2026-10-20T10:00:00+03:00: no $cred: the server and its key are the settings' (credentialOf); the provider is the settings'
     public function __construct($wf, $project, $settings = null) {
 	$this->wf = $wf;
 	$this->project = $project;
@@ -106,7 +105,7 @@ class WorkflowAssistant {
 	}
 	$model = trim((string)($settings->model ?? ''));
 	$this->model = $model !== '' ? $model : \data\AiProviders::DEFAULT_MODEL;
-	//CLD: 2026-10-22T14:00:00+03:00: an unknown effort is the default (was sent as it was: the API refuses it)
+	//CLD: 2026-10-22T14:00:00+03:00: an unknown effort is the default (the API refuses it)
 	$effort = (string)($settings->effort ?? '');
 	$this->effort = array_key_exists($effort, \data\AiProviders::EFFORT) ? $effort : \data\AiProviders::DEFAULT_EFFORT;
     }
@@ -144,7 +143,7 @@ class WorkflowAssistant {
 	    return $settings;
 	$system = AssistantSettings::system();
 	if ($system === null)
-	    throw new \ErrorException('this installation provides no System AI: choose a provider and set your key in Assistant settings (Settings menu)'); //CLD: 2026-10-23T10:00:00+03:00: (was no Assistant server)
+	    throw new \ErrorException('this installation provides no System AI: choose a provider and set your key in Assistant settings (Settings menu)');
 	return $system;
     }
 
@@ -175,7 +174,7 @@ class WorkflowAssistant {
     }
 
     //CLD: 2026-10-19T16:24:37+03:00: the provider account $account chose (a missing or unknown value: the default)
-    //CLD: 2026-10-19T20:40:00+03:00: of the Assistant's settings $settings (models\assistant\AssistantSettings: provider; was the account's field)
+    //CLD: 2026-10-19T20:40:00+03:00: of the Assistant's settings $settings (models\assistant\AssistantSettings: provider)
     public static function providerOf($settings) {
 	$p = (string)($settings->provider ?? '');
 	return array_key_exists($p, AssistantSettings::providers()) ? $p : AssistantSettings::DEFAULT_PROVIDER;
@@ -192,7 +191,7 @@ class WorkflowAssistant {
 	    return 0.0;
 	[ $in, $out, $cacheRead ] = $this->prices;
 	return ((int)($usage['input_tokens'] ?? 0) * $in + (int)($usage['output_tokens'] ?? 0) * $out
-	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * \util\AiPrices::CACHE_WRITE) / 1000000; //CLD: 2026-10-23T10:00:00+03:00: (was AssistantSettings::)
+	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * \util\AiPrices::CACHE_WRITE) / 1000000;
     }
 
     //CLD: 2026-11-02T15:46:06+02:00: new: one question without tools or the Assistant's prompts (the judge of a test: util\AgentEval): the answer's text. cost, usage, credits: of this call. \ErrorException when it fails
@@ -248,10 +247,10 @@ class WorkflowAssistant {
 
 	$tools = $this->tools();
 	//CLD: 2026-10-19T16:05:12+03:00: the provider's turns (turnAnthropic / turnOpenAI: the model's turn added to $messages, as the provider wants them) and tool results
-	//(addResults); was the Anthropic API only, here
+	//(addResults)
 	if ($this->protocol === 'openai')
 	    array_unshift($messages, [ 'role' => 'system', 'content' => self::systemPrompt($this->readsData) . "\n\n" . self::stepTypesText() ]);
-	//CLD: 2026-10-22T14:00:00+03:00: $this->usage, $this->cost (were $usage only: also known when the request fails)
+	//CLD: 2026-10-22T14:00:00+03:00: $this->usage, $this->cost (also known when the request fails)
 	$this->usage = [ 'input_tokens' => 0, 'output_tokens' => 0, 'cache_read_input_tokens' => 0, 'cache_creation_input_tokens' => 0 ];
 	$this->cost = 0.0;
 	$this->credits = 0.0;
@@ -273,8 +272,8 @@ class WorkflowAssistant {
 		$this->usage[$k] += $n;
 	    $this->cost += $this->costOf($turn['usage']);
 	    if ($this->rates !== null)
-		//CLD: 2026-10-31T22:00:00+02:00: the System provider counts them (util\AssistantSystem; was the MultiTenant plugin's SystemAiWallet::creditsOf)
-		$this->credits += AssistantSystem::provider()->credits($this->rates, $turn['usage']); //CLD: 2026-10-23T10:00:00+03:00: (was AssistantWallet)
+		//CLD: 2026-10-31T22:00:00+02:00: the System provider counts them (util\AssistantSystem)
+		$this->credits += AssistantSystem::provider()->credits($this->rates, $turn['usage']);
 	    if ($turn['text'] !== '')
 		$reply = $turn['text'];
 	    $results = [];
@@ -394,12 +393,12 @@ TXT;
 		. 'Steps: { id (yours; keep the ids of existing steps), type (a step type), title, config { setting: value }, parent (a loop\'s id) }; '
 		. 'connections: { from, to, output (an output label such as true / false / otherwise / error, or a number; default 0), input (default 0) }. '
 		. 'Wrong settings are refused with the reasons (nothing changes); otherwise the canvas is updated and its connection problems are returned.',
-	    'input_schema' => [ 'type' => 'object', 'properties' => \util\WorkflowSpec::schema() + [ //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::specSchema)
+	    'input_schema' => [ 'type' => 'object', 'properties' => \util\WorkflowSpec::schema() + [
 		'relayout' => [ 'type' => 'boolean', 'default' => false, 'description' => 'Lay out every step again (else only the new ones)' ],
 	    ], 'required' => [ 'steps', 'connections' ] ],
 	] ];
-	foreach(\util\MCPTools::all() as $t) { //CLD: 2026-10-20T23:40:00+03:00: (was util\McpTools::definitions)
-	    //CLD: 2026-10-23T23:30:00+03:00: every tool (was PROJECT_TOOLS only); a plugin's set_workflow would clash with the Assistant's own
+	foreach(\util\MCPTools::all() as $t) {
+	    //CLD: 2026-10-23T23:30:00+03:00: every tool; a plugin's set_workflow would clash with the Assistant's own
 	    //CLD: 2026-11-01T02:00:00+02:00: the structure tools only, unless the account lets it read data (a plugin's tools then too: what they read is not known)
 	    if ($t['name'] !== 'set_workflow' && $this->allowed($t['name']))
 		$tools[] = [ 'name' => $t['name'], 'description' => mb_substr($t['description'], 0, 1000), 'input_schema' => $t['inputSchema'] ];
@@ -413,7 +412,7 @@ TXT;
     }
 
     //call $id of tool $name: [ id, text, isError ]
-    //CLD: 2026-10-19T16:05:12+03:00: the result as [ id, text, isError ] (addResults makes the provider's message; was an Anthropic tool_result block); $args null: not JSON
+    //CLD: 2026-10-19T16:05:12+03:00: the result as [ id, text, isError ] (addResults makes the provider's message); $args null: not JSON
     //CLD: 2026-10-23T23:30:00+03:00: + images: [ id, text, isError, images: [ [ mimeType, data (base64) ] ] ] (a tool such as read_image)
     private function runTool($id, $name, $args) {
 	$images = [];
@@ -425,9 +424,8 @@ TXT;
 	    //CLD: 2026-10-23T23:30:00+03:00: the workflow on the canvas is changed with set_workflow (update_workflow would save its draft behind the designer's back)
 	    elseif ($name === 'update_workflow' && in_array(trim((string)($args['workflow'] ?? '')), [ (string)$this->wf->_id, (string)$this->wf->name ], true))
 		throw new \ErrorException('this is the workflow on the canvas: change it with set_workflow');
-	    //CLD: 2026-10-20T23:40:00+03:00: a project tool, as the user (util\MCPTools; was util\McpTools::call); none when no plugin gives it
-	    //CLD: 2026-10-23T23:30:00+03:00: any of them (was PROJECT_TOOLS only), with the images of its result
-	    //CLD: 2026-11-01T02:00:00+02:00: a tool the account does not let it use (structure only) is refused; a structure tool's result without the data (McpServerTools::structureOnly)
+	    //CLD: 2026-11-01T02:00:00+02:00: a project tool (util\MCPTools), as the user, with the images of its result; a tool the account does not let it use (structure only)
+	    //is refused; a structure tool's result without the data (McpServerTools::structureOnly)
 	    elseif (!$this->allowed($name))
 		throw new \ErrorException("`{$name}` reads the project's data, which this account does not let the Assistant read (Assistant settings)");
 	    elseif ($tool = \util\MCPTools::all()[$name] ?? null) {
@@ -512,7 +510,7 @@ TXT;
     // ------------------------------------------------------------------------------------
     //the API
 
-    //CLD: 2026-10-19T16:05:12+03:00: the step types for the system prompt (were written in call())
+    //CLD: 2026-10-19T16:05:12+03:00: the step types for the system prompt
     private static function stepTypesText() {
 	return "The step types (type, settings, outputs, variables):\n" . \util\JSON::encode(\util\WorkflowSpec::stepTypes(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
@@ -521,7 +519,7 @@ TXT;
     //CLD: 2026-10-19T16:05:12+03:00: was call() (the answer itself) and the reading of it in ask()
     private function turnAnthropic(array &$messages, array $tools) {
 	$body = [
-	    //CLD: 2026-10-19T15:48:10+03:00: the account's model and effort (were constants)
+	    //CLD: 2026-10-19T15:48:10+03:00: the account's model and effort
 	    'model' => $this->model,
 	    'max_tokens' => self::MAX_TOKENS,
 	    'system' => [
@@ -603,7 +601,7 @@ TXT;
 	$r = json_decode(\util\JSON::encode($this->request('/models', $this->cred->httpAuth()['headers'], null)), true);
 	$id = is_array($r['data'][0] ?? null) ? trim((string)($r['data'][0]['id'] ?? '')) : '';
 	if ($id === '')
-	    //CLD: 2026-10-19T20:40:00+03:00: Assistant settings (was Account settings: the plugin's own page)
+	    //CLD: 2026-10-19T20:40:00+03:00: Assistant settings
 	    throw new \ErrorException('the server lists no model: choose one in Assistant settings (Settings menu)');
 	return $id;
     }
@@ -612,14 +610,12 @@ TXT;
     private function request($path, array $headers, $body) {
 	if ($this->transport !== null)
 	    return ($this->transport)($headers, $body, $path);
-	//CLD: 2026-10-20T10:00:00+03:00: http() (static: also for models(); was post())
+	//CLD: 2026-10-20T10:00:00+03:00: http() (static: also for models())
 	//CLD: 2026-10-22T14:00:00+03:00: the provider's name (nameOf)
 	return self::http(rtrim((string)$this->cred->baseUrl, '/') . $path, $headers, $body, self::nameOf($this->provider));
     }
 
-    //CLD: 2026-10-19T16:52:30+03:00: ?array $body (null: GET, the server's models; was array: the GET of serverModel() failed with a TypeError)
-    //CLD: 2026-10-20T10:00:00+03:00: static, + $name: who answers, in messages (was post(), the instance's provider), + $timeout (s)
-    //CLD: 2026-10-23T15:00:00+03:00: through util\Http (was curl here); $body null: GET (the server's models)
+    //CLD: 2026-10-23T15:00:00+03:00: through util\Http; $body null: GET (the server's models); $name: who answers, in messages; $timeout (s)
     private static function http($url, array $headers, ?array $body, $name, $timeout = self::TIMEOUT) {
 	$o = [ 'headers' => $headers + [ 'Content-Type' => 'application/json', 'Accept' => 'application/json' ], 'timeout' => $timeout, 'maxBytes' => self::MAX_RESPONSE ];
 	if ($body !== null)
@@ -637,7 +633,7 @@ TXT;
 	    throw new \ErrorException("{$name} answered HTTP status {$status}" . (is_string($m) && $m !== '' ? ': ' . mb_substr($m, 0, 500) : ''));
 	}
 	if (!is_object($data))
-	    //CLD: 2026-10-20T10:00:00+03:00: the Server URL of the settings (was the credential's base URL)
+	    //CLD: 2026-10-20T10:00:00+03:00: the Server URL of the settings
 	    throw new \ErrorException("{$name} did not answer JSON (is the Server URL in Assistant settings right?)");
 	return $data;
     }

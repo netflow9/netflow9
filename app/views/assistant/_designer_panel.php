@@ -8,7 +8,7 @@
 use util\WorkflowAssistant;
 
 //the draft only, for people who may change it; Claude or an OpenAI-compatible model
-//CLD: 2026-10-20T10:00:00+03:00: the server, key and model of Assistant settings only (were a credential of the workflow's project, or the account's server): no credential
+//CLD: 2026-10-20T10:00:00+03:00: the server, key and model of Assistant settings only: no credential
 //to choose; not set up (no model): a link to the settings
 $assistantOn = !$viewVersion && \V::app()->user->can('Workflow::update', [ 'object' => $wf ]);
 $assistantSettings = \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
@@ -24,7 +24,7 @@ $assistantJs = \util\JSON::encode([
 ]);
 
 //after the designer's own script (new app.Workflow): the panel as last time, then the conversation (only when it is there: the draft, people who may change it, set up)
-//CLD: 2026-10-19T21:40:00+03:00: new app.WfAssistant (was app.wfassistant.panel() + mount()): it sets up both; the one of a previous designer page is destroyed by it
+//CLD: 2026-10-19T21:40:00+03:00: new app.WfAssistant: it sets up both; the one of a previous designer page is destroyed by it
 \V::app()->cs->addPageScript("
 +function() {
     new app.WfAssistant(document.getElementById('wf-assistant-panel'), {$assistantJs});
@@ -54,7 +54,7 @@ $assistantJs = \util\JSON::encode([
 	<?php elseif (!$assistantReady): ?>
 	<div class="p-3 small text-muted">
 	    <p class="mb-2">Describe the workflow you need in your own words, and the Assistant builds its steps and connections here.</p>
-	    <?php //CLD: 2026-10-20T10:00:00+03:00: not set up: Assistant settings (was: add a credential to the project) ?>
+	    <?php //CLD: 2026-10-20T10:00:00+03:00: not set up: Assistant settings ?>
 	    <?php //CLD: 2026-10-22T14:00:00+03:00: the providers: System, or your own key (Claude, OpenAI, Gemini, Ollama, Lemonade) ?>
 	    <p class="mb-0"><i class="bi bi-plug me-1"></i>It is not set up yet: in <a href="<?= \V::app()->createUrl('/assistant/settings') ?>">Assistant settings</a>, choose System, or a provider (Claude, OpenAI, Gemini, Ollama, Lemonade, LM Studio) with your key, and a model<?= \V::app()->user->can('Account::update') ? '' : ' (ask who manages the account)' ?>, then reopen this workflow.</p>
 	</div>

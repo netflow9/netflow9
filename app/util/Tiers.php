@@ -7,7 +7,7 @@
 	features    the tier's (the plugins name theirs: hook tiers:features ($features: \ArrayObject, key => label)); has(), requireFeature()
 	usage       what the account uses (usage(): also per project), for the owners' usage page (AccountController::usage) and the administration
     $account: an Account, or its id (read again after 30 s: the daemon runs for days)
-    CLD: 2026-10-31T11:53:38+02:00: the tiers are the Admin plugin's (plugins/MultiTenant/tiers.php, hook tiers:table): without it (self-hosting) there are none: no limits, every feature on,
+    CLD: 2026-10-31T11:53:38+02:00: the tiers are the MultiTenant plugin's (hook tiers:table): without it (self-hosting) there are none: no limits, every feature on,
     the accounts' own changes ignored
 */
 namespace util;
@@ -32,7 +32,7 @@ class Tiers {
     //the tiers
 
     //[ default, tiers ]: the plugins' (hook tiers:table ($table: \ArrayObject): default, tiers; the MultiTenant plugin's, from plugins.json); none: no tiers
-    //CLD: 2026-10-31T11:53:38+02:00: from the hook tiers:table (was app/tiers.php, or tiers.local.php)
+    //CLD: 2026-10-31T11:53:38+02:00: from the hook tiers:table
     public static function table() {
 	if (self::$table === null) {
 	    $h = new \ArrayObject();
@@ -101,7 +101,7 @@ class Tiers {
 	return self::names()[self::tierOf($account)] ?? self::tierOf($account);
     }
 
-    //CLD: 2026-10-31T11:53:38+02:00: whether there are tiers (the Admin plugin): without them, no limits and every feature
+    //CLD: 2026-10-31T11:53:38+02:00: whether there are tiers (the MultiTenant plugin): without them, no limits and every feature
     public static function enabled() {
 	return !empty(self::table()['tiers']);
     }
@@ -188,7 +188,7 @@ class Tiers {
     public static function limitMessage($account, $key, $limit = null) {
 	$limit = $limit ?? self::limit($account, $key);
 	$what = [
-	    //CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was number_format and the plural inline)
+	    //CLD: 2026-10-24T16:30:00+03:00: util\Format::plural
 	    'datatables' => 'at most ' . Format::plural((int)$limit, 'data table'),
 	    'datatable_records' => 'at most ' . Format::plural((int)$limit, 'row') . ' in a data table',
 	    'files_bytes' => 'at most ' . self::format($limit, 'bytes') . ' of files',
@@ -253,7 +253,7 @@ class Tiers {
     public static function format($n, $unit = 'count') {
 	if ($n === null)
 	    return 'no limit';
-	//CLD: 2026-10-24T16:30:00+03:00: util\Format::number / bytes (was formatted here: KB / MB / GB)
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::number / bytes
 	if ($unit !== 'bytes')
 	    return Format::number((int)$n);
 	return Format::bytes($n);

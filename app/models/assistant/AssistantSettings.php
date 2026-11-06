@@ -97,12 +97,11 @@ class AssistantSettings extends \sys\BaseModel {
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
 		'required' => true,
-		//CLD: 2026-10-20T10:45:00+03:00: self:: (was WorkflowAssistant::)
 		'default' => \data\AiProviders::DEFAULT_EFFORT,
 		'choices' => \data\AiProviders::EFFORT,
 	    ],
 	    //CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read (util\WorkflowAssistant): structure (tables' columns, workflows, step types, file names, variable names) or structure and data
-	    //(rows, file contents, images, executions, variable values); was the account's assistant_data (Account settings, Data access)
+	    //(rows, file contents, images, executions, variable values)
 	    [
 		'key' => 'data_access',
 		'type' => 'select',
@@ -165,9 +164,7 @@ class AssistantSettings extends \sys\BaseModel {
     }
 
     //CLD: 2026-10-22T14:00:00+03:00: the server the installation provides (config assistant.system); null when there is none (no provider or model)
-    //CLD: 2026-10-23T10:00:00+03:00: the System AI (SystemAi::config: config ai.system)
-    //CLD: 2026-10-26T23:49:50+02:00: none without the SystemAI plugin (app/plugins.php): the Assistant is core, the System AI a plugin
-    //CLD: 2026-10-31T22:00:00+02:00: the provider a plugin offers (util\AssistantSystem, hook assistant:system-provider; was SystemAi::config of the MultiTenant plugin)
+    //CLD: 2026-10-31T22:00:00+02:00: the provider a plugin offers (util\AssistantSystem, hook assistant:system-provider)
     public static function system() {
 	$p = \util\AssistantSystem::provider();
 	return $p ? $p->config() : null;
@@ -177,15 +174,14 @@ class AssistantSettings extends \sys\BaseModel {
 	return self::system() !== null;
     }
 
-    //CLD: 2026-10-26T23:49:50+02:00: new: whether the SystemAI plugin is enabled (its credits and models registered)
+    //CLD: 2026-10-26T23:49:50+02:00: new: whether a plugin offers the System provider
     public static function systemEnabled() {
-	//CLD: 2026-10-31T21:00:00+02:00: the MultiTenant plugin with its option system_ai (was the SystemAI plugin)
-	//CLD: 2026-10-31T22:00:00+02:00: a plugin offers the provider (util\AssistantSystem; was plugins\MultiTenant\Plugin::systemAi: the core runs without it)
+	//CLD: 2026-10-31T22:00:00+02:00: a plugin offers the provider (util\AssistantSystem: the core runs without it)
 	return \util\AssistantSystem::provider() !== null;
     }
 
     //CLD: 2026-10-22T14:00:00+03:00: the monthly limit (USD) for the account's settings $settings; null: no limit
-    //CLD: 2026-10-22T15:00:00+03:00: none with System: its credits limit it (AssistantWallet; was the smaller of the budget and the installation's)
+    //CLD: 2026-10-22T15:00:00+03:00: none with System: its credits limit it (AssistantWallet)
     public static function budgetOf($settings) {
 	if ((string)($settings->provider ?? '') === 'system')
 	    return null;

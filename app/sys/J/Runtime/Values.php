@@ -207,7 +207,7 @@ final class Values
             return sprintf('%.0f', $n);
         }
         // Shortest round-trip representation (uses serialize_precision = -1).
-        $s = self::json($n); //CLD: 2026-10-20T22:45:00+03:00: util\JSON (was json_encode)
+        $s = self::json($n); //CLD: 2026-10-20T22:45:00+03:00: util\JSON
         if ($s === false) {
             return (string) $n;
         }
@@ -383,7 +383,7 @@ final class Values
     public static function inspect(mixed $v, int $depth = 0, bool $top = true): string
     {
         if (is_string($v)) {
-            return $top ? $v : self::json($v); //CLD: 2026-10-20T22:45:00+03:00: util\JSON (was json_encode)
+            return $top ? $v : self::json($v); //CLD: 2026-10-20T22:45:00+03:00: util\JSON
         }
         if ($v instanceof JsFunction || $v instanceof NativeFunction) {
             return '[Function' . ($v->name !== '' ? ': ' . $v->name : ' (anonymous)') . ']';
@@ -413,7 +413,7 @@ final class Values
             $parts = [];
             foreach ($v->props as $k => $x) {
                 $k = (string) $k;
-                $key = preg_match('/^[A-Za-z_$][\w$]*$/', $k) ? $k : self::json($k); //CLD: 2026-10-20T22:45:00+03:00: util\JSON (was json_encode)
+                $key = preg_match('/^[A-Za-z_$][\w$]*$/', $k) ? $k : self::json($k); //CLD: 2026-10-20T22:45:00+03:00: util\JSON
                 $parts[] = $key . ': ' . self::inspect($x, $depth + 1, false);
             }
             return '{ ' . implode(', ', $parts) . ' }';

@@ -32,6 +32,8 @@ class KnowledgeController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
 
 	$this->project = empty(\V::app()->user->crtProject) ? null : \V::app()->om->findById('Project', \V::app()->user->crtProject);
     }
@@ -40,13 +42,13 @@ class KnowledgeController extends \sys\BaseController {
     private function proto() {
 	if (empty($this->project))
 	    \V::app()->error(404, 'No project');
-	return \V::app()->om->create('KnowledgeBase', [ 'aid' => \V::app()->var('rt.account')->_id, 'project' => $this->project->_id ]);
+	return \V::app()->om->create('KnowledgeBase', [ 'aid' => $this->account->_id, 'project' => $this->project->_id ]);
     }
 
     //the knowledge base `id` of the current account and project, if the user has $permName on it (404 / 403 otherwise)
     private function findKb($permName) {
 	$oid = $this->getOidOrError();
-	$kb = empty($this->project) ? null : \V::app()->om->findOne('KnowledgeBase', [ '_id' => $oid, 'aid' => \V::app()->var('rt.account')->_id, 'project' => $this->project->_id ]);
+	$kb = empty($this->project) ? null : \V::app()->om->findOne('KnowledgeBase', [ '_id' => $oid, 'aid' => $this->account->_id, 'project' => $this->project->_id ]);
 	if (empty($kb))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can($permName, [ 'object' => $kb ]))
@@ -59,7 +61,7 @@ class KnowledgeController extends \sys\BaseController {
 	    \V::app()->error(403, 'Unauthorized');
 
 	if (!empty($req->query['data'])) {
-	    $query = [ 'aid' => \V::app()->var('rt.account')->_id, 'project' => $this->project->_id ];
+	    $query = [ 'aid' => $this->account->_id, 'project' => $this->project->_id ];
 	    $response = [ 'nRecords' => \V::app()->om->count('KnowledgeBase', $query), 'data' => [] ];
 	    foreach(\V::app()->om->find('KnowledgeBase', $query, [ 'sort' => [ 'name' => 1 ] ]) as $kb) {
 		$state = (string)$kb->state === 'reindexing' ? 'Re-indexing' : ($kb->needsReindex() ? 'Re-index needed' : 'Ready');
@@ -76,7 +78,7 @@ class KnowledgeController extends \sys\BaseController {
 	    $resp->sendJSON($response);
 	}
 
-	$settings = EmbeddingSettings::of(\V::app()->var('rt.account')->_id);
+	$settings = EmbeddingSettings::of($this->account->_id);
 	$this->render('list', compact('settings'));
     }
 
@@ -196,7 +198,7 @@ class KnowledgeController extends \sys\BaseController {
 	$fp = fopen($file['tmp_name'], 'rb');
 	try {
 	    $id = \models\File::createFromStream($file['name'], $fp, [ 'metadata' => [ 'project' => $this->project->_id, 'owner' => \V::app()->user->_id,
-		'aid' => \V::app()->config('rt.account')->_id, 'created_at' => new \MongoDB\BSON\UTCDateTime(), 'source' => 'knowledge' ] ]);
+		'aid' => $this->account->_id, 'created_at' => new \MongoDB\BSON\UTCDateTime(), 'source' => 'knowledge' ] ]);
 	} catch (\util\LimitException $e) {
 	    $resp->sendJSON([ 'error' => $e->getMessage() ], true, 413);
 	}
@@ -256,7 +258,7 @@ class KnowledgeController extends \sys\BaseController {
     public function settings($req, $resp) {
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
-	$aid = \V::app()->var('rt.account')->_id;
+	$aid = $this->account->_id;
 	$settings = EmbeddingSettings::of($aid);
 
 	if ($req->is('post')) {
@@ -288,7 +290,7 @@ class KnowledgeController extends \sys\BaseController {
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
 	$data = is_array($req->data) ? $req->data : [];
-	$saved = EmbeddingSettings::of(\V::app()->var('rt.account')->_id);
+	$saved = EmbeddingSettings::of($this->account->_id);
 	$provider = (string)($data['provider'] ?? '');
 	if (!array_key_exists($provider, \data\AiProviders::forEmbeddings()))
 	    $resp->sendJSON([ 'error' => 'Choose a provider' ], true, 400);

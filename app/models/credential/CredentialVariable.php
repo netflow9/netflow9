@@ -12,7 +12,7 @@ class CredentialVariable extends \models\Credential {
     public static $group = 'Other';
     public static $provides = [];
 
-    //the name expressions see the project variables under: {{ vars.<name> }} (was models\Variable::EXPRESSION_NAME)
+    //the name expressions see the project variables under: {{ vars.<name> }}
     const EXPRESSION_NAME = 'vars';
 
     public function getSchema() {

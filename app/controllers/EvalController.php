@@ -17,11 +17,13 @@ class EvalController extends \sys\BaseController {
 	parent::_init();
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->sendJSON([ 'error' => 'Log in first' ], true, 401);
+	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	$this->account = \V::app()->config('rt.account');
     }
 
     private function findWorkflow($permName) {
 	$oid = $this->getOidOrError();
-	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => \V::app()->config('rt.account')->_id ]);
+	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $this->account->_id ]);
 	if (empty($wf))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can($permName, [ 'object' => $wf ]))

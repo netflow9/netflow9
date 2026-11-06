@@ -1,11 +1,11 @@
 <?php
 
 /*
-    a task of a Human task step (plugins\Forms\models\NodeAppTask):
+    a task of a Human task step (models\node\NodeAppTask):
 	its form, who may complete it (users, roles of the project; none listed: any project member),
 	the run waiting for it (execution + step), its state (open, done, expired) and, when done, the answers and who gave them.
 
-    Completed in "My tasks" (plugins\Forms\controllers\TaskController); completing resumes the run
+    Completed in "My tasks" (controllers\TaskController); completing resumes the run
     CLD: 2026-11-01T23:30:00+02:00: + kind: `ai-approval` (an AI step's tool calls waiting for approval: models\node\NodeAppAi::askApproval), calls (the calls it decides: [ { tool, label,
     arguments } ]); state `cancelled`: its run was killed (WfExecution::kill)
 */
@@ -162,7 +162,7 @@ class WfTask extends \sys\BaseModel {
 	return $tasks;
     }
 
-    //hook workflow:before-delete (sys\Boot): a deleted workflow's tasks go away (was plugins\BaseNodes\Plugin::beforeWorkflowDelete)
+    //hook workflow:before-delete (sys\Boot): a deleted workflow's tasks go away
     public static function beforeWorkflowDelete($wf) {
 	foreach(\V::app()->om->find('WfTask', [ 'wf' => $wf->_id ]) as $task)
 	    $task->delete();

@@ -12,12 +12,12 @@ if (!$system)
     unset($schema['project']);
 if (isset($schema['created_at']))
     $schema['created_at']['label'] = 'When';
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $schema = \util\JSON::encode($schema);
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (was json_encode: same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
+//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $filter = \util\JSON::encode($sf['filter']);
 
-//CLD: 2026-10-21T00:55:00+03:00: the grid's data: list?data=1 with this log's query string (was /audit/data{$q})
+//CLD: 2026-10-21T00:55:00+03:00: the grid's data: list?data=1 with this log's query string
 //CLD: 2026-11-02T10:00:00+02:00: $qData: with the agents' filter
 $dataUrl = '/audit/list' . ($qData === '' ? '?data=1' : "{$qData}&data=1");
 

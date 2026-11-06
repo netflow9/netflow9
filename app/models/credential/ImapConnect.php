@@ -25,12 +25,12 @@ class ImapConnect {
 	$folders = array_column($imap->listFolders(), 'name');
 	$imap->logout();
 	$shown = array_slice($folders, 0, 15);
-	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural (was (s))
+	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural
 	return \util\Format::plural(count($folders), 'folder') . ': ' . implode(', ', $shown) . (count($folders) > count($shown) ? ', ...' : '');
     }
 
     //OAuth types: XOAUTH2 with the credential's access token and account
-    //CLD: 2026-10-09T17:21:14+03:00: the account is the credential's `email` field, the token from its accessToken() (were value('email') and the type's static accessToken)
+    //CLD: 2026-10-09T17:21:14+03:00: the account is the credential's `email` field, the token from its accessToken()
     public static function openXoauth2($cred, $host) {
 	return self::open($cred, $host, 993, 'ssl', function($imap) use ($cred) {
 	    if ((string)$cred->email === '')

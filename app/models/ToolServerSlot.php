@@ -4,13 +4,12 @@
     a session of a tool server held by a running AI step: at most `max_sessions` at once on the installation (documents `<server>:<n>`) and
     `max_sessions_per_account` per account (`<server>:<aid>:<n>`). Taking one is an atomic upsert on the _id (a free one is missing or expired), leased until
     `until`, renewed while the session is used (util\ToolServerSession), freed when it is closed or, when the process died, after LEASE. Global: the installation's slots are shared by the accounts
-    CLD: 2026-11-01T11:55:18+02:00: core (was plugins\LocalMCP\models\LocalMcpSlot, collection localmcp_slots)
 */
 
 namespace models;
 
 class ToolServerSlot extends \sys\BaseModel {
-    //CLD: 2026-11-01T11:55:18+02:00: toolserver_slots (was localmcp_slots)
+    //CLD: 2026-11-01T11:55:18+02:00: toolserver_slots
     protected static $collection = 'toolserver_slots';
 
     //seconds a slot is held without being renewed

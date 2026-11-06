@@ -148,7 +148,7 @@ mongo_auth_off() {
 }
 
 #CLD: 2026-10-29T07:00:00+02:00: the lines of $@ under security: in $MONGOD_CONF (as indented as its other keys), or a new security: section; $1: the copy it is made from
-#(was in the authorization step only; Percona's encryption at rest adds its keys there too)
+#(Percona's encryption at rest adds its keys there too)
 mongod_conf_security() {
     local from="$1"
     shift
@@ -204,7 +204,7 @@ update_app() {
         echo "  The app's code is not on a branch (detached): not updated"
         return
     fi
-    #CLD: 2026-11-01T22:45:00+02:00: the files with local changes listed (was: their number)
+    #CLD: 2026-11-01T22:45:00+02:00: the files with local changes listed
     dirty=$(as_user git status --porcelain --untracked-files=no)
     if [ -n "$dirty" ]; then
         echo "  The app's code has local changes: not updated (commit or discard them in $BASE, then run this again):"
@@ -358,7 +358,7 @@ if [ ! -e "$BASE/ssl/ssl.crt" ] || [ "$(readlink "$BASE/ssl/ssl.crt" 2>/dev/null
     [ "$OPT_LE" -eq 0 ] || ask LE_EMAIL "Email for Let's Encrypt's notices" ""
 fi
 
-#CLD: 2026-11-01T13:30:00+02:00: one question (was: installed or not, by the shared Chromium of 1_playwright-install.sh); scripts/playwright-mcp.sh install updates it when it is there
+#CLD: 2026-11-01T13:30:00+02:00: one question; scripts/playwright-mcp.sh install updates it when it is there
 ask_yes OPT_BROWSER "The web browser for the AI steps (Playwright MCP and its Chromium, about 500 MB)" y
 
 MAIL_DOMAIN=""
@@ -367,7 +367,7 @@ ask_yes OPT_MAIL "Inbound email: workflows started by emails (Haraka on port 25)
 [ "$OPT_MAIL" -eq 0 ] || ask MAIL_DOMAIN "The domain of its addresses (its MX record points to this server)" "${MAIL_DOMAIN:-$DOMAIN}"
 
 #CLD: 2026-10-29T08:00:00+02:00: an app set up before whose database is empty now (MongoDB's data folder emptied, e.g. to encrypt it; or no account in its database): set up
-#again (asked; its app.env kept as app.env.bak-<time>), was: app.env alone meant set up. With the data folder, MongoDB's users went too: its sign-in is turned off
+#again (asked; its app.env kept as app.env.bak-<time>). With the data folder, MongoDB's users went too: its sign-in is turned off
 #(authorization: disabled) until they are made again
 RESETUP=0
 MONGO_REAUTH=0
@@ -443,7 +443,7 @@ fi
 
 echo
 echo "It will:"
-#CLD: 2026-10-29T05:30:00+02:00: only what is missing and needed by the answers (was: every package named, installed or not)
+#CLD: 2026-10-29T05:30:00+02:00: only what is missing and needed by the answers
 to_install=()
 for m in "${missing[@]}"; do
     case $m in
@@ -650,7 +650,7 @@ if [ ! -e "$BASE/ssl/ssl.crt" ]; then
     chown -h "$APP_USER:$APP_USER" "$BASE/ssl/selfsigned.key" "$BASE/ssl/selfsigned.crt" "$BASE/ssl/ssl.crt" "$BASE/ssl/ssl.key"
     echo "+ a self-signed certificate for $DOMAIN"
 fi
-#CLD: 2026-11-01T20:00:00+02:00: its install command: the site, nginx started at boot and now (was done here)
+#CLD: 2026-11-01T20:00:00+02:00: its install command: the site, nginx started at boot and now
 "$SCRIPTS/nginx.sh" install --server-name="$DOMAIN"
 if [ "$OPT_LE" -eq 1 ]; then
     #http-01 through the site (port 80 redirects to https, which serves .well-known/acme-challenge from the web root)
@@ -713,7 +713,7 @@ if [ "$SET_UP" -eq 0 ]; then
     #asked until the app's own checks accept the answers (Enter keeps the answer given before)
     while true; do
         echo
-        #CLD: 2026-10-29T05:15:00+02:00: MongoDB here that requires sign-in already (e.g. Percona's, set up before): its connection string with a user (was: always without one)
+        #CLD: 2026-10-29T05:15:00+02:00: MongoDB here that requires sign-in already (e.g. Percona's, set up before): its connection string with a user
         if [ "$OPT_LOCAL_MONGO" -eq 1 ] && mongo_auth_off; then
             echo "The database: MongoDB on this server, $MONGO_URI"
         elif [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
@@ -764,26 +764,26 @@ fi
 
 if [ "$OPT_MAIL" -eq 1 ]; then
     step "Inbound email (Haraka)"
-    #CLD: 2026-11-01T21:30:00+02:00: scripts/haraka.sh install: the files and its unit, started (was 2_haraka-install.sh, the unit by 4_services-install.sh)
+    #CLD: 2026-11-01T21:30:00+02:00: scripts/haraka.sh install: the files and its unit, started
     "$SCRIPTS/haraka.sh" install --domain="$MAIL_DOMAIN"
 fi
 
 MONGO_CHANGED=0
 if [ "$OPT_MONGO" -eq 1 ] && mongo_auth_off; then
     step "MongoDB: users and sign-in"
-    #CLD: 2026-11-01T20:30:00+02:00: scripts/mongo.sh secure: the users, authorization in mongod.conf, mongod restarted and checked (was 3_mongo-auth-setup.sh, then done here)
+    #CLD: 2026-11-01T20:30:00+02:00: scripts/mongo.sh secure: the users, authorization in mongod.conf, mongod restarted and checked
     "$SCRIPTS/mongo.sh" secure || echo "! MongoDB was not secured (above): sudo $SCRIPTS/mongo.sh status, then secure (or users, auth) once fixed"
     MONGO_CHANGED=1
 fi
 
 step "The background services"
-#CLD: 2026-11-01T22:00:00+02:00: the daemon's unit (nfn-daemon-<user>) and the polkit rule: scripts/daemon.sh install (was 4_services-install.sh); Haraka's unit is
+#CLD: 2026-11-01T22:00:00+02:00: the daemon's unit (nfn-daemon-<user>) and the polkit rule: scripts/daemon.sh install; Haraka's unit is
 #haraka.sh's (above), the web browser's playwright-mcp.sh's (below)
 "$SCRIPTS/daemon.sh" install
 #the services running before reconnect with the new MongoDB users
 [ "$MONGO_CHANGED" -eq 0 ] || systemctl try-restart "nfn-daemon-$APP_USER.service" $([ "$OPT_MAIL" -eq 1 ] && echo nfn-haraka.service) || true
 
-#CLD: 2026-11-01T11:55:18+02:00: the web browser: its Chromium, its service, its server in mcp.json (scripts/playwright-mcp.sh install; was 1_ above and 4_)
+#CLD: 2026-11-01T11:55:18+02:00: the web browser: its Chromium, its service, its server in mcp.json (scripts/playwright-mcp.sh install)
 if [ "$OPT_BROWSER" -eq 1 ]; then
     step "The web browser for the AI steps"
     "$SCRIPTS/playwright-mcp.sh" install || echo "! the web browser was not installed (above): sudo $SCRIPTS/playwright-mcp.sh install, once fixed"

@@ -3,8 +3,6 @@
 //Microsoft 365 / Outlook.com mailbox over IMAP with OAuth(XOAUTH2); the Entra app needs the delegated permission IMAP.AccessAsUser.All (Office 365 Exchange Online)
 //a variant of models\Credential (base CredentialMicrosoftOAuth2);
 
-//CLD: 2026-10-22T00:41:28+03:00: moved to the MicrosoftIntegration plugin (was models\credential\CredentialMicrosoftMail); core classes fully qualified
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\credential;
 
 class CredentialMicrosoftMail extends \models\credential\CredentialMicrosoftOAuth2 {

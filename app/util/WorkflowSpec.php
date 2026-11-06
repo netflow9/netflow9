@@ -36,7 +36,6 @@ class WorkflowSpec {
 	    $class = \V::app()->om->getObjectClass($def['objectName']);
 	    $ports = $class::$outPorts;
 	    $settings = [];
-	    //CLD: 2026-11-04T08:10:00+02:00: WfNode::schemaOf (was $def['configSchema'], no longer in getAll())
 	    foreach(\models\wf\WfNode::schemaOf($class) as $f)
 		$settings[] = self::setting($f);
 	    $vars = [];
@@ -97,7 +96,7 @@ class WorkflowSpec {
 		. 'values in {{ }} are shown as plain text; an AI step\'s answer is shown formatted with {{ ai.html }} (a field named html, alone in its {{ }}: its HTML cleaned) or '
 		. '{{ markdown2html(ai.text) }} (any Markdown text), e.g. <p>{{ ai.html }}</p>; '
 		. 'image blocks: { type: "image", file: <image file id (list_files)>, alt, width (px, at most ' . \models\EmailBlocks::WIDTH . '), align (left / center / right), href }';
-	//CLD: 2026-10-14T20:17:14+03:00: + required_if; a condition { key, operator, value } as it is (util\Conditions' operators; was the JS text of showIf)
+	//CLD: 2026-10-14T20:17:14+03:00: + required_if; a condition { key, operator, value } as it is (util\Conditions' operators)
 	foreach([ 'showIf' => 'shown_if', 'hideIf' => 'hidden_if', 'requiredIf' => 'required_if' ] as $k => $name) {
 	    if (!empty($f[$k]))
 		$s[$name] = $f[$k];
@@ -198,7 +197,7 @@ class WorkflowSpec {
 		continue;
 	    if (!isset($nodes[$parent]) || empty($defs[$nodes[$parent]['fqname']]['isContainer']))
 		throw new \ErrorException("step `{$id}`: parent `{$parent}` is not a loop of this workflow");
-	    //CLD: 2026-10-14T21:17:55+03:00: a loop cannot be inside another loop (Workflow::validateFlow); so no loops containing each other (that check is gone)
+	    //CLD: 2026-10-14T21:17:55+03:00: a loop cannot be inside another loop (Workflow::validateFlow); so no loops containing each other
 	    if (!empty($defs[$n['fqname']]['isContainer']))
 		throw new \ErrorException("step `{$id}`: a loop cannot be inside another loop");
 	    $n['parentId'] = $parent;
@@ -349,7 +348,7 @@ class WorkflowSpec {
 	$place(null, 0, 0);
 
 	//loops grown around their steps
-	//CLD: 2026-10-14T21:17:55+03:00: in any order (one level: a loop cannot be inside another loop; were sorted innermost first)
+	//CLD: 2026-10-14T21:17:55+03:00: in any order (one level: a loop cannot be inside another loop)
 	foreach(array_keys($nodes) as $id) {
 	    $parent = $nodes[$id]['parentId'];
 	    if ($parent === null)

@@ -62,7 +62,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'help' => 'An FTP / SFTP server credential of the project (menu: Credentials)',
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		'key' => 'source',
 		'type' => 'select',
 		'label' => 'Send',
@@ -82,7 +82,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line; shorter help (was: /in/orders from the server's root, in/orders from the folder you start in; empty: that folder; {{ ... }})
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -91,7 +91,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '/incoming', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide; shorter help (was: Empty: the file's own name. {name} {base} {ext} {date} {time} {n} for each file (e.g. {base}_{date}.{ext}))
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
 		'key' => 'filename',
 		'type' => 'text',
 		'label' => 'Name on the server',
@@ -101,7 +101,6 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'placeholder' => 'orders_{date}.csv', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: shorter help (was: File ids separated by commas, or {{ ... }} giving one or a list, e.g. {{ file.id }}, {{ ftp.files }}, {{ mail.attachment_files }})
 		'key' => 'files',
 		'type' => 'text',
 		'label' => 'Project files',
@@ -119,7 +118,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'text' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'createFolders',
 		'type' => 'switch',
@@ -128,7 +127,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: The receiver never sees half a file; off for servers that refuse renames)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'safeUpload',
 		'type' => 'switch',
@@ -138,7 +137,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		'key' => 'compress',
 		'type' => 'switch',
 		'label' => 'Compress (gzip, .gz)',
@@ -146,7 +145,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'verify',
 		'type' => 'switch',
@@ -155,7 +154,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: After compressing; the ending is added: .gpg, .asc, .enc, .p7m)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
 		'key' => 'encrypt',
 		'type' => 'switch',
 		'label' => 'Encrypt',
@@ -164,7 +163,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 9 wide; shorter help (was: An Encryption key credential of the project: the recipient's PGP public key, a passphrase, an OpenSSL password or S/MIME certificate)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 9 wide
 		'key' => 'encryptCredential',
 		'type' => 'select',
 		'label' => 'Encryption key',
@@ -176,7 +175,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	    ],
 	    //CLD: 2026-10-20T19:00:00+03:00: signing
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line; shorter help (was: With your private key, so the receiver can check the file is from you and unchanged)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
 		'key' => 'sign',
 		'type' => 'switch',
 		'label' => 'Sign',
@@ -185,7 +184,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide; shorter help (was: A Signing key credential of the project: PGP private key, S/MIME certificate + key, or a private key (plain signature))
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
 		'key' => 'signCredential',
 		'type' => 'select',
 		'label' => 'Signing key',
@@ -196,7 +195,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'sign', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide (was 6); shorter help (was: A plain private key signature is always a separate file)
+		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'signMode',
 		'type' => 'select',
@@ -217,7 +216,6 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: shorter help (was: e.g. {{ upload.files[0].path }}, {{ upload.count }})
 		'key' => 'variable',
 		'type' => 'text',
 		'label' => 'Result variable',
@@ -228,7 +226,6 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: shorter help (was: No connection, or a file that failed (the other files are still sent))
 		'key' => 'onError',
 		'type' => 'select',
 		'label' => 'On error',
@@ -350,7 +347,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	    if (empty($encCred))
 		throw new \ErrorException('FTP / SFTP Upload: the encryption key credential is no longer available');
 	}
-	//CLD: 2026-10-20T19:00:00+03:00: the signing key; the settings of each file in $opts (were sendOne()'s arguments)
+	//CLD: 2026-10-20T19:00:00+03:00: the signing key; the settings of each file in $opts
 	$signCred = null;
 	if ($this->cfg('sign', false)) {
 	    $signCred = \models\Credential::findFor($this->exec, (string)$this->cfg('signCredential', ''), 'sign');
@@ -378,7 +375,6 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		throw new \ErrorException('FTP / SFTP Upload: the text is larger than ' . (self::MAX_TEXT / 1048576) . ' MB');
 	    $items[] = [ null, $template, $content ];
 	} else {
-	    //CLD: 2026-10-22T00:35:40+03:00: models\File::idsOf (was NodeAppGmail::fileIds, now in the GoogleIntegration plugin)
 	    $ids = \models\File::idsOf($this->expr('files', ''));
 	    if (!$ids)
 		throw new \ErrorException('FTP / SFTP Upload: Project files: no file given');
@@ -554,7 +550,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	}
     }
 
-    //CLD: 2026-10-20T19:00:00+03:00: local file $local sent to $path (was in sendOne()): as .part then renamed ($opts safe; a rename does not replace a file on every server,
+    //CLD: 2026-10-20T19:00:00+03:00: local file $local sent to $path: as .part then renamed ($opts safe; a rename does not replace a file on every server,
     //so one there ($replace) is deleted first), its size checked ($opts verify); $what names it in the errors ("signature ")
     protected function putFile($client, $local, $path, $replace, array $opts, $what = '') {
 	clearstatcache(true, $local);

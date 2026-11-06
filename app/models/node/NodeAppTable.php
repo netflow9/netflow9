@@ -89,7 +89,6 @@ class NodeAppTable extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'query',
 		'choices' => self::OPERATIONS,
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 	    ],
 	    [
 		//CLD: 2026-10-24T12:55:27+03:00: layout: 6 wide, on a new line
@@ -97,10 +96,10 @@ class NodeAppTable extends \models\wf\WfNode {
 		'type' => 'text',
 		'label' => 'Row id',
 		'help' => '{{ ... }} for expressions, e.g. {{ table.row.id }}',
-		//CLD: 2026-10-14T14:18:23+03:00: required in the browser from the requiredIf rule (util\WidgetsUtil; was `required` in ui)
-		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule; was the requiredIf rule in `validate`)
+		//CLD: 2026-10-14T14:18:23+03:00: required in the browser from the requiredIf rule (util\WidgetsUtil)
+		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule)
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'get', 'update', 'delete' ] ],
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => [ 'key' => 'operation', 'operator' => 'in', 'value' => [ 'get', 'update', 'delete' ] ] ],
 	    ],
 	    [
@@ -111,11 +110,10 @@ class NodeAppTable extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'all',
 		'choices' => [ 'all' => 'All conditions', 'any' => 'Any condition' ],
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => [ 'key' => 'operation', 'operator' => 'in', 'value' => [ 'query', 'updateMany', 'deleteMany' ] ] ],
 	    ],
-	    //CLD: 2026-10-18T10:45:00+03:00: a nested list (sys\fields\Field_nested; was an array checked row by row in validates()): each condition cast by filterSchema(), validated
+	    //CLD: 2026-10-18T10:45:00+03:00: a nested list (sys\fields\Field_nested): each condition cast by filterSchema(), validated
 	    //when the operation uses it (validateIf), its expressions checked, errors as "Condition <n>: <field>: <message>"; the edit grid's columns come from filterSchema()
 	    [
 		'key' => 'filter',
@@ -128,20 +126,20 @@ class NodeAppTable extends \models\wf\WfNode {
 		'help' => 'None: every row',
 		'validateIf' => [ 'if' => 'operation', 'in' => self::FILTER_OPERATIONS ],
 		'ui' => [ 'addLabel' => 'Add condition',
-		    //CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		    //CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		    'compact' => true, 'maxRows' => 20, 'showIf' => [ 'key' => 'operation', 'operator' => 'in', 'value' => self::FILTER_OPERATIONS ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: A column (empty: in the order they were added))
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide, on a new line
 		'key' => 'sortBy',
 		'type' => 'text',
 		'label' => 'Sort by',
 		'help' => 'A column; empty: in the order added',
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'created_at', 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'query' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'sortDir',
 		'type' => 'select',
@@ -149,24 +147,23 @@ class NodeAppTable extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'asc',
 		'choices' => [ 'asc' => 'Ascending', 'desc' => 'Descending' ],
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'query' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide
 		'key' => 'limit',
 		'type' => 'number',
 		'label' => 'Limit',
 		'required' => true,
 		'default' => 100,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_LIMIT, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_LIMIT ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'query' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'offset',
 		'type' => 'number',
@@ -174,8 +171,8 @@ class NodeAppTable extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 0,
 		'validate' => [ [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => '0 or more' ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil; was repeated here)
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'query' ] ],
 	    ],
 	    //CLD: 2026-10-18T10:45:00+03:00: a nested list, as `filter` (dataSchema(); errors as "Value <n>: <field>: <message>")
@@ -189,19 +186,19 @@ class NodeAppTable extends \models\wf\WfNode {
 		'default' => [],
 		'validateIf' => [ 'if' => 'operation', 'in' => self::DATA_OPERATIONS ],
 		'ui' => [ 'addLabel' => 'Add value',
-		    //CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		    //CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		    'compact' => true, 'maxRows' => 100, 'showIf' => [ 'key' => 'operation', 'operator' => 'in', 'value' => self::DATA_OPERATIONS ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 6 wide, on a new line; shorter help (was: A row with the same value in this column is updated, else a row is inserted)
+		//CLD: 2026-10-24T12:55:27+03:00: layout: 6 wide, on a new line
 		'key' => 'upsertKey',
 		'type' => 'text',
 		'label' => 'Match by column',
 		'help' => 'Same value in this column: updated, else inserted',
-		//CLD: 2026-10-14T14:18:23+03:00: required in the browser from the requiredIf rule (util\WidgetsUtil; was `required` in ui)
-		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule; was the requiredIf rule in `validate`)
+		//CLD: 2026-10-14T14:18:23+03:00: required in the browser from the requiredIf rule (util\WidgetsUtil)
+		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule)
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'upsert' ] ],
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'width' => 6, 'newRow' => true, 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'upsert' ] ],
 	    ],
 	    [
@@ -209,10 +206,10 @@ class NodeAppTable extends \models\wf\WfNode {
 		'type' => 'textarea',
 		'label' => 'Rows',
 		'help' => 'An expression giving a list of objects keyed by column, e.g. {{ response.body.items }}',
-		//CLD: 2026-10-14T14:18:23+03:00: required in the browser from the requiredIf rule (util\WidgetsUtil; was `required` in ui)
-		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule; was the requiredIf rule in `validate`)
+		//CLD: 2026-10-14T14:18:23+03:00: required in the browser from the requiredIf rule (util\WidgetsUtil)
+		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule)
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'insertMany' ] ],
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'rows' => 3, 'expression' => true, 'showIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'insertMany' ] ],
 	    ],
 	    [
@@ -222,11 +219,10 @@ class NodeAppTable extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'table',
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: pattern from the validate rule (util\WidgetsUtil; was repeated here)
+		//CLD: 2026-10-14T14:27:53+03:00: pattern from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'variableName' => 'write' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: shorter help (was: A row that is missing or does not pass the column rules, a column the table does not have)
 		'key' => 'onError',
 		'type' => 'select',
 		'label' => 'On error',
@@ -234,7 +230,6 @@ class NodeAppTable extends \models\wf\WfNode {
 		'default' => 'fail',
 		'choices' => self::ON_ERROR,
 		'help' => 'A missing row, a column rule, an unknown column',
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 	    ],
 	];
     }
@@ -242,14 +237,13 @@ class NodeAppTable extends \models\wf\WfNode {
     //one condition of a filter
     public static function filterSchema() {
 	return [
-	    //CLD: 2026-10-18T10:45:00+03:00: trimmed by the field (was by validates())
+	    //CLD: 2026-10-18T10:45:00+03:00: trimmed by the field
 	    [ 'key' => 'column', 'type' => 'text', 'label' => 'Column', 'required' => true, 'transform' => 'trim', 'ui' => [ 'width' => 4 ] ],
 	    [ 'key' => 'operator', 'type' => 'select', 'label' => 'Operator', 'required' => true, 'default' => 'eq', 'choices' => \util\Conditions::operators(),
-		//CLD: 2026-10-18T14:40:00+03:00: removed the inList rule: the select field checks its choices (sys\fields\Field_select::bindTo)
 		'ui' => [ 'width' => 4 ] ],
 	    [ 'key' => 'value', 'type' => 'text', 'label' => 'Value', 'help' => false,
-		//CLD: 2026-10-14T14:08:12+03:00: condition made by util\FormSchema::showIf (was JS written here)
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it; was JS made by util\SmartForm::showIf)
+		//CLD: 2026-10-14T14:08:12+03:00: condition made by util\FormSchema::showIf
+		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
 		'ui' => [ 'width' => 4, 'expression' => true, 'hideIf' => [ 'key' => 'operator', 'operator' => 'in', 'value' => [ 'empty', 'notEmpty' ], 'scope' => 'row' ] ] ],
 	];
     }
@@ -257,13 +251,11 @@ class NodeAppTable extends \models\wf\WfNode {
     //one value of the row data
     public static function dataSchema() {
 	return [
-	    //CLD: 2026-10-18T10:45:00+03:00: trimmed by the field (was by validates())
+	    //CLD: 2026-10-18T10:45:00+03:00: trimmed by the field
 	    [ 'key' => 'column', 'type' => 'text', 'label' => 'Column', 'required' => true, 'transform' => 'trim', 'ui' => [ 'width' => 5 ] ],
 	    [ 'key' => 'value', 'type' => 'text', 'label' => 'Value', 'help' => false, 'ui' => [ 'width' => 7, 'expression' => true ] ],
 	];
     }
-
-    //CLD: 2026-10-18T10:45:00+03:00: removed rowForm(): the lists are nested fields (their object is the row form)
 
     //the data tables of the current project, for the designer: [ id => name ]
     //CLD: 2026-11-03T14:00:00+02:00: + those shared with it, named with their project
@@ -286,7 +278,7 @@ class NodeAppTable extends \models\wf\WfNode {
 	    return [];
 	//CLD: 2026-10-13T12:34:29+03:00: + the fields and their types per operation; a row's fields: id, the table's columns (when the table is found: its account), created_at, updated_at
 	$row = [ 'type' => 'object', 'fields' => [ 'id' => [ 'type' => 'string' ] ] ];
-	//CLD: 2026-11-03T14:00:00+02:00: for a user, only a table of their current project or shared with it (was: any table of the account, so its columns showed through a step's settings)
+	//CLD: 2026-11-03T14:00:00+02:00: for a user, only a table of their current project or shared with it
 	$table = is_array($config) && \util\Validator::rule('oid', (string)($config['table'] ?? '')) && \V::app()->config('rt.account')
 	    ? (\V::app()->config('app.mode') == 'web'
 		? self::findTable((string)$config['table'], \V::app()->config('rt.account')->_id, \V::app()->user->crtProject)
@@ -317,7 +309,7 @@ class NodeAppTable extends \models\wf\WfNode {
 	$op = (string)$this->cfg('operation', 'query');
 
 	$table = $this->workflow ? self::findTable((string)$this->cfg('table', ''), $this->workflow->aid, $this->workflow->project) : null;
-	//CLD: 2026-10-14T14:18:23+03:00: an empty one is reported by the field's `required` (was reported here too)
+	//CLD: 2026-10-14T14:18:23+03:00: an empty one is reported by the field's `required`
 	if (!$table && (string)$this->cfg('table', '') !== '') {
 	    $this->errors('config', 'Table: choose a data table of this project, or one shared with it');
 	    $valid = false;
@@ -331,7 +323,7 @@ class NodeAppTable extends \models\wf\WfNode {
 	$known = fn($c) => $columns === null || in_array($c, self::SYSTEM_COLUMNS, true) || isset($columns[$c]);
 
 	//CLD: 2026-10-18T10:45:00+03:00: the rows (required fields, operator, expressions) are checked and normalized by parent::validates (nested fields, validated when the
-	//operation uses them); here the columns they name (was: each row through its form, normalized here)
+	//operation uses them); here the columns they name
 	$lists = [ 'filter' => [ 'Condition', self::FILTER_OPERATIONS ], 'data' => [ 'Value', self::DATA_OPERATIONS ] ];
 	foreach($lists as $key => [ $label, $ops ]) {
 	    if (!in_array($op, $ops, true))
@@ -353,7 +345,6 @@ class NodeAppTable extends \models\wf\WfNode {
 		$valid = false;
 	    }
 	}
-	//CLD: 2026-10-14T14:18:23+03:00: removed the hand-made requiredIf of rowId / upsertKey / rows: their `requiredIf` rules (configSchema) check it
 	return $valid;
     }
 

@@ -35,7 +35,7 @@ class CredentialSigning extends \models\Credential {
 		'required' => true,
 		'encrypt' => true,
 		'help' => 'PGP: -----BEGIN PGP PRIVATE KEY BLOCK----- (gpg --armor --export-secret-keys); the others: -----BEGIN (ENCRYPTED / RSA / EC) PRIVATE KEY----- (PEM)',
-		//CLD: 2026-10-20T14:07:31+03:00: util\Validator key rules (were checked in validates())
+		//CLD: 2026-10-20T14:07:31+03:00: util\Validator key rules
 		'validate' => [
 		    [ 'notPublicKey', 'skipEmpty' => true, 'last' => true, 'message' => 'this is a public key: signing needs your private key' ],
 		    [ 'pgpPrivateKey', 'when' => [ 'method' => [ 'pgp' ] ], 'multiple' => true, 'skipEmpty' => true, 'message' => 'not an armored PGP private key (-----BEGIN PGP PRIVATE KEY BLOCK-----)' ],
@@ -65,7 +65,7 @@ class CredentialSigning extends \models\Credential {
 		'default' => '',
 		'requiredIf' => [ 'if' => 'method', 'in' => [ 'cms' ] ],
 		'help' => 'The certificate of the private key (PEM: -----BEGIN CERTIFICATE-----)',
-		//CLD: 2026-10-20T14:07:31+03:00: util\Validator certificate rules (were checked in validates())
+		//CLD: 2026-10-20T14:07:31+03:00: util\Validator certificate rules
 		'validate' => [
 		    [ 'notPrivateKey', 'when' => [ 'method' => [ 'cms' ] ], 'skipEmpty' => true, 'last' => true, 'message' => 'only the certificate: the private key goes in its own field' ],
 		    [ 'pemCertificate', 'when' => [ 'method' => [ 'cms' ] ], 'multiple' => false, 'skipEmpty' => true, 'message' => 'not a PEM certificate (-----BEGIN CERTIFICATE-----)' ],
@@ -104,8 +104,6 @@ class CredentialSigning extends \models\Credential {
 	    ],
 	]);
     }
-
-    //CLD: 2026-10-20T14:07:31+03:00: validates() removed: the keys and certificates are checked by the fields' util\Validator rules
 
     public function test() {
 	return \util\FileSign::checkKey($this);

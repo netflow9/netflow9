@@ -210,7 +210,7 @@ final class Interpreter
             //CLD: 2026-10-20T21:01:44+03:00: a date as its ISO text (as in JSON)
             $out .= $value instanceof JsDate ? (string) $this->toPhp($value)
                 : ($value instanceof JsArray || $value instanceof JsObject
-                ? Values::json($this->toPhp($value)) //CLD: 2026-10-20T22:45:00+03:00: util\JSON (was json_encode)
+                ? Values::json($this->toPhp($value)) //CLD: 2026-10-20T22:45:00+03:00: util\JSON
                 : Values::toString($value));
             $this->checkString($out);
         }
@@ -367,7 +367,7 @@ final class Interpreter
         if ($v instanceof \JsonSerializable) {
             return $this->toJs($v->jsonSerialize(), $depth + 1);
         }
-        //CLD: 2026-10-20T21:01:44+03:00: a JS Date (was the ATOM text)
+        //CLD: 2026-10-20T21:01:44+03:00: a JS Date
         if ($v instanceof \DateTimeInterface) {
             return new JsDate(JsDate::clip((float) $v->format('U') * 1000 + (int) $v->format('v')));
         }

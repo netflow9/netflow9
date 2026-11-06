@@ -16,8 +16,6 @@
     On error (Calendar API errors, e.g. not found, no access, a bad time) - fail the step, or continue on a second output `error` (as HTTP Request: $outPorts)
 */
 
-//CLD: 2026-10-22T00:35:40+03:00: moved to the GoogleIntegration plugin (was models\node\NodeAppGoogleCalendar); core classes fully qualified
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\GoogleIntegration\models): the Google credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 class NodeAppGoogleCalendar extends NodeAppGoogle {
@@ -65,7 +63,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: primary (the account's), or a calendar id (e.g. team@group.calendar.google.com; List the calendars gives them); freeBusy: several, separated by commas)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
 		'key' => 'calendarId',
 		'type' => 'text',
 		'label' => 'Calendar',
@@ -74,7 +72,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: The event id, e.g. {{ calendar.id }} of a create, {{ calendar[0].id }} of a list)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'eventId',
 		'type' => 'text',
 		'label' => 'Event',
@@ -86,7 +84,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 
 	    //list / freeBusy
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: Empty: now; ISO 8601 or 2026-10-21 14:00)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
 		'key' => 'timeMin',
 		'type' => 'text',
 		'label' => 'From',
@@ -95,7 +93,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'timeMax',
 		'type' => 'text',
 		'label' => 'Until',
@@ -104,7 +102,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: Words in the title, description, location or guests; empty: all)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Search',
@@ -143,7 +141,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: ISO 8601 or 2026-10-21 14:00 (all day: 2026-10-21))
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
 		'key' => 'start',
 		'type' => 'text',
 		'label' => 'Start',
@@ -153,7 +151,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6); shorter help (was: Empty: Start + the duration (all day: the same day))
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'end',
 		'type' => 'text',
 		'label' => 'End',
@@ -162,7 +160,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'duration',
 		'type' => 'number',
 		'label' => 'Duration (minutes)',
@@ -173,7 +171,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'step' => 5, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'allDay',
 		'type' => 'switch',
 		'label' => 'All day',
@@ -182,18 +180,18 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6), on a new line; shorter help (was: Of the times without an offset, e.g. Europe/Bucharest; empty: ' . (\V::app()->config('app.timezone') ?: date_default_timezone_get()))
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'timeZone',
 		'type' => 'text',
 		'label' => 'Time zone',
 		'default' => '',
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (util timeZone(): the app's, config app.timezone; was the example, now in the help)
+		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (util timeZone(): the app's, config app.timezone)
 		'help' => 'Of times without an offset, e.g. Europe/Bucharest',
 		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'App\'s time zone', 'expression' => true, 'showIf' => $op(array_merge(self::EDIT, self::PERIOD)) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide; shorter help (was: Optional, e.g. RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
 		'key' => 'recurrence',
 		'type' => 'text',
 		'label' => 'Repeat (RRULE)',
@@ -203,7 +201,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'placeholder' => 'RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10', 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide (was 6)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
 		'key' => 'meet',
 		'type' => 'switch',
 		'label' => 'Add a Google Meet link',
@@ -219,7 +217,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'rows' => 4, 'expression' => true, 'showIf' => $op(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line; shorter help (was: Addresses separated by commas, or {{ ... }} giving a list; update: added to the event's guests)
+		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
 		'key' => 'attendees',
 		'type' => 'text',
 		'label' => 'Guests',
@@ -251,9 +249,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 	    ],
 
 	    static::timeoutField(60),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: List: a list of events; freeBusy: { calendars, busy }; calendars: a list; else the event)
 	    static::variableField('Events, free / busy, calendars, or the event'),
-	    //CLD: 2026-10-24T12:46:54+03:00: shorter help (the narrow columns of the wide dialog; was: An error from Google Calendar (e.g. not found, no access), a time that cannot be read, an end before the start)
 	    static::onErrorField('Calendar errors, times not read'),
 	];
     }

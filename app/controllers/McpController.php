@@ -12,7 +12,7 @@ namespace controllers;
 
 class McpController extends \sys\APIController {
 
-    //CLD: 2026-11-01T02:00:00+02:00: removed SHOW_MENU (the menu link hidden for every project): the account's owners turn the server on per project (Account::mcpEnabled; account settings, Data access)
+    //CLD: 2026-11-01T02:00:00+02:00: the account's owners turn the server on per project (Account::mcpEnabled; account settings, Data access)
 
     //supported protocol versions, newest first (initialize answers the client's when supported, else the newest)
     const PROTOCOL_VERSIONS = [ '2025-06-18', '2025-03-26', '2024-11-05' ];
@@ -24,8 +24,8 @@ class McpController extends \sys\APIController {
     const TOUCH_EVERY = 60;
 
     //called by MCP clients: no CSRF token, the bearer token is the credential
-    //CLD: 2026-10-21T00:25:00+03:00: the answers are sent with $resp->sendJSON (JSON, no-store; ends the request), slashes and Unicode as they are (was reply())
-    //CLD: 2026-10-21T00:35:00+03:00: the error answers made by fail() (were written here)
+    //CLD: 2026-10-21T00:25:00+03:00: the answers are sent with $resp->sendJSON (JSON, no-store; ends the request), slashes and Unicode as they are
+    //CLD: 2026-10-21T00:35:00+03:00: the error answers made by fail()
     public function serve($req, $resp) {
 	$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 	if ($method !== 'POST') {
@@ -91,7 +91,7 @@ class McpController extends \sys\APIController {
 	}
 	$id = $msg['id'];
 	$params = is_array($msg['params'] ?? null) ? $msg['params'] : [];
-	//CLD: 2026-10-21T00:35:00+03:00: the answers are made by ok() / fail() (were the closures $ok / $fail)
+	//CLD: 2026-10-21T00:35:00+03:00: the answers are made by ok() / fail()
 
 	switch((string)$msg['method']) {
 	    case 'initialize':
@@ -99,7 +99,7 @@ class McpController extends \sys\APIController {
 		return $this->ok($id, [
 		    'protocolVersion' => in_array($asked, self::PROTOCOL_VERSIONS, true) ? $asked : self::PROTOCOL_VERSIONS[0],
 		    'capabilities' => [ 'tools' => [ 'listChanged' => false ] ],
-		    'serverInfo' => [ 'name' => 'rail22', 'title' => 'Rail22 workflows', 'version' => \data\Version::NUMBER ], //CLD: 2026-11-02T21:30:00+02:00: the app's version (was 1.0)
+		    'serverInfo' => [ 'name' => 'rail22', 'title' => 'Rail22 workflows', 'version' => \data\Version::NUMBER ], //CLD: 2026-11-02T21:30:00+02:00: the app's version
 		    'instructions' => "Tools of the Rail22 project `{$project->name}`: its data tables (list, query, insert / update / delete rows), workflows (list, run, executions), files (list, read) and variables. Use list_tables / list_workflows first to learn the names.",
 		]);
 

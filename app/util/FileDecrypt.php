@@ -318,7 +318,7 @@ class FileDecrypt {
     }
 
     //the path of a tool; required: an error when it is not installed
-    //CLD: 2026-10-20T17:10:00+03:00: public (was protected): the initial setup (util\Setup::checks) looks the tools up the same way
+    //CLD: 2026-10-20T17:10:00+03:00: public: the initial setup (util\Setup::checks) looks the tools up the same way
     public static function tool($name, $required = true) {
 	foreach([ '/usr/bin/', '/usr/local/bin/', '/bin/' ] as $dir) {
 	    if (is_executable($dir . $name))

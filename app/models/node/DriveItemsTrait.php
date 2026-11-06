@@ -3,7 +3,6 @@
 //CLD: 2026-10-22T00:41:28+03:00: new trait: the drive and the items of the OneDrive / SharePoint and Excel steps: a drive given as empty (the account's OneDrive), a SharePoint site's address or
 //a drive id; an item (file / folder) given by id, by path in the drive (/Reports/2026.xlsx) or by a sharing link. The step sets $drivePath (resolveDrive) before the items
 
-//CLD: 2026-10-26T23:39:49+02:00: moved back to the core (was plugins\MicrosoftIntegration\models): the Microsoft credentials and steps are core, for every account (no plan feature)
 namespace models\node;
 
 trait DriveItemsTrait {

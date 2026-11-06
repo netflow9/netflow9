@@ -103,7 +103,7 @@ class DemoCommand extends \sys\BaseController {
 	$members = [];
 	foreach($u as $k => $user)
 	    $members[(string)$user->_id] = [ 'role' => $roles[self::PEOPLE[$k][2]]->_id ];
-	//CLD: 2026-11-01T12:30:00+02:00: "Finance" (was "Finance operations": too long for the sidebar's project switcher, it wrapped under its buttons in the screenshots)
+	//CLD: 2026-11-01T12:30:00+02:00: "Finance"
 	$project = $om->create('Project', [ 'aid' => $account->_id, 'name' => 'Finance', 'owner' => $u['maria']->_id, 'members' => $members ]);
 	if (!$project->validates() || !$project->save())
 	    $this->fail('project: ' . json_encode($project->errors()));

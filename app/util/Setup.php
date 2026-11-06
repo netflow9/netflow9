@@ -4,14 +4,13 @@
     the initial setup (controllers\SetupController): the system prerequisites, and the app.env file it writes
     the needs of the steps added since (FTP / SFTP: zlib, bz2, curl FTP/FTPS/SFTP, proc_open, gpg, openssl - recommended; Google: curl HTTPS)
     and the zip extension (XLSX table import)
-    //CLD: 2026-10-25T17:40:00+02:00: the PDO drivers of the Database plugin's types, when it is enabled (databaseChecks: recommended, web and console PHP)
-    //CLD: 2026-10-25T20:00:00+02:00: always: the Database step is core
+    //CLD: 2026-10-25T20:00:00+02:00: the PDO drivers of the Database step's types (databaseChecks: recommended, web and console PHP)
     //CLD: 2026-10-20T23:05:00+03:00: J's needs (sys\J: expressions, Code step) in the web PHP and in the console PHP (the daemon runs them): J_EXTENSIONS, PCRE with Unicode
 //  Setup::checks()                 [ [ 'name', 'ok' => bool, 'value' => what was found, 'need' => what is needed, 'required' => bool ], ... ]
 //  Setup::ready($checks)           true when every required check passes
 //  Setup::envContent($values)      the text of app.env (values single-quoted: literal, see V::parse_env)
 //  Setup::writeEnv($content)       writes <V::configDir()>/app.env (a temporary file renamed into place); false when it cannot
-//CLD: 2026-10-29T02:00:00+02:00: + the install itself (was controllers\SetupController's), shared by the browser setup and the command-line one (commands\SysCommand):
+//CLD: 2026-10-29T02:00:00+02:00: + the install itself, shared by the browser setup and the command-line one (commands\SysCommand):
 //  Setup::database($server)        connects to the database of $server and makes it the app's: null, or [ field, message ] (it has accounts, cannot connect)
 //  Setup::install($server, $owner, &$error)   the indexes, the first account and its owner, app.env: the owner (a User), or null
 */
@@ -21,7 +20,7 @@ class Setup {
 
     const PHP_MIN = '8.1.0';
     //the mongo-php-library in app/pkgs needs this driver
-    //CLD: 2026-10-20T23:20:00+03:00: the library's folder is no longer checked (MONGO_LIBRARY): it ships with the app; the mongodb extension is (driverCheck)
+    //CLD: 2026-10-20T23:20:00+03:00: the library ships with the app (not checked); the mongodb extension is (driverCheck)
     const MONGODB_MIN = '2.3.0';
     //the PHP extensions the app uses (mongodb is checked with its version)
     const EXTENSIONS = [
@@ -56,9 +55,8 @@ class Setup {
 	'gpg' => 'FTP / SFTP steps: PGP / GPG encryption and signatures',
 	'openssl' => 'FTP / SFTP steps: OpenSSL and S/MIME encryption and signatures',
     ];
-    //CLD: 2026-10-19T13:42:19+03:00: the extensions the daemon needs in the command-line PHP (app/v runs it; it may have other extensions than the web one)
-    //CLD: 2026-10-19T13:44:01+03:00: only the daemon's; the command-line PHP is also checked for PHP_MIN, the driver and EXTENSIONS (the daemon runs the app's code)
-    //CLD: 2026-10-19T14:17:24+03:00: the command-line PHP is checked only for these and for the same PHP version as the web one (no longer PHP_MIN, the driver, EXTENSIONS)
+    //CLD: 2026-10-19T14:17:24+03:00: the extensions the daemon needs in the command-line PHP (app/v runs it; it may have other extensions than the web one); the
+    //command-line PHP is checked only for these and for the same PHP version as the web one
     const CLI_PHP = '/usr/bin/php';
     const CLI_EXTENSIONS = [
 	'pcntl' => 'the daemon: stop signals (SIGTERM, SIGINT)',
@@ -117,7 +115,7 @@ class Setup {
 	if ($cli === null)
 	    $checks[] = [ 'name' => 'Console PHP (' . self::CLI_PHP . ')', 'ok' => false, 'value' => 'cannot check',
 		'need' => 'the daemon; run ' . self::CLI_PHP . ' -v and ' . self::CLI_PHP . ' -m to see it', 'required' => false ];
-	//CLD: 2026-10-19T14:17:24+03:00: only the same PHP version as the web one, and CLI_EXTENSIONS (was phpChecks: PHP_MIN, the driver, EXTENSIONS + CLI_EXTENSIONS)
+	//CLD: 2026-10-19T14:17:24+03:00: only the same PHP version as the web one, and CLI_EXTENSIONS
 	else {
 	    $checks[] = [ 'name' => 'PHP version (console PHP)', 'ok' => $cli['php'] === PHP_VERSION, 'value' => $cli['php'], 'need' => 'the same as the web PHP: ' . PHP_VERSION, 'required' => true ];
 	    //CLD: 2026-10-20T23:20:00+03:00: the mongodb extension (the daemon uses the database)
@@ -128,8 +126,7 @@ class Setup {
 	    $checks[] = self::pcreCheck(' (console PHP)', (string)($cli['pcre'][0] ?? ''), (bool)($cli['pcre'][1] ?? false));
 	}
 
-	//CLD: 2026-10-25T17:40:00+02:00: the database types of the Database plugin (when enabled): each needs its PDO driver in both PHPs (the designer, the daemon); recommended
-	//CLD: 2026-10-25T20:00:00+02:00: always (the Database step is core; was only with the plugin enabled)
+	//CLD: 2026-10-25T20:00:00+02:00: the database types of the Database step: each needs its PDO driver in both PHPs (the designer, the daemon); recommended
 	array_push($checks, ...self::databaseChecks($loaded, $cli['ext'] ?? null));
 
 	$checks[] = [ 'name' => 'HTTPS', 'ok' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'value' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'yes' : 'no',
@@ -151,7 +148,6 @@ class Setup {
     //in the console PHP ($cli: the same, null when it cannot be run: the web PHP's only)
     public static function databaseChecks(array $web, ?array $cli) {
 	$checks = [];
-	//CLD: 2026-10-25T20:00:00+02:00: util\SqlDb (was plugins\Database\util\Db)
 	foreach(\util\SqlDb::TYPES as $def) {
 	    $extensions = array_values($def['drivers']);
 	    $inWeb = array_values(array_filter($extensions, fn($x) => isset($web[$x])));
@@ -172,7 +168,7 @@ class Setup {
 	return $checks;
     }
 
-    //CLD: 2026-10-20T23:20:00+03:00: the mongodb extension of a PHP: loaded ($version: its version, null when not loaded), MONGODB_MIN or newer (was in phpChecks)
+    //CLD: 2026-10-20T23:20:00+03:00: the mongodb extension of a PHP: loaded ($version: its version, null when not loaded), MONGODB_MIN or newer
     private static function driverCheck($suffix, $version) {
 	return [ 'name' => 'MongoDB driver (mongodb extension)' . $suffix, 'ok' => $version !== null && version_compare($version, self::MONGODB_MIN, '>='),
 	    'value' => $version ?? 'not loaded', 'need' => 'loaded, ' . self::MONGODB_MIN . ' or newer', 'required' => true ];
@@ -191,7 +187,7 @@ class Setup {
     }
 
     //CLD: 2026-10-19T13:42:19+03:00: the extensions loaded by the command-line PHP (lower case), or null when it cannot be run from the web PHP (missing, or proc_open disabled)
-    //CLD: 2026-10-19T13:44:01+03:00: renamed cliExtensions -> cliInfo: [ 'php' => version, 'ext' => [ lower case name => version ] ] (was the list of names)
+    //CLD: 2026-10-19T13:44:01+03:00: renamed cliExtensions -> cliInfo: [ 'php' => version, 'ext' => [ lower case name => version ] ]
     private static function cliInfo() {
 	if (!is_executable(self::CLI_PHP) || !function_exists('proc_open'))
 	    return null;
@@ -261,7 +257,6 @@ class Setup {
 	    '#the domain of the inbound email addresses (Email inbound trigger; Haraka receives it: haraka/config/nfn.ini domain)',
 	    "#MAIL_INBOUND_DOMAIN='" . ((string)parse_url($v['BASE_URL'], PHP_URL_HOST) ?: 'example.com') . "'",
 	    '',
-	    //CLD: 2026-10-30T15:00:00+02:00: MAX_SYNC_EXECUTIONS and SYNC_EXECUTION_TIMEOUT removed (every execution runs in the daemon)
 	    //CLD: 2026-10-23T15:00:00+03:00: + HTTP_STEPS_ALLOW_PRIVATE (written false: the HTTP steps call public addresses only)
 	    '#the HTTP Request and Download File steps may call this machine and its network (localhost, 10.x, 192.168.x, ...): true / false',
 	    'HTTP_STEPS_ALLOW_PRIVATE=false',
@@ -278,7 +273,7 @@ class Setup {
 	return implode("\n", $lines);
     }
 
-    //CLD: 2026-10-29T02:00:00+02:00: moved here from controllers\SetupController (the browser setup), shared with the command-line setup (commands\SysCommand)
+    //CLD: 2026-10-29T02:00:00+02:00: shared by the browser setup (controllers\SetupController) and the command-line one (commands\SysCommand)
     //connects to the server's database ($server: ServerForm::values()) and makes it the app's; it must have no account yet. Returns null, or [ field, message ]
     public static function database(array $server) {
 	try {
@@ -293,7 +288,7 @@ class Setup {
 	return null;
     }
 
-    //CLD: 2026-10-29T02:00:00+02:00: moved here from controllers\SetupController; $owner: account_name, username, email, firstname, lastname, password (was the AccountForm)
+    //CLD: 2026-10-29T02:00:00+02:00: $owner: account_name, username, email, firstname, lastname, password
     //creates the first account and writes app.env; returns the owner (a User), or null with the reason in $error
     public static function install(array $server, array $owner, &$error) {
 	//one setup at a time
@@ -303,7 +298,7 @@ class Setup {
 	    return null;
 	}
 	try {
-	    //CLD: 2026-11-01T19:00:00+02:00: app.env in V::configDir() (was BASE)
+	    //CLD: 2026-11-01T19:00:00+02:00: app.env in V::configDir()
 	    if (is_file(\V::configDir() . '/app.env')) {
 		$error = 'The app is already set up (app.env exists): reload the page';
 		return null;
@@ -370,7 +365,7 @@ class Setup {
     }
 
     public static function writeEnv($content) {
-	//CLD: 2026-11-01T19:00:00+02:00: in V::configDir() (NFN_CONFIG_DIR, else BASE; was BASE)
+	//CLD: 2026-11-01T19:00:00+02:00: in V::configDir() (NFN_CONFIG_DIR, else BASE)
 	$file = \V::configDir() . '/app.env';
 	$tmp = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
 	if (@file_put_contents($tmp, $content, LOCK_EX) !== strlen($content)) {
