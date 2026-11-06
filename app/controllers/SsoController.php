@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-23T12:00:00+03:00: new: the public pages of the SAML sign-in, served at /sso/<action>:
+    the public pages of the SAML sign-in, served at /sso/<action>:
 	login      "Sign in with SSO": the email asked (?email=), its account found (util\SamlAuth::accountFor), then start
 	start      /<account>: a request sent to the account's IdP (begin): a SamlRequest, the browser's token in a cookie, the redirect
 	acs        /<account>, POST from the IdP (no CSRF token: the response is checked instead): the response checked (util\SamlSp::response) against the request it
