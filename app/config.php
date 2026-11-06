@@ -20,7 +20,8 @@ function get_config($mode = 'web') {
     })();
 
     $_config = [
-	//development switch; also enables development-only endpoints (DataController / data/get) - set false outside development
+	//CLD: 2026-11-06T12:00:00+02:00: the development-only DataController (data/get) is removed: app.debug now only shows error details
+	//development switch: error details on the pages - set false outside development
 	'app.debug' => defined('APP_DEBUG') && filter_var(APP_DEBUG, FILTER_VALIDATE_BOOLEAN),
 	'app.name' => 'Rail22',
 	'app.author' => 'None',

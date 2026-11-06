@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T14:00:00+02:00: new: a resource its home project shares with other projects of the account. The grants are on the resource, field `shares`: [ { project, access, by, at } ].
+    a resource its home project shares with other projects of the account. The grants are on the resource, field `shares`: [ { project, access, by, at } ].
     The class says what each level gives: const SHARE_PERMS = [ level => [ permission, ... ] ], SHARE_LEVELS = [ level => label ] and SHARE_PERM (who may share it).
     CLD: 2026-11-03T18:00:00+02:00: a share can hold more that the class asks for (shareOptions: the hosts of a credential)
     A share is for a project, not a user: every run has its project and no user, so runs ask shareAllows(); users ask checkAccess(), through sharedCan()

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-04T12:00:00+02:00: new: a resource that can move to another project of the account (the Move dialog, controllers\MoveController). Keeps its id, its rows or secrets and its shares;
+    a resource that can move to another project of the account (the Move dialog, controllers\MoveController). Keeps its id, its rows or secrets and its shares;
     a share with the new project ends, as it is at home there. The workflows of its old project keep pointing to it but no longer find it (lookups are by project), so the dialog names them.
     CLD: 2026-11-04T15:00:00+02:00: + workflows: what is linked to it moves too (moveRelated)
     The class says who may move it: const MOVE_PERMS = [ 'from' => permission in its project, 'to' => permission in the new one ], and the audit action: const MOVE_ACTION.

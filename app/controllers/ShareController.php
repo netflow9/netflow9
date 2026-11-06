@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T14:00:00+02:00: new: the Share dialog of a resource (models\share\ShareableTrait): who it is shared with, at which level, what uses it there.
+    the Share dialog of a resource (models\share\ShareableTrait): who it is shared with, at which level, what uses it there.
     ?object=<kind>&id=<id>: manage shows it (POST: a new share); POST change: a share's level; POST remove: ends a share (&project=<id>). Each answers with the dialog again.
     Needs the resource's SHARE_PERM in its home project. A personal project neither shares nor receives
 */
