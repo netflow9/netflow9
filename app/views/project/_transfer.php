@@ -62,7 +62,7 @@ echo '<div class="w-100 mt-4"></div>';
 <h6 class="mb-1"><i class="bi bi-box-arrow-up me-2"></i>Export</h6>
 <p class="small text-body-secondary mb-3">A file to import in a project of another NetFlow9 server, e.g. from development to pre-production. Workflows go as their drafts (the steps as saved in the designer).</p>
 
-<form id="<?= $formId ?>" method="post" action="<?= \V::app()->createUrl('/project/export', [ 'id' => (string)$project->_id ]) ?>" no-pjax>
+<form id="<?= $formId ?>" method="post" action="<?= \V::app()->createUrl('/project/export', [ 'id' => $project->_id ]) ?>" no-pjax>
     <input type="hidden" name="<?= \V::app()->html->escape(\V::app()->csrf->getKey()) ?>" value="<?= \V::app()->html->escape(\V::app()->csrf->getToken()) ?>">
     <div class="row g-3 mb-3">
 	<?php
@@ -100,7 +100,7 @@ echo '<div class="w-100 mt-4"></div>';
 
 <h6 class="mb-1"><i class="bi bi-box-arrow-in-down me-2"></i>Import</h6>
 <p class="small text-body-secondary mb-3">An export file of this or another server. The next step lists what it holds and what is already in this project, to choose what to do with each before anything changes.</p>
-<form method="post" action="<?= \V::app()->createUrl('/project/import', [ 'id' => (string)$project->_id ]) ?>" enctype="multipart/form-data" class="row g-2 align-items-end" style="max-width: 40rem">
+<form method="post" action="<?= \V::app()->createUrl('/project/import', [ 'id' => $project->_id ]) ?>" enctype="multipart/form-data" class="row g-2 align-items-end" style="max-width: 40rem">
     <div class="col-12 col-sm-7">
 	<label class="form-label small mb-1" for="<?= $formId ?>-file">Export file</label>
 	<input type="file" class="form-control form-control-sm" name="file" id="<?= $formId ?>-file" accept=".json,application/json" required>

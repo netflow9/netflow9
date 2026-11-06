@@ -34,7 +34,7 @@ $modal = new \sys\html\Modal([
     'body' => $body,
     'footer' => "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>" . ($canMove ? 'Cancel' : 'Close') . '</button>'
 	. ($canMove ? "<button type='submit' class='btn btn-primary'><i class='bi bi-folder-symlink me-1'></i>Move</button>" : ''),
-    'beforeContent' => \util\VString::insert('<form method="post" action="{:action}" class="m-0">', [ 'action' => \V::app()->createUrl('/move/manage', [ 'object' => $object, 'id' => (string)$resource->_id ]) ]),
+    'beforeContent' => \util\VString::insert('<form method="post" action="{:action}" class="m-0">', [ 'action' => \V::app()->createUrl('/move/manage', [ 'object' => $object, 'id' => $resource->_id ]) ]),
     'afterContent' => '</form>',
 ]);
 echo $modal->render();

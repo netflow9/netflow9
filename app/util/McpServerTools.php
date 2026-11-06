@@ -277,7 +277,7 @@ class McpServerTools {
 	//CLD: 2026-10-19T17:25:00+03:00: + the errors in the steps' settings, first (WorkflowSpec::problems has the connections only)
 	$stepProblems = array_map(fn($i) => array_filter([ 'level' => $i['level'], 'step' => $i['node'] ?? null, 'message' => $i['message'] ], fn($v) => $v !== null), $wf->stepIssues);
 	//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://); was built from the request host
-	return [ 'id' => (string)$wf->_id, 'name' => (string)$wf->name, 'url' => \V::app()->createAbsoluteUrl('/workflow/index', [ 'id' => (string)$wf->_id ]),
+	return [ 'id' => (string)$wf->_id, 'name' => (string)$wf->name, 'url' => \V::app()->createAbsoluteUrl('/workflow/index', [ 'id' => $wf->_id ]),
 	    'status' => (string)($wf->status ?: \models\Workflow::DRAFT), 'problems' => array_merge($stepProblems, \util\WorkflowSpec::problems($wf)) ];
     }
 

@@ -540,7 +540,7 @@ class WorkflowController extends \sys\BaseController {
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can('Workflow::read', [ 'object' => $wf ]))
 	    \V::app()->error(403, 'Unauthorized');
-	$resp->redirect(\V::app()->createUrl('/workflow/index', [ 'id' => (string)$wf->_id, 'execution' => (string)$trace['execution'], 'trace' => (string)$trace['_id'] ]));
+	$resp->redirect(\V::app()->createUrl('/workflow/index', [ 'id' => $wf->_id, 'execution' => $trace['execution'], 'trace' => $trace['_id'] ]));
     }
 
     //CLD: 2026-11-02T14:00:00+02:00: new: a trace as the panel shows it: an open one of an execution that no longer runs (its process died) is stopped

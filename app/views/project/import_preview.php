@@ -2,7 +2,7 @@
 //CLD: 2026-10-28T10:00:00+02:00: new view: Import, step 2 (ProjectController::import): what the file holds, each item with what to do (util\Transfer::plan: its actions, an existing one of
 //that name in the project, notes), what the steps use and is not found; Import posts the choices (`do[<list>][<index>]`) with the file's token
 $this->pageTitle = 'Import: ' . $project->name;
-$settingsUrl = \V::app()->createUrl('/project/settings', [ 'id' => (string)$project->_id, '__tab' => 'transfer' ]);
+$settingsUrl = \V::app()->createUrl('/project/settings', [ 'id' => $project->_id, '__tab' => 'transfer' ]);
 $sections = [ 'datatables' => [ 'Data tables', 'bi-table' ], 'credentials' => [ 'Credentials & variables', 'bi-key' ], 'workflows' => [ 'Workflows', 'bi-diagram-3' ] ];
 $total = count($plan['datatables']) + count($plan['credentials']) + count($plan['workflows']);
 $exportedAt = \util\Format::datetime((string)($bundle['exported_at'] ?? ''));
@@ -41,7 +41,7 @@ $exportedAt = \util\Format::datetime((string)($bundle['exported_at'] ?? ''));
     <div class="alert alert-info">The file holds nothing to import.</div>
     <a class="btn btn-sm btn-secondary" href="<?= $settingsUrl ?>">Back</a>
     <?php else: ?>
-    <form method="post" action="<?= \V::app()->createUrl('/project/import', [ 'id' => (string)$project->_id ]) ?>">
+    <form method="post" action="<?= \V::app()->createUrl('/project/import', [ 'id' => $project->_id ]) ?>">
 	<input type="hidden" name="step" value="apply">
 	<input type="hidden" name="token" value="<?= \V::app()->html->escape($token) ?>">
 	<?php foreach($sections as $list => [ $title, $icon ]): ?>

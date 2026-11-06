@@ -3,7 +3,7 @@
 //user who signs in with a password here
 $this->pageTitle = 'User::update';
 
-$form_begin = \V::app()->form->create($user, [ 'action' => \V::app()->createUrl('/user/update', [ 'id' => (string)$user->_id ]) ]);
+$form_begin = \V::app()->form->create($user, [ 'action' => \V::app()->createUrl('/user/update', [ 'id' => $user->_id ]) ]);
 
 $body = '';
 foreach(['firstname', 'lastname', 'email', 'role', 'state'] as $f)
@@ -15,7 +15,7 @@ $sendLink = '';
 if ($canSendLink)
     $sendLink = \V::app()->html->link(
 	'<i class="bi bi-envelope"></i> Send sign-in link',
-	\V::app()->createUrl('/user/send_link', [ 'id' => (string)$user->_id ]),
+	\V::app()->createUrl('/user/send_link', [ 'id' => $user->_id ]),
 	[ 'class' => 'btn btn-outline-secondary me-auto', 'escape' => false, 'data-method' => 'post',
 	  'data-confirm' => 'Email ' . (string)$user->email . ' a link to choose a new password? It works once, for 7 days.' ]
     );

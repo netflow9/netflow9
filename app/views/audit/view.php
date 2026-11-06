@@ -32,7 +32,7 @@ if ($isExec) {
     $wfLink = '';
     if ($entry->workflow) {
 	$wfLink = \util\VString::insert('<a href="{:href}">{:name}</a>{:execution}', [
-	    'href' => \V::app()->createUrl('/workflow/index', [ 'id' => (string)$entry->workflow ]),
+	    'href' => \V::app()->createUrl('/workflow/index', [ 'id' => $entry->workflow ]),
 	    'name' => $entry->schema['workflow']->display(),
 	    'execution' => $entry->execution
 		? \util\VString::insert(' <span class="small text-muted">execution {:v}</span>', [ 'v' => \V::app()->html->escape($entry->execution) ])
@@ -48,7 +48,7 @@ $agent = !$isExec && is_array($entry->agent) ? $entry->agent : null;
 if ($agent) {
     $agentWf = $entry->workflow ? \V::app()->om->findById('Workflow', (string)$entry->workflow) : null;
     $facts['Workflow'] = $entry->workflow ? \util\VString::insert('<a href="{:href}">{:name}</a> <span class="small text-muted">execution {:execution}</span>', [
-	'href' => \V::app()->createUrl('/workflow/index', [ 'id' => (string)$entry->workflow ]),
+	'href' => \V::app()->createUrl('/workflow/index', [ 'id' => $entry->workflow ]),
 	'name' => \V::app()->html->escape($agentWf ? (string)$agentWf->name : (string)$entry->workflow),
 	'execution' => \V::app()->html->escape($entry->execution),
     ]) : '';

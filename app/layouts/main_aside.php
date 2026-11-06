@@ -214,29 +214,29 @@ $dd_items = implode('', $dd_items);
 			$active = $published ? $wf->publishedVersion() : null;
 			if (!$published || !$active || !$wf->draftMatches($active))
 			    $items .= \util\VString::insert('<a class="dropdown-item px-2" href="{:href}"><i class="bi bi-broadcast me-2"></i>Publish&hellip;</a>', [
-				'href' => \V::app()->createUrl('/workflow/publish', [ 'id' => (string)$wf->_id ]),
+				'href' => \V::app()->createUrl('/workflow/publish', [ 'id' => $wf->_id ]),
 			    ]);
 			if ($published)
 			    $items .= \util\VString::insert('<a class="dropdown-item px-2" href="{:href}" data-method="post" data-confirm="Unpublish: its trigger stops starting runs?"><i class="bi bi-pause-circle me-2"></i>Unpublish</a>', [
-				'href' => \V::app()->createUrl('/workflow/unpublish', [ 'id' => (string)$wf->_id ]),
+				'href' => \V::app()->createUrl('/workflow/unpublish', [ 'id' => $wf->_id ]),
 			    ]);
 		    }
 
 		    //CLD: 2026-11-03T16:00:00+02:00: Share (ShareController), not in a personal project
 		    if (!$crtProject->personal && \V::app()->user->can('Workflow::share', [ 'object' => $wf ]))
 			$items .= \util\VString::insert('<a class="dropdown-item px-2" href="{:href}"><i class="bi bi-share me-2"></i>Share&hellip;</a>', [
-			    'href' => \V::app()->createUrl('/share/manage', [ 'object' => 'Workflow', 'id' => (string)$wf->_id ]),
+			    'href' => \V::app()->createUrl('/share/manage', [ 'object' => 'Workflow', 'id' => $wf->_id ]),
 			]);
 
 		    //CLD: 2026-11-04T17:00:00+02:00: Move (MoveController), as Delete: it leaves this project
 		    if (\V::app()->user->can('Workflow::delete', [ 'object' => $wf ]))
 			$items .= \util\VString::insert('<a class="dropdown-item px-2" href="{:href}"><i class="bi bi-folder-symlink me-2"></i>Move to project&hellip;</a>', [
-			    'href' => \V::app()->createUrl('/move/manage', [ 'object' => 'Workflow', 'id' => (string)$wf->_id ]),
+			    'href' => \V::app()->createUrl('/move/manage', [ 'object' => 'Workflow', 'id' => $wf->_id ]),
 			]);
 
 		    if (\V::app()->user->can('Workflow::delete', [ 'object' => $wf ]))
 			$items .= \util\VString::insert('<a class="dropdown-item text-danger px-2" href="{:href}" data-method="post" data-confirm="Delete this workflow with all its versions and executions? This cannot be undone."><i class="bi bi-trash me-2"></i>Delete</a>', [
-			    'href' => \V::app()->createUrl('/workflow/delete', [ 'id' => (string)$wf->_id ]),
+			    'href' => \V::app()->createUrl('/workflow/delete', [ 'id' => $wf->_id ]),
 			]);
 		    //the menu opens fixed (popper strategy), so the scrolling list does not clip it
 		    $menu = $items === '' ? '' : "
@@ -258,7 +258,7 @@ $dd_items = implode('', $dd_items);
 		    echo '<div class="nav-item w-100 ps-2 py-1 pe-2"><span>Shared workflows</span></div>';
 		foreach($sharedWfs as $wf)
 		    echo \util\VString::insert('<li class="nav-item w-100"><a href="{:href}" class="nav-link py-1 text-truncate" title="{:title}"><i class="bi bi-share me-1"></i>{:name}</a></li>', [
-			'href' => \V::app()->createUrl('/workflow/shared', [ 'id' => (string)$wf->_id ]),
+			'href' => \V::app()->createUrl('/workflow/shared', [ 'id' => $wf->_id ]),
 			'title' => \V::app()->html->escape('From project ' . $wf::projectName($wf->project)),
 			'name' => \V::app()->html->escape((string)$wf->name),
 		    ]);
