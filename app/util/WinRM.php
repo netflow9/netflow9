@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T16:00:00+02:00: new: a Windows Remote Management client (WS-Management over HTTPS, port 5986) that runs PowerShell scripts on a Windows server, for the Hyper-V credential,
+    a Windows Remote Management client (WS-Management over HTTPS, port 5986) that runs PowerShell scripts on a Windows server, for the Hyper-V credential,
     steps and trigger. A cmd shell (http://schemas.microsoft.com/wbem/wsman/1/windows/shell/cmd) is created, powershell.exe run in it with -EncodedCommand (UTF-16LE, base64; no
     cmd.exe: up to about 12000 characters of script), its output received until the command is done, then the shell deleted. Signed in by curl: NTLM (domain or local accounts) or
     Basic (local accounts, when the service allows it). Public addresses only, unless the account allows private network addresses (Account allow_private_addresses: a Hyper-V

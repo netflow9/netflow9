@@ -53,9 +53,6 @@ class ProjectController extends \sys\BaseController {
 	    \V::app()->error(403, 'Unauthorized');
 
 	if ($req->is('post')) {
-	    //CLD: 2026-10-05T20:42:44+03:00: only the fields the settings form shows (was the whole POST: owner, members, personal, ...)
-	    //CLD: 2026-10-05T20:44:56+03:00: use the shared BaseController::onlyFields()
-	    //CLD: 2026-10-10T18:57:33+03:00: assign with permissions (the form fields the user may update; was onlyFields icon, name)
 	    $project->assign($req->data, true);
 	    if ($project->validates()) {
 		$project->save();
@@ -70,7 +67,7 @@ class ProjectController extends \sys\BaseController {
 
 
 
-    //CLD: 2026-10-28T10:00:00+02:00: Export / import (settings tab `transfer`, util\Transfer; Project::transfer): moves workflows, credentials and data tables to another server.
+    //Export / import (settings tab `transfer`, util\Transfer; Project::transfer): moves workflows, credentials and data tables to another server.
     //export (POST): the chosen items (each also needs its read permission; `used`: + the credentials / tables the chosen workflows use), the tables in `rows` with their rows;
     //a passphrase seals the file and puts the credentials' secrets in it. Sent as a download (the form is not pjax)
     public function export($req, $resp) {
