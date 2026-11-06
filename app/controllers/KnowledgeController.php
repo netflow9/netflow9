@@ -96,7 +96,7 @@ class KnowledgeController extends \sys\BaseController {
 	    if ($kb->validates() && $kb->save()) {
 		$this->addToast('success', 'OK', 'Knowledge base created');
 		$this->addEvent('object::created', [ 'object' => 'KnowledgeBase', 'oid' => (string)$kb->_id ]);
-		$this->addEvent('pjax::redirect', [ 'url' => \V::app()->createUrl('/knowledge/manage', [ 'id' => (string)$kb->_id ]) ]);
+		$this->addEvent('pjax::redirect', [ 'url' => \V::app()->createUrl('/knowledge/manage', [ 'id' => $kb->_id ]) ]);
 		$this->sendEvents();
 	    }
 	}

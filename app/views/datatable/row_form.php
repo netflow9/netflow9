@@ -4,7 +4,7 @@
 if ($row->exists()) {
     $t_ok = 'Save';
     $t_title = 'Edit row';
-    $actionUrl = \V::app()->createUrl('', [ 'id' => $dt->_id, 'row' => (string)$row->_id ]);
+    $actionUrl = \V::app()->createUrl('', [ 'id' => $dt->_id, 'row' => $row->_id ]);
 } else {
     $t_ok = 'Add';
     $t_title = 'Add row';

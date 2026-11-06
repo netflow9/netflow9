@@ -140,7 +140,7 @@ JS . "}({$connectJs});");
 			$project = \V::app()->om->findOne('Project', [ '_id' => $kb->project, 'aid' => $kb->aid ]);
 			$here = (string)$kb->project === (string)\V::app()->user->crtProject;
 		    ?>
-		    <li><?php if ($here): ?><a href="<?= \V::app()->createUrl('/knowledge/manage', [ 'id' => (string)$kb->_id ]) ?>"><?= \V::app()->html->escape($kb->name) ?></a><?php else: ?><?= \V::app()->html->escape($kb->name) ?><?php endif; ?>
+		    <li><?php if ($here): ?><a href="<?= \V::app()->createUrl('/knowledge/manage', [ 'id' => $kb->_id ]) ?>"><?= \V::app()->html->escape($kb->name) ?></a><?php else: ?><?= \V::app()->html->escape($kb->name) ?><?php endif; ?>
 			&middot; project <?= \V::app()->html->escape($project ? (string)$project->name : '?') ?> &middot; <code><?= \V::app()->html->escape($kb->model) ?></code></li>
 		    <?php endforeach; ?>
 		</ul>

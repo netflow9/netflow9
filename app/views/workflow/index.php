@@ -19,25 +19,25 @@ $__canvas_pan_x = $__canvas_num('__canvas_pan_x');
 $__canvas_pan_y = $__canvas_num('__canvas_pan_y');
 $__canvas_zoom = $__canvas_num('__canvas_zoom');
 
-$nodeInitUrl = \V::app()->createUrl('/workflow/node_init', [ 'id' => (string)$wf->_id ]);
+$nodeInitUrl = \V::app()->createUrl('/workflow/node_init', [ 'id' => $wf->_id ]);
 //CLD: 2026-11-04T08:10:00+02:00: the form of a step, asked when its dialog opens
-$nodeSchemaUrl = \V::app()->createUrl('/workflow/node_schema', [ 'id' => (string)$wf->_id ]);
-$exprUrl = \V::app()->createUrl('/workflow/expression', [ 'id' => (string)$wf->_id ]);
-$runUrl = \V::app()->createUrl('/workflow/start', [ 'id' => (string)$wf->_id ]);
+$nodeSchemaUrl = \V::app()->createUrl('/workflow/node_schema', [ 'id' => $wf->_id ]);
+$exprUrl = \V::app()->createUrl('/workflow/expression', [ 'id' => $wf->_id ]);
+$runUrl = \V::app()->createUrl('/workflow/start', [ 'id' => $wf->_id ]);
 $runTriggers = \util\JSON::encode(array_keys(array_filter(\models\wf\WfNode::getAll(), fn($d) => $d['type'] === 'trigger' && !empty($d['canRun']))));
-$executionsUrl = \V::app()->createUrl('/workflow/executions', [ 'id' => (string)$wf->_id ]);
-$saveUrl = \V::app()->createUrl('/workflow/save', [ 'id' => (string)$wf->_id ]);
+$executionsUrl = \V::app()->createUrl('/workflow/executions', [ 'id' => $wf->_id ]);
+$saveUrl = \V::app()->createUrl('/workflow/save', [ 'id' => $wf->_id ]);
 $wfIdJs = (string)$wf->_id;
-$executionUrl = \V::app()->createUrl('/workflow/execution', [ 'id' => (string)$wf->_id ]);
-$executionDeleteUrl = \V::app()->createUrl('/workflow/execution_delete', [ 'id' => (string)$wf->_id ]);
-$executionsDeleteUrl = \V::app()->createUrl('/workflow/executions_delete', [ 'id' => (string)$wf->_id ]);
+$executionUrl = \V::app()->createUrl('/workflow/execution', [ 'id' => $wf->_id ]);
+$executionDeleteUrl = \V::app()->createUrl('/workflow/execution_delete', [ 'id' => $wf->_id ]);
+$executionsDeleteUrl = \V::app()->createUrl('/workflow/executions_delete', [ 'id' => $wf->_id ]);
 //CLD: 2026-10-26T10:14:16+02:00: Kill in the Executions panel
-$executionKillUrl = \V::app()->createUrl('/workflow/execution_kill', [ 'id' => (string)$wf->_id ]);
+$executionKillUrl = \V::app()->createUrl('/workflow/execution_kill', [ 'id' => $wf->_id ]);
 //CLD: 2026-11-02T14:00:00+02:00: an AI step's trace (app.WfExecutions), Run again; ?execution=&trace= (WorkflowController::trace): the panel opened on them
-$executionTraceUrl = \V::app()->createUrl('/workflow/execution_trace', [ 'id' => (string)$wf->_id ]);
-$executionAgainUrl = \V::app()->createUrl('/workflow/execution_again', [ 'id' => (string)$wf->_id ]);
+$executionTraceUrl = \V::app()->createUrl('/workflow/execution_trace', [ 'id' => $wf->_id ]);
+$executionAgainUrl = \V::app()->createUrl('/workflow/execution_again', [ 'id' => $wf->_id ]);
 //CLD: 2026-11-02T15:46:06+02:00: the Tests panel (app.WfTests; EvalController)
-$testsUrl = fn($action) => \V::app()->createUrl('/eval/' . $action, [ 'id' => (string)$wf->_id ]);
+$testsUrl = fn($action) => \V::app()->createUrl('/eval/' . $action, [ 'id' => $wf->_id ]);
 $openExecution = \util\Validator::rule('oid', (string)(\V::app()->request->query['execution'] ?? '')) ? (string)\V::app()->request->query['execution'] : '';
 $openTrace = $openExecution !== '' && \util\Validator::rule('oid', (string)(\V::app()->request->query['trace'] ?? '')) ? (string)\V::app()->request->query['trace'] : '';
 $canRun = \V::app()->user->can('Workflow::update', [ 'object' => $wf ]) ? 'true' : 'false';
@@ -61,7 +61,7 @@ $canDuplicate = \V::app()->user->can('Workflow::create', [ 'object' => \V::app()
 //was the slowest part of this page; the header badges start with the connection problems
 $issues = $shown->validateFlow();
 $issuesJs = \util\JSON::encode($issues);
-$stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'id' => (string)$wf->_id, 'version' => $viewVersion ? (string)$viewVersion->_id : null ]));
+$stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'id' => $wf->_id, 'version' => $viewVersion ? $viewVersion->_id : null ]));
 
 
 \V::app()->cs->addPageScript("

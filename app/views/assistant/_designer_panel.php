@@ -16,9 +16,9 @@ $assistantReady = WorkflowAssistant::isReady($assistantSettings);
 //CLD: 2026-10-23T23:45:00+03:00: + the kept conversation (models\assistant\AssistantChat: messages, chatUrl, clearUrl) and who is viewing (uid: the others' messages are signed)
 $assistantJs = \util\JSON::encode([
     'wfid' => (string)$wf->_id,
-    'url' => \V::app()->createUrl('/assistant/ask', [ 'id' => (string)$wf->_id ]),
-    'chatUrl' => \V::app()->createUrl('/assistant/chat_add', [ 'id' => (string)$wf->_id ]),
-    'clearUrl' => \V::app()->createUrl('/assistant/chat_clear', [ 'id' => (string)$wf->_id ]),
+    'url' => \V::app()->createUrl('/assistant/ask', [ 'id' => $wf->_id ]),
+    'chatUrl' => \V::app()->createUrl('/assistant/chat_add', [ 'id' => $wf->_id ]),
+    'clearUrl' => \V::app()->createUrl('/assistant/chat_clear', [ 'id' => $wf->_id ]),
     'uid' => (string)\V::app()->user->_id,
     'messages' => $assistantOn && $assistantReady ? \models\assistant\AssistantChat::messagesOf($wf) : [],
 ]);

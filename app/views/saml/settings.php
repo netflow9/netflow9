@@ -193,7 +193,7 @@ JS . "}({$js});");
 			<td class="text-break"><?= \V::app()->html->escape($l->subject) ?></td>
 			<td><?= $l->synced_at ? \V::app()->html->escape($l->schema['synced_at']->display()) : '' ?></td>
 			<td class="text-end">
-			    <a class="btn btn-sm btn-outline-danger" href="<?= \V::app()->createUrl('/saml/unlink', [ 'id' => (string)$u->_id ]) ?>" data-method="post"
+			    <a class="btn btn-sm btn-outline-danger" href="<?= \V::app()->createUrl('/saml/unlink', [ 'id' => $u->_id ]) ?>" data-method="post"
 				data-confirm="<?= \V::app()->html->escape('Unlink ' . \V::app()->html->escape($u) . '? The user then signs in with a password of this application (set with "Forgot username or password?")') ?>"><i class="bi bi-link-45deg me-1"></i>Unlink</a>
 			</td>
 		    </tr>

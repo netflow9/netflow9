@@ -54,7 +54,7 @@ if ($canManage) {
 	    'label' => \V::app()->html->escape($label),
 	]);
     echo \util\VString::insert($addTpl, [
-	'action' => \V::app()->createUrl('/project/member_add', [ 'id' => (string)$project->_id ]),
+	'action' => \V::app()->createUrl('/project/member_add', [ 'id' => $project->_id ]),
 	'disabled' => $candidates ? '' : ' disabled',
 	'options' => $options,
 	'role' => $roleSelect('role', $memberRole),
@@ -74,7 +74,7 @@ if ($canManage) {
 <div class="form-text mb-3">{:help}</div>
 ';
     echo \util\VString::insert($inviteTpl, [
-	'action' => \V::app()->createUrl('/project/member_invite', [ 'id' => (string)$project->_id ]),
+	'action' => \V::app()->createUrl('/project/member_invite', [ 'id' => $project->_id ]),
 	'role' => $roleSelect('role', $memberRole),
 	'help' => $canInvite ? 'A user of the account is added now; anyone else gets an email with a link to join, valid 7 days.'
 	    : 'Users of the account are added now; only who may add users can invite new people.',
