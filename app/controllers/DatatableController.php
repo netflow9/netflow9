@@ -673,7 +673,7 @@ class DatatableController extends \sys\BaseController {
 	$this->render('manage', compact('dt'));
     }
 
-    //CLD: 2026-11-04T10:00:00+02:00: the rows as an Excel (.xlsx) download: those the grid finds with its current search and filter (the same __search / __filter / sort parameters),
+    //the rows as an Excel (.xlsx) download: those the grid finds with its current search and filter (the same __search / __filter / sort parameters),
     //all pages; the columns the user may read, in the grid's order. DataTable::readData; one audit entry `datatable.export`
     public function export($req, $resp) {
 	$dt = $this->findTable('DataTable::readData');

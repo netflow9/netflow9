@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new: the client of Wazuh (4.8 and later), for the Wazuh credential, steps and alert trigger. Wazuh has two APIs, on two addresses:
+    the client of Wazuh (4.8 and later), for the Wazuh credential, steps and alert trigger. Wazuh has two APIs, on two addresses:
 	the Server API (https://<manager>:55000): agents, groups, active response, scans, inventory, rules. POST /security/user/authenticate with Basic gives a JWT, sent as Bearer;
 	    it is kept in this process until shortly before it expires (auth_token_exp_timeout, 900 s by default) and the user signs in again once when a request is answered 401
 	the Wazuh indexer (OpenSearch, https://<indexer>:9200): the alerts and the vulnerabilities live only there; its own user, as Basic on each request

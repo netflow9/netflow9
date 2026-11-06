@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T10:00:00+02:00: new class: what keeps an AI step's agent in bounds during one run (models\node\NodeAppAi: run, loop). Everything here is checked on the server, whatever the dialog shows.
+    what keeps an AI step's agent in bounds during one run (models\node\NodeAppAi: run, loop). Everything here is checked on the server, whatever the dialog shows.
 	Limits (the step's section Guardrails; empty: none): Most tool calls and Most write calls per run, Cost limit (USD estimated from the tokens with the account's own keys, credits on the System
 	    AI). A call past a limit is not run; the agent stops (AgentLimitReached), its variable keeps what it did. The account's monthly budget stops it the same way (models\agent\AgentUsage).
 	The account's policy (models\agent\AgentPolicy): govern() takes the tools it does not allow out of the run, and makes those that must ask ask.
