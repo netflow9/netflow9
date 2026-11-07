@@ -2082,7 +2082,7 @@ class CheckCommand extends \sys\BaseController {
 	    \V::app()->config('http.steps.allow_private', $allow);
 	    foreach($om->find('KnowledgeBase', [ 'aid' => $this->account->_id, 'name' => [ '$regex' => '^Check KB ' ] ]) as $k)
 		$k->delete();
-	    \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection())->deleteMany([ 'job_spec' => [ '$in' => [ '\models\kb\KnowledgeBase::indexJob',
+	    \V::app()->om->deleteMany('Job', [ 'job_spec' => [ '$in' => [ '\models\kb\KnowledgeBase::indexJob',
 		'\models\kb\KnowledgeBase::reindexJob' ] ], 'aid' => $this->account->_id ]);
 	    foreach($files as $fid)
 		$om->findOne('File', [ '_id' => $fid ])?->delete();
@@ -3277,7 +3277,7 @@ class CheckCommand extends \sys\BaseController {
 	};
 	//queued for the daemon (its log: a daemon running may have taken the job already)
 	$queuedLog = fn($exe, $text) => (bool)array_filter((array)($om->findOne('WfExecution', [ '_id' => $exe->_id ])?->log ?? []), fn($l) => str_contains((string)($l['message'] ?? ''), $text));
-	$dropJobs = fn($exe) => \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection())->deleteMany([ 'job_data.exe' => (string)$exe->_id ]);
+	$dropJobs = fn($exe) => \V::app()->om->deleteMany('Job', [ 'job_data.exe' => (string)$exe->_id ]);
 
 	$trigger = $n('c', 'trigger::call', [ 'inputs' => [ [ 'name' => 'who', 'type' => 'text', 'required' => true ], [ 'name' => 'n', 'type' => 'number', 'default' => '2' ],
 	    [ 'name' => 'tags', 'type' => 'list' ] ], 'outputs' => [ [ 'name' => 'greeting' ], [ 'name' => 'missing' ] ] ]);
@@ -5191,7 +5191,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('agent eval: a run whose job is gone is over', [ 'error', 'the daemon stopped working on this test run' ], [ $R::read((string)$goneId, $gwf)['state'], $R::read((string)$goneId, $gwf)['error'] ]);
 	    $otherTrigger = $handCase($gwf, [ 'trigger' => 'trigger::webhook' ]);
 	    $E::start($gwf);
-	    $states = array_column((array)$R::read((string)$R::latest($gwf)['_id'], $gwf)['cases'], 'error');
+	    $states = array_column((array)$R::read((string)($R::ofWorkflow($gwf, 1)[0]['_id'] ?? ''), $gwf)['cases'], 'error');
 	    $this->check('agent eval: a case saved from another trigger does not run, says why', true, (bool)array_filter($states, fn($x) => str_contains((string)$x, 'not the one this test case was saved from')));
 	    $otherTrigger->delete();
 	    $none = $this->workflow('eval none', [ $n('m', 'trigger::manual') ]);
@@ -5637,6 +5637,8 @@ class CheckCommand extends \sys\BaseController {
 		[ str_contains($html, 'Zz O'), !empty($m[1]) && (string)(\models\User::findByResetToken($m[1])->_id ?? '') === (string)$users['a']->_id, $days ]);
 
 	    $ctl = (new \ReflectionClass('\\controllers\\UserController'))->newInstanceWithoutConstructor();
+	    //CLD: 2026-11-07T10:40:00+02:00: the account _init would set (not run here)
+	    $ctl->account = $this->account;
 	    $call = fn($method, ...$args) => (new \ReflectionMethod($ctl, $method))->invoke($ctl, ...$args);
 	    $this->check('users: an active Owner is one; a disabled Owner or a Member is not', [ true, false, false ],
 		[ $call('isActiveOwner', (string)$owner->_id, 'active'), $call('isActiveOwner', (string)$owner->_id, 'disabled'), $call('isActiveOwner', (string)$member->_id, 'active') ]);

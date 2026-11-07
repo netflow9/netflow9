@@ -62,8 +62,7 @@ class WfTestRun extends \sys\BaseModel {
     public static function fresh($run) {
 	if (!$run || !in_array($run['state'] ?? '', self::ACTIVE, true) || empty($run['job']))
 	    return $run;
-	$jobs = \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection());
-	if ($jobs->countDocuments([ '_id' => $run['job'], 'state' => [ '$in' => [ 'new', 'run' ] ] ]))
+	if (\V::app()->om->count('Job', [ '_id' => $run['job'], 'state' => [ '$in' => [ 'new', 'run' ] ] ]))
 	    return $run;
 	$changes = [ 'state' => 'error', 'error' => 'the daemon stopped working on this test run', 'ended_at' => new \MongoDB\BSON\UTCDateTime() ];
 	\V::app()->om->updateOne('WfTestRun', [ '_id' => $run['_id'], 'aid' => $run['aid'], 'state' => [ '$in' => self::ACTIVE ] ], [ '$set' => $changes ]);
