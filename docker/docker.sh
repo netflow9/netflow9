@@ -15,8 +15,8 @@
 #   docker/docker.sh status                                       the containers, the settings in use
 #   docker/docker.sh logs [service...]                            followed (ctrl-c ends)
 #   docker/docker.sh check                                        the check suite in the app container
-#   docker/docker.sh uninstall                                    the containers removed, the volumes (database, config) kept
-#   docker/docker.sh purge                                        the containers and every volume removed: all data gone (asks first)
+#   docker/docker.sh uninstall                                    the containers removed, the data (DATA_DIR: database, config) kept
+#   docker/docker.sh purge                                        the containers and the data (DATA_DIR) removed: all data gone (asks first)
 #--dev: compose.dev.yaml (the working tree mounted, mailpit on 127.0.0.1:8025, the site on 127.0.0.1:8080); --tls: compose.tls.yaml (HTTPS, ssl/);
 #with --dev, Haraka is published on 127.0.0.1:2525 (a server's MTA keeps 25)
 
@@ -147,6 +147,28 @@ in_list() {
 
 EXISTING=0
 
+#CLD: 2026-11-07T17:00:00+02:00: the folders of compose.yaml's mounts in $1: the app's (config, logs, var, tmp, assets) the containers' user's, the database's mongo's own
+#(its entrypoint changes their owner), Haraka's the image's user node's (1000); bounces: Haraka writes, the app reads and removes (both)
+DATA_DIRS=(config logs var tmp assets bounces mongo-data haraka-queue haraka-dkim)
+make_data() {
+    local d uid gid
+    uid=$(get_env NFN_UID)
+    gid=$(get_env NFN_GID)
+    for d in "${DATA_DIRS[@]}"; do
+        mkdir -p "$1/$d"
+    done
+    if [ "$(id -u)" -eq 0 ]; then
+        chown "$uid:$gid" "$1" "$1"/{config,logs,var,tmp,assets,bounces}
+        chown 1000:1000 "$1/haraka-queue" "$1/haraka-dkim"
+    elif [ "$(id -u)" -ne 1000 ]; then
+        #not root: Haraka's folders writable by its user anyway (the keys inside are its own, mode 600)
+        chmod 777 "$1/haraka-queue" "$1/haraka-dkim"
+    fi
+    chmod 700 "$1"
+    chmod 777 "$1/bounces"
+    echo "  data: $1"
+}
+
 setup() {
     local files profiles=() domain owner_uid owner_gid
     local d_dev=0 d_tls=0 d_browser=1 d_mail=1
@@ -198,6 +220,17 @@ setup() {
     owner_gid=$(stat -c %g "$BASE")
     pick_env NFN_UID "$owner_uid" "The containers' user id (the files' owner)"
     pick_env NFN_GID "$owner_gid" "The containers' group id"
+
+    #CLD: 2026-11-07T17:00:00+02:00: the data (database, config, logs, mail) in folders of the user's home, made here with their owners (docker would make them root's)
+    local home data
+    home=$(getent passwd "$(get_env NFN_UID)" | cut -d: -f6 || true)
+    pick_env DATA_DIR "${home:-$BASE}/docker-volumes" "The data's folder (the database, the config, the logs)"
+    data=$(get_env DATA_DIR)
+    case "$data" in
+        /*) ;;
+        *) data="$BASE/$data"; set_env DATA_DIR "$data" ;;
+    esac
+    make_data "$data"
 
     #development: the server's nginx keeps 80 (a production value of 80 changed too)
     if [ "$DEV" -eq 1 ] && [ "$(get_env HTTP_PORT)" = "80" ]; then
@@ -318,14 +351,21 @@ case "$command" in
         need_docker
         need_env
         docker compose down --remove-orphans
-        echo "containers removed; the volumes (database, config, logs) kept: $0 start brings it back"
+        echo "containers removed; the data (database, config, logs in $(get_env DATA_DIR)) kept: $0 start brings it back"
         ;;
     purge)
         need_docker
         need_env
-        read -r -p "remove the containers and every volume (the database, app.env with APP_SECRET, logs)? type yes: " answer
+        read -r -p "remove the containers and every volume, the data's folders too ($(get_env DATA_DIR): the database, app.env with APP_SECRET, logs)? type yes: " answer
         [ "$answer" = "yes" ] || { echo "nothing removed"; exit 1; }
         docker compose down --remove-orphans -v
+        #CLD: 2026-11-07T17:00:00+02:00: the data's folders too (the database's files are mongo's user's: removed from a container, as root there)
+        data=$(get_env DATA_DIR)
+        if [ -n "$data" ] && [ -d "$data" ]; then
+            docker run --rm -u 0 --entrypoint rm -v "$data:/data" mongo:8.3 -rf "${DATA_DIRS[@]/#//data/}"
+            rmdir "$data" 2>/dev/null || true
+            echo "removed: $data"
+        fi
         ;;
     *)
         usage
