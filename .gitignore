@@ -11,16 +11,14 @@
 !/install.sh
 !/README.md
 !/LICENSE
-# CLD: 2026-11-01T19:00:00+02:00: Docker Compose (.env, the settings, is not whitelisted)
+# CLD: 2026-11-01T19:00:00+02:00: Docker Compose: all its files in docker/
 !/docker/
-!/compose.yaml
-!/compose.dev.yaml
-!/compose.tls.yaml
-!/.dockerignore
 
 # --- never commit (secrets / runtime) ---
 public_html/assets/
 app.env
+# CLD: 2026-11-07T16:00:00+02:00: the compose settings (passwords), next to docker/compose.yaml
+/docker/.env
 # an installation's own settings (plugins.json, mcp.json, next to app.env, are not whitelisted above)
 *.local.php
 # plugins kept in their own repositories, cloned into app/plugins/ (each its own git repository): MultiTenant (toolmk/multitenant)

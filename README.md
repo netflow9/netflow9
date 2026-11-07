@@ -101,17 +101,17 @@ On any Linux host with Docker Engine and its Compose plugin (2.24 or later); the
 
 ```bash
 git clone --recurse-submodules https://github.com/toolmk/rail22-core.git && cd rail22
-scripts/docker.sh install                         # .env (random passwords, your uid / gid), build, start; then open the site: /setup
+docker/docker.sh install                          # asks (profiles, ports, ...), docker/.env, build, start; then open the site: /setup
 ```
 
-Or step by step: `scripts/docker.sh setup [--dev] [--tls] [--no-browser] [--no-mail]` writes `.env` (the web browser and inbound mail are on unless left out; `MAIL_INBOUND_DOMAIN` defaults to this host's name) (an existing one keeps its passwords; the compose files go in `COMPOSE_FILE`, so plain `docker compose` uses the same ones), then `build`, `start`; also `stop`, `restart`, `status`, `logs`, `check`, `uninstall` (volumes kept), `purge` (all data). By hand: `cp docker/env.example .env`, fill it in, `docker compose build && docker compose up -d`.
+Or step by step: `docker/docker.sh setup [--[no-]dev] [--[no-]tls] [--[no-]browser] [--[no-]mail]` asks what the options do not say and writes `docker/.env` (an existing one gives the defaults and keeps its passwords; the compose files go in `COMPOSE_FILE`, so plain `docker compose` in `docker/` uses the same ones), then `build`, `start`; also `stop`, `restart`, `status`, `logs`, `check`, `uninstall` (volumes kept), `purge` (all data). By hand: `cd docker && cp env.example .env`, fill it in, `docker compose build && docker compose up -d`.
 
 - Containers: `mongo` (8.3, sign-in required; its users from `scripts/mongo_users.js`), `app` (PHP-FPM, AlmaLinux 9 + Remi, the installer's packages), `daemon`, `web` (nginx, port 80); profiles `browser` (`playwright`: the AI steps' web browser, with its own firewall table) and `mail` (`haraka`, port 25; `127.0.0.1:2525` with `compose.dev.yaml`), in `COMPOSE_PROFILES`: both on by default
 - `app.env`, `plugins.json` and `mcp.json` live in the `config` volume (`NFN_CONFIG_DIR`); keep a copy of `app.env` (`APP_SECRET`)
 - The Services page is read-only there: `docker compose restart daemon`; the console: `docker compose exec app app/v <command>`
 - Upgrade: `git pull && git submodule update --init && docker compose build && docker compose up -d` (the app adds the new indexes at its start)
 - HTTPS in the container: `-f compose.tls.yaml` (`ssl/ssl.crt`, `ssl/ssl.key`); development: `-f compose.dev.yaml` (the working tree mounted, mailpit, the site on `127.0.0.1:8080`)
-- Files: `compose*.yaml`, `docker/` (the images, `env.example`), `.dockerignore`, `scripts/docker.sh`. More: the docs, Self-hosting > Docker Compose
+- Files: all in `docker/` (`compose*.yaml`, the images and their `Dockerfile.dockerignore`, `env.example`, `.env`, `docker.sh`); `docker compose` commands run there. More: the docs, Self-hosting > Docker Compose
 
 ### By hand (other systems)
 

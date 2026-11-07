@@ -1,0 +1,3 @@
+# CLD: 2026-11-07T16:00:00+02:00: the playwright image's build context (the repository's folder): only what its Dockerfile copies
+*
+!docker/playwright

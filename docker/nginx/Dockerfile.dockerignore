@@ -1,0 +1,5 @@
+# CLD: 2026-11-07T16:00:00+02:00: the web image's build context (the repository's folder): only what its Dockerfile copies
+*
+!public_html
+!docker/nginx
+public_html/assets/

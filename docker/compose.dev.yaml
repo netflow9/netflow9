@@ -6,26 +6,26 @@
 services:
   app:
     volumes:
-      - ./app:/srv/rail22/app:ro
-      - ./public_html:/srv/rail22/public_html:ro
-      - ./scripts:/srv/rail22/scripts:ro
+      - ../app:/srv/rail22/app:ro
+      - ../public_html:/srv/rail22/public_html:ro
+      - ../scripts:/srv/rail22/scripts:ro
     environment:
       NFN_SETUP_SMTP_HOST: mailpit
       NFN_SETUP_SMTP_PORT: "1025"
   daemon:
     volumes:
-      - ./app:/srv/rail22/app:ro
-      - ./public_html:/srv/rail22/public_html:ro
-      - ./scripts:/srv/rail22/scripts:ro
+      - ../app:/srv/rail22/app:ro
+      - ../public_html:/srv/rail22/public_html:ro
+      - ../scripts:/srv/rail22/scripts:ro
   web:
     ports: !override
       - "127.0.0.1:${HTTP_PORT:-8080}:80"
     volumes:
-      - ./public_html:/srv/rail22/public_html:ro
+      - ../public_html:/srv/rail22/public_html:ro
   # CLD: 2026-11-01T23:50:00+02:00: the mail profile is on by default: here on 2525, local only (port 25 is the server's MTA's)
   haraka:
     ports: !override
-      - "127.0.0.1:${SMTP_PORT_DEV:-2525}:25"
+      - "127.0.0.1:${MAIL_PORT:-2525}:25"
   mailpit:
     image: axllent/mailpit:latest
     restart: unless-stopped
