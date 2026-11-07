@@ -82,11 +82,6 @@ class LoginThrottle extends \sys\BaseModel {
 	return 'reset_email:' . mb_strtolower(trim((string)$email));
     }
 
-    //the record's collection (counters are changed atomically, not through save())
-    protected static function coll() {
-	return \V::app()->mongo->selectCollection(\V::app()->mongo->database, static::$collection);
-    }
-
     protected static function limits($key) {
 	return self::LIMITS[explode(':', $key, 2)[0]];
     }
@@ -96,7 +91,8 @@ class LoginThrottle extends \sys\BaseModel {
     }
 
     public static function lockedFor($key) {
-	$doc = static::coll()->findOne([ '_id' => $key ]);
+	//counters are changed atomically, through ObjectManager's updates, not through save()
+	$doc = \V::app()->om->findOne('LoginThrottle', [ '_id' => $key ], [ 'arrays' => true ]);
 	if (empty($doc['locked_until']))
 	    return 0;
 	return max(0, $doc['locked_until']->toDateTime()->getTimestamp() - time());
@@ -105,16 +101,12 @@ class LoginThrottle extends \sys\BaseModel {
     public static function fail($key) {
 	[ $max, $window, $lock ] = static::limits($key);
 	$now = time();
-	$coll = static::coll();
 
 	//in the current window: one more; else a new window
-	$doc = $coll->findOneAndUpdate(
-	    [ '_id' => $key, 'window_start' => [ '$gte' => static::date($now - $window) ] ],
-	    [ '$inc' => [ 'failures' => 1 ] ],
-	    [ 'returnDocument' => \MongoDB\Operation\FindOneAndUpdate::RETURN_DOCUMENT_AFTER ]
-	);
+	$doc = \V::app()->om->findOneAndUpdate('LoginThrottle', [ '_id' => $key, 'window_start' => [ '$gte' => static::date($now - $window) ] ], [ '$inc' => [ 'failures' => 1 ] ],
+	    [ 'arrays' => true ]);
 	if (empty($doc)) {
-	    $coll->replaceOne([ '_id' => $key ], [ 'failures' => 1, 'window_start' => static::date($now), 'expires_at' => static::date($now + $window) ], [ 'upsert' => true ]);
+	    \V::app()->om->replaceOne('LoginThrottle', [ '_id' => $key ], \V::app()->om->create('LoginThrottle', [ 'failures' => 1, 'window_start' => static::date($now), 'expires_at' => static::date($now + $window) ]), [ 'upsert' => true ]);
 	    $failures = 1;
 	} else {
 	    $failures = (int)$doc['failures'];
@@ -124,7 +116,7 @@ class LoginThrottle extends \sys\BaseModel {
 	    return false;
 
 	//the limit: locked; the count starts again after the lock
-	$coll->updateOne([ '_id' => $key ], [ '$set' => [
+	\V::app()->om->updateOne('LoginThrottle', [ '_id' => $key ], [ '$set' => [
 	    'failures' => 0,
 	    'window_start' => static::date($now + $lock),
 	    'locked_until' => static::date($now + $lock),
@@ -134,7 +126,7 @@ class LoginThrottle extends \sys\BaseModel {
     }
 
     public static function clear($key) {
-	static::coll()->deleteOne([ '_id' => $key ]);
+	\V::app()->om->deleteOne('LoginThrottle', [ '_id' => $key ]);
     }
 
     //"Try again in N minutes" for $seconds

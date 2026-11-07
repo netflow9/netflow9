@@ -3936,7 +3936,7 @@ class CheckCommand extends \sys\BaseController {
 	    $clear = function() use ($aiServer) {
 		@unlink($aiServer['log']);
 	    };
-	    $audit = fn($exe) => $exe ? iterator_to_array($coll('audit_log')->find([ 'aid' => $account->_id, 'execution' => (string)$exe->_id, 'action' => 'ai.tool' ], [ 'sort' => [ 'seq' => 1 ], 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ]), false) : [];
+	    $audit = fn($exe) => $exe ? \V::app()->om->find('AuditLog', [ 'aid' => $account->_id, 'execution' => (string)$exe->_id, 'action' => 'ai.tool' ], [ 'arrays' => true, 'sort' => [ 'seq' => 1 ] ]) : [];
 	    $statuses = fn($exe) => array_map(fn($a) => [ $a['agent']['tool'], $a['agent']['access'], $a['agent']['status'] ], $audit($exe));
 	    $list = [ 'fgt_addresses_list', [] ];
 	    $block = fn($ip) => [ 'fgt_addresses_block', [ 'ips' => $ip, 'group' => 'Blocked' ] ];
@@ -4176,13 +4176,13 @@ class CheckCommand extends \sys\BaseController {
 	    $exe = $decide($exe, [ 'call0' => 'reject', 'comment' => 'no' ]);
 	    $exe2 = $start('lemonade', [ [ $list ], [ $list ] ], [ 'maxToolCalls' => 1 ]);
 	    $this->check('agent guard: audit: rejected, and stopped by a limit', [ 'rejected', 'stopped by a limit' ], [ $statuses($exe)[1][2] ?? null, $statuses($exe2)[1][2] ?? null ]);
-	    $this->check('agent guard: audit: the filter of the log (action `ai.tool`) finds only the agents\' entries', 0, $coll('audit_log')->countDocuments([ 'aid' => $account->_id, 'action' => 'ai.tool', 'agent' => [ '$exists' => false ] ]));
+	    $this->check('agent guard: audit: the filter of the log (action `ai.tool`) finds only the agents\' entries', 0, \V::app()->om->count('AuditLog', [ 'aid' => $account->_id, 'action' => 'ai.tool', 'agent' => [ '$exists' => false ] ]));
 	    $this->check('agent guard: audit: Agent action among the log\'s actions', 'Agent action', \models\AuditLog::ACTIONS['ai.tool']);
 	    \models\AuditLog::$recordAgentCalls = false;
-	    $count = $coll('audit_log')->countDocuments([ 'aid' => $account->_id, 'action' => 'ai.tool' ]);
+	    $count = \V::app()->om->count('AuditLog', [ 'aid' => $account->_id, 'action' => 'ai.tool' ]);
 	    $start('lemonade', [ [ $list ] ], []);
 	    \models\AuditLog::$recordAgentCalls = true;
-	    $this->check('agent guard: audit: the check suite\'s other suites write nothing in a real account\'s log', $count, $coll('audit_log')->countDocuments([ 'aid' => $account->_id, 'action' => 'ai.tool' ]));
+	    $this->check('agent guard: audit: the check suite\'s other suites write nothing in a real account\'s log', $count, \V::app()->om->count('AuditLog', [ 'aid' => $account->_id, 'action' => 'ai.tool' ]));
 
 	    // ---- masking
 	    $secret = [ 'ana.pop@firma.ro', '+40 721 234 567', 'RO49 AAAA 1B31 0075 9384 0000' ];
@@ -4240,8 +4240,8 @@ class CheckCommand extends \sys\BaseController {
 	    $coll('agent_usage')->deleteMany([ 'aid' => $account->_id ]);
 	    $coll(\models\wf\WfTask::_collection())->deleteMany([ 'aid' => $account->_id ]);
 	    //this account's own sealed entries: the log's class never deletes
-	    $coll('audit_log')->deleteMany([ 'aid' => $account->_id ]);
-	    $coll('audit_seal')->deleteOne([ '_id' => $account->_id ]);
+	    \V::app()->om->deleteMany('AuditLog', [ 'aid' => $account->_id ]);
+	    \V::app()->om->deleteOne('AuditSeal', [ '_id' => $account->_id ]);
 	    $coll('execution_log')->deleteMany([ 'aid' => $account->_id ]);
 	    $account->delete();
 	    [ $this->account, $this->project ] = [ $realAccount, $realProject ];
@@ -4662,9 +4662,8 @@ class CheckCommand extends \sys\BaseController {
 	    $mine = $say($begin($ana), 'Hi' . $script([ [ [ 'recall', [ 'query' => 'email' ] ] ] ]));
 	    $theirs = $say($begin($bob), 'Hi' . $script([ [ [ 'recall', [ 'query' => 'email' ] ] ] ]));
 	    $this->check('agent chat: Each person\'s own: Ana finds it in a new conversation, Bob does not', [ true, false ], [ str_contains((string)$mine?->getVariable('ai')['text'], 'prefers answers'), str_contains((string)$theirs?->getVariable('ai')['text'], 'prefers answers') ]);
-	    $auditColl = \V::app()->mongo->selectCollection(\models\AuditLog::_database(), \models\AuditLog::_collection());
-	    $this->check('agent chat: a tool call in a conversation is in the audit log, with the run that made it', [ 'write', 'ok' ], (function() use ($auditColl, $account, $one) {
-		$entry = $auditColl->findOne([ 'aid' => $account->_id, 'action' => 'ai.tool', 'execution' => (string)$one->_id, 'name' => 'remember' ], [ 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ]);
+	    $this->check('agent chat: a tool call in a conversation is in the audit log, with the run that made it', [ 'write', 'ok' ], (function() use ($account, $one) {
+		$entry = \V::app()->om->findOne('AuditLog', [ 'aid' => $account->_id, 'action' => 'ai.tool', 'execution' => (string)$one->_id, 'name' => 'remember' ], [ 'arrays' => true ]);
 		return [ $entry['agent']['access'] ?? null, $entry['agent']['status'] ?? null ];
 	    })());
 
@@ -5004,7 +5003,7 @@ class CheckCommand extends \sys\BaseController {
 		$again = $x->getMessage();
 	    }
 	    $this->check('agent eval: a test\'s execution is not run again, nor saved as a case', 'this execution is a test: run the tests again', $again);
-	    $audited = fn($exe) => array_map(fn($row) => $row['name'], iterator_to_array(\V::app()->mongo->selectCollection(\models\AuditLog::_database(), \models\AuditLog::_collection())->find([ 'aid' => $account->_id, 'action' => \models\AuditLog::AGENT_ACTION, 'execution' => (string)$exe->_id ], [ 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ]), false));
+	    $audited = fn($exe) => array_map(fn($row) => $row['name'], \V::app()->om->find('AuditLog', [ 'aid' => $account->_id, 'action' => \models\AuditLog::AGENT_ACTION, 'execution' => (string)$exe->_id ], [ 'arrays' => true ]));
 	    $this->check('agent eval: the source run\'s tool calls are in the audit log; recorded results are not agent actions', [ [ 'insert_rows', 'query_table' ], [] ], [ (function($l) { sort($l); return $l; })($audited($source)), $audited($test) ]);
 
 	    // ---- real read tools
@@ -6120,7 +6119,7 @@ class CheckCommand extends \sys\BaseController {
     }
 
     //CLD: 2026-10-21T10:00:00+03:00: LDAP: BER and filters, the clients (each driver PHP has here: the built-in one, and the ldap extension's
-    //when it is loaded) against the test server (app/tests/LdapTestServer.php: plain + StartTLS, LDAPS; a certificate made here with openssl), the LDAP
+    //when it is loaded) against the test server (app/commands/tests/LdapTestServer.php: plain + StartTLS, LDAPS; a certificate made here with openssl), the LDAP
     //sign-in (in an account made for the checks, removed afterwards) and the LDAP step
     //CLD: 2026-10-21T20:10:00+03:00: the account guard of sys\ObjectManager (web requests: an account's objects only, a query for another account refused, acrossAccounts,
     //global models and the console not limited) and the sign-in of a name used in two accounts (sys\Identity::authenticate: the password picks the user, several fit: choices).
@@ -6207,17 +6206,14 @@ class CheckCommand extends \sys\BaseController {
     //client's address (sys\http\Request: X-Forwarded-For only from a trusted proxy). Entries are written for an account id made up here (removed at the end, with its seal)
     private function suiteAudit() {
 	$A = \models\AuditLog::class;
-	$mongo = \V::app()->mongo;
-	$coll = $mongo->selectCollection($A::_database(), $A::_collection());
-	$seal = $mongo->selectCollection($A::_database(), $A::SEAL_COLLECTION);
+	$om = \V::app()->om;
 	$aid = new \MongoDB\BSON\ObjectId();
-	$typeMap = [ 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ];
 	//AuditLog::write / seal (protected; record() needs a web request)
 	$write = \Closure::bind(fn($details) => static::write('update', null, null, [ 'aid' => $aid, 'user' => new \MongoDB\BSON\ObjectId(), 'user_name' => 'Check',
 	    'ip' => '203.0.113.9', 'user_agent' => 'check', 'changes' => [ [ 'key' => 'name', 'label' => 'Name', 'before' => 'a', 'after' => 1.5 ], [ 'key' => 'x', 'label' => 'X', 'masked' => true ] ],
 	    'details' => $details ]), null, $A);
 	$reseal = \Closure::bind(fn($id) => static::seal($id), null, $A);
-	$doc = fn($seq) => $coll->findOne([ 'aid' => $aid, 'seq' => $seq ], $typeMap);
+	$doc = fn($seq) => $om->findOne('AuditLog', [ 'aid' => $aid, 'seq' => $seq ], [ 'arrays' => true ]);
 	$problems = fn() => $A::verify($aid)['problems'];
 	try {
 	    foreach(range(1, 5) as $i)
@@ -6227,25 +6223,25 @@ class CheckCommand extends \sys\BaseController {
 		[ array_map(fn($i) => $doc($i)['seq'] ?? null, range(1, 5)), (bool)preg_match('/^[a-f0-9]{64}$/', $doc(3)['mac'] ?? ''), $r['entries'], $r['last'], $r['problems'] ]);
 
 	    $two = $doc(2);
-	    $coll->updateOne([ '_id' => $two['_id'] ], [ '$set' => [ 'ip' => '192.0.2.1' ] ]);
+	    $om->updateOne('AuditLog', [ '_id' => $two['_id'] ], [ '$set' => [ 'ip' => '192.0.2.1' ] ]);
 	    $changed = $problems();
-	    $coll->replaceOne([ '_id' => $two['_id'] ], $two);
+	    $om->replaceOne('AuditLog', [ '_id' => $two['_id'] ], $om->create('AuditLog', $two));
 	    $three = $doc(3);
-	    $coll->deleteOne([ '_id' => $three['_id'] ]);
+	    $om->deleteOne('AuditLog', [ '_id' => $three['_id'] ]);
 	    $removed = $problems();
-	    $coll->insertOne($three);
+	    $om->insertOne('AuditLog', $om->create('AuditLog', $three));
 	    $five = $doc(5);
-	    $coll->deleteOne([ '_id' => $five['_id'] ]);
+	    $om->deleteOne('AuditLog', [ '_id' => $five['_id'] ]);
 	    $newest = $problems();
-	    $coll->insertOne($five);
-	    $coll->updateOne([ '_id' => $doc(4)['_id'] ], [ '$unset' => [ 'mac' => '' ] ]);
+	    $om->insertOne('AuditLog', $om->create('AuditLog', $five));
+	    $om->updateOne('AuditLog', [ '_id' => $doc(4)['_id'] ], [ '$unset' => [ 'mac' => '' ] ]);
 	    $noMac = $problems();
 	    $reseal($doc(4)['_id']);
 	    $copy = $doc(1);
 	    $copy['_id'] = new \MongoDB\BSON\ObjectId();
-	    $coll->insertOne($copy);
+	    $om->insertOne('AuditLog', $om->create('AuditLog', $copy));
 	    $twice = $problems();
-	    $coll->deleteOne([ '_id' => $copy['_id'] ]);
+	    $om->deleteOne('AuditLog', [ '_id' => $copy['_id'] ]);
 	    $this->check('audit: verify finds a changed entry, a removed one, the newest removed, one without a MAC, a copy; and none once restored', [
 		[ "entry 2 ({$two['_id']}) was changed or not written by the app (MAC)" ], [ 'entry 3 is missing' ], [ 'entry 5 is missing' ],
 		[ 'entry 4 (' . $doc(4)['_id'] . ') has no MAC' ], [ "entry 1 ({$copy['_id']}) was changed or not written by the app (MAC)", "entry 1 ({$copy['_id']}) is there twice" ], [] ],
@@ -6255,18 +6251,18 @@ class CheckCommand extends \sys\BaseController {
 	    $days = fn($v) => $A::retentionDays((object)[ 'audit_log_retention' => $v ]);
 	    $this->check('audit: the retention is 1 year at least (30 days -> 365; forever and 2 years kept)', [ 365, 365, 0, 0, 730 ], [ $days('30'), $days('90'), $days('0'), $days(null), $days('730') ]);
 	    foreach([ 1 => 400, 2 => 400, 3 => 100 ] as $seq => $age) {
-		$coll->updateOne([ '_id' => $doc($seq)['_id'] ], [ '$set' => [ 'created_at' => new \MongoDB\BSON\UTCDateTime((time() - $age * 86400) * 1000) ] ]);
+		$om->updateOne('AuditLog', [ '_id' => $doc($seq)['_id'] ], [ '$set' => [ 'created_at' => new \MongoDB\BSON\UTCDateTime((time() - $age * 86400) * 1000) ] ]);
 		$reseal($doc($seq)['_id']);
 	    }
 	    $A::prune((object)[ '_id' => $aid, 'audit_log_retention' => '30' ]);
 	    $r = $A::verify($aid);
-	    $kept = array_map(fn($d) => $d['seq'], iterator_to_array($coll->find([ 'aid' => $aid ], [ 'sort' => [ 'seq' => 1 ] ]), false));
-	    $coll->deleteOne([ '_id' => $doc(3)['_id'] ]);
+	    $kept = array_map(fn($d) => $d['seq'], $om->find('AuditLog', [ 'aid' => $aid ], [ 'arrays' => true, 'sort' => [ 'seq' => 1 ] ]));
+	    $om->deleteOne('AuditLog', [ '_id' => $doc(3)['_id'] ]);
 	    $this->check('audit: the retention set to 30 days removes the entries older than 1 year only (100 days kept); verify: removed by the retention, not missing; then one removed',
 		[ [ 3, 4, 5 ], 2, [], [ 'entry 3 is missing' ] ], [ $kept, $r['pruned'], $r['problems'], $problems() ]);
 	} finally {
-	    $coll->deleteMany([ 'aid' => $aid ]);
-	    $seal->deleteOne([ '_id' => $aid ]);
+	    $om->deleteMany('AuditLog', [ 'aid' => $aid ]);
+	    $om->deleteOne('AuditSeal', [ '_id' => $aid ]);
 	}
 
 	//the client's address
@@ -9118,7 +9114,7 @@ class CheckCommand extends \sys\BaseController {
 
     //the test server started on dir.json of $dir: [ process, port ]
     private static function ldapServer($dir, array $args) {
-	$cmd = array_merge([ PHP_BINARY, BASE . '/app/tests/LdapTestServer.php', "{$dir}/dir.json" ], $args);
+	$cmd = array_merge([ PHP_BINARY, BASE . '/app/commands/tests/LdapTestServer.php', "{$dir}/dir.json" ], $args);
 	$proc = proc_open($cmd, [ 1 => [ 'pipe', 'w' ], 2 => [ 'file', "{$dir}/server.err", 'a' ] ], $pipes);
 	stream_set_timeout($pipes[1], 10);
 	$line = (string)fgets($pipes[1]);

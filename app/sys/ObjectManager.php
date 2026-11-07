@@ -590,6 +590,35 @@ class ObjectManager {
 	return $o;
     }
 
+    //CLD: 2026-11-07T10:37:49+02:00: new: replaces ONE object of $objectName matching $query by $model's data as save() stores it (storageDocument; no created_at
+    //added); options: upsert. No model hooks run. Returns the number replaced or inserted (0 / 1). _id as in updateOne
+    public function replaceOne($objectName, array $query, $model, array $options = []) {
+	$objDef = $this->getObjectDef($objectName);
+	if (empty($objDef))
+	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
+
+	$query = self::keyIdQuery($query, __METHOD__);
+	if ($this->isVariant($objectName))
+	    $query['__variant'] = $objectName;
+
+	$objectClass = $objDef['class'] ?? null;
+	if (empty($objectClass))
+	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
+
+	//the account guard (accountQuery)
+	$query = $this->accountQuery($objectName, $objectClass, $query, __METHOD__);
+	$collection = $objDef['collection'] ?? $objectClass::_collection();
+	if (empty($collection))
+	    throw new \ErrorException("Unknown collection for: $objectName");
+	$database = $objDef['database'] ?? $objectClass::_database();
+
+	$doc = $model->storageDocument($model->data());
+	if ($this->isVariant($objectName))
+	    $doc['__variant'] = $objectName;
+	$result = \V::app()->mongo->selectCollection($database, $collection)->replaceOne($query, $doc, $options);
+	return $result->getModifiedCount() + (int)$result->getUpsertedCount();
+    }
+
     //CLD: 2026-11-07T10:15:41+02:00: new: stores new object $model (a model of $objectName) as insertMany does: its data as save() stores it (storageDocument), with
     //created_at; no model hooks run (no beforeSave, no audit entry). For writes too frequent for save() (e.g. a conversation's messages). Returns its _id (the model's own,
     //when it has one)

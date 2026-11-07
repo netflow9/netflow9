@@ -3,7 +3,7 @@
 /*
 
     the BER encoding of LDAP (RFC 4511: the subset of X.690 it uses: definite lengths, primitive strings) and the search filters
-    (RFC 4515), for the pure-PHP client (LdapPhpClient) and the check suite's test server (tests/LdapTestServer.php).
+    (RFC 4515), for the pure-PHP client (LdapPhpClient) and the check suite's test server (commands/tests/LdapTestServer.php).
 
     encode:   LdapBer::seq(LdapBer::int(1), LdapBer::str('x'), ...); tlv($tag, $content) for any tag (0x60 = [APPLICATION 0] constructed, 0x80 = [0] primitive, ...)
     decode:   [ $tag, $content ] = LdapBer::read($data, $offset) (one element, $offset moved past it); children($content) = its elements; messageLength($buffer)

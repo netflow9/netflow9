@@ -77,6 +77,11 @@ class SysObjects {
 		'class' => 'models\user\LoginThrottle',
 		'auditLog' => false,
 	    ],
+	    //CLD: 2026-11-07T10:37:49+02:00: the web sessions' records (sys\Session)
+	    'WebSession' => [
+		'class' => 'models\user\WebSession',
+		'auditLog' => false,
+	    ],
 
 
 	    'ObjectDef' => [
@@ -108,6 +113,11 @@ class SysObjects {
 	    ],
 	    'AuditLog' => [
 		'class' => 'models\AuditLog',
+		'auditLog' => false,
+	    ],
+	    //CLD: 2026-11-07T10:37:49+02:00: the audit log's seal per account (AuditLog::nextSeq, prune, verify)
+	    'AuditSeal' => [
+		'class' => 'models\AuditSeal',
 		'auditLog' => false,
 	    ],
 	    //CLD: 2026-10-11T17:45:25+03:00: the execution log (never recorded in either log)
