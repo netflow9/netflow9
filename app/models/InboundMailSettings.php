@@ -42,14 +42,13 @@ class InboundMailSettings extends \sys\BaseModel {
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //the prefix of account $aid; an account without settings yet gets them saved now (Haraka reads them), with DEFAULT_PREFIX
-    //CLD: 2026-10-21T11:30:00+03:00: found / created here
-    //CLD: 2026-11-07T21:37:42+02:00: new settings start with DEFAULT_PREFIX; the old account field mail_prefix is no longer read
+    //the prefix of account $aid; an account without settings yet gets them saved now (Haraka reads them),
+    // with DEFAULT_PREFIX found / created here
     public static function prefixOf($aid) {
-	$om = \V::app()->om;
-	$settings = $om->findOne('InboundMailSettings', [ 'aid' => $om->to_oid($aid) ]);
+	$aid = \V::app()->om->to_oid($aid);
+	$settings = \V::app()->om->findOne('InboundMailSettings', [ 'aid' => $aid ]);
 	if (!$settings) {
-	    $settings = $om->create('InboundMailSettings', [ 'aid' => $om->to_oid($aid), 'prefix' => self::DEFAULT_PREFIX ]);
+	    $settings = \V::app()->om->create('InboundMailSettings', [ 'aid' => $aid, 'prefix' => self::DEFAULT_PREFIX ]);
 	    if (!$settings->validates() || !$settings->save())
 		return '';
 	}
