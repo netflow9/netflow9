@@ -121,13 +121,12 @@ class Job extends \sys\BaseModel {
 	    'created_at' => new \MongoDB\BSON\UTCDateTime(),
 	];
 	//CLD: 2026-10-08T22:47:34+03:00: options['key']: null when an event with this key already exists (it is not queued again)
-	$coll = \V::app()->mongo->selectCollection(self::_database(), self::_collection());
 	if (!empty($options['key'])) {
 	    $doc['key'] = (string)$options['key'];
 	    //CLD: 2026-10-12T12:20:20+03:00: the unique `key` index (one job per key) comes from `v sys::indexes`
 	}
 	try {
-	    $id = $coll->insertOne($doc)->getInsertedId();
+	    $id = \V::app()->om->insertOne('Job', \V::app()->om->create('Job', $doc));
 	} catch (\MongoDB\Driver\Exception\BulkWriteException $e) {
 	    if (!empty($doc['key']) && $e->getCode() == 11000)
 		return null;

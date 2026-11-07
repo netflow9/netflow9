@@ -439,11 +439,10 @@ class WfExecution extends \sys\BaseModel {
 	    return false;
 	$this->state = 'cancel';
 
-	$jobs = \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection());
 	$query = [ 'job_data.exe' => (string)$this->_id, 'job_spec' => [ '$in' => [ '\\util\\Scheduler::start', '\\util\\Scheduler::resume' ] ], 'state' => [ '$in' => [ 'new', 'run' ] ] ];
-	foreach($jobs->find($query, [ 'projection' => [ '_id' => 1, 'state' => 1 ] ]) as $job) {
+	foreach(\V::app()->om->find('Job', $query, [ 'arrays' => true, 'projection' => [ '_id' => 1, 'state' => 1 ] ]) as $job) {
 	    //removed first: the daemon does not queue it again when its worker is stopped
-	    $jobs->deleteOne([ '_id' => $job['_id'] ]);
+	    \V::app()->om->deleteOne('Job', [ '_id' => $job['_id'] ]);
 	    if ($job['state'] === 'run')
 		\models\Job::kill((string)$job['_id']);
 	}

@@ -435,7 +435,8 @@ class ObjectManager {
 
     //changes every object of $objectName matching $query with the MongoDB update $update (operators, or an aggregation pipeline: a list); the objects
     //are not loaded, so no model hooks or checks run (e.g. re-dating immutable log entries). Returns the number of objects changed
-    public function updateMany($objectName, array $query, array $update) {
+    //CLD: 2026-11-07T10:25:29+02:00: + $options (the driver's, e.g. writeConcern)
+    public function updateMany($objectName, array $query, array $update, array $options = []) {
 	$objDef = $this->getObjectDef($objectName);
 	if (empty($objDef))
 	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
@@ -458,7 +459,7 @@ class ObjectManager {
 	    throw new \ErrorException("Unknown collection for: $objectName");
 	$database = $objDef['database'] ?? $objectClass::_database();
 
-	return \V::app()->mongo->selectCollection($database, $collection)->updateMany($query, $update)->getModifiedCount();
+	return \V::app()->mongo->selectCollection($database, $collection)->updateMany($query, $update, $options)->getModifiedCount();
     }
 
     //changes ONE object of $objectName matching $query with the MongoDB update $update (as updateMany); options: upsert. Returns the number changed or

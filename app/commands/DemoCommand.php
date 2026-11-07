@@ -188,7 +188,7 @@ class DemoCommand extends \sys\BaseController {
 	    echo "run: {$names[$who]}, {$amount} EUR: {$exe->state}" . ($exe->error ? " ({$exe->error})" : '') . "\n";
 	}
 	//the emails of the runs still queued (to @northwind.example)
-	$left = $db->selectCollection(\models\Job::_collection())->deleteMany([ 'aid' => $account->_id, 'job_spec' => '\util\EmailSend::deliver', 'state' => 'new' ])->getDeletedCount();
+	$left = \V::app()->om->deleteMany('Job', [ 'aid' => $account->_id, 'job_spec' => '\util\EmailSend::deliver', 'state' => 'new' ]);
 
 	//saved views
 	foreach([ [ 'Approved over 300 EUR', [ [ 'field' => 'status', 'op' => 'eq', 'value' => 'approved' ], [ 'field' => 'amount', 'op' => 'gt', 'value' => '300' ] ] ],

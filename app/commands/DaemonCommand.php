@@ -21,9 +21,6 @@ class DaemonCommand extends \sys\BaseController {
     //the config
     public $config = [];
 
-    //the jobs collection (raw)
-    public $jobs_coll = null;
-
     //the worker command
     public $worker_cmd = '';
 
@@ -92,7 +89,7 @@ class DaemonCommand extends \sys\BaseController {
     protected function reap_job($jid, $reason) {
 	if (empty($jid))
 	    return;
-	$job = $this->jobs_coll->findOne([ '_id' => \V::app()->om->to_oid($jid), 'state' => 'run' ]);
+	$job = \V::app()->om->findOne('Job', [ '_id' => $jid, 'state' => 'run' ], [ 'arrays' => true ]);
 	if (empty($job))
 	    return;
 
@@ -101,7 +98,7 @@ class DaemonCommand extends \sys\BaseController {
 	//a job given up (its worker died or timed out 3 times) in the account's execution log
 	if ($failed && !empty($job['aid']))
 	    \models\ExecutionLog::record('job.failed', null, "job {$jid} (" . ($job['job_spec'] ?? '') . "): {$reason}, failed after 3 runs", [], null, $job['aid']);
-	$this->jobs_coll->updateOne(
+	\V::app()->om->updateOne('Job',
 	    [ '_id' => $job['_id'], 'state' => 'run' ],
 	    [ '$set' => $failed
 		? [ 'state' => 'fail', 'error' => $reason, 'finished_at' => new \MongoDB\BSON\UTCDateTime() ]
@@ -191,8 +188,8 @@ class DaemonCommand extends \sys\BaseController {
 	    case 'RELEASE':
 		\V::app()->log->warn("WMGR: worker {$pid} released job {$jid}");
 		if ($jid !== '' && \util\Validator::rule('oid', $jid))
-		    $this->jobs_coll->updateOne(
-			[ '_id' => \V::app()->om->to_oid($jid), 'state' => 'run', 'worker_pid' => $pid ],
+		    \V::app()->om->updateOne('Job',
+			[ '_id' => $jid, 'state' => 'run', 'worker_pid' => $pid ],
 			[ '$set' => [ 'state' => 'new', 'worker_pid' => null ] ]
 		    );
 		//fall through: the worker is free
@@ -274,7 +271,7 @@ class DaemonCommand extends \sys\BaseController {
 
 		//claim the oldest allowed event for this worker
 		$pid = $idle_pids[0];
-		$job = $this->jobs_coll->findOneAndUpdate(
+		$job = \V::app()->om->findOneAndUpdate('Job',
 		    $this->allowed_jobs_query(),
 		    [
 			'$set' => [
@@ -285,6 +282,8 @@ class DaemonCommand extends \sys\BaseController {
 			'$inc' => [ 'run_count' => 1 ],
 		    ],
 		    [
+			'arrays' => true,
+			'returnDocument' => 'before',
 			'sort' => [ '_id' => 1 ],
 			'writeConcern' => new \MongoDB\Driver\WriteConcern(\MongoDB\Driver\WriteConcern::MAJORITY),
 		    ]
@@ -322,7 +321,7 @@ class DaemonCommand extends \sys\BaseController {
 	if ($room <= 0 || $this->stopping)
 	    return;
 	$starting = count(array_filter($this->workers, fn($w) => $w['state'] == 'START'));
-	$waiting = $this->jobs_coll->countDocuments($this->allowed_jobs_query(), [ 'limit' => $room + $starting ]);
+	$waiting = \V::app()->om->count('Job', $this->allowed_jobs_query(), [ 'limit' => $room + $starting ]);
 	for ($i = 0; $i < min($room, $waiting - $starting); $i++) {
 	    if (!$this->start_worker())
 		break;
@@ -547,14 +546,11 @@ class DaemonCommand extends \sys\BaseController {
 	    $this->worker_cmd .= ' --debug';
 
 
-	//jobs collection; use raw database access
-	$this->jobs_coll = \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection());
-
 	//show this process title
 	cli_set_process_title('[' . \V::app()->config('app.name') . ' Daemon ' . gethostname() . ']');
 
 	//restart hung-up jobs
-	$this->jobs_coll->updateMany(
+	\V::app()->om->updateMany('Job',
 	    [ 'state' => 'run' ],
 	    [ '$set' => [ 'state' => 'new', 'worker_pid' => null ] ],
 	    [ 'writeConcern' => new \MongoDB\Driver\WriteConcern(\MongoDB\Driver\WriteConcern::MAJORITY) ]
@@ -585,7 +581,7 @@ class DaemonCommand extends \sys\BaseController {
 	    $this->ensure_workers();
 	    $this->check_workers();
 
-	    $this->new_jobs_count = $this->jobs_coll->countDocuments([ 'state' => 'new' ]);
+	    $this->new_jobs_count = \V::app()->om->count('Job', [ 'state' => 'new' ]);
 
 	    $d_delta = time() - $this->last_dispatch_time;
 	    if ($d_delta > 10 && !$this->dispatching && $this->new_jobs_count > 0) {
@@ -602,7 +598,7 @@ class DaemonCommand extends \sys\BaseController {
 	// - report some stats
     	$this->loop->addPeriodicTimer(5*60, function() {
 	    //count jobs in new state; if greater than limit and increasing versus last time, issue a warning
-	    $new_jobs_count = $this->jobs_coll->countDocuments([ 'state' => 'new' ]);
+	    $new_jobs_count = \V::app()->om->count('Job', [ 'state' => 'new' ]);
 	    if ($new_jobs_count > 100 && $this->prev_jobs_count > 100) {
 		\V::app()->log->warn("WMGR: there are more than 100 jobs in queue for more than 5 minutes, now: {$new_jobs_count}");
 		\models\Job::reportError('too many jobs in queue', "WARNING: {$new_jobs_count} jobs waiting for more than 5 minutes");
@@ -612,21 +608,20 @@ class DaemonCommand extends \sys\BaseController {
 
 	    //SC: 2024-11-20: added
 	    //re-run failed jobs no more than 3 times
-	    $result = $this->jobs_coll->updateMany(
+	    $rerun = \V::app()->om->updateMany('Job',
 		[ 'state' => 'fail', 'run_count' => [ '$lt' => 3 ] ],
 		[ '$set' => [ 'state' => 'new', 'worker_pid' => null ] ],
 		[ 'writeConcern' => new \MongoDB\Driver\WriteConcern(\MongoDB\Driver\WriteConcern::MAJORITY) ]
 	    );
 	    //CLD: 2026-11-02T21:50:00+02:00: logged only when there are some
-	    if ($result->getModifiedCount() > 0) {
-		\V::app()->log->info("re-run failed jobs count: " . $result->getModifiedCount());
+	    if ($rerun > 0) {
+		\V::app()->log->info("re-run failed jobs count: " . $rerun);
 		$this->dispatch_jobs();
 	    }
     	});
 
 	//add a 2-hour periodic timer: cleanup AuditLog and ExecutionLog
 	$this->loop->addPeriodicTimer(2*60*60, function() {
-	    $exe_log_coll = \V::app()->mongo->selectCollection(\models\ExecutionLog::_database(), \models\ExecutionLog::_collection());
 	    //get all accounts
 	    $accounts = \V::app()->om->find('Account');
 	    foreach($accounts as $acct) {
@@ -637,7 +632,7 @@ class DaemonCommand extends \sys\BaseController {
 		//execution log
 		if ($acct->execution_log_retention > 0) {
 		    $time_limit = new \MongoDB\BSON\UTCDateTime((time() - $acct->execution_log_retention * 60*60*24) * 1000);
-		    $exe_log_coll->deleteMany([ 'aid' => $acct->_id, 'created_at' => [ '$lte' => $time_limit ] ]);
+		    \V::app()->om->deleteMany('ExecutionLog', [ 'aid' => $acct->_id, 'created_at' => [ '$lte' => $time_limit ] ]);
 		}
 		//the AI steps' traces: the same setting
 		\models\agent\AgentTrace::prune($acct);

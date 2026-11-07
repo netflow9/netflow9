@@ -184,9 +184,8 @@ class AgentEval {
 	    return [ WfTestRun::read((string)$id, $wf), true ];
 	}
 	//one job per workflow; a job given up by the daemon stays with its key (state fail): removed so that it does not stop the next run
-	$jobs = \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection());
 	$key = 'agent-eval:' . (string)$wf->_id;
-	$jobs->deleteMany([ 'key' => $key, 'state' => [ '$in' => [ 'done', 'fail' ] ] ]);
+	\V::app()->om->deleteMany('Job', [ 'key' => $key, 'state' => [ '$in' => [ 'done', 'fail' ] ] ]);
 	$job = \models\Job::submit('\util\AgentEval::job', [ 'run' => (string)$id ], [ 'aid' => $wf->aid, 'project' => $wf->project, 'key' => $key, 'delete_on_done' => true ]);
 	if ($job === null) {
 	    \V::app()->om->deleteOne('WfTestRun', [ '_id' => $id, 'aid' => $wf->aid ]);
@@ -241,7 +240,7 @@ class AgentEval {
 	if (!$n)
 	    return false;
 	if (!empty($run['job']))
-	    \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection())->deleteOne([ '_id' => $run['job'], 'state' => 'new' ]);
+	    \V::app()->om->deleteOne('Job', [ '_id' => $run['job'], 'state' => 'new' ]);
 	$now = \V::app()->om->findOne('WfTestRun', [ '_id' => $run['_id'], 'aid' => $run['aid'] ], [ 'arrays' => true ]);
 	if (!empty($now['current'])) {
 	    $exe = \V::app()->om->findOne('WfExecution', [ '_id' => $now['current'], 'aid' => $run['aid'] ], [ 'projection' => [ '_id' => 1, 'aid' => 1, 'state' => 1 ] ]);
