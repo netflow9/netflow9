@@ -4,8 +4,6 @@ namespace sys;
 
 class Session extends BaseObject implements \SessionHandlerInterface, \SessionUpdateTimestampHandlerInterface {
 
-    public $coll = null;
-
     public $noSessionPaths = [];
 
     //requests whose path starts with $prefix get no session (no record, no cookie); call before the session opens (on:init)
@@ -39,8 +37,6 @@ class Session extends BaseObject implements \SessionHandlerInterface, \SessionUp
     	    \V::app()->hooks->addHook('on:init', [ $this, 'open_session' ]);
     	    \V::app()->hooks->addHook('on:end', [ $this, 'close_session' ]);
     	}
-
-	$this->coll = \V::app()->mongo->selectCollection(\V::app()->mongo->database, 'sessions');
     }
 
     //session specific stuff
@@ -124,7 +120,10 @@ class Session extends BaseObject implements \SessionHandlerInterface, \SessionUp
     public function getData($id = null) {
 	if (empty($id))
 	    $id = session_id();
-        return $this->coll->findOne([ '_id' => $id ]);
+	if ((string)$id === '')
+	    return null;
+	//the records: models\user\WebSession
+	return \V::app()->om->findOne('WebSession', [ '_id' => (string)$id ], [ 'arrays' => true ]);
     }
 
     //a session is alive if it was used within its lifetime; gc only runs on ~1/1000 requests, so check here too
@@ -154,11 +153,7 @@ class Session extends BaseObject implements \SessionHandlerInterface, \SessionUp
 	if ($account)
 	    $__data['aid'] = $account->_id;
 
-	$this->coll->replaceOne(
-	    [ '_id' => $id ],
-	    $__data,
-	    [ 'upsert' => true, ]
-	);
+	\V::app()->om->replaceOne('WebSession', [ '_id' => $id ], \V::app()->om->create('WebSession', $__data), [ 'upsert' => true ]);
 	return true;
     }
 
@@ -167,25 +162,22 @@ class Session extends BaseObject implements \SessionHandlerInterface, \SessionUp
     }
 
     public function updateTimestamp($id, $data): bool {
-	$this->coll->updateOne(
-	    [ '_id' => $id ],
-	    [ '$set' => [ 'u_ts' => new \MongoDB\BSON\UTCDateTime() ] ]
-	);
+	\V::app()->om->updateOne('WebSession', [ '_id' => $id ], [ '$set' => [ 'u_ts' => new \MongoDB\BSON\UTCDateTime() ] ]);
 	return true;
     }
 
     public function endFor($userId) {
-	$this->coll->deleteMany([ 'user.id' => (string)$userId, '_id' => [ '$ne' => session_id() ] ]);
+	\V::app()->om->deleteMany('WebSession', [ 'user.id' => (string)$userId, '_id' => [ '$ne' => session_id() ] ]);
     }
 
     public function destroy($id): bool {
-    	$this->coll->deleteOne([ '_id' => $id ]);
+    	\V::app()->om->deleteOne('WebSession', [ '_id' => $id ]);
     	return true;
     }
 
     public function gc($maxlifetime): int|false {
 	$now = time();
-    	$res = $this->coll->deleteMany([
+    	return \V::app()->om->deleteMany('WebSession', [
 	    '$or' => [
 		[ 'u_ts' => [ '$lt' => new \MongoDB\BSON\UTCDateTime(($now - $this->_config['lifetime']) * 1000) ] ],
 		[
@@ -194,7 +186,6 @@ class Session extends BaseObject implements \SessionHandlerInterface, \SessionUp
 		],
 	    ],
     	]);
-    	return $res->getDeletedCount();
     }
 
 

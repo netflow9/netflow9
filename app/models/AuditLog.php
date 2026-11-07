@@ -26,11 +26,12 @@ class AuditLog extends \sys\BaseModel {
     ];
 
     //CLD: 2026-10-22T00:00:00+03:00: the seal (tamper evidence, SOC2.md gap 6): each entry of an account gets the account's next number (`seq`) and an HMAC of
-    //its stored document (`mac`, key derived from APP_SECRET). The numbers are kept in collection audit_seal: { _id: account id, seq: last number given,
+    //its stored document (`mac`, key derived from APP_SECRET). The numbers are kept in collection audit_seal (models\AuditSeal): { _id: account id, seq: last number given,
     //pruned: highest number removed by the retention }. verify() finds changed or forged entries (MAC), removed ones (missing numbers, also the newest) and
     //entries without a MAC. Entries from before the seal have no number and are only counted
     const SEALED = true;
-    const SEAL_COLLECTION = 'audit_seal';
+    //CLD: 2026-11-07T10:37:49+02:00: the entries verify() reads at a time
+    const VERIFY_BATCH = 1000;
 
     //the shortest retention (days; the account's `audit_log_retention` below it is raised to it; 0 = forever)
     const MIN_RETENTION_DAYS = 365;
@@ -253,22 +254,20 @@ class AuditLog extends \sys\BaseModel {
     // ------------------------------------------------------------------------------------
     //CLD: 2026-10-22T00:00:00+03:00: the seal (see SEALED), the retention, verify
 
-    protected static function coll($name = null) {
-	return \V::app()->mongo->selectCollection(static::_database(), $name ?? static::_collection());
-    }
-
     //the account's next number
     protected static function nextSeq($aid) {
-	$doc = static::coll(self::SEAL_COLLECTION)->findOneAndUpdate([ '_id' => $aid ], [ '$inc' => [ 'seq' => 1 ] ],
-	    [ 'upsert' => true, 'returnDocument' => \MongoDB\Operation\FindOneAndUpdate::RETURN_DOCUMENT_AFTER ]);
+	$doc = \V::app()->om->findOneAndUpdate('AuditSeal', [ '_id' => $aid ], [ '$inc' => [ 'seq' => 1 ] ], [ 'upsert' => true, 'arrays' => true ]);
 	return (int)$doc['seq'];
     }
 
-    //writes the MAC of entry $id as stored
+    //writes the MAC of entry $id as stored (an entry just written, of whichever account it names)
     protected static function seal($id) {
-	$doc = static::coll()->findOne([ '_id' => $id ], \sys\Mongo::ARRAYS);
-	if ($doc)
-	    static::coll()->updateOne([ '_id' => $id ], [ '$set' => [ 'mac' => static::macOf($doc) ] ]);
+	$om = \V::app()->om;
+	$om->acrossAccounts(function() use ($om, $id) {
+	    $doc = $om->findOne('AuditLog', [ '_id' => $id ], [ 'arrays' => true ]);
+	    if ($doc)
+		$om->updateOne('AuditLog', [ '_id' => $id ], [ '$set' => [ 'mac' => static::macOf($doc) ] ]);
+	});
     }
 
     //the MAC of stored document $doc (all of it but `mac`)
@@ -302,16 +301,16 @@ class AuditLog extends \sys\BaseModel {
     //removes the entries of account $acct older than its retention (the daemon, every 2 hours); the seal keeps the highest number removed, so verify
     //knows which ones are missing by the retention. Logs the seal's state (an outside record of the numbers: a removal of the newest entries shows there)
     public static function prune($acct) {
-	$seal = static::coll(self::SEAL_COLLECTION);
+	$om = \V::app()->om;
 	$days = static::retentionDays($acct);
 	if ($days > 0) {
 	    $limit = [ 'aid' => $acct->_id, 'created_at' => [ '$lte' => new \MongoDB\BSON\UTCDateTime((time() - $days * 60*60*24) * 1000) ] ];
-	    $last = static::coll()->findOne($limit + [ 'seq' => [ '$exists' => true ] ], [ 'sort' => [ 'seq' => -1 ], 'projection' => [ 'seq' => 1 ] ]);
+	    $last = $om->findOne('AuditLog', $limit + [ 'seq' => [ '$exists' => true ] ], [ 'arrays' => true, 'sort' => [ 'seq' => -1 ], 'projection' => [ 'seq' => 1 ] ]);
 	    if ($last)
-		$seal->updateOne([ '_id' => $acct->_id ], [ '$max' => [ 'pruned' => (int)$last['seq'] ] ]);
-	    static::coll()->deleteMany($limit);
+		$om->updateOne('AuditSeal', [ '_id' => $acct->_id ], [ '$max' => [ 'pruned' => (int)$last['seq'] ] ]);
+	    $om->deleteMany('AuditLog', $limit);
 	}
-	$state = $seal->findOne([ '_id' => $acct->_id ]);
+	$state = $om->findOne('AuditSeal', [ '_id' => $acct->_id ], [ 'arrays' => true ]);
 	if ($state)
 	    \V::app()->log->info('AuditLog seal: account ' . $acct->_id . ': last number ' . (int)($state['seq'] ?? 0) . ', removed by the retention up to ' . (int)($state['pruned'] ?? 0));
     }
@@ -329,32 +328,39 @@ class AuditLog extends \sys\BaseModel {
 
     //checks the entries of account $aid: [ entries, unsealed (from before the seal), last (number given), pruned, problems: [ text ] ]
     public static function verify($aid) {
-	$state = static::coll(self::SEAL_COLLECTION)->findOne([ '_id' => $aid ]);
+	$om = \V::app()->om;
+	$state = $om->findOne('AuditSeal', [ '_id' => $aid ], [ 'arrays' => true ]);
 	$last = (int)($state['seq'] ?? 0);
 	$pruned = (int)($state['pruned'] ?? 0);
 	$report = [ 'entries' => 0, 'unsealed' => 0, 'last' => $last, 'pruned' => $pruned, 'problems' => [] ];
 
-	$report['unsealed'] = static::coll()->countDocuments([ 'aid' => $aid, 'seq' => [ '$exists' => false ] ]);
+	$report['unsealed'] = $om->count('AuditLog', [ 'aid' => $aid, 'seq' => [ '$exists' => false ] ]);
 	$expected = $pruned + 1;
 	$prev = null;
-	$cursor = static::coll()->find([ 'aid' => $aid, 'seq' => [ '$exists' => true ] ],
-	    [ 'sort' => [ 'seq' => 1, '_id' => 1 ], 'typeMap' => \sys\Mongo::TYPEMAP ]);
-	foreach($cursor as $doc) {
-	    $report['entries']++;
-	    $seq = (int)$doc['seq'];
-	    if (empty($doc['mac']))
-		$report['problems'][] = "entry {$seq} ({$doc['_id']}) has no MAC";
-	    elseif (!hash_equals(static::macOf($doc), (string)$doc['mac']))
-		$report['problems'][] = "entry {$seq} ({$doc['_id']}) was changed or not written by the app (MAC)";
-	    if ($seq === $prev)
-		$report['problems'][] = "entry {$seq} ({$doc['_id']}) is there twice";
-	    elseif ($seq > $last)
-		$report['problems'][] = "entry {$seq} ({$doc['_id']}) has a number never given";
-	    elseif ($seq > $expected)
-		$report['problems'][] = self::missingText($expected, $seq - 1);
-	    $prev = $seq;
-	    $expected = max($expected, $seq + 1);
-	}
+	//CLD: 2026-11-07T10:37:49+02:00: read VERIFY_BATCH at a time, in the order of (seq, _id)
+	$after = null;
+	do {
+	    $page = $om->find('AuditLog', [ 'aid' => $aid, 'seq' => [ '$exists' => true ] ]
+		+ ($after ? [ '$or' => [ [ 'seq' => [ '$gt' => $after['seq'] ] ], [ 'seq' => $after['seq'], '_id' => [ '$gt' => $after['_id'] ] ] ] ] : []),
+		[ 'arrays' => true, 'sort' => [ 'seq' => 1, '_id' => 1 ], 'limit' => self::VERIFY_BATCH ]);
+	    $after = $page ? end($page) : null;
+	    foreach($page as $doc) {
+		$report['entries']++;
+		$seq = (int)$doc['seq'];
+		if (empty($doc['mac']))
+		    $report['problems'][] = "entry {$seq} ({$doc['_id']}) has no MAC";
+		elseif (!hash_equals(static::macOf($doc), (string)$doc['mac']))
+		    $report['problems'][] = "entry {$seq} ({$doc['_id']}) was changed or not written by the app (MAC)";
+		if ($seq === $prev)
+		    $report['problems'][] = "entry {$seq} ({$doc['_id']}) is there twice";
+		elseif ($seq > $last)
+		    $report['problems'][] = "entry {$seq} ({$doc['_id']}) has a number never given";
+		elseif ($seq > $expected)
+		    $report['problems'][] = self::missingText($expected, $seq - 1);
+		$prev = $seq;
+		$expected = max($expected, $seq + 1);
+	    }
+	} while (count($page) === self::VERIFY_BATCH);
 	if ($last >= $expected)
 	    $report['problems'][] = self::missingText($expected, $last);
 	return $report;
