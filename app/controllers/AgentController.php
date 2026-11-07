@@ -59,7 +59,8 @@ class AgentController extends \sys\BaseController {
 	if (!$live)
 	    \V::app()->error(404, 'This agent does not exist, is not published, or is not for you.');
 	[ $wf, , $node ] = $live;
-	$conversations = AgentConversation::mine($wf, \V::app()->user->_id);
+	$conversations = \V::app()->om->find('AgentConversation', [ 'aid' => $wf->aid, 'wf' => $wf->_id, 'user' => (string)\V::app()->user->_id ],
+	    [ 'arrays' => true, 'sort' => [ 'last_at' => -1 ], 'limit' => AgentConversation::LIST_LIMIT ]);
 	$current = null;
 	foreach($conversations as $c)
 	    if ((string)$c['_id'] === (string)($req->query['conversation'] ?? ''))
@@ -154,7 +155,7 @@ class AgentController extends \sys\BaseController {
 	    return;
 	}
 	$list = [];
-	foreach(AgentConversation::coll()->find([ 'aid' => $aid ], \sys\Mongo::ARRAYS + [ 'sort' => [ 'last_at' => -1 ], 'limit' => 200, 'projection' => [ 'guest_key' => 0 ] ]) as $c)
+	foreach(\V::app()->om->find('AgentConversation', [ 'aid' => $aid ], [ 'arrays' => true, 'sort' => [ 'last_at' => -1 ], 'limit' => 200, 'projection' => [ 'guest_key' => 0 ] ]) as $c)
 	    $list[] = $c + [ 'agent' => $this->workflowName($c) ];
 	$this->render('conversations', [ 'list' => $list, 'retention' => (int)($this->account->execution_log_retention ?? 0) ]);
     }

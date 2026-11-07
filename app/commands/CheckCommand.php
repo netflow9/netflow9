@@ -1251,15 +1251,16 @@ class CheckCommand extends \sys\BaseController {
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
 	$S = \models\node\NodeAppGoogleSheets::class;
+	$R = \util\SheetRows::class;
 	$this->check('Google Sheets: a step type, an `error` output when chosen', [ true, [ 'success', 'error' ] ],
 	    [ isset(\models\wf\WfNode::getAll()['app::google-sheets']), $S::outLabelsFor([ 'onError' => 'output' ]) ]);
-	$this->check('Google Sheets: column names', [ 'A', 'Z', 'AA', 'AZ', 'BA', 'ZZ', 'AAA' ], array_map([ $S, 'columnName' ], [ 0, 25, 26, 51, 52, 701, 702 ]));
+	$this->check('Google Sheets: column names', [ 'A', 'Z', 'AA', 'AZ', 'BA', 'ZZ', 'AAA' ], array_map([ $R, 'columnName' ], [ 0, 25, 26, 51, 52, 701, 702 ]));
 	$this->check('Google Sheets: a sheet name quoted', "'Bob''s sheet'", $S::quoteSheet("Bob's sheet"));
 	$this->check('Google Sheets: rows from JSON, a list of lists, one object, one row of cells', [ [ [ 'a', 1 ], [ 'b', 2 ] ], [ [ 'x' => 1 ] ], [ [ 'a', 'b' ] ], [] ],
-	    [ $S::rowsOf('[["a", 1], ["b", 2]]'), $S::rowsOf([ 'x' => 1 ]), $S::rowsOf([ 'a', 'b' ]), $S::rowsOf('  ') ]);
-	$refusedRows = function($value) use ($S) {
+	    [ $R::rowsOf('[["a", 1], ["b", 2]]', 'Google Sheets'), $R::rowsOf([ 'x' => 1 ], 'Google Sheets'), $R::rowsOf([ 'a', 'b' ], 'Google Sheets'), $R::rowsOf('  ', 'Google Sheets') ]);
+	$refusedRows = function($value) use ($R) {
 	    try {
-		$S::rowsOf($value);
+		$R::rowsOf($value, 'Google Sheets');
 		return 'accepted';
 	    } catch (\ErrorException $ex) {
 		return 'refused';
@@ -1268,14 +1269,14 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('Google Sheets: rows refused (not JSON, a number, objects mixed with lists)', [ 'refused', 'refused', 'refused' ],
 	    [ $refusedRows('a,b'), $refusedRows(5), $refusedRows([ [ 'a' => 1 ], [ 1, 2 ] ]) ]);
 	$this->check('Google Sheets: objects matched to the header, new keys added as columns', [ [ 'Name', 'Email', 'Qty' ], [ [ 'Ana', 'a@x.ro', null ], [ null, 'b@x.ro', 3 ] ] ],
-	    $S::matrixFor([ [ 'Email' => 'a@x.ro', 'Name' => 'Ana' ], [ 'Qty' => 3, 'Email' => 'b@x.ro' ] ], [ 'Name', 'Email' ], true));
+	    $R::matrixFor([ [ 'Email' => 'a@x.ro', 'Name' => 'Ana' ], [ 'Qty' => 3, 'Email' => 'b@x.ro' ] ], [ 'Name', 'Email' ], true));
 	$this->check('Google Sheets: new keys left out when not added; an empty sheet gets the keys as header', [ [ [ 'Name' ], [ [ 'Ana' ] ] ], [ 'a', 'b' ] ],
-	    [ $S::matrixFor([ [ 'Name' => 'Ana', 'X' => 1 ] ], [ 'Name' ], false), $S::matrixFor([ [ 'a' => 1, 'b' => 2 ] ], [], true)[0] ]);
+	    [ $R::matrixFor([ [ 'Name' => 'Ana', 'X' => 1 ] ], [ 'Name' ], false), $R::matrixFor([ [ 'a' => 1, 'b' => 2 ] ], [], true)[0] ]);
 	$this->check('Google Sheets: the header (empty / repeated names -> column names), rows as objects (missing cells, empty rows left out, extra cells)',
 	    [ [ 'Name', 'B', 'Qty', 'D' ], [ [ 'Name' => 'Ana', 'B' => '', 'Qty' => '', 'D' => '' ], [ 'Name' => 'Bob', 'B' => 'x', 'Qty' => '2', 'D' => '', 'E' => 'extra' ] ] ],
-	    [ $S::headerOf([ 'Name', '', 'Qty', 'Name' ]), $S::objectsOf([ [ 'Ana' ], [ '', '' ], [ 'Bob', 'x', '2', '', 'extra' ] ], [ 'Name', 'B', 'Qty', 'D' ]) ]);
+	    [ $R::headerOf([ 'Name', '', 'Qty', 'Name' ]), $R::objectsOf([ [ 'Ana' ], [ '', '' ], [ 'Bob', 'x', '2', '', 'extra' ] ], [ 'Name', 'B', 'Qty', 'D' ]) ]);
 	$this->check('Google Sheets: cell values (numbers, booleans kept; null empty; objects as JSON)', [ 1, 2.5, true, '', '{"a":1}', 'x' ],
-	    array_map([ $S, 'cellValue' ], [ 1, 2.5, true, null, [ 'a' => 1 ], 'x' ]));
+	    array_map([ $R, 'cellValue' ], [ 1, 2.5, true, null, [ 'a' => 1 ], 'x' ]));
 	$this->check('Google Sheets: the variable by operation', [ 'rows', 'cells', 'range', 'sheets', 'rowCount' ], [
 	    array_keys($S::outputVariables([ 'operation' => 'read' ])['sheet']['fields'])[3] ?? null, array_keys($S::outputVariables([ 'operation' => 'append' ])['sheet']['fields'])[3] ?? null,
 	    array_keys($S::outputVariables([ 'operation' => 'clear' ])['sheet']['fields'])[0] ?? null, array_keys($S::outputVariables([ 'operation' => 'info' ])['sheet']['fields'])[3] ?? null,
@@ -1341,7 +1342,7 @@ class CheckCommand extends \sys\BaseController {
 	};
 	$this->check('Gmail: addresses refused (no @, a bad address)', [ 'refused', 'refused', 'accepted' ], [ $bad('nobody'), $bad('a@@x'), $bad('') ]);
 	$this->check('Gmail: file ids (one, commas, a list, file objects)', [ [ 'a' ], [ 'a', 'b' ], [ 'a', 'b' ], [ 'f1' ] ],
-	    [ $G::fileIds('a'), $G::fileIds(' a, b ,a'), $G::fileIds([ 'a', 'b' ]), $G::fileIds([ 'id' => 'f1', 'filename' => 'x.pdf' ]) ]);
+	    [ \models\File::idsOf('a'), \models\File::idsOf(' a, b ,a'), \models\File::idsOf([ 'a', 'b' ]), \models\File::idsOf([ 'id' => 'f1', 'filename' => 'x.pdf' ]) ]);
 	$this->check('Gmail: the query string (lists repeated)', '?q=from%3Aa%20b&labelIds=INBOX&labelIds=Label_1', $G::queryString([ 'q' => 'from:a b', 'labelIds' => [ 'INBOX', 'Label_1' ] ]));
 	$this->check('Gmail: HTML to text (links, paragraphs, scripts out)', "Hi Ana\n\nSee site (https://x.ro) & more", $G::htmlToText('<style>p{}</style><p>Hi <b>Ana</b></p><p>See <a href="https://x.ro">site</a> &amp; more</p>'));
 
@@ -1937,7 +1938,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ $route, $v ] = $flow('add page', [ 'knowledgeBase' => $name, 'operation' => 'addUrl', 'url' => "http://127.0.0.1:{$port}/kb/page" ]);
 	    $this->check('kb: Add a web page: its title, its text (no head)', [ 'success', 'Refund policy', "http://127.0.0.1:{$port}/kb/page" ],
 		[ $route, $v['documents'][0]['title'] ?? null, $v['documents'][0]['key'] ?? null ]);
-	    $chunk = \models\kb\KnowledgeBase::chunkCollection()->findOne([ 'kb' => $kb->_id, 'key' => "http://127.0.0.1:{$port}/kb/page" ]);
+	    $chunk = \V::app()->om->findOne('KbChunk', [ 'kb' => $kb->_id, 'key' => "http://127.0.0.1:{$port}/kb/page" ], [ 'arrays' => true ]);
 	    $this->check('kb: the page\'s chunk: the text without the style; the embedding a float32 vector', [ "Refunds\n\nRefunds are paid within 14 days of the return.", true, 64 ],
 		[ $chunk['text'] ?? null, ($chunk['embedding'] ?? null) instanceof \MongoDB\BSON\Binary, count($chunk['embedding']->toArray()) ]);
 
@@ -1946,7 +1947,7 @@ class CheckCommand extends \sys\BaseController {
 	    $k1 = $kb->queue([ 'type' => 'file', 'file' => (string)$md ]);
 	    $k2 = $kb->queue([ 'type' => 'text', 'title' => 'Lunch', 'text' => 'Lunch is served from 12 to 14 in the canteen.' ]);
 	    $k3 = $kb->queue([ 'type' => 'file', 'file' => (string)$png ]);
-	    $status = fn($key) => \models\kb\KnowledgeBase::documentCollection()->findOne([ 'kb' => $kb->_id, 'key' => $key ]);
+	    $status = fn($key) => \V::app()->om->findOne('KbDocument', [ 'kb' => $kb->_id, 'key' => $key ], [ 'arrays' => true ]);
 	    //pending (or indexed already by a daemon running)
 	    $this->check('kb: documents queued: pending', [ true, true ], [ in_array($status($k1)['status'] ?? null, [ 'pending', 'indexed' ], true),
 		in_array($status($k2)['status'] ?? null, [ 'pending', 'indexed' ], true) ]);
@@ -1980,7 +1981,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ $route, $v ] = $flow('remove', [ 'knowledgeBase' => $name, 'operation' => 'remove', 'docKey' => (string)$txt ]);
 	    $kb = \models\kb\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
 	    $this->check('kb: Remove a document by its file id: its chunks gone, the counts updated', [ 'success', 1, 6, 0 ], [ $route, $v['removed'] ?? null, (int)$kb->documents,
-		\models\kb\KnowledgeBase::chunkCollection()->countDocuments([ 'kb' => $kb->_id, 'key' => (string)$txt ]) ]);
+		\V::app()->om->count('KbChunk', [ 'kb' => $kb->_id, 'key' => (string)$txt ]) ]);
 
 	    //another vector length (the model changed on the server): refused
 	    $om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => [ 'dims' => 32 ] ]);
@@ -2003,7 +2004,7 @@ class CheckCommand extends \sys\BaseController {
 	    $kb->reindex();
 	    \models\kb\KnowledgeBase::reindexJob((object)[ 'aid' => $kb->aid, 'kb' => (string)$kb->_id ]);
 	    $kb = \models\kb\KnowledgeBase::named($name, $this->account->_id, $this->project->_id);
-	    $chunk = \models\kb\KnowledgeBase::chunkCollection()->findOne([ 'kb' => $kb->_id ]);
+	    $chunk = \V::app()->om->findOne('KbChunk', [ 'kb' => $kb->_id ], [ 'arrays' => true ]);
 	    [ $route, $v ] = $flow('reindexed', [ 'knowledgeBase' => $name, 'operation' => 'search', 'query' => 'holiday', 'results' => 1 ]);
 	    $this->check('kb: re-indexed: the new model and length, every chunk\'s vector, searched again', [ 'ready', 'small-embed', 8, 8, false, false, 'success', 1 ],
 		[ (string)$kb->state, (string)$kb->model, (int)$kb->dims, count($chunk['embedding']->toArray()), isset($chunk['embedding_new']), $kb->needsReindex(), $route, $v['count'] ?? null ]);
@@ -2073,8 +2074,8 @@ class CheckCommand extends \sys\BaseController {
 	    //deleted with its documents and chunks
 	    $id = $kb->_id;
 	    $kb->delete();
-	    $this->check('kb: a knowledge base deleted takes its documents and chunks', [ 0, 0 ], [ \models\kb\KnowledgeBase::documentCollection()->countDocuments([ 'kb' => $id ]),
-		\models\kb\KnowledgeBase::chunkCollection()->countDocuments([ 'kb' => $id ]) ]);
+	    $this->check('kb: a knowledge base deleted takes its documents and chunks', [ 0, 0 ], [ \V::app()->om->count('KbDocument', [ 'kb' => $id ]),
+		\V::app()->om->count('KbChunk', [ 'kb' => $id ]) ]);
 	} catch (\ErrorException $ex) {
 	    $this->fail('kb: ' . $ex->getMessage());
 	} finally {
@@ -4309,7 +4310,7 @@ class CheckCommand extends \sys\BaseController {
 		'tools' => [], 'mcp' => [], 'fortigateCredential' => (string)$fgt->_id, 'fortigateTools' => [ 'fgt_addresses_block', 'fgt_addresses_list' ], 'workflows' => [ (string)$child->_id ],
 		'maxRounds' => 6, 'onError' => 'output', 'timeout' => 20 ]), $n('ok', 'app::set', [ 'variable' => 'link', 'value' => '{{ ai.trace_id }}' ]), $e('e1', 'm', 's'), $e('e2', 's', 'ok', 0), $e('e3', 's', 'ok', 1) ];
 	    $traceOf = function($exe) use ($T) {
-		$t = $T::coll()->findOne([ 'execution' => $exe->_id ], \sys\Mongo::ARRAYS);
+		$t = \V::app()->om->findOne('AgentTrace', [ 'execution' => $exe->_id ], [ 'arrays' => true ]);
 		return $t;
 	    };
 	    $decide = function($exe, array $answers) use ($om, $user) {
@@ -4393,14 +4394,14 @@ class CheckCommand extends \sys\BaseController {
 	    $last = end($big['rounds'][24]['calls']);
 	    $this->check('agent trace: past the total for a visit, each text small, the full length noted; the document fits; invalid UTF-8 kept readable', [ \util\AgentTracer::SMALL, true, true, true ],
 		[ strlen((string)$last['arguments']), (int)($last['arguments_length'] ?? 0) > 7000, strlen((string)json_encode($big, JSON_INVALID_UTF8_SUBSTITUTE)) < 8 * 1024 * 1024, mb_check_encoding((string)$big['rounds'][0]['text'], 'UTF-8') ]);
-	    $T::coll()->deleteOne([ '_id' => new \MongoDB\BSON\ObjectId($tracer->id()) ]);
+	    \V::app()->om->deleteOne('AgentTrace', [ '_id' => $tracer->id() ]);
 
 	    // ---- secrets of a credential that is not a model (the System AI's): its key, not its other headers; what is not a secret stays
 	    $system = \util\AgentTracer::begin($stepClass);
 	    $system->addSecrets(new class { function httpAuth() { return [ 'headers' => [ 'x-api-key' => 'sys-key-123', 'anthropic-version' => '2023-06-01' ] ]; } });
 	    $system->addSecrets(new class { });
 	    $this->check('agent trace: the System AI\'s key removed, a date that looks like its other header and max_tokens: 100 kept', '[removed] on 2023-06-01, max_tokens: 100', $system->scrub('sys-key-123 on 2023-06-01, max_tokens: 100'));
-	    $T::coll()->deleteOne([ '_id' => new \MongoDB\BSON\ObjectId($system->id()) ]);
+	    \V::app()->om->deleteOne('AgentTrace', [ '_id' => $system->id() ]);
 
 	    // ---- the list prices
 	    $priced = fn($p, $m) => \util\AiPrices::of((object)[ 'provider' => $p, 'model' => $m ]);
@@ -4447,28 +4448,28 @@ class CheckCommand extends \sys\BaseController {
 	    $gone = $this->runFlow('trace gone', $flow([]));
 	    $goneId = $traceOf($gone)['_id'] ?? null;
 	    $om->findById('WfExecution', (string)$gone->_id)->delete();
-	    $this->check('agent trace: retention: deleted with its execution', 0, $T::coll()->countDocuments([ '_id' => $goneId ]));
+	    $this->check('agent trace: retention: deleted with its execution', 0, \V::app()->om->count('AgentTrace', [ '_id' => $goneId ]));
 	    $viaWf = $this->runFlow('trace via workflow', $flow([]));
 	    $viaId = $traceOf($viaWf)['_id'] ?? null;
 	    $om->findById('Workflow', (string)$viaWf->wf)->delete();
 	    $this->created = array_values(array_filter($this->created, fn($id) => (string)$id !== (string)$viaWf->wf));
-	    $this->check('agent trace: retention: deleted with its workflow', 0, $T::coll()->countDocuments([ '_id' => $viaId ]));
+	    $this->check('agent trace: retention: deleted with its workflow', 0, \V::app()->om->count('AgentTrace', [ '_id' => $viaId ]));
 
 	    $aged = $this->runFlow('trace aged', $flow([]));
 	    $agedId = $traceOf($aged)['_id'] ?? null;
 	    $young = $this->runFlow('trace young', $flow([]));
 	    $youngId = $traceOf($young)['_id'] ?? null;
 	    $old = new \MongoDB\BSON\UTCDateTime((time() - 40 * 86400) * 1000);
-	    $T::coll()->updateOne([ '_id' => $agedId ], [ '$set' => [ 'created_at' => $old ] ]);
+	    \V::app()->om->updateOne('AgentTrace', [ '_id' => $agedId ], [ '$set' => [ 'created_at' => $old ] ]);
 	    $waitOld = $this->runFlow('trace waiting old', $flow([ [ [ 'fgt_addresses_block', [ 'ips' => [ '203.0.113.25' ], 'group' => 'Blocked' ] ] ] ]));
 	    $waitId = $traceOf($waitOld)['_id'] ?? null;
-	    $T::coll()->updateOne([ '_id' => $waitId ], [ '$set' => [ 'created_at' => $old ] ]);
+	    \V::app()->om->updateOne('AgentTrace', [ '_id' => $waitId ], [ '$set' => [ 'created_at' => $old ] ]);
 	    $forever = (object)[ '_id' => $account->_id, 'execution_log_retention' => '0' ];
 	    $T::prune($forever);
-	    $this->check('agent trace: retention: Forever keeps it', 1, $T::coll()->countDocuments([ '_id' => $agedId ]));
+	    $this->check('agent trace: retention: Forever keeps it', 1, \V::app()->om->count('AgentTrace', [ '_id' => $agedId ]));
 	    $removed = $T::prune($om->findById('Account', (string)$account->_id));
 	    $this->check('agent trace: retention: older than the setting removed, the execution stays, a younger one and one waiting for an approval stay; another account\'s not touched', [ 1, 0, 1, 1, 'end' ],
-		[ $removed, $T::coll()->countDocuments([ '_id' => $agedId ]), $T::coll()->countDocuments([ '_id' => $youngId ]), $T::coll()->countDocuments([ '_id' => $waitId ]), $om->findById('WfExecution', (string)$aged->_id)?->state ]);
+		[ $removed, \V::app()->om->count('AgentTrace', [ '_id' => $agedId ]), \V::app()->om->count('AgentTrace', [ '_id' => $youngId ]), \V::app()->om->count('AgentTrace', [ '_id' => $waitId ]), $om->findById('WfExecution', (string)$aged->_id)?->state ]);
 	    $waitOld->kill('the check');
 
 	    // ---- no AI step: no trace; a failure before the first call has one
@@ -4635,7 +4636,7 @@ class CheckCommand extends \sys\BaseController {
 
 	    //turn 2: a button chosen: its value is the message, the page shows its label
 	    $value = 'yes' . $script([ [ [ 'recall', [ 'query' => 'answers email' ] ] ] ]);
-	    $M::coll()->updateOne([ 'conversation' => $conv['_id'], 'role' => 'assistant' ], [ '$set' => [ 'buttons.0.value' => $value ] ]);
+	    \V::app()->om->updateOne('AgentMessage', [ 'conversation' => $conv['_id'], 'role' => 'assistant' ], [ '$set' => [ 'buttons.0.value' => $value ] ]);
 	    $two = $say($conv, $value, [ 'label' => 'Yes, go on' ]);
 	    $body = $lastChat();
 	    $messages = $flat($body['messages'] ?? []);
@@ -4682,7 +4683,7 @@ class CheckCommand extends \sys\BaseController {
 	    $foundB = (string)($sayB($ana, 'find' . $script([ [ [ 'recall', [ 'query' => 'printers Fridays' ] ] ] ]))?->getVariable('ai')['text'] ?? '');
 	    $otherB = (string)($sayB($bob, 'find' . $script([ [ [ 'recall', [ 'query' => 'printers Fridays' ] ] ] ]))?->getVariable('ai')['text'] ?? '');
 	    $this->check('agent chat: Remember / Recall on a knowledge base: saved as a document of it; found by its owner; not by another person, not the other documents', [ 'end', 2, true, false, false ],
-		[ $savedB?->state, \models\kb\KnowledgeBase::documentCollection()->countDocuments([ 'kb' => $kbCreated->_id ]), str_contains($foundB, 'Ana services printers'), str_contains($otherB, 'Ana services printers'), str_contains($foundB, 'by the vendor') ]);
+		[ $savedB?->state, \V::app()->om->count('KbDocument', [ 'kb' => $kbCreated->_id ]), str_contains($foundB, 'Ana services printers'), str_contains($otherB, 'Ana services printers'), str_contains($foundB, 'by the vendor') ]);
 
 	    // ---- Mask personal data: the earlier turns too; the store holds the real value
 	    [ $wfM, $linkM ] = $publish('agent mask', $agentNodes([ 'maskPersonalData' => true, 'memoryStore' => '' ]));
@@ -4724,7 +4725,7 @@ class CheckCommand extends \sys\BaseController {
 	    $savedS = $C::read($convS['_id'], $account->_id);
 	    $this->check('agent chat: past Turns: the older turn summarized by the model, kept on the conversation; sent instead of it, marked; the newest turn whole; the summary\'s tokens counted', [ 'end', 'SUMMARY-OK', true, false, true, true ],
 		[ $third?->state, (string)$savedS['summary'], str_contains($messages[0][1] ?? '', 'SUMMARY-OK') && str_contains($messages[0][1] ?? '', 'untrusted_'), str_contains(json_encode($messages), 'alpha turn'), str_contains(json_encode($messages), 'beta turn'), ($third?->getVariable('ai')['usage']['input_tokens'] ?? 0) > 13 ]);
-	    $trace = \models\agent\AgentTrace::coll()->findOne([ 'execution' => $third->_id ], \sys\Mongo::ARRAYS);
+	    $trace = \V::app()->om->findOne('AgentTrace', [ 'execution' => $third->_id ], [ 'arrays' => true ]);
 	    $this->check('agent chat: the trace says what the step was given', [ 1, true, 1 ], [ $trace['conversation']['turns'] ?? null, $trace['conversation']['summary'] ?? null, $trace['conversation']['summarized']['turns'] ?? null ]);
 	    $recent = $C::context($savedS, null, 100, 5)['recent'];
 	    $this->check('agent chat: a limit of tokens: fewer turns; always the newest, cut to fit', [ 1, 'gamma turn' ], [ count($recent), $recent[0]['user'] ]);
@@ -4873,19 +4874,19 @@ class CheckCommand extends \sys\BaseController {
 	    $oldConv = $begin($ana);
 	    $oldRun = $say($oldConv, 'an old secret' . $script([]));
 	    $past = new \MongoDB\BSON\UTCDateTime((time() - 40 * 86400) * 1000);
-	    $M::coll()->updateMany([ 'conversation' => $oldConv['_id'] ], [ '$set' => [ 'at' => $past ] ]);
-	    $C::coll()->updateOne([ '_id' => $oldConv['_id'] ], [ '$set' => [ 'last_at' => $past, 'summary' => 'old', 'summary_at' => $past ] ]);
+	    \V::app()->om->updateMany('AgentMessage', [ 'conversation' => $oldConv['_id'] ], [ '$set' => [ 'at' => $past ] ]);
+	    \V::app()->om->updateOne('AgentConversation', [ '_id' => $oldConv['_id'] ], [ '$set' => [ 'last_at' => $past, 'summary' => 'old', 'summary_at' => $past ] ]);
 	    \V::app()->om->updateMany('WfExecution', [ '_id' => $oldRun->_id ], [ '$set' => [ 'end_at' => $past ] ]);
 	    $keptConv = $C::read($conv['_id'], $account->_id);
 	    $this->check('agent chat: retention 0: nothing goes', 0, $C::prune((object)[ '_id' => $account->_id, 'execution_log_retention' => '0' ]));
 	    $C::prune((object)[ '_id' => $account->_id, 'execution_log_retention' => '30' ]);
 	    $this->check('agent chat: retention: past the account\'s log retention the conversation, its messages and its run (its variables hold what was said) go; a recent one stays', [ null, 0, 0, true ],
-		[ $C::read($oldConv['_id'], $account->_id), $M::coll()->countDocuments([ 'conversation' => $oldConv['_id'] ]), $om->count('WfExecution', [ '_id' => $oldRun->_id ]), $C::read($keptConv['_id'], $account->_id) !== null ]);
+		[ $C::read($oldConv['_id'], $account->_id), \V::app()->om->count('AgentMessage', [ 'conversation' => $oldConv['_id'] ]), $om->count('WfExecution', [ '_id' => $oldRun->_id ]), $C::read($keptConv['_id'], $account->_id) !== null ]);
 	    $this->check('agent chat: Teams: the credential asks to read chats', true, in_array('Chat.Read', \models\credential\CredentialMicrosoftTeams::$permissions, true));
 	    $wfGone = $om->findById('Workflow', (string)$wf->_id);
 	    $convGone = $conv['_id'];
 	    $wfGone->delete();
-	    $this->check('agent chat: a deleted workflow takes its conversations and messages', [ null, 0 ], [ $C::read($convGone, $account->_id), $M::coll()->countDocuments([ 'conversation' => $convGone ]) ]);
+	    $this->check('agent chat: a deleted workflow takes its conversations and messages', [ null, 0 ], [ $C::read($convGone, $account->_id), \V::app()->om->count('AgentMessage', [ 'conversation' => $convGone ]) ]);
 	} finally {
 	    \util\AgentChannels::$sink = null;
 	    \util\AgentChannels::$fake = [];
@@ -5180,13 +5181,13 @@ class CheckCommand extends \sys\BaseController {
 	    // ---- one run at a time; stopped; a job gone; a case that no longer fits
 	    $now = new \MongoDB\BSON\UTCDateTime();
 	    $activeId = new \MongoDB\BSON\ObjectId();
-	    $R::coll()->insertOne([ '_id' => $activeId, 'aid' => $account->_id, 'wf' => $gwf->_id, 'project' => $project->_id, 'state' => 'running', 'cases' => [], 'totals' => [], 'created_at' => $now ]);
+	    \V::app()->om->insertOne('WfTestRun', \V::app()->om->create('WfTestRun', [ '_id' => $activeId, 'aid' => $account->_id, 'wf' => $gwf->_id, 'project' => $project->_id, 'state' => 'running', 'cases' => [], 'totals' => [], 'created_at' => $now ]));
 	    [ $same, $isNew ] = $E::start($gwf);
 	    $this->check('agent eval: one run at a time: the active one comes back', [ (string)$activeId, false ], [ (string)$same['_id'], $isNew ]);
 	    $this->check('agent eval: gate: still running: blocked', 'The tests are still running', $gate()['message']);
 	    $this->check('agent eval: stop: it ends; again: no longer running', [ true, 'stopped', false ], [ $E::stop($same), $R::read((string)$activeId, $gwf)['state'], $E::stop($R::read((string)$activeId, $gwf)) ]);
 	    $goneId = new \MongoDB\BSON\ObjectId();
-	    $R::coll()->insertOne([ '_id' => $goneId, 'aid' => $account->_id, 'wf' => $gwf->_id, 'project' => $project->_id, 'state' => 'running', 'job' => new \MongoDB\BSON\ObjectId(), 'cases' => [], 'totals' => [], 'created_at' => $now ]);
+	    \V::app()->om->insertOne('WfTestRun', \V::app()->om->create('WfTestRun', [ '_id' => $goneId, 'aid' => $account->_id, 'wf' => $gwf->_id, 'project' => $project->_id, 'state' => 'running', 'job' => new \MongoDB\BSON\ObjectId(), 'cases' => [], 'totals' => [], 'created_at' => $now ]));
 	    $this->check('agent eval: a run whose job is gone is over', [ 'error', 'the daemon stopped working on this test run' ], [ $R::read((string)$goneId, $gwf)['state'], $R::read((string)$goneId, $gwf)['error'] ]);
 	    $otherTrigger = $handCase($gwf, [ 'trigger' => 'trigger::webhook' ]);
 	    $E::start($gwf);
@@ -5232,17 +5233,17 @@ class CheckCommand extends \sys\BaseController {
 
 	    // ---- kept: the latest runs; a run goes with its executions; a workflow with all of it
 	    for($i = 0; $i < 3; $i++)
-		$R::coll()->insertOne([ '_id' => new \MongoDB\BSON\ObjectId(), 'aid' => $account->_id, 'wf' => $cwf->_id, 'project' => $project->_id, 'state' => 'passed', 'cases' => [], 'totals' => [], 'created_at' => $now ]);
+		\V::app()->om->insertOne('WfTestRun', \V::app()->om->create('WfTestRun', [ '_id' => new \MongoDB\BSON\ObjectId(), 'aid' => $account->_id, 'wf' => $cwf->_id, 'project' => $project->_id, 'state' => 'passed', 'cases' => [], 'totals' => [], 'created_at' => $now ]));
 	    $keep = $R::KEEP;
-	    $firstRun = $R::coll()->findOne([ 'wf' => $cwf->_id ], [ 'sort' => [ '_id' => 1 ] ]);
+	    $firstRun = \V::app()->om->findOne('WfTestRun', [ 'wf' => $cwf->_id ], [ 'arrays' => true, 'sort' => [ '_id' => 1 ] ]);
 	    for($i = 0; $i < $keep; $i++)
-		$R::coll()->insertOne([ '_id' => new \MongoDB\BSON\ObjectId(), 'aid' => $account->_id, 'wf' => $cwf->_id, 'project' => $project->_id, 'state' => 'passed', 'cases' => [], 'totals' => [], 'created_at' => $now ]);
+		\V::app()->om->insertOne('WfTestRun', \V::app()->om->create('WfTestRun', [ '_id' => new \MongoDB\BSON\ObjectId(), 'aid' => $account->_id, 'wf' => $cwf->_id, 'project' => $project->_id, 'state' => 'passed', 'cases' => [], 'totals' => [], 'created_at' => $now ]));
 	    $firstExe = (string)$firstRun['cases'][0]['execution'];
 	    $R::prune($cwf);
-	    $this->check('agent eval: the latest runs are kept; an older one goes with its executions', [ $keep, 0 ], [ $R::coll()->countDocuments([ 'wf' => $cwf->_id ]), $om->count('WfExecution', [ '_id' => $firstExe, 'aid' => $account->_id ]) ]);
+	    $this->check('agent eval: the latest runs are kept; an older one goes with its executions', [ $keep, 0 ], [ \V::app()->om->count('WfTestRun', [ 'wf' => $cwf->_id ]), $om->count('WfExecution', [ '_id' => $firstExe, 'aid' => $account->_id ]) ]);
 	    $gone = $om->findById('Workflow', (string)$cwf->_id);
 	    $gone->delete();
-	    $this->check('agent eval: a deleted workflow takes its test cases and runs', [ 0, 0 ], [ $om->count('WfTestCase', [ 'wf' => $cwf->_id, 'aid' => $account->_id ]), $R::coll()->countDocuments([ 'wf' => $cwf->_id ]) ]);
+	    $this->check('agent eval: a deleted workflow takes its test cases and runs', [ 0, 0 ], [ $om->count('WfTestCase', [ 'wf' => $cwf->_id, 'aid' => $account->_id ]), \V::app()->om->count('WfTestRun', [ 'wf' => $cwf->_id ]) ]);
 	} finally {
 	    $E::$inline = false;
 	    \V::app()->config('http.steps.allow_private', $allowPrivate);
@@ -9253,7 +9254,7 @@ class CheckCommand extends \sys\BaseController {
 		[ $try('ana@example.com', 'anapw'), $try('ana@example.com', 'wrong'), $try('bob@example.com', 'bobpw'), $try('dave@example.com', 'davepw'),
 		    $try('dup@example.com', 'dup1pw'), $try('gone@example.com', 'gonepw'), $try('nobody@example.com', 'x'), $try('ana@other.com', 'anapw'), $try('carol', 'carolpw') ]);
 	    $ana = $om->findOne('User', [ 'aid' => $account->_id, 'email' => 'ana@example.com' ]);
-	    $link = $ana ? \models\LdapLink::forUser($ana) : null;
+	    $link = $ana ? $om->findOne('LdapLink', [ 'aid' => $ana->aid, 'user' => $ana->_id ]) : null;
 	    $this->check('LDAP sign-in: the user created (names, no password), linked (DN, name), an LDAP user (no password here)', [ 'Ana Pop', '', 'cn=ana,ou=People,dc=example,dc=com', 'ana', 'LDAP' ],
 		[ (string)$ana, (string)$ana?->password, $link?->dn, $link?->login, \sys\Identity::passwordSource($ana) ]);
 
@@ -9786,7 +9787,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('SAML sign-in: a test (dry): signed in, nothing saved', [ 'user:ana@example.com:member', $users ], [ $dry, $om->count('User', [ 'aid' => $account->_id ]) ]);
 	    $first = $signIn();
 	    $ana = $om->findOne('User', [ 'aid' => $account->_id, 'email' => 'ana@example.com' ]);
-	    $link = $ana ? \models\saml\SamlLink::forUser($ana) : null;
+	    $link = $ana ? $om->findOne('SamlLink', [ 'aid' => $ana->aid, 'user' => $ana->_id ]) : null;
 	    $this->check('SAML sign-in: the user created (names, role from the group), linked by its NameID, an SSO user; again: the same user', [
 		'user:ana@example.com:member', 'Ana Pop', 'ana@example.com', 'SSO', 'user:ana@example.com:member', 1 ],
 		[ $first, (string)$ana, $link?->subject, \sys\Identity::passwordSource($ana), $signIn(), $om->count('User', [ 'aid' => $account->_id, 'email' => 'ana@example.com' ]) ]);

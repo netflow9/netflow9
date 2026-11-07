@@ -79,7 +79,7 @@ class NodeAppCmkHosts extends NodeAppCheckmk {
 		    throw new \RuntimeException("Folder: not a folder path: `" . mb_substr($folder, 0, 80) . '`');
 		$attributes = array_filter([ 'alias' => $text('alias') ]);
 		if ($text('ip') !== '') {
-		    $ip = self::ips($value('ip'), 'IP address', 1)[0];
+		    $ip = NodeAppFortiGate::ips($value('ip'), 'IP address', 1)[0];
 		    $attributes[str_contains($ip, ':') ? 'ipv6address' : 'ipaddress'] = $ip;
 		}
 		$r = $this->change('POST', '/domain-types/host_config/collections/all', [ 'folder' => $folder, 'host_name' => $h, 'attributes' => (object)$attributes ]);
@@ -102,10 +102,5 @@ class NodeAppCmkHosts extends NodeAppCheckmk {
 	    $summary .= ", {$activated}";
 	}
 	return [ $r, $summary ];
-    }
-
-    //IP addresses checked (as NodeAppFortiGate::ips)
-    public static function ips($value, $label, $max = 1) {
-	return NodeAppFortiGate::ips($value, $label, $max);
     }
 }

@@ -16,7 +16,6 @@
 namespace util;
 
 use models\LdapSettings;
-use models\LdapLink;
 
 class LdapAuth {
     const GENERIC = 'User or password is incorrect';
@@ -45,7 +44,7 @@ class LdapAuth {
     public static function passwordSource($user) {
 	if (empty($user->_id) || !self::enabledFor($user->aid))
 	    return null;
-	return LdapLink::forUser($user) ? 'LDAP' : null;
+	return \V::app()->om->findOne('LdapLink', [ 'aid' => $user->aid, 'user' => $user->_id ]) ? 'LDAP' : null;
     }
 
     //the settings of account $aid when its LDAP sign-in is on, else null
@@ -92,7 +91,7 @@ class LdapAuth {
 	    $s = self::enabledFor($u->aid);
 	    if (!$s)
 		continue;
-	    if ($link = LdapLink::forUser($u))
+	    if ($link = $om->findOne('LdapLink', [ 'aid' => $u->aid, 'user' => $u->_id ]))
 		$linked[] = [ $s, $u, $link ];
 	    else
 		$unlinked[] = [ $s, $u ];
@@ -137,7 +136,7 @@ class LdapAuth {
 	$lines = [];
 	$om = \V::app()->om;
 	$user = $om->findOne('User', [ 'aid' => $s->aid, 'email' => mb_strtolower(trim((string)$login)) ]);
-	$link = $user ? LdapLink::forUser($user) : null;
+	$link = $user ? $om->findOne('LdapLink', [ 'aid' => $user->aid, 'user' => $user->_id ]) : null;
 	if (!$link) {
 	    $l = $om->findOne('LdapLink', [ 'aid' => $s->aid, 'login' => mb_strtolower(trim((string)$login)) ]);
 	    if ($l && ($u = $om->findOne('User', [ '_id' => $l->user, 'aid' => $s->aid ]))) {

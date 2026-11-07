@@ -6,7 +6,7 @@
     cut: the full length), stop_reason, tokens { input, output }, cost { usd, credits }, duration_ms, calls: [ { tool, access (read | write | unknown), arguments (JSON text), arguments_length, result,
     result_length, error, duration_ms, images, refused (the limit), approval { state (asked | approved | rejected | expired | not asked), by, at, comment } } ].
     It goes with its execution (WfExecution::beforeDelete) and, like the execution log, after the account's `execution_log_retention` (prune(), the daemon): an execution outlives that setting.
-    Written directly to the collection, not through save(): never in the audit or execution logs. Read as arrays
+    Written through ObjectManager's updates, not through save(): never in the audit or execution logs. Read as arrays
 */
 
 namespace models\agent;
@@ -34,33 +34,29 @@ class AgentTrace extends \sys\BaseModel {
 	], $this->getSystemSchema());
     }
 
-    public static function coll() {
-	return \V::app()->mongo->selectCollection(static::_database(), static::_collection());
-    }
-
     //the visits of execution $exe, oldest first, without their rounds: [ the first LIST_LIMIT, how many there are ]
     public static function ofExecution($exe) {
 	$query = [ 'execution' => $exe->_id, 'aid' => $exe->aid ];
-	$list = iterator_to_array(static::coll()->find($query, \sys\Mongo::ARRAYS + [ 'projection' => [ 'rounds' => 0 ], 'sort' => [ '_id' => 1 ], 'limit' => self::LIST_LIMIT ]), false);
-	return [ $list, count($list) < self::LIST_LIMIT ? count($list) : static::coll()->countDocuments($query) ];
+	$list = \V::app()->om->find('AgentTrace', $query, [ 'arrays' => true, 'projection' => [ 'rounds' => 0 ], 'sort' => [ '_id' => 1 ], 'limit' => self::LIST_LIMIT ]);
+	return [ $list, count($list) < self::LIST_LIMIT ? count($list) : \V::app()->om->count('AgentTrace', $query) ];
     }
 
     //the trace $id, with its rounds; null: not of this account (and of execution $exe, when given)
     public static function read($id, $aid, $exe = null) {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
-	return static::coll()->findOne([ '_id' => new \MongoDB\BSON\ObjectId((string)$id), 'aid' => $aid ] + ($exe ? [ 'execution' => $exe->_id ] : []), \sys\Mongo::ARRAYS);
+	return \V::app()->om->findOne('AgentTrace', [ '_id' => $id, 'aid' => $aid ] + ($exe ? [ 'execution' => $exe->_id ] : []), [ 'arrays' => true ]);
     }
 
     //the execution was killed: its open traces end
     public static function stopOpen($exe) {
-	static::coll()->updateMany([ 'execution' => $exe->_id, 'aid' => $exe->aid, 'state' => [ '$in' => self::OPEN ] ],
+	\V::app()->om->updateMany('AgentTrace', [ 'execution' => $exe->_id, 'aid' => $exe->aid, 'state' => [ '$in' => self::OPEN ] ],
 	    [ '$set' => [ 'state' => 'stopped', 'ended_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
     }
 
     //the execution is deleted
     public static function dropFor($exe) {
-	static::coll()->deleteMany([ 'execution' => $exe->_id, 'aid' => $exe->aid ]);
+	\V::app()->om->deleteMany('AgentTrace', [ 'execution' => $exe->_id, 'aid' => $exe->aid ]);
     }
 
     //the traces of account $acct older than its `execution_log_retention` (days, 0: forever), by the daemon. One still waiting for an approval stays: its run goes on
@@ -69,6 +65,6 @@ class AgentTrace extends \sys\BaseModel {
 	if ($days <= 0)
 	    return 0;
 	$limit = new \MongoDB\BSON\UTCDateTime((time() - $days * 86400) * 1000);
-	return static::coll()->deleteMany([ 'aid' => $acct->_id, 'created_at' => [ '$lte' => $limit ], 'state' => [ '$ne' => 'waiting' ] ])->getDeletedCount();
+	return \V::app()->om->deleteMany('AgentTrace', [ 'aid' => $acct->_id, 'created_at' => [ '$lte' => $limit ], 'state' => [ '$ne' => 'waiting' ] ]);
     }
 }

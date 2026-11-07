@@ -102,7 +102,7 @@ class NodeTriggerTeams extends \models\wf\WfNode {
 	    throw new \Exception('Teams message: the credential is no longer available');
 	$me = (string)($data['me'] ?? '');
 	if ($me === '')
-	    $me = (string)(self::graphGet($cred, '/me', [ '$select' => 'id' ])['id'] ?? '');
+	    $me = (string)(\util\AgentChannels::graph($cred, 'GET', '/me', [ '$select' => 'id' ])['id'] ?? '');
 	$now = gmdate('Y-m-d\TH:i:s\Z');
 	if ($first)
 	    return [ [ 'me' => $me, 'since' => $now, 'seen' => [] ], [] ];
@@ -112,7 +112,7 @@ class NodeTriggerTeams extends \models\wf\WfNode {
 	$chats = [ $chat ];
 	if ($chat === '') {
 	    $chats = [];
-	    foreach((array)(self::graphGet($cred, '/me/chats', [ '$expand' => 'lastMessagePreview', '$orderby' => 'lastMessagePreview/createdDateTime desc', '$top' => self::MAX_CHATS ])['value'] ?? []) as $c)
+	    foreach((array)(\util\AgentChannels::graph($cred, 'GET', '/me/chats', [ '$expand' => 'lastMessagePreview', '$orderby' => 'lastMessagePreview/createdDateTime desc', '$top' => self::MAX_CHATS ])['value'] ?? []) as $c)
 		if (substr((string)($c['lastMessagePreview']['createdDateTime'] ?? ''), 0, 19) >= $since)
 		    $chats[] = (string)($c['id'] ?? '');
 	}
@@ -120,7 +120,7 @@ class NodeTriggerTeams extends \models\wf\WfNode {
 	$later = false;
 	foreach($chats as $id) {
 	    $known = array_map('strval', (array)($seen[$id] ?? []));
-	    $list = (array)(self::graphGet($cred, '/chats/' . rawurlencode($id) . '/messages', [ '$top' => self::MAX_MESSAGES, '$orderby' => 'createdDateTime desc' ])['value'] ?? []);
+	    $list = (array)(\util\AgentChannels::graph($cred, 'GET', '/chats/' . rawurlencode($id) . '/messages', [ '$top' => self::MAX_MESSAGES, '$orderby' => 'createdDateTime desc' ])['value'] ?? []);
 	    usort($list, fn($a, $b) => strcmp((string)($a['createdDateTime'] ?? ''), (string)($b['createdDateTime'] ?? '')));
 	    foreach($list as $m) {
 		$mid = (string)($m['id'] ?? '');
@@ -150,11 +150,6 @@ class NodeTriggerTeams extends \models\wf\WfNode {
 	return [ [ 'me' => $me, 'since' => $later || $next < $since ? $since : $next, 'seen' => $seen ], $started ];
     }
 
-    //CLD: 2026-11-07T01:11:11+02:00: GET $path of Microsoft Graph with credential $cred
-    private static function graphGet($cred, $path, $query = []) {
-	return \util\AgentChannels::graph($cred, 'GET', $path, $query);
-    }
-
     //a run of Graph message $m of chat $chat; null: it has no text
     private static function startMessage($wf, array $node, $chat, array $m) {
 	$content = (string)($m['body']['content'] ?? '');
@@ -163,8 +158,7 @@ class NodeTriggerTeams extends \models\wf\WfNode {
 	    return null;
 	$from = (array)($m['from']['user'] ?? []);
 	$person = [ 'id' => (string)($from['id'] ?? ''), 'name' => (string)($from['displayName'] ?? ''), 'email' => '' ];
-	$c = \models\agent\AgentConversation::coll();
-	$conv = $c->findOne([ 'aid' => $wf->aid, 'wf' => $wf->_id, 'thread' => (string)$chat ], \sys\Mongo::ARRAYS)
+	$conv = \V::app()->om->findOne('AgentConversation', [ 'aid' => $wf->aid, 'wf' => $wf->_id, 'thread' => (string)$chat ], [ 'arrays' => true ])
 	    ?: \models\agent\AgentConversation::begin([ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => $node['wfid'], 'channel' => 'teams', 'user_name' => $person['name'], 'who' => 't:' . $person['id'], 'thread' => (string)$chat,
 		'credential' => (string)($node['config']['credential'] ?? '') ]);
 	return \models\agent\AgentConversation::startTurn($wf, $node, $conv, $text, [ 'wait' => false, 'trigger' => 'teams', 'user' => $person, 'input' => [ 'who' => 't:' . $person['id'] ],

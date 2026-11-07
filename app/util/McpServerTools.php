@@ -556,7 +556,7 @@ class McpServerTools {
 		    throw new \ErrorException('you may not read this workflow');
 		$id = trim((string)($args['id'] ?? ''));
 		if ($id === '')
-		    $id = (string)(\models\wf\WfTestRun::latest($wf)['_id'] ?? '');
+		    $id = (string)(\models\wf\WfTestRun::ofWorkflow($wf, 1)[0]['_id'] ?? '');
 		$run = \models\wf\WfTestRun::read($id, $wf);
 		if (!$run)
 		    throw new \ErrorException($id === '' ? 'this workflow has no test runs' : "no test run `{$id}` of this workflow");
@@ -657,7 +657,7 @@ class McpServerTools {
 	    $t = self::findIn('DataTableDef', $args['table'] ?? '', $project, 'table');
 	} catch (\ErrorException $e) {
 	    $ref = trim((string)($args['table'] ?? ''));
-	    $query = [ 'aid' => $project->aid ] + \models\datatable\DataTableDef::sharedWithQuery($project->_id) + (\util\Validator::rule('oid', $ref) ? [ '_id' => \V::app()->om->to_oid($ref) ] : [ 'name' => $ref ]);
+	    $query = [ 'aid' => $project->aid ] + \models\datatable\DataTableDef::sharedWithQuery($project->_id) + (\util\Validator::rule('oid', $ref) ? [ '_id' => $ref ] : [ 'name' => $ref ]);
 	    $t = $ref === '' ? null : \V::app()->om->findOne('DataTableDef', $query);
 	    if (!$t)
 		throw $e;
@@ -673,7 +673,7 @@ class McpServerTools {
     private static function findIn($objectName, $ref, $project, $what) {
 	$ref = trim((string)$ref);
 	$query = [ 'aid' => $project->aid, 'project' => $project->_id ];
-	$query += \util\Validator::rule('oid', $ref) ? [ '_id' => \V::app()->om->to_oid($ref) ] : [ 'name' => $ref ];
+	$query += \util\Validator::rule('oid', $ref) ? [ '_id' => $ref ] : [ 'name' => $ref ];
 	$o = $ref === '' ? null : \V::app()->om->findOne($objectName, $query);
 	if (!$o)
 	    throw new \ErrorException("no {$what} `{$ref}` in this project");
@@ -789,7 +789,7 @@ class McpServerTools {
 	if (isset(self::linkTargets()[$ref]))
 	    return $ref;
 	$query = [ 'aid' => $project->aid, 'project' => $project->_id ];
-	$query += \util\Validator::rule('oid', $ref) ? [ '_id' => \V::app()->om->to_oid($ref) ] : [ 'name' => $ref ];
+	$query += \util\Validator::rule('oid', $ref) ? [ '_id' => $ref ] : [ 'name' => $ref ];
 	$t = \V::app()->om->findOne('DataTableDef', $query);
 	if (!$t)
 	    throw new \ErrorException($prefix . "points_to: no data table `{$ref}` in this project" . (self::linkTargets() ? ' (or one of: ' . implode(', ', array_keys(self::linkTargets())) . ')' : ''));

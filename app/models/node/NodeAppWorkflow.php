@@ -321,7 +321,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 
     //a workflow started earlier: still running (paused: this step too, until it ends or the time limit), or ended
     private function check() {
-	$child = \V::app()->om->findOne('WfExecution', [ '_id' => \V::app()->om->to_oid($this->child), 'aid' => $this->exec->aid ]);
+	$child = \V::app()->om->findOne('WfExecution', [ '_id' => $this->child, 'aid' => $this->exec->aid ]);
 	if (!$child) {
 	    $this->child = null;
 	    return $this->failed('its execution no longer exists');

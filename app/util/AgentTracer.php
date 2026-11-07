@@ -40,9 +40,9 @@ class AgentTracer {
 	$trace = new self($step, new \MongoDB\BSON\ObjectId());
 	$now = new \MongoDB\BSON\UTCDateTime();
 	$exec = $step->exec;
-	$trace->attempt(fn() => \models\agent\AgentTrace::coll()->insertOne([ '_id' => $trace->id, 'aid' => $exec->aid, 'project' => $exec->project, 'wf' => $exec->wf, 'execution' => $exec->_id,
+	$trace->attempt(fn() => \V::app()->om->insertOne('AgentTrace', \V::app()->om->create('AgentTrace', [ '_id' => $trace->id, 'aid' => $exec->aid, 'project' => $exec->project, 'wf' => $exec->wf, 'execution' => $exec->_id,
 	    'node' => (string)$step->wfid, 'step' => (string)($step->title ?: $step::$label), 'visit' => (int)$step->runs + 1, 'provider' => $step::PROVIDER, 'model' => trim((string)$step->cfg('model', '')),
-	    'state' => 'running', 'rounds' => [], 'totals' => self::emptyTotals(), 'created_at' => $now, 'started_at' => $now, 'updated_at' => $now ]));
+	    'state' => 'running', 'rounds' => [], 'totals' => self::emptyTotals(), 'created_at' => $now, 'started_at' => $now, 'updated_at' => $now ])));
 	return $trace;
     }
 
@@ -207,7 +207,7 @@ class AgentTracer {
     }
 
     private function save(array $set) {
-	$this->attempt(fn() => \models\agent\AgentTrace::coll()->updateOne([ '_id' => $this->id ], [ '$set' => $set + [ 'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]));
+	$this->attempt(fn() => \V::app()->om->updateOne('AgentTrace', [ '_id' => $this->id, 'aid' => $this->step->exec->aid ], [ '$set' => $set + [ 'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]));
     }
 
     //a write; a failure logged once, never passed on

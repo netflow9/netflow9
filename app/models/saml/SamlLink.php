@@ -25,10 +25,6 @@ class SamlLink extends \sys\BaseModel {
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    public static function forUser($user) {
-	return \V::app()->om->findOne('SamlLink', [ 'aid' => $user->aid, 'user' => $user->_id ]);
-    }
-
     //a deleted user takes its link with it (hook model:after-delete)
     public static function afterModelDelete($model, $data) {
 	if (!($model instanceof \models\User))

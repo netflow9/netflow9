@@ -6,7 +6,7 @@
     merged (reciprocal rank fusion). Searched by the Knowledge base step and by the AI steps (their Knowledge bases setting: the search_knowledge_base tool).
 	- chunkSize / overlap: how the documents are cut (characters)
 	- documents / chunks: the counts (updated after each change)
-    The documents: models\kb\KbDocument (one per key: a file, a web page, a text), the chunks: models\kb\KbChunk (written and read in bulk through the collection: never one by one).
+    The documents: models\kb\KbDocument (one per key: a file, a web page, a text), the chunks: models\kb\KbChunk (written and read in bulk through ObjectManager: never saved one by one).
     Deleted with its documents and chunks (beforeDelete).
     CLD: 2026-10-31T01:00:00+02:00: the embedding model is the account's (models\kb\EmbeddingSettings): `model` / dims are those it was
     indexed with; once the account uses another model it must be re-indexed (reindex(): a job re-embeds every chunk, then switches) before it is searched or added to again.
@@ -166,8 +166,8 @@ class KnowledgeBase extends \sys\BaseModel {
 	parent::beforeDelete();
 	if (empty($this->_id))
 	    return;
-	self::chunkCollection()->deleteMany([ 'kb' => $this->_id ]);
-	self::documentCollection()->deleteMany([ 'kb' => $this->_id ]);
+	\V::app()->om->deleteMany('KbChunk', [ 'kb' => $this->_id, 'aid' => $this->aid ]);
+	\V::app()->om->deleteMany('KbDocument', [ 'kb' => $this->_id, 'aid' => $this->aid ]);
     }
 
     //access as the data tables: global scope = the account's knowledge bases, project scope = those of the projects the user is a member of
@@ -184,14 +184,6 @@ class KnowledgeBase extends \sys\BaseModel {
 
     // ------------------------------------------------------------------------------------
     //finding, making
-
-    public static function chunkCollection() {
-	return \V::app()->mongo->selectCollection(KbChunk::_database(), KbChunk::_collection());
-    }
-
-    public static function documentCollection() {
-	return \V::app()->mongo->selectCollection(KbDocument::_database(), KbDocument::_collection());
-    }
 
     //knowledge base $name of project $project (account $aid), or null
     public static function named($name, $aid, $project) {
@@ -314,15 +306,14 @@ class KnowledgeBase extends \sys\BaseModel {
 	    $text = mb_substr($text, 0, self::MAX_TEXT);
 	$meta = self::checkMeta($meta);
 	$hash = sha1(json_encode([ $title, $text, $meta, (int)$this->chunkSize, (int)$this->overlap, (string)$this->model ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
-	$docs = self::documentCollection();
-	$old = $docs->findOne([ 'kb' => $this->_id, 'key' => $key ]);
+	$old = \V::app()->om->findOne('KbDocument', [ 'kb' => $this->_id, 'aid' => $this->aid, 'key' => $key ], [ 'arrays' => true ]);
 	if ($old && ($old['hash'] ?? '') === $hash && ($old['status'] ?? 'indexed') === 'indexed')
 	    return [ 'key' => $key, 'title' => $title, 'status' => 'unchanged', 'chunks' => (int)($old['chunks'] ?? 0) ];
 
 	$pieces = \util\TextChunks::split($text, (int)$this->chunkSize ?: self::DEFAULT_CHUNK_SIZE, (int)$this->overlap);
 	if (!$pieces)
 	    throw new \ErrorException("`{$title}` has no text");
-	$total = self::chunkCollection()->countDocuments([ 'kb' => $this->_id ]) - (int)($old['chunks'] ?? 0) + count($pieces);
+	$total = \V::app()->om->count('KbChunk', [ 'kb' => $this->_id, 'aid' => $this->aid ]) - (int)($old['chunks'] ?? 0) + count($pieces);
 	if ($total > self::MAX_CHUNKS)
 	    throw new \ErrorException("knowledge base `{$this->name}` would have {$total} chunks, at most " . self::MAX_CHUNKS);
 
@@ -337,17 +328,17 @@ class KnowledgeBase extends \sys\BaseModel {
 	    'updated_at' => $now ];
 	$chunks = [];
 	foreach($pieces as $i => $p)
-	    $chunks[] = [ 'aid' => $this->aid, 'kb' => $this->_id, 'doc' => $docId, 'key' => $key, 'title' => $title, 'seq' => $i, 'page' => $p['page'], 'text' => $p['text'],
-		'meta' => (object)$meta, 'embedding' => \MongoDB\BSON\Binary::fromVector($vectors[$i], \MongoDB\BSON\VectorType::Float32) ];
+	    $chunks[] = \V::app()->om->create('KbChunk', [ 'aid' => $this->aid, 'kb' => $this->_id, 'doc' => $docId, 'key' => $key, 'title' => $title, 'seq' => $i, 'page' => $p['page'], 'text' => $p['text'],
+		'meta' => (object)$meta, 'embedding' => \MongoDB\BSON\Binary::fromVector($vectors[$i], \MongoDB\BSON\VectorType::Float32) ]);
 
 	//the old chunks out, the new ones in
-	self::chunkCollection()->deleteMany([ 'kb' => $this->_id, 'doc' => $docId ]);
+	\V::app()->om->deleteMany('KbChunk', [ 'kb' => $this->_id, 'aid' => $this->aid, 'doc' => $docId ]);
 	foreach(array_chunk($chunks, 500) as $batch)
-	    self::chunkCollection()->insertMany($batch);
+	    \V::app()->om->insertMany('KbChunk', $batch);
 	if ($old)
-	    $docs->updateOne([ '_id' => $docId ], [ '$set' => $doc ]);
+	    \V::app()->om->updateOne('KbDocument', [ '_id' => $docId, 'aid' => $this->aid ], [ '$set' => $doc ]);
 	else
-	    $docs->insertOne([ '_id' => $docId ] + $doc + [ 'created_at' => $now ]);
+	    \V::app()->om->insertOne('KbDocument', \V::app()->om->create('KbDocument', [ '_id' => $docId ] + $doc + [ 'created_at' => $now ]));
 	$this->recount();
 	return [ 'key' => $key, 'title' => $title, 'status' => $old && ($old['status'] ?? 'indexed') === 'indexed' ? 'replaced' : 'added', 'chunks' => count($pieces) ];
     }
@@ -381,12 +372,12 @@ class KnowledgeBase extends \sys\BaseModel {
 	if (\util\Validator::rule('oid', $key))
 	    $or[] = [ 'file' => \V::app()->om->to_oid($key) ];
 	$ids = [];
-	foreach(self::documentCollection()->find([ 'kb' => $this->_id, '$or' => $or ], [ 'projection' => [ '_id' => 1 ] ]) as $d)
+	foreach(\V::app()->om->find('KbDocument', [ 'kb' => $this->_id, 'aid' => $this->aid, '$or' => $or ], [ 'arrays' => true, 'projection' => [ '_id' => 1 ] ]) as $d)
 	    $ids[] = $d['_id'];
 	if (!$ids)
 	    return 0;
-	self::chunkCollection()->deleteMany([ 'kb' => $this->_id, 'doc' => [ '$in' => $ids ] ]);
-	self::documentCollection()->deleteMany([ 'kb' => $this->_id, '_id' => [ '$in' => $ids ] ]);
+	\V::app()->om->deleteMany('KbChunk', [ 'kb' => $this->_id, 'aid' => $this->aid, 'doc' => [ '$in' => $ids ] ]);
+	\V::app()->om->deleteMany('KbDocument', [ 'kb' => $this->_id, 'aid' => $this->aid, '_id' => [ '$in' => $ids ] ]);
 	$this->recount();
 	return count($ids);
     }
@@ -394,7 +385,7 @@ class KnowledgeBase extends \sys\BaseModel {
     //the documents, newest first: [ [ id, key, title, source, file, url, chunks, chars, meta, status: indexed | pending | error, error, updated_at ] ], at most $limit
     public function documentList($limit = 100) {
 	$list = [];
-	foreach(self::documentCollection()->find([ 'kb' => $this->_id ], [ 'sort' => [ 'updated_at' => -1 ], 'limit' => max(1, (int)$limit) ]) as $d)
+	foreach(\V::app()->om->find('KbDocument', [ 'kb' => $this->_id, 'aid' => $this->aid ], [ 'arrays' => true, 'sort' => [ 'updated_at' => -1 ], 'limit' => max(1, (int)$limit) ]) as $d)
 	    $list[] = [ 'id' => (string)$d['_id'], 'key' => (string)$d['key'], 'title' => (string)($d['title'] ?? ''), 'source' => (string)($d['source'] ?? ''),
 		'file' => isset($d['file']) ? (string)$d['file'] : null, 'url' => $d['url'] ?? null, 'chunks' => (int)($d['chunks'] ?? 0), 'chars' => (int)($d['chars'] ?? 0),
 		'meta' => \util\Expression::hostValue($d['meta'] ?? []), 'status' => (string)($d['status'] ?? 'indexed'), 'error' => $d['error'] ?? null,
@@ -404,8 +395,8 @@ class KnowledgeBase extends \sys\BaseModel {
 
     //the counts of documents and chunks saved again
     private function recount() {
-	$this->documents = self::documentCollection()->countDocuments([ 'kb' => $this->_id ]);
-	$this->chunks = self::chunkCollection()->countDocuments([ 'kb' => $this->_id ]);
+	$this->documents = \V::app()->om->count('KbDocument', [ 'kb' => $this->_id, 'aid' => $this->aid ]);
+	$this->chunks = \V::app()->om->count('KbChunk', [ 'kb' => $this->_id, 'aid' => $this->aid ]);
 	\V::app()->om->updateMany('KnowledgeBase', [ '_id' => $this->_id ], [ '$set' => [ 'documents' => $this->documents, 'chunks' => $this->chunks,
 	    'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
     }
@@ -463,13 +454,12 @@ class KnowledgeBase extends \sys\BaseModel {
 	    default:
 		throw new \ErrorException('unknown source');
 	}
-	$docs = self::documentCollection();
-	$old = $docs->findOne([ 'kb' => $this->_id, 'key' => $key ]);
+	$old = \V::app()->om->findOne('KbDocument', [ 'kb' => $this->_id, 'aid' => $this->aid, 'key' => $key ], [ 'arrays' => true ]);
 	if ($old)
-	    $docs->updateOne([ '_id' => $old['_id'] ], [ '$set' => [ 'status' => 'pending', 'error' => null, 'updated_at' => $now ] ]);
+	    \V::app()->om->updateOne('KbDocument', [ '_id' => $old['_id'], 'aid' => $this->aid ], [ '$set' => [ 'status' => 'pending', 'error' => null, 'updated_at' => $now ] ]);
 	else
-	    $docs->insertOne([ 'aid' => $this->aid, 'kb' => $this->_id, 'key' => $key, 'title' => $title, 'source' => $type, 'file' => $extra['file'] ?? null, 'url' => $extra['url'] ?? null,
-		'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'created_at' => $now, 'updated_at' => $now ]);
+	    \V::app()->om->insertOne('KbDocument', \V::app()->om->create('KbDocument', [ 'aid' => $this->aid, 'kb' => $this->_id, 'key' => $key, 'title' => $title, 'source' => $type, 'file' => $extra['file'] ?? null, 'url' => $extra['url'] ?? null,
+		'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'created_at' => $now, 'updated_at' => $now ]));
 	$this->recount();
 	\models\Job::submit('\models\kb\KnowledgeBase::indexJob', [ 'aid' => (string)$this->aid, 'project' => (string)$this->project, 'kb' => (string)$this->_id, 'key' => $key, 'src' => $src ],
 	    [ 'delete_on_done' => true ]);
@@ -494,7 +484,7 @@ class KnowledgeBase extends \sys\BaseModel {
 	if (!$kb)
 	    return;
 	$key = (string)($data['key'] ?? '');
-	$doc = self::documentCollection()->findOne([ 'kb' => $kb->_id, 'key' => $key ]);
+	$doc = \V::app()->om->findOne('KbDocument', [ 'kb' => $kb->_id, 'aid' => $kb->aid, 'key' => $key ], [ 'arrays' => true ]);
 	//removed meanwhile
 	if (!$doc || ($doc['status'] ?? '') !== 'pending')
 	    return;
@@ -516,7 +506,7 @@ class KnowledgeBase extends \sys\BaseModel {
 	    $meta = \util\Expression::hostValue($doc['meta'] ?? []);
 	    $kb->addDocument($key, $s['title'], $s['text'], is_array($meta) ? $meta : [], $s['source'], 300);
 	} catch (\Exception $e) {
-	    self::documentCollection()->updateOne([ '_id' => $doc['_id'] ], [ '$set' => [ 'status' => 'error', 'error' => mb_substr($e->getMessage(), 0, 500),
+	    \V::app()->om->updateOne('KbDocument', [ '_id' => $doc['_id'], 'aid' => $kb->aid ], [ '$set' => [ 'status' => 'error', 'error' => mb_substr($e->getMessage(), 0, 500),
 		'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
 	}
     }
@@ -540,7 +530,6 @@ class KnowledgeBase extends \sys\BaseModel {
 	$kb = \V::app()->om->findOne('KnowledgeBase', [ '_id' => (string)($data['kb'] ?? ''), 'aid' => \V::app()->om->to_oid($data['aid'] ?? null) ]);
 	if (!$kb)
 	    return;
-	$chunks = self::chunkCollection();
 	try {
 	    $settings = EmbeddingSettings::of($kb->aid);
 	    if (!$settings->ready())
@@ -548,8 +537,8 @@ class KnowledgeBase extends \sys\BaseModel {
 	    $dims = 0;
 	    $last = null;
 	    do {
-		$batch = $chunks->find([ 'kb' => $kb->_id ] + ($last ? [ '_id' => [ '$gt' => $last ] ] : []), [ 'projection' => [ 'title' => 1, 'text' => 1 ], 'sort' => [ '_id' => 1 ],
-		    'limit' => self::REINDEX_BATCH ])->toArray();
+		$batch = \V::app()->om->find('KbChunk', [ 'kb' => $kb->_id, 'aid' => $kb->aid ] + ($last ? [ '_id' => [ '$gt' => $last ] ] : []), [ 'arrays' => true, 'projection' => [ 'title' => 1, 'text' => 1 ],
+		    'sort' => [ '_id' => 1 ], 'limit' => self::REINDEX_BATCH ]);
 		if (!$batch)
 		    break;
 		$vectors = \util\Embeddings::embed($settings, array_map(fn($c) => self::embedText((string)($c['title'] ?? ''), (string)$c['text']), $batch), 'document', 300);
@@ -557,16 +546,16 @@ class KnowledgeBase extends \sys\BaseModel {
 		    $dims = $dims ?: count($vectors[$i]);
 		    if (count($vectors[$i]) !== $dims)
 			throw new \ErrorException('the embeddings have different lengths');
-		    $chunks->updateOne([ '_id' => $c['_id'] ], [ '$set' => [ 'embedding_new' => \MongoDB\BSON\Binary::fromVector($vectors[$i], \MongoDB\BSON\VectorType::Float32) ] ]);
+		    \V::app()->om->updateOne('KbChunk', [ '_id' => $c['_id'], 'aid' => $kb->aid ], [ '$set' => [ 'embedding_new' => \MongoDB\BSON\Binary::fromVector($vectors[$i], \MongoDB\BSON\VectorType::Float32) ] ]);
 		}
 		$last = end($batch)['_id'];
 	    } while (count($batch) === self::REINDEX_BATCH);
-	    $chunks->updateMany([ 'kb' => $kb->_id, 'embedding_new' => [ '$exists' => true ] ], [ [ '$set' => [ 'embedding' => '$embedding_new' ] ], [ '$unset' => 'embedding_new' ] ]);
+	    \V::app()->om->updateMany('KbChunk', [ 'kb' => $kb->_id, 'aid' => $kb->aid, 'embedding_new' => [ '$exists' => true ] ], [ [ '$set' => [ 'embedding' => '$embedding_new' ] ], [ '$unset' => 'embedding_new' ] ]);
 	    self::setFields($kb, [ 'model' => trim((string)$settings->model), 'dims' => $dims, 'state' => 'ready', 'state_message' => '' ]);
 	    //documents indexed with another model: their hash names it (added again: indexed again)
-	    self::documentCollection()->updateMany([ 'kb' => $kb->_id ], [ '$set' => [ 'hash' => '' ] ]);
+	    \V::app()->om->updateMany('KbDocument', [ 'kb' => $kb->_id, 'aid' => $kb->aid ], [ '$set' => [ 'hash' => '' ] ]);
 	} catch (\Exception $e) {
-	    $chunks->updateMany([ 'kb' => $kb->_id ], [ '$unset' => [ 'embedding_new' => '' ] ]);
+	    \V::app()->om->updateMany('KbChunk', [ 'kb' => $kb->_id, 'aid' => $kb->aid ], [ '$unset' => [ 'embedding_new' => '' ] ]);
 	    self::setFields($kb, [ 'state' => 'ready', 'state_message' => 'Re-index failed: ' . mb_substr($e->getMessage(), 0, 400) ]);
 	}
     }
@@ -593,19 +582,18 @@ class KnowledgeBase extends \sys\BaseModel {
 	if ((int)$this->dims && count($vector) !== (int)$this->dims)
 	    throw new \ErrorException("the query's embedding has " . count($vector) . " dimensions, knowledge base `{$this->name}` has " . (int)$this->dims . ' (was the model changed on the server?)');
 	$qv = \MongoDB\BSON\Binary::fromVector($vector, \MongoDB\BSON\VectorType::Float32);
-	$match = [ 'kb' => $this->_id ] + self::filterQuery($filter);
+	$match = [ 'kb' => $this->_id, 'aid' => $this->aid ] + self::filterQuery($filter);
 	$candidates = max(20, $k * 4);
 	$fields = [ 'text' => 1, 'key' => 1, 'title' => 1, 'page' => 1, 'meta' => 1, 'seq' => 1 ];
-	$coll = self::chunkCollection();
 
 	//by meaning: every chunk's similarity, the best
-	$byMeaning = $coll->aggregate([ [ '$match' => $match ], [ '$project' => $fields + [ 'score' => [ '$similarityCosine' => [ 'vectors' => [ '$embedding', $qv ] ] ] ] ],
-	    [ '$sort' => [ 'score' => -1 ] ], [ '$limit' => $candidates ] ])->toArray();
+	$byMeaning = \V::app()->om->aggregate('KbChunk', [ [ '$match' => $match ], [ '$project' => $fields + [ 'score' => [ '$similarityCosine' => [ 'vectors' => [ '$embedding', $qv ] ] ] ] ],
+	    [ '$sort' => [ 'score' => -1 ] ], [ '$limit' => $candidates ] ]);
 	//by words: the text index (diacritics and case ignored); none when the index is missing (`v sys::indexes`)
 	$byWords = [];
 	try {
-	    $byWords = $coll->find($match + [ '$text' => [ '$search' => $query ] ], [ 'projection' => $fields + [ 'embedding' => 1, 'ts' => [ '$meta' => 'textScore' ] ],
-		'sort' => [ 'ts' => [ '$meta' => 'textScore' ] ], 'limit' => $candidates ])->toArray();
+	    $byWords = \V::app()->om->find('KbChunk', $match + [ '$text' => [ '$search' => $query ] ], [ 'arrays' => true, 'projection' => $fields + [ 'embedding' => 1, 'ts' => [ '$meta' => 'textScore' ] ],
+		'sort' => [ 'ts' => [ '$meta' => 'textScore' ] ], 'limit' => $candidates ]);
 	} catch (\MongoDB\Driver\Exception\Exception $e) {
 	    \V::app()->log->warn('KnowledgeBase::search: no search by words (' . $e->getMessage() . ')');
 	}

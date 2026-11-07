@@ -9,7 +9,7 @@
 	util\AgentMemory), guest_key (sha256 of the key an embedded page holds), title, seq (the last message's number), turns, summary + summary_upto (the older turns summarized, up to that message)
 	+ summary_at, execution (the run answering; 'claiming' for an instant: one run at a time on the chat pages), thread (the Teams chat), refs (the Message-IDs of an email conversation), mail (where
 	its answers go: { to, subject, reply_to }), credential (the Teams credential), created_at, last_at.
-    Written directly to the collections, not through save(): never in the audit or execution logs (their text is what people said; only the owners read it: AgentController::conversations).
+    Written through ObjectManager's inserts and updates, not through save(): never in the audit or execution logs (their text is what people said; only the owners read it: AgentController::conversations).
     Retention: prune() (the daemon): messages, summaries, conversations and the runs that hold their text go after the account's `execution_log_retention` (0: kept). Removed with the workflow.
     Read as arrays
 */
@@ -50,10 +50,6 @@ class AgentConversation extends \sys\BaseModel {
 	], $this->getSystemSchema());
     }
 
-    public static function coll() {
-	return \V::app()->mongo->selectCollection(static::_database(), static::_collection());
-    }
-
     // ------------------------------------------------------------------------------------
     //conversations
 
@@ -67,7 +63,7 @@ class AgentConversation extends \sys\BaseModel {
 	foreach([ 'thread', 'refs', 'mail', 'credential' ] as $k)
 	    if (isset($f[$k]))
 		$doc[$k] = $f[$k];
-	$doc['_id'] = self::coll()->insertOne($doc)->getInsertedId();
+	$doc['_id'] = \V::app()->om->insertOne('AgentConversation', \V::app()->om->create('AgentConversation', $doc));
 	return $doc;
     }
 
@@ -75,12 +71,7 @@ class AgentConversation extends \sys\BaseModel {
     public static function read($id, $aid) {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
-	return self::coll()->findOne([ '_id' => new \MongoDB\BSON\ObjectId((string)$id), 'aid' => $aid ], \sys\Mongo::ARRAYS);
-    }
-
-    //the newest conversations of user $uid with workflow $wf
-    public static function mine($wf, $uid) {
-	return iterator_to_array(self::coll()->find([ 'aid' => $wf->aid, 'wf' => $wf->_id, 'user' => (string)$uid ], \sys\Mongo::ARRAYS + [ 'sort' => [ 'last_at' => -1 ], 'limit' => self::LIST_LIMIT ]), false);
+	return \V::app()->om->findOne('AgentConversation', [ '_id' => $id, 'aid' => $aid ], [ 'arrays' => true ]);
     }
 
     //whether $key is the key of guest conversation $conv
@@ -107,13 +98,13 @@ class AgentConversation extends \sys\BaseModel {
 
     //the conversation is removed, with its messages. Its runs stay until the retention removes them
     public static function remove(array $conv) {
-	AgentMessage::coll()->deleteMany([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'] ]);
-	self::coll()->deleteOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ]);
+	\V::app()->om->deleteMany('AgentMessage', [ 'conversation' => $conv['_id'], 'aid' => $conv['aid'] ]);
+	\V::app()->om->deleteOne('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'] ]);
     }
 
     //hook workflow:before-delete (sys\Boot)
     public static function beforeWorkflowDelete($wf) {
-	foreach(self::coll()->find([ 'wf' => $wf->_id, 'aid' => $wf->aid ], \sys\Mongo::ARRAYS + [ 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $c)
+	foreach(\V::app()->om->find('AgentConversation', [ 'wf' => $wf->_id, 'aid' => $wf->aid ], [ 'arrays' => true, 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $c)
 	    self::remove($c);
     }
 
@@ -127,18 +118,18 @@ class AgentConversation extends \sys\BaseModel {
 	$text = (string)($fields['text'] ?? '');
 	if ($role === 'user' && (string)($conv['title'] ?? '') === '')
 	    $set['title'] = mb_substr(trim(preg_replace('/\s+/', ' ', $text)), 0, 80);
-	$after = self::coll()->findOneAndUpdate([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$inc' => [ 'seq' => 1 ] + ($role === 'user' ? [ 'turns' => 1 ] : []), '$set' => $set ],
-	    \sys\Mongo::ARRAYS + [ 'returnDocument' => \MongoDB\Operation\FindOneAndUpdate::RETURN_DOCUMENT_AFTER, 'projection' => [ 'seq' => 1 ] ]);
+	$after = \V::app()->om->findOneAndUpdate('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$inc' => [ 'seq' => 1 ] + ($role === 'user' ? [ 'turns' => 1 ] : []), '$set' => $set ],
+	    [ 'arrays' => true, 'projection' => [ 'seq' => 1 ] ]);
 	if (!$after)
 	    throw new \ErrorException('the conversation is gone');
-	AgentMessage::coll()->insertOne([ 'aid' => $conv['aid'], 'conversation' => $conv['_id'], 'seq' => (int)$after['seq'], 'role' => (string)$role, 'at' => $now ] + $fields);
+	\V::app()->om->insertOne('AgentMessage', \V::app()->om->create('AgentMessage', [ 'aid' => $conv['aid'], 'conversation' => $conv['_id'], 'seq' => (int)$after['seq'], 'role' => (string)$role, 'at' => $now ] + $fields));
 	return (int)$after['seq'];
     }
 
     //the messages after number $after, as the page shows them: [ seq, role, text, html, buttons, at ]
     public static function messagesAfter(array $conv, $after = 0) {
 	$out = [];
-	foreach(AgentMessage::coll()->find([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'seq' => [ '$gt' => (int)$after ] ], \sys\Mongo::ARRAYS + [ 'sort' => [ 'seq' => 1 ], 'limit' => self::MAX_READ ]) as $m)
+	foreach(\V::app()->om->find('AgentMessage', [ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'seq' => [ '$gt' => (int)$after ] ], [ 'arrays' => true, 'sort' => [ 'seq' => 1 ], 'limit' => self::MAX_READ ]) as $m)
 	    $out[] = [ 'seq' => (int)$m['seq'], 'role' => (string)$m['role'], 'text' => (string)($m['label'] ?? $m['text'] ?? ''), 'html' => (string)($m['html'] ?? ''), 'buttons' => (array)($m['buttons'] ?? []),
 		'at' => ($m['at'] ?? null) instanceof \MongoDB\BSON\UTCDateTime ? $m['at']->toDateTime()->format('c') : null ];
 	return $out;
@@ -159,7 +150,7 @@ class AgentConversation extends \sys\BaseModel {
 	    $args = $scrub(\util\JSON::encode($c['arguments'] ?? []));
 	    $list[] = [ 'tool' => (string)($c['tool'] ?? ''), 'arguments' => mb_substr($args, 0, self::MAX_TOOL_TEXT), 'error' => !empty($c['error'] ?? false), 'approval' => (string)($c['approval'] ?? '') ];
 	}
-	AgentMessage::coll()->updateOne([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'seq' => (int)$turn ], [ '$push' => [ 'tools' => [ '$each' => $list, '$slice' => -self::MAX_TOOLS ] ] ]);
+	\V::app()->om->updateOne('AgentMessage', [ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'seq' => (int)$turn ], [ '$push' => [ 'tools' => [ '$each' => $list, '$slice' => -self::MAX_TOOLS ] ] ]);
     }
 
     // ------------------------------------------------------------------------------------
@@ -179,7 +170,7 @@ class AgentConversation extends \sys\BaseModel {
     private static function runState(array $conv, $id) {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
-	$exe = \V::app()->om->findOne('WfExecution', [ '_id' => \V::app()->om->to_oid((string)$id), 'aid' => $conv['aid'], 'state' => [ '$in' => [ 'new', 'run', 'sleep' ] ] ], [ 'projection' => [ 'state' => 1 ] ]);
+	$exe = \V::app()->om->findOne('WfExecution', [ '_id' => $id, 'aid' => $conv['aid'], 'state' => [ '$in' => [ 'new', 'run', 'sleep' ] ] ], [ 'projection' => [ 'state' => 1 ] ]);
 	return $exe ? (string)$exe->state : null;
     }
 
@@ -206,8 +197,8 @@ class AgentConversation extends \sys\BaseModel {
 	if ($o['wait'] ?? true) {
 	    if (self::busy($conv))
 		return null;
-	    $claimed = self::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'], 'execution' => $conv['execution'] ?? null ], [ '$set' => [ 'execution' => 'claiming', 'claimed_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
-	    if (!$claimed->getModifiedCount())
+	    $claimed = \V::app()->om->updateOne('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'], 'execution' => $conv['execution'] ?? null ], [ '$set' => [ 'execution' => 'claiming', 'claimed_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
+	    if (!$claimed)
 		return null;
 	}
 	try {
@@ -220,16 +211,16 @@ class AgentConversation extends \sys\BaseModel {
 	    $exe->log($node['wfid'], 'message ' . $seq . ' of conversation ' . (string)$conv['_id'] . ' (' . $conv['channel'] . ')');
 	    $exe->save();
 	} catch (\Throwable $e) {
-	    self::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'], 'execution' => 'claiming' ], [ '$set' => [ 'execution' => null ] ]);
+	    \V::app()->om->updateOne('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'], 'execution' => 'claiming' ], [ '$set' => [ 'execution' => null ] ]);
 	    throw $e;
 	}
-	self::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$set' => [ 'execution' => (string)$exe->_id ] ]);
+	\V::app()->om->updateOne('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$set' => [ 'execution' => (string)$exe->_id ] ]);
 	return $exe;
     }
 
     //whether $value, $label is a button of the conversation's last answer. Else the page shows what was sent: a person's own page cannot make it read as something else to the owners
     private static function isButton(array $conv, $value, $label) {
-	$last = AgentMessage::coll()->findOne([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'assistant' ], \sys\Mongo::ARRAYS + [ 'sort' => [ 'seq' => -1 ] ]);
+	$last = \V::app()->om->findOne('AgentMessage', [ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'assistant' ], [ 'arrays' => true, 'sort' => [ 'seq' => -1 ] ]);
 	foreach((array)($last['buttons'] ?? []) as $b)
 	    if ((string)($b['value'] ?? '') === (string)$value && (string)($b['label'] ?? '') === (string)$label)
 		return true;
@@ -245,8 +236,8 @@ class AgentConversation extends \sys\BaseModel {
 	$conv = self::read((string)$input['conversation'], $exe->aid);
 	if (!$conv)
 	    return;
-	self::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'], 'execution' => (string)$exe->_id ], [ '$set' => [ 'execution' => null ] ]);
-	$answered = AgentMessage::coll()->countDocuments([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'assistant', 'execution' => (string)$exe->_id ]) > 0;
+	\V::app()->om->updateOne('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'], 'execution' => (string)$exe->_id ], [ '$set' => [ 'execution' => null ] ]);
+	$answered = \V::app()->om->count('AgentMessage', [ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'assistant', 'execution' => (string)$exe->_id ]) > 0;
 	if ($exe->state === 'end' && $answered)
 	    return;
 	if (in_array((string)$conv['channel'], [ 'app', 'embed' ], true))
@@ -271,7 +262,7 @@ class AgentConversation extends \sys\BaseModel {
     //the turns before message $before (null: all), oldest first: [ seq, last (the number of its last message), user, assistant, tools, at ]. Notices are not part of them
     public static function turns(array $conv, $before = null) {
 	$query = [ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => [ '$in' => [ 'user', 'assistant' ] ] ] + ($before !== null ? [ 'seq' => [ '$lt' => (int)$before ] ] : []);
-	$rows = iterator_to_array(AgentMessage::coll()->find($query, \sys\Mongo::ARRAYS + [ 'sort' => [ 'seq' => -1 ], 'limit' => self::MAX_READ ]), false);
+	$rows = \V::app()->om->find('AgentMessage', $query, [ 'arrays' => true, 'sort' => [ 'seq' => -1 ], 'limit' => self::MAX_READ ]);
 	$turns = [];
 	foreach(array_reverse($rows) as $m) {
 	    if ($m['role'] === 'user') {
@@ -339,7 +330,7 @@ class AgentConversation extends \sys\BaseModel {
 
     //the summary of $conv now covers up to message $upto (only when nobody else moved it on meanwhile)
     public static function saveSummary(array $conv, $text, $upto) {
-	self::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'], 'summary_upto' => (int)($conv['summary_upto'] ?? 0) ],
+	\V::app()->om->updateOne('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'], 'summary_upto' => (int)($conv['summary_upto'] ?? 0) ],
 	    [ '$set' => [ 'summary' => (string)$text, 'summary_upto' => (int)$upto, 'summary_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
     }
 
@@ -354,10 +345,10 @@ class AgentConversation extends \sys\BaseModel {
 	    return 0;
 	$limit = new \MongoDB\BSON\UTCDateTime((time() - $days * 86400) * 1000);
 	$aid = $acct->_id;
-	AgentMessage::coll()->deleteMany([ 'aid' => $aid, 'at' => [ '$lte' => $limit ] ]);
-	self::coll()->updateMany([ 'aid' => $aid, 'summary_at' => [ '$lte' => $limit ] ], [ '$set' => [ 'summary' => '', 'summary_at' => null ] ]);
+	\V::app()->om->deleteMany('AgentMessage', [ 'aid' => $aid, 'at' => [ '$lte' => $limit ] ]);
+	\V::app()->om->updateMany('AgentConversation', [ 'aid' => $aid, 'summary_at' => [ '$lte' => $limit ] ], [ '$set' => [ 'summary' => '', 'summary_at' => null ] ]);
 	foreach(\V::app()->om->find('WfExecution', [ 'aid' => $aid, 'input.conversation' => [ '$exists' => true ], 'state' => [ '$in' => [ 'end', 'error', 'cancel' ] ], 'end_at' => [ '$lte' => $limit ] ], [ 'limit' => self::PRUNE_RUNS ]) as $exe)
 	    $exe->delete();
-	return self::coll()->deleteMany([ 'aid' => $aid, 'last_at' => [ '$lte' => $limit ], 'execution' => null ])->getDeletedCount();
+	return \V::app()->om->deleteMany('AgentConversation', [ 'aid' => $aid, 'last_at' => [ '$lte' => $limit ], 'execution' => null ]);
     }
 }

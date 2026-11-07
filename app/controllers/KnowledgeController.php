@@ -215,7 +215,7 @@ class KnowledgeController extends \sys\BaseController {
 	    \V::app()->error(405, 'Method not allowed');
 	$kb = $this->findKb('KnowledgeBase::update');
 	$doc = (string)($req->query['doc'] ?? '');
-	$d = \util\Validator::rule('oid', $doc) ? KnowledgeBase::documentCollection()->findOne([ '_id' => new \MongoDB\BSON\ObjectId($doc), 'kb' => $kb->_id ]) : null;
+	$d = \util\Validator::rule('oid', $doc) ? \V::app()->om->findOne('KbDocument', [ '_id' => $doc, 'kb' => $kb->_id, 'aid' => $kb->aid ], [ 'arrays' => true ]) : null;
 	if (!$d)
 	    \V::app()->error(404, 'Not found');
 	$kb->removeDocument((string)$d['key']);

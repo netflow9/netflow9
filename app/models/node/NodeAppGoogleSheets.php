@@ -246,8 +246,8 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 	$values = array_slice(array_values((array)($data['values'] ?? [])), 0, self::MAX_ROWS + 1);
 	$result = [ 'range' => (string)($data['range'] ?? $range), 'values' => $values ];
 	if ($this->cfg('header', true)) {
-	    $result['header'] = self::headerOf($values[0] ?? []);
-	    $result['rows'] = self::objectsOf(array_slice($values, 1), $result['header']);
+	    $result['header'] = \util\SheetRows::headerOf($values[0] ?? []);
+	    $result['rows'] = \util\SheetRows::objectsOf(array_slice($values, 1), $result['header']);
 	} else {
 	    $result['header'] = [];
 	    $result['rows'] = $values;
@@ -259,7 +259,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
     //append: after the table of the sheet; update: from the range's first cell
     protected function opWrite(\Closure $text, \Closure $value, $append) {
 	$sheet = $this->sheetName($text('sheet'));
-	$rows = self::rowsOf($value('values'));
+	$rows = \util\SheetRows::rowsOf($value('values'), 'Google Sheets');
 	if (empty($rows))
 	    throw new \ErrorException('Google Sheets: no rows to write');
 	if (count($rows) > self::MAX_ROWS)
@@ -270,13 +270,13 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 	if (!array_is_list($rows[0])) {
 	    $first = $this->api('GET', '/' . $this->spreadsheet . '/values/' . rawurlencode(self::quoteSheet($sheet) . '!1:1'), [ 'valueRenderOption' => 'FORMATTED_VALUE' ]);
 	    $current = array_map(fn($c) => trim(\util\Expression::toText($c)), (array)($first['values'][0] ?? []));
-	    [ $header, $rows ] = self::matrixFor($rows, $current, (bool)$this->cfg('addColumns', true));
+	    [ $header, $rows ] = \util\SheetRows::matrixFor($rows, $current, (bool)$this->cfg('addColumns', true));
 	    if ($header !== $current) {
 		$this->api('PUT', '/' . $this->spreadsheet . '/values/' . rawurlencode(self::quoteSheet($sheet) . '!A1'), [ 'valueInputOption' => 'RAW' ], [ 'values' => [ $header ] ]);
 		$this->exec->log($this->wfid, 'Google Sheets: header of `' . $sheet . '`: ' . (empty($current) ? 'written' : 'columns added: ' . implode(', ', array_slice($header, count($current)))));
 	    }
 	}
-	$values = array_map(fn($row) => array_map([ self::class, 'cellValue' ], $row), $rows);
+	$values = array_map(fn($row) => array_map([ \util\SheetRows::class, 'cellValue' ], $row), $rows);
 	$input = isset(self::INPUT[$this->cfg('input')]) ? (string)$this->cfg('input') : 'USER_ENTERED';
 
 	if ($append) {
@@ -365,33 +365,5 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 	$s = is_array($s) ? $s : [];
 	return [ 'id' => (string)($s['spreadsheetId'] ?? ''), 'title' => (string)($s['properties']['title'] ?? ''), 'url' => (string)($s['spreadsheetUrl'] ?? ''),
 	    'sheets' => array_map(fn($sh) => self::sheetInfo($sh['properties'] ?? []), array_values((array)($s['sheets'] ?? []))) ];
-    }
-
-    // ------------------------------------------------------------------------------------
-    //rows and cells
-    //CLD: 2026-10-22T00:41:28+03:00: util\SheetRows (the Excel step uses them too); kept here by name
-
-    public static function columnName($i) {
-	return \util\SheetRows::columnName($i);
-    }
-
-    public static function headerOf($row) {
-	return \util\SheetRows::headerOf($row);
-    }
-
-    public static function objectsOf(array $rows, array $header) {
-	return \util\SheetRows::objectsOf($rows, $header);
-    }
-
-    public static function rowsOf($value) {
-	return \util\SheetRows::rowsOf($value, 'Google Sheets');
-    }
-
-    public static function matrixFor(array $objects, array $current, $add) {
-	return \util\SheetRows::matrixFor($objects, $current, $add);
-    }
-
-    public static function cellValue($v) {
-	return \util\SheetRows::cellValue($v);
     }
 }

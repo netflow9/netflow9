@@ -475,7 +475,7 @@ class WfExecution extends \sys\BaseModel {
 	$caller = is_array($this->input) ? ($this->input['caller'] ?? null) : null;
 	if (!is_array($caller) || empty($caller['wait']) || empty($caller['execution']) || !\util\Validator::rule('oid', (string)$caller['execution']))
 	    return;
-	$parent = \V::app()->om->findOne('WfExecution', [ '_id' => \V::app()->om->to_oid((string)$caller['execution']), 'aid' => $this->aid, 'state' => 'sleep' ]);
+	$parent = \V::app()->om->findOne('WfExecution', [ '_id' => $caller['execution'], 'aid' => $this->aid, 'state' => 'sleep' ]);
 	if ($parent)
 	    $parent->queue('the workflow it waits for has ended (execution ' . (string)$this->_id . '): queued for the daemon');
     }

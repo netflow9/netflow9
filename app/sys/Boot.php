@@ -201,7 +201,7 @@ class Boot {
 	//	else a personal project created now (as the seed command does);
 	if (empty(\V::app()->user->crtProject)) {
 	    $uid = \V::app()->user->_id;
-	    $project = empty($this->user->last_project) ? null : \V::app()->om->findOne('Project', [ '_id' => \V::app()->om->to_oid($this->user->last_project), 'aid' => $account->_id,
+	    $project = empty($this->user->last_project) ? null : \V::app()->om->findOne('Project', [ '_id' => $this->user->last_project, 'aid' => $account->_id,
 		'$or' => [ [ 'owner' => $uid ], [ 'members.' . (string)$uid => [ '$exists' => true ] ] ] ]);
 	    if (empty($project))
 		$project = \V::app()->om->findOne('Project', [ 'aid' => $account->_id, 'owner' => $uid, 'personal' => true ]);
