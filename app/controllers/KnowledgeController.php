@@ -135,7 +135,7 @@ class KnowledgeController extends \sys\BaseController {
 	$kb = $this->findKb('KnowledgeBase::read');
 	$canUpdate = \V::app()->user->can('KnowledgeBase::update', [ 'object' => $kb ]);
 	$canDelete = \V::app()->user->can('KnowledgeBase::delete', [ 'object' => $kb ]);
-	$canUpload = $canUpdate && \V::app()->user->can('File::create', [ 'project' => $this->project ]);
+	$canUpload = $canUpdate && \V::app()->user->can('File::create');
 	$settings = EmbeddingSettings::of($kb->aid);
 	//the project's files with text (PDF, Office, text), newest first: the "Project files" choice
 	$files = [];
@@ -186,7 +186,7 @@ class KnowledgeController extends \sys\BaseController {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 	$kb = $this->findKb('KnowledgeBase::update');
-	if (!\V::app()->user->can('File::create', [ 'project' => $this->project ]))
+	if (!\V::app()->user->can('File::create'))
 	    \V::app()->error(403, 'Unauthorized');
 	if (!EmbeddingSettings::of($kb->aid)->ready())
 	    $resp->sendJSON([ 'error' => 'Set the account\'s embedding model first (Settings: Knowledge bases)' ], true, 409);

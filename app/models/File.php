@@ -16,7 +16,7 @@ class File extends \sys\BaseModel {
 	return static::$bucketName . '.files';
     }
 
-    //the allow-list of uploadable files (isAllowedName / acceptAttribute): images, documents, presentations,
+    //the allow-list of uploadable files (isAllowedName; the upload's accept attribute, views/file/list.php): images, documents, presentations,
     //spreadsheets, text files and PDFs; anything else (archives, executables, scripts, unknown types) is refused
     //extension => type shown in the list
     public static $extensions = [
@@ -127,10 +127,6 @@ class File extends \sys\BaseModel {
 	return $ext !== '' && isset(self::$extensions[$ext]);
     }
 
-    //CLD: 2026-10-06T21:33:37+03:00: value for <input type=file accept="...">: the allowed extensions (".png,.jpg,...")
-    public static function acceptAttribute() {
-	return implode(',', array_map(fn($ext) => '.' . $ext, array_keys(self::$extensions)));
-    }
 
 
     //lower-case extension of the file name ('' if none)
@@ -257,11 +253,6 @@ class File extends \sys\BaseModel {
 	return false;
     }
 
-    //CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes: "1.5 MB"
-    function getSizeHuman($decimals = 2) {
-        return \util\Format::bytes($this->length, $decimals);
-    }
-
     //specific to File
     public function getContents() {
 	if (!$this->exists())
@@ -341,7 +332,9 @@ class File extends \sys\BaseModel {
 	    $permName = 'File::' . $permName;
 
 	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the file's project decides
-	return \models\Project::can($this->metadata['project'] ?? $this->project, $this->metadata['aid'] ?? $this->aid, $userId, $permName);
+	//CLD: 2026-11-07T12:00:00+02:00: a file without a project (an execution's, e.g. an AI step's approval) gives nothing here: global scope is sys\AAA's
+	$projectId = $this->metadata['project'] ?? $this->project;
+	return !empty($projectId) && (\V::app()->om->findById('Project', $projectId)?->checkAccess($userId, $permName) ?? false);
     }
 
     //label of a file (e.g. in object fields)

@@ -64,14 +64,11 @@ class NodeAppFgtAddresses extends NodeAppFortiGate {
 
     //"a.b.c.d mask" of an IPv4 address, CIDR or "ip mask"
     public static function subnet($v) {
-	$v = trim((string)$v);
-	if (preg_match('~^(\d{1,3}(?:\.\d{1,3}){3})(?:/(\d{1,2}))?$~', $v, $m) && filter_var($m[1], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && (!isset($m[2]) || (int)$m[2] <= 32)) {
-	    $bits = isset($m[2]) ? (int)$m[2] : 32;
-	    return $m[1] . ' ' . long2ip($bits === 0 ? 0 : (0xffffffff << (32 - $bits)) & 0xffffffff);
-	}
-	if (preg_match('~^(\S+)\s+(\S+)$~', $v, $m) && filter_var($m[1], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && filter_var($m[2], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4))
-	    return "{$m[1]} {$m[2]}";
-	throw new \RuntimeException("Value: not a subnet: `" . mb_substr($v, 0, 64) . '`');
+	//CLD: 2026-11-07T12:00:00+02:00: parsed by util\Ip::network (IPv4 only here)
+	$n = \util\Ip::network($v);
+	if ($n === null || $n['v6'])
+	    throw new \RuntimeException("Value: not a subnet: `" . mb_substr(trim((string)$v), 0, 64) . '`');
+	return $n['ip'] . ' ' . ($n['mask'] ?? '255.255.255.255');
     }
 
     //FortiOS's answer to a change that may be done already (an object that exists, an entry already there, one that is not there): [ done already, error ]
@@ -105,8 +102,9 @@ class NodeAppFgtAddresses extends NodeAppFortiGate {
 			throw new \RuntimeException("Value: not an FQDN: `" . mb_substr($val, 0, 64) . '`');
 		    $body['fqdn'] = $val;
 		} else {
-		    $range = array_map('trim', explode('-', $val));
-		    if (count($range) !== 2 || !filter_var($range[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) || !filter_var($range[1], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4))
+		    //CLD: 2026-11-07T12:00:00+02:00: parsed by util\Ip::range (IPv4 only here)
+		    $range = \util\Ip::range($val);
+		    if ($range === null || str_contains($range[0], ':'))
 			throw new \RuntimeException("Value: not an IP range: `" . mb_substr($val, 0, 64) . '`');
 		    [ $body['start-ip'], $body['end-ip'] ] = $range;
 		}
@@ -123,7 +121,7 @@ class NodeAppFgtAddresses extends NodeAppFortiGate {
 		return [ $r, "{$n} " . ($operation === 'add' ? 'added to' : 'removed from') . " {$g}" ];
 	    case 'block':
 	    case 'unblock':
-		$ips = self::ips($value('ips'), 'IP addresses', self::MAX_IPS);
+		$ips = \util\Ip::addresses($value('ips'), 'IP addresses', self::MAX_IPS);
 		$g = self::objName($value('group'), 'Group');
 		$prefix = (string)$this->cfg('prefix', 'nf9-block-');
 		$done = [];

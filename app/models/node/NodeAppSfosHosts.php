@@ -63,19 +63,14 @@ class NodeAppSfosHosts extends NodeAppSophos {
 
     //the host of an IP / a network: [ fields, family ] (IPHost: HostType IP or Network; IPv4's subnet a mask, IPv6's a prefix length)
     public static function ipHost($v) {
-	$v = trim((string)$v);
-	if (preg_match('~^(\S+?)(?:/(\d{1,3}))?$~', $v, $m) && filter_var($m[1], FILTER_VALIDATE_IP)) {
-	    $v6 = str_contains($m[1], ':');
-	    if (!isset($m[2]))
-		return [ [ 'HostType' => 'IP', 'IPAddress' => $m[1] ], $v6 ? 'IPv6' : 'IPv4' ];
-	    $bits = (int)$m[2];
-	    if ($bits > ($v6 ? 128 : 32))
-		throw new \RuntimeException("Value: not a network: `" . mb_substr($v, 0, 64) . '`');
-	    return [ [ 'HostType' => 'Network', 'IPAddress' => $m[1], 'Subnet' => $v6 ? (string)$bits : long2ip($bits === 0 ? 0 : (0xffffffff << (32 - $bits)) & 0xffffffff) ], $v6 ? 'IPv6' : 'IPv4' ];
-	}
-	if (preg_match('~^(\S+)\s+(\S+)$~', $v, $m) && filter_var($m[1], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && filter_var($m[2], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4))
-	    return [ [ 'HostType' => 'Network', 'IPAddress' => $m[1], 'Subnet' => $m[2] ], 'IPv4' ];
-	throw new \RuntimeException("Value: not an IP or a network: `" . mb_substr($v, 0, 64) . '`');
+	//CLD: 2026-11-07T12:00:00+02:00: parsed by util\Ip::network
+	$n = \util\Ip::network($v);
+	if ($n === null)
+	    throw new \RuntimeException("Value: not an IP or a network: `" . mb_substr(trim((string)$v), 0, 64) . '`');
+	$family = $n['v6'] ? 'IPv6' : 'IPv4';
+	if ($n['bits'] === null && $n['mask'] === null)
+	    return [ [ 'HostType' => 'IP', 'IPAddress' => $n['ip'] ], $family ];
+	return [ [ 'HostType' => 'Network', 'IPAddress' => $n['ip'], 'Subnet' => $n['v6'] ? (string)$n['bits'] : $n['mask'] ], $family ];
     }
 
     //the host name of a blocked IP
@@ -104,8 +99,9 @@ class NodeAppSfosHosts extends NodeAppSophos {
 		    $tag = 'FQDNHost';
 		    $entity = [ 'Name' => $n, 'FQDN' => $val ] + ($desc !== '' ? [ 'Description' => $desc ] : []);
 		} elseif ($type === 'range') {
-		    $range = array_map('trim', explode('-', $val));
-		    if (count($range) !== 2 || !filter_var($range[0], FILTER_VALIDATE_IP) || !filter_var($range[1], FILTER_VALIDATE_IP) || str_contains($range[0], ':') !== str_contains($range[1], ':'))
+		    //CLD: 2026-11-07T12:00:00+02:00: parsed by util\Ip::range
+		    $range = \util\Ip::range($val);
+		    if ($range === null)
 			throw new \RuntimeException("Value: not an IP range: `" . mb_substr($val, 0, 64) . '`');
 		    $tag = 'IPHost';
 		    $entity = [ 'Name' => $n, 'IPFamily' => str_contains($range[0], ':') ? 'IPv6' : 'IPv4', 'HostType' => 'IPRange', 'StartIPAddress' => $range[0], 'EndIPAddress' => $range[1] ];
@@ -130,7 +126,7 @@ class NodeAppSfosHosts extends NodeAppSophos {
 		return [ [ 'name' => $n, 'group' => $g, 'message' => $msg ], "{$n} " . ($operation === 'add' ? 'added to' : 'removed from') . " {$g}" ];
 	    case 'block':
 	    case 'unblock':
-		$ips = self::ips($value('ips'), 'IP addresses', self::MAX_IPS);
+		$ips = \util\Ip::addresses($value('ips'), 'IP addresses', self::MAX_IPS);
 		$groups = [ 'IPv4' => self::objName($value('group'), 'Group'), 'IPv6' => $text('group6') !== '' ? self::objName($value('group6'), 'IPv6 group') : null ];
 		$prefix = (string)$this->cfg('prefix', 'nf9-block-');
 		$byFamily = [ 'IPv4' => [], 'IPv6' => [] ];

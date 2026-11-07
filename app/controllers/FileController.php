@@ -19,7 +19,7 @@ class FileController extends \sys\BaseController {
     }
 
     public function list($req, $resp) {
-	if (!\V::app()->user->can('File::list', [ 'project' => $this->project ]))
+	if (!\V::app()->user->can('File::list'))
 	    \V::app()->error(403, 'Unauthorized');
 
 	if (!empty($req->query['data'])) {
@@ -35,7 +35,7 @@ class FileController extends \sys\BaseController {
 	if (!$req->is('post'))
 	    return;
 
-	if (!\V::app()->user->can('File::create', [ 'project' => $this->project ]))
+	if (!\V::app()->user->can('File::create'))
 	    \V::app()->error(403, 'Unauthorized');
 
 	//CLD: 2026-10-06T21:33:37+03:00: errors as JSON { error } with a 4xx status

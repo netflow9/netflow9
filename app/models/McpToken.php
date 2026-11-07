@@ -103,7 +103,7 @@ class McpToken extends \sys\BaseModel {
 	    $permName = $this->getObjectName() . '::' . $permName;
 
 	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the token's project decides
-	return \models\Project::can($this->project, $this->aid, $userId, $permName);
+	return \V::app()->om->findById('Project', $this->project)?->checkAccess($userId, $permName) ?? false;
     }
 
     public function __toString() {

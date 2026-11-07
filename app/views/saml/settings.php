@@ -42,7 +42,8 @@ $details = [
     'Entity ID (Identifier, Audience)' => $settings->spEntityId(),
     'ACS URL (Reply URL, single sign-on URL)' => $settings->acsUrl(),
     'Metadata URL' => $settings->metadataUrl(),
-    'Sign-in link of the account' => $settings->loginUrl(),
+    //the link that starts a sign-in at the IdP (e.g. a bookmark of the account's people)
+    'Sign-in link of the account' => \V::app()->createAbsoluteUrl('/sso/start/' . $settings->aid),
 ];
 
 \V::app()->cs->addPageScript("+function(o) {" . <<<'JS'

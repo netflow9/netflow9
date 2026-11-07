@@ -94,7 +94,8 @@ class FileSign extends FileDecrypt {
 		//signed and encrypted in one message, to the recipients' public keys (imported into this keyring)
 		$args[] = '--trust-model';
 		$args[] = 'always';
-		foreach(self::recipientKeys($base, $work, $encryptTo->publicKey) as $fpr)
+		//the recipients' fingerprints (FileEncrypt's check: encryption keys, not revoked / expired)
+		foreach(array_column(FileEncrypt::importPublicKeys($base, $work, $encryptTo->publicKey), 'fpr') as $fpr)
 		    array_push($args, '--recipient', $fpr);
 		array_push($args, '--sign', '--encrypt');
 	    } else {
@@ -111,11 +112,6 @@ class FileSign extends FileDecrypt {
 	    if ($gpgconf)
 		self::run([ $gpgconf, '--homedir', $home, '--kill', 'all' ]);
 	}
-    }
-
-    //the fingerprints of the public keys in $text, imported into the keyring of $base (FileEncrypt's check: encryption keys, not revoked / expired)
-    protected static function recipientKeys(array $base, $work, $text) {
-	return array_column(FileEncrypt::importPublicKeys($base, $work, $text), 'fpr');
     }
 
     protected static function cmsSign($cred, $work, $in, $out, $mode) {

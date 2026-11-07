@@ -259,9 +259,4 @@ abstract class NodeAppSophos extends \models\wf\WfNode {
 	    throw new \RuntimeException("{$label}: not a Sophos Firewall name: `" . mb_substr($v, 0, 80) . '`');
 	return $v;
     }
-
-    //IP addresses (v4 or v6): as NodeAppFortiGate::ips (a list, text separated by commas / spaces / lines, objects' ip / srcip)
-    public static function ips($value, $label, $max = 1000) {
-	return NodeAppFortiGate::ips($value, $label, $max);
-    }
 }

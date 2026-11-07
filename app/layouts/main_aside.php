@@ -139,7 +139,7 @@ $dd_items = implode('', $dd_items);
 		    );
 		}
 
-		if (\V::app()->user->can('DataTable::list', [ 'owner' => $crtProject ])) {
+		if (\V::app()->user->can('DataTable::list')) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-table"></i> Data Tables',
 			'/datatable/list',

@@ -607,7 +607,7 @@ class DatatableController extends \sys\BaseController {
 	    \V::app()->error(405, 'Method not allowed');
 	$dt = $this->findTable('DataTable::readData');
 	//CLD: 2026-11-03T14:00:00+02:00: the saved views are its own project's
-	if (!\models\Project::can($dt->project, $dt->aid, \V::app()->user->_id, 'DataTable::readData'))
+	if (!\V::app()->om->findById('Project', $dt->project)?->checkAccess(\V::app()->user->_id, 'DataTable::readData'))
 	    $resp->sendJSON([ 'error' => 'This table is shared: its saved views are managed by its own project' ], true, 403);
 
 	$name = trim((string)($req->data['name'] ?? ''));
@@ -645,7 +645,7 @@ class DatatableController extends \sys\BaseController {
 	    \V::app()->error(405, 'Method not allowed');
 	$dt = $this->findTable('DataTable::readData');
 	//CLD: 2026-11-03T14:00:00+02:00: the saved views are its own project's
-	if (!\models\Project::can($dt->project, $dt->aid, \V::app()->user->_id, 'DataTable::readData'))
+	if (!\V::app()->om->findById('Project', $dt->project)?->checkAccess(\V::app()->user->_id, 'DataTable::readData'))
 	    $resp->sendJSON([ 'error' => 'This table is shared: its saved views are managed by its own project' ], true, 403);
 	$viewId = $this->getOidParam('view');
 	if (empty($viewId))

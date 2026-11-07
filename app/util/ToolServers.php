@@ -159,11 +159,6 @@ class ToolServers {
 	return $found;
     }
 
-    //whether the signed-in user manages the tool servers (util\Services::allowed: with the MultiTenant plugin its super-admins, without it the account's owners)
-    public static function allowed() {
-	return Services::allowed();
-    }
-
     //where they are managed: with the MultiTenant plugin its super-admins' page (/toolservers/index), without it a tab of the account's settings
     public static function pageUrl() {
 	return Services::adminPlugin() ? \V::app()->createUrl('/toolservers/index') : \V::app()->createUrl('/account/settings', [ '__tab' => 'tools' ]);

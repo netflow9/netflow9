@@ -247,24 +247,4 @@ abstract class NodeAppFortiGate extends \models\wf\WfNode {
 	    throw new \RuntimeException("{$label}: not a FortiGate object name: `" . mb_substr($v, 0, 80) . '`');
 	return $v;
     }
-
-    //IP addresses (v4 or v6): a list, or text separated by commas / spaces / line breaks (a list of objects: their `ip`); each checked
-    public static function ips($value, $label, $max = 1000) {
-	$parts = is_array($value) ? array_map(fn($v) => is_array($v) ? ($v['ip'] ?? $v['srcip'] ?? '') : $v, array_values($value)) : preg_split('/[\s,;]+/', \util\Expression::toText($value));
-	$ips = [];
-	foreach($parts as $p) {
-	    $p = trim(\util\Expression::toText($p));
-	    if ($p === '')
-		continue;
-	    if (!filter_var($p, FILTER_VALIDATE_IP))
-		throw new \RuntimeException("{$label}: not an IP address: `" . mb_substr($p, 0, 64) . '`');
-	    $ips[] = $p;
-	}
-	$ips = array_values(array_unique($ips));
-	if (!$ips)
-	    throw new \RuntimeException("{$label}: empty");
-	if (count($ips) > $max)
-	    throw new \RuntimeException("{$label}: " . count($ips) . " addresses, at most {$max} in one step");
-	return $ips;
-    }
 }

@@ -79,7 +79,7 @@ class NodeAppCmkHosts extends NodeAppCheckmk {
 		    throw new \RuntimeException("Folder: not a folder path: `" . mb_substr($folder, 0, 80) . '`');
 		$attributes = array_filter([ 'alias' => $text('alias') ]);
 		if ($text('ip') !== '') {
-		    $ip = NodeAppFortiGate::ips($value('ip'), 'IP address', 1)[0];
+		    $ip = \util\Ip::addresses($value('ip'), 'IP address', 1)[0];
 		    $attributes[str_contains($ip, ':') ? 'ipv6address' : 'ipaddress'] = $ip;
 		}
 		$r = $this->change('POST', '/domain-types/host_config/collections/all', [ 'folder' => $folder, 'host_name' => $h, 'attributes' => (object)$attributes ]);
