@@ -26,7 +26,7 @@ class TokenController extends \sys\BaseController {
 	if (empty($this->project))
 	    \V::app()->error(404, 'No current project');
 	//CLD: 2026-11-01T02:00:00+02:00: the tokens only of a project whose MCP server is on (Account::mcpEnabled)
-	if (!\models\Account::mcpEnabled($this->account, $this->project->_id))
+	if (!$this->account->mcpEnabled($this->project->_id))
 	    \V::app()->error(403, 'The MCP server of this project is off: the account\'s owners turn it on in Account settings, Data access');
     }
 

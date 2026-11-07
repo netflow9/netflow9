@@ -24,7 +24,6 @@
 //with $budget (USD left this month) the loop stops once it is spent: what was built so far is returned, `stopped` says why
 */
 
-//CLD: 2026-10-26T23:49:50+02:00: its System provider only while a plugin offers one (util\AssistantSystem)
 namespace util;
 
 use models\assistant\AssistantSettings;
@@ -52,7 +51,7 @@ class WorkflowAssistant {
     //CLD: 2026-10-23T23:30:00+03:00: every tool of util\MCPTools is offered, as the user
 
     private $wf;
-    //CLD: 2026-11-01T02:00:00+02:00: whether the account lets the Assistant read the project's data (AssistantSettings::readsData; CLD: 2026-11-01T03:00:00+02:00: was Account::assistantReadsData), else its structure only (McpServerTools::STRUCTURE_TOOLS)
+    //CLD: 2026-11-01T02:00:00+02:00: whether the account lets the Assistant read the project's data (AssistantSettings::readsData), else its structure only (McpServerTools::STRUCTURE_TOOLS)
     private $readsData = false;
     private $cred;
     private $project;

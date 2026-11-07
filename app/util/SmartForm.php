@@ -311,16 +311,16 @@ class SmartForm {
 	foreach($model->schema as $key => $f) {
 	    if (!$f->showInForms)
 		continue;
-	    //CLD: 2026-10-10T09:14:41+03:00: an updatable encrypted field is a write-only input (its value is never sent: formValues)
+	    //an updatable encrypted field is a write-only input (its value is never sent: formValues)
 	    $writeOnly = !empty($f) && !empty($f->encrypt) && $f->{'perm:update'} !== 'nobody';
 	    if (empty($f) || ($f->{'perm:read'} === 'nobody' && !$writeOnly))
 		continue;
 
 	    $type = $f->type;
 	    $sf = [ 'key' => $f->key, 'label' => (string)$f->label ];
-	    //CLD: 2026-10-10T18:27:49+03:00: app.smartform `password` field (show/hide button, no autofill); also for any write-only
+	    //app.smartform `password` field (show/hide button, no autofill); also for any write-only
 	    //encrypted field (its value is never shown)
-	    //CLD: 2026-10-20T16:00:00+03:00: an encrypted textarea stays a (write-only) textarea: multi-line secrets, e.g. PEM / PGP keys, keep their lines (a password input drops them)
+	    //an encrypted textarea stays a (write-only) textarea: multi-line secrets, e.g. PEM / PGP keys, keep their lines (a password input drops them)
 	    if ($type === 'textarea' && $writeOnly) {
 		$sf['type'] = 'textarea';
 		$sf['spellcheck'] = false;
@@ -331,7 +331,7 @@ class SmartForm {
 		//CLD: 2026-10-14T14:54:31+03:00: the app.smartform input types are util\FormSchema::INPUTS
 		$sf['type'] = in_array($type, self::INPUTS, true) ? $type : 'text';
 	    }
-	    //CLD: 2026-10-14T14:38:46+03:00: the date picker's display format (app.format.date / app.format.datetime)
+	    //the date picker's display format (app.format.date / app.format.datetime)
 	    //CLD: 2026-10-24T16:30:00+03:00: the account's (util\Format::dateFormat / datetimeFormat; app.format.* without one)
 	    if ($type === 'date' || $type === 'datetime')
 		$sf['format'] = $f->format == 'date' ? Format::dateFormat() : Format::datetimeFormat();
@@ -427,8 +427,8 @@ class SmartForm {
 		    foreach(\util\Conditions::operators($t) as $op => $label)
 			$sf['operators'][$t][] = [ 'value' => $op, 'label' => $label ];
 	    }
-	    //CLD: 2026-10-10T09:14:41+03:00: a stored encrypted value is kept when its input stays empty (BaseModel::assign skips it): not required then
-	    //CLD: 2026-10-10T18:27:49+03:00: `stored` makes the password field say so (its placeholder)
+	    //a stored encrypted value is kept when its input stays empty (BaseModel::assign skips it): not required then
+	    //`stored` makes the password field say so (its placeholder)
 	    if ($writeOnly && !in_array($model->$key, [ null, '' ], true)) {
 		unset($sf['required'], $sf['requiredIf']);
 		$sf['stored'] = true;

@@ -146,8 +146,8 @@ class Workflow extends \sys\BaseModel {
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the workflow's project decides
-	//CLD: 2026-11-03T16:00:00+02:00: or a share with a project where their role allows it (only Workflow::viewShared)
+	//the user's role in the workflow's project decides
+	//or a share with a project where their role allows it (only Workflow::viewShared)
 	return \models\Project::can($this->project, $this->aid, $userId, $permName) || $this->sharedCan($userId, $permName);
     }
 
@@ -175,7 +175,7 @@ class Workflow extends \sys\BaseModel {
 	return null;
     }
 
-    //CLD: 2026-11-04T15:00:00+02:00: a published one keeps running there: that needs the right to publish there too
+    //a published one keeps running there: that needs the right to publish there too
     protected function moveAllowedIn($project, $userId) {
 	return \models\Project::can($project->_id, $this->aid, $userId, self::MOVE_PERMS['to'])
 	    && (!$this->liveCopy() || \models\Project::can($project->_id, $this->aid, $userId, 'Workflow::publish'));
@@ -223,7 +223,7 @@ class Workflow extends \sys\BaseModel {
 	return $used;
     }
 
-    //CLD: 2026-11-03T16:00:00+02:00: the copy of this workflow that a call from project $projectId runs: its published version; in its own project, else its draft. null: a shared workflow not published (now)
+    //the copy of this workflow that a call from project $projectId runs: its published version; in its own project, else its draft. null: a shared workflow not published (now)
     public function copyFor($projectId) {
 	return $this->liveCopy() ?: ($this->isHome($projectId) ? $this : null);
     }
@@ -480,7 +480,7 @@ class Workflow extends \sys\BaseModel {
 		self::addIssue($issues, 'error', $id, 'Unknown step type');
 		continue;
 	    }
-	    //CLD: 2026-11-01T16:11:37+02:00: a step this server cannot run (WfNode::available: e.g. Email (inbound) without Haraka, a database without its PDO driver): the workflow cannot be published or run
+	    //a step this server cannot run (WfNode::available: e.g. Email (inbound) without Haraka, a database without its PDO driver): the workflow cannot be published or run
 	    if (!\V::app()->om->getObjectClass($d['objectName'])::available())
 		self::addIssue($issues, 'error', $id, "{$d['label']} is not available on this server");
 	    //CLD: 2026-10-11T20:24:33+03:00: the step's own outputs when they follow its config (e.g. Switch cases; keep in sync with outPortsOf() in app.workflow.js)

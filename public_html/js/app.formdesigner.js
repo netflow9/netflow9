@@ -39,7 +39,14 @@ window.app.FormDesigner = (function() {
 	divider:   { label: 'Divider', icon: 'bi-hr' },
 	columns:   { label: 'Columns', icon: 'bi-layout-split' },
     };
-    const WIDTHS = [ { value: '12', label: 'Full' }, { value: '9', label: '3/4' }, { value: '8', label: '2/3' }, { value: '6', label: '1/2' }, { value: '4', label: '1/3' }, { value: '3', label: '1/4' } ];
+    const WIDTHS = [
+	{ value: '12', label: 'Full' },
+	{ value: '9', label: '3/4' },
+	{ value: '8', label: '2/3' },
+	{ value: '6', label: '1/2' },
+	{ value: '4', label: '1/3' },
+	{ value: '3', label: '1/4' }
+    ];
     const RATIOS = { '6-6': [ 6, 6 ], '4-8': [ 4, 8 ], '8-4': [ 8, 4 ], '3-9': [ 3, 9 ], '9-3': [ 9, 3 ], '4-4-4': [ 4, 4, 4 ] };
     const KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
