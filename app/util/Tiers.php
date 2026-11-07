@@ -231,17 +231,21 @@ class Tiers {
 	return [ 'totals' => $totals, 'extra' => $extra->getArrayCopy(), 'projects' => $projects, 'tables' => $tables ];
     }
 
-    //the rows of data table $iname of account $aid (its collection directly: the tables of another account are not registered here)
+    //the rows of data table $iname of account $aid
+    //CLD: 2026-11-07T11:05:00+02:00: through ObjectManager: a table of another account (only the request's account's tables are registered) is registered for the count, not selectable
     public static function rowsOf($iname, $aid) {
-	return (int)\V::app()->mongo->selectCollection(\sys\BaseModel::_database(), (string)$iname)->countDocuments([ 'aid' => $aid ]);
+	$om = \V::app()->om;
+	$iname = (string)$iname;
+	if (!$om->isDefined($iname))
+	    $om->registerObject($iname, [ 'class' => '\sys\BaseModel', 'collection' => $iname ]);
+	return (int)$om->acrossAccounts(fn() => $om->count($iname, [ 'aid' => $aid ]));
     }
 
     //the size of the account's files (bytes): [ '' => all ], with $byProject also [ project id => bytes ]
     public static function filesBytes($aid, $byProject = false) {
-	$coll = \V::app()->mongo->selectCollection(\models\File::_database(), \models\File::_collection());
 	$match = [ 'metadata.aid' => [ '$in' => [ $aid, (string)$aid ] ] ];
 	$out = [ '' => 0 ];
-	foreach($coll->aggregate([ [ '$match' => $match ], [ '$group' => [ '_id' => $byProject ? '$metadata.project' : null, 'n' => [ '$sum' => '$length' ] ] ] ]) as $row) {
+	foreach(\V::app()->om->aggregate('File', [ [ '$match' => $match ], [ '$group' => [ '_id' => $byProject ? '$metadata.project' : null, 'n' => [ '$sum' => '$length' ] ] ] ]) as $row) {
 	    $out[''] += (int)$row['n'];
 	    if ($byProject && $row['_id'] !== null)
 		$out[(string)$row['_id']] = ($out[(string)$row['_id']] ?? 0) + (int)$row['n'];
