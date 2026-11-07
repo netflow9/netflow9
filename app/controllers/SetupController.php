@@ -32,13 +32,12 @@ class SetupController extends \sys\BaseController {
 	$form = \models\setup\ServerForm::create();
 	$host = (string)(\V::app()->request->httpHost ?? 'localhost');
 	//CLD: 2026-11-01T19:00:00+02:00: the database's and SMTP's defaults from the environment when set (Docker: compose.yaml's NFN_SETUP_*: the mongo container, its app user)
-	$env = fn($k, $d) => (string)getenv('NFN_SETUP_' . $k) ?: $d;
 	$form->assign($_SESSION['setup']['server'] ?? [
-	    'base_url' => $env('BASE_URL', 'https://' . $host),
-	    'mongo_uri' => $env('MONGO_URI', 'mongodb://127.0.0.1:27017/'),
-	    'mongo_db' => $env('MONGO_DB', 'rail22-db'),
-	    'smtp_host' => $env('SMTP_HOST', '127.0.0.1'),
-	    'smtp_port' => $env('SMTP_PORT', '25'),
+	    'base_url' => self::setupEnv('BASE_URL', 'https://' . $host),
+	    'mongo_uri' => self::setupEnv('MONGO_URI', 'mongodb://127.0.0.1:27017/'),
+	    'mongo_db' => self::setupEnv('MONGO_DB', 'rail22-db'),
+	    'smtp_host' => self::setupEnv('SMTP_HOST', '127.0.0.1'),
+	    'smtp_port' => self::setupEnv('SMTP_PORT', '25'),
 	    'smtp_secure' => '',
 	    //CLD: 2026-10-19T14:20:35+03:00: noreply@ the request's domain (without the port)
 	    'mail_from' => 'noreply@' . preg_replace('/:\d+$/', '', $host),
@@ -62,6 +61,11 @@ class SetupController extends \sys\BaseController {
 	    }
 	}
 	$this->render('server', compact('form', 'passwordKept'));
+    }
+
+    //CLD: 2026-11-07T01:05:52+02:00: the environment's NFN_SETUP_<k> (the installer's answers), else $d
+    private static function setupEnv($k, $d) {
+	return (string)getenv('NFN_SETUP_' . $k) ?: $d;
     }
 
     //step 3

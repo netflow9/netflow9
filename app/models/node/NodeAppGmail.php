@@ -63,8 +63,6 @@ class NodeAppGmail extends NodeAppGoogle {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
-
 	return [
 	    static::credentialField('A Google Mail (OAuth) credential of the project; the Gmail API enabled'),
 	    static::operationField(),
@@ -76,7 +74,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'The Gmail message id, e.g. {{ gmail[0].id }} of a search',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_MESSAGE ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '{{ msg.id }}', 'expression' => true, 'showIf' => $op(self::ON_MESSAGE) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '{{ msg.id }}', 'expression' => true, 'showIf' => static::operationIn(self::ON_MESSAGE) ],
 	    ],
 
 	    //send / draft
@@ -87,7 +85,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'label' => 'To',
 		'default' => '',
 		'help' => 'Addresses separated by commas (Name <a@x.com> too), or {{ ... }}',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
@@ -95,7 +93,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'type' => 'text',
 		'label' => 'Cc',
 		'default' => '',
-		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
@@ -103,7 +101,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'type' => 'text',
 		'label' => 'Bcc',
 		'default' => '',
-		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
@@ -112,7 +110,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'label' => 'Subject',
 		'default' => '',
 		'help' => 'Empty in a reply: "Re: " + the subject answered',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
@@ -121,7 +119,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'label' => 'Sender name',
 		'default' => '',
 		'help' => 'Empty: the account\'s name in Gmail',
-		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
@@ -132,7 +130,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'default' => 'text',
 		'choices' => self::BODY_TYPES,
 		'help' => 'HTML: a text version is made from it too',
-		'ui' => [ 'width' => 3, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
@@ -141,7 +139,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'label' => 'In reply to',
 		'default' => '',
 		'help' => 'Optional: the message id answered (same thread, "Re: " subject)',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '{{ msg.id }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '{{ msg.id }}', 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide
@@ -150,7 +148,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'label' => 'Attachments',
 		'default' => '',
 		'help' => 'Project file ids separated by commas, or {{ ... }}, e.g. {{ file.id }}',
-		'ui' => [ 'width' => 6, 'placeholder' => '{{ file.id }}', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 6, 'placeholder' => '{{ file.id }}', 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 lines
@@ -159,7 +157,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'label' => 'Content',
 		'default' => '',
 		'help' => '{{ ... }} for expressions',
-		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 
 	    //search
@@ -169,7 +167,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'label' => 'Search',
 		'default' => '',
 		'help' => 'Gmail search, e.g. from:ana@x.com has:attachment newer_than:2d; empty: all',
-		'ui' => [ 'placeholder' => 'from:billing@example.com has:attachment', 'expression' => true, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'placeholder' => 'from:billing@example.com has:attachment', 'expression' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
@@ -178,7 +176,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'label' => 'In labels',
 		'default' => 'INBOX',
 		'help' => 'Label names separated by commas (all of them); empty: any',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: a limit (the last line)
@@ -189,7 +187,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'default' => 10,
 		'help' => 'The newest first',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_MESSAGES, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_MESSAGES ] ],
-		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide
@@ -199,7 +197,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'none',
 		'choices' => self::MARK,
-		'ui' => [ 'width' => 6, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'width' => 6, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide, on a new line
@@ -207,7 +205,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'type' => 'switch',
 		'label' => 'Unread only',
 		'default' => false,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
@@ -216,7 +214,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'type' => 'switch',
 		'label' => 'Include spam and trash',
 		'default' => false,
-		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
@@ -224,7 +222,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'type' => 'switch',
 		'label' => 'Save attachments as project files',
 		'default' => false,
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'search', 'get' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'search', 'get' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: a limit (the last line)
@@ -235,7 +233,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'default' => 25,
 		'help' => 'Larger messages are skipped',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
-		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search', 'get' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'search', 'get' ]) ],
 	    ],
 
 	    //modify
@@ -247,7 +245,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'none',
 		'choices' => self::MARK,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
@@ -255,7 +253,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'type' => 'switch',
 		'label' => 'Archive (out of the inbox)',
 		'default' => false,
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide
@@ -264,7 +262,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'label' => 'Add labels',
 		'default' => '',
 		'help' => 'Label names separated by commas (created when missing), e.g. Invoices, STARRED',
-		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
@@ -272,7 +270,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'type' => 'text',
 		'label' => 'Remove labels',
 		'default' => '',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 
 	    static::timeoutField(60),
@@ -284,20 +282,15 @@ class NodeAppGmail extends NodeAppGoogle {
     //the credential of the project; a message needs a recipient (or a message answered) and some content
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$fail = function($message) use (&$valid) {
-	    $this->errors('config', $message);
-	    $valid = false;
-	};
-	$empty = fn($key) => trim((string)$this->cfg($key, '')) === '';
 	$operation = $this->cfg('operation', 'send');
 	if (in_array($operation, self::COMPOSE, true)) {
-	    if ($operation === 'send' && $empty('to') && $empty('cc') && $empty('bcc') && $empty('replyTo'))
-		$fail('To: required (or In reply to)');
-	    if ($empty('subject') && $empty('replyTo'))
-		$fail('Subject: required (or In reply to)');
+	    if ($operation === 'send' && $this->cfgEmpty('to') && $this->cfgEmpty('cc') && $this->cfgEmpty('bcc') && $this->cfgEmpty('replyTo'))
+		$valid = $this->configError('To: required (or In reply to)');
+	    if ($this->cfgEmpty('subject') && $this->cfgEmpty('replyTo'))
+		$valid = $this->configError('Subject: required (or In reply to)');
 	}
-	if ($operation === 'modify' && $this->cfg('mark', 'none') === 'none' && !$this->cfg('archive', false) && $empty('addLabels') && $empty('removeLabels'))
-	    $fail('Mark as: choose what to change (mark, archive or labels)');
+	if ($operation === 'modify' && $this->cfg('mark', 'none') === 'none' && !$this->cfg('archive', false) && $this->cfgEmpty('addLabels') && $this->cfgEmpty('removeLabels'))
+	    $valid = $this->configError('Mark as: choose what to change (mark, archive or labels)');
 	return $valid;
     }
 
@@ -594,31 +587,26 @@ class NodeAppGmail extends NodeAppGoogle {
     //the RFC 822 message of $m = { from, from_name, to, cc, bcc, subject, text, html (optional), in_reply_to, references, attachments: [ File ] }: text, or text + HTML
     //(multipart/alternative), in multipart/mixed with the attachments; encoded headers (CR / LF removed: no header injection); Bcc kept (Gmail removes it when sending)
     public static function compose(array $m) {
-	$clean = fn($v) => trim(preg_replace('/[ \t]*[\r\n]+[ \t]*/', ' ', (string)$v));
-	$name = fn($n) => $clean($n) === '' ? '' : (mb_check_encoding($clean($n), 'ASCII') ? '"' . addcslashes($clean($n), '"\\') . '"' : mb_encode_mimeheader($clean($n), 'UTF-8', 'Q')) . ' ';
-	$list = fn($l) => implode(', ', array_map(fn($a) => '<' . $clean($a) . '>', (array)$l));
 	$id = bin2hex(random_bytes(8));
 	$domain = substr(strrchr((string)($m['from'] ?? ''), '@'), 1) ?: 'gmail.com';
 	$headers = [];
 	if (($m['from'] ?? '') !== '')
-	    $headers[] = 'From: ' . $name($m['from_name'] ?? '') . '<' . $clean($m['from']) . '>';
+	    $headers[] = 'From: ' . \util\EmailSend::displayName($m['from_name'] ?? '') . '<' . \util\EmailSend::headerText($m['from']) . '>';
 	foreach([ 'to' => 'To', 'cc' => 'Cc', 'bcc' => 'Bcc' ] as $key => $header) {
 	    if (!empty($m[$key]))
-		$headers[] = "{$header}: " . $list($m[$key]);
+		$headers[] = "{$header}: " . \util\EmailSend::addressList($m[$key]);
 	}
-	$headers[] = 'Subject: ' . mb_encode_mimeheader($clean($m['subject'] ?? ''), 'UTF-8', 'Q');
+	$headers[] = 'Subject: ' . mb_encode_mimeheader(\util\EmailSend::headerText($m['subject'] ?? ''), 'UTF-8', 'Q');
 	if (!empty($m['in_reply_to'])) {
-	    $headers[] = 'In-Reply-To: ' . $clean($m['in_reply_to']);
-	    $headers[] = 'References: ' . $clean($m['references'] ?? $m['in_reply_to']);
+	    $headers[] = 'In-Reply-To: ' . \util\EmailSend::headerText($m['in_reply_to']);
+	    $headers[] = 'References: ' . \util\EmailSend::headerText($m['references'] ?? $m['in_reply_to']);
 	}
 	$headers = array_merge($headers, [ 'Date: ' . date(DATE_RFC2822), "Message-ID: <{$id}@{$domain}>", 'MIME-Version: 1.0' ]);
-
-	$qp = fn($s) => str_replace("\n", "\r\n", str_replace("\r\n", "\n", quoted_printable_encode(str_replace([ "\r\n", "\r" ], "\n", (string)$s))));
-	$textPart = "Content-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n" . $qp($m['text'] ?? '') . "\r\n";
+	$textPart = "Content-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n" . \util\EmailSend::quotedPrintable($m['text'] ?? '') . "\r\n";
 	if (isset($m['html'])) {
 	    $alt = 'alt-' . $id;
 	    $content = "Content-Type: multipart/alternative; boundary=\"{$alt}\"\r\n\r\n--{$alt}\r\n{$textPart}--{$alt}\r\n"
-		. "Content-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n" . $qp($m['html']) . "\r\n--{$alt}--\r\n";
+		. "Content-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n" . \util\EmailSend::quotedPrintable($m['html']) . "\r\n--{$alt}--\r\n";
 	} else {
 	    $content = $textPart;
 	}
@@ -628,7 +616,7 @@ class NodeAppGmail extends NodeAppGoogle {
 	$mix = 'mix-' . $id;
 	$body = "--{$mix}\r\n{$content}";
 	foreach($m['attachments'] as $file) {
-	    $filename = $clean((string)$file->filename);
+	    $filename = \util\EmailSend::headerText((string)$file->filename);
 	    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 	    $type = self::UPLOAD_TYPES[$ext] ?? 'application/octet-stream';
 	    $param = mb_check_encoding($filename, 'ASCII') ? '"' . addcslashes($filename, '"\\') . '"' : null;

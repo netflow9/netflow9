@@ -175,8 +175,7 @@ final class JsDate
             if ($m[1] === '-000000') {
                 return NAN;
             }
-            $get = fn (int $i, int $default) => isset($m[$i]) && $m[$i] !== '' ? (int) $m[$i] : $default;
-            [$y, $mo, $d, $h, $mi, $sec] = [(int) $m[1], $get(2, 1), $get(3, 1), $get(4, 0), $get(5, 0), $get(6, 0)];
+            [$y, $mo, $d, $h, $mi, $sec] = [(int) $m[1], self::intAt($m, 2, 1), self::intAt($m, 3, 1), self::intAt($m, 4, 0), self::intAt($m, 5, 0), self::intAt($m, 6, 0)];
             $ms = isset($m[7]) && $m[7] !== '' ? (int) substr(str_pad($m[7], 3, '0'), 0, 3) : 0;
             //a day up to 31 in any month rolls over (2024-02-30 is March 1), as V8 does
             if ($mo < 1 || $mo > 12 || $d < 1 || $d > 31 || $mi > 59 || $sec > 59
@@ -208,6 +207,12 @@ final class JsDate
             return NAN;
         }
         return self::clip((float) $dt->format('U') * 1000 + (int) $dt->format('v'));
+    }
+
+    //CLD: 2026-11-07T01:12:07+02:00: match $m's group $i as a number, else $default
+    private static function intAt(array $m, int $i, int $default): int
+    {
+        return isset($m[$i]) && $m[$i] !== '' ? (int) $m[$i] : $default;
     }
 
 

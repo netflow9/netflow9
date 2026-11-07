@@ -3,7 +3,6 @@
 //views/setup/index.php); $error: why the setup failed (e.g. the database of step 2), shown above the form
 $this->pageTitle = \V::t('Setup');
 //the field's options first: they override the defaults (`type` => password / select)
-$v = fn($name, $label, $opts = []) => \V::app()->form->field($name, $opts + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t($label) ]);
 ?>
 
 <main class="position-relative d-flex flex-column align-items-center h-100 pb-5 overflow-auto">
@@ -20,19 +19,19 @@ $v = fn($name, $label, $opts = []) => \V::app()->form->field($name, $opts + [ 'd
 	    <?=\V::app()->form->create($form, [ 'action' => '/setup/account' ])?>
 	    <h5 class="mb-1"><?= \V::t('First account') ?></h5>
 	    <p class="text-muted small mb-3"><?= \V::t('Its owner can invite the others. Database:') ?> <?= \V::app()->html->escape($server['mongo_db']) ?></p>
-	    <?= $v('account_name', 'Company or team', [ 'input' => [ 'autocomplete' => 'organization', 'autofocus' => 1 ] ]) ?>
+	    <?= \V::app()->form->field('account_name', [ 'input' => [ 'autocomplete' => 'organization', 'autofocus' => 1 ] ] + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('Company or team') ]) ?>
 	    <div class="row g-2">
-		<div class="col-sm-6"><?= $v('username', 'Username', [ 'input' => [ 'autocomplete' => 'username' ] ]) ?></div>
-		<div class="col-sm-6"><?= $v('email', 'Email', [ 'input' => [ 'autocomplete' => 'email' ], 'help' => \V::t('Also receives the error reports') ]) ?></div>
+		<div class="col-sm-6"><?= \V::app()->form->field('username', [ 'input' => [ 'autocomplete' => 'username' ] ] + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('Username') ]) ?></div>
+		<div class="col-sm-6"><?= \V::app()->form->field('email', [ 'input' => [ 'autocomplete' => 'email' ], 'help' => \V::t('Also receives the error reports') ] + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('Email') ]) ?></div>
 	    </div>
 	    <div class="row g-2">
-		<div class="col-sm-6"><?= $v('firstname', 'First name', [ 'input' => [ 'autocomplete' => 'given-name' ] ]) ?></div>
-		<div class="col-sm-6"><?= $v('lastname', 'Last name', [ 'input' => [ 'autocomplete' => 'family-name' ] ]) ?></div>
+		<div class="col-sm-6"><?= \V::app()->form->field('firstname', [ 'input' => [ 'autocomplete' => 'given-name' ] ] + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('First name') ]) ?></div>
+		<div class="col-sm-6"><?= \V::app()->form->field('lastname', [ 'input' => [ 'autocomplete' => 'family-name' ] ] + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('Last name') ]) ?></div>
 	    </div>
 	    <div class="row g-2">
-		<div class="col-sm-6"><?= $v('new_password', 'Password', [ 'type' => 'password', 'input' => [ 'autocomplete' => 'new-password' ],
-		    'help' => \V::t('At least 8 characters, with lower and upper case letters, a digit and a symbol') ]) ?></div>
-		<div class="col-sm-6"><?= $v('cfm_password', 'Password again', [ 'type' => 'password', 'input' => [ 'autocomplete' => 'new-password' ] ]) ?></div>
+		<div class="col-sm-6"><?= \V::app()->form->field('new_password', [ 'type' => 'password', 'input' => [ 'autocomplete' => 'new-password' ],
+		    'help' => \V::t('At least 8 characters, with lower and upper case letters, a digit and a symbol') ] + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('Password') ]) ?></div>
+		<div class="col-sm-6"><?= \V::app()->form->field('cfm_password', [ 'type' => 'password', 'input' => [ 'autocomplete' => 'new-password' ] ] + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('Password again') ]) ?></div>
 	    </div>
 
 	    <div class="d-flex justify-content-between pt-3">

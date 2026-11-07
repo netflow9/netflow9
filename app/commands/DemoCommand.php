@@ -268,15 +268,13 @@ class DemoCommand extends \sys\BaseController {
 
     //the docs' guide "Expense approval" (docs: guides/examples/expense-approval), with a reminder when nobody decides in 3 days
     private static function expenseNodes($table, $token, $base, $approver) {
-	$email = fn($html) => [ 'preheader' => '', 'blocks' => [ [ 'type' => 'html', 'html' => $html ] ] ];
-	$choices = fn(array $list) => array_map(fn($v, $l) => [ 'value' => $v, 'label' => $l ], array_keys($list), array_values($list));
 	$list = [
 	    self::node('form', 'trigger::form', 'Expense request', 0, 200, [
 		'url' => "{$base}/form/{$token}", 'token' => $token, 'access' => 'members', 'submitLabel' => 'Send request',
 		'message' => 'Thank you: your manager has been asked to approve it.', 'variable' => 'form',
 		'form' => [ 'direction' => 'vertical', 'fields' => [
 		    [ 'type' => 'number', 'key' => 'amount', 'label' => 'Amount (EUR)', 'required' => true, 'min' => 0, 'step' => 0.01 ],
-		    [ 'type' => 'select', 'key' => 'category', 'label' => 'Category', 'required' => true, 'choices' => $choices(array_combine(self::CATEGORIES, self::CATEGORIES)) ],
+		    [ 'type' => 'select', 'key' => 'category', 'label' => 'Category', 'required' => true, 'choices' => self::choicesOf(array_combine(self::CATEGORIES, self::CATEGORIES)) ],
 		    [ 'type' => 'textarea', 'key' => 'reason', 'label' => 'Reason', 'required' => true, 'rows' => 3 ],
 		] ] ]),
 	    self::node('record', 'app::table', 'Record request', 220, 200, [ 'table' => $table, 'operation' => 'insert', 'variable' => 'expense', 'onError' => 'fail', 'data' => [
@@ -287,7 +285,7 @@ class DemoCommand extends \sys\BaseController {
 		'instructions' => "{{ form.category }}: {{ form.reason }}\n\nCheck the amount against the expense policy before you approve it.",
 		'users' => [ $approver ], 'roles' => [], 'assignTo' => null, 'submitLabel' => 'Send decision', 'timeoutUnit' => 'days', 'timeout' => 3, 'variable' => 'task',
 		'form' => [ 'direction' => 'vertical', 'fields' => [
-		    [ 'type' => 'select', 'key' => 'decision', 'label' => 'Decision', 'required' => true, 'choices' => $choices([ 'approved' => 'Approve', 'rejected' => 'Reject' ]) ],
+		    [ 'type' => 'select', 'key' => 'decision', 'label' => 'Decision', 'required' => true, 'choices' => self::choicesOf([ 'approved' => 'Approve', 'rejected' => 'Reject' ]) ],
 		    [ 'type' => 'textarea', 'key' => 'comment', 'label' => 'Comment', 'rows' => 3, 'helpText' => 'Sent to the employee with the decision.' ],
 		] ] ]),
 	    self::node('decide', 'app::table', 'Record decision', 660, 200, [ 'table' => $table, 'operation' => 'update', 'rowId' => '{{ expense.row.id }}', 'variable' => 'expense',
@@ -295,11 +293,11 @@ class DemoCommand extends \sys\BaseController {
 		[ 'column' => 'comment', 'value' => '{{ task.comment }}' ] ] ]),
 	    self::node('check', 'core::if', 'If approved', 880, 200, [ 'match' => 'all', 'conditions' => [ [ 'left' => '{{ task.decision }}', 'operator' => 'eq', 'value' => 'approved' ] ] ]),
 	    self::node('ok', 'app::send-email', 'Tell: approved', 1100, 80, [ 'to' => '{{ form_user.email }}', 'subject' => 'Your expense of {{ form.amount }} EUR is approved',
-		'fromName' => 'Northwind Finance', 'email' => $email('<p>Hello {{ form_user.name }},</p><p>{{ task_user.name }} approved your expense: {{ form.reason }}. It will be paid with your next salary.</p>') ]),
+		'fromName' => 'Northwind Finance', 'email' => self::emailOf('<p>Hello {{ form_user.name }},</p><p>{{ task_user.name }} approved your expense: {{ form.reason }}. It will be paid with your next salary.</p>') ]),
 	    self::node('no', 'app::send-email', 'Tell: rejected', 1100, 320, [ 'to' => '{{ form_user.email }}', 'subject' => 'Your expense of {{ form.amount }} EUR was rejected',
-		'fromName' => 'Northwind Finance', 'email' => $email('<p>Hello {{ form_user.name }},</p><p>{{ task_user.name }} rejected your expense: {{ task.comment }}</p>') ]),
+		'fromName' => 'Northwind Finance', 'email' => self::emailOf('<p>Hello {{ form_user.name }},</p><p>{{ task_user.name }} rejected your expense: {{ task.comment }}</p>') ]),
 	    self::node('remind', 'app::send-email', 'Remind finance', 660, 420, [ 'to' => 'finance@northwind.example', 'subject' => 'No decision yet: {{ form.amount }} EUR for {{ form_user.name }}',
-		'fromName' => 'Northwind Finance', 'email' => $email('<p>The expense request of {{ form_user.name }} ({{ form.amount }} EUR, {{ form.category }}) has waited 3 days for a decision.</p>') ]),
+		'fromName' => 'Northwind Finance', 'email' => self::emailOf('<p>The expense request of {{ form_user.name }} ({{ form.amount }} EUR, {{ form.category }}) has waited 3 days for a decision.</p>') ]),
 	    self::edge('e1', 'form', 'record'), self::edge('e2', 'record', 'approve'), self::edge('e3', 'approve', 'decide', 0), self::edge('e4', 'approve', 'remind', 1),
 	    self::edge('e5', 'decide', 'check'), self::edge('e6', 'check', 'ok', 0), self::edge('e7', 'check', 'no', 1),
 	];
@@ -307,6 +305,16 @@ class DemoCommand extends \sys\BaseController {
 	foreach($list as $n)
 	    $nodes[$n['wfid']] = $n;
 	return $nodes;
+    }
+
+    //CLD: 2026-11-07T01:04:46+02:00: an email of the Send Email step: one HTML block
+    private static function emailOf($html) {
+	return [ 'preheader' => '', 'blocks' => [ [ 'type' => 'html', 'html' => $html ] ] ];
+    }
+
+    //CLD: 2026-11-07T01:04:46+02:00: the choices of a select field from $list (value => label)
+    private static function choicesOf(array $list) {
+	return array_map(fn($v, $l) => [ 'value' => $v, 'label' => $l ], array_keys($list), array_values($list));
     }
 
     //$days ago at $hour:$minute (server time) as a date
@@ -318,20 +326,11 @@ class DemoCommand extends \sys\BaseController {
     private function backdate($exe, $dt, $seconds) {
 	$db = \V::app()->mongo->selectDatabase(MONGO_DB);
 	$map = [ 'typeMap' => [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ] ];
-	$shift = function($v) use (&$shift, $seconds) {
-	    if ($v instanceof UTCDateTime)
-		return new UTCDateTime((int)(string)$v - $seconds * 1000);
-	    if (is_array($v)) {
-		foreach($v as $k => $x)
-		    $v[$k] = $shift($x);
-	    }
-	    return $v;
-	};
 	$rowId = null;
 	foreach([ \models\wf\WfExecution::_collection() => [ '_id' => $exe->_id ], \models\wf\WfTask::_collection() => [ 'execution' => $exe->_id ] ] as $c => $q) {
 	    $coll = $db->selectCollection($c);
 	    foreach($coll->find($q, $map) as $doc) {
-		$coll->replaceOne([ '_id' => $doc['_id'] ], $shift($doc));
+		$coll->replaceOne([ '_id' => $doc['_id'] ], self::shiftDates($doc, $seconds));
 		array_walk_recursive($doc, function($v) use (&$rowId) {
 		    if (is_string($v) && preg_match('/inserted row ([0-9a-f]{24})/', $v, $m))
 			$rowId = $m[1];
@@ -342,8 +341,19 @@ class DemoCommand extends \sys\BaseController {
 	    $rows = $db->selectCollection(\V::app()->om->registry[(string)$dt->iname]['collection'] ?? (string)$dt->iname);
 	    $row = $rows->findOne([ '_id' => new ObjectId($rowId) ], $map);
 	    if ($row)
-		$rows->replaceOne([ '_id' => $row['_id'] ], $shift($row));
+		$rows->replaceOne([ '_id' => $row['_id'] ], self::shiftDates($row, $seconds));
 	}
+    }
+
+    //CLD: 2026-11-07T01:05:06+02:00: $v with its dates (also inside arrays) $seconds earlier
+    private static function shiftDates($v, $seconds) {
+	if ($v instanceof UTCDateTime)
+	    return new UTCDateTime((int)(string)$v - $seconds * 1000);
+	if (is_array($v)) {
+	    foreach($v as $k => $x)
+		$v[$k] = self::shiftDates($x, $seconds);
+	}
+	return $v;
     }
 
     //the knowledge base "Expense policy", indexed here (KnowledgeBase::queue without the daemon's job, then its job)

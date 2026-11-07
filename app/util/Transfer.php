@@ -270,16 +270,15 @@ class Transfer {
 	$om = \V::app()->om;
 	$inProject = [ 'aid' => $project->aid, 'project' => $project->_id ];
 	$plan = [ 'workflows' => [], 'credentials' => [], 'datatables' => [], 'warnings' => [] ];
-	$pick = fn(array $keys) => array_intersect_key(self::ACTIONS, array_flip($keys));
 
 	foreach($bundle['datatables'] as $i => $t) {
 	    $existing = $om->findOne('DataTableDef', [ 'name' => (string)$t['name'] ] + $inProject);
 	    $hasRows = is_array($t['rows'] ?? null);
 	    $notes = [ \util\Format::plural(count(is_array($t['columns'] ?? null) ? $t['columns'] : []), 'column') . ($hasRows ? ', ' . \util\Format::plural(count($t['rows']), 'row') : ', no rows') ];
 	    if ($existing)
-		$actions = $pick($hasRows ? [ 'update', 'update_rows', 'copy', 'skip' ] : [ 'update', 'copy', 'skip' ]);
+		$actions = self::actionsOf($hasRows ? [ 'update', 'update_rows', 'copy', 'skip' ] : [ 'update', 'copy', 'skip' ]);
 	    else
-		$actions = $pick([ 'create', 'skip' ]);
+		$actions = self::actionsOf([ 'create', 'skip' ]);
 	    $plan['datatables'][$i] = [ 'name' => (string)$t['name'], 'label' => (string)$t['name'], 'existing' => $existing, 'actions' => $actions,
 		'default' => $existing ? 'update' : 'create', 'notes' => $notes ];
 	}
@@ -290,13 +289,13 @@ class Transfer {
 	    $existing = $om->findOne('Credential', [ 'name' => (string)$c['name'] ] + $inProject);
 	    $notes = [];
 	    if (!$class || !\util\Tiers::allows($project->aid, $type)) {
-		$actions = $pick([ 'skip' ]);
+		$actions = self::actionsOf([ 'skip' ]);
 		$notes[] = 'its type (' . $type . ') is not available on this server';
 	    } elseif ($existing && $existing->getObjectName() !== $type) {
-		$actions = $pick([ 'copy', 'skip' ]);
+		$actions = self::actionsOf([ 'copy', 'skip' ]);
 		$notes[] = 'a credential of another type (' . $existing::$label . ') has this name';
 	    } else
-		$actions = $pick($existing ? [ 'replace', 'copy', 'skip' ] : [ 'create', 'skip' ]);
+		$actions = self::actionsOf($existing ? [ 'replace', 'copy', 'skip' ] : [ 'create', 'skip' ]);
 	    if ($class && empty($c['secrets']) && $om->create($type, [])->encryptedFields())
 		$notes[] = 'without its secrets (the file has none): enter them after the import';
 	    if ($class && $class::isOAuth())
@@ -316,7 +315,7 @@ class Transfer {
 	    if ($existing && $existing->status === \models\Workflow::PUBLISHED)
 		$notes[] = 'the existing one is published: its live version keeps running until you publish the new draft';
 	    $plan['workflows'][$i] = [ 'name' => (string)$w['name'], 'label' => (string)$w['name'], 'existing' => $existing,
-		'actions' => $pick($existing ? [ 'replace', 'copy', 'skip' ] : [ 'create', 'skip' ]), 'default' => $existing ? 'replace' : 'create', 'notes' => $notes ];
+		'actions' => self::actionsOf($existing ? [ 'replace', 'copy', 'skip' ] : [ 'create', 'skip' ]), 'default' => $existing ? 'replace' : 'create', 'notes' => $notes ];
 	}
 
 	//the actions the user may not do are not offered (skip always is)
@@ -349,6 +348,11 @@ class Transfer {
 	return $plan;
     }
 
+    //CLD: 2026-11-07T01:16:14+02:00: the actions $keys, with their labels (ACTIONS)
+    private static function actionsOf(array $keys) {
+	return array_intersect_key(self::ACTIONS, array_flip($keys));
+    }
+
     //does the $choices ([ 'workflows' | 'credentials' | 'datatables' => [ index => action ] ]; not among the item's actions: its default) in $project ($can: as plan());
     //returns [ 'done' => [ lines ], 'warnings' => [ lines ] ]
     public static function apply(array $bundle, $project, array $choices, ?\Closure $can = null) {
@@ -358,10 +362,6 @@ class Transfer {
 	$plan = self::plan($bundle, $project, $can);
 	$done = [];
 	$warnings = $plan['warnings'];
-	$action = function($list, $i) use ($plan, $choices) {
-	    $a = (string)($choices[$list][$i] ?? '');
-	    return isset($plan[$list][$i]['actions'][$a]) ? $a : $plan[$list][$i]['default'];
-	};
 
 	//source id / iname -> this server's: first what is in the project by name (refs, skipped items), then what is imported
 	$ids = [];
@@ -385,7 +385,7 @@ class Transfer {
 	//data tables: the tables first (their inames are needed by the object columns), then the columns, then the rows
 	$tables = [];
 	foreach($bundle['datatables'] as $i => $t) {
-	    $a = $action('datatables', $i);
+	    $a = self::chosenAction($plan, $choices, 'datatables', $i);
 	    $existing = $plan['datatables'][$i]['existing'];
 	    if ($a === 'skip') {
 		if ($existing) {
@@ -487,7 +487,7 @@ class Transfer {
 
 	//credentials
 	foreach($bundle['credentials'] as $i => $c) {
-	    $a = $action('credentials', $i);
+	    $a = self::chosenAction($plan, $choices, 'credentials', $i);
 	    $existing = $plan['credentials'][$i]['existing'];
 	    if ($a === 'skip') {
 		if ($existing && $existing->getObjectName() === (string)($c['type'] ?? ''))
@@ -521,7 +521,7 @@ class Transfer {
 	//workflows: the ids of the new ones first (steps may point to each other's workflows), then their steps with this server's ids
 	$targets = [];
 	foreach($bundle['workflows'] as $i => $w) {
-	    $a = $action('workflows', $i);
+	    $a = self::chosenAction($plan, $choices, 'workflows', $i);
 	    $existing = $plan['workflows'][$i]['existing'];
 	    if ($a === 'skip') {
 		if ($existing)
@@ -570,6 +570,12 @@ class Transfer {
 	}
 
 	return [ 'done' => $done, 'warnings' => $warnings ];
+    }
+
+    //CLD: 2026-11-07T01:16:14+02:00: the action chosen for item $i of list $list ($choices), when the plan offers it; else the plan's default
+    private static function chosenAction(array $plan, array $choices, $list, $i) {
+	$a = (string)($choices[$list][$i] ?? '');
+	return isset($plan[$list][$i]['actions'][$a]) ? $a : $plan[$list][$i]['default'];
     }
 
     //$name, else `$name (2)`, `$name (3)`, ... (tables, whose names are identifiers: name_2, ...) the first not used in the project

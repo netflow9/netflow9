@@ -223,15 +223,17 @@ class SamlXml {
 
     //an XML-DSig ECDSA signature (r || s) as DER, for openssl
     protected static function ecdsaDer($raw) {
-	$int = function($b) {
-	    $b = ltrim($b, "\0");
-	    if ($b === '' || ord($b[0]) > 0x7f)
-		$b = "\0" . $b;
-	    return "\x02" . self::derLength(strlen($b)) . $b;
-	};
 	$half = intdiv(strlen($raw), 2);
-	$seq = $int(substr($raw, 0, $half)) . $int(substr($raw, $half));
+	$seq = self::derInteger(substr($raw, 0, $half)) . self::derInteger(substr($raw, $half));
 	return "\x30" . self::derLength(strlen($seq)) . $seq;
+    }
+
+    //CLD: 2026-11-07T01:16:14+02:00: big-endian number $b as a DER INTEGER (leading zeros dropped, a 0 added when the top bit is set)
+    private static function derInteger($b) {
+	$b = ltrim($b, "\0");
+	if ($b === '' || ord($b[0]) > 0x7f)
+	    $b = "\0" . $b;
+	return "\x02" . self::derLength(strlen($b)) . $b;
     }
 
     protected static function derLength($n) {
@@ -240,33 +242,30 @@ class SamlXml {
 
     public static function sign(\DOMElement $element, $keyPem, $certPem) {
 	$doc = $element->ownerDocument;
-	$add = function(\DOMNode $parent, $name, $attrs = [], $text = null) use ($doc) {
-	    $el = $doc->createElementNS(self::DS, 'ds:' . $name);
-	    foreach($attrs as $k => $v)
-		$el->setAttribute($k, $v);
-	    if ($text !== null)
-		$el->appendChild($doc->createTextNode($text));
-	    return $parent->appendChild($el);
-	};
 	$digest = base64_encode(hash('sha256', $element->C14N(true, false), true));
 	$sig = $doc->createElementNS(self::DS, 'ds:Signature');
-	$info = $add($sig, 'SignedInfo');
-	$add($info, 'CanonicalizationMethod', [ 'Algorithm' => self::EXC_C14N ]);
-	$add($info, 'SignatureMethod', [ 'Algorithm' => self::RSA_SHA256 ]);
-	$ref = $add($info, 'Reference', [ 'URI' => '#' . $element->getAttribute('ID') ]);
-	$tr = $add($ref, 'Transforms');
-	$add($tr, 'Transform', [ 'Algorithm' => self::ENVELOPED ]);
-	$add($tr, 'Transform', [ 'Algorithm' => self::EXC_C14N ]);
-	$add($ref, 'DigestMethod', [ 'Algorithm' => self::SHA256 ]);
-	$add($ref, 'DigestValue', [], $digest);
+	$info = self::addDs($doc, $sig, 'SignedInfo');
+	self::addDs($doc, $info, 'CanonicalizationMethod', [ 'Algorithm' => self::EXC_C14N ]);
+	self::addDs($doc, $info, 'SignatureMethod', [ 'Algorithm' => self::RSA_SHA256 ]);
+	$ref = self::addDs($doc, $info, 'Reference', [ 'URI' => '#' . $element->getAttribute('ID') ]);
+	$tr = self::addDs($doc, $ref, 'Transforms');
+	self::addDs($doc, $tr, 'Transform', [ 'Algorithm' => self::ENVELOPED ]);
+	self::addDs($doc, $tr, 'Transform', [ 'Algorithm' => self::EXC_C14N ]);
+	self::addDs($doc, $ref, 'DigestMethod', [ 'Algorithm' => self::SHA256 ]);
+	self::addDs($doc, $ref, 'DigestValue', [], $digest);
 	//after the Issuer (the SAML schemas' order)
 	$issuer = self::children($element, self::SAML, 'Issuer')[0] ?? null;
 	$element->insertBefore($sig, $issuer ? $issuer->nextSibling : $element->firstChild);
 	if (!openssl_sign($info->C14N(true, false), $value, $keyPem, 'sha256'))
 	    throw new SamlException('could not sign: ' . openssl_error_string());
-	$add($sig, 'SignatureValue', [], base64_encode($value));
-	$add($add($add($sig, 'KeyInfo'), 'X509Data'), 'X509Certificate', [], self::certBody($certPem));
+	self::addDs($doc, $sig, 'SignatureValue', [], base64_encode($value));
+	self::addDs($doc, self::addDs($doc, self::addDs($doc, $sig, 'KeyInfo'), 'X509Data'), 'X509Certificate', [], self::certBody($certPem));
 	return $sig;
+    }
+
+    //CLD: 2026-11-07T01:16:14+02:00: a new ds:$name element of $doc (attributes $attrs, text $text) appended to $parent
+    private static function addDs(\DOMDocument $doc, \DOMNode $parent, $name, $attrs = [], $text = null) {
+	return $parent->appendChild(self::newElement($doc, self::DS, 'ds:' . $name, $attrs, $text));
     }
 
     //the base64 body of a PEM certificate
@@ -352,26 +351,28 @@ class SamlXml {
 	    : openssl_public_encrypt($key, $ek, $certPem, OPENSSL_PKCS1_OAEP_PADDING, $digest);
 	if ($ct === false || !$ok)
 	    throw new SamlException('could not encrypt: ' . openssl_error_string());
-	$el = fn($ns, $name, $attrs = [], $text = null) => (function() use ($doc, $ns, $name, $attrs, $text) {
-	    $e = $doc->createElementNS($ns, $name);
-	    foreach($attrs as $k => $v)
-		$e->setAttribute($k, $v);
-	    if ($text !== null)
-		$e->appendChild($doc->createTextNode($text));
-	    return $e;
-	})();
-	$wrapper = $el(self::SAML, 'saml:Encrypted' . $element->localName);
-	$data = $wrapper->appendChild($el(self::XENC, 'xenc:EncryptedData', [ 'Type' => 'http://www.w3.org/2001/04/xmlenc#Element' ]));
-	$data->appendChild($el(self::XENC, 'xenc:EncryptionMethod', [ 'Algorithm' => self::AES256_GCM ]));
-	$encKey = $data->appendChild($el(self::DS, 'ds:KeyInfo'))->appendChild($el(self::XENC, 'xenc:EncryptedKey'));
-	$m = $encKey->appendChild($el(self::XENC, 'xenc:EncryptionMethod', [ 'Algorithm' => $digest === 'sha1' ? self::RSA_OAEP_MGF1P : self::RSA_OAEP ]));
+	$wrapper = self::newElement($doc, self::SAML, 'saml:Encrypted' . $element->localName);
+	$data = $wrapper->appendChild(self::newElement($doc, self::XENC, 'xenc:EncryptedData', [ 'Type' => 'http://www.w3.org/2001/04/xmlenc#Element' ]));
+	$data->appendChild(self::newElement($doc, self::XENC, 'xenc:EncryptionMethod', [ 'Algorithm' => self::AES256_GCM ]));
+	$encKey = $data->appendChild(self::newElement($doc, self::DS, 'ds:KeyInfo'))->appendChild(self::newElement($doc, self::XENC, 'xenc:EncryptedKey'));
+	$m = $encKey->appendChild(self::newElement($doc, self::XENC, 'xenc:EncryptionMethod', [ 'Algorithm' => $digest === 'sha1' ? self::RSA_OAEP_MGF1P : self::RSA_OAEP ]));
 	if ($digest !== 'sha1') {
-	    $m->appendChild($el(self::DS, 'ds:DigestMethod', [ 'Algorithm' => array_search($digest, self::DIGESTS, true) ]));
-	    $m->appendChild($el(self::XENC11, 'xenc11:MGF', [ 'Algorithm' => array_search($digest, self::MGF, true) ]));
+	    $m->appendChild(self::newElement($doc, self::DS, 'ds:DigestMethod', [ 'Algorithm' => array_search($digest, self::DIGESTS, true) ]));
+	    $m->appendChild(self::newElement($doc, self::XENC11, 'xenc11:MGF', [ 'Algorithm' => array_search($digest, self::MGF, true) ]));
 	}
-	$encKey->appendChild($el(self::XENC, 'xenc:CipherData'))->appendChild($el(self::XENC, 'xenc:CipherValue', [], base64_encode($ek)));
-	$data->appendChild($el(self::XENC, 'xenc:CipherData'))->appendChild($el(self::XENC, 'xenc:CipherValue', [], base64_encode($iv . $ct . $tag)));
+	$encKey->appendChild(self::newElement($doc, self::XENC, 'xenc:CipherData'))->appendChild(self::newElement($doc, self::XENC, 'xenc:CipherValue', [], base64_encode($ek)));
+	$data->appendChild(self::newElement($doc, self::XENC, 'xenc:CipherData'))->appendChild(self::newElement($doc, self::XENC, 'xenc:CipherValue', [], base64_encode($iv . $ct . $tag)));
 	$element->parentNode->replaceChild($wrapper, $element);
 	return $wrapper;
+    }
+
+    //CLD: 2026-11-07T01:16:14+02:00: a new element $name of namespace $ns in $doc, with attributes $attrs and text $text
+    private static function newElement(\DOMDocument $doc, $ns, $name, $attrs = [], $text = null) {
+	$e = $doc->createElementNS($ns, $name);
+	foreach($attrs as $k => $v)
+	    $e->setAttribute($k, $v);
+	if ($text !== null)
+	    $e->appendChild($doc->createTextNode($text));
+	return $e;
     }
 }

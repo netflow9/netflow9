@@ -200,70 +200,80 @@ class Markdown {
 
     //the table starting at line $i (moved after it): the header, the alignment line, the rows
     private static function table(array $lines, &$i) {
-	$cells = function($line) {
-	    $line = trim($line);
-	    $line = preg_replace('/^\||\|$/', '', $line);
-	    //\| is a | inside a cell
-	    return array_map(fn($c) => trim(str_replace('\\|', '|', $c)), preg_split('/(?<!\\\\)\|/', $line));
-	};
-	$head = $cells($lines[$i]);
+	$head = self::cells($lines[$i]);
 	$align = array_map(function($c) {
 	    $l = str_starts_with($c, ':');
 	    $r = str_ends_with($c, ':');
 	    return $l && $r ? 'center' : ($r ? 'right' : ($l ? 'left' : ''));
-	}, $cells($lines[$i + 1]));
+	}, self::cells($lines[$i + 1]));
 	$i += 2;
-	$attr = fn($k) => !empty($align[$k]) ? ' align="' . $align[$k] . '"' : '';
 	$html = '<table><thead><tr>';
 	foreach($head as $k => $c)
-	    $html .= '<th' . $attr($k) . '>' . self::inline($c) . '</th>';
+	    $html .= '<th' . self::alignAttr($align, $k) . '>' . self::inline($c) . '</th>';
 	$html .= '</tr></thead><tbody>';
 	for($n = count($lines); $i < $n && trim($lines[$i]) !== '' && str_contains($lines[$i], '|'); $i++) {
-	    $row = $cells($lines[$i]);
+	    $row = self::cells($lines[$i]);
 	    $html .= '<tr>';
 	    foreach($head as $k => $unused)
-		$html .= '<td' . $attr($k) . '>' . self::inline($row[$k] ?? '') . '</td>';
+		$html .= '<td' . self::alignAttr($align, $k) . '>' . self::inline($row[$k] ?? '') . '</td>';
 	    $html .= '</tr>';
 	}
 	return $html . '</tbody></table>';
+    }
+
+    //CLD: 2026-11-07T01:14:34+02:00: the cells of table line $line (\| is a | inside a cell)
+    private static function cells($line) {
+	$line = trim($line);
+	$line = preg_replace('/^\||\|$/', '', $line);
+	return array_map(fn($c) => trim(str_replace('\\|', '|', $c)), preg_split('/(?<!\\\\)\|/', $line));
+    }
+
+    //CLD: 2026-11-07T01:14:34+02:00: the align attribute of column $k ($align: the table's alignments); '' when none
+    private static function alignAttr($align, $k) {
+	return !empty($align[$k]) ? ' align="' . $align[$k] . '"' : '';
     }
 
     // ------------------------------------------------------------------------------------
     //inline
 
     //the inline marks of $text as HTML (the text escaped first; code spans and links kept apart so their content is not marked again)
+    //CLD: 2026-11-07T01:14:34+02:00: the HTML inline() has put aside (hold); inline() is not reentrant: it starts it again
+    private static $held = [];
+
+    //CLD: 2026-11-07T01:14:34+02:00: $html put aside while inline() works on the text: its placeholder
+    private static function hold($html) {
+	self::$held[] = $html;
+	return "\u{E000}" . (count(self::$held) - 1) . "\u{E001}";
+    }
+
     private static function inline($text) {
-	$keep = [];
-	$hold = function($html) use (&$keep) {
-	    $keep[] = $html;
-	    return "\u{E000}" . (count($keep) - 1) . "\u{E001}";
-	};
+	self::$held = [];
 	//backslash escapes: the character as it is
-	$text = preg_replace_callback('/\\\\([\\\\`*_{}\[\]()#+\-.!|~<>])/', fn($m) => $hold(self::esc($m[1])), $text);
+	$text = preg_replace_callback('/\\\\([\\\\`*_{}\[\]()#+\-.!|~<>])/', fn($m) => self::hold(self::esc($m[1])), $text);
 	//code spans
-	$text = preg_replace_callback('/(`+)(.+?)\1(?!`)/s', fn($m) => $hold('<code>' . self::esc(trim($m[2])) . '</code>'), $text);
+	$text = preg_replace_callback('/(`+)(.+?)\1(?!`)/s', fn($m) => self::hold('<code>' . self::esc(trim($m[2])) . '</code>'), $text);
 	//images: a link to the image (no remote images)
-	$text = preg_replace_callback('/!\[([^\]]*)\]\(\s*<?((?:[^()\s<>]|\([^()\s<>]*\))+)>?(?:\s+"[^"]*")?\s*\)/', function($m) use ($hold) {
+	$text = preg_replace_callback('/!\[([^\]]*)\]\(\s*<?((?:[^()\s<>]|\([^()\s<>]*\))+)>?(?:\s+"[^"]*")?\s*\)/', function($m) {
 	    $label = trim($m[1]) !== '' ? trim($m[1]) : 'image';
 	    $href = self::href($m[2]);
-	    return $hold($href !== null ? '<a href="' . self::esc($href) . '">' . self::esc($label) . '</a>' : self::esc($label));
+	    return self::hold($href !== null ? '<a href="' . self::esc($href) . '">' . self::esc($label) . '</a>' : self::esc($label));
 	}, $text);
 	//links: [text](url "title"), one level of ( ) allowed in the address; their text marked (bold etc.), not linked again
-	$text = preg_replace_callback('/\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\s*<?((?:[^()\s<>]|\([^()\s<>]*\))+)>?(?:\s+"([^"]*)")?\s*\)/', function($m) use ($hold) {
+	$text = preg_replace_callback('/\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\s*<?((?:[^()\s<>]|\([^()\s<>]*\))+)>?(?:\s+"([^"]*)")?\s*\)/', function($m) {
 	    $href = self::href($m[2]);
 	    $label = self::marks(self::esc($m[1]));
 	    if ($href === null)
-		return $hold($label);
-	    return $hold('<a href="' . self::esc($href) . '"' . (isset($m[3]) && $m[3] !== '' ? ' title="' . self::esc($m[3]) . '"' : '') . '>' . $label . '</a>');
+		return self::hold($label);
+	    return self::hold('<a href="' . self::esc($href) . '"' . (isset($m[3]) && $m[3] !== '' ? ' title="' . self::esc($m[3]) . '"' : '') . '>' . $label . '</a>');
 	}, $text);
 	//autolinks <https://...>, then bare addresses
-	$text = preg_replace_callback('/<((?:https?:\/\/|mailto:)[^\s<>]+)>/i', fn($m) => $hold('<a href="' . self::esc($m[1]) . '">' . self::esc($m[1]) . '</a>'), $text);
-	$text = preg_replace_callback('/\bhttps?:\/\/[^\s<>()\x{E000}\x{E001}]+[^\s<>().,;:!?"\'\x{E000}\x{E001}]/iu', fn($m) => $hold('<a href="' . self::esc($m[0]) . '">' . self::esc($m[0]) . '</a>'), $text);
+	$text = preg_replace_callback('/<((?:https?:\/\/|mailto:)[^\s<>]+)>/i', fn($m) => self::hold('<a href="' . self::esc($m[1]) . '">' . self::esc($m[1]) . '</a>'), $text);
+	$text = preg_replace_callback('/\bhttps?:\/\/[^\s<>()\x{E000}\x{E001}]+[^\s<>().,;:!?"\'\x{E000}\x{E001}]/iu', fn($m) => self::hold('<a href="' . self::esc($m[0]) . '">' . self::esc($m[0]) . '</a>'), $text);
 
 	$html = self::marks(self::esc($text));
 	//what was kept, back (nested ones too)
 	for($k = 0; $k < 3 && str_contains($html, "\u{E000}"); $k++)
-	    $html = preg_replace_callback('/\x{E000}(\d+)\x{E001}/u', fn($m) => $keep[(int)$m[1]] ?? '', $html);
+	    $html = preg_replace_callback('/\x{E000}(\d+)\x{E001}/u', fn($m) => self::$held[(int)$m[1]] ?? '', $html);
 	return $html;
     }
 

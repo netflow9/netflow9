@@ -193,8 +193,7 @@ class DataTableDef extends \sys\BaseModel {
 		throw new \ErrorException("Conditions: the table has no column `{$c}`");
 	    $list[] = [ 'key' => $key, 'operator' => (string)($cond['operator'] ?? 'eq'), 'value' => $render($cond['value'] ?? '') ];
 	}
-	$field = fn($key) => $columns[$key] ?? \sys\fields\Field::create([ 'type' => $key === '_id' ? 'oid' : 'datetime', 'key' => $key ]);
-	return [ 'aid' => $aid ] + \util\Conditions::query($list, $match, $field);
+	return [ 'aid' => $aid ] + \util\Conditions::query($list, $match, fn($key) => $columns[$key] ?? \sys\fields\Field::create([ 'type' => $key === '_id' ? 'oid' : 'datetime', 'key' => $key ]));
     }
 
     //a row as a plain value: { id, <columns>, created_at, updated_at } (ids as text, dates as ISO 8601)

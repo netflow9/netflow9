@@ -66,8 +66,6 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
     const CHUNK = 5 * 1024 * 1024;
 
     public static function configSchema() {
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
-
 	return [
 	    static::credentialField(),
 	    static::operationField(),
@@ -88,7 +86,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'Id, path (/Reports/2026.xlsx) or sharing link, e.g. {{ files[0].id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_ITEM ],
-		'ui' => [ 'width' => 6, 'placeholder' => '/Reports/2026.xlsx', 'expression' => true, 'showIf' => $op(self::ON_ITEM) ],
+		'ui' => [ 'width' => 6, 'placeholder' => '/Reports/2026.xlsx', 'expression' => true, 'showIf' => static::operationIn(self::ON_ITEM) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
@@ -97,7 +95,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'label' => 'Folder',
 		'default' => '',
 		'help' => 'Id, path (/Reports) or sharing link; empty: the top',
-		'ui' => [ 'width' => 6, 'placeholder' => '/Reports', 'expression' => true, 'showIf' => $op(array_merge(self::IN_FOLDER, [ 'move' ])) ],
+		'ui' => [ 'width' => 6, 'placeholder' => '/Reports', 'expression' => true, 'showIf' => static::operationIn(array_merge(self::IN_FOLDER, [ 'move' ])) ],
 	    ],
 
 	    //list
@@ -108,7 +106,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'label' => 'Search',
 		'default' => '',
 		'help' => 'Words in names and contents (whole drive); empty: the folder\'s files',
-		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
@@ -118,7 +116,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 100,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_RESULTS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_RESULTS ] ],
-		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 
 	    //download / upload
@@ -129,7 +127,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'label' => 'Save as',
 		'default' => '',
 		'help' => 'The name in the project Files; empty: the file\'s',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'download' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'download' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
@@ -139,7 +137,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 'file',
 		'choices' => [ 'file' => 'A project file', 'text' => 'A text' ],
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'upload' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'upload' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
@@ -149,7 +147,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'Upload / folder: its name; move: a new name (empty: kept)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'createFolder' ] ],
-		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'upload', 'createFolder', 'move' ]) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'upload', 'createFolder', 'move' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -160,7 +158,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 'rename',
 		'choices' => self::CONFLICT,
-		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'upload', 'createFolder' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => static::operationIn([ 'upload', 'createFolder' ]) ],
 	    ],
 	    [
 		'key' => 'sourceFile',
@@ -186,7 +184,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 25,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
-		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'download', 'upload' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'download', 'upload' ]) ],
 	    ],
 
 	    //share
@@ -198,7 +196,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 'link',
 		'choices' => self::SHARE_WITH,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'share' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'share' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -208,7 +206,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 'view',
 		'choices' => self::LINK_TYPES,
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'share' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'share' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
@@ -255,7 +253,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'label' => 'Delete permanently',
 		'default' => false,
 		'help' => 'Else to the recycle bin (permanently: work / school only)',
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'delete' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'delete' ]) ],
 	    ],
 
 	    static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request'),
@@ -266,22 +264,17 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$fail = function($message) use (&$valid) {
-	    $this->errors('config', $message);
-	    $valid = false;
-	};
-	$empty = fn($key) => trim((string)$this->cfg($key, '')) === '';
 	$operation = $this->cfg('operation', 'list');
 	if ($operation === 'upload') {
-	    if ($this->cfg('source', 'file') === 'text' && $empty('name'))
-		$fail('Name: required for a text');
-	    if ($this->cfg('source', 'file') === 'file' && $empty('sourceFile'))
-		$fail('Project file: required');
+	    if ($this->cfg('source', 'file') === 'text' && $this->cfgEmpty('name'))
+		$valid = $this->configError('Name: required for a text');
+	    if ($this->cfg('source', 'file') === 'file' && $this->cfgEmpty('sourceFile'))
+		$valid = $this->configError('Project file: required');
 	}
-	if ($operation === 'move' && $empty('folder') && $empty('name'))
-	    $fail('Move: give a folder or a new name');
-	if ($operation === 'share' && $this->cfg('shareWith', 'link') === 'people' && $empty('people'))
-	    $fail('People: required');
+	if ($operation === 'move' && $this->cfgEmpty('folder') && $this->cfgEmpty('name'))
+	    $valid = $this->configError('Move: give a folder or a new name');
+	if ($operation === 'share' && $this->cfg('shareWith', 'link') === 'people' && $this->cfgEmpty('people'))
+	    $valid = $this->configError('People: required');
 	return $valid;
     }
 

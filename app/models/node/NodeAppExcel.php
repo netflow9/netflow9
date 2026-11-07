@@ -59,8 +59,6 @@ class NodeAppExcel extends NodeAppMicrosoft {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
-
 	return [
 	    static::credentialField(),
 	    static::operationField(),
@@ -91,7 +89,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'The worksheet name; empty: the first one',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'addSheet' ] ],
-		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'Sheet1', 'expression' => true, 'showIf' => $op(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'Sheet1', 'expression' => true, 'showIf' => static::operationIn(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -101,7 +99,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'A1 notation, e.g. A1:D100; empty: the used cells',
 		'validate' => [ [ 'regex', 'pattern' => '^\s*(\{\{.*\}\}|[A-Za-z]{0,3}[0-9]{0,7}(:[A-Za-z]{0,3}[0-9]{0,7})?)\s*$', 'skipEmpty' => true, 'message' => 'Cells in A1 notation, e.g. A1:D100' ] ],
-		'ui' => [ 'width' => 3, 'placeholder' => 'A1:D100', 'expression' => true, 'showIf' => $op([ 'read', 'update', 'clear' ]) ],
+		'ui' => [ 'width' => 3, 'placeholder' => 'A1:D100', 'expression' => true, 'showIf' => static::operationIn([ 'read', 'update', 'clear' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
@@ -110,7 +108,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'label' => 'Table',
 		'default' => '',
 		'help' => 'Optional: a table to add the rows to; empty: after the last row',
-		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'append' ]) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'append' ]) ],
 	    ],
 
 	    //read
@@ -121,7 +119,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'label' => 'First row is the header',
 		'default' => true,
 		'help' => 'Rows also as objects keyed by the header',
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'read' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'read' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -132,7 +130,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 'values',
 		'choices' => self::RENDER,
-		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'read' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => static::operationIn([ 'read' ]) ],
 	    ],
 
 	    [
@@ -142,7 +140,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'label' => 'Add the missing columns to the header',
 		'default' => true,
 		'help' => 'New keys become new columns',
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'append', 'update' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'append', 'update' ]) ],
 	    ],
 	    //append / update
 	    [
@@ -152,7 +150,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'A list of rows: lists of cells ([["a", 1], ["b", 2]]) or objects matched to the header ([{"Name": "a", "Qty": 1}]); one object or list is one row',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'append', 'update' ] ],
-		'ui' => [ 'rows' => 5, 'expression' => true, 'placeholder' => '{{ [ { Name: mail.from_name, Email: mail.from } ] }}', 'showIf' => $op([ 'append', 'update' ]) ],
+		'ui' => [ 'rows' => 5, 'expression' => true, 'placeholder' => '{{ [ { Name: mail.from_name, Email: mail.from } ] }}', 'showIf' => static::operationIn([ 'append', 'update' ]) ],
 	    ],
 
 	    static::timeoutField(60),
@@ -394,14 +392,16 @@ class NodeAppExcel extends NodeAppMicrosoft {
     //[ first column, first row, last column, last row ] of cells (A1:D20; B2) - columns from 0, rows from 1
     public static function bounds($cells) {
 	$parts = explode(':', strtoupper(trim((string)$cells)));
-	$read = function($c) {
-	    if (!preg_match('/^([A-Z]{1,3})([0-9]{1,7})$/', $c, $m))
-		throw new \RuntimeException('not a cell address: `' . mb_substr($c, 0, 20) . '`');
-	    return [ \util\SheetRows::columnIndex($m[1]), (int)$m[2] ];
-	};
-	[ $c1, $r1 ] = $read($parts[0]);
-	[ $c2, $r2 ] = isset($parts[1]) ? $read($parts[1]) : [ $c1, $r1 ];
+	[ $c1, $r1 ] = self::cellAt($parts[0]);
+	[ $c2, $r2 ] = isset($parts[1]) ? self::cellAt($parts[1]) : [ $c1, $r1 ];
 	return [ $c1, $r1, $c2, $r2 ];
+    }
+
+    //CLD: 2026-11-07T01:08:03+02:00: cell address $c (A1) as [ column index, row ]
+    private static function cellAt($c) {
+	if (!preg_match('/^([A-Z]{1,3})([0-9]{1,7})$/', $c, $m))
+	    throw new \RuntimeException('not a cell address: `' . mb_substr($c, 0, 20) . '`');
+	return [ \util\SheetRows::columnIndex($m[1]), (int)$m[2] ];
     }
 
     //an empty worksheet's used range: one empty cell

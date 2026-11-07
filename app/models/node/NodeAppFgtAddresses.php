@@ -85,12 +85,11 @@ class NodeAppFgtAddresses extends NodeAppFortiGate {
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	$v6 = (bool)$this->cfg('ipv6', false);
-	$filter = fn() => $text('contains') !== '' ? [ 'filter' => 'name=@' . $text('contains') ] : [];
 	switch($operation) {
 	    case 'list':
-		return $this->listOf('/api/v2/cmdb/firewall/' . ($v6 ? 'address6' : 'address'), $filter(), 'address');
+		return $this->listOf('/api/v2/cmdb/firewall/' . ($v6 ? 'address6' : 'address'), $this->nameFilter(), 'address');
 	    case 'groups':
-		return $this->listOf('/api/v2/cmdb/firewall/' . ($v6 ? 'addrgrp6' : 'addrgrp'), $filter(), 'group');
+		return $this->listOf('/api/v2/cmdb/firewall/' . ($v6 ? 'addrgrp6' : 'addrgrp'), $this->nameFilter(), 'group');
 	    case 'get':
 		$n = self::objName($value('name'), 'Address');
 		return [ $this->get('/api/v2/cmdb/firewall/address/' . FortiGate::name($n)), "address {$n}" ];
@@ -169,5 +168,10 @@ class NodeAppFgtAddresses extends NodeAppFortiGate {
 		    \util\Format::plural(count($done), 'IP') . ($operation === 'block' ? " blocked (group {$g})" : " unblocked (group {$g})") ];
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:08:03+02:00: the API's filter for the setting Contains (the names holding it); none when empty
+    private function nameFilter() {
+	return $this->settingText('contains') !== '' ? [ 'filter' => 'name=@' . $this->settingText('contains') ] : [];
     }
 }

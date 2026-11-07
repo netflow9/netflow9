@@ -51,8 +51,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	    [ 'sort' => [ 'name' => 1 ], 'typeMap' => $arrays, 'projection' => [ 'name' => 1, 'project' => 1, 'status' => 1, 'version' => 1, 'nodes' => 1 ] ]
 	)->toArray();
 
-	$published = fn($w) => ($w['status'] ?? '') === \models\Workflow::PUBLISHED && !empty($w['version']);
-	$versionIds = array_column(array_filter($workflows, $published), 'version');
+	$versionIds = array_column(array_filter($workflows, self::isPublished(...)), 'version');
 	$versions = [];
 	if ($versionIds) {
 	    $class = \V::app()->om->getObjectClass('WfVersion');
@@ -63,7 +62,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	$list = [];
 	foreach($workflows as $w) {
 	    $home = (string)$w['project'] === (string)$project;
-	    $version = $published($w) ? ($versions[(string)$w['version']] ?? null) : null;
+	    $version = self::isPublished($w) ? ($versions[(string)$w['version']] ?? null) : null;
 	    if ($version && (string)$version['wf'] === (string)$w['_id'])
 		$nodes = $version['nodes'] ?? null;
 	    elseif ($home)
@@ -75,6 +74,11 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 		$list[(string)$w['_id']] = [ 'name' => (string)($w['name'] ?? '') . ($home ? '' : ' (shared from ' . \models\Workflow::projectName($w['project']) . ')'), 'contract' => $contract ];
 	}
 	return $list;
+    }
+
+    //CLD: 2026-11-07T01:10:30+02:00: whether workflow document $w has a published version
+    private static function isPublished($w) {
+	return ($w['status'] ?? '') === \models\Workflow::PUBLISHED && !empty($w['version']);
     }
 
     public static function configSchema() {

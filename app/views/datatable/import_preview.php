@@ -6,9 +6,8 @@
 $actionUrl = \V::app()->createUrl('/datatable/import');
 $formId = 'dt-import-' . uniqid();
 $refresh = "this.form.elements.step.value='preview'; this.form.requestSubmit()";
-$errorList = fn($list) => $list
-    ? \util\VString::insert('<div class="invalid-feedback d-block">{:messages}</div>', [ 'messages' => implode('<br>', \V::app()->html->escape((array)$list)) ])
-    : '';
+//CLD: 2026-11-07T01:18:54+02:00: the messages of a field (a column, the name), one per line
+$errorsTpl = '<div class="invalid-feedback d-block">{:messages}</div>';
 $optionTpl = '<option value="{:value}"{:selected}>{:label}</option>';
 
 $sheetSelect = '';
@@ -28,16 +27,6 @@ if (count($sheets) > 1) {
     $sheetSelect = \util\VString::insert('<input type="hidden" name="sheet" value="{:value}">', [ 'value' => \V::app()->html->escape($sheet) ]);
 }
 
-$typeOptions = function($selected) use ($types, $optionTpl) {
-    $html = '';
-    foreach($types as $value => $label)
-	$html .= \util\VString::insert($optionTpl, [
-	    'value' => \V::app()->html->escape($value),
-	    'selected' => $value === $selected ? ' selected' : '',
-	    'label' => \V::app()->html->escape($label),
-	]);
-    return $html;
-};
 
 $colTpl = '
     <tr>
@@ -49,15 +38,22 @@ $colTpl = '
     </tr>{:errors}';
 $colRows = '';
 foreach($columns as $i => $c) {
+    $typeOptions = '';
+    foreach($types as $value => $label)
+	$typeOptions .= \util\VString::insert($optionTpl, [
+	    'value' => \V::app()->html->escape($value),
+	    'selected' => $value === $c['type'] ? ' selected' : '',
+	    'label' => \V::app()->html->escape($label),
+	]);
     $colRows .= \util\VString::insert($colTpl, [
 	'i' => $i,
 	'checked' => !empty($c['on']) ? ' checked' : '',
 	'label' => \V::app()->html->escape($c['label']),
 	'key' => \V::app()->html->escape($c['key']),
-	'types' => $typeOptions($c['type']),
+	'types' => $typeOptions,
 	'samples' => implode(', ', \V::app()->html->escape($c['samples'])),
 	'errors' => !empty($errors[$i])
-	    ? \util\VString::insert('<tr><td></td><td colspan="4" class="pt-0">{:list}</td></tr>', [ 'list' => $errorList($errors[$i]) ])
+	    ? \util\VString::insert('<tr><td></td><td colspan="4" class="pt-0">{:list}</td></tr>', [ 'list' => \util\VString::insert($errorsTpl, [ 'messages' => implode('<br>', \V::app()->html->escape((array)$errors[$i])) ]) ])
 	    : '',
     ]);
 }
@@ -119,7 +115,7 @@ $content = \util\VString::insert($contentTpl, [
     'columns' => \util\Format::plural(count($columns), 'column'),
     'nameInvalid' => !empty($errors['name']) ? ' is-invalid' : '',
     'name' => \V::app()->html->escape($name),
-    'nameErrors' => $errorList($errors['name'] ?? []),
+    'nameErrors' => !empty($errors['name']) ? \util\VString::insert($errorsTpl, [ 'messages' => implode('<br>', \V::app()->html->escape((array)$errors['name'])) ]) : '',
     'sheetSelect' => $sheetSelect,
     'headerChecked' => $header ? ' checked' : '',
     'refresh' => $refresh,

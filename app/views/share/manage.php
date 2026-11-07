@@ -1,20 +1,11 @@
 <?php
 //CLD: 2026-11-03T14:00:00+02:00: new: the Share dialog (ShareController): $resource, $object (its kind), $names (project id => name), $targets (the projects it can still be shared with)
 $q = [ 'object' => $object, 'id' => (string)$resource->_id ];
-$levelSelect = function($selected, $attrs) use ($resource) {
-    $options = '';
-    foreach($resource::SHARE_LEVELS as $value => $label)
-	$options .= \util\VString::insert('<option value="{:value}"{:selected}>{:label}</option>', [
-	    'value' => \V::app()->html->escape($value),
-	    'selected' => $value === $selected ? ' selected' : '',
-	    'label' => \V::app()->html->escape($label),
-	]);
-    return \util\VString::insert('<select name="access" class="form-select form-select-sm" {:attrs}>{:options}</select>', [ 'attrs' => $attrs, 'options' => $options ]);
-};
-
-//CLD: 2026-11-03T18:00:00+02:00: a credential an HTTP step can send anywhere: the hosts it may be sent to, or any host (the owner's override); $id: unique within the dialog
-$hostFields = function($id, $hosts, $any) {
-    return \util\VString::insert('
+//CLD: 2026-11-07T01:20:20+02:00: the level select (`access`): one option per share level
+$levelSelectTpl = '<select name="access" class="form-select form-select-sm" {:attrs}>{:options}</select>';
+$levelOptionTpl = '<option value="{:value}"{:selected}>{:label}</option>';
+//CLD: 2026-11-03T18:00:00+02:00: a credential an HTTP step can send anywhere: the hosts it may be sent to, or any host (the owner's override); {:id}: unique within the dialog
+$hostsTpl = '
 <div class="mt-2">
     <label class="form-label small mb-1" for="share-hosts-{:id}">Hosts it may be sent to</label>
     <input id="share-hosts-{:id}" type="text" name="hosts" class="form-control form-control-sm" value="{:hosts}" placeholder="api.example.com, *.example.org">
@@ -22,12 +13,7 @@ $hostFields = function($id, $hosts, $any) {
 <div class="form-check mt-1">
     <input id="share-any-{:id}" class="form-check-input" type="checkbox" name="any_host" value="1"{:any}>
     <label class="form-check-label small" for="share-any-{:id}">Allow any host: workflow editors there can read its secret</label>
-</div>', [
-	'id' => $id,
-	'hosts' => \V::app()->html->escape(implode(', ', $hosts)),
-	'any' => $any ? ' checked' : '',
-    ]);
-};
+</div>';
 
 $rows = '';
 $rowTpl = '<tr><td>{:name}{:used}</td><td style="width: 22rem"><form method="post" action="{:change}" class="m-0">{:select}{:hosts}</form></td><td class="text-end" style="width: 7rem">{:remove}</td></tr>';
@@ -36,6 +22,9 @@ foreach((array)$resource->shares as $share) {
     $pid = (string)$share['project'];
     $used = array_column($resource->consumers($pid), 'name');
     $name = $names[$pid] ?? 'A deleted project';
+    $levelOptions = '';
+    foreach($resource::SHARE_LEVELS as $value => $label)
+	$levelOptions .= \util\VString::insert($levelOptionTpl, [ 'value' => \V::app()->html->escape($value), 'selected' => $value === (string)$share['access'] ? ' selected' : '', 'label' => \V::app()->html->escape($label) ]);
     $confirm = 'Stop sharing with ' . \V::app()->html->escape($name) . '?' . ($used ? ' ' . count($used) . ' workflow(s) there will fail when they use it.' : '');
     $rows .= \util\VString::insert($rowTpl, [
 	'name' => \V::app()->html->escape($name),
@@ -44,9 +33,9 @@ foreach((array)$resource->shares as $share) {
 	    : '<div class="form-text mt-0">No workflow uses it there</div>',
 	'change' => \V::app()->createUrl('/share/change', $q + [ 'project' => $pid ]),
 	//CLD: 2026-11-03T18:00:00+02:00: with hosts: a Save button (the fields are typed; the level alone saves when it changes)
-	'select' => $levelSelect((string)$share['access'], ($resource->shareUsesHosts() ? '' : "onchange='this.form.requestSubmit()' ") . "aria-label='Level'"),
+	'select' => \util\VString::insert($levelSelectTpl, [ 'attrs' => ($resource->shareUsesHosts() ? '' : "onchange='this.form.requestSubmit()' ") . "aria-label='Level'", 'options' => $levelOptions ]),
 	'hosts' => $resource->shareUsesHosts()
-	    ? $hostFields($pid, array_map('strval', (array)($share['hosts'] ?? [])), !empty($share['any_host'])) . '<button type="submit" class="btn btn-sm btn-outline-primary mt-2">Save</button>'
+	    ? \util\VString::insert($hostsTpl, [ 'id' => $pid, 'hosts' => \V::app()->html->escape(implode(', ', array_map('strval', (array)($share['hosts'] ?? [])))), 'any' => !empty($share['any_host']) ? ' checked' : '' ]) . '<button type="submit" class="btn btn-sm btn-outline-primary mt-2">Save</button>'
 	    : '',
 	//the confirmation is shown as HTML after the attribute is read: escaped for both
 	'remove' => \util\VString::insert($removeTpl, [
@@ -77,8 +66,8 @@ $add = $problem !== null
 </form>', [
 	'action' => \V::app()->createUrl('/share/manage', $q),
 	'options' => $options,
-	'level' => $levelSelect(array_key_first($resource::SHARE_LEVELS), ''),
-	'hosts' => $resource->shareUsesHosts() ? $hostFields('new', [], false) : '',
+	'level' => \util\VString::insert($levelSelectTpl, [ 'attrs' => '', 'options' => implode('', array_map(fn($value, $label) => \util\VString::insert($levelOptionTpl, [ 'value' => \V::app()->html->escape($value), 'selected' => $value === array_key_first($resource::SHARE_LEVELS) ? ' selected' : '', 'label' => \V::app()->html->escape($label) ]), array_keys($resource::SHARE_LEVELS), $resource::SHARE_LEVELS)) ]),
+	'hosts' => $resource->shareUsesHosts() ? \util\VString::insert($hostsTpl, [ 'id' => 'new', 'hosts' => '', 'any' => '' ]) : '',
     ])
     : '<p class="text-muted small mb-0">No other project can receive it. Personal projects do not take part in sharing.</p>');
 

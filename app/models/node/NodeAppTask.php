@@ -230,9 +230,8 @@ class NodeAppTask extends \models\wf\WfNode {
     //the task: created, the run sleeps until it is completed (or its time limit)
     private function open() {
 	$vars = $this->exec->expressionVariables();
-	$text = fn($key) => trim(\util\Expression::toText(\util\Expression::render((string)$this->cfg($key, ''), $vars)));
 	$users = array_values(array_map('strval', (array)$this->cfg('users', [])));
-	$also = $text('assignTo');
+	$also = $this->textSetting($vars, 'assignTo');
 	if ($also !== '') {
 	    $u = \util\Validator::rule('oid', $also) ? \V::app()->om->findOne('User', [ '_id' => $also, 'aid' => $this->exec->aid ]) : null;
 	    $u = $u ?: \V::app()->om->findOne('User', [ 'aid' => $this->exec->aid, '$or' => [ [ 'username' => $also ], [ 'email' => $also ] ] ]);
@@ -248,8 +247,8 @@ class NodeAppTask extends \models\wf\WfNode {
 	    'wf' => $this->exec->wf,
 	    'execution' => $this->exec->_id,
 	    'node' => $this->wfid,
-	    'title' => mb_substr($text('title') ?: (string)$this->title, 0, 300),
-	    'instructions' => mb_substr($text('instructions'), 0, 10000),
+	    'title' => mb_substr($this->textSetting($vars, 'title') ?: (string)$this->title, 0, 300),
+	    'instructions' => mb_substr($this->textSetting($vars, 'instructions'), 0, 10000),
 	    'form' => \util\SmartForm::normalize($this->cfg('form', [])),
 	    'submitLabel' => (string)$this->cfg('submitLabel', 'Complete'),
 	    'users' => array_values(array_unique($users)),
@@ -262,5 +261,10 @@ class NodeAppTask extends \models\wf\WfNode {
 	$this->resume_at = $due;
 	$this->exec->log($this->wfid, 'task created: ' . $task->title);
 	return self::SLEEP;
+    }
+
+    //CLD: 2026-11-07T01:10:30+02:00: setting $key as text, trimmed, its {{ }} rendered against $vars
+    private function textSetting(array $vars, $key) {
+	return trim(\util\Expression::toText(\util\Expression::render((string)$this->cfg($key, ''), $vars)));
     }
 }

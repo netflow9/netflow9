@@ -172,9 +172,7 @@ abstract class NodeAppHyperV extends \models\wf\WfNode {
 
     public function execute($edgeId = null) {
 	//CLD: 2026-11-01T21:50:00+02:00: the settings through settingValue() (as they are when the step runs as a tool: AgentToolTrait)
-	$vars = $this->varsForSettings();
-	$value = fn($key) => $this->settingValue($this->cfg($key, ''), $vars);
-	$text = fn($key) => trim(\util\Expression::toText($value($key)));
+	$this->settingVars = $this->varsForSettings();
 	$operation = (string)$this->cfg('operation', static::$defaultOperation);
 	if (!isset(static::OPERATIONS[$operation]))
 	    throw new \ErrorException(static::$label . ": unknown operation `{$operation}`");
@@ -186,7 +184,7 @@ abstract class NodeAppHyperV extends \models\wf\WfNode {
 	$name = (string)$this->cfg('variable', static::$defaultVariable);
 	try {
 	    $start = microtime(true);
-	    [ $result, $summary ] = $this->runOperation($operation, $text, $value);
+	    [ $result, $summary ] = $this->runOperation($operation, $this->settingText(...), $this->settingOf(...));
 	} catch (\RuntimeException $e) {
 	    $this->setResult($name, null);
 	    $this->exec->log($this->wfid, static::$label . " {$operation}: " . $e->getMessage());

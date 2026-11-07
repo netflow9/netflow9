@@ -54,27 +54,31 @@ class NodeAppGzIncidents extends NodeAppGravityZone {
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	$kind = isset(self::KINDS[(string)$this->cfg('kind', 'incidents')]) ? (string)$this->cfg('kind', 'incidents') : 'incidents';
-	$incident = fn() => [ 'type' => $kind, 'incidentId' => self::id($value('incidentId'), 'Incident') ];
 	switch($operation) {
 	    case 'list':
 		return $this->listOf('incidents', 'getIncidentsList', [ 'type' => $kind ], 'incident');
 	    case 'get':
-		return self::done($this->rpc('incidents', 'getIncident', $incident()), 'incident ' . $text('incidentId'));
+		return self::done($this->rpc('incidents', 'getIncident', $this->incidentRef($kind)), 'incident ' . $text('incidentId'));
 	    case 'status':
 		$s = (string)$this->cfg('status', '2');
-		return self::done($this->rpc('incidents', 'changeIncidentStatus', $incident() + [ 'status' => (int)$s ]), 'incident ' . $text('incidentId') . ': ' . (self::STATUSES[$s] ?? $s));
+		return self::done($this->rpc('incidents', 'changeIncidentStatus', $this->incidentRef($kind) + [ 'status' => (int)$s ]), 'incident ' . $text('incidentId') . ': ' . (self::STATUSES[$s] ?? $s));
 	    case 'priority':
 		$p = (string)$this->cfg('priority', '2');
-		return self::done($this->rpc('incidents', 'changeIncidentPriority', $incident() + [ 'priority' => (int)$p ]), 'incident ' . $text('incidentId') . ': ' . (self::PRIORITIES[$p] ?? $p));
+		return self::done($this->rpc('incidents', 'changeIncidentPriority', $this->incidentRef($kind) + [ 'priority' => (int)$p ]), 'incident ' . $text('incidentId') . ': ' . (self::PRIORITIES[$p] ?? $p));
 	    case 'assign':
-		return self::done($this->rpc('incidents', 'assignIncident', $incident() + [ 'assignee' => self::id($value('assignee'), 'Assignee') ]), 'incident ' . $text('incidentId') . ' assigned');
+		return self::done($this->rpc('incidents', 'assignIncident', $this->incidentRef($kind) + [ 'assignee' => self::id($value('assignee'), 'Assignee') ]), 'incident ' . $text('incidentId') . ' assigned');
 	    case 'note':
-		return self::done($this->rpc('incidents', 'updateIncidentNote', $incident() + [ 'note' => mb_substr(\util\Expression::toText($value('note')), 0, 10000) ]), 'note set');
+		return self::done($this->rpc('incidents', 'updateIncidentNote', $this->incidentRef($kind) + [ 'note' => mb_substr(\util\Expression::toText($value('note')), 0, 10000) ]), 'note set');
 	    case 'isolate':
 		return self::done($this->rpc('incidents', 'createIsolateEndpointTask', [ 'endpointId' => self::id($value('endpointId'), 'Endpoint') ]), 'endpoint ' . $text('endpointId') . ' isolated');
 	    case 'restore':
 		return self::done($this->rpc('incidents', 'createRestoreEndpointFromIsolationTask', [ 'endpointId' => self::id($value('endpointId'), 'Endpoint') ]), 'endpoint ' . $text('endpointId') . ' restored');
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: the incident of the setting Incident, of kind $kind (incidents / extendedIncidents)
+    private function incidentRef($kind) {
+	return [ 'type' => $kind, 'incidentId' => self::id($this->settingOf('incidentId'), 'Incident') ];
     }
 }

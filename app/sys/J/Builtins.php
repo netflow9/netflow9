@@ -23,25 +23,21 @@ final class Builtins
 {
     public static function install(Scope $scope, Interpreter $vm): void
     {
-        $define = function (string $name, mixed $value) use ($scope): void {
-            $scope->vars[$name] = $value;
-            $scope->consts[$name] = true;
-        };
 
-        $define('undefined', Undefined::value());
-        $define('NaN', NAN);
-        $define('Infinity', INF);
-        $define('Math', self::math());
-        $define('JSON', self::json());
-        $define('Object', self::objectCtor());
-        $define('Array', self::arrayCtor());
-        $define('console', self::console());
+        self::define($scope, 'undefined', Undefined::value());
+        self::define($scope, 'NaN', NAN);
+        self::define($scope, 'Infinity', INF);
+        self::define($scope, 'Math', self::math());
+        self::define($scope, 'JSON', self::json());
+        self::define($scope, 'Object', self::objectCtor());
+        self::define($scope, 'Array', self::arrayCtor());
+        self::define($scope, 'console', self::console());
         //CLD: 2026-10-20T21:01:44+03:00: Date (called without `new`, like the Error functions)
-        $define('Date', self::dateCtor());
+        self::define($scope, 'Date', self::dateCtor());
         //CLD: 2026-10-20T22:10:00+03:00: RegExp (called without `new`; literals /a+/g too)
-        $define('RegExp', self::regexpCtor());
+        self::define($scope, 'RegExp', self::regexpCtor());
 
-        $define('String', self::fn('String', fn (array $a) => array_key_exists(0, $a) ? Values::toString($a[0]) : '', [
+        self::define($scope, 'String', self::fn('String', fn (array $a) => array_key_exists(0, $a) ? Values::toString($a[0]) : '', [
             'fromCharCode' => self::fn('fromCharCode', fn (array $a) => implode('', array_map(
                 fn ($c) => mb_chr(Values::toInteger($c) & 0x1FFFFF, 'UTF-8') ?: "\u{FFFD}",
                 $a,
@@ -50,12 +46,12 @@ final class Builtins
 
         $parseInt = self::fn('parseInt', fn (array $a) => self::parseInt(Values::toString(self::arg($a, 0)), self::arg($a, 1)));
         $parseFloat = self::fn('parseFloat', fn (array $a) => self::parseFloat(Values::toString(self::arg($a, 0))));
-        $define('parseInt', $parseInt);
-        $define('parseFloat', $parseFloat);
-        $define('isNaN', self::fn('isNaN', fn (array $a) => is_nan((float) Values::toNumber(self::arg($a, 0)))));
-        $define('isFinite', self::fn('isFinite', fn (array $a) => is_finite((float) Values::toNumber(self::arg($a, 0)))));
+        self::define($scope, 'parseInt', $parseInt);
+        self::define($scope, 'parseFloat', $parseFloat);
+        self::define($scope, 'isNaN', self::fn('isNaN', fn (array $a) => is_nan((float) Values::toNumber(self::arg($a, 0)))));
+        self::define($scope, 'isFinite', self::fn('isFinite', fn (array $a) => is_finite((float) Values::toNumber(self::arg($a, 0)))));
 
-        $define('Number', self::fn('Number', fn (array $a) => array_key_exists(0, $a) ? Values::toNumber($a[0]) : 0, [
+        self::define($scope, 'Number', self::fn('Number', fn (array $a) => array_key_exists(0, $a) ? Values::toNumber($a[0]) : 0, [
             'isInteger' => self::fn('isInteger', fn (array $a) => is_int($a[0] ?? null) || (is_float($a[0] ?? null) && is_finite($a[0]) && floor($a[0]) === $a[0])),
             'isFinite' => self::fn('isFinite', fn (array $a) => is_int($a[0] ?? null) || (is_float($a[0] ?? null) && is_finite($a[0]))),
             'isNaN' => self::fn('isNaN', fn (array $a) => is_float($a[0] ?? null) && is_nan($a[0])),
@@ -65,15 +61,22 @@ final class Builtins
             'MIN_SAFE_INTEGER' => -9007199254740991,
             'EPSILON' => 2.220446049250313e-16,
         ]));
-        $define('Boolean', self::fn('Boolean', fn (array $a) => Values::toBoolean(self::arg($a, 0))));
+        self::define($scope, 'Boolean', self::fn('Boolean', fn (array $a) => Values::toBoolean(self::arg($a, 0))));
 
         // Error "constructors" (called without `new`): Error('msg') -> { name, message }
         foreach (['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError'] as $type) {
-            $define($type, self::fn($type, fn (array $a) => new JsObject([
+            self::define($scope, $type, self::fn($type, fn (array $a) => new JsObject([
                 'name' => $type,
                 'message' => Values::isNullish(self::arg($a, 0)) ? '' : Values::toString($a[0]),
             ])));
         }
+    }
+
+    //CLD: 2026-11-07T01:12:48+02:00: global $name of $scope, a constant
+    private static function define(Scope $scope, string $name, mixed $value): void
+    {
+        $scope->vars[$name] = $value;
+        $scope->consts[$name] = true;
     }
 
     //CLD: 2026-10-20T21:40:00+03:00: the methods of each kind of value, by name: the *Method functions answer only these (so the lists stay complete);
@@ -138,16 +141,21 @@ final class Builtins
 
     private static function console(): JsObject
     {
-        $log = fn (string $prefix) => self::fn('log', function (array $a, Interpreter $vm) use ($prefix) {
+        return new JsObject([
+            'log' => self::logFn(''),
+            'info' => self::logFn(''),
+            'warn' => self::logFn('[warn] '),
+            'error' => self::logFn('[error] '),
+        ]);
+    }
+
+    //CLD: 2026-11-07T01:12:48+02:00: a console method: its arguments logged after $prefix
+    private static function logFn(string $prefix): NativeFunction
+    {
+        return self::fn('log', function (array $a, Interpreter $vm) use ($prefix) {
             $vm->log($prefix . implode(' ', array_map(fn ($v) => Values::inspect($v), $a)));
             return Undefined::value();
         });
-        return new JsObject([
-            'log' => $log(''),
-            'info' => $log(''),
-            'warn' => $log('[warn] '),
-            'error' => $log('[error] '),
-        ]);
     }
 
     // =================================================================== Math
@@ -310,32 +318,16 @@ final class Builtins
 
     private static function objectCtor(): NativeFunction
     {
-        $keysOf = function (mixed $o): array {
-            return match (true) {
-                $o instanceof JsObject => array_map('strval', array_keys($o->props)),
-                $o instanceof JsArray => array_map('strval', array_keys($o->items)),
-                is_string($o) => array_map('strval', array_keys(mb_str_split($o, 1, 'UTF-8'))),
-                default => [],
-            };
-        };
-        $valuesOf = function (mixed $o): array {
-            return match (true) {
-                $o instanceof JsObject => array_values($o->props),
-                $o instanceof JsArray => $o->items,
-                is_string($o) => mb_str_split($o, 1, 'UTF-8'),
-                default => [],
-            };
-        };
 
         return self::fn('Object', fn () => new JsObject(), [
-            'keys' => self::fn('keys', fn (array $a) => new JsArray($keysOf(self::arg($a, 0)))),
-            'values' => self::fn('values', fn (array $a) => new JsArray($valuesOf(self::arg($a, 0)))),
-            'entries' => self::fn('entries', function (array $a) use ($keysOf, $valuesOf) {
+            'keys' => self::fn('keys', fn (array $a) => new JsArray(self::keysOf(self::arg($a, 0)))),
+            'values' => self::fn('values', fn (array $a) => new JsArray(self::valuesOf(self::arg($a, 0)))),
+            'entries' => self::fn('entries', function (array $a) {
                 $o = self::arg($a, 0);
                 return new JsArray(array_map(
                     fn ($k, $v) => new JsArray([$k, $v]),
-                    $keysOf($o),
-                    $valuesOf($o),
+                    self::keysOf($o),
+                    self::valuesOf($o),
                 ));
             }),
             'assign' => self::fn('assign', function (array $a, Interpreter $vm) {
@@ -371,6 +363,28 @@ final class Builtins
                 return $obj;
             }),
         ]);
+    }
+
+    //CLD: 2026-11-07T01:12:48+02:00: the keys of $o (an object's, an array's indexes, a string's positions) as strings
+    private static function keysOf(mixed $o): array
+    {
+        return match (true) {
+            $o instanceof JsObject => array_map('strval', array_keys($o->props)),
+            $o instanceof JsArray => array_map('strval', array_keys($o->items)),
+            is_string($o) => array_map('strval', array_keys(mb_str_split($o, 1, 'UTF-8'))),
+            default => [],
+        };
+    }
+
+    //CLD: 2026-11-07T01:12:48+02:00: the values of $o (an object's, an array's items, a string's characters)
+    private static function valuesOf(mixed $o): array
+    {
+        return match (true) {
+            $o instanceof JsObject => array_values($o->props),
+            $o instanceof JsArray => $o->items,
+            is_string($o) => mb_str_split($o, 1, 'UTF-8'),
+            default => [],
+        };
     }
 
     /** Fallback "prototype" methods for plain objects (own properties take precedence). */
@@ -660,7 +674,6 @@ final class Builtins
         if (!self::isMethod('string', $name)) {
             return null;
         }
-        $len = fn () => mb_strlen($s, 'UTF-8');
         $impl = match ($name) {
             'charAt' => function (array $a) use ($s) {
                 $i = Values::toInteger(self::arg($a, 0));
@@ -674,14 +687,14 @@ final class Builtins
                 }
                 return mb_ord($ch, 'UTF-8');
             },
-            'at' => function (array $a) use ($s, $len) {
+            'at' => function (array $a) use ($s) {
                 $i = Values::toInteger(self::arg($a, 0));
-                $i = $i < 0 ? $len() + $i : $i;
+                $i = $i < 0 ? mb_strlen($s, 'UTF-8') + $i : $i;
                 $ch = $i < 0 ? '' : mb_substr($s, $i, 1, 'UTF-8');
                 return $ch === '' ? Undefined::value() : $ch;
             },
-            'indexOf' => function (array $a) use ($s, $len) {
-                $from = max(0, min(Values::toInteger(self::arg($a, 1)), $len()));
+            'indexOf' => function (array $a) use ($s) {
+                $from = max(0, min(Values::toInteger(self::arg($a, 1)), mb_strlen($s, 'UTF-8')));
                 $r = mb_strpos($s, Values::toString(self::arg($a, 0)), $from, 'UTF-8');
                 return $r === false ? -1 : $r;
             },
@@ -697,18 +710,18 @@ final class Builtins
                 mb_substr($s, max(0, Values::toInteger(self::arg($a, 1))), null, 'UTF-8'),
                 Values::toString(self::arg($a, 0)),
             ),
-            'endsWith' => function (array $a) use ($s, $len) {
-                $end = self::arg($a, 1) instanceof Undefined ? $len() : max(0, min(Values::toInteger($a[1]), $len()));
+            'endsWith' => function (array $a) use ($s) {
+                $end = self::arg($a, 1) instanceof Undefined ? mb_strlen($s, 'UTF-8') : max(0, min(Values::toInteger($a[1]), mb_strlen($s, 'UTF-8')));
                 return str_ends_with(mb_substr($s, 0, $end, 'UTF-8'), Values::toString(self::arg($a, 0)));
             },
-            'slice' => function (array $a) use ($s, $len) {
-                $l = $len();
+            'slice' => function (array $a) use ($s) {
+                $l = mb_strlen($s, 'UTF-8');
                 $b = self::relIndex(self::arg($a, 0), $l, 0);
                 $e = self::relIndex(self::arg($a, 1), $l, $l);
                 return $e > $b ? mb_substr($s, $b, $e - $b, 'UTF-8') : '';
             },
-            'substring' => function (array $a) use ($s, $len) {
-                $l = $len();
+            'substring' => function (array $a) use ($s) {
+                $l = mb_strlen($s, 'UTF-8');
                 $b = max(0, min(Values::toInteger(self::arg($a, 0)), $l));
                 $e = self::arg($a, 1) instanceof Undefined ? $l : max(0, min(Values::toInteger($a[1]), $l));
                 if ($b > $e) {
@@ -805,10 +818,10 @@ final class Builtins
                 $vm->checkLength(strlen($s) * $n);
                 return str_repeat($s, $n);
             },
-            'padStart', 'padEnd' => function (array $a, Interpreter $vm) use ($s, $name, $len) {
+            'padStart', 'padEnd' => function (array $a, Interpreter $vm) use ($s, $name) {
                 $target = Values::toInteger(self::arg($a, 0));
                 $fill = self::arg($a, 1) instanceof Undefined ? ' ' : Values::toString($a[1]);
-                $missing = $target - $len();
+                $missing = $target - mb_strlen($s, 'UTF-8');
                 if ($missing <= 0 || $fill === '') {
                     return $s;
                 }
@@ -866,20 +879,8 @@ final class Builtins
     //(months 0-11, years 0-99 are 1900-1999); always a Date object (JS's Date() without `new` gives a string)
     private static function dateCtor(): NativeFunction
     {
-        $num = fn (array $a, int $i, float $default) => array_key_exists($i, $a) ? (float) Values::toNumber($a[$i]) : $default;
-        // the time of year, month, ... from the arguments (local or UTC fields)
-        $fromFields = function (array $a) use ($num): float {
-            $y = $num($a, 0, NAN);
-            if (is_finite($y) && self::trunc($y) >= 0 && self::trunc($y) <= 99) {
-                $y = 1900 + self::trunc($y);
-            }
-            return JsDate::makeDate(
-                JsDate::makeDay($y, $num($a, 1, 0), $num($a, 2, 1)),
-                JsDate::makeTime($num($a, 3, 0), $num($a, 4, 0), $num($a, 5, 0), $num($a, 6, 0)),
-            );
-        };
 
-        return self::fn('Date', function (array $a) use ($fromFields) {
+        return self::fn('Date', function (array $a) {
             if ($a === []) {
                 return new JsDate(self::now());
             }
@@ -891,12 +892,31 @@ final class Builtins
                 $v = Values::toPrimitive($v);
                 return new JsDate(is_string($v) ? JsDate::parse($v) : JsDate::clip((float) Values::toNumber($v)));
             }
-            return new JsDate(JsDate::clip(JsDate::utc($fromFields($a))));
+            return new JsDate(JsDate::clip(JsDate::utc(self::fromFields($a))));
         }, [
             'now' => self::fn('now', fn () => Values::num(self::now())),
             'parse' => self::fn('parse', fn (array $a) => Values::num(JsDate::parse(Values::toString(self::arg($a, 0))))),
-            'UTC' => self::fn('UTC', fn (array $a) => Values::num(JsDate::clip($fromFields($a)))),
+            'UTC' => self::fn('UTC', fn (array $a) => Values::num(JsDate::clip(self::fromFields($a)))),
         ]);
+    }
+
+    //CLD: 2026-11-07T01:12:48+02:00: argument $i of $a as a number, else $default
+    private static function dateArg(array $a, int $i, float $default): float
+    {
+        return array_key_exists($i, $a) ? (float) Values::toNumber($a[$i]) : $default;
+    }
+
+    //CLD: 2026-11-07T01:12:48+02:00: the time of the fields $a (year, month, date, hours, minutes, seconds, ms), local; years 0-99 are 1900-1999
+    private static function fromFields(array $a): float
+    {
+        $y = self::dateArg($a, 0, NAN);
+        if (is_finite($y) && self::trunc($y) >= 0 && self::trunc($y) <= 99) {
+            $y = 1900 + self::trunc($y);
+        }
+        return JsDate::makeDate(
+            JsDate::makeDay($y, self::dateArg($a, 1, 0), self::dateArg($a, 2, 1)),
+            JsDate::makeTime(self::dateArg($a, 3, 0), self::dateArg($a, 4, 0), self::dateArg($a, 5, 0), self::dateArg($a, 6, 0)),
+        );
     }
 
     private static function now(): float

@@ -154,30 +154,23 @@ class TableImport {
 	if (!$values)
 	    return [ 'type' => 'text', 'format' => null ];
 
-	$all = function($test) use ($values) {
-	    foreach($values as $v) {
-		if (!$test($v))
-		    return false;
-	    }
-	    return true;
-	};
 
-	if ($all(fn($v) => is_bool($v) || in_array(mb_strtolower(trim((string)$v)), array_merge(self::TRUE_WORDS, self::FALSE_WORDS), true)))
+	if (self::allAre($values, fn($v) => is_bool($v) || in_array(mb_strtolower(trim((string)$v)), array_merge(self::TRUE_WORDS, self::FALSE_WORDS), true)))
 	    return [ 'type' => 'checkbox', 'format' => null ];
 
 	foreach([ 'dot', 'comma' ] as $mark) {
-	    if ($all(fn($v) => self::number($v, $mark) !== null))
+	    if (self::allAre($values, fn($v) => self::number($v, $mark) !== null))
 		return [ 'type' => 'number', 'format' => $mark ];
 	}
 
 	foreach([ 'ymd', 'dmy', 'mdy' ] as $order) {
-	    if ($all(fn($v) => self::date($v, $order) !== null)) {
-		$withTime = !$all(fn($v) => preg_match('/^\S+$/', trim((string)$v)) || preg_match('/ 00:00(:00)?$/', trim((string)$v)));
+	    if (self::allAre($values, fn($v) => self::date($v, $order) !== null)) {
+		$withTime = !self::allAre($values, fn($v) => preg_match('/^\S+$/', trim((string)$v)) || preg_match('/ 00:00(:00)?$/', trim((string)$v)));
 		return [ 'type' => $withTime ? 'datetime' : 'date', 'format' => $order ];
 	    }
 	}
 
-	if ($all(fn($v) => filter_var(trim((string)$v), FILTER_VALIDATE_EMAIL) !== false))
+	if (self::allAre($values, fn($v) => filter_var(trim((string)$v), FILTER_VALIDATE_EMAIL) !== false))
 	    return [ 'type' => 'email', 'format' => null ];
 
 	foreach($values as $v) {
@@ -186,6 +179,15 @@ class TableImport {
 		return [ 'type' => 'textarea', 'format' => null ];
 	}
 	return [ 'type' => 'text', 'format' => null ];
+    }
+
+    //CLD: 2026-11-07T01:16:14+02:00: whether every value of $values passes $test
+    private static function allAre(array $values, callable $test) {
+	foreach($values as $v) {
+	    if (!$test($v))
+		return false;
+	}
+	return true;
     }
 
     //the format of $type that reads the most of $values (a type chosen in the preview, not the guessed one): number dot / comma, date ymd / dmy / mdy

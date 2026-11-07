@@ -23,12 +23,10 @@ class DatatableController extends \sys\BaseController {
 
 	//CLD: 2026-11-03T14:00:00+02:00: ?shared=1: the tables other projects share with this one, those the user may read (the page's second list)
 	$def = \models\datatable\DataTableDef::class;
-	$sharedHere = fn() => array_filter(iterator_to_array(\V::app()->om->find('DataTableDef', [ 'aid' => $this->account->_id ] + $def::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false),
-	    fn($t) => \V::app()->user->can('DataTable::readData', [ 'object' => $t ]));
 
 	if (!empty($req->query['data']) && !empty($req->query['shared'])) {
 	    $data = [];
-	    foreach($sharedHere() as $t) {
+	    foreach($this->sharedHere() as $t) {
 		$level = (string)($t->shareOf($this->project->_id)['access'] ?? '');
 		$data[] = [
 		    '_id' => (string)$t->_id,
@@ -68,9 +66,16 @@ class DatatableController extends \sys\BaseController {
 	    $resp->sendJSON($response);
 	}
 
-	$sharedCount = count($sharedHere());
+	$sharedCount = count($this->sharedHere());
 	$canShare = !$this->project->personal && \V::app()->user->can('DataTable::share');
 	$this->render('list', compact('sharedCount', 'canShare'));
+    }
+
+    //CLD: 2026-11-07T01:04:46+02:00: the data tables other projects share with the current one that the user may read, by name
+    private function sharedHere() {
+	$def = \models\datatable\DataTableDef::class;
+	return array_filter(iterator_to_array(\V::app()->om->find('DataTableDef', [ 'aid' => $this->account->_id ] + $def::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false),
+	    fn($t) => \V::app()->user->can('DataTable::readData', [ 'object' => $t ]));
     }
 
     //CLD: 2026-10-11T21:32:01+03:00: POST only (the Create link has data-method="post"; a GET, e.g. a prefetch or a typed URL, created a table)

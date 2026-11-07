@@ -541,7 +541,6 @@ class KnowledgeBase extends \sys\BaseModel {
 	if (!$kb)
 	    return;
 	$chunks = self::chunkCollection();
-	$set = fn(array $fields) => \V::app()->om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => $fields ]);
 	try {
 	    $settings = EmbeddingSettings::of($kb->aid);
 	    if (!$settings->ready())
@@ -563,13 +562,18 @@ class KnowledgeBase extends \sys\BaseModel {
 		$last = end($batch)['_id'];
 	    } while (count($batch) === self::REINDEX_BATCH);
 	    $chunks->updateMany([ 'kb' => $kb->_id, 'embedding_new' => [ '$exists' => true ] ], [ [ '$set' => [ 'embedding' => '$embedding_new' ] ], [ '$unset' => 'embedding_new' ] ]);
-	    $set([ 'model' => trim((string)$settings->model), 'dims' => $dims, 'state' => 'ready', 'state_message' => '' ]);
+	    self::setFields($kb, [ 'model' => trim((string)$settings->model), 'dims' => $dims, 'state' => 'ready', 'state_message' => '' ]);
 	    //documents indexed with another model: their hash names it (added again: indexed again)
 	    self::documentCollection()->updateMany([ 'kb' => $kb->_id ], [ '$set' => [ 'hash' => '' ] ]);
 	} catch (\Exception $e) {
 	    $chunks->updateMany([ 'kb' => $kb->_id ], [ '$unset' => [ 'embedding_new' => '' ] ]);
-	    $set([ 'state' => 'ready', 'state_message' => 'Re-index failed: ' . mb_substr($e->getMessage(), 0, 400) ]);
+	    self::setFields($kb, [ 'state' => 'ready', 'state_message' => 'Re-index failed: ' . mb_substr($e->getMessage(), 0, 400) ]);
 	}
+    }
+
+    //CLD: 2026-11-07T01:06:55+02:00: fields $fields of knowledge base $kb saved as they are (no model hooks)
+    private static function setFields($kb, array $fields) {
+	\V::app()->om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => $fields ]);
     }
 
     // ------------------------------------------------------------------------------------

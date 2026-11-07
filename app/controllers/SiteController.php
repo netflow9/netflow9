@@ -329,21 +329,6 @@ class SiteController extends \sys\BaseController {
 	    $buckets[] = $last->modify('-' . ($i * $step) . ' seconds')->getTimestamp();
 	$from = $buckets[0];
 	$prevFrom = $from - $length;
-	$bucketOf = function($t) use ($buckets) {
-	    for($i = count($buckets) - 1; $i >= 0; $i--)
-		if ($t >= $buckets[$i])
-		    return $i;
-	    return null;
-	};
-	$idAt = fn($t) => new \MongoDB\BSON\ObjectId(sprintf('%08x', $t) . '0000000000000000');
-	$ms = fn($d) => $d instanceof \MongoDB\BSON\UTCDateTime ? (int)(string)$d : null;
-	$iso = fn($d) => $d instanceof \MongoDB\BSON\UTCDateTime ? $d->toDateTime()->setTimezone($tz)->format('c') : ($d instanceof \MongoDB\BSON\ObjectId ? date('c', $d->getTimestamp()) : null);
-	$percentile = function(array $values, $p) {
-	    if (!$values)
-		return null;
-	    sort($values);
-	    return $values[(int)min(count($values) - 1, floor($p * (count($values) - 1) + 0.5))];
-	};
 
 	//the workflows the user may read
 	$workflows = [];
@@ -361,7 +346,7 @@ class SiteController extends \sys\BaseController {
 	} else {
 	    $tasks = \models\wf\WfTask::openFor($user, $project->aid, $project->_id);
 	}
-	$overdueTasks = array_values(array_filter($tasks, fn($t) => ($ms($t->due_at) ?? PHP_INT_MAX) < $now * 1000));
+	$overdueTasks = array_values(array_filter($tasks, fn($t) => (self::msOf($t->due_at) ?? PHP_INT_MAX) < $now * 1000));
 	$out['tiles']['tasks'] = [ 'open' => count($tasks), 'overdue' => count($overdueTasks) ];
 	if (!$workflows) {
 	    //CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON
@@ -381,11 +366,15 @@ class SiteController extends \sys\BaseController {
 	$states = [ 'end' => 0, 'error' => 0, 'cancel' => 0 ];
 	$total = 0;
 	$errorIds = [];
-	foreach($om->find('WfExecution', $base + [ '_id' => [ '$gte' => $idAt($from) ] ], [ 'projection' => $fields, 'limit' => self::OVERVIEW_MAX ]) as $e) {
+	foreach($om->find('WfExecution', $base + [ '_id' => [ '$gte' => self::idAt($from) ] ], [ 'projection' => $fields, 'limit' => self::OVERVIEW_MAX ]) as $e) {
 	    $total++;
 	    $wf = (string)$e->wf;
 	    $at = $e->_id->getTimestamp();
-	    $b = $bucketOf($at);
+	    //the sparkline bucket of the run: the last one starting at or before it
+	    $b = null;
+	    for($i = count($buckets) - 1; $i >= 0 && $b === null; $i--)
+		if ($at >= $buckets[$i])
+		    $b = $i;
 	    $per[$wf] = $per[$wf] ?? [ 'runs' => 0, 'end' => 0, 'error' => 0, 'durations' => [], 'spark' => array_fill(0, $count, 0) ];
 	    $per[$wf]['runs']++;
 	    if ($b !== null)
@@ -401,8 +390,8 @@ class SiteController extends \sys\BaseController {
 		$per[$wf][$e->state]++;
 	    if ($e->state === 'error')
 		$errorIds[] = $e->_id;
-	    $start = $ms($e->start_at);
-	    $end = $ms($e->end_at);
+	    $start = self::msOf($e->start_at);
+	    $end = self::msOf($e->end_at);
 	    if ($e->state === 'end' && $start !== null && $end !== null) {
 		$durations[] = $end - $start;
 		$per[$wf]['durations'][] = $end - $start;
@@ -412,7 +401,7 @@ class SiteController extends \sys\BaseController {
 
 	//the previous period, for the comparison
 	$prev = [ 'total' => 0, 'end' => 0, 'error' => 0 ];
-	foreach($om->find('WfExecution', $base + [ '_id' => [ '$gte' => $idAt($prevFrom), '$lt' => $idAt($from) ] ], [ 'projection' => [ 'state' => 1 ], 'limit' => self::OVERVIEW_MAX ]) as $e) {
+	foreach($om->find('WfExecution', $base + [ '_id' => [ '$gte' => self::idAt($prevFrom), '$lt' => self::idAt($from) ] ], [ 'projection' => [ 'state' => 1 ], 'limit' => self::OVERVIEW_MAX ]) as $e) {
 	    $prev['total']++;
 	    if (isset($prev[$e->state]))
 		$prev[$e->state]++;
@@ -426,7 +415,7 @@ class SiteController extends \sys\BaseController {
 	    'executions' => [ 'value' => $total, 'previous' => $prev['total'] ],
 	    'success' => [ 'rate' => $finished ? $states['end'] / $finished : null, 'previous' => ($prev['end'] + $prev['error']) ? $prev['end'] / ($prev['end'] + $prev['error']) : null,
 		'errors' => $states['error'], 'cancelled' => $states['cancel'] ],
-	    'duration' => [ 'p50' => $percentile($durations, 0.5), 'p95' => $percentile($durations, 0.95) ],
+	    'duration' => [ 'p50' => self::percentile($durations, 0.5), 'p95' => self::percentile($durations, 0.95) ],
 	    'running' => [ 'value' => $running, 'waiting' => $waiting ],
 	];
 	$out['series'] = $series;
@@ -445,9 +434,9 @@ class SiteController extends \sys\BaseController {
 		'status' => $wf->status === \models\Workflow::PUBLISHED && $version ? 'v' . $version->number : 'draft',
 		'runs' => $p['runs'],
 		'success' => ($p['end'] + $p['error']) ? $p['end'] / ($p['end'] + $p['error']) : null,
-		'p50' => $percentile($p['durations'], 0.5),
-		'p95' => $percentile($p['durations'], 0.95),
-		'last' => $lastRun ? [ 'at' => $iso($lastRun->_id), 'state' => (string)$lastRun->state ] : null,
+		'p50' => self::percentile($p['durations'], 0.5),
+		'p95' => self::percentile($p['durations'], 0.95),
+		'last' => $lastRun ? [ 'at' => self::isoOf($lastRun->_id, $tz), 'state' => (string)$lastRun->state ] : null,
 		'spark' => $p['spark'],
 	    ];
 	}
@@ -460,7 +449,7 @@ class SiteController extends \sys\BaseController {
 		    continue;
 		$key = (string)$e->wf . '/' . ($n['wfid'] ?? '');
 		$failing[$key] = $failing[$key] ?? [ 'wf' => (string)$e->wf, 'workflow' => (string)($workflows[(string)$e->wf]->name ?? ''), 'step' => (string)($n['title'] ?? $n['wfid'] ?? ''),
-		    'count' => 0, 'error' => mb_substr((string)$e->error, 0, 300), 'at' => $iso($e->_id) ];
+		    'count' => 0, 'error' => mb_substr((string)$e->error, 0, 300), 'at' => self::isoOf($e->_id, $tz) ];
 		$failing[$key]['count']++;
 	    }
 	}
@@ -475,24 +464,47 @@ class SiteController extends \sys\BaseController {
 	] ], [ 'projection' => $fields, 'sort' => [ '_id' => 1 ], 'limit' => 10 ]) as $e)
 	    //CLD: 2026-10-26T10:06:24+02:00: + id and canKill (a long run: the Kill button, WorkflowController::execution_kill; Workflow::update)
 	    $stuck[] = [ 'kind' => $e->state === 'run' ? 'running' : 'late', 'id' => (string)$e->_id, 'wf' => (string)$e->wf, 'workflow' => (string)($workflows[(string)$e->wf]->name ?? ''),
-		'since' => $e->state === 'run' ? $iso($e->start_at) : $iso($e->wake_at),
+		'since' => $e->state === 'run' ? self::isoOf($e->start_at, $tz) : self::isoOf($e->wake_at, $tz),
 		'canKill' => $e->state === 'run' && isset($workflows[(string)$e->wf]) && $user->can('Workflow::update', [ 'object' => $workflows[(string)$e->wf] ]) ];
 	foreach(array_slice($overdueTasks, 0, 10) as $t)
 	    $stuck[] = [ 'kind' => 'task', 'wf' => (string)$t->wf, 'workflow' => (string)($workflows[(string)$t->wf]->name ?? ''), 'title' => (string)$t->title,
-		'since' => $iso($t->due_at), 'task' => (string)$t->_id ];
+		'since' => self::isoOf($t->due_at, $tz), 'task' => (string)$t->_id ];
 	$out['stuck'] = $stuck;
 
 	//recent executions
 	$out['recent'] = [];
 	foreach($om->find('WfExecution', $base, [ 'projection' => $fields, 'sort' => [ '_id' => -1 ], 'limit' => 10 ]) as $e) {
-	    $start = $ms($e->start_at);
-	    $end = $ms($e->end_at);
+	    $start = self::msOf($e->start_at);
+	    $end = self::msOf($e->end_at);
 	    $out['recent'][] = [ 'id' => (string)$e->_id, 'wf' => (string)$e->wf, 'workflow' => (string)($workflows[(string)$e->wf]->name ?? ''), 'trigger' => (string)$e->trigger,
-		'state' => (string)$e->state, 'duration' => $start !== null && $end !== null ? $end - $start : null, 'at' => $iso($e->_id) ];
+		'state' => (string)$e->state, 'duration' => $start !== null && $end !== null ? $end - $start : null, 'at' => self::isoOf($e->_id, $tz) ];
 	}
 
 	//CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON
 	$resp->sendJSON($out);
+    }
+
+    //CLD: 2026-11-07T01:05:52+02:00: the smallest ObjectId of time $t (a Unix time): the executions from $t on
+    private static function idAt($t) {
+	return new \MongoDB\BSON\ObjectId(sprintf('%08x', $t) . '0000000000000000');
+    }
+
+    //CLD: 2026-11-07T01:05:52+02:00: a UTCDateTime as milliseconds; null otherwise
+    private static function msOf($d) {
+	return $d instanceof \MongoDB\BSON\UTCDateTime ? (int)(string)$d : null;
+    }
+
+    //CLD: 2026-11-07T01:05:52+02:00: a date ($d: a UTCDateTime, or an ObjectId's time) as ISO 8601 in time zone $tz; null otherwise
+    private static function isoOf($d, $tz) {
+	return $d instanceof \MongoDB\BSON\UTCDateTime ? $d->toDateTime()->setTimezone($tz)->format('c') : ($d instanceof \MongoDB\BSON\ObjectId ? date('c', $d->getTimestamp()) : null);
+    }
+
+    //CLD: 2026-11-07T01:05:52+02:00: the $p percentile (0..1) of $values (nearest rank); null when there are none
+    private static function percentile(array $values, $p) {
+	if (!$values)
+	    return null;
+	sort($values);
+	return $values[(int)min(count($values) - 1, floor($p * (count($values) - 1) + 0.5))];
     }
 
     public function switch_project($req, $resp) {

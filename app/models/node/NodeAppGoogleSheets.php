@@ -68,7 +68,6 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 	$notCreate = [ 'read', 'append', 'update', 'clear', 'info', 'addSheet' ];
 
 	return [
@@ -82,7 +81,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'The spreadsheet id or its link, e.g. {{ drive.id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => $notCreate ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://docs.google.com/spreadsheets/d/...', 'expression' => true, 'showIf' => $op($notCreate) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://docs.google.com/spreadsheets/d/...', 'expression' => true, 'showIf' => static::operationIn($notCreate) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -92,7 +91,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'The sheet (tab) name; empty: the first sheet',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'addSheet' ] ],
-		'ui' => [ 'width' => 3, 'placeholder' => 'Sheet1', 'expression' => true, 'showIf' => $op(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
+		'ui' => [ 'width' => 3, 'placeholder' => 'Sheet1', 'expression' => true, 'showIf' => static::operationIn(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -102,7 +101,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'A1 notation, e.g. A1:D100; empty: the whole sheet',
 		'validate' => [ [ 'regex', 'pattern' => '^\s*(\{\{.*\}\}|[A-Za-z]{0,3}[0-9]{0,7}(:[A-Za-z]{0,3}[0-9]{0,7})?)\s*$', 'skipEmpty' => true, 'message' => 'Cells in A1 notation, e.g. A1:D100' ] ],
-		'ui' => [ 'width' => 3, 'placeholder' => 'A1:D100', 'expression' => true, 'showIf' => $op([ 'read', 'update', 'clear' ]) ],
+		'ui' => [ 'width' => 3, 'placeholder' => 'A1:D100', 'expression' => true, 'showIf' => static::operationIn([ 'read', 'update', 'clear' ]) ],
 	    ],
 
 	    //read
@@ -113,7 +112,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'label' => 'First row is the header',
 		'default' => true,
 		'help' => 'Rows also as objects keyed by the header',
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'read' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'read' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -124,7 +123,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'FORMATTED_VALUE',
 		'choices' => self::RENDER,
-		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'read' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => static::operationIn([ 'read' ]) ],
 	    ],
 
 	    [
@@ -135,7 +134,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'USER_ENTERED',
 		'choices' => self::INPUT,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'append', 'update' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'append', 'update' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -144,7 +143,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'label' => 'Add the missing columns to the header',
 		'default' => true,
 		'help' => 'New keys become new columns',
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'append', 'update' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'append', 'update' ]) ],
 	    ],
 	    //append / update
 	    [
@@ -154,7 +153,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'A list of rows: lists of cells ([["a", 1], ["b", 2]]) or objects matched to the header ([{"Name": "a", "Qty": 1}]); one object or list is one row; {{ ... }} for expressions, e.g. {{ items }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'append', 'update' ] ],
-		'ui' => [ 'rows' => 5, 'expression' => true, 'placeholder' => '{{ [ { Name: mail.from_name, Email: mail.from } ] }}', 'showIf' => $op([ 'append', 'update' ]) ],
+		'ui' => [ 'rows' => 5, 'expression' => true, 'placeholder' => '{{ [ { Name: mail.from_name, Email: mail.from } ] }}', 'showIf' => static::operationIn([ 'append', 'update' ]) ],
 	    ],
 
 	    //create
@@ -166,7 +165,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'default' => '',
 		'help' => '{{ ... }} for expressions',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'Report {{ date }}', 'expression' => true, 'showIf' => $op([ 'create' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'Report {{ date }}', 'expression' => true, 'showIf' => static::operationIn([ 'create' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -175,7 +174,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'label' => 'Sheets',
 		'default' => '',
 		'help' => 'Sheet names separated by commas; empty: Sheet1',
-		'ui' => [ 'width' => 6, 'placeholder' => 'Orders, Customers', 'expression' => true, 'showIf' => $op([ 'create' ]) ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'Orders, Customers', 'expression' => true, 'showIf' => static::operationIn([ 'create' ]) ],
 	    ],
 
 	    static::timeoutField(60),

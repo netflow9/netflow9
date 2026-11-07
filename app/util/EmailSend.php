@@ -180,6 +180,34 @@ class EmailSend {
         return true;
     }
 
+    //CLD: 2026-11-07T01:03:21+02:00: a header value on one line: the line breaks (and the spaces around them) as one space; no header injection
+    public static function headerText($v) {
+	return trim(preg_replace('/[ \t]*[\r\n]+[ \t]*/', ' ', (string)$v));
+    }
+
+    //CLD: 2026-11-07T01:03:21+02:00: a display name and a space: quoted when plain ASCII (it may hold , : ; ...), else encoded; '' when empty
+    public static function displayName($n) {
+	$n = self::headerText($n);
+	if ($n === '')
+	    return '';
+	return (mb_check_encoding($n, 'ASCII') ? '"' . addcslashes($n, '"\\') . '"' : mb_encode_mimeheader($n, 'UTF-8', 'Q')) . ' ';
+    }
+
+    //CLD: 2026-11-07T01:03:21+02:00: addresses $l (one or a list) as <a>, <b>
+    public static function addressList($l) {
+	return implode(', ', array_map(fn($a) => '<' . self::headerText($a) . '>', (array)$l));
+    }
+
+    //CLD: 2026-11-07T01:03:21+02:00: a message id in angle brackets (Message-ID, In-Reply-To, References)
+    public static function angleId($v) {
+	return '<' . trim(self::headerText($v), '<> ') . '>';
+    }
+
+    //CLD: 2026-11-07T01:03:21+02:00: $s quoted-printable, with CRLF line ends
+    public static function quotedPrintable($s) {
+	return str_replace("\n", "\r\n", str_replace("\r\n", "\n", quoted_printable_encode(str_replace([ "\r\n", "\r" ], "\n", (string)$s))));
+    }
+
     /*
 	a MIME message for send():
 	    $m = {
@@ -196,38 +224,32 @@ class EmailSend {
 	    else multipart/alternative (text, html); quoted-printable bodies, encoded headers (CR / LF removed: no header injection)
     */
     public static function compose(array $m) {
-	$clean = fn($v) => trim(str_replace([ "\r", "\n" ], ' ', (string)$v));
-	//a display name: quoted when plain ASCII (it may hold , : ; ...), else encoded
-	$name = fn($n) => $clean($n) === '' ? '' : (mb_check_encoding($clean($n), 'ASCII') ? '"' . addcslashes($clean($n), '"\\') . '"' : mb_encode_mimeheader($clean($n), 'UTF-8', 'Q')) . ' ';
-	$list = fn($l) => implode(', ', array_map(fn($a) => '<' . $clean($a) . '>', (array)$l));
 	$id = bin2hex(random_bytes(8));
 	$domain = substr(strrchr((string)$m['from'], '@'), 1) ?: 'localhost';
 	//CLD: 2026-11-02T18:00:00+02:00: + message_id (its own Message-ID), in_reply_to, references, auto_submitted: an answer of an agent, threaded, marked so an auto-responder does not answer it
-	$angle = fn($v) => '<' . trim($clean($v), '<> ') . '>';
 	$headers = [
-	    'From: ' . $name($m['from_name'] ?? '') . '<' . $clean($m['from']) . '>',
-	    'To: ' . $list($m['to'] ?? []),
+	    'From: ' . self::displayName($m['from_name'] ?? '') . '<' . self::headerText($m['from']) . '>',
+	    'To: ' . self::addressList($m['to'] ?? []),
 	];
 	if (!empty($m['cc']))
-	    $headers[] = 'Cc: ' . $list($m['cc']);
+	    $headers[] = 'Cc: ' . self::addressList($m['cc']);
 	if (!empty($m['reply_to']))
-	    $headers[] = 'Reply-To: <' . $clean($m['reply_to']) . '>';
+	    $headers[] = 'Reply-To: <' . self::headerText($m['reply_to']) . '>';
 	$headers = array_merge($headers, [
-	    'Subject: ' . mb_encode_mimeheader($clean($m['subject'] ?? ''), 'UTF-8', 'Q'),
+	    'Subject: ' . mb_encode_mimeheader(self::headerText($m['subject'] ?? ''), 'UTF-8', 'Q'),
 	    'Date: ' . date(DATE_RFC2822),
-	    'Message-ID: ' . (!empty($m['message_id']) ? $angle($m['message_id']) : '<' . $id . '@' . $domain . '>'),
+	    'Message-ID: ' . (!empty($m['message_id']) ? self::angleId($m['message_id']) : '<' . $id . '@' . $domain . '>'),
 	    'MIME-Version: 1.0',
 	]);
 	if (!empty($m['in_reply_to']))
-	    $headers[] = 'In-Reply-To: ' . $angle($m['in_reply_to']);
+	    $headers[] = 'In-Reply-To: ' . self::angleId($m['in_reply_to']);
 	if (!empty($m['references']))
-	    $headers[] = 'References: ' . implode(' ', array_map($angle, (array)$m['references']));
+	    $headers[] = 'References: ' . implode(' ', array_map(self::angleId(...), (array)$m['references']));
 	if (!empty($m['auto_submitted']))
 	    $headers[] = 'Auto-Submitted: auto-replied';
-	$qp = fn($s) => str_replace("\n", "\r\n", str_replace("\r\n", "\n", quoted_printable_encode(str_replace([ "\r\n", "\r" ], "\n", (string)$s))));
 	$alt = 'alt-' . $id;
-	$alternative = "--{$alt}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n" . $qp($m['text'] ?? '') . "\r\n"
-	    . "--{$alt}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n" . $qp($m['html'] ?? '') . "\r\n--{$alt}--\r\n";
+	$alternative = "--{$alt}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n" . self::quotedPrintable($m['text'] ?? '') . "\r\n"
+	    . "--{$alt}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n" . self::quotedPrintable($m['html'] ?? '') . "\r\n--{$alt}--\r\n";
 	if (empty($m['images'])) {
 	    $headers[] = "Content-Type: multipart/alternative; boundary=\"{$alt}\"";
 	    return [ implode("\r\n", $headers), $alternative ];
@@ -237,7 +259,7 @@ class EmailSend {
 	$body = "--{$rel}\r\nContent-Type: multipart/alternative; boundary=\"{$alt}\"\r\n\r\n" . $alternative;
 	foreach($m['images'] as $cid => $file) {
 	    $type = $file->imageMimeType() ?: 'application/octet-stream';
-	    $fname = $clean(preg_replace('/[^A-Za-z0-9._-]/', '_', (string)$file->filename));
+	    $fname = self::headerText(preg_replace('/[^A-Za-z0-9._-]/', '_', (string)$file->filename));
 	    $body .= "--{$rel}\r\nContent-Type: {$type}; name=\"{$fname}\"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <{$cid}>\r\n"
 		. "Content-Disposition: inline; filename=\"{$fname}\"\r\n\r\n" . chunk_split(base64_encode($file->getContents()), 76, "\r\n");
 	}
@@ -267,8 +289,7 @@ class EmailSend {
 	}
 	$from = (string)\V::app()->config('mail.from');
 	[ $headers, $body ] = self::compose([ 'from' => $from, 'images' => $images ] + $data);
-	$rcpt = fn($l) => array_fill_keys(array_values(array_filter((array)$l)), '');
-	$result = self::send([ 'sender' => $from, 'to' => $rcpt($data['to'] ?? []), 'cc' => $rcpt($data['cc'] ?? []), 'bcc' => $rcpt($data['bcc'] ?? []), 'headers' => $headers, 'body' => $body ]);
+	$result = self::send([ 'sender' => $from, 'to' => array_fill_keys(array_values(array_filter((array)($data['to'] ?? []))), ''), 'cc' => array_fill_keys(array_values(array_filter((array)($data['cc'] ?? []))), ''), 'bcc' => array_fill_keys(array_values(array_filter((array)($data['bcc'] ?? []))), ''), 'headers' => $headers, 'body' => $body ]);
 	if ($result !== true)
 	    throw new \ErrorException('the email "' . ($data['subject'] ?? '') . '" was not accepted by the SMTP server');
     }

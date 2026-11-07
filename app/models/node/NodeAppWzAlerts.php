@@ -39,16 +39,20 @@ class NodeAppWzAlerts extends NodeAppWazuh {
 
     //the settings that choose alerts, shared with the trigger: $ops null: always shown
     public static function filterFields($ops = null) {
-	$f = fn($key, $label, $more) => array_merge([ 'key' => $key, 'type' => 'text', 'label' => $label, 'default' => '' ], $ops !== null ? [ 'ops' => $ops ] : [], $more);
 	return [
-	    $f('minLevel', 'Level and worse', [ 'type' => 'number', 'help' => 'Of the rule, 0 to ' . self::MAX_LEVEL . '; empty: every level',
-		'validate' => [ [ 'inRange', 'lower' => 0, 'upper' => self::MAX_LEVEL, 'skipEmpty' => true, 'message' => 'from 0 to ' . self::MAX_LEVEL ] ], 'ui' => [ 'width' => 6, 'step' => 1 ] ]),
-	    $f('agents', 'Agents', [ 'help' => 'Their ids or names, separated by commas; empty: every agent', 'ui' => [ 'expression' => true, 'width' => 6 ] ]),
-	    $f('ruleIds', 'Rules', [ 'help' => 'Their ids, separated by commas; empty: every rule', 'ui' => [ 'expression' => true, 'width' => 6 ] ]),
-	    $f('groups', 'Rule groups', [ 'help' => 'Separated by commas, any of them, e.g. authentication_failed; empty: every group', 'ui' => [ 'expression' => true, 'width' => 6 ] ]),
-	    $f('mitre', 'MITRE techniques', [ 'help' => 'Their ids, separated by commas, e.g. T1110; empty: all', 'ui' => [ 'expression' => true, 'width' => 6 ] ]),
-	    $f('query', 'Query', [ 'help' => 'In Lucene syntax, e.g. data.srcip:"10.0.0.5" AND NOT agent.name:web*', 'ui' => [ 'expression' => 'text', 'width' => 6, 'advanced' => true ] ]),
+	    self::filterField('minLevel', 'Level and worse', [ 'type' => 'number', 'help' => 'Of the rule, 0 to ' . self::MAX_LEVEL . '; empty: every level',
+		'validate' => [ [ 'inRange', 'lower' => 0, 'upper' => self::MAX_LEVEL, 'skipEmpty' => true, 'message' => 'from 0 to ' . self::MAX_LEVEL ] ], 'ui' => [ 'width' => 6, 'step' => 1 ] ], $ops),
+	    self::filterField('agents', 'Agents', [ 'help' => 'Their ids or names, separated by commas; empty: every agent', 'ui' => [ 'expression' => true, 'width' => 6 ] ], $ops),
+	    self::filterField('ruleIds', 'Rules', [ 'help' => 'Their ids, separated by commas; empty: every rule', 'ui' => [ 'expression' => true, 'width' => 6 ] ], $ops),
+	    self::filterField('groups', 'Rule groups', [ 'help' => 'Separated by commas, any of them, e.g. authentication_failed; empty: every group', 'ui' => [ 'expression' => true, 'width' => 6 ] ], $ops),
+	    self::filterField('mitre', 'MITRE techniques', [ 'help' => 'Their ids, separated by commas, e.g. T1110; empty: all', 'ui' => [ 'expression' => true, 'width' => 6 ] ], $ops),
+	    self::filterField('query', 'Query', [ 'help' => 'In Lucene syntax, e.g. data.srcip:"10.0.0.5" AND NOT agent.name:web*', 'ui' => [ 'expression' => 'text', 'width' => 6, 'advanced' => true ] ], $ops),
 	];
+    }
+
+    //CLD: 2026-11-07T01:10:30+02:00: a text filter field $key (of the operations $ops; null: every one), with $more
+    private static function filterField($key, $label, $more, $ops) {
+	return array_merge([ 'key' => $key, 'type' => 'text', 'label' => $label, 'default' => '' ], $ops !== null ? [ 'ops' => $ops ] : [], $more);
     }
 
     protected static function operationFields() {

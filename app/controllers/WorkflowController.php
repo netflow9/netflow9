@@ -246,8 +246,7 @@ class WorkflowController extends \sys\BaseController {
 	$blocked = \util\AgentEval::blocks($gate, $source, $reuse);
 	//CLD: 2026-11-03T16:00:00+02:00: shared, and this changes its inputs or outputs: the workflows of other projects that call it (the dialog says)
 	$callers = [];
-	$contractOf = fn($nodes) => array_diff_key((array)\models\node\NodeTriggerCall::contractOf($nodes), [ 'wfid' => 1, 'description' => 1 ]);
-	if (!empty((array)$wf->shares) && $active && $contractOf($check->nodes) != $contractOf($active->nodes))
+	if (!empty((array)$wf->shares) && $active && self::callContractOf($check->nodes) != self::callContractOf($active->nodes))
 	    $callers = array_column($wf->consumers(), 'name');
 
 	if ($req->is('post')) {
@@ -301,6 +300,11 @@ class WorkflowController extends \sys\BaseController {
 	$this->render('publish', compact('wf', 'source', 'active', 'reuse', 'errors', 'next', 'gate', 'blocked', 'callers'));
     }
 
+    //CLD: 2026-11-07T01:05:52+02:00: what callers of a workflow with steps $nodes rely on (its Call trigger's inputs and outputs), without the step id and the description
+    private static function callContractOf($nodes) {
+	return array_diff_key((array)\models\node\NodeTriggerCall::contractOf($nodes), [ 'wfid' => 1, 'description' => 1 ]);
+    }
+
     //CLD: 2026-10-11T13:51:42+03:00: stop the triggers (POST): the workflow goes back to draft; its versions and `version` are kept. Workflow::update
     public function unpublish($req, $resp) {
 	if (!$req->is('post'))
@@ -325,25 +329,27 @@ class WorkflowController extends \sys\BaseController {
     //CLD: 2026-11-01T00:30:00+02:00: the steps of $new (a version published; null: unpublished) with an onPublish($wf, $node), and those of $old (the version replaced) not in $new with an
     //onUnpublish($wf, $node), called; their messages (an error stops nothing: the workflow is published / unpublished already)
     private static function publishHooks($wf, $new, $old) {
-	$classOf = function($n) {
-	    $def = empty($n['isNode']) ? null : (\models\wf\WfNode::getAll()[$n['fqname'] ?? ''] ?? null);
-	    return $def ? \V::app()->om->getObjectClass($def['objectName']) : null;
-	};
 	$messages = [];
 	$kept = [];
 	foreach(($new && is_array($new->nodes)) ? $new->nodes : [] as $n) {
-	    $class = $classOf($n);
+	    $class = self::nodeClassOf($n);
 	    if ($class && method_exists($class, 'onPublish')) {
 		$kept[(string)($n['config']['token'] ?? $n['wfid'] ?? '')] = true;
 		$messages[] = $class::onPublish($wf, $n);
 	    }
 	}
 	foreach(($old && is_array($old->nodes)) ? $old->nodes : [] as $n) {
-	    $class = $classOf($n);
+	    $class = self::nodeClassOf($n);
 	    if ($class && method_exists($class, 'onUnpublish') && !isset($kept[(string)($n['config']['token'] ?? $n['wfid'] ?? '')]))
 		$messages[] = $class::onUnpublish($wf, $n);
 	}
 	return array_values(array_filter($messages, fn($m) => is_string($m) && $m !== ''));
+    }
+
+    //CLD: 2026-11-07T01:05:52+02:00: the class of step $n of a workflow's nodes (null: a connection, or a step type that is gone)
+    private static function nodeClassOf($n) {
+	$def = empty($n['isNode']) ? null : (\models\wf\WfNode::getAll()[$n['fqname'] ?? ''] ?? null);
+	return $def ? \V::app()->om->getObjectClass($def['objectName']) : null;
     }
 
     //CLD: 2026-10-11T13:51:42+03:00: the versions dialog (newest first): view, publish again, copy into the draft. Workflow::read

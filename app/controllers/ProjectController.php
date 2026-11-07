@@ -75,46 +75,30 @@ class ProjectController extends \sys\BaseController {
 	    \V::app()->error(405, 'Method not allowed');
 	$project = $this->transferProject();
 	$data = is_array($req->data) ? $req->data : [];
-	$back = function($message) use ($project) {
-	    $this->addToast('error', 'Not exported', $message);
-	    $this->redirect('/project/settings', [ 'id' => (string)$project->_id, '__tab' => 'transfer' ]);
-	};
 
 	$passphrase = (string)($data['passphrase'] ?? '');
 	if ($passphrase !== '' && $passphrase !== (string)($data['passphrase2'] ?? ''))
-	    $back('The passphrases do not match');
+	    $this->backTo($project, 'transfer', 'Not exported', 'The passphrases do not match');
 	if ($passphrase !== '' && mb_strlen($passphrase) < 8)
-	    $back('The passphrase needs at least 8 characters');
+	    $this->backTo($project, 'transfer', 'Not exported', 'The passphrase needs at least 8 characters');
 
 	$om = \V::app()->om;
-	$readable = fn($o, $perm) => \V::app()->user->can($perm, [ 'object' => $o ]);
-	$pick = function($objectName, $key, $perm) use ($om, $project, $data, $readable) {
-	    $ids = array_values(array_filter(array_map('strval', (array)($data[$key] ?? [])), fn($id) => \util\Validator::rule('oid', $id)));
-	    $list = [];
-	    if ($ids) {
-		foreach($om->find($objectName, [ '_id' => [ '$in' => array_map(fn($id) => $om->to_oid($id), $ids) ], 'aid' => $project->aid, 'project' => $project->_id ]) as $o) {
-		    if ($readable($o, $perm))
-			$list[(string)$o->_id] = $o;
-		}
-	    }
-	    return $list;
-	};
-	$workflows = $pick('Workflow', 'workflows', 'Workflow::read');
-	$credentials = $pick('Credential', 'credentials', 'Credential::read');
-	$tables = $pick('DataTableDef', 'datatables', 'DataTable::readData');
+	$workflows = $this->readableOf($project, $data, 'Workflow', 'workflows', 'Workflow::read');
+	$credentials = $this->readableOf($project, $data, 'Credential', 'credentials', 'Credential::read');
+	$tables = $this->readableOf($project, $data, 'DataTableDef', 'datatables', 'DataTable::readData');
 	if (!empty($data['used'])) {
 	    [ $usedCredentials, $usedTables ] = \util\Transfer::usedBy($project, array_values($workflows));
 	    foreach($usedCredentials as $c) {
-		if ($readable($c, 'Credential::read'))
+		if (self::canRead($c, 'Credential::read'))
 		    $credentials[(string)$c->_id] = $c;
 	    }
 	    foreach($usedTables as $t) {
-		if ($readable($t, 'DataTable::readData'))
+		if (self::canRead($t, 'DataTable::readData'))
 		    $tables[(string)$t->_id] = $t;
 	    }
 	}
 	if (!$workflows && !$credentials && !$tables)
-	    $back('Choose what to export');
+	    $this->backTo($project, 'transfer', 'Not exported', 'Choose what to export');
 	$rows = array_values(array_intersect(array_map('strval', (array)($data['rows'] ?? [])), array_keys($tables)));
 
 	$text = \util\Transfer::export($project, array_values($workflows), array_values($credentials), array_values($tables), $rows, $passphrase);
@@ -130,18 +114,32 @@ class ProjectController extends \sys\BaseController {
 	\V::app()->end();
     }
 
+    //CLD: 2026-11-07T01:05:52+02:00: whether the user has permission $perm on object $o
+    private static function canRead($o, $perm) {
+	return \V::app()->user->can($perm, [ 'object' => $o ]);
+    }
+
+    //CLD: 2026-11-07T01:05:52+02:00: the objects $objectName of project $project whose ids are in $data[$key] and the user may $perm: [ id => object ]
+    private function readableOf($project, $data, $objectName, $key, $perm) {
+	$om = \V::app()->om;
+	$ids = array_values(array_filter(array_map('strval', (array)($data[$key] ?? [])), fn($id) => \util\Validator::rule('oid', $id)));
+	$list = [];
+	if ($ids) {
+	    foreach($om->find($objectName, [ '_id' => [ '$in' => array_map(fn($id) => $om->to_oid($id), $ids) ], 'aid' => $project->aid, 'project' => $project->_id ]) as $o) {
+		if (self::canRead($o, $perm))
+		    $list[(string)$o->_id] = $o;
+	    }
+	}
+	return $list;
+    }
+
     //import: upload (POST `file`, `passphrase` when sealed) -> the preview (views/project/import_preview.php: each item with what to do) -> apply (POST `step=apply`, `token`,
     //`do[<list>][<index>]`) -> the result (views/project/import_done.php). The opened file waits in tmp/transfer/<token> (encrypted with this server's key: it may hold
     //secrets) until imported; files older than a day are removed. Each action also needs its permission (create / update of its type)
     public function import($req, $resp) {
 	$project = $this->transferProject();
-	$tab = fn() => $this->redirect('/project/settings', [ 'id' => (string)$project->_id, '__tab' => 'transfer' ]);
 	if (!$req->is('post'))
-	    $tab();
-	$back = function($message) use ($tab) {
-	    $this->addToast('error', 'Not imported', $message);
-	    $tab();
-	};
+	    $this->backTo($project, 'transfer');
 
 	$dir = BASE . '/tmp/transfer';
 	if (!is_dir($dir))
@@ -158,15 +156,15 @@ class ProjectController extends \sys\BaseController {
 	if ($step === '') {
 	    $file = $req->files['file'] ?? null;
 	    if (empty($file) || ($file['error'] ?? 1) == UPLOAD_ERR_NO_FILE)
-		$back('Choose an export file');
+		$this->backTo($project, 'transfer', 'Not imported', 'Choose an export file');
 	    if ($file['error'] > 0)
-		$back('The file could not be uploaded');
+		$this->backTo($project, 'transfer', 'Not imported', 'The file could not be uploaded');
 	    if ($file['size'] > \util\Transfer::MAX_BYTES)
-		$back('The file is larger than ' . \util\Format::bytes(\util\Transfer::MAX_BYTES));
+		$this->backTo($project, 'transfer', 'Not imported', 'The file is larger than ' . \util\Format::bytes(\util\Transfer::MAX_BYTES));
 	    try {
 		$bundle = \util\Transfer::open((string)file_get_contents($file['tmp_name']), (string)($data['passphrase'] ?? ''));
 	    } catch (\RuntimeException $e) {
-		$back($e->getMessage());
+		$this->backTo($project, 'transfer', 'Not imported', $e->getMessage());
 	    }
 	    $token = bin2hex(random_bytes(16));
 	    $meta = $owner + [ 'name' => (string)$file['name'] ];
@@ -176,7 +174,7 @@ class ProjectController extends \sys\BaseController {
 	    $token = (string)($data['token'] ?? '');
 	    $saved = preg_match('/^[0-9a-f]{32}$/', $token) && is_file("{$dir}/{$token}") ? json_decode((string)\V::app()->security->decrypt((string)file_get_contents("{$dir}/{$token}")), true) : null;
 	    if (!is_array($saved) || array_intersect_key($saved, $owner) !== $owner)
-		$back('The uploaded file is no longer available: upload it again');
+		$this->backTo($project, 'transfer', 'Not imported', 'The uploaded file is no longer available: upload it again');
 	    $bundle = $saved['bundle'];
 	    $meta = array_diff_key($saved, [ 'bundle' => 1 ]);
 	}
@@ -285,10 +283,9 @@ class ProjectController extends \sys\BaseController {
 	$email = strtolower(trim((string)($req->data['email'] ?? '')));
 	$roleId = (string)($req->data['role'] ?? '');
 	$role = \util\Validator::rule('oid', $roleId) ? \V::app()->om->findOne('Role', [ '_id' => $roleId, 'aid' => $this->account->_id ]) : null;
-	$back = fn() => $this->redirect('/project/settings', [ 'id' => (string)$project->_id, '__tab' => 'members' ]);
 	if (!\util\Validator::rule('email', $email) || !$role) {
 	    $this->addToast('error', 'Not invited', 'Enter an email address and choose a role');
-	    $back();
+	    $this->backTo($project, 'members');
 	}
 	$inviter = \V::app()->om->findById('User', \V::app()->user->_id);
 	$vars = [ 'inviter' => (string)$inviter, 'project' => (string)$project->name, 'account' => (string)($this->account->name ?? '') ?: (string)$this->account->hostname ];
@@ -305,18 +302,25 @@ class ProjectController extends \sys\BaseController {
 		if ($saved && $user->state === 'active')
 		    \util\EmailSend::system('project_added', (string)$user->email, $vars + [ 'link' => \V::app()->createAbsoluteUrl('/site/index') ]);
 	    }
-	    $back();
+	    $this->backTo($project, 'members');
 	}
 
 	if (!\V::app()->user->can('User::create')) {
 	    $this->addToast('error', 'Not invited', $email . ' is not a user of the account: only who may add users can invite new people');
-	    $back();
+	    $this->backTo($project, 'members');
 	}
 	[ , $token ] = \models\user\ProjectInvite::start($project, $email, $role->_id, $inviter);
 	\util\EmailSend::system('project_invite', $email, $vars + [ 'link' => \V::app()->createAbsoluteUrl('/site/invite', [ 't' => $token ]), 'days' => intdiv(\models\user\ProjectInvite::VALID, 86400) ]);
 	\models\AuditLog::record('project.member.invite', $project, $email . ' invited as ' . (string)$role);
 	$this->addToast('success', 'OK', 'Invitation sent to ' . $email);
-	$back();
+	$this->backTo($project, 'members');
+    }
+
+    //CLD: 2026-11-07T01:05:52+02:00: back to tab $tab of project $project's settings; with $title: an error toast first
+    private function backTo($project, $tab, $title = null, $message = null) {
+	if ($title !== null)
+	    $this->addToast('error', $title, $message);
+	$this->redirect('/project/settings', [ 'id' => (string)$project->_id, '__tab' => $tab ]);
     }
 
     //CLD: 2026-10-17T22:00:00+03:00: a pending invitation (?invite): sent again (a new link, the old one stops working) or cancelled
@@ -374,8 +378,7 @@ class ProjectController extends \sys\BaseController {
     //CLD: 2026-10-17T22:00:00+03:00: returns whether saved (member_invite emails only then)
     private function saveMembers($project, array $members, $action, $details) {
 	$owner = \V::app()->om->findOne('Role', [ 'aid' => $project->aid, 'iname' => 'owner' ]);
-	$owners = fn(array $list) => count(array_filter($list, fn($m) => $owner && (string)($m['role'] ?? '') === (string)$owner->_id));
-	if ($owners((array)$project->members) > 0 && $owners($members) == 0) {
+	if (self::ownersIn((array)$project->members, $owner) > 0 && self::ownersIn($members, $owner) == 0) {
 	    $this->addToast('error', 'Not saved', 'A project needs at least one member with the Owner role');
 	    return false;
 	}
@@ -388,5 +391,10 @@ class ProjectController extends \sys\BaseController {
 	$this->addToast('success', 'OK', $details);
 	$this->addEvent('sidebar::refresh');
 	return true;
+    }
+
+    //CLD: 2026-11-07T01:05:52+02:00: how many of the members $list have role $owner (the account's Owner role; none: 0)
+    private static function ownersIn(array $list, $owner) {
+	return count(array_filter($list, fn($m) => $owner && (string)($m['role'] ?? '') === (string)$owner->_id));
     }
 }

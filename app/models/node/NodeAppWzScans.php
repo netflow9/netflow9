@@ -46,29 +46,37 @@ class NodeAppWzScans extends NodeAppWazuh {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$agent = fn() => self::agentId($value('agent'));
-	$search = fn() => [ 'search' => $text('search') ];
 	switch($operation) {
 	    case 'scaPolicies':
-		return $this->listOf('/sca/' . $agent(), $search(), 'policy');
+		return $this->listOf('/sca/' . $this->agentSetting(), $this->searchFilter(), 'policy');
 	    case 'scaChecks':
 		$policy = $text('policy');
 		if (!preg_match('/^[\w.-]{1,128}$/', $policy))
 		    throw new \RuntimeException('Policy: not a policy_id: `' . mb_substr($policy, 0, 64) . '`');
 		$result = (string)$this->cfg('result', '');
-		return $this->listOf('/sca/' . $agent() . "/checks/{$policy}", $search() + (isset(self::RESULTS[$result]) ? [ 'result' => $result ] : []), 'check');
+		return $this->listOf('/sca/' . $this->agentSetting() . "/checks/{$policy}", $this->searchFilter() + (isset(self::RESULTS[$result]) ? [ 'result' => $result ] : []), 'check');
 	    case 'fim':
-		return $this->listOf('/syscheck/' . $agent(), $search() + [ 'file' => $text('file'), 'hash' => $text('hash') ], 'file');
+		return $this->listOf('/syscheck/' . $this->agentSetting(), $this->searchFilter() + [ 'file' => $text('file'), 'hash' => $text('hash') ], 'file');
 	    case 'fimLast':
-		$id = $agent();
+		$id = $this->agentSetting();
 		return [ $this->one("/syscheck/{$id}/last_scan", "last FIM scan of agent {$id}"), "agent {$id}" ];
 	    case 'fimRun':
 	    case 'rootcheckRun':
 		$ids = self::agentList($value('agents'));
 		return $this->change('PUT', $operation === 'fimRun' ? '/syscheck' : '/rootcheck', $ids === null ? [] : [ 'agents_list' => $ids ], null, 'scan started on agents');
 	    case 'rootcheck':
-		return $this->listOf('/rootcheck/' . $agent(), $search(), 'finding');
+		return $this->listOf('/rootcheck/' . $this->agentSetting(), $this->searchFilter(), 'finding');
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:10:30+02:00: the setting Agent (an agent id)
+    private function agentSetting() {
+	return self::agentId($this->settingOf('agent'));
+    }
+
+    //CLD: 2026-11-07T01:10:30+02:00: the API's filter of the setting Search
+    private function searchFilter() {
+	return [ 'search' => $this->settingText('search') ];
     }
 }

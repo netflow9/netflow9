@@ -75,32 +75,31 @@ PS;
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	$vm = self::vmRef($value('vm'));
-	$ps = fn($script, array $p = []) => $this->ps($operation, self::HELPERS . $script, [ 'vm' => $vm ] + $p);
 	switch($operation) {
 	    case 'list':
-		return $this->listResult($ps(',@(Get-VMSnapshot -VM $v | Sort-Object CreationTime | ForEach-Object { r22cp $_ $v.ParentSnapshotId })'), 'checkpoint');
+		return $this->listResult($this->psOn($operation, $vm, ',@(Get-VMSnapshot -VM $v | Sort-Object CreationTime | ForEach-Object { r22cp $_ $v.ParentSnapshotId })'), 'checkpoint');
 	    case 'create':
 		$name = mb_substr($text('cpName'), 0, 100);
 		if ($name === '')
 		    throw new \RuntimeException('Name: empty');
-		$r = (array)$ps(<<<'PS'
+		$r = (array)$this->psOn($operation, $vm, <<<'PS'
 Checkpoint-VM -VM $v -SnapshotName $P.name
 $v = Get-VM -Id $v.Id
 r22cp (Get-VMSnapshot -VM $v | Where-Object { $_.Name -eq $P.name } | Sort-Object CreationTime | Select-Object -Last 1) $v.ParentSnapshotId
 PS, [ 'name' => $name ]);
 		return [ $r, "VM {$vm}: checkpoint {$name} created" ];
 	    case 'restore':
-		$r = (array)$ps("\$s = r22snap \$v \$P.checkpoint\nRestore-VMSnapshot -VMSnapshot \$s -Confirm:\$false\nr22cp \$s \$s.Id\n", [ 'checkpoint' => $text('checkpoint') ]);
+		$r = (array)$this->psOn($operation, $vm, "\$s = r22snap \$v \$P.checkpoint\nRestore-VMSnapshot -VMSnapshot \$s -Confirm:\$false\nr22cp \$s \$s.Id\n", [ 'checkpoint' => $text('checkpoint') ]);
 		return [ $r, "VM {$vm}: restored to " . ($r['name'] ?? $text('checkpoint')) ];
 	    case 'remove':
-		$r = (array)$ps("\$s = r22snap \$v \$P.checkpoint\n\$r = r22cp \$s \$v.ParentSnapshotId\n"
+		$r = (array)$this->psOn($operation, $vm, "\$s = r22snap \$v \$P.checkpoint\n\$r = r22cp \$s \$v.ParentSnapshotId\n"
 		    . "if (\$P.children) { Remove-VMSnapshot -VMSnapshot \$s -IncludeAllChildSnapshots -Confirm:\$false } else { Remove-VMSnapshot -VMSnapshot \$s -Confirm:\$false }\n\$r\n",
 		    [ 'checkpoint' => $text('checkpoint'), 'children' => (bool)$this->cfg('children', false) ]);
 		return [ $r, "VM {$vm}: checkpoint " . ($r['name'] ?? $text('checkpoint')) . ' removed' ];
 	    case 'removeAll':
 	    case 'prune':
 		$days = $operation === 'prune' ? self::number($text('days'), 'Older than (days)', 0, 36500) : null;
-		$removed = $ps(<<<'PS'
+		$removed = $this->psOn($operation, $vm, <<<'PS'
 $all = @(Get-VMSnapshot -VM $v | Sort-Object CreationTime)
 if ($P.days -ne $null) {
   $before = (Get-Date).AddDays(-[int]$P.days)
@@ -113,5 +112,10 @@ PS, [ 'days' => $days, 'pattern' => $text('pattern') ]);
 		return [ [ 'removed' => $removed, 'count' => count($removed) ], "VM {$vm}: " . \util\Format::plural(count($removed), 'checkpoint') . ' removed' . ($days !== null ? " (older than {$days} days)" : '') ];
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: PowerShell $script (after HELPERS) for operation $operation on VM $vm, with parameters $p
+    private function psOn($operation, $vm, $script, array $p = []) {
+	return $this->ps($operation, self::HELPERS . $script, [ 'vm' => $vm ] + $p);
     }
 }

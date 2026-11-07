@@ -191,29 +191,27 @@ PS, [ 'names' => $names ]);
 	    if ($prev !== null && in_array($state, self::PASSING, true))
 		$state = (string)$prev['state'];
 	    $entry = [ 'name' => (string)$v['name'], 'state' => $state, 'health' => $health, 'firedState' => !empty($prev['firedState']), 'firedHealth' => !empty($prev['firedHealth']) ];
-	    $event = fn($type, $from, $to) => [ 'event' => $type, 'vm' => [ 'name' => (string)$v['name'], 'id' => $id ], 'from' => $from, 'to' => $to, 'state' => $state,
-		'replicationHealth' => $health, 'time' => $time ];
 	    if ($prev !== null && !$first) {
 		$was = (string)$prev['state'];
 		if ($state !== $was) {
 		    if ($state === 'Running' && $entry['firedState']) {
 			$entry['firedState'] = false;
 			if ($rec)
-			    $events[] = $event('recovery', $was, $state);
+			    $events[] = self::vmEvent('recovery', $was, $state, $v, $id, $state, $health, $time);
 		    } elseif ($when === 'any' || ($was === 'Running' && $state !== 'Running')) {
-			$events[] = $event($when === 'any' ? 'state' : 'stopped', $was, $state);
+			$events[] = self::vmEvent($when === 'any' ? 'state' : 'stopped', $was, $state, $v, $id, $state, $health, $time);
 			$entry['firedState'] = $state !== 'Running';
 		    }
 		}
 		$wasHealth = (string)$prev['health'];
 		if ($rep && $health !== $wasHealth) {
 		    if (in_array($health, self::BAD_HEALTH, true)) {
-			$events[] = $event('replication', $wasHealth, $health);
+			$events[] = self::vmEvent('replication', $wasHealth, $health, $v, $id, $state, $health, $time);
 			$entry['firedHealth'] = true;
 		    } elseif ($health === 'Normal' && $entry['firedHealth']) {
 			$entry['firedHealth'] = false;
 			if ($rec)
-			    $events[] = $event('recovery', $wasHealth, $health);
+			    $events[] = self::vmEvent('recovery', $wasHealth, $health, $v, $id, $state, $health, $time);
 		    }
 		}
 	    }
@@ -231,6 +229,12 @@ PS, [ 'names' => $names ]);
 	    $started[] = $exe;
 	}
 	return [ [ 'started' => true, 'vms' => (object)$now ], $started ];
+    }
+
+    //CLD: 2026-11-07T01:11:11+02:00: an event of VM $v (id $id): $type, from $from to $to, with its state, replication health and the time of the check
+    private static function vmEvent($type, $from, $to, $v, $id, $state, $health, $time) {
+	return [ 'event' => $type, 'vm' => [ 'name' => (string)$v['name'], 'id' => $id ], 'from' => $from, 'to' => $to, 'state' => $state,
+	    'replicationHealth' => $health, 'time' => $time ];
     }
 
     //Run in the designer: one run with a VM that is not running (or the first VM), as a `stopped` event; the trigger's state is not changed

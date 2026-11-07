@@ -31,21 +31,25 @@ class WfTestCase extends \sys\BaseModel {
     const MAX_DATA = 2097152;
 
     public function getSchema() {
-	$field = fn($key, $type, $label) => [ 'key' => $key, 'type' => $type, 'label' => $label, 'help' => false ];
 	return array_merge([
 	    [ 'key' => 'wf', 'type' => 'object', 'object' => 'Workflow', 'label' => 'Workflow', 'help' => false, 'required' => true ],
 	    [ 'key' => 'project', 'type' => 'object', 'object' => 'Project', 'label' => 'Project', 'help' => false ],
 	    [ 'key' => 'name', 'type' => 'text', 'label' => 'Name', 'help' => false, 'required' => true ],
-	    $field('source', 'text', 'Saved from'),
-	    $field('trigger', 'text', 'Trigger'),
-	    $field('chat', 'checkbox', 'Started by a conversation'),
-	    $field('input', 'array', 'Inputs'),
-	    $field('tools', 'text', 'Tool calls'),
-	    $field('mocks', 'array', 'Recorded tool results'),
-	    $field('steps', 'array', 'Recorded steps'),
-	    $field('checks', 'array', 'Checks'),
-	    $field('notes', 'array', 'Notes'),
+	    self::fieldDef('source', 'text', 'Saved from'),
+	    self::fieldDef('trigger', 'text', 'Trigger'),
+	    self::fieldDef('chat', 'checkbox', 'Started by a conversation'),
+	    self::fieldDef('input', 'array', 'Inputs'),
+	    self::fieldDef('tools', 'text', 'Tool calls'),
+	    self::fieldDef('mocks', 'array', 'Recorded tool results'),
+	    self::fieldDef('steps', 'array', 'Recorded steps'),
+	    self::fieldDef('checks', 'array', 'Checks'),
+	    self::fieldDef('notes', 'array', 'Notes'),
 	], $this->getSystemSchema());
+    }
+
+    //CLD: 2026-11-07T01:11:11+02:00: a field without help text
+    private static function fieldDef($key, $type, $label) {
+	return [ 'key' => $key, 'type' => $type, 'label' => $label, 'help' => false ];
     }
 
     public function __toString() {

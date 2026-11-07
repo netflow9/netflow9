@@ -85,16 +85,14 @@ class NodeAppSfosHosts extends NodeAppSophos {
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	$family = $this->cfg('ipv6', false) ? 'IPv6' : 'IPv4';
-	$isFamily = fn($e) => (string)($e['IPFamily'] ?? 'IPv4') === $family;
-	$hostTag = fn() => (string)$this->cfg('hostType', 'ip') === 'fqdn' ? 'FQDNHost' : 'IPHost';
 	switch($operation) {
 	    case 'list':
-		return $this->listOf('IPHost', $text('contains'), 'host', $isFamily);
+		return $this->listOf('IPHost', $text('contains'), 'host', fn($e) => self::isFamily($e, $family));
 	    case 'groups':
-		return $this->listOf('IPHostGroup', $text('contains'), 'group', $isFamily);
+		return $this->listOf('IPHostGroup', $text('contains'), 'group', fn($e) => self::isFamily($e, $family));
 	    case 'get':
 		$n = self::objName($value('name'), 'Host');
-		return [ $this->need($hostTag(), $n, 'the host'), "host {$n}" ];
+		return [ $this->need($this->hostTag(), $n, 'the host'), "host {$n}" ];
 	    case 'create':
 		$n = self::objName($value('name'), 'Host');
 		$val = $text('value');
@@ -122,7 +120,7 @@ class NodeAppSfosHosts extends NodeAppSophos {
 		return [ [ 'name' => $n, 'message' => $msg ], "host {$n} created" ];
 	    case 'delete':
 		$n = self::objName($value('name'), 'Host');
-		return [ [ 'name' => $n, 'message' => $this->sfos->remove($hostTag(), $n) ], "host {$n} deleted" ];
+		return [ [ 'name' => $n, 'message' => $this->sfos->remove($this->hostTag(), $n) ], "host {$n} deleted" ];
 	    case 'add':
 	    case 'remove':
 		$n = self::objName($value('name'), 'Host');
@@ -173,5 +171,15 @@ class NodeAppSfosHosts extends NodeAppSophos {
 		    \util\Format::plural(count($done), 'IP') . ($operation === 'block' ? ' blocked' : ' unblocked') . " (group {$names})" ];
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: whether host entry $e is of IP family $family (IPv4 when not given)
+    private static function isFamily($e, $family) {
+	return (string)($e['IPFamily'] ?? 'IPv4') === $family;
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: the firewall's object of the setting Host type: FQDNHost or IPHost
+    private function hostTag() {
+	return (string)$this->cfg('hostType', 'ip') === 'fqdn' ? 'FQDNHost' : 'IPHost';
     }
 }

@@ -57,8 +57,6 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
-
 	return [
 	    static::credentialField(),
 	    static::operationField(),
@@ -69,7 +67,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'Calendar',
 		'default' => '',
 		'help' => 'Empty: the account\'s calendar; or a calendar id (List the calendars)',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'list', 'create' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'list', 'create' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
@@ -79,7 +77,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'The event id, e.g. {{ calendar.id }}, {{ calendar[0].id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_EVENT ],
-		'ui' => [ 'width' => 6, 'placeholder' => '{{ event.id }}', 'expression' => true, 'showIf' => $op(self::ON_EVENT) ],
+		'ui' => [ 'width' => 6, 'placeholder' => '{{ event.id }}', 'expression' => true, 'showIf' => static::operationIn(self::ON_EVENT) ],
 	    ],
 
 	    //list / freeBusy
@@ -90,7 +88,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'From',
 		'default' => '',
 		'help' => 'Empty: now; ISO 8601 or 2026-10-21 14:00',
-		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'showIf' => static::operationIn(self::PERIOD) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -99,7 +97,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'Until',
 		'default' => '',
 		'help' => 'Empty: 7 days after From',
-		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
+		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'showIf' => static::operationIn(self::PERIOD) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
@@ -108,7 +106,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'Search',
 		'default' => '',
 		'help' => 'Words in the title, location or description; empty: all',
-		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
@@ -118,7 +116,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 50,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_RESULTS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_RESULTS ] ],
-		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
@@ -127,7 +125,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'People / rooms',
 		'default' => '',
 		'help' => 'Addresses separated by commas; empty: the account',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'freeBusy' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'freeBusy' ]) ],
 	    ],
 
 	    //create / update
@@ -138,7 +136,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'Title',
 		'default' => '',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
@@ -146,7 +144,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'type' => 'text',
 		'label' => 'Location',
 		'default' => '',
-		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
@@ -156,7 +154,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'ISO 8601 or 2026-10-21 14:00',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -165,7 +163,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'End',
 		'default' => '',
 		'help' => 'Empty: Start + Duration',
-		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -175,7 +173,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 60,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => 100000, 'skipEmpty' => true, 'message' => 'from 1 minute' ] ],
-		'ui' => [ 'width' => 3, 'step' => 5, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'step' => 5, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -183,7 +181,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'type' => 'switch',
 		'label' => 'All day',
 		'default' => false,
-		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
@@ -193,7 +191,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'Show as',
 		'default' => '',
 		'choices' => self::SHOW_AS,
-		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -203,7 +201,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 'text',
 		'choices' => self::BODY_TYPES,
-		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -212,7 +210,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'Add a Teams meeting',
 		'default' => false,
 		'help' => 'Work / school accounts',
-		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -230,7 +228,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'type' => 'textarea',
 		'label' => 'Description',
 		'default' => '',
-		'ui' => [ 'rows' => 3, 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'rows' => 3, 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		'key' => 'attendees',
@@ -238,7 +236,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'label' => 'Attendees',
 		'default' => '',
 		'help' => 'Addresses separated by commas (invited); update: added',
-		'ui' => [ 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 
 	    static::timeoutField(60),
@@ -249,20 +247,16 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$fail = function($message) use (&$valid) {
-	    $this->errors('config', $message);
-	    $valid = false;
-	};
 	$tz = trim((string)$this->cfg('timeZone', ''));
 	if ($tz !== '' && !str_contains($tz, '{{') && !in_array($tz, \DateTimeZone::listIdentifiers(), true))
-	    $fail("Time zone: unknown `{$tz}` (e.g. Europe/Bucharest, UTC)");
+	    $valid = $this->configError("Time zone: unknown `{$tz}` (e.g. Europe/Bucharest, UTC)");
 
 	if ($this->cfg('operation', 'list') === 'update') {
 	    $changed = false;
 	    foreach([ 'subject', 'start', 'end', 'location', 'description', 'attendees', 'showAs' ] as $key)
 		$changed = $changed || trim((string)$this->cfg($key, '')) !== '';
 	    if (!$changed && !$this->cfg('teams', false))
-		$fail('Update: give at least one setting to change (title, start, end, location, description, attendees, show as, Teams)');
+		$valid = $this->configError('Update: give at least one setting to change (title, start, end, location, description, attendees, show as, Teams)');
 	}
 	return $valid;
     }
@@ -482,18 +476,22 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
     //times, an empty end = start + $minutes; \RuntimeException when the end is not after the start
     public static function times($start, $end, $allDay, $minutes, \DateTimeZone $tz) {
 	$s = self::parseTime($start, $tz);
-	$fmt = fn(\DateTimeImmutable $d) => [ 'dateTime' => $d->format('Y-m-d\TH:i:s'), 'timeZone' => $tz->getName() ];
 	if ($allDay) {
 	    $s = $s->setTime(0, 0);
 	    $e = trim((string)$end) === '' ? $s : self::parseTime($end, $tz)->setTime(0, 0);
 	    if ($e < $s)
 		throw new \RuntimeException('End is before Start');
-	    return [ $fmt($s), $fmt($e->modify('+1 day')) ];
+	    return [ self::graphTime($s, $tz), self::graphTime($e->modify('+1 day'), $tz) ];
 	}
 	$e = trim((string)$end) === '' ? $s->modify('+' . max(1, (int)$minutes) . ' minutes') : self::parseTime($end, $tz);
 	if ($e <= $s)
 	    throw new \RuntimeException('End is not after Start');
-	return [ $fmt($s), $fmt($e) ];
+	return [ self::graphTime($s, $tz), self::graphTime($e, $tz) ];
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: time $d as Graph's dateTimeTimeZone, in time zone $tz
+    private static function graphTime(\DateTimeImmutable $d, \DateTimeZone $tz) {
+	return [ 'dateTime' => $d->format('Y-m-d\TH:i:s'), 'timeZone' => $tz->getName() ];
     }
 
     //ISO 8601 of Graph's { dateTime, timeZone } (the time zone as given, else $tz)

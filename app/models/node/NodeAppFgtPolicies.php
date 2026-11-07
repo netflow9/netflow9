@@ -38,25 +38,27 @@ class NodeAppFgtPolicies extends NodeAppFortiGate {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$id = function() use ($text) {
-	    $v = $text('policyId');
-	    if (!ctype_digit($v))
-		throw new \RuntimeException("Policy ID: not a number: `" . mb_substr($v, 0, 32) . '`');
-	    return (int)$v;
-	};
 	switch($operation) {
 	    case 'list':
 		return $this->listOf('/api/v2/cmdb/firewall/policy', $text('contains') !== '' ? [ 'filter' => 'name=@' . $text('contains') ] : [], 'policy');
 	    case 'stats':
 		return $this->listOf('/api/v2/monitor/firewall/policy', [], 'policy');
 	    case 'get':
-		$n = $id();
+		$n = $this->policyId();
 		return [ $this->get("/api/v2/cmdb/firewall/policy/{$n}"), "policy {$n}" ];
 	    case 'enable':
 	    case 'disable':
-		$n = $id();
+		$n = $this->policyId();
 		return [ $this->change('PUT', "/api/v2/cmdb/firewall/policy/{$n}", [ 'status' => $operation ]), "policy {$n} {$operation}d" ];
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:08:03+02:00: the setting Policy ID, a number
+    private function policyId() {
+	$v = $this->settingText('policyId');
+	if (!ctype_digit($v))
+	    throw new \RuntimeException("Policy ID: not a number: `" . mb_substr($v, 0, 32) . '`');
+	return (int)$v;
     }
 }

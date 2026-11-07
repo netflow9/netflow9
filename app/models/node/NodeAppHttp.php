@@ -53,18 +53,6 @@ class NodeAppHttp extends \models\wf\WfNode {
 	$credentials = [];
 	foreach(static::credentialChoices() as $c)
 	    $credentials[$c['value']] = $c['label'];
-	//CLD: 2026-10-18T10:45:00+03:00: nested lists (sys\fields\Field_nested): each row cast and validated by pairSchema() (headers:
-	//a valid name), its expressions checked, errors as "<itemLabel> <n>: <field>: <message>"; the edit grid's columns come from pairSchema()
-	$pairs = fn($key, $label, $itemLabel, $addLabel, $extra = []) => [
-	    'key' => $key,
-	    'type' => 'nested',
-	    'multiple' => true,
-	    'fields' => self::pairSchema($key === 'headers'),
-	    'label' => $label,
-	    'itemLabel' => $itemLabel,
-	    'default' => [],
-	    'ui' => array_merge([ 'addLabel' => $addLabel, 'compact' => true, 'maxRows' => 50 ], $extra),
-	];
 
 	//CLD: 2026-10-24T12:38:06+03:00: the designer places the step name / response variable / on error (row 1), the credential (row 2, here 4 wide: method and URL next to it) and the timeout
 	//(last); method 2 + URL 6
@@ -118,9 +106,9 @@ class NodeAppHttp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 2 ],
 	    ],
 	    //CLD: 2026-10-24T12:19:00+03:00: query parameters | headers before the credential / body row: the body type and JSON-RPC stay next to the content
-	    $pairs('query', 'Query parameters', 'Query parameter', 'Add parameter', [ 'width' => 6 ]),
+	    self::pairsField('query', 'Query parameters', 'Query parameter', 'Add parameter', [ 'width' => 6 ]),
 	    //CLD: 2026-10-29T10:30:00+02:00: the headers under "Advanced…" (the designer's closed section of the technical settings; the Download step's too)
-	    $pairs('headers', 'Headers', 'Header', 'Add header', [ 'width' => 6, 'advanced' => true ]),
+	    self::pairsField('headers', 'Headers', 'Header', 'Add header', [ 'width' => 6, 'advanced' => true ]),
 	    [
 		'key' => 'credential',
 		'type' => 'select',
@@ -171,7 +159,23 @@ class NodeAppHttp extends \models\wf\WfNode {
 		    ],
 		    'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ], 'showIf' => [ 'key' => 'bodyType', 'operator' => 'in', 'value' => [ 'json', 'text' ] ] ],
 	    ],
-	    $pairs('form', 'Form fields', 'Form field', 'Add field', [ 'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ], 'showIf' => [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'form' ] ]),
+	    self::pairsField('form', 'Form fields', 'Form field', 'Add field', [ 'hideIf' => [ 'key' => 'method', 'operator' => 'in', 'value' => [ 'GET', 'HEAD' ] ], 'showIf' => [ 'key' => 'bodyType', 'operator' => 'eq', 'value' => 'form' ] ]),
+	];
+    }
+
+    //CLD: 2026-11-07T01:08:03+02:00: a list of name / value pairs (query parameters, headers, form fields): setting $key
+    //CLD: 2026-10-18T10:45:00+03:00: nested lists (sys\fields\Field_nested): each row cast and validated by pairSchema() (headers:
+    //a valid name), its expressions checked, errors as "<itemLabel> <n>: <field>: <message>"; the edit grid's columns come from pairSchema()
+    private static function pairsField($key, $label, $itemLabel, $addLabel, $extra = []) {
+	return [
+	    'key' => $key,
+	    'type' => 'nested',
+	    'multiple' => true,
+	    'fields' => self::pairSchema($key === 'headers'),
+	    'label' => $label,
+	    'itemLabel' => $itemLabel,
+	    'default' => [],
+	    'ui' => array_merge([ 'addLabel' => $addLabel, 'compact' => true, 'maxRows' => 50 ], $extra),
 	];
     }
 
@@ -225,15 +229,23 @@ class NodeAppHttp extends \models\wf\WfNode {
     // ------------------------------------------------------------------------------------
     //running
 
+    //CLD: 2026-11-07T01:08:18+02:00: the variables of textOf(), set by execute()
+    protected $textVars = [];
+
+    //CLD: 2026-11-07T01:08:18+02:00: text $v with its {{ }} rendered against the execution's variables (textVars)
+    protected function textOf($v) {
+	return \util\Expression::toText(\util\Expression::render((string)$v, $this->textVars));
+    }
+
     public function execute($edgeId = null) {
 	//CLD: 2026-10-13T15:24:28+03:00: + the project variables (vars)
 	$vars = $this->exec->expressionVariables();
-	$text = fn($v) => \util\Expression::toText(\util\Expression::render((string)$v, $vars));
+	$this->textVars = $vars;
 	$method = (string)$this->cfg('method', 'GET');
 	if (!isset(self::METHODS[$method]))
 	    throw new \ErrorException("HTTP Request: unknown method `{$method}`");
 
-	$url = trim($text($this->cfg('url', '')));
+	$url = trim($this->textOf($this->cfg('url', '')));
 	if (!preg_match('~^https?://[^\s/?#]+~i', $url))
 	    throw new \ErrorException('HTTP Request: the URL must start with http:// or https:// (got `' . mb_substr($url, 0, 100) . '`)');
 	$shownUrl = preg_replace('/[?#].*$/', '', $url);
@@ -243,12 +255,12 @@ class NodeAppHttp extends \models\wf\WfNode {
 	$query = [];
 	foreach((array)$this->cfg('query', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
-		$query[] = [ (string)$row['name'], $text($row['value'] ?? '') ];
+		$query[] = [ (string)$row['name'], $this->textOf($row['value'] ?? '') ];
 	}
 	$headers = [];
 	foreach((array)$this->cfg('headers', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
-		$headers[strtolower($row['name'])] = [ $row['name'], str_replace([ "\r", "\n" ], ' ', $text($row['value'] ?? '')) ];
+		$headers[strtolower($row['name'])] = [ $row['name'], str_replace([ "\r", "\n" ], ' ', $this->textOf($row['value'] ?? '')) ];
 	}
 	$credId = (string)$this->cfg('credential', '');
 	if ($credId !== '') {
@@ -278,13 +290,13 @@ class NodeAppHttp extends \models\wf\WfNode {
 		    $fields = [];
 		    foreach((array)$this->cfg('form', []) as $row) {
 			if (($row['name'] ?? '') !== '')
-			    $fields[$row['name']] = $text($row['value'] ?? '');
+			    $fields[$row['name']] = $this->textOf($row['value'] ?? '');
 		    }
 		    $body = http_build_query($fields, '', '&');
 		    $headers += [ 'content-type' => [ 'Content-Type', 'application/x-www-form-urlencoded' ] ];
 		    break;
 		case 'text':
-		    $body = $text($this->cfg('body', ''));
+		    $body = $this->textOf($this->cfg('body', ''));
 		    $headers += [ 'content-type' => [ 'Content-Type', 'text/plain; charset=utf-8' ] ];
 		    break;
 	    }

@@ -126,8 +126,6 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
-
 	return [
 	    static::credentialField(),
 	    static::operationField(),
@@ -139,7 +137,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'The file id or its Drive link, e.g. {{ drive[0].id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_FILE ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://drive.google.com/...', 'expression' => true, 'showIf' => $op(self::ON_FILE) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://drive.google.com/...', 'expression' => true, 'showIf' => static::operationIn(self::ON_FILE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -149,7 +147,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'Folder id or link; empty: list: all of Drive, upload / create: My Drive',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'move' ] ],
-		'ui' => [ 'width' => 6, 'placeholder' => 'root, 1AbC... or https://drive.google.com/drive/folders/...', 'expression' => true, 'showIf' => $op([ 'list', 'upload', 'createFolder', 'move' ]) ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'root, 1AbC... or https://drive.google.com/drive/folders/...', 'expression' => true, 'showIf' => static::operationIn([ 'list', 'upload', 'createFolder', 'move' ]) ],
 	    ],
 
 	    //list
@@ -160,7 +158,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'label' => 'Name contains',
 		'default' => '',
 		'help' => 'Empty: any name',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -170,7 +168,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'any',
 		'choices' => self::FILE_TYPES,
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -181,7 +179,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'modifiedTime desc',
 		'choices' => self::ORDER,
-		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
 		'key' => 'query',
@@ -189,7 +187,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'label' => 'Drive query',
 		'default' => '',
 		'help' => 'More conditions (Drive\'s q syntax), e.g. modifiedTime > \'2026-01-01T00:00:00\' and starred = true',
-		'ui' => [ 'expression' => true, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'expression' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: a limit (the last line)
@@ -199,7 +197,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'required' => true,
 		'default' => 100,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_RESULTS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_RESULTS ] ],
-		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
@@ -208,7 +206,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'type' => 'switch',
 		'label' => 'Include files in the trash',
 		'default' => false,
-		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 
 	    //download
@@ -221,7 +219,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'default' => 'auto',
 		'choices' => self::EXPORT_FORMATS,
 		'help' => 'Docs, Sheets, Slides, Drawings are exported (10 MB at most)',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'showIf' => $op([ 'download' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'showIf' => static::operationIn([ 'download' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -230,7 +228,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'label' => 'Save as',
 		'default' => '',
 		'help' => 'Empty: the name in Drive (+ the export\'s extension)',
-		'ui' => [ 'width' => 6, 'placeholder' => 'report-{{ id }}.pdf', 'expression' => true, 'showIf' => $op([ 'download' ]) ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'report-{{ id }}.pdf', 'expression' => true, 'showIf' => static::operationIn([ 'download' ]) ],
 	    ],
 
 	    //upload
@@ -242,7 +240,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'file',
 		'choices' => self::SOURCES,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'upload' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'upload' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -252,7 +250,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'label' => 'Convert to a Google file',
 		'default' => false,
 		'help' => 'To Docs / Sheets / Slides',
-		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'upload' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => static::operationIn([ 'upload' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -262,7 +260,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'Upload: the name in Drive (empty: the file\'s); folder: its name',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'createFolder' ] ],
-		'ui' => [ 'width' => 6, 'placeholder' => 'notes-{{ id }}.txt', 'expression' => true, 'showIf' => $op([ 'upload', 'createFolder' ]) ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'notes-{{ id }}.txt', 'expression' => true, 'showIf' => static::operationIn([ 'upload', 'createFolder' ]) ],
 	    ],
 	    [
 		'key' => 'sourceFile',
@@ -270,7 +268,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'label' => 'Project file',
 		'default' => '',
 		'help' => 'The id of a file of the project, e.g. {{ file.id }} (Download File) or {{ mail.attachment_files[0] }}',
-		'ui' => [ 'placeholder' => '{{ file.id }}', 'expression' => true, 'showIf' => $op([ 'upload' ]), 'hideIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'text' ] ],
+		'ui' => [ 'placeholder' => '{{ file.id }}', 'expression' => true, 'showIf' => static::operationIn([ 'upload' ]), 'hideIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'text' ] ],
 	    ],
 	    [
 		'key' => 'content',
@@ -278,7 +276,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'label' => 'Text',
 		'default' => '',
 		'help' => '{{ ... }} for expressions (an object / list is written as JSON)',
-		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => $op([ 'upload' ]), 'hideIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'file' ] ],
+		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'upload' ]), 'hideIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'file' ] ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: a limit (the last line)
@@ -288,7 +286,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'required' => true,
 		'default' => 25,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
-		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'download', 'upload' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'download', 'upload' ]) ],
 	    ],
 
 	    //share
@@ -300,7 +298,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'user',
 		'choices' => self::SHARE_WITH,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'share' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'share' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -310,7 +308,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'reader',
 		'choices' => self::ROLES,
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'share' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'share' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -319,7 +317,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'label' => 'Address',
 		'default' => '',
 		'help' => '{{ ... }} for expressions',
-		'ui' => [ 'width' => 6, 'placeholder' => 'someone@example.com', 'expression' => true, 'showIf' => $op([ 'share' ]), 'hideIf' => [ 'key' => 'shareWith', 'operator' => 'in', 'value' => [ 'domain', 'anyone' ] ] ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'someone@example.com', 'expression' => true, 'showIf' => static::operationIn([ 'share' ]), 'hideIf' => [ 'key' => 'shareWith', 'operator' => 'in', 'value' => [ 'domain', 'anyone' ] ] ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -336,7 +334,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'type' => 'switch',
 		'label' => 'Send a notification email',
 		'default' => true,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'share' ]), 'hideIf' => [ 'key' => 'shareWith', 'operator' => 'in', 'value' => [ 'domain', 'anyone' ] ] ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'share' ]), 'hideIf' => [ 'key' => 'shareWith', 'operator' => 'in', 'value' => [ 'domain', 'anyone' ] ] ],
 	    ],
 	    [
 		'key' => 'message',
@@ -354,7 +352,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'type' => 'switch',
 		'label' => 'Delete permanently (not to the trash)',
 		'default' => false,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'delete' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'delete' ]) ],
 	    ],
 
 	    static::timeoutField(120, self::MAX_TIMEOUT, 'Of each request'),
@@ -366,25 +364,20 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
     //the credential of the project; what one setting requires of another (the designer's conditions are on one setting each)
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$fail = function($message) use (&$valid) {
-	    $this->errors('config', $message);
-	    $valid = false;
-	};
 
 	$operation = $this->cfg('operation', 'list');
-	$empty = fn($key) => trim((string)$this->cfg($key, '')) === '';
 	if ($operation === 'upload') {
-	    if ($this->cfg('source', 'file') === 'file' && $empty('sourceFile'))
-		$fail('Project file: required');
-	    if ($this->cfg('source', 'file') === 'text' && $empty('name'))
-		$fail('Name: required for a text');
+	    if ($this->cfg('source', 'file') === 'file' && $this->cfgEmpty('sourceFile'))
+		$valid = $this->configError('Project file: required');
+	    if ($this->cfg('source', 'file') === 'text' && $this->cfgEmpty('name'))
+		$valid = $this->configError('Name: required for a text');
 	}
 	if ($operation === 'share') {
 	    $with = $this->cfg('shareWith', 'user');
-	    if (in_array($with, [ 'user', 'group' ], true) && $empty('email'))
-		$fail('Address: required');
-	    if ($with === 'domain' && $empty('domain'))
-		$fail('Domain: required');
+	    if (in_array($with, [ 'user', 'group' ], true) && $this->cfgEmpty('email'))
+		$valid = $this->configError('Address: required');
+	    if ($with === 'domain' && $this->cfgEmpty('domain'))
+		$valid = $this->configError('Domain: required');
 	}
 	return $valid;
     }

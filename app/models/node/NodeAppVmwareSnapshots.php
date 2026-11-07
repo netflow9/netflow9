@@ -148,17 +148,19 @@ class NodeAppVmwareSnapshots extends NodeAppVmware {
     public static function flatten($info) {
 	$current = (string)($info['currentSnapshot']['value'] ?? '');
 	$out = [];
-	$walk = function(array $list, $parent, $depth) use (&$walk, &$out, $current) {
-	    foreach($list as $t) {
-		if (!is_array($t))
-		    continue;
-		$id = (string)($t['snapshot']['value'] ?? '');
-		$out[] = [ 'id' => $id, 'name' => (string)($t['name'] ?? ''), 'description' => (string)($t['description'] ?? ''), 'createTime' => (string)($t['createTime'] ?? ''),
-		    'state' => (string)($t['state'] ?? ''), 'quiesced' => (bool)($t['quiesced'] ?? false), 'current' => $id !== '' && $id === $current, 'parent' => $parent, 'depth' => $depth ];
-		$walk((array)($t['childSnapshotList'] ?? []), $id, $depth + 1);
-	    }
-	};
-	$walk(is_array($info) ? (array)($info['rootSnapshotList'] ?? []) : [], null, 0);
+	self::walk(is_array($info) ? (array)($info['rootSnapshotList'] ?? []) : [], null, 0, $current, $out);
 	return $out;
+    }
+
+    //CLD: 2026-11-07T01:10:44+02:00: the snapshots of tree $list (children of $parent, at $depth) added to $out, depth first; $current: the current snapshot's id
+    private static function walk(array $list, $parent, $depth, $current, array &$out) {
+	foreach($list as $t) {
+	    if (!is_array($t))
+		continue;
+	    $id = (string)($t['snapshot']['value'] ?? '');
+	    $out[] = [ 'id' => $id, 'name' => (string)($t['name'] ?? ''), 'description' => (string)($t['description'] ?? ''), 'createTime' => (string)($t['createTime'] ?? ''),
+		'state' => (string)($t['state'] ?? ''), 'quiesced' => (bool)($t['quiesced'] ?? false), 'current' => $id !== '' && $id === $current, 'parent' => $parent, 'depth' => $depth ];
+	    self::walk((array)($t['childSnapshotList'] ?? []), $id, $depth + 1, $current, $out);
+	}
     }
 }

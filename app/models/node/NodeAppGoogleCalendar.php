@@ -57,8 +57,6 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
-
 	return [
 	    static::credentialField(),
 	    static::operationField(),
@@ -79,7 +77,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'The event id, e.g. {{ calendar.id }}, {{ calendar[0].id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_EVENT ],
-		'ui' => [ 'width' => 6, 'placeholder' => '{{ event.id }}', 'expression' => true, 'showIf' => $op(self::ON_EVENT) ],
+		'ui' => [ 'width' => 6, 'placeholder' => '{{ event.id }}', 'expression' => true, 'showIf' => static::operationIn(self::ON_EVENT) ],
 	    ],
 
 	    //list / freeBusy
@@ -90,7 +88,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'label' => 'From',
 		'default' => '',
 		'help' => 'Empty: now; ISO 8601 or 2026-10-21 14:00',
-		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'showIf' => static::operationIn(self::PERIOD) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -99,7 +97,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'label' => 'Until',
 		'default' => '',
 		'help' => 'Empty: 7 days after From',
-		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'showIf' => $op(self::PERIOD) ],
+		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'showIf' => static::operationIn(self::PERIOD) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -108,7 +106,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'label' => 'Search',
 		'default' => '',
 		'help' => 'Words in the title, description, place or guests; empty: all',
-		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: a limit (the last line)
@@ -118,7 +116,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'required' => true,
 		'default' => 50,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_RESULTS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_RESULTS ] ],
-		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'list' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 
 	    //create / update
@@ -130,7 +128,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'Update: empty leaves it as it is',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'Meeting with {{ mail.from_name }}', 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'Meeting with {{ mail.from_name }}', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -138,7 +136,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'type' => 'text',
 		'label' => 'Location',
 		'default' => '',
-		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
@@ -148,7 +146,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'ISO 8601 or 2026-10-21 14:00',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -157,7 +155,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'label' => 'End',
 		'default' => '',
 		'help' => 'Empty: Start + the duration',
-		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -168,7 +166,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'default' => 60,
 		'help' => 'When End is empty',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_DURATION, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_DURATION ] ],
-		'ui' => [ 'width' => 3, 'step' => 5, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'step' => 5, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -177,7 +175,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'label' => 'All day',
 		'default' => false,
 		'help' => 'The end day is included',
-		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
@@ -188,7 +186,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'default' => '',
 		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (util timeZone(): the app's, config app.timezone)
 		'help' => 'Of times without an offset, e.g. Europe/Bucharest',
-		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'App\'s time zone', 'expression' => true, 'showIf' => $op(array_merge(self::EDIT, self::PERIOD)) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'App\'s time zone', 'expression' => true, 'showIf' => static::operationIn(array_merge(self::EDIT, self::PERIOD)) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -198,7 +196,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'Optional, e.g. RRULE:FREQ=WEEKLY;BYDAY=MO',
 		'validate' => [ [ 'regex', 'pattern' => '^\s*(\{\{.*\}\}|(RRULE|EXRULE|RDATE|EXDATE)[:;].+)\s*$', 'skipEmpty' => true, 'message' => 'An RRULE, e.g. RRULE:FREQ=WEEKLY;COUNT=10' ] ],
-		'ui' => [ 'width' => 6, 'placeholder' => 'RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10', 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
@@ -206,7 +204,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'type' => 'switch',
 		'label' => 'Add a Google Meet link',
 		'default' => false,
-		'ui' => [ 'width' => 3, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		'key' => 'description',
@@ -214,7 +212,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'label' => 'Description',
 		'default' => '',
 		'help' => 'Text or simple HTML',
-		'ui' => [ 'rows' => 4, 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'rows' => 4, 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
@@ -223,7 +221,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'label' => 'Guests',
 		'default' => '',
 		'help' => 'Addresses separated by commas, or a list; update: added',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => $op(self::EDIT) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -234,7 +232,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'all',
 		'choices' => self::SEND_UPDATES,
-		'ui' => [ 'advanced' => true, 'width' => 6, 'showIf' => $op([ 'create', 'update', 'delete', 'quickAdd' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 6, 'showIf' => static::operationIn([ 'create', 'update', 'delete', 'quickAdd' ]) ],
 	    ],
 
 	    //quickAdd
@@ -245,7 +243,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'What and when, in English, e.g. Lunch with Ana tomorrow at 1pm',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'quickAdd' ] ],
-		'ui' => [ 'placeholder' => 'Call with {{ name }} on Friday 10am-11am', 'expression' => true, 'showIf' => $op([ 'quickAdd' ]) ],
+		'ui' => [ 'placeholder' => 'Call with {{ name }} on Friday 10am-11am', 'expression' => true, 'showIf' => static::operationIn([ 'quickAdd' ]) ],
 	    ],
 
 	    static::timeoutField(60),
@@ -257,20 +255,16 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
     //the credential of the project; a time zone that exists; an update that changes something
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$fail = function($message) use (&$valid) {
-	    $this->errors('config', $message);
-	    $valid = false;
-	};
 	$tz = trim((string)$this->cfg('timeZone', ''));
 	if ($tz !== '' && !str_contains($tz, '{{') && !in_array($tz, \DateTimeZone::listIdentifiers(), true))
-	    $fail("Time zone: unknown `{$tz}` (e.g. Europe/Bucharest, UTC)");
+	    $valid = $this->configError("Time zone: unknown `{$tz}` (e.g. Europe/Bucharest, UTC)");
 
 	if ($this->cfg('operation', 'list') === 'update') {
 	    $changed = false;
 	    foreach([ 'summary', 'start', 'end', 'location', 'description', 'attendees', 'recurrence' ] as $key)
 		$changed = $changed || trim((string)$this->cfg($key, '')) !== '';
 	    if (!$changed && !$this->cfg('meet', false))
-		$fail('Update: give at least one setting to change (title, start, end, location, description, guests, Meet, repeat)');
+		$valid = $this->configError('Update: give at least one setting to change (title, start, end, location, description, guests, Meet, repeat)');
 	}
 	return $valid;
     }

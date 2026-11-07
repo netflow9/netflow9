@@ -70,23 +70,26 @@ class NodeAppCmkStatus extends NodeAppCheckmk {
 
     //the current problems ($cmk: a util\Checkmk): hosts not UP, services at least $min; [ problems, truncated ]
     public static function problems(Checkmk $cmk, $host, $min, $withAck, $withDowntime, $max) {
-	$common = fn($hostColumn) => Checkmk::all([
-	    $host !== null ? Checkmk::eq($hostColumn, $host) : null,
-	    $withAck ? null : Checkmk::eq('acknowledged', 0),
-	    $withDowntime ? null : Checkmk::eq('scheduled_downtime_depth', 0),
-	]);
-	[ $hosts, $t1 ] = $cmk->rows('host', Checkmk::all([ Checkmk::cmp('>', 'state', 0), $common('name') ]), self::HOST_COLUMNS, $max);
-	[ $services, $t2 ] = $cmk->rows('service', Checkmk::all([ Checkmk::cmp('>=', 'state', max(1, (int)$min)), $common('host_name') ]), self::SERVICE_COLUMNS, $max);
+	[ $hosts, $t1 ] = $cmk->rows('host', Checkmk::all([ Checkmk::cmp('>', 'state', 0), self::problemFilter('name', $host, $withAck, $withDowntime) ]), self::HOST_COLUMNS, $max);
+	[ $services, $t2 ] = $cmk->rows('service', Checkmk::all([ Checkmk::cmp('>=', 'state', max(1, (int)$min)), self::problemFilter('host_name', $host, $withAck, $withDowntime) ]), self::SERVICE_COLUMNS, $max);
 	$all = array_merge(array_map(fn($r) => self::problem($r, 'host'), $hosts), array_map(fn($r) => self::problem($r, 'service'), $services));
 	return [ array_slice($all, 0, $max), $t1 || $t2 || count($all) > $max ];
     }
 
+    //CLD: 2026-11-07T01:08:03+02:00: the filters of problems() on column $hostColumn: host $host (null: any), without the acknowledged ones and those in a downtime unless asked
+    private static function problemFilter($hostColumn, $host, $withAck, $withDowntime) {
+	return Checkmk::all([
+	    $host !== null ? Checkmk::eq($hostColumn, $host) : null,
+	    $withAck ? null : Checkmk::eq('acknowledged', 0),
+	    $withDowntime ? null : Checkmk::eq('scheduled_downtime_depth', 0),
+	]);
+    }
+
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	$max = max(1, min(self::MAX_ITEMS, (int)$this->cfg('maxItems', 1000)));
-	$host = fn() => $text('host') !== '' ? self::host($value('host')) : null;
 	switch($operation) {
 	    case 'problems':
-		[ $rows, $truncated ] = self::problems($this->cmk, $host(), (int)$this->cfg('minState', '1'), (bool)$this->cfg('acknowledged', false), (bool)$this->cfg('downtime', false), $max);
+		[ $rows, $truncated ] = self::problems($this->cmk, $this->hostSetting(), (int)$this->cfg('minState', '1'), (bool)$this->cfg('acknowledged', false), (bool)$this->cfg('downtime', false), $max);
 		return $this->listResult($rows, $truncated, 'problem');
 	    case 'host':
 		$h = self::host($value('host'));
@@ -101,7 +104,7 @@ class NodeAppCmkStatus extends NodeAppCheckmk {
 	    case 'services':
 		$state = (string)$this->cfg('state', 'all');
 		$filter = Checkmk::all([
-		    $host() !== null ? Checkmk::eq('host_name', $host()) : null,
+		    $this->hostSetting() !== null ? Checkmk::eq('host_name', $this->hostSetting()) : null,
 		    $state === 'problems' ? Checkmk::cmp('>', 'state', 0) : (ctype_digit($state) ? Checkmk::eq('state', (int)$state) : null),
 		]);
 		[ $list, $summary ] = $this->rowsOf('service', $filter, self::SERVICE_COLUMNS, 'service');
@@ -122,5 +125,10 @@ class NodeAppCmkStatus extends NodeAppCheckmk {
 		return $this->rowsOf($table, $filter, $columns ?: ($table === 'host' ? self::HOST_COLUMNS : self::SERVICE_COLUMNS), $table === 'host' ? 'host' : 'service');
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:08:03+02:00: the setting Host; null when empty (all the hosts)
+    private function hostSetting() {
+	return $this->settingText('host') !== '' ? self::host($this->settingOf('host')) : null;
     }
 }

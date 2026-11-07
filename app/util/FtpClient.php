@@ -175,24 +175,11 @@ class FtpClient {
     //the entries of $folder (no `.` / `..`)
     public function list($folder) {
 	$folder = self::normalize($folder);
-	$read = function($command = null) use ($folder) {
-	    $data = '';
-	    $opts = [ CURLOPT_RETURNTRANSFER => false, CURLOPT_WRITEFUNCTION => function($ch, $chunk) use (&$data) {
-		if (strlen($data) + strlen($chunk) > self::MAX_LISTING)
-		    return 0;
-		$data .= $chunk;
-		return strlen($chunk);
-	    } ];
-	    if ($command !== null)
-		$opts[CURLOPT_CUSTOMREQUEST] = $command;
-	    $this->request($this->url($folder, true), $opts);
-	    return $data;
-	};
 
 	if (!$this->isSftp()) {
 	    //MLSD (RFC 3659): exact times; servers without it answer 500 / 502
 	    try {
-		$entries = self::parseMlsd($read('MLSD'), $folder);
+		$entries = self::parseMlsd($this->readListing($folder, 'MLSD'), $folder);
 		if ($entries !== null)
 		    return $entries;
 	    } catch (\RuntimeException $e) {
@@ -200,7 +187,22 @@ class FtpClient {
 		    throw $e;
 	    }
 	}
-	return self::parseList($read(), $folder);
+	return self::parseList($this->readListing($folder), $folder);
+    }
+
+    //CLD: 2026-11-07T01:14:34+02:00: the listing of $folder ($command: MLSD; null: LIST), at most MAX_LISTING bytes
+    private function readListing($folder, $command = null) {
+	$data = '';
+	$opts = [ CURLOPT_RETURNTRANSFER => false, CURLOPT_WRITEFUNCTION => function($ch, $chunk) use (&$data) {
+	    if (strlen($data) + strlen($chunk) > self::MAX_LISTING)
+		return 0;
+	    $data .= $chunk;
+	    return strlen($chunk);
+	} ];
+	if ($command !== null)
+	    $opts[CURLOPT_CUSTOMREQUEST] = $command;
+	$this->request($this->url($folder, true), $opts);
+	return $data;
     }
 
     //[ size, modified ] of file $path (null when the server does not tell)

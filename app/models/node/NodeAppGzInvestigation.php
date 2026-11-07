@@ -43,27 +43,31 @@ class NodeAppGzInvestigation extends NodeAppGravityZone {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$endpoint = fn() => [ 'endpointId' => self::id($value('endpointId'), 'Endpoint') ];
 	switch($operation) {
 	    case 'command':
 		$command = \util\Expression::toText($value('command'));
 		if (trim($command) === '')
 		    throw new \RuntimeException('Command: empty');
-		return self::done($this->rpc(self::AREA, 'startCommandExecutionOnEndpoint', $endpoint() + [ 'command' => $command ]), 'command started on ' . $text('endpointId'));
+		return self::done($this->rpc(self::AREA, 'startCommandExecutionOnEndpoint', $this->endpointRef() + [ 'command' => $command ]), 'command started on ' . $text('endpointId'));
 	    case 'package':
-		return self::done($this->rpc(self::AREA, 'collectInvestigationPackage', $endpoint()), 'package collection started on ' . $text('endpointId'));
+		return self::done($this->rpc(self::AREA, 'collectInvestigationPackage', $this->endpointRef()), 'package collection started on ' . $text('endpointId'));
 	    case 'retrieve':
 		if ($text('filePath') === '')
 		    throw new \RuntimeException('File: empty');
-		return self::done($this->rpc(self::AREA, 'startRetrieveInvestigationFileFromEndpoint', $endpoint() + [ 'filePath' => $text('filePath') ]), 'retrieving ' . $text('filePath'));
+		return self::done($this->rpc(self::AREA, 'startRetrieveInvestigationFileFromEndpoint', $this->endpointRef() + [ 'filePath' => $text('filePath') ]), 'retrieving ' . $text('filePath'));
 	    case 'fileUrl':
 		return self::done($this->rpc(self::AREA, 'getInvestigationFileUrl', [ 'taskId' => self::id($value('taskId'), 'Task') ]), 'address of task ' . $text('taskId'));
 	    case 'kill':
 		$pid = $text('processId');
 		if (!ctype_digit($pid))
 		    throw new \RuntimeException("Process: not a process id: `{$pid}`");
-		return self::done($this->rpc(self::AREA, 'killProcess', $endpoint() + [ 'processId' => (int)$pid ]), "process {$pid} killed on " . $text('endpointId'));
+		return self::done($this->rpc(self::AREA, 'killProcess', $this->endpointRef() + [ 'processId' => (int)$pid ]), "process {$pid} killed on " . $text('endpointId'));
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: the endpoint of the setting Endpoint
+    private function endpointRef() {
+	return [ 'endpointId' => self::id($this->settingOf('endpointId'), 'Endpoint') ];
     }
 }

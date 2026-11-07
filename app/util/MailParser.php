@@ -326,15 +326,6 @@ class MailParser {
 	$inQuote = false;
 	$depth = 0;         //comment nesting
 
-	$flush = function() use (&$addresses, &$token, &$angle, &$name) {
-	    $email = trim($angle ?? $token);
-	    $display = trim($angle !== null ? $name . $token : $name);
-	    if ($email !== '' && strpos($email, '@') !== false)
-		$addresses[] = [ 'name' => self::decodeHeader(trim($display, " \t\"")), 'email' => $email ];
-	    $token = '';
-	    $angle = null;
-	    $name = '';
-	};
 
 	for ($i = 0; $i < $len; $i++) {
 	    $c = $value[$i];
@@ -378,14 +369,25 @@ class MailParser {
 		    break;
 		case ',':
 		case ';':
-		    $flush();
+		    self::flushAddress($addresses, $token, $angle, $name);
 		    break;
 		default:
 		    $token .= $c;
 	    }
 	}
-	$flush();
+	self::flushAddress($addresses, $token, $angle, $name);
 	return $addresses;
+    }
+
+    //CLD: 2026-11-07T01:14:34+02:00: the address read so far ($token, $angle: the part in <>, $name) added to $addresses when it has an @; the three emptied
+    private static function flushAddress(array &$addresses, &$token, &$angle, &$name) {
+	$email = trim($angle ?? $token);
+	$display = trim($angle !== null ? $name . $token : $name);
+	if ($email !== '' && strpos($email, '@') !== false)
+	    $addresses[] = [ 'name' => self::decodeHeader(trim($display, " \t\"")), 'email' => $email ];
+	$token = '';
+	$angle = null;
+	$name = '';
     }
 
     /* ---------- content ---------- */

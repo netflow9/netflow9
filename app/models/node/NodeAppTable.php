@@ -320,7 +320,6 @@ class NodeAppTable extends \models\wf\WfNode {
 	    $valid = false;
 	}
 	$columns = $table ? $table->columns() : null;
-	$known = fn($c) => $columns === null || in_array($c, self::SYSTEM_COLUMNS, true) || isset($columns[$c]);
 
 	//CLD: 2026-10-18T10:45:00+03:00: the rows (required fields, operator, expressions) are checked and normalized by parent::validates (nested fields, validated when the
 	//operation uses them); here the columns they name
@@ -330,7 +329,7 @@ class NodeAppTable extends \models\wf\WfNode {
 		continue;
 	    foreach(array_values(is_array($this->cfg($key)) ? $this->cfg($key) : []) as $i => $row) {
 		$column = is_array($row) ? (string)($row['column'] ?? '') : '';
-		if ($column !== '' && !$known($column)) {
+		if ($column !== '' && !self::knownColumn($columns, $column)) {
 		    $this->errors('config', "{$label} " . ($i + 1) . ": the table has no column `{$column}`");
 		    $valid = false;
 		}
@@ -340,12 +339,17 @@ class NodeAppTable extends \models\wf\WfNode {
 	$checks = [ 'sortBy' => [ 'query' ], 'upsertKey' => [ 'upsert' ] ];
 	foreach($checks as $key => $ops) {
 	    $column = trim((string)$this->cfg($key, ''));
-	    if (in_array($op, $ops, true) && $column !== '' && !$known($column)) {
+	    if (in_array($op, $ops, true) && $column !== '' && !self::knownColumn($columns, $column)) {
 		$this->errors('config', (string)static::configForm()->schema[$key]->label . ": the table has no column `{$column}`");
 		$valid = false;
 	    }
 	}
 	return $valid;
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: whether column $c is one of the table's ($columns; null: not known, any) or a system column
+    private static function knownColumn($columns, $c) {
+	return $columns === null || in_array($c, self::SYSTEM_COLUMNS, true) || isset($columns[$c]);
     }
 
     //data table $id of account $aid and project $project, or null
@@ -391,7 +395,7 @@ class NodeAppTable extends \models\wf\WfNode {
 	$aid = $this->exec->aid;
 	//CLD: 2026-10-13T15:24:28+03:00: + the project variables (vars)
 	$vars = $this->exec->expressionVariables();
-	$render = fn($v) => \util\Expression::render((string)$v, $vars);
+	$this->renderVars = $vars;
 	$label = $table->name;
 
 	switch($op) {
@@ -403,7 +407,7 @@ class NodeAppTable extends \models\wf\WfNode {
 		return [ 'columns' => $list ];
 
 	    case 'query':
-		$query = \models\datatable\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $render, $aid);
+		$query = \models\datatable\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $this->renderValue(...), $aid);
 		$options = [ 'skip' => max(0, (int)$this->cfg('offset', 0)), 'limit' => max(1, min(self::MAX_LIMIT, (int)$this->cfg('limit', 100))) ];
 		$sortBy = trim((string)$this->cfg('sortBy', ''));
 		if ($sortBy !== '')
@@ -416,13 +420,13 @@ class NodeAppTable extends \models\wf\WfNode {
 		return [ 'rows' => $rows, 'count' => count($rows), 'total' => $total ];
 
 	    case 'get':
-		$row = $this->rowById($iname, $render($this->cfg('rowId', '')), $aid, false);
+		$row = $this->rowById($iname, $this->renderValue($this->cfg('rowId', '')), $aid, false);
 		$this->exec->log($this->wfid, "table {$label}: get -> " . ($row ? 'found' : 'not found'));
 		return [ 'row' => $row ? \models\datatable\DataTableDef::rowValue($row, $columns) : null ];
 
 	    case 'insert':
 		$row = \V::app()->om->create($iname, [ 'aid' => $aid ]);
-		\models\datatable\DataTableDef::assignRow($row, $this->dataValues($columns, $render));
+		\models\datatable\DataTableDef::assignRow($row, $this->dataValues($columns));
 		//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of rows in a data table (util\Tiers; the step fails with the message)
 		\util\Tiers::check($aid, 'datatable_records', 1, $iname);
 		$row->save();
@@ -430,7 +434,7 @@ class NodeAppTable extends \models\wf\WfNode {
 		return [ 'row' => \models\datatable\DataTableDef::rowValue($row, $columns) ];
 
 	    case 'insertMany':
-		$list = $render($this->cfg('rows', ''));
+		$list = $this->renderValue($this->cfg('rows', ''));
 		if (!is_array($list) || !array_is_list($list))
 		    throw new \ErrorException('Rows: the expression must give a list of objects');
 		if (count($list) > self::MAX_INSERT)
@@ -456,7 +460,7 @@ class NodeAppTable extends \models\wf\WfNode {
 		return [ 'inserted' => $inserted ];
 
 	    case 'upsert':
-		$values = $this->dataValues($columns, $render);
+		$values = $this->dataValues($columns);
 		$key = trim((string)$this->cfg('upsertKey', ''));
 		if (!isset($columns[$key]))
 		    throw new \ErrorException("Match by column: the table has no column `{$key}`");
@@ -475,16 +479,16 @@ class NodeAppTable extends \models\wf\WfNode {
 		return [ 'row' => \models\datatable\DataTableDef::rowValue($row, $columns), 'operation' => $operation ];
 
 	    case 'update':
-		$row = $this->rowById($iname, $render($this->cfg('rowId', '')), $aid, true);
-		\models\datatable\DataTableDef::assignRow($row, $this->dataValues($columns, $render));
+		$row = $this->rowById($iname, $this->renderValue($this->cfg('rowId', '')), $aid, true);
+		\models\datatable\DataTableDef::assignRow($row, $this->dataValues($columns));
 		$row->save();
 		$this->exec->log($this->wfid, "table {$label}: updated row {$row->_id}");
 		return [ 'row' => \models\datatable\DataTableDef::rowValue($row, $columns) ];
 
 	    case 'updateMany':
-		$values = $this->dataValues($columns, $render);
+		$values = $this->dataValues($columns);
 		$updated = 0;
-		foreach(\V::app()->om->find($iname, \models\datatable\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $render, $aid)) as $row) {
+		foreach(\V::app()->om->find($iname, \models\datatable\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $this->renderValue(...), $aid)) as $row) {
 		    \models\datatable\DataTableDef::assignRow($row, $values, "row {$row->_id}: ");
 		    $row->save();
 		    $updated++;
@@ -493,7 +497,7 @@ class NodeAppTable extends \models\wf\WfNode {
 		return [ 'updated' => $updated ];
 
 	    case 'delete':
-		$row = $this->rowById($iname, $render($this->cfg('rowId', '')), $aid, false);
+		$row = $this->rowById($iname, $this->renderValue($this->cfg('rowId', '')), $aid, false);
 		if ($row)
 		    $row->delete();
 		$this->exec->log($this->wfid, "table {$label}: deleted " . ($row ? 1 : 0) . ' row');
@@ -501,7 +505,7 @@ class NodeAppTable extends \models\wf\WfNode {
 
 	    case 'deleteMany':
 		$deleted = 0;
-		foreach(\V::app()->om->find($iname, \models\datatable\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $render, $aid)) as $row) {
+		foreach(\V::app()->om->find($iname, \models\datatable\DataTableDef::conditionsQuery((array)$this->cfg('filter', []), $this->cfg('match', 'all'), $columns, $this->renderValue(...), $aid)) as $row) {
 		    $row->delete();
 		    $deleted++;
 		}
@@ -509,6 +513,14 @@ class NodeAppTable extends \models\wf\WfNode {
 		return [ 'deleted' => $deleted ];
 	}
 	throw new \ErrorException("unknown operation `{$op}`");
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: the variables of renderValue(), set by run()
+    private $renderVars = [];
+
+    //CLD: 2026-11-07T01:09:58+02:00: value $v with its {{ }} rendered against the run's variables
+    private function renderValue($v) {
+	return \util\Expression::render((string)$v, $this->renderVars);
     }
 
     //row $id of the table (account $aid); null when missing, or \ErrorException when $required
@@ -521,7 +533,7 @@ class NodeAppTable extends \models\wf\WfNode {
     }
 
     //the row data: [ column => value ] (expressions evaluated; a single one keeps its type)
-    protected function dataValues(array $columns, \Closure $render) {
+    protected function dataValues(array $columns) {
 	$values = [];
 	foreach((array)$this->cfg('data', []) as $item) {
 	    $c = trim((string)($item['column'] ?? ''));
@@ -529,7 +541,7 @@ class NodeAppTable extends \models\wf\WfNode {
 		continue;
 	    if (!isset($columns[$c]))
 		throw new \ErrorException("Values: the table has no column `{$c}`");
-	    $values[$c] = $render($item['value'] ?? '');
+	    $values[$c] = $this->renderValue($item['value'] ?? '');
 	}
 	if (!$values)
 	    throw new \ErrorException('Values: give at least one value');

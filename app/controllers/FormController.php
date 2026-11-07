@@ -44,12 +44,6 @@ class FormController extends \sys\BaseController {
 	$token = (string)($req->query['id'] ?? '');
 	$post = $req->is('post');
 
-	//CLD: 2026-10-18T18:37:53+03:00: + $resp (for sendJSON)
-	$fail = function($status, $message) use ($post, $resp) {
-	    if ($post)
-		$resp->sendJSON([ 'ok' => false, 'error' => $message ], true, $status);
-	    \V::app()->error($status, $message);
-	};
 
 	//the published step of the token
 	//CLD: 2026-10-21T20:10:00+03:00: the link's token (TriggerToken) may be of another account than a signed-in user's: looked up across the accounts (ObjectManager
@@ -66,7 +60,7 @@ class FormController extends \sys\BaseController {
 		$node = $n;
 	}
 	if (empty($node))
-	    $fail(404, 'This form does not exist.');
+	    $this->fail(404, 'This form does not exist.');
 
 	$cfg = $node['config'];
 	$public = ($cfg['access'] ?? 'members') === 'public';
@@ -76,18 +70,18 @@ class FormController extends \sys\BaseController {
 	if (!$public) {
 	    if ($guest) {
 		if ($post)
-		    $fail(401, 'Log in to send this form.');
+		    $this->fail(401, 'Log in to send this form.');
 		\V::app()->user->setReturnUrl('/form/' . $token);
 		$this->redirect(\V::app()->user->getLoginUrl());
 	    }
 	    if ((string)(\V::app()->config('rt.account')->_id ?? '') !== (string)$link->aid || !\models\Project::isMember($link->project, $link->aid, \V::app()->user->_id))
-		$fail(403, 'This form is for the members of its project.');
+		$this->fail(403, 'This form is for the members of its project.');
 	}
 	//CLD: 2026-10-21T20:10:00+03:00: also for a signed-in user of another account (a public form: the members-only ones were refused above): the form runs in its own account
 	if ($guest || (string)(\V::app()->config('rt.account')->_id ?? '') !== (string)$link->aid)
 	    \V::app()->var('rt.account', \V::app()->om->findById('Account', $link->aid));
 	if ($wf->status !== \models\Workflow::PUBLISHED)
-	    $fail(409, 'This form is not available now.');
+	    $this->fail(409, 'This form is not available now.');
 
 	$form = \util\SmartForm::normalize($cfg['form'] ?? []);
 	$title = trim((string)($node['title'] ?? '')) !== '' ? (string)$node['title'] : 'Form';
@@ -105,7 +99,7 @@ class FormController extends \sys\BaseController {
 	if ($errors)
 	    $resp->sendJSON([ 'ok' => false, 'error' => 'Some fields need attention.', 'errors' => $errors ], true, 422);
 	if (array_filter($live->validateFlow(), fn($i) => $i['level'] == 'error'))
-	    $fail(409, 'This form cannot be sent now (its workflow has errors).');
+	    $this->fail(409, 'This form cannot be sent now (its workflow has errors).');
 
 	$variable = \util\Validator::isIdentifier((string)($cfg['variable'] ?? '')) ? (string)$cfg['variable'] : 'form';
 	$user = $guest ? null : [ 'id' => (string)\V::app()->user->_id, 'name' => (string)\V::app()->user->name, 'email' => (string)\V::app()->user->email ];
@@ -116,5 +110,12 @@ class FormController extends \sys\BaseController {
 	$exe->queue();
 
 	$resp->sendJSON([ 'ok' => true, 'message' => (string)($cfg['message'] ?? 'Thank you, your answers were sent.') ]);
+    }
+
+    //CLD: 2026-11-07T01:04:46+02:00: refused with $status: a JSON answer to the form's post, else the error page
+    private function fail($status, $message) {
+	if (\V::app()->request->is('post'))
+	    \V::app()->response->sendJSON([ 'ok' => false, 'error' => $message ], true, $status);
+	\V::app()->error($status, $message);
     }
 }

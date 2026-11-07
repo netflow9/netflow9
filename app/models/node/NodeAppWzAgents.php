@@ -63,13 +63,9 @@ class NodeAppWzAgents extends NodeAppWazuh {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$group = fn() => self::group($value('group'));
-	$filter = function() use ($text) {
-	    return [ 'search' => $text('search'), 'status' => array_values(array_intersect(array_map('strval', (array)$this->cfg('status', [])), array_keys(self::STATUSES))) ];
-	};
 	switch($operation) {
 	    case 'list':
-		return $this->listOf('/agents', $filter() + ($text('group') !== '' ? [ 'group' => $group() ] : []), 'agent');
+		return $this->listOf('/agents', $this->agentFilter() + ($text('group') !== '' ? [ 'group' => $this->groupSetting() ] : []), 'agent');
 	    case 'get':
 		$id = self::agentId($value('agent'));
 		$a = $this->one('/agents', "agent {$id}", [ 'agents_list' => $id ]);
@@ -100,23 +96,33 @@ class NodeAppWzAgents extends NodeAppWazuh {
 	    case 'groups':
 		return $this->listOf('/groups', [ 'search' => $text('search') ], 'group');
 	    case 'groupAgents':
-		return $this->listOf('/groups/' . $group() . '/agents', $filter(), 'agent');
+		return $this->listOf('/groups/' . $this->groupSetting() . '/agents', $this->agentFilter(), 'agent');
 	    case 'assign':
 	    case 'unassign':
 		$ids = self::agentList($value('agents'));
-		$g = $group();
+		$g = $this->groupSetting();
 		if ($ids === null && $operation === 'unassign')
 		    $ids = [ 'all' ];
 		return $this->change($operation === 'assign' ? 'PUT' : 'DELETE', '/agents/group', ($ids === null ? [] : [ 'agents_list' => $ids ]) + [ 'group_id' => $g ], null,
 		    $operation === 'assign' ? "agents added to {$g}" : "agents removed from {$g}");
 	    case 'groupCreate':
-		$g = $group();
+		$g = $this->groupSetting();
 		$r = $this->wz->request('POST', '/groups', self::WAIT, array_replace([ 'group_id' => $g ], $this->extraParams()));
 		return [ [ 'group' => $g, 'message' => (string)($r['message'] ?? '') ], "group {$g} created" ];
 	    case 'groupDelete':
-		$g = $group();
+		$g = $this->groupSetting();
 		return $this->change('DELETE', '/groups', [ 'groups_list' => $g ], null, "group {$g} deleted, agents moved");
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:10:30+02:00: the setting Group (a group name)
+    private function groupSetting() {
+	return self::group($this->settingOf('group'));
+    }
+
+    //CLD: 2026-11-07T01:10:30+02:00: the API's filters of the settings Search and Status
+    private function agentFilter() {
+	return [ 'search' => $this->settingText('search'), 'status' => array_values(array_intersect(array_map('strval', (array)$this->cfg('status', [])), array_keys(self::STATUSES))) ];
     }
 }

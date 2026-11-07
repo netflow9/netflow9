@@ -61,7 +61,6 @@ class NodeAppProxmoxSnapshots extends NodeAppProxmox {
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	$g = $this->guest($value('guest'), 'VM or container');
 	$what = ($g['type'] === 'lxc' ? 'container ' : 'VM ') . $g['vmid'];
-	$r = fn($name, $upid) => [ 'vmid' => $g['vmid'], 'node' => $g['node'], 'type' => $g['type'], 'snapshot' => $name, 'task' => $upid ];
 	switch($operation) {
 	    case 'list':
 		return $this->listResult($this->snapshots($g), 'snapshot');
@@ -71,13 +70,13 @@ class NodeAppProxmoxSnapshots extends NodeAppProxmox {
 		if ($g['type'] === 'qemu' && $this->cfg('vmstate', false))
 		    $p['vmstate'] = true;
 		[ $upid, $done ] = $this->task($this->call('POST', "{$g['path']}/snapshot", $p), "the snapshot {$name} of {$what}");
-		return [ $r($name, $upid), "{$what}: snapshot {$name} " . ($done ? 'created' : 'being created') ];
+		return [ self::snapshotResult($g, $name, $upid), "{$what}: snapshot {$name} " . ($done ? 'created' : 'being created') ];
 	    case 'rollback':
 	    case 'delete':
 		$name = self::snapName($text('snapshot'));
 		$upid = $operation === 'rollback' ? $this->call('POST', "{$g['path']}/snapshot/{$name}/rollback") : $this->call('DELETE', "{$g['path']}/snapshot/{$name}");
 		[ $upid, $done ] = $this->task($upid, ($operation === 'rollback' ? 'the rollback' : 'the deletion') . " of {$what} to snapshot {$name}");
-		return [ $r($name, $upid), "{$what}: " . ($operation === 'rollback' ? ($done ? "rolled back to {$name}" : "rolling back to {$name}") : ($done ? "snapshot {$name} deleted" : "snapshot {$name} being deleted")) ];
+		return [ self::snapshotResult($g, $name, $upid), "{$what}: " . ($operation === 'rollback' ? ($done ? "rolled back to {$name}" : "rolling back to {$name}") : ($done ? "snapshot {$name} deleted" : "snapshot {$name} being deleted")) ];
 	    case 'prune':
 		$days = self::number($text('days'), 'Older than (days)', 0, 36500);
 		$pattern = $text('pattern');
@@ -92,6 +91,11 @@ class NodeAppProxmoxSnapshots extends NodeAppProxmox {
 		return [ [ 'removed' => $removed, 'count' => count($removed) ], "{$what}: " . \util\Format::plural(count($removed), 'snapshot') . " older than {$days} days deleted" ];
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: the result of a snapshot operation of guest $g: snapshot $name, task $upid
+    private static function snapshotResult($g, $name, $upid) {
+	return [ 'vmid' => $g['vmid'], 'node' => $g['node'], 'type' => $g['type'], 'snapshot' => $name, 'task' => $upid ];
     }
 
     //a snapshot's name, as Proxmox takes it

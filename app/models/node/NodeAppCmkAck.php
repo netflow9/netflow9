@@ -53,48 +53,28 @@ class NodeAppCmkAck extends NodeAppCheckmk {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$comment = function() use ($text) {
-	    $c = mb_substr($text('comment'), 0, 1000);
-	    if ($c === '')
-		throw new \RuntimeException('Comment: empty');
-	    return $c;
-	};
-	$ack = fn() => [ 'sticky' => (bool)$this->cfg('sticky', true), 'notify' => (bool)$this->cfg('notify', false), 'persistent' => (bool)$this->cfg('persistent', false) ];
-	$services = function() use ($value) {
-	    $list = self::lines($value('services'));
-	    if (!$list)
-		throw new \RuntimeException('Services: empty');
-	    return $list;
-	};
-	$window = function() use ($text) {
-	    $start = $text('start') === '' ? time() : strtotime($text('start'));
-	    if ($start === false)
-		throw new \RuntimeException('Start: not a date / time: `' . mb_substr($text('start'), 0, 64) . '`');
-	    $minutes = max(1, min(self::MAX_MINUTES, (int)$this->cfg('minutes', 60)));
-	    return [ gmdate('Y-m-d\TH:i:s\Z', $start), gmdate('Y-m-d\TH:i:s\Z', $start + $minutes * 60), $minutes ];
-	};
 	switch($operation) {
 	    case 'ackHost':
 		$h = self::host($value('host'));
-		$r = $this->change('POST', '/domain-types/acknowledge/collections/host', [ 'acknowledge_type' => 'host', 'host_name' => $h, 'comment' => $comment() ] + $ack());
+		$r = $this->change('POST', '/domain-types/acknowledge/collections/host', [ 'acknowledge_type' => 'host', 'host_name' => $h, 'comment' => $this->ackComment() ] + $this->ackOptions());
 		return [ $r, "{$h} acknowledged" ];
 	    case 'ackService':
 		$h = self::host($value('host'));
-		$list = $services();
+		$list = $this->servicesSetting();
 		foreach($list as $s)
-		    $this->change('POST', '/domain-types/acknowledge/collections/service', [ 'acknowledge_type' => 'service', 'host_name' => $h, 'service_description' => $s, 'comment' => $comment() ] + $ack());
+		    $this->change('POST', '/domain-types/acknowledge/collections/service', [ 'acknowledge_type' => 'service', 'host_name' => $h, 'service_description' => $s, 'comment' => $this->ackComment() ] + $this->ackOptions());
 		return [ [ 'host_name' => $h, 'services' => $list, 'count' => count($list) ], \util\Format::plural(count($list), 'service') . " of {$h} acknowledged" ];
 	    case 'downHost':
 		$h = self::host($value('host'));
-		[ $from, $to, $minutes ] = $window();
-		$r = $this->change('POST', '/domain-types/downtime/collections/host', [ 'downtime_type' => 'host', 'host_name' => $h, 'start_time' => $from, 'end_time' => $to, 'comment' => $comment() ]);
+		[ $from, $to, $minutes ] = $this->downtimeWindow();
+		$r = $this->change('POST', '/domain-types/downtime/collections/host', [ 'downtime_type' => 'host', 'host_name' => $h, 'start_time' => $from, 'end_time' => $to, 'comment' => $this->ackComment() ]);
 		return [ [ 'host_name' => $h, 'start' => $from, 'end' => $to, 'answer' => $r ], "{$h}: a downtime of {$minutes} min from {$from}" ];
 	    case 'downService':
 		$h = self::host($value('host'));
-		$list = $services();
-		[ $from, $to, $minutes ] = $window();
+		$list = $this->servicesSetting();
+		[ $from, $to, $minutes ] = $this->downtimeWindow();
 		$r = $this->change('POST', '/domain-types/downtime/collections/service', [ 'downtime_type' => 'service', 'host_name' => $h, 'service_descriptions' => $list,
-		    'start_time' => $from, 'end_time' => $to, 'comment' => $comment() ]);
+		    'start_time' => $from, 'end_time' => $to, 'comment' => $this->ackComment() ]);
 		return [ [ 'host_name' => $h, 'services' => $list, 'start' => $from, 'end' => $to, 'answer' => $r ],
 		    \util\Format::plural(count($list), 'service') . " of {$h}: a downtime of {$minutes} min" ];
 	    case 'downtimes':
@@ -107,6 +87,36 @@ class NodeAppCmkAck extends NodeAppCheckmk {
 		    "downtime {$id} removed" ];
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:08:03+02:00: the setting Comment (at most 1000 characters); refused when empty
+    private function ackComment() {
+	$c = mb_substr($this->settingText('comment'), 0, 1000);
+	if ($c === '')
+	    throw new \RuntimeException('Comment: empty');
+	return $c;
+    }
+
+    //CLD: 2026-11-07T01:08:03+02:00: the acknowledgement's options: sticky, notify, persistent
+    private function ackOptions() {
+	return [ 'sticky' => (bool)$this->cfg('sticky', true), 'notify' => (bool)$this->cfg('notify', false), 'persistent' => (bool)$this->cfg('persistent', false) ];
+    }
+
+    //CLD: 2026-11-07T01:08:03+02:00: the setting Services: one per line; refused when empty
+    private function servicesSetting() {
+	$list = self::lines($this->settingOf('services'));
+	if (!$list)
+	    throw new \RuntimeException('Services: empty');
+	return $list;
+    }
+
+    //CLD: 2026-11-07T01:08:03+02:00: the downtime: [ start, end (ISO 8601, UTC), minutes ] from the settings Start (empty: now) and Minutes
+    private function downtimeWindow() {
+	$start = $this->settingText('start') === '' ? time() : strtotime($this->settingText('start'));
+	if ($start === false)
+	    throw new \RuntimeException('Start: not a date / time: `' . mb_substr($this->settingText('start'), 0, 64) . '`');
+	$minutes = max(1, min(self::MAX_MINUTES, (int)$this->cfg('minutes', 60)));
+	return [ gmdate('Y-m-d\TH:i:s\Z', $start), gmdate('Y-m-d\TH:i:s\Z', $start + $minutes * 60), $minutes ];
     }
 
     //the credential's site (a downtime is removed on it)

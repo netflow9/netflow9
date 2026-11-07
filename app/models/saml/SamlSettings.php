@@ -44,16 +44,15 @@ class SamlSettings extends \sys\BaseModel {
 
     public function getSchema() {
 	$roles = self::roleChoices();
-	$field = fn($def) => $def + [ 'perm:read' => 'everybody', 'perm:update' => 'everybody' ];
 	$fields = [
-	    $field([
+	    self::withPerms([
 		'key' => 'enabled',
 		'type' => 'switch',
 		'label' => 'Sign in with SAML single sign-on',
 		'default' => false,
 		'help' => 'On: the account\'s SSO users sign in at the identity provider; other users keep their own password',
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'idpMetadataUrl',
 		'type' => 'text',
 		'label' => 'IdP metadata URL',
@@ -62,14 +61,14 @@ class SamlSettings extends \sys\BaseModel {
 		'help' => 'Optional: where Import reads the IdP\'s settings (https)',
 		'ui' => [ 'placeholder' => 'https://login.microsoftonline.com/<tenant>/federationmetadata/2007-06/federationmetadata.xml' ],
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'idpEntityId',
 		'type' => 'text',
 		'label' => 'IdP entity ID (Issuer)',
 		'default' => '',
 		'transform' => 'trim',
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'idpSsoUrl',
 		'type' => 'text',
 		'label' => 'IdP single sign-on URL',
@@ -77,7 +76,7 @@ class SamlSettings extends \sys\BaseModel {
 		'transform' => 'trim',
 		'help' => 'Its HTTP-Redirect binding',
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'idpCerts',
 		'type' => 'textarea',
 		'label' => 'IdP signing certificates',
@@ -85,7 +84,7 @@ class SamlSettings extends \sys\BaseModel {
 		'help' => 'PEM; several during a certificate rollover. The responses must be signed by one of them',
 		'ui' => [ 'rows' => 5, 'placeholder' => '-----BEGIN CERTIFICATE-----', 'spellcheck' => false ],
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'spEntityId',
 		'type' => 'text',
 		'label' => 'Service provider entity ID',
@@ -93,7 +92,7 @@ class SamlSettings extends \sys\BaseModel {
 		'transform' => 'trim',
 		'help' => 'Empty: the metadata URL of this application (shown on the right)',
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'nameIdFormat',
 		'type' => 'select',
 		'label' => 'NameID format',
@@ -103,7 +102,7 @@ class SamlSettings extends \sys\BaseModel {
 		'help' => 'What identifies a person (the NameID); its users are found by it, then by email',
 		'ui' => [ 'width' => 6 ],
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'signRequests',
 		'type' => 'switch',
 		'label' => 'Sign the requests',
@@ -111,7 +110,7 @@ class SamlSettings extends \sys\BaseModel {
 		'help' => 'The sign-in requests are signed with this application\'s certificate',
 		'ui' => [ 'width' => 6 ],
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'requireEncryption',
 		'type' => 'switch',
 		'label' => 'Assertions must be encrypted',
@@ -119,7 +118,7 @@ class SamlSettings extends \sys\BaseModel {
 		'help' => 'With this application\'s certificate (in its metadata)',
 		'ui' => [ 'width' => 6 ],
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'forceAuthn',
 		'type' => 'switch',
 		'label' => 'Ask the IdP to sign in again',
@@ -127,22 +126,22 @@ class SamlSettings extends \sys\BaseModel {
 		'help' => 'ForceAuthn: no single sign-on with the IdP\'s session',
 		'ui' => [ 'width' => 6 ],
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'allowIdpInitiated',
 		'type' => 'switch',
 		'label' => 'Accept IdP-initiated sign-ins',
 		'default' => false,
 		'help' => 'From the IdP\'s portal (an app tile), without a request from here. Less safe: a response is not tied to the browser that asked',
 	    ]),
-	    $field([ 'key' => 'attrEmail', 'type' => 'text', 'label' => 'Email attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: email, mail, ... or an email NameID',
+	    self::withPerms([ 'key' => 'attrEmail', 'type' => 'text', 'label' => 'Email attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: email, mail, ... or an email NameID',
 		'ui' => [ 'width' => 6 ] ]),
-	    $field([ 'key' => 'attrGroups', 'type' => 'text', 'label' => 'Groups attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: groups, memberOf, Role, ...',
+	    self::withPerms([ 'key' => 'attrGroups', 'type' => 'text', 'label' => 'Groups attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: groups, memberOf, Role, ...',
 		'ui' => [ 'width' => 6 ] ]),
-	    $field([ 'key' => 'attrFirstname', 'type' => 'text', 'label' => 'First name attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: firstName, givenName, ...',
+	    self::withPerms([ 'key' => 'attrFirstname', 'type' => 'text', 'label' => 'First name attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: firstName, givenName, ...',
 		'ui' => [ 'width' => 6 ] ]),
-	    $field([ 'key' => 'attrLastname', 'type' => 'text', 'label' => 'Last name attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: lastName, sn, surname, ...',
+	    self::withPerms([ 'key' => 'attrLastname', 'type' => 'text', 'label' => 'Last name attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: lastName, sn, surname, ...',
 		'ui' => [ 'width' => 6 ] ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'groupMap',
 		'type' => 'nested',
 		'multiple' => true,
@@ -157,7 +156,7 @@ class SamlSettings extends \sys\BaseModel {
 		],
 		'ui' => [ 'addLabel' => 'Add a group', 'compact' => true, 'maxRows' => 50 ],
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'defaultRole',
 		'type' => 'select',
 		'label' => 'Others',
@@ -165,21 +164,21 @@ class SamlSettings extends \sys\BaseModel {
 		'choices' => [ '' => 'Refuse the sign-in' ] + $roles,
 		'help' => 'The role of people in none of the groups above; empty: their sign-in is refused',
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'provision',
 		'type' => 'switch',
 		'label' => 'Create users on their first sign-in',
 		'default' => true,
 		'help' => 'Off: only SSO users already linked (or found by Link existing users) sign in',
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'linkExisting',
 		'type' => 'switch',
 		'label' => 'Link existing users',
 		'default' => false,
 		'help' => 'A user of the account with the person\'s email becomes an SSO user: from then on signs in only at the IdP (the password here is removed)',
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'domains',
 		'type' => 'text',
 		'label' => 'Email domains',
@@ -188,7 +187,7 @@ class SamlSettings extends \sys\BaseModel {
 		'help' => '"Sign in with SSO" sends people with an email of these domains to this IdP (commas between them)',
 		'ui' => [ 'placeholder' => 'example.com, example.ro' ],
 	    ]),
-	    $field([
+	    self::withPerms([
 		'key' => 'askTfa',
 		'type' => 'switch',
 		'label' => 'Ask this application\'s 2FA too',
@@ -200,6 +199,11 @@ class SamlSettings extends \sys\BaseModel {
 	    [ 'key' => 'spKey', 'type' => 'textarea', 'label' => 'SP private key', 'default' => '', 'encrypt' => true, 'showInForms' => false, 'perm:read' => 'nobody', 'perm:update' => 'nobody' ],
 	];
 	return array_merge($fields, $this->getSystemSchema());
+    }
+
+    //CLD: 2026-11-07T01:11:11+02:00: field $def, read and changed by everybody
+    private static function withPerms($def) {
+	return $def + [ 'perm:read' => 'everybody', 'perm:update' => 'everybody' ];
     }
 
     //the account's roles: [ id => name ] (rt.account)
