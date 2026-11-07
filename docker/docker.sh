@@ -231,6 +231,11 @@ setup() {
         *) data="$BASE/$data"; set_env DATA_DIR "$data" ;;
     esac
     make_data "$data"
+    #CLD: 2026-11-07T17:30:00+02:00: development mounts public_html read-only: the assets mount's point must be there already (public_html/assets is not in git)
+    if [ "$DEV" -eq 1 ] && [ ! -d "$BASE/public_html/assets" ]; then
+        mkdir -p "$BASE/public_html/assets"
+        [ "$(id -u)" -ne 0 ] || chown "$owner_uid:$owner_gid" "$BASE/public_html/assets"
+    fi
 
     #development: the server's nginx keeps 80 (a production value of 80 changed too)
     if [ "$DEV" -eq 1 ] && [ "$(get_env HTTP_PORT)" = "80" ]; then
