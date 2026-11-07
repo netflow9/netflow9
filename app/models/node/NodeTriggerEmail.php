@@ -217,16 +217,16 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 	$own = trim((string)($msg['message_id'] ?? ''), '<> ');
 	$ids = array_values(array_filter(array_map(fn($r) => trim((string)$r, '<> '), array_merge([ (string)($msg['in_reply_to'] ?? '') ], (array)($msg['references'] ?? [])))));
 	$C = \models\agent\AgentConversation::class;
-	$conv = $ids ? $C::coll()->findOne([ 'aid' => $live->aid, 'wf' => $live->_id, 'channel' => 'email', 'refs' => [ '$in' => $ids ], 'user_email' => $from ], \sys\Mongo::ARRAYS) : null;
+	$conv = $ids ? \V::app()->om->findOne('AgentConversation', [ 'aid' => $live->aid, 'wf' => $live->_id, 'channel' => 'email', 'refs' => [ '$in' => $ids ], 'user_email' => $from ], [ 'arrays' => true ]) : null;
 	if ($conv) {
 	    $hourAgo = new \MongoDB\BSON\UTCDateTime((time() - 3600) * 1000);
-	    if (\models\agent\AgentMessage::coll()->countDocuments([ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'user', 'at' => [ '$gte' => $hourAgo ] ]) >= self::MAX_THREAD_RATE)
+	    if (\V::app()->om->count('AgentMessage', [ 'conversation' => $conv['_id'], 'aid' => $conv['aid'], 'role' => 'user', 'at' => [ '$gte' => $hourAgo ] ]) >= self::MAX_THREAD_RATE)
 		return false;
 	}
 	$mail = [ 'to' => $from, 'subject' => (string)($msg['subject'] ?? ''), 'reply_to' => (string)$rcpt ];
 	$conv = $conv ?: $C::begin([ 'aid' => $live->aid, 'project' => $live->project, 'wf' => $live->_id, 'node' => $node['wfid'], 'channel' => 'email', 'user_name' => (string)($msg['from_name'] ?? ''), 'user_email' => $from,
 	    'who' => 'm:' . $from, 'refs' => [], 'mail' => $mail ]);
-	$C::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$set' => [ 'mail' => $mail ] ] + ($own !== '' ? [ '$push' => [ 'refs' => [ '$each' => [ $own ], '$slice' => -$C::MAX_REFS ] ] ] : []));
+	\V::app()->om->updateOne('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$set' => [ 'mail' => $mail ] ] + ($own !== '' ? [ '$push' => [ 'refs' => [ '$each' => [ $own ], '$slice' => -$C::MAX_REFS ] ] ] : []));
 	//the refs just pushed: the answer's In-Reply-To
 	$conv = $C::read($conv['_id'], $conv['aid']);
 	$text = trim((string)($msg['text'] ?? '')) !== '' ? (string)$msg['text'] : \models\node\NodeAppOutlookMail::htmlToText((string)($msg['html'] ?? ''));
@@ -239,7 +239,7 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 	    'history' => $C::historyVar($conv, $seq), 'summary' => (string)($conv['summary'] ?? '') ]);
 	$exe->setVariable('user', [ 'id' => null, 'name' => (string)($msg['from_name'] ?? ''), 'email' => $from ]);
 	$exe->save();
-	$C::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$set' => [ 'execution' => (string)$exe->_id ] ]);
+	\V::app()->om->updateOne('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$set' => [ 'execution' => (string)$exe->_id ] ]);
 	return true;
     }
 

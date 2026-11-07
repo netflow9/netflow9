@@ -383,7 +383,7 @@ class NodeAppGmail extends NodeAppGoogle {
 	//attachments: project files
 	$files = [];
 	$total = 0;
-	foreach(self::fileIds($value('attachments')) as $fid) {
+	foreach(\models\File::idsOf($value('attachments')) as $fid) {
 	    $file = \util\Validator::rule('oid', $fid) ? \V::app()->om->findOne('File', [ '_id' => $fid, 'metadata.aid' => $this->exec->aid, 'metadata.project' => $this->exec->project ]) : null;
 	    if (empty($file))
 		throw new \RuntimeException('no project file `' . mb_substr($fid, 0, 60) . '`');
@@ -568,10 +568,6 @@ class NodeAppGmail extends NodeAppGoogle {
     // ------------------------------------------------------------------------------------
     //messages
 
-    //project file ids of a setting's value: one id, a list, or ids separated by commas; files of objects ({ id } of Download File / Google Drive) too
-    public static function fileIds($value) {
-	return \models\File::idsOf($value);
-    }
 
     //a text version of an HTML body
     public static function htmlToText($html) {

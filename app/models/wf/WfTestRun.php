@@ -7,7 +7,7 @@
 	cases    [ { case, name, state (pass | fail | error | stopped), execution, trace, error, answer, tokens { input, output }, cost { usd, credits }, duration_ms,
 		   checks: [ { type, label, pass, detail } ], notes } ], in the order they ran
 	totals   { cases, passed, failed, tokens { input, output }, cost { usd, credits } }
-    Written directly to the collection (as models\agent\AgentTrace): never in the audit or execution logs. Read as arrays
+    Written through ObjectManager's updates (as models\agent\AgentTrace), not through save(): never in the audit or execution logs. Read as arrays
 */
 
 namespace models\wf;
@@ -31,10 +31,6 @@ class WfTestRun extends \sys\BaseModel {
 	], $this->getSystemSchema());
     }
 
-    public static function coll() {
-	return \V::app()->mongo->selectCollection(static::_database(), static::_collection());
-    }
-
     //the executions of a run go with it (every way of deleting one comes here)
     public function beforeDelete() {
 	parent::beforeDelete();
@@ -46,25 +42,20 @@ class WfTestRun extends \sys\BaseModel {
     public static function read($id, $wf) {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;
-	return static::fresh(static::coll()->findOne([ '_id' => new \MongoDB\BSON\ObjectId((string)$id), 'wf' => $wf->_id, 'aid' => $wf->aid ], \sys\Mongo::ARRAYS));
+	return static::fresh(\V::app()->om->findOne('WfTestRun', [ '_id' => $id, 'wf' => $wf->_id, 'aid' => $wf->aid ], [ 'arrays' => true ]));
     }
 
     //the runs of workflow $wf, newest first, without their cases
     public static function ofWorkflow($wf, $limit = self::KEEP) {
 	$list = [];
-	foreach(static::coll()->find([ 'wf' => $wf->_id, 'aid' => $wf->aid ], \sys\Mongo::ARRAYS + [ 'projection' => [ 'cases' => 0 ], 'sort' => [ '_id' => -1 ], 'limit' => $limit ]) as $run)
+	foreach(\V::app()->om->find('WfTestRun', [ 'wf' => $wf->_id, 'aid' => $wf->aid ], [ 'arrays' => true, 'projection' => [ 'cases' => 0 ], 'sort' => [ '_id' => -1 ], 'limit' => $limit ]) as $run)
 	    $list[] = static::fresh($run);
 	return $list;
     }
 
-    //the latest run of workflow $wf, without its cases; null: none
-    public static function latest($wf) {
-	return static::ofWorkflow($wf, 1)[0] ?? null;
-    }
-
     //the run before $run that finished: what a run is compared with
     public static function previous(array $run) {
-	return static::coll()->findOne([ 'wf' => $run['wf'], 'aid' => $run['aid'], '_id' => [ '$lt' => $run['_id'] ], 'state' => [ '$in' => [ 'passed', 'failed' ] ] ], \sys\Mongo::ARRAYS + [ 'sort' => [ '_id' => -1 ] ]);
+	return \V::app()->om->findOne('WfTestRun', [ 'wf' => $run['wf'], 'aid' => $run['aid'], '_id' => [ '$lt' => $run['_id'] ], 'state' => [ '$in' => [ 'passed', 'failed' ] ] ], [ 'arrays' => true, 'sort' => [ '_id' => -1 ] ]);
     }
 
     //$run as it really is: an active run whose job is gone (its worker died three times, the job was removed) is over
@@ -75,8 +66,8 @@ class WfTestRun extends \sys\BaseModel {
 	if ($jobs->countDocuments([ '_id' => $run['job'], 'state' => [ '$in' => [ 'new', 'run' ] ] ]))
 	    return $run;
 	$changes = [ 'state' => 'error', 'error' => 'the daemon stopped working on this test run', 'ended_at' => new \MongoDB\BSON\UTCDateTime() ];
-	static::coll()->updateOne([ '_id' => $run['_id'], 'state' => [ '$in' => self::ACTIVE ] ], [ '$set' => $changes ]);
-	$now = static::coll()->findOne([ '_id' => $run['_id'] ], \sys\Mongo::ARRAYS);
+	\V::app()->om->updateOne('WfTestRun', [ '_id' => $run['_id'], 'aid' => $run['aid'], 'state' => [ '$in' => self::ACTIVE ] ], [ '$set' => $changes ]);
+	$now = \V::app()->om->findOne('WfTestRun', [ '_id' => $run['_id'], 'aid' => $run['aid'] ], [ 'arrays' => true ]);
 	return $now ?: $changes + $run;
     }
 

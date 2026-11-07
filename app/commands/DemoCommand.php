@@ -362,17 +362,16 @@ class DemoCommand extends \sys\BaseController {
 	    'description' => 'The travel and expense rules every request is checked against', 'model' => trim((string)$settings->model), 'chunkSize' => 600, 'overlap' => 100 ]);
 	if (!$kb->validates() || !$kb->save())
 	    return 'knowledge base not made: ' . json_encode($kb->errors());
-	$docs = \models\kb\KnowledgeBase::documentCollection();
 	foreach(self::POLICY as $title => $text) {
 	    $s = \models\kb\KnowledgeBase::textSource($title, $title . "\n\n" . $text, '');
 	    $now = new UTCDateTime();
-	    $docs->insertOne([ 'aid' => $kb->aid, 'kb' => $kb->_id, 'key' => $s['key'], 'title' => $s['title'], 'source' => 'text', 'file' => null, 'url' => null,
-		'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'created_at' => $now, 'updated_at' => $now ]);
+	    \V::app()->om->insertOne('KbDocument', \V::app()->om->create('KbDocument', [ 'aid' => $kb->aid, 'kb' => $kb->_id, 'key' => $s['key'], 'title' => $s['title'], 'source' => 'text', 'file' => null, 'url' => null,
+		'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'created_at' => $now, 'updated_at' => $now ]));
 	    \models\kb\KnowledgeBase::indexJob([ 'aid' => (string)$kb->aid, 'project' => (string)$kb->project, 'kb' => (string)$kb->_id, 'key' => $s['key'],
 		'src' => [ 'type' => 'text', 'title' => $s['title'], 'text' => $s['text'], 'key' => $s['key'] ] ]);
 	}
 	$kb = \V::app()->om->findById('KnowledgeBase', (string)$kb->_id);
-	$errors = $docs->countDocuments([ 'kb' => $kb->_id, 'status' => 'error' ]);
+	$errors = \V::app()->om->count('KbDocument', [ 'kb' => $kb->_id, 'aid' => $kb->aid, 'status' => 'error' ]);
 	return "knowledge base Expense policy: {$kb->documents} documents, {$kb->chunks} chunks" . ($errors ? ", {$errors} not indexed" : '');
     }
 

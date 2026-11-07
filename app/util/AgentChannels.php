@@ -58,7 +58,7 @@ class AgentChannels {
 	    (self::$sink)('email', $data);
 	else
 	    \models\Job::submit('\util\EmailSend::deliver', $data, [ 'aid' => $exec->aid, 'project' => $exec->project, 'delete_on_done' => true ]);
-	\models\agent\AgentConversation::coll()->updateOne([ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$push' => [ 'refs' => [ '$each' => [ $id ], '$slice' => -\models\agent\AgentConversation::MAX_REFS ] ] ]);
+	\V::app()->om->updateOne('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$push' => [ 'refs' => [ '$each' => [ $id ], '$slice' => -\models\agent\AgentConversation::MAX_REFS ] ] ]);
     }
 
     //the reply in the Teams chat of the conversation, through the trigger's Teams credential

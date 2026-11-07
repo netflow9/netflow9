@@ -15,7 +15,6 @@
 namespace util;
 
 use models\saml\SamlSettings;
-use models\saml\SamlLink;
 
 class SamlAuth {
     const GENERIC = 'The single sign-on did not succeed';
@@ -56,7 +55,7 @@ class SamlAuth {
     public static function passwordSource($user) {
 	if (empty($user->_id) || !self::enabledFor($user->aid))
 	    return null;
-	return SamlLink::forUser($user) ? 'SSO' : null;
+	return \V::app()->om->findOne('SamlLink', [ 'aid' => $user->aid, 'user' => $user->_id ]) ? 'SSO' : null;
     }
 
     //the settings of account $aid when its SAML sign-in is on, else null
@@ -90,7 +89,7 @@ class SamlAuth {
 	    $om = \V::app()->om;
 	    $found = [];
 	    foreach($om->find('User', [ 'email' => $email, 'state' => 'active' ]) as $u) {
-		if (($s = self::enabledFor($u->aid)) && SamlLink::forUser($u))
+		if (($s = self::enabledFor($u->aid)) && $om->findOne('SamlLink', [ 'aid' => $u->aid, 'user' => $u->_id ]))
 		    $found[(string)$s->aid] = $s;
 	    }
 	    if (count($found) === 1)
@@ -195,7 +194,7 @@ class SamlAuth {
 	} else {
 	    $link = null;
 	    $existing = $profile['email'] !== '' ? $om->findOne('User', [ 'aid' => $s->aid, 'email' => $profile['email'] ]) : null;
-	    if ($existing && SamlLink::forUser($existing)) {
+	    if ($existing && $om->findOne('SamlLink', [ 'aid' => $existing->aid, 'user' => $existing->_id ])) {
 		//the user of another subject (the IdP's ID of the person changed?): not taken over
 		$trace[] = 'User: ' . $existing . ' has this email and is the SSO user of another subject';
 		return self::refuse('Your email is the one of another single sign-on user: ask the account owner');

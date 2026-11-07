@@ -37,7 +37,7 @@ class CredentialController extends \sys\BaseController {
     private function findOrError($permName) {
 	$oid = $this->getOidOrError();
 	$cred = \V::app()->om->findOne('Credential', [
-	    '_id' => \V::app()->om->to_oid($oid),
+	    '_id' => $oid,
 	    'aid' => $this->account->_id,
 	    'project' => $this->project->_id,
 	]);

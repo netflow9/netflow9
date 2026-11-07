@@ -90,7 +90,7 @@ trait ShareableTrait {
 
     //the project as "<name>" for messages and labels; '' when it no longer exists
     public static function projectName($projectId) {
-	$project = \V::app()->om->findOne('Project', [ '_id' => \V::app()->om->to_oid((string)$projectId) ]);
+	$project = \V::app()->om->findOne('Project', [ '_id' => \V::app()->om->to_oid($projectId) ]);
 	return $project ? (string)$project->name : '';
     }
 

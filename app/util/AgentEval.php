@@ -137,7 +137,7 @@ class AgentEval {
 
     //where workflow $wf's draft stands: { required, ok: the latest run passed on this draft and these cases, message, latest: the latest run without its cases, current: that run ran them }
     public static function gate($wf) {
-	$latest = WfTestRun::latest($wf);
+	$latest = WfTestRun::ofWorkflow($wf, 1)[0] ?? null;
 	$cases = \V::app()->om->count('WfTestCase', [ 'wf' => $wf->_id, 'aid' => $wf->aid ]);
 	$current = $latest && ($latest['draft_hash'] ?? '') === self::draftHash($wf->nodes) && ($latest['cases_hash'] ?? '') === self::casesHash($wf);
 	$state = (string)($latest['state'] ?? '');
@@ -178,7 +178,7 @@ class AgentEval {
 	$now = new \MongoDB\BSON\UTCDateTime();
 	$run = [ '_id' => $id, 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'state' => 'queued', 'by' => (string)$by, 'draft_hash' => self::draftHash($wf->nodes), 'cases_hash' => self::casesHash($wf),
 	    'cases' => [], 'totals' => self::emptyTotals(), 'created_at' => $now, 'updated_at' => $now ];
-	WfTestRun::coll()->insertOne($run);
+	\V::app()->om->insertOne('WfTestRun', \V::app()->om->create('WfTestRun', $run));
 	if (self::$inline) {
 	    self::job((object)[ 'run' => (string)$id, 'aid' => $wf->aid ]);
 	    return [ WfTestRun::read((string)$id, $wf), true ];
@@ -189,10 +189,10 @@ class AgentEval {
 	$jobs->deleteMany([ 'key' => $key, 'state' => [ '$in' => [ 'done', 'fail' ] ] ]);
 	$job = \models\Job::submit('\util\AgentEval::job', [ 'run' => (string)$id ], [ 'aid' => $wf->aid, 'project' => $wf->project, 'key' => $key, 'delete_on_done' => true ]);
 	if ($job === null) {
-	    WfTestRun::coll()->deleteOne([ '_id' => $id ]);
+	    \V::app()->om->deleteOne('WfTestRun', [ '_id' => $id, 'aid' => $wf->aid ]);
 	    throw new \ErrorException('a test run of this workflow is still being finished: try again in a moment');
 	}
-	WfTestRun::coll()->updateOne([ '_id' => $id ], [ '$set' => [ 'job' => $job ] ]);
+	\V::app()->om->updateOne('WfTestRun', [ '_id' => $id, 'aid' => $wf->aid ], [ '$set' => [ 'job' => $job ] ]);
 	return [ WfTestRun::read((string)$id, $wf), true ];
     }
 
@@ -200,49 +200,49 @@ class AgentEval {
     public static function job($data) {
 	$aid = \V::app()->om->to_oid($data->aid ?? null);
 	$id = \V::app()->om->to_oid($data->run ?? null);
-	$run = WfTestRun::coll()->findOne([ '_id' => $id, 'aid' => $aid ], \sys\Mongo::ARRAYS);
+	$run = $id ? \V::app()->om->findOne('WfTestRun', [ '_id' => $id, 'aid' => $aid ], [ 'arrays' => true ]) : null;
 	if (!$run || !in_array($run['state'], WfTestRun::ACTIVE, true))
 	    return;
 	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $run['wf'], 'aid' => $aid ]);
 	if (!$wf) {
-	    WfTestRun::coll()->deleteOne([ '_id' => $id ]);
+	    \V::app()->om->deleteOne('WfTestRun', [ '_id' => $id, 'aid' => $aid ]);
 	    return;
 	}
 	try {
 	    //what really runs: the draft and the cases as they are now, whatever was saved since it was queued
-	    WfTestRun::coll()->updateOne([ '_id' => $id ], [ '$set' => [ 'state' => 'running', 'draft_hash' => self::draftHash($wf->nodes), 'cases_hash' => self::casesHash($wf), 'started_at' => $run['started_at'] ?? new \MongoDB\BSON\UTCDateTime(), 'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
+	    \V::app()->om->updateOne('WfTestRun', [ '_id' => $id, 'aid' => $aid ], [ '$set' => [ 'state' => 'running', 'draft_hash' => self::draftHash($wf->nodes), 'cases_hash' => self::casesHash($wf), 'started_at' => $run['started_at'] ?? new \MongoDB\BSON\UTCDateTime(), 'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
 	    $done = array_column((array)($run['cases'] ?? []), 'case');
 	    $results = (array)($run['cases'] ?? []);
 	    foreach(\V::app()->om->find('WfTestCase', [ 'wf' => $wf->_id, 'aid' => $aid ], [ 'sort' => [ '_id' => 1 ] ]) as $case) {
 		if (in_array((string)$case->_id, $done, true))
 		    continue;
-		if (!self::stillRuns($id))
+		if (!self::stillRuns($id, $aid))
 		    return;
 		$result = self::runCase($wf, $case, $id);
 		$results[] = $result;
-		WfTestRun::coll()->updateOne([ '_id' => $id, 'state' => 'running' ], [ '$push' => [ 'cases' => $result ], '$set' => [ 'totals' => self::totals($results), 'updated_at' => new \MongoDB\BSON\UTCDateTime() ], '$unset' => [ 'current' => '' ] ]);
+		\V::app()->om->updateOne('WfTestRun', [ '_id' => $id, 'aid' => $aid, 'state' => 'running' ], [ '$push' => [ 'cases' => $result ], '$set' => [ 'totals' => self::totals($results), 'updated_at' => new \MongoDB\BSON\UTCDateTime() ], '$unset' => [ 'current' => '' ] ]);
 	    }
 	    $passed = $results && !array_filter($results, fn($r) => $r['state'] !== 'pass');
-	    WfTestRun::coll()->updateOne([ '_id' => $id, 'state' => 'running' ], [ '$set' => [ 'state' => $passed ? 'passed' : 'failed', 'ended_at' => new \MongoDB\BSON\UTCDateTime(), 'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
+	    \V::app()->om->updateOne('WfTestRun', [ '_id' => $id, 'aid' => $aid, 'state' => 'running' ], [ '$set' => [ 'state' => $passed ? 'passed' : 'failed', 'ended_at' => new \MongoDB\BSON\UTCDateTime(), 'updated_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
 	} catch (\Throwable $e) {
 	    \V::app()->log->error('AgentEval: test run ' . (string)$id . ': ' . $e->getMessage());
-	    WfTestRun::coll()->updateOne([ '_id' => $id, 'state' => [ '$in' => WfTestRun::ACTIVE ] ], [ '$set' => [ 'state' => 'error', 'error' => mb_substr($e->getMessage(), 0, self::MAX_DETAIL), 'ended_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
+	    \V::app()->om->updateOne('WfTestRun', [ '_id' => $id, 'aid' => $aid, 'state' => [ '$in' => WfTestRun::ACTIVE ] ], [ '$set' => [ 'state' => 'error', 'error' => mb_substr($e->getMessage(), 0, self::MAX_DETAIL), 'ended_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
 	}
 	WfTestRun::prune($wf);
     }
 
-    private static function stillRuns($id) {
-	return (bool)WfTestRun::coll()->countDocuments([ '_id' => $id, 'state' => 'running' ]);
+    private static function stillRuns($id, $aid) {
+	return (bool)\V::app()->om->count('WfTestRun', [ '_id' => $id, 'aid' => $aid, 'state' => 'running' ]);
     }
 
     //stop run $run: the case running is killed, its job gone when it has not started. False: it no longer runs
     public static function stop(array $run, $by = null) {
-	$n = WfTestRun::coll()->updateOne([ '_id' => $run['_id'], 'state' => [ '$in' => WfTestRun::ACTIVE ] ], [ '$set' => [ 'state' => 'stopped', 'ended_at' => new \MongoDB\BSON\UTCDateTime() ] ])->getModifiedCount();
+	$n = \V::app()->om->updateOne('WfTestRun', [ '_id' => $run['_id'], 'aid' => $run['aid'], 'state' => [ '$in' => WfTestRun::ACTIVE ] ], [ '$set' => [ 'state' => 'stopped', 'ended_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
 	if (!$n)
 	    return false;
 	if (!empty($run['job']))
 	    \V::app()->mongo->selectCollection(\models\Job::_database(), \models\Job::_collection())->deleteOne([ '_id' => $run['job'], 'state' => 'new' ]);
-	$now = WfTestRun::coll()->findOne([ '_id' => $run['_id'] ], \sys\Mongo::ARRAYS);
+	$now = \V::app()->om->findOne('WfTestRun', [ '_id' => $run['_id'], 'aid' => $run['aid'] ], [ 'arrays' => true ]);
 	if (!empty($now['current'])) {
 	    $exe = \V::app()->om->findOne('WfExecution', [ '_id' => $now['current'], 'aid' => $run['aid'] ], [ 'projection' => [ '_id' => 1, 'aid' => 1, 'state' => 1 ] ]);
 	    $exe?->kill($by);
@@ -274,7 +274,7 @@ class AgentEval {
 	    $exe->log(null, 'test case: ' . (string)$case->name);
 	    $exe->save();
 	    $result['execution'] = (string)$exe->_id;
-	    WfTestRun::coll()->updateOne([ '_id' => $runId ], [ '$set' => [ 'current' => $exe->_id ] ]);
+	    \V::app()->om->updateOne('WfTestRun', [ '_id' => $runId, 'aid' => $wf->aid ], [ '$set' => [ 'current' => $exe->_id ] ]);
 	    $state = $exe->run();
 	    //nothing in a test waits: a step that sleeps anyway does not go on
 	    if ($state === 'sleep') {

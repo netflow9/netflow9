@@ -223,7 +223,7 @@ class User extends \sys\BaseModel {
     public static function rememberUi(array $set) {
 	if (\V::app()->user->isGuest || empty($set))
 	    return;
-	\V::app()->om->updateOne('User', [ '_id' => \V::app()->om->to_oid(\V::app()->user->_id) ], [ '$set' => $set ]);
+	\V::app()->om->updateOne('User', [ '_id' => \V::app()->user->_id ], [ '$set' => $set ]);
     }
 
     public function __toString() {
@@ -243,19 +243,19 @@ class User extends \sys\BaseModel {
 	return $token;
     }
 
-    //CLD: 2026-10-24T08:20:00+03:00: new: the active user whose "forgot password" link has $token and still works, or null
+    //the active user whose "forgot password" link has $token and still works, or null
     public static function findByResetToken($token) {
 	if (!is_string($token) || $token === '')
 	    return null;
 	return \V::app()->om->findOne('User', [ 'reset_token_hash' => hash('sha256', $token), 'reset_expires_at' => [ '$gt' => new \MongoDB\BSON\UTCDateTime() ], 'state' => 'active' ]);
     }
 
-    //CLD: 2026-10-24T08:20:00+03:00: new: the user's "forgot password" link used up (after the new password is set)
+    //the user's "forgot password" link used up (after the new password is set)
     public function clearPasswordReset() {
 	\V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid ], [ '$unset' => [ 'reset_token_hash' => '', 'reset_expires_at' => '', 'reset_ip' => '' ] ]);
     }
 
-    //CLD: 2026-10-24T00:20:00+03:00: new: 2FA code $code of $secret (default: the user's own) accepted only once: refused when its time window is not newer than the last one accepted
+    //2FA code $code of $secret (default: the user's own) accepted only once: refused when its time window is not newer than the last one accepted
     //(tfa_last_slice), so a code seen by someone else can't be used again within its ~90 s (SOC2.md gap 12). The window is claimed with one atomic update (two requests
     //with the same code: only one is accepted), written directly (not save(): no audit entry for it)
     public function useTfaCode($code, $secret = null) {
