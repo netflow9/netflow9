@@ -97,7 +97,7 @@ class DataTableDef extends \sys\BaseModel {
 	\V::app()->om->resetCache();
     }
 
-    //CLD: 2026-10-11T21:28:07+03:00: a deleted table takes its columns (Field records with objectName = iname) and its rows (the collection named iname, see
+    //a deleted table takes its columns (Field records with objectName = iname) and its rows (the collection named iname, see
     //ObjectManager::registerDataTables) with it. Removed directly: the audit log keeps the table's own delete entry, not one per column.
     //The columns are matched by iname only (it holds the project id, so it is unique)
     public function beforeDelete() {
@@ -124,8 +124,8 @@ class DataTableDef extends \sys\BaseModel {
 	if (strpos($permName, '::') === false)
 	    $permName = 'DataTable::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the table's project decides
-	//CLD: 2026-11-03T14:00:00+02:00: or a share with a project where their role allows it
+	//the user's role in the table's project decides
+	//or a share with a project where their role allows it
 	return \V::app()->om->findById('Project', $this->project)?->checkAccess($userId, $permName) || $this->sharedCan($userId, $permName);
     }
 

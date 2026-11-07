@@ -14,7 +14,7 @@ class WfExecution extends \sys\BaseModel {
     public static $indexes = [
 	[ [ 'wf' => 1, '_id' => -1 ], [] ],
 	[ [ 'state' => 1, 'wake_at' => 1 ], [] ],
-	//CLD: 2026-10-30T19:00:00+02:00: the workflows a run started and waits for (Run a workflow; kill cancels them)
+	//the workflows a run started and waits for (Run a workflow; kill cancels them)
 	[ [ 'input.caller.execution' => 1 ], [ 'sparse' => true ] ],
 	//CLD: 2026-11-02T18:00:00+02:00: the runs of the conversations with agents, past the retention (models\agent\AgentConversation::prune)
 	[ [ 'aid' => 1, 'input.conversation' => 1, 'end_at' => 1 ], [ 'sparse' => true ] ],

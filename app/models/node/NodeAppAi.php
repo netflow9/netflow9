@@ -11,11 +11,12 @@
 	the model,
 	a system prompt and the prompt ({{ }} expressions),
 	the answer as text or JSON (an optional JSON schema),
-	tools the model may use - this project's tools (util\MCPTools, run directly, without permission checks: the workflow's own step) and the tools of MCP server credentials(util\McpClient) -,
-	//CLD: 2026-10-20T23:40:00+03:00: this project's tools: util\MCPTools (the MCP server's tools, util\McpServerTools; plugins may add more)
-	//CLD: 2026-10-22T22:00:00+03:00: + the installation's tool servers (`servers`: MCP servers on this machine, e.g. a web browser: util\ToolServers), those the
-	//administrator enabled for the account (hook ai:mcp-servers, localServers()); one session each per run, closed after it
-	//CLD: 2026-11-01T11:55:18+02:00: the tool servers are core (util\ToolServers: mcp.json, e.g. the web browser of scripts/playwright-mcp.sh), those enabled for the
+	tools the model may use
+	    - this project's tools (util\MCPTools, run directly, without permission checks: the workflow's own step) and the tools of MCP server credentials(util\McpClient) -,
+	    - this project's tools: util\MCPTools (the MCP server's tools, util\McpServerTools; plugins may add more)
+		+ the installation's tool servers (`servers`: MCP servers on this machine, e.g. a web browser: util\ToolServers), those the
+		administrator enabled for the account (hook ai:mcp-servers, localServers()); one session each per run, closed after it
+	    the tool servers are core (util\ToolServers: mcp.json, e.g. the web browser of scripts/playwright-mcp.sh), those enabled for the
 	//account by its owners or the super-admins
 	//CLD: 2026-11-01T21:50:00+02:00: + Rail22's own steps and workflows (util\AgentTools): in the section Integrations, a credential per integration family (`<family>Credential`: GravityZone,
 	//FortiGate, ..., a database, Gmail, ...) and the operations the model may use (`<family>Tools`; default: those that only read); Workflows (`workflows`): the project's workflows

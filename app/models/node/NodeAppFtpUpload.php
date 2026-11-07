@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T18:00:00+03:00: new step: FTP / SFTP Upload - sends project files (or a text made in the workflow) to an FTP, FTPS or SFTP server (a FTP / SFTP server
+    FTP / SFTP Upload - sends project files (or a text made in the workflow) to an FTP, FTPS or SFTP server (a FTP / SFTP server
     credential: models\credential\CredentialFtp, util\FtpClient); the other way of the FTP / SFTP step (NodeAppFtp).
 	What: project files (ids, comma separated, or {{ }} giving one, a list of ids or of file objects, e.g. {{ ftp.files }}, {{ file }}), or a text (CSV, XML, ...) with
 	    its name.

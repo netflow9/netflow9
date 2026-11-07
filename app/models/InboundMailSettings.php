@@ -1,11 +1,14 @@
 <?php
 
-//CLD: 2026-10-19T21:10:00+03:00: new: the inbound mail settings of an account, one document per account: `prefix`, the start of its addresses <prefix>-<code>@MAIL_INBOUND_DOMAIN
-//. Read by the Email (inbound) step (its address) and by Haraka (haraka/plugins/nfn.js, collection inbound_mail_settings, by aid);
-//changed on the plugin's page (InboundController::settings, linked from the Settings menu).
-//CLD: 2026-11-01T16:11:37+02:00: per account (with or without the MultiTenant plugin); changed on the Inbound mail tab of the
-//account's settings (AccountController::settings)
-//  $prefix = InboundMailSettings::prefixOf($aid);   the account's; the first time its settings are saved (Haraka reads them), with defaultPrefixFor($aid)
+/*
+    the inbound mail settings of an account, one document per account:
+	`prefix`, the start of its addresses <prefix>-<code>@MAIL_INBOUND_DOMAIN.
+	Read by the Email (inbound) step (its address) and by Haraka (haraka/plugins/nfn.js,
+	collection inbound_mail_settings, by aid);
+    per account; changed on the Inbound mail tab of the account's settings (AccountController::settings)
+    $prefix = InboundMailSettings::prefixOf($aid);
+	the account's; the first time its settings are saved (Haraka reads them), with DEFAULT_PREFIX
+*/
 
 namespace models;
 
@@ -39,23 +42,17 @@ class InboundMailSettings extends \sys\BaseModel {
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //the prefix of account $aid; an account without settings yet gets them saved now (Haraka reads them), with defaultPrefixFor($aid)
+    //the prefix of account $aid; an account without settings yet gets them saved now (Haraka reads them), with DEFAULT_PREFIX
     //CLD: 2026-10-21T11:30:00+03:00: found / created here
+    //CLD: 2026-11-07T21:37:42+02:00: new settings start with DEFAULT_PREFIX; the old account field mail_prefix is no longer read
     public static function prefixOf($aid) {
 	$om = \V::app()->om;
 	$settings = $om->findOne('InboundMailSettings', [ 'aid' => $om->to_oid($aid) ]);
 	if (!$settings) {
-	    $settings = $om->create('InboundMailSettings', [ 'aid' => $om->to_oid($aid), 'prefix' => self::defaultPrefixFor($aid) ]);
+	    $settings = $om->create('InboundMailSettings', [ 'aid' => $om->to_oid($aid), 'prefix' => self::DEFAULT_PREFIX ]);
 	    if (!$settings->validates() || !$settings->save())
 		return '';
 	}
 	return (string)$settings->prefix;
-    }
-
-    //CLD: 2026-10-21T11:30:00+03:00: the first prefix of account $aid: the one it had (the old account field mail_prefix) when valid, else DEFAULT_PREFIX
-    public static function defaultPrefixFor($aid) {
-	$account = \V::app()->om->findById('Account', (string)$aid);
-	$old = strtolower(trim((string)($account->mail_prefix ?? '')));
-	return preg_match('/^[a-z0-9]{1,30}$/', $old) ? $old : self::DEFAULT_PREFIX;
     }
 }

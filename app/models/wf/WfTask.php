@@ -24,7 +24,7 @@ class WfTask extends \sys\BaseModel {
 	'open' => 'Open',
 	'done' => 'Done',
 	'expired' => 'Expired',
-	//CLD: 2026-11-01T23:30:00+02:00: its run was killed
+	//its run was killed
 	'cancelled' => 'Cancelled',
     ];
 
@@ -106,7 +106,7 @@ class WfTask extends \sys\BaseModel {
 		'type' => 'text',
 		'label' => 'Step'
 	    ],
-	    //CLD: 2026-11-01T23:30:00+02:00: new: what the task is for (empty: a Human task; ai-approval: an AI step's tool calls), the calls it decides
+	    //new: what the task is for (empty: a Human task; ai-approval: an AI step's tool calls), the calls it decides
 	    [
 		'key' => 'kind',
 		'type' => 'text',
@@ -117,7 +117,7 @@ class WfTask extends \sys\BaseModel {
 		'type' => 'array',
 		'label' => 'Calls'
 	    ],
-	    //CLD: 2026-11-02T18:00:00+02:00: an agent's approval: the person talking to it (isFor)
+	    //an agent's approval: the person talking to it (isFor)
 	    [
 		'key' => 'not_by',
 		'type' => 'text',

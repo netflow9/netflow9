@@ -13,13 +13,10 @@ class NodeCoreIf extends \models\wf\WfNode {
     public static $outputs = 2;
     public static $outLabels = [ 'true', 'false' ];
 
-    //CLD: 2026-10-06T23:21:04+03:00: condition: <variable> <operator> <value>; output 0 = true, 1 = false
-    //CLD: 2026-10-14T20:17:14+03:00: the operators are the fields' (util\Conditions::operators(): the base field's, every one)
-
     const MAX_CONDITIONS = 20;
 
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel)
-    //CLD: 2026-10-13T09:52:24+03:00: several conditions, all or any of them (match); a condition's left side is an expression ({{ mail.subject }},
+    //model field definitions with rules (WfNode::configForm(), a sys\NestedModel)
+    //several conditions, all or any of them (match); a condition's left side is an expression ({{ mail.subject }},
     //{{ mail.to.length }}: object variables and their fields); shown as the rows of the data grid filter (editgrid layout `rows`)
     public static function configSchema() {
 	return [
@@ -34,7 +31,7 @@ class NodeCoreIf extends \models\wf\WfNode {
 		    'any' => 'Any condition holds'
 		],
 	    ],
-	    //CLD: 2026-10-18T10:20:00+03:00: a nested list (sys\fields\Field_nested): each condition cast and validated by
+	    //a nested list (sys\fields\Field_nested): each condition cast and validated by
 	    //conditionSchema(), its expressions checked (WfNode::expressionErrors), errors as "Condition <n>: <field>: <message>"; the editgrid's columns come from it
 	    [
 		'key' => 'conditions',
@@ -91,7 +88,9 @@ class NodeCoreIf extends \models\wf\WfNode {
 		    'width' => 4,
 		    'expression' => true,
 		    'placeholder' => 'value',
-		    'hideIf' => [ 'key' => 'operator', 'operator' => 'in', 'value' => [ 'empty', 'notEmpty' ], 'scope' => 'row' ]
+		    'hideIf' => [
+			'key' => 'operator', 'operator' => 'in', 'value' => [ 'empty', 'notEmpty' ], 'scope' => 'row'
+		    ]
 		] 
 	    ],
 	];

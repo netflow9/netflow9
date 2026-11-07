@@ -1,9 +1,10 @@
 <?php
 
 /*
-    CLD: 2026-10-20T16:00:00+03:00: new step: FTP / SFTP - lists or downloads files from an FTP, FTPS or SFTP server (a FTP / SFTP server credential of the project:
-    models\credential\CredentialFtp, util\FtpClient).
-	Which files: a folder (+ its subfolders, to a depth), name patterns to take and to leave (globs, comma separated, `dir/*.csv` matches the path under the folder;
+    FTP / SFTP - lists or downloads files from an FTP, FTPS or SFTP server (a FTP / SFTP server credential of the project:
+	models\credential\CredentialFtp, util\FtpClient).
+    Which files:
+	a folder (+ its subfolders, to a depth), name patterns to take and to leave (globs, comma separated, `dir/*.csv` matches the path under the folder;
 	or /regex/), modified after / before (a date, ISO 8601, or relative: -24 hours, yesterday; {{ }} expressions), a minimum age (files still being uploaded are left),
 	smallest / largest size, only new files (not taken by an earlier run of this step, or changed since: models\RemoteFileState), the order and the most files per run.
 	Download: each file saved in the project's Files (models\File; only the types that may be uploaded: the name after decryption / decompression counts), optionally
@@ -27,20 +28,43 @@ class NodeAppFtp extends \models\wf\WfNode {
     public static $label = 'FTP / SFTP';
     public static $icon = 'bi-hdd-network';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step, in Web & files
     public static $audience = 'advanced';
     public static $category = 'web';
     public static $inputs = 1;
     public static $outputs = 1;
-    public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];
+    public static $outPorts = [
+	'field' => 'onError',
+	'values' => [ 'output' => [ 'success', 'error' ] ]
+    ];
 
-    const OPERATIONS = [ 'download' => 'Download files', 'list' => 'List files (no download)' ];
-    const ORDER = [ 'oldest' => 'Oldest first', 'newest' => 'Newest first', 'name' => 'By name' ];
-    const AFTER = [ 'none' => 'Leave them on the server', 'delete' => 'Delete them from the server', 'move' => 'Move them to a folder on the server' ];
-    const DECRYPT = [ 'none' => 'No', 'ext' => 'Files with an encrypted ending (.gpg, .pgp, .asc, .enc, .p7m, ...)', 'all' => 'All files' ];
-    //CLD: 2026-10-20T20:00:00+03:00: signature checks
-    const VERIFY = [ 'none' => 'No', 'attached' => 'In the file (PGP signed, S/MIME .p7m)', 'detached' => 'A separate signature file next to it (.sig, .asc, .p7s)' ];
-    const MISSING_SIGNATURE = [ 'skip' => 'Leave the file for the next run (its signature may still be coming)', 'error' => 'An error' ];
+    const OPERATIONS = [
+	'download' => 'Download files',
+	'list' => 'List files (no download)'
+    ];
+    const ORDER = [
+	'oldest' => 'Oldest first',
+	'newest' => 'Newest first',
+	'name' => 'By name'
+    ];
+    const AFTER = [
+	'none' => 'Leave them on the server',
+	'delete' => 'Delete them from the server',
+	'move' => 'Move them to a folder on the server'
+    ];
+    const DECRYPT = [
+	'none' => 'No',
+	'ext' => 'Files with an encrypted ending (.gpg, .pgp, .asc, .enc, .p7m, ...)',
+	'all' => 'All files'
+    ];
+    const VERIFY = [
+	'none' => 'No',
+	'attached' => 'In the file (PGP signed, S/MIME .p7m)',
+	'detached' => 'A separate signature file next to it (.sig, .asc, .p7s)'
+    ];
+    const MISSING_SIGNATURE = [
+	'skip' => 'Leave the file for the next run (its signature may still be coming)',
+	'error' => 'An error'
+    ];
     //the largest signature file read
     const MAX_SIGNATURE = 1048576;
 
@@ -55,7 +79,7 @@ class NodeAppFtp extends \models\wf\WfNode {
     const FUZZ = 2 * 86400;
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$download = [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'download' ];
 
 	return [
@@ -321,7 +345,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 	];
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: the credentials of the project with capability $capability, as choices (value => label)
+    //the credentials of the project with capability $capability, as choices (value => label)
     private static function credentialOptions($capability) {
 	return array_column(static::credentialChoices($capability), 'label', 'value');
     }

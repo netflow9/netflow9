@@ -104,7 +104,7 @@ class File extends \sys\BaseModel {
 	'yml' => 'application/yaml',
     ];
 
-    //CLD: 2026-10-22T00:35:40+03:00: project file ids of a setting's value: one id, a list, or ids separated by commas; files of objects ({ id } of Download File / Google Drive) too
+    // project file ids of a setting's value: one id, a list, or ids separated by commas; files of objects ({ id } of Download File / Google Drive) too
     public static function idsOf($value) {
 	$list = is_array($value) ? (array_is_list($value) ? $value : [ $value ]) : explode(',', \util\Expression::toText($value));
 	$ids = [];

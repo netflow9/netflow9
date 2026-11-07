@@ -16,10 +16,38 @@ class LdapLink extends \sys\BaseModel {
 
     public function getSchema() {
 	$fields = [
-	    [ 'key' => 'user', 'type' => 'object', 'object' => 'User', 'label' => 'User', 'required' => true, 'perm:read' => 'everybody', 'perm:update' => 'nobody' ],
-	    [ 'key' => 'dn', 'type' => 'text', 'label' => 'DN', 'required' => true, 'perm:read' => 'everybody', 'perm:update' => 'nobody' ],
-	    [ 'key' => 'login', 'type' => 'text', 'label' => 'Directory name', 'transform' => 'tolower', 'perm:read' => 'everybody', 'perm:update' => 'nobody' ],
-	    [ 'key' => 'synced_at', 'type' => 'datetime', 'label' => 'Last sign-in', 'perm:read' => 'everybody', 'perm:update' => 'nobody' ],
+	    [
+		'key' => 'user',
+		'type' => 'object',
+		'object' => 'User',
+		'label' => 'User',
+		'required' => true,
+		'perm:read' => 'everybody',
+		'perm:update' => 'nobody'
+	    ],
+	    [
+		'key' => 'dn',
+		'type' => 'text',
+		'label' => 'DN',
+		'required' => true,
+		'perm:read' => 'everybody',
+		'perm:update' => 'nobody'
+	    ],
+	    [
+		'key' => 'login',
+		'type' => 'text',
+		'label' => 'Directory name',
+		'transform' => 'tolower',
+		'perm:read' => 'everybody',
+		'perm:update' => 'nobody'
+	    ],
+	    [
+		'key' => 'synced_at',
+		'type' => 'datetime',
+		'label' => 'Last sign-in',
+		'perm:read' => 'everybody',
+		'perm:update' => 'nobody'
+	    ],
 	];
 	return array_merge($fields, $this->getSystemSchema());
     }

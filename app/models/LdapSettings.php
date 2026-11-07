@@ -1,14 +1,15 @@
 <?php
 
-//CLD: 2026-10-21T10:00:00+03:00: new: the LDAP sign-in settings of an account, one document per account (the settings page: LdapController::settings). With `enabled`, the people of
-//the account sign in with their directory password (util\LdapAuth):
-//  - the server (LdapServerTrait: servers, encryption, bind DN, base DN, ...)
-//  - finding a person: userFilter ({login} = the name typed, escaped), the attributes of the name, email, first and last name (empty: the directory's usual ones: defaults())
-//  - the groups (groupSource: the person's memberOf, a search of the groups, or Active Directory's nested groups) and the role they give (groupMap: the first row whose group
-//    the person is in; else defaultRole; none: the sign-in is refused)
-//  - who: an LDAP user of the account (LdapLink) signs in only with LDAP; provision = people found in the directory get a user on their first sign-in; linkExisting = a user
-//    of the account with the person's email becomes an LDAP user on a directory sign-in; domains / bareLogins = which account a name without a user is looked up in
-
+/*
+    the LDAP sign-in settings of an account, one document per account (the settings page: LdapController::settings).
+    With `enabled`, the people of the account sign in with their directory password (util\LdapAuth):
+	- the server (LdapServerTrait: servers, encryption, bind DN, base DN, ...)
+	- finding a person: userFilter ({login} = the name typed, escaped), the attributes of the name, email, first and last name (empty: the directory's usual ones: defaults())
+	- the groups (groupSource: the person's memberOf, a search of the groups, or Active Directory's nested groups) and the role they give (groupMap: the first row whose group
+	    the person is in; else defaultRole; none: the sign-in is refused)
+	- who: an LDAP user of the account (LdapLink) signs in only with LDAP; provision = people found in the directory get a user on their first sign-in; linkExisting = a user
+    of the account with the person's email becomes an LDAP user on a directory sign-in; domains / bareLogins = which account a name without a user is looked up in
+*/
 namespace models;
 
 use util\LdapClient;
@@ -34,12 +35,18 @@ class LdapSettings extends \sys\BaseModel {
     //the usual names by directory: login, email, first name, last name, the user filter, the group filter (memberOf is read on both)
     const DEFAULTS = [
 	'ad' => [
-	    'attrLogin' => 'sAMAccountName', 'attrEmail' => 'mail', 'attrFirstname' => 'givenName', 'attrLastname' => 'sn',
+	    'attrLogin' => 'sAMAccountName',
+	    'attrEmail' => 'mail',
+	    'attrFirstname' => 'givenName',
+	    'attrLastname' => 'sn',
 	    'userFilter' => '(&(objectCategory=person)(objectClass=user)(|(sAMAccountName={login})(userPrincipalName={login})(mail={login}))(!(userAccountControl:1.2.840.113556.1.4.803:=2)))',
 	    'groupFilter' => '(&(objectClass=group)(member={dn}))',
 	],
 	'openldap' => [
-	    'attrLogin' => 'uid', 'attrEmail' => 'mail', 'attrFirstname' => 'givenName', 'attrLastname' => 'sn',
+	    'attrLogin' => 'uid',
+	    'attrEmail' => 'mail',
+	    'attrFirstname' => 'givenName',
+	    'attrLastname' => 'sn',
 	    'userFilter' => '(&(objectClass=person)(|(uid={login})(mail={login})))',
 	    'groupFilter' => '(|(&(objectClass=groupOfNames)(member={dn}))(&(objectClass=groupOfUniqueNames)(uniqueMember={dn}))(&(objectClass=posixGroup)(memberUid={login})))',
 	],
@@ -57,7 +64,9 @@ class LdapSettings extends \sys\BaseModel {
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
 	    ],
-	], $this->serverSchema(), [
+	],
+	$this->serverSchema(),
+	[
 	    [
 		'key' => 'userFilter',
 		'type' => 'text',
@@ -68,13 +77,19 @@ class LdapSettings extends \sys\BaseModel {
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
 	    ],
-	    [ 'key' => 'attrLogin', 'type' => 'text', 'label' => 'Name attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: sAMAccountName / uid',
+	    [
+		'key' => 'attrLogin',
+		'type' => 'text',
+		'label' => 'Name attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: sAMAccountName / uid',
 		'perm:read' => 'everybody', 'perm:update' => 'everybody', 'ui' => [ 'width' => 3 ] ],
-	    [ 'key' => 'attrEmail', 'type' => 'text', 'label' => 'Email attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: mail',
+	    [
+		'key' => 'attrEmail', 'type' => 'text', 'label' => 'Email attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: mail',
 		'perm:read' => 'everybody', 'perm:update' => 'everybody', 'ui' => [ 'width' => 3 ] ],
-	    [ 'key' => 'attrFirstname', 'type' => 'text', 'label' => 'First name attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: givenName',
+	    [
+		'key' => 'attrFirstname', 'type' => 'text', 'label' => 'First name attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: givenName',
 		'perm:read' => 'everybody', 'perm:update' => 'everybody', 'ui' => [ 'width' => 3 ] ],
-	    [ 'key' => 'attrLastname', 'type' => 'text', 'label' => 'Last name attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: sn',
+	    [
+		'key' => 'attrLastname', 'type' => 'text', 'label' => 'Last name attribute', 'default' => '', 'transform' => 'trim', 'help' => 'Empty: sn',
 		'perm:read' => 'everybody', 'perm:update' => 'everybody', 'ui' => [ 'width' => 3 ] ],
 	    [
 		'key' => 'groupSource',

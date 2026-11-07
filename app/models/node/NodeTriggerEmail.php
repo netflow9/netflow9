@@ -5,8 +5,9 @@
     <account mail_prefix>-<code>@<MAIL_INBOUND_DOMAIN>.
     Haraka (haraka/plugins/nfn.js) accepts only the addresses of the token index (TriggerToken) whose account prefix matches, stores the raw message as a project File
     and submits a job: deliver() (run by the daemon) starts the run like the IMAP trigger (models\MailPoll::startMessage: one variable, default `mail`, attachments as project files); the raw message File is deleted when the run completes, kept when it fails (afterExecutionEnd below;
+
+    always registered, available() when Haraka is found
 */
-//CLD: 2026-11-01T16:11:37+02:00: always registered, available() when Haraka is found
 namespace models\node;
 
 use models\InboundMailSettings;

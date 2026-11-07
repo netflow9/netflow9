@@ -12,7 +12,7 @@ class NodeCoreMerge extends \models\wf\WfNode {
     public static $inputs = 2;
     public static $outputs = 1;
 
-    //CLD: 2026-10-25T11:40:00+02:00: when it continues: all = once every incoming branch arrived (as before; the default, so existing steps keep working), first = at
+    //when it continues: all = once every incoming branch arrived (as before; the default, so existing steps keep working), first = at
     //the first branch (the others are taken when they arrive, nothing continues for them)
     const MODES = [
 	'all' => 'All incoming branches arrived',
@@ -33,8 +33,8 @@ class NodeCoreMerge extends \models\wf\WfNode {
 	];
     }
 
-    //CLD: 2026-10-06T23:21:04+03:00: continues once a token arrived on every incoming edge; WfExecution calls release() when nothing else can
-    //arrive (e.g. only one branch of an If reaches the Merge)
+    //continues once a token arrived on every incoming edge;
+    // WfExecution calls release() when nothing else can arrive (e.g. only one branch of an If reaches the Merge)
     //CLD: 2026-10-25T11:40:00+02:00: + mode first: the first token of a round continues, the others are taken; `arrived` holds the round's edges (not empty: the round
     //already continued); the round ends when every edge arrived, or at release()
     public function execute($edgeId = null) {

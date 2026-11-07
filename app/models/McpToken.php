@@ -1,8 +1,11 @@
 <?php
 
-//an access token of the project's MCP server (controllers\McpController, /mcp). Made in the project (menu: MCP server); the
-//token itself is shown once, only its SHA-256 hash is kept (token_hash) with its first characters (token_prefix) to recognise it. A call with the token acts
-//as the user who made it (`user`), within that user's permissions, on this project's data only. last_used_at is written directly (om->updateMany: not an audit entry)
+/*
+    an access token of the project's MCP server (controllers\McpController, /mcp).
+    Made in the project (menu: MCP server); the token itself is shown once, only its SHA-256 hash is kept (token_hash) with its first characters (token_prefix) to recognise it.
+    A call with the token acts as the user who made it (`user`), within that user's permissions, on this project's data only.
+    last_used_at is written directly (om->updateMany: not an audit entry)
+*/
 
 namespace models;
 
@@ -102,7 +105,6 @@ class McpToken extends \sys\BaseModel {
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the token's project decides
 	return \V::app()->om->findById('Project', $this->project)?->checkAccess($userId, $permName) ?? false;
     }
 

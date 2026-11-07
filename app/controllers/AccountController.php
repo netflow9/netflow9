@@ -37,7 +37,7 @@ class AccountController extends \sys\BaseController {
 	if ($tab === 'inbound') {
 	    //new settings (not saved yet) for an account without them
 	    $settings = \V::app()->om->findOne('InboundMailSettings', [ 'aid' => $account->_id ])
-		?: \V::app()->om->create('InboundMailSettings', [ 'aid' => $account->_id, 'prefix' => \models\InboundMailSettings::defaultPrefixFor($account->_id) ]);
+		?: \V::app()->om->create('InboundMailSettings', [ 'aid' => $account->_id, 'prefix' => \models\InboundMailSettings::DEFAULT_PREFIX ]);
 	    if ($req->is('post')) {
 		$settings->assign($req->data, true);
 		if ($settings->validates() && $settings->save())
