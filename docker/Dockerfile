@@ -1,5 +1,5 @@
 # CLD: 2026-11-01T19:00:00+02:00: NetFlow9's image: the app's code, PHP 8.5 (Remi, the packages of install.sh), PHP-FPM and the console; compose.yaml runs it as `app` (PHP-FPM on :9000)
-# and as `daemon` (app/v daemon::run). Built locally: docker compose build (the build context is the repository's folder, .dockerignore keeps only the app's files)
+# and as `daemon` (app/v daemon::run). Built locally: docker compose build (the build context is the repository's folder, Dockerfile.dockerignore keeps only the app's files)
 FROM almalinux:9
 
 ARG PHPV=85

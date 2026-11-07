@@ -1,9 +1,0 @@
-# CLD: 2026-11-01T19:00:00+02:00: HTTPS in the web container (no proxy in front): docker compose -f compose.yaml -f compose.tls.yaml up -d
-#   the certificate: ssl/ssl.crt and ssl/ssl.key next to compose.yaml (SSL_DIR in .env for another folder); port 80 redirects to 443
-services:
-  web:
-    ports:
-      - "${HTTPS_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443"
-    volumes:
-      - ./docker/nginx/tls.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - ${SSL_DIR:-./ssl}:/etc/nginx/ssl:ro

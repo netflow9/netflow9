@@ -1,0 +1,5 @@
+# CLD: 2026-11-07T16:00:00+02:00: the haraka image's build context (the repository's folder): only what its Dockerfile copies
+*
+!scripts/haraka
+!docker/haraka
+**/node_modules
