@@ -8,12 +8,8 @@ $back = \util\Services::adminPlugin() ? [ 'label' => 'Tool servers', 'href' => '
 ?>
 
 <div class="main-header py-2 px-3">
-    <?php
-    $exp = new \sys\html\BtnExpandSidebar();
-    echo $exp->render();
-    $bc = new \sys\html\Breadcrumbs([ 'items' => [ [ 'label' => 'Home', 'href' => '/site/index' ], $back, [ 'label' => $isNew ? 'Add a tool server' : $values['label'] ] ] ]);
-    echo $bc->render();
-    ?>
+    <?= (new \sys\html\BtnExpandSidebar())->render() ?>
+    <?= (new \sys\html\Breadcrumbs([ 'items' => [ [ 'label' => 'Home', 'href' => '/site/index' ], $back, [ 'label' => $isNew ? 'Add a tool server' : $values['label'] ] ] ]))->render() ?>
 </div>
 
 <div class="main-body p-4">

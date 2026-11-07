@@ -96,18 +96,13 @@ $script = "
 
 ?>
 <div class="main-header py-2 px-3">
-    <?php
-    $exp = new \sys\html\BtnExpandSidebar();
-    echo $exp->render();
-
-    $bc = new \sys\html\Breadcrumbs([ 'items' => [
+    <?= (new \sys\html\BtnExpandSidebar())->render() ?>
+    <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	[ 'label' => 'Data Tables', 'href' => '/datatable/list' ],
 	//CLD: 2026-10-05T20:42:44+03:00: Breadcrumbs prints labels as HTML; escape the user-editable name
 	[ 'label' => \V::app()->html->escape((string)$dt->name) ],
-    ]]);
-    echo $bc->render();
-    ?>
+    ]]))->render() ?>
     <?php //CLD: 2026-11-03T14:00:00+02:00: a table of another project, open through a share ?>
     <?php if (!$dt->isHome(\V::app()->user->crtProject)): ?>
     <div class="spacer"></div>

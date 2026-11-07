@@ -114,15 +114,11 @@ JS . "}({$connectJs});");
 ?>
 
 <div class="main-header py-2 px-3">
-    <?php
-    echo (new \sys\html\BtnExpandSidebar())->render();
-
-    $bc = new \sys\html\Breadcrumbs([ 'items' => [
+    <?= (new \sys\html\BtnExpandSidebar())->render() ?>
+    <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	[ 'label' => 'Assistant settings' ],
-    ]]);
-    echo $bc->render();
-    ?>
+    ]]))->render() ?>
 </div>
 
 <div class="main-body p-4">

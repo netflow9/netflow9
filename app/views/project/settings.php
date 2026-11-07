@@ -4,17 +4,12 @@ $this->pageTitle = 'Project: ' . $project->name;
 
 
 <div class="main-header py-2 px-3">
-    <?php
-    $exp = new \sys\html\BtnExpandSidebar();
-    echo $exp->render();
-
-    $bc = new \sys\html\Breadcrumbs([ 'items' => [
+    <?= (new \sys\html\BtnExpandSidebar())->render() ?>
+    <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	//CLD: 2026-10-05T20:42:44+03:00: Breadcrumbs prints labels as HTML; escape the user-editable name
 	[ 'label' => $project->schema['icon']->display() . ' ' . \V::app()->html->escape((string)$project->name) ],
-    ]]);
-    echo $bc->render();
-    ?>
+    ]]))->render() ?>
 </div>
 
 <div class="main-body p-4">

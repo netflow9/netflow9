@@ -51,16 +51,11 @@ $script = "
 \V::app()->cs->addPageScript($script);
 ?>
 <div class="main-header py-2 px-3">
-    <?php
-    $exp = new \sys\html\BtnExpandSidebar();
-    echo $exp->render();
-
-    $bc = new \sys\html\Breadcrumbs([ 'items' => [
+    <?= (new \sys\html\BtnExpandSidebar())->render() ?>
+    <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	[ 'label' => 'Knowledge bases' ],
-    ]]);
-    echo $bc->render();
-    ?>
+    ]]))->render() ?>
 </div>
 
 <?php if (!$settings->ready()): ?>

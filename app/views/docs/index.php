@@ -10,10 +10,8 @@ $this->pageTitle = ($shown['title'] ?? '') . ' - Documentation';
 
 ?>
 <div class="main-header py-2 px-3">
+    <?= (new \sys\html\BtnExpandSidebar())->render() ?>
     <?php
-    $exp = new \sys\html\BtnExpandSidebar();
-    echo $exp->render();
-
     $items = [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	[ 'label' => 'Documentation', 'href' => \V::app()->createUrl('/docs/index') ],
@@ -22,9 +20,8 @@ $this->pageTitle = ($shown['title'] ?? '') . ' - Documentation';
     if ($child)
 	$items[] = [ 'label' => \V::app()->html->escape($page['title']), 'href' => \controllers\DocsController::pageUrl($section, $page) ];
     $items[] = [ 'label' => \V::app()->html->escape($shown['title']) ];
-    $bc = new \sys\html\Breadcrumbs([ 'items' => $items ]);
-    echo $bc->render();
     ?>
+    <?= (new \sys\html\Breadcrumbs([ 'items' => $items ]))->render() ?>
 </div>
 
 <div class="main-body p-3 p-lg-4">

@@ -96,16 +96,11 @@ if ($sharedCount > 0) {
 
 ?>
 <div class="main-header py-2 px-3">
-    <?php
-    $exp = new \sys\html\BtnExpandSidebar();
-    echo $exp->render();
-
-    $bc = new \sys\html\Breadcrumbs([ 'items' => [
+    <?= (new \sys\html\BtnExpandSidebar())->render() ?>
+    <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	[ 'label' => 'Data Tables' ],
-    ]]);
-    echo $bc->render();
-    ?>
+    ]]))->render() ?>
     <?php //CLD: 2026-10-11T20:51:55+03:00: Import (a new table from a CSV / Excel file; DatatableController::import opens as a dialog) ?>
     <?php //CLD: 2026-10-19T22:19:24+03:00: the text in .btn-label (only the icon on phones) ?>
     <?php if (\V::app()->user->can('DataTable::create')): ?>

@@ -158,17 +158,12 @@ JS . "}({$opts});");
 ?>
 
 <div class="main-header py-2 px-3">
-    <?php
-    $exp = new \sys\html\BtnExpandSidebar();
-    echo $exp->render();
-
-    $bc = new \sys\html\Breadcrumbs([ 'items' => [
+    <?= (new \sys\html\BtnExpandSidebar())->render() ?>
+    <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	[ 'label' => 'Knowledge bases', 'href' => '/knowledge/list' ],
 	[ 'label' => (string)$kb->name ],
-    ]]);
-    echo $bc->render();
-    ?>
+    ]]))->render() ?>
     <div class="spacer"></div>
     <?php if ($canUpdate): ?>
     <a href="<?= \V::app()->createUrl('/knowledge/reindex', [ 'id' => $id ]) ?>" class="btn btn-sm btn-outline-warning py-0 me-1 kb-reindex d-none" data-confirm="Embed every chunk again with the account's model?" data-method="post" title="Embed every chunk again with the account's embedding model"><i class="bi bi-arrow-repeat me-1"></i><span class="btn-label">Re-index</span></a>

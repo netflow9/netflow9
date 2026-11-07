@@ -22,17 +22,12 @@ switch($extension) {
 }
 ?>
 <div class="main-header py-2 px-3">
-    <?php
-    $exp = new \sys\html\BtnExpandSidebar();
-    echo $exp->render();
-
-    $bc = new \sys\html\Breadcrumbs([ 'items' => [
+    <?= (new \sys\html\BtnExpandSidebar())->render() ?>
+    <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	[ 'label' => 'Files', 'href' => '/file/list' ],
 	[ 'label' => $name ],
-    ]]);
-    echo $bc->render();
-    ?>
+    ]]))->render() ?>
     <div class="spacer"></div>
     <div>
 	<!-- no-pjax: a download is not a page -->

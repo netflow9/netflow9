@@ -9,14 +9,12 @@ $exportedAt = \util\Format::datetime((string)($bundle['exported_at'] ?? ''));
 ?>
 
 <div class="main-header py-2 px-3">
-    <?php
-    echo (new \sys\html\BtnExpandSidebar())->render();
-    echo (new \sys\html\Breadcrumbs([ 'items' => [
+    <?= (new \sys\html\BtnExpandSidebar())->render() ?>
+    <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	[ 'label' => $project->schema['icon']->display() . ' ' . \V::app()->html->escape((string)$project->name), 'href' => $settingsUrl ],
 	[ 'label' => 'Import' ],
-    ]]))->render();
-    ?>
+    ]]))->render() ?>
 </div>
 
 <div class="main-body p-4">
