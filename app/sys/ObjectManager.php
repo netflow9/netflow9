@@ -307,6 +307,7 @@ class ObjectManager {
     }
 
     // $posts = $om->find('Posts', [ 'published' => true ], [ 'limit' => 10, 'skip' => 10, 'sort' => ... ]);
+    //CLD: 2026-11-07T10:15:41+02:00: option 'arrays' => true: the documents as a list of arrays, not models (no afterFind)
     public function find($objectName, $query = [], $options = []) {
 	$objDef = $this->getObjectDef($objectName);
 	if (empty($objDef))
@@ -339,6 +340,11 @@ class ObjectManager {
 	    $database = $objectClass::_database();
 
 
+	if (!empty($options['arrays'])) {
+	    unset($options['arrays'], $options['modelOptions']);
+	    return iterator_to_array(\V::app()->mongo->selectCollection($database, $collection)->find($query, $options), false);
+	}
+
 	$modelOptions = $options['modelOptions'] ?? [];
 	unset($options['modelOptions']);
 	$modelOptions['collection'] = $collection;
@@ -348,6 +354,7 @@ class ObjectManager {
     }
 
     // $post = $om->findOne('Posts', [ 'published' => true ]);
+    //CLD: 2026-11-07T10:15:41+02:00: option 'arrays' => true: the document as an array, not a model (no afterFind)
     public function findOne($objectName, $query = [], $options = []) {
 	$objDef = $this->getObjectDef($objectName);
 	if (empty($objDef))
@@ -381,11 +388,15 @@ class ObjectManager {
 	if (empty($database))
 	    $database = $objectClass::_database();
 
+	$arrays = !empty($options['arrays']);
+	unset($options['arrays']);
 	$__query = new \MongoDB\Driver\Query($query, [ 'limit' => 1 ] + $options);
 	$cursor = \V::app()->mongo->getManager()->executeQuery($database . '.' . $collection, $__query);
 	$cursor->setTypeMap(\V::app()->mongo->driverOptions['typeMap']);
     	if (empty($result = current($cursor->toArray())))
     	    return null;
+	if ($arrays)
+	    return $result;
 
 	$o = $objectClass::create($result, [
 	    'database' => $database,
@@ -506,9 +517,35 @@ class ObjectManager {
 	return \V::app()->mongo->selectCollection($database, $collection)->deleteOne($query)->getDeletedCount();
     }
 
+    //CLD: 2026-11-07T10:15:41+02:00: new: deletes every object of $objectName matching $query, without loading them (no model hooks: no beforeDelete, no audit entry; e.g. a
+    //retention pass, the parts of a removed object); returns the number deleted. _id as in updateOne
+    public function deleteMany($objectName, array $query) {
+	$objDef = $this->getObjectDef($objectName);
+	if (empty($objDef))
+	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
+
+	$query = self::keyIdQuery($query, __METHOD__);
+	if ($this->isVariant($objectName))
+	    $query['__variant'] = $objectName;
+
+	$objectClass = $objDef['class'] ?? null;
+	if (empty($objectClass))
+	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
+
+	//the account guard (accountQuery)
+	$query = $this->accountQuery($objectName, $objectClass, $query, __METHOD__);
+	$collection = $objDef['collection'] ?? $objectClass::_collection();
+	if (empty($collection))
+	    throw new \ErrorException("Unknown collection for: $objectName");
+	$database = $objDef['database'] ?? $objectClass::_database();
+
+	return \V::app()->mongo->selectCollection($database, $collection)->deleteMany($query)->getDeletedCount();
+    }
+
     //changes ONE object of $objectName matching $query with the MongoDB update $update, atomically, and returns it as changed (or as it was, option
     //'returnDocument' => 'before'); null when none matches. For counters that must never repeat (e.g. Workflow::nextVersionNumber). Options: projection, sort,
     //upsert, returnDocument (after | before). No model hooks or checks run for the change
+    //CLD: 2026-11-07T10:15:41+02:00: option 'arrays' => true: the document as an array, not a model
     public function findOneAndUpdate($objectName, array $query, array $update, array $options = []) {
 	$objDef = $this->getObjectDef($objectName);
 	if (empty($objDef))
@@ -531,12 +568,16 @@ class ObjectManager {
 	    throw new \ErrorException("Unknown collection for: $objectName");
 	$database = $objDef['database'] ?? $objectClass::_database();
 
+	$arrays = !empty($options['arrays']);
+	unset($options['arrays']);
 	$options['returnDocument'] = ($options['returnDocument'] ?? 'after') === 'before'
 	    ? \MongoDB\Operation\FindOneAndUpdate::RETURN_DOCUMENT_BEFORE : \MongoDB\Operation\FindOneAndUpdate::RETURN_DOCUMENT_AFTER;
 	$options['typeMap'] = \V::app()->mongo->driverOptions['typeMap'];
 	$result = \V::app()->mongo->selectCollection($database, $collection)->findOneAndUpdate($query, $update, $options);
 	if (empty($result))
 	    return null;
+	if ($arrays)
+	    return $result;
 
 	$o = $objectClass::create($result, [
 	    'database' => $database,
@@ -546,6 +587,29 @@ class ObjectManager {
 	]);
 	$o->afterFind();
 	return $o;
+    }
+
+    //CLD: 2026-11-07T10:15:41+02:00: new: stores new object $model (a model of $objectName) as insertMany does: its data as save() stores it (storageDocument), with
+    //created_at; no model hooks run (no beforeSave, no audit entry). For writes too frequent for save() (e.g. a conversation's messages). Returns its _id (the model's own,
+    //when it has one)
+    public function insertOne($objectName, $model) {
+	$objDef = $this->getObjectDef($objectName);
+	if (empty($objDef))
+	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
+
+	$objectClass = $objDef['class'] ?? null;
+	if (empty($objectClass))
+	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
+	$collection = $objDef['collection'] ?? $objectClass::_collection();
+	if (empty($collection))
+	    throw new \ErrorException("Unknown collection for: $objectName");
+	$database = $objDef['database'] ?? $objectClass::_database();
+
+	$doc = $model->storageDocument($model->data());
+	$doc['created_at'] = $doc['created_at'] ?? new \MongoDB\BSON\UTCDateTime();
+	if ($this->isVariant($objectName))
+	    $doc['__variant'] = $objectName;
+	return \V::app()->mongo->selectCollection($database, $collection)->insertOne($doc)->getInsertedId();
     }
 
     //stores new objects $models (models of $objectName, e.g. checked with validates()) in one write: their data as save() stores it
@@ -575,6 +639,34 @@ class ObjectManager {
 	    $docs[] = $doc;
 	}
 	return \V::app()->mongo->selectCollection($database, $collection)->insertMany($docs)->getInsertedCount();
+    }
+
+    //CLD: 2026-11-07T10:15:41+02:00: new: runs aggregation $pipeline on the objects of $objectName => the result documents, as arrays. The account guard and the variant apply to
+    //a first $match stage (one is added when the pipeline starts otherwise); a stage that reads other collections ($lookup, $unionWith) is not guarded
+    public function aggregate($objectName, array $pipeline, array $options = []) {
+	$objDef = $this->getObjectDef($objectName);
+	if (empty($objDef))
+	    throw new \ErrorException(__METHOD__ . ": unknown object: $objectName");
+
+	$objectClass = $objDef['class'] ?? null;
+	if (empty($objectClass))
+	    throw new \ErrorException(__METHOD__ . ": empty class for object: $objectName");
+
+	$match = isset($pipeline[0]['$match']) ? (array)array_shift($pipeline)['$match'] : [];
+	$match = self::keyIdQuery($match, __METHOD__);
+	if ($this->isVariant($objectName))
+	    $match['__variant'] = $objectName;
+	//the account guard (accountQuery)
+	$match = $this->accountQuery($objectName, $objectClass, $match, __METHOD__);
+	if ($match)
+	    array_unshift($pipeline, [ '$match' => $match ]);
+
+	$collection = $objDef['collection'] ?? $objectClass::_collection();
+	if (empty($collection))
+	    throw new \ErrorException("Unknown collection for: $objectName");
+	$database = $objDef['database'] ?? $objectClass::_database();
+
+	return iterator_to_array(\V::app()->mongo->selectCollection($database, $collection)->aggregate($pipeline, $options), false);
     }
 
     public function count($objectName, $query = [], $options = []) {
