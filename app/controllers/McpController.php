@@ -47,7 +47,9 @@ class McpController extends \sys\APIController {
 	    $resp->sendJSON($this->fail(null, -32000, 'A valid token is required (Authorization: Bearer <token>)'), true, 401, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	}
 	//CLD: 2026-11-01T02:00:00+02:00: only for a project whose MCP server is on (Account::mcpEnabled)
-	if (!\models\Account::mcpEnabled((string)$token->aid, $project->_id))
+	//checked before the sign-in (its hooks, the session's start): the token's account, read here
+	$account = \V::app()->om->findById('Account', (string)$token->aid);
+	if (!$account || !$account->mcpEnabled($project->_id))
 	    $resp->sendJSON($this->fail(null, -32000, 'The MCP server of this project is off (the account\'s owners turn it on in Account settings, Data access)'), true, 403, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	\V::app()->user->crtProject = $project->_id;
 	\V::app()->user->login($identity);

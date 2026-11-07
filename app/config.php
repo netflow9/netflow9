@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-07T01:05:06+02:00: app.env's SYSTEM_AI_<name>, else $default
+//app.env's SYSTEM_AI_<name>, else $default
 function system_ai_env($name, $default = '') {
     return defined('SYSTEM_AI_' . $name) ? constant('SYSTEM_AI_' . $name) : $default;
 }
@@ -12,7 +12,7 @@ function get_config($mode = 'web') {
     // loaded in this order; "enabled": false keeps a plugin's settings but leaves it out.
     // No file: no plugins
     $plugins = (function() {
-	//CLD: 2026-11-01T19:00:00+02:00: in V::configDir() (NFN_CONFIG_DIR, else the app's folder)
+	//in V::configDir() (NFN_CONFIG_DIR, else the app's folder)
 	$f = \V::configDir() . '/plugins.json';
 	if (!is_file($f))
 	    return [];
@@ -49,16 +49,16 @@ function get_config($mode = 'web') {
 	//ntp
 	'app.ntp.server' => 'local', // or 'time.google.com:123'
 
-	//CLD: 2026-11-01T16:00:27+02:00: the daemon's port for its commands (NEWJOB, KILLJOB), on 127.0.0.1 only: DAEMON_PORT of app.env, default 9000.
+	//the daemon's port for its commands (NEWJOB, KILLJOB), on 127.0.0.1 only: DAEMON_PORT of app.env, default 9000.
 	//Several installations on one server: a port each
 	'app.daemon_port' => defined('DAEMON_PORT') && (int)DAEMON_PORT > 0 ? (int)DAEMON_PORT : 9000,
-	//CLD: 2026-11-01T19:00:00+02:00: where the daemon listens (DAEMON_LISTEN, default 127.0.0.1; Docker: 0.0.0.0, the containers' private network only) and where the app finds
+	//where the daemon listens (DAEMON_LISTEN, default 127.0.0.1; Docker: 0.0.0.0, the containers' private network only) and where the app finds
 	//it (DAEMON_HOST, default 127.0.0.1; Docker: daemon), from app.env or the environment (compose.yaml)
 	'app.daemon_listen' => (string)\V::env('DAEMON_LISTEN', '') ?: '127.0.0.1',
 	'app.daemon_host' => (string)\V::env('DAEMON_HOST', '') ?: '127.0.0.1',
 
 	//plugins(modules) configuration
-	//CLD: 2026-11-01T17:30:00+02:00: the enabled ones of plugins.json; 'plugins': every plugin's settings (\V::app()->config('plugins')['<plugin>'])
+	//the enabled ones of plugins.json; 'plugins': every plugin's settings (\V::app()->config('plugins')['<plugin>'])
 	'modules' => array_keys(array_filter($plugins, fn($p) => ($p['enabled'] ?? true) !== false)),
 	'plugins' => $plugins,
 
@@ -81,7 +81,7 @@ function get_config($mode = 'web') {
 
 	'app.security.secret' => defined('APP_SECRET') ? APP_SECRET : null,
 	'mail.inbound_domain' => defined('MAIL_INBOUND_DOMAIN') ? MAIL_INBOUND_DOMAIN : null,
-	//CLD: 2026-10-31T12:12:05+02:00: an empty MAIL_FROM (app.env.example's placeholder) is as none
+	//an empty MAIL_FROM (app.env.example's placeholder) is as none
 	'mail.from' => defined('MAIL_FROM') && MAIL_FROM !== '' ? MAIL_FROM : 'noreply@' . (defined('SMTP_DOMAIN') && SMTP_DOMAIN ? SMTP_DOMAIN : 'localhost'),
 	//the HTTP Request and Download File steps may call this machine and its network (private / internal addresses): HTTP_STEPS_ALLOW_PRIVATE in app.env
 	//(default false: public addresses only, checked by util\Http for each redirect too)
@@ -116,7 +116,7 @@ function get_config($mode = 'web') {
 	    'log' => [
 		'class' => '\sys\Logger',
 		'enabled' => true,
-		//CLD: 2026-10-23T23:30:00+03:00: LOG_LEVEL in app.env (ERROR, WARN, INFO or DEBUG): INFO when it is missing or not one of them
+		//LOG_LEVEL in app.env (ERROR, WARN, INFO or DEBUG): INFO when it is missing or not one of them
 		'level' => defined('LOG_LEVEL') && in_array(strtoupper(trim((string)LOG_LEVEL)), [ 'ERROR', 'WARN', 'INFO', 'DEBUG' ], true) ? strtoupper(trim((string)LOG_LEVEL)) : 'INFO',
 	    ],
 	    'mongo' => [
@@ -218,7 +218,7 @@ function get_setup_config() {
     return $_config;
 }
 
-//CLD: 2026-10-29T02:00:00+02:00: the console's, while app.env is missing (app/v.php): the commands (only sys::checks / validate / install work: commands\SysCommand), without the Boot component
+//the console's, while app.env is missing (app/v.php): the commands (only sys::checks / validate / install work: commands\SysCommand), without the Boot component
 //and without a database until the setup connects one (util\Setup::database)
 function get_setup_console_config() {
     $_config = get_config('console');

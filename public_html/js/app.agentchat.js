@@ -1,4 +1,4 @@
-//CLD: 2026-11-02T18:00:00+02:00: new: the chat of an agent: the app's page (views/agent/open.php: /agent/send, /agent/poll, /agent/remove) and the embeddable one (views/chat/embed.php: /chat/<token>; its conversation and
+//the chat of an agent: the app's page (views/agent/open.php: /agent/send, /agent/poll, /agent/remove) and the embeddable one (views/chat/embed.php: /chat/<token>; its conversation and
 //key kept in this browser). Messages as the designer's Assistant shows them (.wf-assistant .wfa-msg); an answer's html is the server's safe HTML (util\Markdown). What is new is polled: no streaming
 window.AgentChat = (function() {
     const POLL_FAST = 1000;

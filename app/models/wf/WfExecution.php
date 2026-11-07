@@ -698,8 +698,8 @@ class WfExecution extends \sys\BaseModel {
 	return false;
     }
 
-    //CLD: 2026-10-13T13:15:14+03:00: the innermost active loop around step $nodeId (null: none)
-    //CLD: 2026-10-14T21:17:55+03:00: its parent, when that is an active loop (a loop cannot be inside another loop)
+    //the innermost active loop around step $nodeId (null: none)
+    //its parent, when that is an active loop (a loop cannot be inside another loop)
     private function activeLoop($nodeId) {
 	$loop = $this->__nodes[(string)($this->__nodes[$nodeId]->parentId ?? '')] ?? null;
 	return $loop !== null && !empty($loop->active) && method_exists($loop, 'next') ? $loop : null;

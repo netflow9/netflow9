@@ -8900,11 +8900,11 @@ class CheckCommand extends \sys\BaseController {
 	try {
 	    $account->mcp_projects = [];
 	    $account->save();
-	    $off = $A::mcpEnabled((string)$account->_id, $pid);
+	    $off = $om->findById('Account', (string)$account->_id)->mcpEnabled($pid);
 	    $account->mcp_projects = [ $pid ];
 	    $account->save();
 	    $this->check('access: the MCP server is off unless the account turns it on for the project; only for that project', [ false, true, false, 'structure' ],
-		[ $off, $A::mcpEnabled((string)$account->_id, $pid), $A::mcpEnabled($account, '000000000000000000000000'), (string)$om->create('AssistantSettings', [])->data_access ]);
+		[ $off, $om->findById('Account', (string)$account->_id)->mcpEnabled($pid), $account->mcpEnabled('000000000000000000000000'), (string)$om->create('AssistantSettings', [])->data_access ]);
 
 	    //the /mcp endpoint, with a token of the project
 	    $owner = $om->findOne('Role', [ 'aid' => $account->_id, 'iname' => 'owner' ]);

@@ -1,10 +1,11 @@
 <?php
 //load current project
 $crtProject = \V::app()->om->findById('Project', \V::app()->user->crtProject);
+$crtAccount = \V::app()->var('rt.account');
 
 //get other projects
 $query = [
-    'aid' => \V::app()->var('rt.account')->_id,
+    'aid' => $crtAccount->_id,
     '$or' => [
 	[ 'owner' => \V::app()->user->_id ],
 	[ 'members.' . \V::app()->user->_id => [ '$ne' => null ] ],
@@ -93,33 +94,30 @@ $dd_items = implode('', $dd_items);
 	<div class="flex-shrink-0">
 	    <nav class="nav flex-column d-flex min-height-0 overflow-hidden flex-fill">
 		<?php
-		//CLD: 2026-11-05T12:00:00+02:00: Overview, Forms, Agents, My tasks padded as the project workspace and workflow items (nav-link py-1)
 		echo \V::app()->html->link(
 		    '<i class="bi bi-speedometer"></i> ' . \V::t('Overview'),
-		    \V::app()->createUrl('/site/index'),
+		    '/site/index',
 		    [ 'class' => 'nav-link py-1', 'escape' => false ]
 		);
-		{
-		    echo \V::app()->html->link(
-			'<i class="bi bi-ui-checks"></i> Forms',
-			'/form/list',
-			[ 'class' => 'nav-link py-1', 'escape' => false ]
-		    );
-		    //CLD: 2026-11-02T18:00:00+02:00: the agents the user may talk to
-		    echo \V::app()->html->link(
-			'<i class="bi bi-chat-dots"></i> Agents',
-			'/agent/list',
-			[ 'class' => 'nav-link py-1', 'escape' => false ]
-		    );
-		    $openTasks = count(\models\wf\WfTask::openFor(\V::app()->user, $crtProject->aid, null));
-		    echo \V::app()->html->link(
-			\util\VString::insert('<i class="bi bi-person-check"></i> My tasks{:badge}', [
-			    'badge' => $openTasks ? \util\VString::insert(' <span class="badge rounded-pill text-bg-primary ms-1">{:n}</span>', [ 'n' => $openTasks ]) : '',
-			]),
-			'/task/list',
-			[ 'class' => 'nav-link py-1', 'escape' => false ]
-		    );
-		}
+		echo \V::app()->html->link(
+		    '<i class="bi bi-ui-checks"></i> Forms',
+		    '/form/list',
+		    [ 'class' => 'nav-link py-1', 'escape' => false ]
+		);
+		echo \V::app()->html->link(
+		    '<i class="bi bi-chat-dots"></i> Agents',
+		    '/agent/list',
+		    [ 'class' => 'nav-link py-1', 'escape' => false ]
+		);
+		$openTasks = count(\models\wf\WfTask::openFor(\V::app()->user, $crtProject->aid, null));
+		$badge = $openTasks ? \util\VString::insert('<span class="badge rounded-pill text-bg-primary ms-1">{:n}</span>', [ 'n' => $openTasks ]) : '';
+		echo \V::app()->html->link(
+		    \util\VString::insert('<i class="bi bi-person-check"></i> My tasks {:badge}', [
+			'badge' => $badge,
+		    ]),
+		    '/task/list',
+		    [ 'class' => 'nav-link py-1', 'escape' => false ]
+		);
 		?>
 	    </nav>
 	</div>
@@ -132,29 +130,27 @@ $dd_items = implode('', $dd_items);
 		</div>
 
 		<?php
-		//CLD: 2026-10-08T14:36:10+03:00: credentials enabled; checked on an unsaved credential of the current project (project scope = membership)
+		//credentials enabled; checked on an unsaved credential of the current project (project scope = membership)
 		if (\V::app()->user->can('Credential::list', [ 'object' => \V::app()->om->create('Credential', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
 		    echo \V::app()->html->link(
-			//CLD: 2026-10-22T00:28:13+03:00: + variables (credentials of type Variable)
 			'<i class="bi bi-key"></i> Credentials & variables',
-			\V::app()->createUrl('/credential/list'),
+			'/credential/list',
 			[ 'class' => 'nav-link py-1 w-100', 'escape' => false ]
 		    );
 		}
 
 		if (\V::app()->user->can('DataTable::list', [ 'owner' => $crtProject ])) {
-			echo \V::app()->html->link(
+		    echo \V::app()->html->link(
 			'<i class="bi bi-table"></i> Data Tables',
-			\V::app()->createUrl('/datatable/list'),
+			'/datatable/list',
 			[ 'class' => 'nav-link py-1 w-100', 'escape' => false ]
 		    );
 		}
 
-		//CLD: 2026-10-31T01:00:00+02:00: the knowledge bases (KnowledgeController)
 		if (\V::app()->user->can('KnowledgeBase::list', [ 'object' => \V::app()->om->create('KnowledgeBase', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-journal-bookmark"></i> Knowledge bases',
-			\V::app()->createUrl('/knowledge/list'),
+			'/knowledge/list',
 			[ 'class' => 'nav-link py-1 w-100', 'escape' => false ]
 		    );
 		}
@@ -162,17 +158,17 @@ $dd_items = implode('', $dd_items);
 		if (\V::app()->user->can('File::list', [ 'object' => \V::app()->om->create('File', [ 'aid' => $crtProject->aid, 'metadata' => [ 'project' => $crtProject->_id ] ]) ])) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-files"></i> Files',
-			\V::app()->createUrl('/file/list'),
+			'/file/list',
 			[ 'class' => 'nav-link py-1 w-100', 'escape' => false ]
 		    );
 		}
 
 		//CLD: 2026-10-26T23:56:07+02:00: the MCP server link (its tokens)
 		//CLD: 2026-11-01T02:00:00+02:00: when the project's MCP server is on (Account::mcpEnabled)
-		if (\models\Account::mcpEnabled(\V::app()->config('rt.account'), $crtProject->_id) && \V::app()->user->can('McpToken::list', [ 'object' => \V::app()->om->create('McpToken', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
+		if ($crtAccount->mcpEnabled($crtProject->_id) && \V::app()->user->can('McpToken::list', [ 'object' => \V::app()->om->create('McpToken', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-plug"></i> MCP server',
-			\V::app()->createUrl('/token/list'),
+			'/token/list',
 			[ 'class' => 'nav-link py-1 w-100', 'escape' => false ]
 		    );
 		}
@@ -183,21 +179,20 @@ $dd_items = implode('', $dd_items);
 		if (\V::app()->user->can('Workflow::create', [ 'object' => \V::app()->om->create('Workflow', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
 		    $wfCreateUrl = \V::app()->html->link(
 			'<i class="bi bi-plus-lg"></i>',
-			\V::app()->createUrl('/workflow/create'),
+			'/workflow/create',
 			[ 'escape' => false, 'data-method' => 'post' ]
 		    );
 		}
-		?>
-		<?php
 		$canReadWf = \V::app()->user->can('Workflow::read', [ 'object' => \V::app()->om->create('Workflow', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ]);
-		if ($canReadWf || $wfCreateUrl !== ''): ?>
-		<div class="nav-item w-100 ps-2 py-1 pe-2">
-		    <span>Workflows</span>
-		    <span class="float-end"><?= $wfCreateUrl ?></span>
-		</div>
-		<?php endif; ?>
+		if ($canReadWf || $wfCreateUrl !== '') {
+		    echo "
+		    <div class='nav-item w-100 ps-2 py-1 pe-2'>
+			<span>Workflows</span>
+			<span class='float-end'>{$wfCreateUrl}</span>
+		    </div>
+		    ";
+		}
 
-		<?php
 		$wfs = $canReadWf ? \V::app()->om->find('Workflow', [ 'project' => $crtProject->_id]) : [];
 		foreach($wfs as $wf) {
 		    $url = \V::app()->createUrl('/workflow/index', [ 'id' => $wf->_id ]);
@@ -269,7 +264,6 @@ $dd_items = implode('', $dd_items);
 	<!-- two-level menu, pinned to the bottom of the sidebar -->
 	<div class="sidebar-bottom-menu">
 	    <div class="d-flex align-items-center justify-content-between px-2 pt-2 pb-1">
-		<?php //CLD: 2026-11-02T21:30:00+02:00: the app's version, left of the theme switch ?>
 		<span class="small text-muted">v<?= \V::app()->html->escape(\data\Version::NUMBER) ?></span>
 		<div class="btn-group btn-group-sm" role="group" aria-label="Theme">
 		    <button type="button" class="btn btn-outline-secondary py-0" data-theme-value="light" title="Light" aria-pressed="false"><i class="bi bi-sun" aria-hidden="true"></i><span class="visually-hidden">Light</span></button>
@@ -278,8 +272,7 @@ $dd_items = implode('', $dd_items);
 		</div>
 	    </div>
 	    <nav class="nav flex-column">
-		<?php //CLD: 2026-10-28T23:55:00+02:00: the documentation inside the app (DocsController) ?>
-		<a href="<?= \V::app()->createUrl('/docs/index') ?>" class="nav-link px-2">
+		<a href="/docs/index" class="nav-link px-2">
 		    <i class="bi bi-book"></i> Documentation
 		</a>
 	    </nav>
@@ -293,65 +286,41 @@ $dd_items = implode('', $dd_items);
 	    <a href="#" class="nav-link close-secondary-menu" style="border-bottom: var(--bs-border-width) solid var(--bs-border-color)">
 		<i class="bi bi-arrow-left"></i> <b>Settings</b>
 	    </a>
-	    <a href="<?= \V::app()->createUrl('/user/profile') ?>" class="nav-link">
+	    <a href="/user/profile" class="nav-link">
 		<i class="bi bi-person-circle"></i> Personal
 	    </a>
-	    <?php if (\V::app()->auth->getUserRole()->getPermissionScope('User::read') === 'global'): ?>
-	    <a href="<?= \V::app()->createUrl('/user/list') ?>" class="nav-link">
-		<i class="bi bi-person-vcard"></i> Users
-	    </a>
-	    <?php endif; ?>
-	    <?php if (\V::app()->user->can('Role::list')): ?>
-	    <a href="<?= \V::app()->createUrl('/role/list') ?>" class="nav-link">
-		<i class="bi bi-person-lines-fill"></i> Roles
-	    </a>
-	    <?php endif; ?>
-	    <?php //CLD: 2026-10-31T11:32:07+02:00: Account settings with its Usage tab: for who may see either ?>
-	    <?php if (\V::app()->user->can('Account::update') || \V::app()->user->can('Account::usage')): ?>
-	    <a href="<?= \V::app()->createUrl('/account/settings') ?>" class="nav-link">
-		<i class="bi bi-house-gear"></i> Account settings
-	    </a>
-	    <?php endif; ?>
-	    <?php //CLD: 2026-10-26T23:49:50+02:00: Assistant settings ?>
-	    <?php if (\V::app()->user->can('Account::update')): ?>
-	    <a href="<?= \V::app()->createUrl('/assistant/settings') ?>" class="nav-link">
-		<i class="bi bi-stars"></i> Assistant
-	    </a>
-	    <?php endif; ?>
-	    <?php //CLD: 2026-10-31T01:00:00+02:00: the account's embedding model (the knowledge bases') ?>
-	    <?php if (\V::app()->user->can('Account::update')): ?>
-	    <a href="<?= \V::app()->createUrl('/knowledge/settings') ?>" class="nav-link">
-		<i class="bi bi-journal-bookmark"></i> Knowledge bases
-	    </a>
-	    <?php endif; ?>
-	    <?php if (\V::app()->user->can('Account::update')): ?>
-	    <a href="<?= \V::app()->createUrl('/ldap/settings') ?>" class="nav-link">
-		<i class="bi bi-diagram-3"></i> LDAP sign-in
-	    </a>
-	    <a href="<?= \V::app()->createUrl('/saml/settings') ?>" class="nav-link">
-		<i class="bi bi-shield-lock"></i> SAML single sign-on
-	    </a>
-	    <?php endif; ?>
-	    <?php //CLD: 2026-10-31T11:05:39+02:00: the installation's services (util\Services::allowed: the owners; with the MultiTenant plugin, its super-admins) ?>
-	    <?php //CLD: 2026-10-31T19:30:00+02:00: only with the MultiTenant plugin (its super-admins' page); without it the services are a tab of the account's settings ?>
-	    <?php if (\util\Services::adminPlugin() && \util\Services::allowed()): ?>
-	    <a href="<?= \V::app()->createUrl('/services/index') ?>" class="nav-link">
-		<i class="bi bi-gear-wide-connected"></i> Services
-	    </a>
-	    <?php //CLD: 2026-11-01T11:55:18+02:00: the installation's tool servers (util\ToolServers: mcp.json), the super-admins' page; without the plugin a tab of the account's settings ?>
-	    <a href="<?= \V::app()->createUrl('/toolservers/index') ?>" class="nav-link">
-		<i class="bi bi-plug"></i> Tool servers
-	    </a>
-	    <?php endif; ?>
-	    <?php \V::app()->hooks->applyHook('layout:settings-menu'); ?>
 	    <?php
-	    $aid = \V::app()->config('rt.account')->_id ?? null;
-	    if (\V::app()->user->can('AuditLog::list', [ 'object' => \V::app()->om->create('AuditLog', [ 'aid' => $aid, 'project' => null ]) ]))
+	    if (\V::app()->auth->getUserRole()->getPermissionScope('User::read') === 'global') {
+		echo '<a href="/user/list" class="nav-link"><i class="bi bi-person-vcard"></i> Users</a>';
+	    }
+	    if (\V::app()->user->can('Role::list')) {
+		echo '<a href="/role/list" class="nav-link"><i class="bi bi-person-lines-fill"></i> Roles</a>';
+	    }
+	    if (\V::app()->user->can('Account::update') || \V::app()->user->can('Account::usage')) {
+		echo '<a href="/account/settings" class="nav-link"><i class="bi bi-house-gear"></i> Account settings</a>';
+	    }
+	    if (\V::app()->user->can('Account::update')) {
+		echo '<a href="/assistant/settings" class="nav-link"><i class="bi bi-stars"></i> Assistant</a>';
+		echo '<a href="/knowledge/settings" class="nav-link"><i class="bi bi-journal-bookmark"></i> Knowledge bases</a>';
+		echo '<a href="/ldap/settings" class="nav-link"><i class="bi bi-diagram-3"></i> LDAP sign-in</a>';
+		echo '<a href="/saml/settings" class="nav-link"><i class="bi bi-shield-lock"></i> SAML single sign-on</a>';
+	    }
+	    //the installation's services (util\Services::allowed: the owners; with the MultiTenant plugin, its super-admins)
+	    //only with the MultiTenant plugin (its super-admins' page); without it the services are a tab of the account's settings
+	    if (\util\Services::adminPlugin() && \util\Services::allowed()) {
+		echo '<a href="/services/index" class="nav-link"><i class="bi bi-gear-wide-connected"></i> Services</a>';
+		//the installation's tool servers (util\ToolServers: mcp.json), the super-admins' page; without the plugin a tab of the account's settings
+		echo '<a href="/toolservers/index" class="nav-link"><i class="bi bi-plug"></i> Tool servers</a>';
+	    }
+
+	    \V::app()->hooks->applyHook('layout:settings-menu');
+
+	    if (\V::app()->user->can('AuditLog::list', [ 'object' => \V::app()->om->create('AuditLog', [ 'aid' => $crtAccount->_id, 'project' => null ]) ]))
 		echo "<a href='/audit/list?scope=system' class='nav-link'><i class='bi bi-journal-text'></i> System audit log</a>";
-	    if (\V::app()->user->can('ExecutionLog::list', [ 'object' => \V::app()->om->create('ExecutionLog', [ 'aid' => $aid, 'project' => null ]) ]))
+	    if (\V::app()->user->can('ExecutionLog::list', [ 'object' => \V::app()->om->create('ExecutionLog', [ 'aid' => $crtAccount->_id, 'project' => null ]) ]))
 		echo "<a href='/audit/list?log=execution&scope=system' class='nav-link'><i class='bi bi-activity'></i> System execution log</a>";
 	    ?>
-	    <form method="post" action="<?= \V::app()->createUrl('/site/logout') ?>" no-pjax class="m-0">
+	    <form method="post" action="/site/logout" no-pjax class="m-0">
 		<input type="hidden" name="<?= \V::app()->csrf->csrf_key ?>" value="<?= \V::app()->html->escape(\V::app()->csrf->getToken(false)) ?>">
 		<button type="submit" class="nav-link w-100 text-start border-0 bg-transparent">
 		    <i class="bi bi-box-arrow-right"></i> Logout

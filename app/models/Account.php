@@ -206,11 +206,9 @@ class Account extends \sys\BaseModel {
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //CLD: 2026-11-01T02:00:00+02:00: whether the MCP server of project $projectId is on in account $account (an Account, or its id)
-    public static function mcpEnabled($account, $projectId) {
-	if (!$account instanceof self)
-	    $account = $account ? \V::app()->om->findById('Account', (string)$account) : null;
-	return $account && $projectId && in_array((string)$projectId, array_map('strval', (array)($account->mcp_projects ?? [])), true);
+    //CLD: 2026-11-01T02:00:00+02:00: whether the MCP server of project $projectId is on in this account
+    public function mcpEnabled($projectId) {
+	return $projectId && in_array((string)$projectId, array_map('strval', (array)($this->mcp_projects ?? [])), true);
     }
 
     //CLD: 2026-10-24T16:30:00+03:00: date formats as choices, labeled with an example (a fixed date); '' -> "Default", with the app's format ($config)

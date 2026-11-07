@@ -1,4 +1,5 @@
-//CLD: 2026-10-19T16:05:12+03:00: the model may also be an OpenAI-compatible one (the chosen credential's)
+/*
+    the model may also be an OpenAI-compatible one (the chosen credential's)
 //CLD: 2026-10-19T15:26:28+03:00: new: the Assistant of the workflow designer (the right-side inspector): the person describes the workflow or a change, Claude builds it on the
 //canvas (WorkflowController::assistant, util\WorkflowAssistant). The designer's current steps go with each request (unsaved changes included); the answer's steps replace
 //the canvas (app.workflow.setNodes), not saved: the person reviews and saves them. Each change can be undone (the steps before it, kept while the page lives).
@@ -15,6 +16,8 @@
 //panel: the Assistant's panel of the designer (#wf-assistant-panel, views/assistant/_designer_panel.php). It is open or closed as last time, the top-bar buttons
 //(.btn-assistant-toggle) toggle it, .wfa-close closes it; the conversation is set up when the panel has one (.wfa-messages: the draft, who may change it, Assistant settings set up).
 //One per designer page: a new one destroys the previous one (its request is dropped); destroy() also stops listening to the page.
+*/
+
 if (!window.app)
     window.app = {};
 
@@ -22,7 +25,7 @@ window.app.WfAssistant = (function() {
     //the steps before each change: { '<wfid>:<message id>': nodes } (kept while the page lives: shared by the designer pages app.pjax loads)
     const undo = {};
     const MAX_KEPT = 40;
-    //CLD: 2026-10-19T20:10:00+03:00: whether the panel is open, kept in localStorage (this browser; closed the first time)
+    //whether the panel is open, kept in localStorage (this browser; closed the first time)
     const OPEN_KEY = 'rail22.wf.assistant.open';
 
     //the one of the current designer page
