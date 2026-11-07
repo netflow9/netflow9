@@ -352,11 +352,10 @@ class AgentEval {
 
     //what a check asks, in words
     public static function label(array $check, $wf = null) {
-	$cond = fn($c) => trim($c['path'] . ' ' . (WfTestCase::OPERATORS[$c['op']] ?? $c['op']) . (in_array($c['op'], [ 'exists', 'absent' ], true) ? '' : ' ' . $c['value']));
 	$text = match($check['type']) {
-	    'json_field' => 'JSON ' . $cond($check),
-	    'tool_called' => "`{$check['tool']}` was called" . (!empty($check['args']) ? ' with ' . implode(', ', array_map($cond, $check['args'])) : ''),
-	    'tool_not_called' => "`{$check['tool']}` was not called" . (!empty($check['args']) ? ' with ' . implode(', ', array_map($cond, $check['args'])) : ''),
+	    'json_field' => 'JSON ' . self::conditionText($check),
+	    'tool_called' => "`{$check['tool']}` was called" . (!empty($check['args']) ? ' with ' . implode(', ', array_map(self::conditionText(...), $check['args'])) : ''),
+	    'tool_not_called' => "`{$check['tool']}` was not called" . (!empty($check['args']) ? ' with ' . implode(', ', array_map(self::conditionText(...), $check['args'])) : ''),
 	    'no_write_tool' => 'No write tool was called',
 	    'contains' => "The answer contains `{$check['text']}`",
 	    'not_contains' => "The answer does not contain `{$check['text']}`",
@@ -369,6 +368,11 @@ class AgentEval {
 		    return (string)($n['title'] ?? $check['step']) . ': ' . $text;
 	}
 	return $text;
+    }
+
+    //CLD: 2026-11-07T01:13:30+02:00: condition $c of a check as text: path, operator, value
+    private static function conditionText($c) {
+	return trim($c['path'] . ' ' . (WfTestCase::OPERATORS[$c['op']] ?? $c['op']) . (in_array($c['op'], [ 'exists', 'absent' ], true) ? '' : ' ' . $c['value']));
     }
 
     //check $check on the visits of the AI steps => { type, label, pass, detail } (+ spent: what a judge cost)
@@ -488,15 +492,14 @@ class AgentEval {
 
     //the judged check: by the account's chosen provider => { pass, detail, spent }
     private static function judge(array $check, $last, array $calls, $wf) {
-	$failed = fn($detail, $spent = null) => [ 'pass' => false, 'detail' => $detail ] + ($spent ? [ 'spent' => $spent ] : []);
 	if (!$last)
-	    return $failed('No AI step ran');
+	    return self::failedCheck('No AI step ran');
 	$settings = \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
 	if (!$settings || !WorkflowAssistant::isReady($settings))
-	    return $failed('Not judged: no provider is chosen: connect one and choose a model in Assistant settings (Settings menu)');
+	    return self::failedCheck('Not judged: no provider is chosen: connect one and choose a model in Assistant settings (Settings menu)');
 	$budget = \models\assistant\AssistantSettings::budgetOf($settings);
 	if ($budget !== null && \models\assistant\AssistantUsage::current($wf->aid)->cost >= $budget)
-	    return $failed('Not judged: the monthly budget in Assistant settings is spent');
+	    return self::failedCheck('Not judged: the monthly budget in Assistant settings is spent');
 	$system = WorkflowAssistant::providerOf($settings) === 'system' ? AssistantSystem::provider() : null;
 	$hold = null;
 	$rates = null;
@@ -504,13 +507,13 @@ class AgentEval {
 	    if ($system !== null) {
 		$rates = $system->rates(WorkflowAssistant::resolve($settings));
 		if ($rates === null)
-		    return $failed('Not judged: the System AI is not priced yet');
+		    return self::failedCheck('Not judged: the System AI is not priced yet');
 		$hold = $system->reserve($wf->aid, (int)$settings->credit_cap ?: null);
 		if ($hold === null)
-		    return $failed('Not judged: the credits are used up');
+		    return self::failedCheck('Not judged: the credits are used up');
 	    }
 	} catch (\ErrorException $e) {
-	    return $failed('Not judged: ' . $e->getMessage());
+	    return self::failedCheck('Not judged: ' . $e->getMessage());
 	}
 	$answer = (string)$last['text'];
 	if (!empty($last['masked']))
@@ -541,11 +544,16 @@ class AgentEval {
 	    $spent['cost']['usd'] = round($assistant->cost, 6);
 	}
 	if ($text === null)
-	    return $failed('Not judged: ' . ($error ?? 'no answer'), $spent);
+	    return self::failedCheck('Not judged: ' . ($error ?? 'no answer'), $spent);
 	$verdict = json_decode(preg_replace('/^```(?:json)?\s*|\s*```$/i', '', trim($text)), true);
 	if (!is_array($verdict) || !array_key_exists('pass', $verdict) || !is_bool($verdict['pass']))
-	    return $failed('The judge did not answer as asked: ' . mb_substr($text, 0, 200), $spent);
+	    return self::failedCheck('The judge did not answer as asked: ' . mb_substr($text, 0, 200), $spent);
 	return [ 'pass' => $verdict['pass'], 'detail' => trim(Expression::toText($verdict['reason'] ?? '')), 'spent' => $spent ];
+    }
+
+    //CLD: 2026-11-07T01:13:30+02:00: a check that did not pass: why ($detail), and what the judge spent
+    private static function failedCheck($detail, $spent = null) {
+	return [ 'pass' => false, 'detail' => $detail ] + ($spent ? [ 'spent' => $spent ] : []);
     }
 
     // ------------------------------------------------------------------------------------
@@ -589,8 +597,12 @@ class AgentEval {
 
     //a run as it is shown and as the MCP tools give it
     public static function summary(array $run) {
-	$at = fn($v) => Format::datetime($v, 'Y-m-d H:i:s');
 	return [ 'id' => (string)$run['_id'], 'state' => (string)$run['state'], 'by' => (string)($run['by'] ?? ''), 'error' => isset($run['error']) ? (string)$run['error'] : null, 'totals' => $run['totals'] ?? self::emptyTotals(),
-	    'created' => $at($run['created_at'] ?? null), 'started' => $at($run['started_at'] ?? null), 'ended' => $at($run['ended_at'] ?? null) ];
+	    'created' => self::timeText($run['created_at'] ?? null), 'started' => self::timeText($run['started_at'] ?? null), 'ended' => self::timeText($run['ended_at'] ?? null) ];
+    }
+
+    //CLD: 2026-11-07T01:13:30+02:00: a date of a run as Y-m-d H:i:s (util\Format::datetime)
+    private static function timeText($v) {
+	return Format::datetime($v, 'Y-m-d H:i:s');
     }
 }

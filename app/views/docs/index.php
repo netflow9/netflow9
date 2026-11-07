@@ -8,10 +8,6 @@ $child = $current['child'];
 $shown = $child ?? $page;
 $this->pageTitle = ($shown['title'] ?? '') . ' - Documentation';
 
-//a link to a page of the reading order (previous / next)
-$pageLink = function($item) {
-    return \controllers\DocsController::pageUrl($item['section'], $item['page'], $item['child']);
-};
 ?>
 <div class="main-header py-2 px-3">
     <?php
@@ -88,14 +84,14 @@ $pageLink = function($item) {
 		<nav class="d-flex justify-content-between gap-3 border-top mt-5 pt-3">
 		    <div>
 			<?php if ($prev): ?>
-			<a href="<?= \V::app()->html->escape($pageLink($prev)) ?>" class="text-decoration-none">
+			<a href="<?= \V::app()->html->escape(\controllers\DocsController::pageUrl($prev['section'], $prev['page'], $prev['child'])) ?>" class="text-decoration-none">
 			    <small class="d-block text-body-secondary">Previous</small><i class="bi bi-arrow-left"></i> <?= \V::app()->html->escape(($prev['child'] ?? $prev['page'])['title']) ?>
 			</a>
 			<?php endif; ?>
 		    </div>
 		    <div class="text-end">
 			<?php if ($next): ?>
-			<a href="<?= \V::app()->html->escape($pageLink($next)) ?>" class="text-decoration-none">
+			<a href="<?= \V::app()->html->escape(\controllers\DocsController::pageUrl($next['section'], $next['page'], $next['child'])) ?>" class="text-decoration-none">
 			    <small class="d-block text-body-secondary">Next</small><?= \V::app()->html->escape(($next['child'] ?? $next['page'])['title']) ?> <i class="bi bi-arrow-right"></i>
 			</a>
 			<?php endif; ?>

@@ -316,15 +316,23 @@ class AuditLog extends \sys\BaseModel {
 	    \V::app()->log->info('AuditLog seal: account ' . $acct->_id . ': last number ' . (int)($state['seq'] ?? 0) . ', removed by the retention up to ' . (int)($state['pruned'] ?? 0));
     }
 
+    //CLD: 2026-11-07T01:19:07+02:00: a logged value as text: yes / no, JSON for lists and objects, as it is otherwise; null for none
+    public static function valueText($v) {
+	if ($v === null)
+	    return null;
+	if (is_bool($v))
+	    return $v ? 'yes' : 'no';
+	if (is_array($v) || is_object($v))
+	    return json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_INVALID_UTF8_IGNORE);
+	return (string)$v;
+    }
+
     //checks the entries of account $aid: [ entries, unsealed (from before the seal), last (number given), pruned, problems: [ text ] ]
     public static function verify($aid) {
 	$state = static::coll(self::SEAL_COLLECTION)->findOne([ '_id' => $aid ]);
 	$last = (int)($state['seq'] ?? 0);
 	$pruned = (int)($state['pruned'] ?? 0);
 	$report = [ 'entries' => 0, 'unsealed' => 0, 'last' => $last, 'pruned' => $pruned, 'problems' => [] ];
-	$missing = function($from, $to) use (&$report) {
-	    $report['problems'][] = $from == $to ? "entry {$from} is missing" : "entries {$from} to {$to} are missing";
-	};
 
 	$report['unsealed'] = static::coll()->countDocuments([ 'aid' => $aid, 'seq' => [ '$exists' => false ] ]);
 	$expected = $pruned + 1;
@@ -343,12 +351,17 @@ class AuditLog extends \sys\BaseModel {
 	    elseif ($seq > $last)
 		$report['problems'][] = "entry {$seq} ({$doc['_id']}) has a number never given";
 	    elseif ($seq > $expected)
-		$missing($expected, $seq - 1);
+		$report['problems'][] = self::missingText($expected, $seq - 1);
 	    $prev = $seq;
 	    $expected = max($expected, $seq + 1);
 	}
 	if ($last >= $expected)
-	    $missing($expected, $last);
+	    $report['problems'][] = self::missingText($expected, $last);
 	return $report;
+    }
+
+    //CLD: 2026-11-07T01:06:08+02:00: the problem of entries $from to $to missing from the sequence
+    private static function missingText($from, $to) {
+	return $from == $to ? "entry {$from} is missing" : "entries {$from} to {$to} are missing";
     }
 }

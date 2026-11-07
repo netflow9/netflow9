@@ -61,7 +61,6 @@ class NodeAppLdap extends \models\wf\WfNode {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 	$choices = [];
 	foreach(self::credentialChoices() as $c)
 	    $choices[$c['value']] = $c['label'];
@@ -89,7 +88,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'default' => '',
 		'help' => 'Empty: the credential\'s Base DN',
 		//CLD: 2026-10-29T10:30:00+02:00: full width
-		'ui' => [ 'placeholder' => 'OU=People,DC=example,DC=com', 'expression' => true, 'width' => 12, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'placeholder' => 'OU=People,DC=example,DC=com', 'expression' => true, 'width' => 12, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
@@ -99,7 +98,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'sub',
 		'choices' => LdapClient::SCOPES,
-		'ui' => [ 'advanced' => true, 'width' => 4, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 4, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		'key' => 'filter',
@@ -108,7 +107,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'default' => '(objectClass=person)',
 		'help' => 'An LDAP filter, e.g. (&(objectClass=user)(department=Sales)). A {{ }} inside it is escaped for the filter ((cn={{ name }}): a* -> a\\2a); a filter that is one {{ }} only is used as it is',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'search' ] ],
-		'ui' => [ 'expression' => true, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'expression' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
@@ -118,7 +117,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'default' => '',
 		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
 		'help' => 'The attributes to read, separated by commas, e.g. cn, mail, memberOf',
-		'ui' => [ 'advanced' => true, 'placeholder' => 'All', 'width' => 8, 'showIf' => $op([ 'search', 'get' ]) ],
+		'ui' => [ 'advanced' => true, 'placeholder' => 'All', 'width' => 8, 'showIf' => static::operationIn([ 'search', 'get' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-29T10:30:00+02:00: a limit: under "Advanced…", in its last row
@@ -129,7 +128,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'default' => 100,
 		'help' => 'Entries; more are left out (truncated)',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_ENTRIES, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_ENTRIES ] ],
-		'ui' => [ 'limit' => true, 'width' => 4, 'step' => 1, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'limit' => true, 'width' => 4, 'step' => 1, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		'key' => 'dn',
@@ -138,7 +137,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'default' => '',
 		'help' => 'The entry\'s distinguished name. A {{ }} inside it is escaped for the DN (CN={{ user.name }},OU=...); a DN that is one {{ }} only is used as it is ({{ entry.dn }})',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_DN ],
-		'ui' => [ 'placeholder' => 'CN={{ user.name }},OU=People,DC=example,DC=com', 'expression' => true, 'showIf' => $op(self::ON_DN) ],
+		'ui' => [ 'placeholder' => 'CN={{ user.name }},OU=People,DC=example,DC=com', 'expression' => true, 'showIf' => static::operationIn(self::ON_DN) ],
 	    ],
 	    [
 		'key' => 'entryAttributes',
@@ -152,7 +151,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		    [ 'key' => 'value', 'type' => 'text', 'label' => 'Value', 'help' => false, 'ui' => [ 'width' => 8, 'expression' => true, 'placeholder' => '{{ user.email }}' ] ],
 		],
 		'validateIf' => [ 'if' => 'operation', 'in' => [ 'add' ] ],
-		'ui' => [ 'addLabel' => 'Add attribute', 'compact' => true, 'maxRows' => self::MAX_ROWS, 'showIf' => $op([ 'add' ]) ],
+		'ui' => [ 'addLabel' => 'Add attribute', 'compact' => true, 'maxRows' => self::MAX_ROWS, 'showIf' => static::operationIn([ 'add' ]) ],
 	    ],
 	    [
 		'key' => 'changes',
@@ -167,7 +166,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		    [ 'key' => 'value', 'type' => 'text', 'label' => 'Value', 'help' => false, 'ui' => [ 'width' => 6, 'expression' => true, 'placeholder' => '{{ phone }} (empty: delete all values)' ] ],
 		],
 		'validateIf' => [ 'if' => 'operation', 'in' => [ 'modify' ] ],
-		'ui' => [ 'addLabel' => 'Add change', 'compact' => true, 'maxRows' => self::MAX_ROWS, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'addLabel' => 'Add change', 'compact' => true, 'maxRows' => self::MAX_ROWS, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
 		'key' => 'newRdn',
@@ -175,7 +174,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'label' => 'New RDN',
 		'default' => '',
 		'help' => 'The entry\'s new first part, e.g. CN=Ana Ionescu; empty: the same (a move)',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'rename' ]) ],
+		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => static::operationIn([ 'rename' ]) ],
 	    ],
 	    [
 		'key' => 'newParent',
@@ -183,7 +182,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'label' => 'New parent',
 		'default' => '',
 		'help' => 'Moves the entry there, e.g. OU=Former,DC=example,DC=com; empty: stays',
-		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => $op([ 'rename' ]) ],
+		'ui' => [ 'expression' => true, 'width' => 6, 'showIf' => static::operationIn([ 'rename' ]) ],
 	    ],
 	    [
 		'key' => 'group',
@@ -191,7 +190,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'label' => 'Group DN',
 		'default' => '',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_GROUP ],
-		'ui' => [ 'expression' => true, 'placeholder' => 'CN=Sales,OU=Groups,DC=example,DC=com', 'showIf' => $op(self::ON_GROUP) ],
+		'ui' => [ 'expression' => true, 'placeholder' => 'CN=Sales,OU=Groups,DC=example,DC=com', 'showIf' => static::operationIn(self::ON_GROUP) ],
 	    ],
 	    [
 		'key' => 'member',
@@ -201,7 +200,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'help' => 'A DN (member, uniqueMember) or a name (memberUid)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_GROUP ],
 		//CLD: 2026-10-29T10:30:00+02:00: full width
-		'ui' => [ 'expression' => true, 'width' => 12, 'placeholder' => '{{ entry.dn }}', 'showIf' => $op(self::ON_GROUP) ],
+		'ui' => [ 'expression' => true, 'width' => 12, 'placeholder' => '{{ entry.dn }}', 'showIf' => static::operationIn(self::ON_GROUP) ],
 	    ],
 	    [
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
@@ -211,7 +210,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'member',
 		'choices' => self::MEMBER_ATTRIBUTES,
-		'ui' => [ 'advanced' => true, 'width' => 4, 'showIf' => $op(self::ON_GROUP) ],
+		'ui' => [ 'advanced' => true, 'width' => 4, 'showIf' => static::operationIn(self::ON_GROUP) ],
 	    ],
 	    [
 		'key' => 'login',
@@ -220,7 +219,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'default' => '',
 		'help' => 'The name the person signs in with',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'checkPassword' ] ],
-		'ui' => [ 'expression' => true, 'width' => 6, 'placeholder' => '{{ form.username }}', 'showIf' => $op([ 'checkPassword' ]) ],
+		'ui' => [ 'expression' => true, 'width' => 6, 'placeholder' => '{{ form.username }}', 'showIf' => static::operationIn([ 'checkPassword' ]) ],
 	    ],
 	    [
 		'key' => 'password',
@@ -229,7 +228,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'default' => '',
 		'help' => 'An expression giving the password, e.g. {{ form.password }} (not the password itself: settings are visible to the project)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'checkPassword' ] ],
-		'ui' => [ 'expression' => true, 'width' => 6, 'placeholder' => '{{ form.password }}', 'showIf' => $op([ 'checkPassword' ]) ],
+		'ui' => [ 'expression' => true, 'width' => 6, 'placeholder' => '{{ form.password }}', 'showIf' => static::operationIn([ 'checkPassword' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
@@ -238,7 +237,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'label' => 'User filter',
 		'default' => '',
 		'help' => 'Finds the person: {login} = the name. Empty: sAMAccountName / userPrincipalName / mail (Active Directory), uid / mail (others)',
-		'ui' => [ 'advanced' => true, 'showIf' => $op([ 'checkPassword' ]) ],
+		'ui' => [ 'advanced' => true, 'showIf' => static::operationIn([ 'checkPassword' ]) ],
 	    ],
 	    [
 		'key' => 'newPassword',
@@ -246,7 +245,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'label' => 'New password',
 		'default' => '',
 		'help' => 'An expression giving it, e.g. {{ form.password }}. Empty (not Active Directory): the server generates one, in the result',
-		'ui' => [ 'expression' => true, 'showIf' => $op([ 'setPassword' ]) ],
+		'ui' => [ 'expression' => true, 'showIf' => static::operationIn([ 'setPassword' ]) ],
 	    ],
 	    [
 		'key' => 'variable',
@@ -395,23 +394,23 @@ class NodeAppLdap extends \models\wf\WfNode {
     }
 
     protected function run($operation, LdapClient $client, $cred, array $vars) {
-	$text = fn($key, $escape = null) => self::render($this->cfg($key, ''), $vars, $escape);
+	$this->ldapVars = $vars;
 	$dnEscape = [ LdapClient::class, 'escapeDn' ];
 	switch($operation) {
 	    case 'search':
-		$base = $text('base', $dnEscape) ?: trim((string)$cred->baseDn);
-		$filter = $text('filter', [ LdapClient::class, 'escapeFilter' ]);
+		$base = $this->ldapText('base', $dnEscape) ?: trim((string)$cred->baseDn);
+		$filter = $this->ldapText('filter', [ LdapClient::class, 'escapeFilter' ]);
 		$limit = max(1, min(self::MAX_ENTRIES, (int)$this->cfg('sizeLimit', 100)));
 		$r = $client->search($base, $filter, (string)$this->cfg('scope', 'sub'), self::attributeNames($this->cfg('attributes', '')), $limit, min(500, $limit));
 		$entries = array_map([ LdapClient::class, 'plain' ], $r['entries']);
 		return [ [ 'entries' => $entries, 'count' => count($entries), 'truncated' => $r['truncated'] ], count($entries) . ' entr' . (count($entries) == 1 ? 'y' : 'ies')
 		    . ($r['truncated'] ? ' (more matched: truncated)' : '') . " under {$base}" ];
 	    case 'get':
-		$dn = $this->dn($text);
+		$dn = $this->dn();
 		$entry = $client->read($dn, self::attributeNames($this->cfg('attributes', '')));
 		return [ $entry ? LdapClient::plain($entry) : null, $entry ? "{$dn}: " . count($entry['attributes']) . ' attributes' : "{$dn}: not found" ];
 	    case 'add':
-		$dn = $this->dn($text);
+		$dn = $this->dn();
 		$attrs = [];
 		foreach((array)$this->cfg('entryAttributes', []) as $row) {
 		    $attr = trim((string)($row['name'] ?? ''));
@@ -424,7 +423,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		$client->add($dn, $attrs);
 		return [ [ 'dn' => $dn ], "{$dn} added (" . count($attrs) . ' attributes)' ];
 	    case 'modify':
-		$dn = $this->dn($text);
+		$dn = $this->dn();
 		$changes = [];
 		foreach((array)$this->cfg('changes', []) as $row) {
 		    $attr = trim((string)($row['name'] ?? ''));
@@ -435,14 +434,14 @@ class NodeAppLdap extends \models\wf\WfNode {
 		$client->modify($dn, $changes);
 		return [ [ 'dn' => $dn ], "{$dn}: " . count($changes) . ' change' . (count($changes) == 1 ? '' : 's') ];
 	    case 'rename':
-		$dn = $this->dn($text);
+		$dn = $this->dn();
 		$rdns = LdapClient::splitDn($dn);
-		$newRdn = $text('newRdn');
+		$newRdn = $this->ldapText('newRdn');
 		if ($newRdn === '') {
 		    $first = preg_split('/(?<!\\\\),/', $dn, 2)[0];
 		    $newRdn = trim($first);
 		}
-		$newParent = $text('newParent');
+		$newParent = $this->ldapText('newParent');
 		$parent = $newParent !== '' ? $newParent : (string)(preg_split('/(?<!\\\\),/', $dn, 2)[1] ?? '');
 		if (!$rdns || !LdapClient::splitDn($newRdn))
 		    throw new \RuntimeException("not a DN: `{$dn}` / `{$newRdn}`");
@@ -450,13 +449,13 @@ class NodeAppLdap extends \models\wf\WfNode {
 		$newDn = $newRdn . ($parent !== '' ? ',' . trim($parent) : '');
 		return [ [ 'dn' => $newDn, 'oldDn' => $dn ], "{$dn} -> {$newDn}" ];
 	    case 'delete':
-		$dn = $this->dn($text);
+		$dn = $this->dn();
 		$client->delete($dn);
 		return [ [ 'dn' => $dn ], "{$dn} deleted" ];
 	    case 'addMember':
 	    case 'removeMember':
-		$group = $text('group');
-		$member = $text('member');
+		$group = $this->ldapText('group');
+		$member = $this->ldapText('member');
 		$attr = isset(self::MEMBER_ATTRIBUTES[$this->cfg('memberAttribute', 'member')]) ? (string)$this->cfg('memberAttribute', 'member') : 'member';
 		if ($group === '' || $member === '')
 		    throw new \RuntimeException('the group and the member are needed');
@@ -472,7 +471,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		}
 		return [ [ 'dn' => $group, 'member' => $member, 'changed' => $changed ], "{$member} " . ($add ? 'added to' : 'removed from') . " {$group}" . ($changed ? '' : ' (it was already so)') ];
 	    case 'checkPassword':
-		$login = $text('login');
+		$login = $this->ldapText('login');
 		$password = \util\Expression::toText(\util\Expression::render((string)$this->cfg('password', ''), $vars));
 		$filter = trim((string)$this->cfg('userFilter', '')) ?: self::LOGIN_FILTERS[$cred->isAd() ? 'ad' : 'openldap'];
 		$found = $client->search(trim((string)$cred->baseDn), str_replace('{login}', LdapClient::escapeFilter($login), $filter), 'sub', [ '1.1' ], 2)['entries'];
@@ -488,7 +487,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		}
 		return [ [ 'valid' => $valid, 'dn' => $found[0]['dn'] ], "`{$login}`: the password is " . ($valid ? 'right' : 'wrong') ];
 	    case 'setPassword':
-		$dn = $this->dn($text);
+		$dn = $this->dn();
 		$new = \util\Expression::toText(\util\Expression::render((string)$this->cfg('newPassword', ''), $vars));
 		if ($cred->isAd()) {
 		    if ($new === '')
@@ -504,9 +503,17 @@ class NodeAppLdap extends \models\wf\WfNode {
 	throw new \ErrorException("LDAP: unknown operation `{$operation}`");
     }
 
+    //CLD: 2026-11-07T01:09:58+02:00: the variables of ldapText(), set by run()
+    private $ldapVars = [];
+
+    //CLD: 2026-11-07T01:09:58+02:00: setting $key rendered against the run's variables, each value escaped by $escape (render())
+    private function ldapText($key, $escape = null) {
+	return self::render($this->cfg($key, ''), $this->ldapVars, $escape);
+    }
+
     //the DN setting ({{ }} values escaped for a DN)
-    protected function dn(\Closure $text) {
-	$dn = $text('dn', [ LdapClient::class, 'escapeDn' ]);
+    protected function dn() {
+	$dn = $this->ldapText('dn', [ LdapClient::class, 'escapeDn' ]);
 	if ($dn === '' || LdapClient::splitDn($dn) === null)
 	    throw new \RuntimeException("not a DN: `{$dn}`");
 	return $dn;

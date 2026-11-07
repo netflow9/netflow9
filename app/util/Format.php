@@ -22,6 +22,13 @@ class Format {
 	return number_format((float)$n, $decimals, $point, $thousands);
     }
 
+    //CLD: 2026-11-07T01:17:49+02:00: at most $max decimals, trailing zeros dropped, no thousands separator: 1.50 -> "1.5", 3.0 -> "3", 0.125 -> "0.13"
+    public static function decimal($n, int $max = 2): string {
+	if ($n === null || $n === '')
+	    return '';
+	return rtrim(rtrim(number_format((float)$n, $max, '.', ''), '0'), '.');
+    }
+
     //1234 -> "1.2K", 3400000 -> "3.4M", 999 -> "999" (K, M, B, T; trailing zeros dropped)
     public static function compact($n, int $decimals = 1): string {
 	if ($n === null || $n === '')

@@ -571,9 +571,8 @@ class AgentTools {
 
     //whether a field with conditions $showIf / $hideIf is shown for operation $op: [ shown, other settings decide too ]; the conditions on `operation` are checked, the others not
     protected static function shownFor($showIf, $hideIf, $op) {
-	$list = fn($c) => is_array($c) ? (array_is_list($c) ? $c : [ $c ]) : [];
 	$others = false;
-	foreach($list($showIf) as $c) {
+	foreach(self::conditionList($showIf) as $c) {
 	    if (!is_array($c))
 		continue;
 	    if (($c['key'] ?? '') !== 'operation') {
@@ -583,7 +582,7 @@ class AgentTools {
 	    if (!\util\Conditions::holds($op, (string)($c['operator'] ?? 'eq'), $c['value'] ?? ''))
 		return [ false, $others ];
 	}
-	$hide = $list($hideIf);
+	$hide = self::conditionList($hideIf);
 	if ($hide && !array_filter($hide, fn($c) => !is_array($c) || ($c['key'] ?? '') !== 'operation')) {
 	    $all = true;
 	    foreach($hide as $c)
@@ -592,6 +591,11 @@ class AgentTools {
 		return [ false, $others ];
 	}
 	return [ true, $others || (bool)$hide ];
+    }
+
+    //CLD: 2026-11-07T01:13:30+02:00: a showIf / hideIf as a list of conditions (one, or a list; none)
+    private static function conditionList($c) {
+	return is_array($c) ? (array_is_list($c) ? $c : [ $c ]) : [];
     }
 
     //a field's choices as [ value => label ] (a list: the values are their labels)
@@ -771,20 +775,24 @@ class AgentTools {
 	if ($error !== null)
 	    return [ $error, true, [] ];
 	$exec = $ai->exec;
-	$json = fn($r) => json_encode($r, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 	//not waited for: a workflow that pauses goes on by itself (its end does not queue the AI step's execution)
 	[ $child, $error ] = \models\node\NodeAppWorkflow::startChild($exec, $wf, $given, false, (string)$ai->wfid);
 	if ($child === null)
-	    return [ $json([ 'ok' => false, 'state' => 'error', 'execution' => null, 'outputs' => null, 'error' => $error ]), true, [] ];
+	    return [ self::toJson([ 'ok' => false, 'state' => 'error', 'execution' => null, 'outputs' => null, 'error' => $error ]), true, [] ];
 	$child->save();
 	$exec->log($ai->wfid, $ai::$label . ": started {$wf->name}: execution {$child->_id}");
 	$state = $child->run();
 	if ($state === 'sleep')
-	    return [ $json([ 'ok' => true, 'state' => 'sleep', 'execution' => (string)$child->_id, 'outputs' => null, 'error' => null,
+	    return [ self::toJson([ 'ok' => true, 'state' => 'sleep', 'execution' => (string)$child->_id, 'outputs' => null, 'error' => null,
 		'note' => 'it is paused (a Wait or a Human task) and goes on by itself; its outputs are not available here' ]), false, [] ];
 	$outputs = \models\node\NodeAppWorkflow::outputsOf($child);
 	if ($child->state !== 'end')
-	    return [ $json([ 'ok' => false, 'state' => (string)$child->state, 'execution' => (string)$child->_id, 'outputs' => $outputs, 'error' => (string)($child->error ?: $child->state) ]), true, [] ];
-	return [ $json([ 'ok' => true, 'state' => 'end', 'execution' => (string)$child->_id, 'outputs' => $outputs, 'error' => null ]), false, [] ];
+	    return [ self::toJson([ 'ok' => false, 'state' => (string)$child->state, 'execution' => (string)$child->_id, 'outputs' => $outputs, 'error' => (string)($child->error ?: $child->state) ]), true, [] ];
+	return [ self::toJson([ 'ok' => true, 'state' => 'end', 'execution' => (string)$child->_id, 'outputs' => $outputs, 'error' => null ]), false, [] ];
+    }
+
+    //CLD: 2026-11-07T01:13:30+02:00: $r as JSON for the model (slashes and Unicode as they are, invalid UTF-8 replaced)
+    private static function toJson($r) {
+	return json_encode($r, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 }

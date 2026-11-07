@@ -617,29 +617,11 @@ final class Interpreter
         $right = $this->evalNode($n['right'], $scope);
         $isOf = $n['type'] === 'ForOfStatement';
 
-        $body = function (mixed $value) use ($n, $scope): int {
-            $iter = new Scope($scope);
-            $left = $n['left'];
-            if ($left['type'] === 'VariableDeclaration') {
-                $name = $left['declarations'][0]['id']['name'] ?? '';
-                if ($left['kind'] === 'var') {
-                    $this->assignVar($name, $value, $scope);
-                } else {
-                    $iter->vars[$name] = $value;
-                    if ($left['kind'] === 'const') {
-                        $iter->consts[$name] = true;
-                    }
-                }
-            } else {
-                $this->assignTo($left, $value, $scope);
-            }
-            return $this->exec($n['body'], $iter);
-        };
 
         if ($isOf) {
             if ($right instanceof JsArray) {
                 for ($i = 0; $i < count($right->items); $i++) { // live length, like JS
-                    $c = $body($right->items[$i]);
+                    $c = $this->forBody($n, $scope, $right->items[$i]);
                     if ($c === self::BREAK) {
                         break;
                     }
@@ -664,7 +646,7 @@ final class Interpreter
         }
 
         foreach ($values as $value) {
-            $c = $body($value);
+            $c = $this->forBody($n, $scope, $value);
             if ($c === self::BREAK) {
                 break;
             }
@@ -673,6 +655,27 @@ final class Interpreter
             }
         }
         return self::NORMAL;
+    }
+
+    //CLD: 2026-11-07T01:12:07+02:00: one pass of a for-in / for-of loop $n: the loop variable set to $value (in a scope of its own, var: in $scope), then the body
+    private function forBody(array $n, Scope $scope, mixed $value): int
+    {
+        $iter = new Scope($scope);
+        $left = $n['left'];
+        if ($left['type'] === 'VariableDeclaration') {
+            $name = $left['declarations'][0]['id']['name'] ?? '';
+            if ($left['kind'] === 'var') {
+                $this->assignVar($name, $value, $scope);
+            } else {
+                $iter->vars[$name] = $value;
+                if ($left['kind'] === 'const') {
+                    $iter->consts[$name] = true;
+                }
+            }
+        } else {
+            $this->assignTo($left, $value, $scope);
+        }
+        return $this->exec($n['body'], $iter);
     }
 
     private function execTry(array $n, Scope $scope): int

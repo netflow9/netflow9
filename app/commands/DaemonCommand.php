@@ -235,15 +235,19 @@ class DaemonCommand extends \sys\BaseController {
 	}
 
 	//$nin also matches events without aid / project (system work: not limited)
-	$full = fn($counts, $limit) => $limit > 0 ? array_map(fn($id) => \V::app()->om->to_oid($id), array_keys(array_filter($counts, fn($n) => $n >= $limit))) : [];
 	//CLD: 2026-10-22T23:00:00+03:00: + the suspended accounts (models\Account::isSuspended): their jobs wait in the queue
-	$aids = array_merge($full($per_aid, (int)$this->config['max-per-account']), array_map(fn($id) => \V::app()->om->to_oid($id), array_keys(\models\Account::suspendedIds())));
+	$aids = array_merge(self::fullIds($per_aid, (int)$this->config['max-per-account']), array_map(fn($id) => \V::app()->om->to_oid($id), array_keys(\models\Account::suspendedIds())));
 	if ($aids)
 	    $query['aid'] = [ '$nin' => $aids ];
-	if ($projects = $full($per_project, (int)$this->config['max-per-project']))
+	if ($projects = self::fullIds($per_project, (int)$this->config['max-per-project']))
 	    $query['project'] = [ '$nin' => $projects ];
 
 	return $query;
+    }
+
+    //CLD: 2026-11-07T01:04:46+02:00: the ids of $counts (id => running jobs) that reached $limit, as ObjectIds; none without a limit (0)
+    private static function fullIds($counts, $limit) {
+	return $limit > 0 ? array_map(fn($id) => \V::app()->om->to_oid($id), array_keys(array_filter($counts, fn($n) => $n >= $limit))) : [];
     }
 
     //hand out allowed events to idle workers until there is no idle worker or no allowed event
@@ -560,15 +564,11 @@ class DaemonCommand extends \sys\BaseController {
 	$this->loop = \React\EventLoop\Loop::get();
 
 	//setup signal handlers
-	$sig_handler_stop = function($signo) use(&$sig_handler_stop) {
-	    \V::app()->log->info("WMGR: got signal $signo. Stopping....");
-	    $this->loop->removeSignal(SIGINT, $sig_handler_stop);
-	    $this->loop->removeSignal(SIGTERM, $sig_handler_stop);
-	    $this->loop->stop();
-	};
+	//CLD: 2026-11-07T01:05:06+02:00: one handler for both signals, kept: removeSignal() finds it by identity
+	$this->stopHandler = $this->stopMaster(...);
 
-	$this->loop->addSignal(SIGINT, $sig_handler_stop);
-	$this->loop->addSignal(SIGTERM, $sig_handler_stop);
+	$this->loop->addSignal(SIGINT, $this->stopHandler);
+	$this->loop->addSignal(SIGTERM, $this->stopHandler);
 
 	//create initial workers via a 1s timer
     	$this->loop->addTimer(1, function() {
@@ -677,6 +677,14 @@ class DaemonCommand extends \sys\BaseController {
 	}
 
 	\V::app()->log->info("WMGR: exiting.");
+    }
+
+    //CLD: 2026-11-07T01:05:06+02:00: SIGINT / SIGTERM: the loop stops, both signals no longer handled
+    public function stopMaster($signo) {
+	\V::app()->log->info("WMGR: got signal $signo. Stopping....");
+	$this->loop->removeSignal(SIGINT, $this->stopHandler);
+	$this->loop->removeSignal(SIGTERM, $this->stopHandler);
+	$this->loop->stop();
     }
 
     //-------------------------------------------------------------------
@@ -897,15 +905,11 @@ class DaemonCommand extends \sys\BaseController {
 	$this->loop = \React\EventLoop\Loop::get();
 
 	//setup signal handlers
-	$sig_handler_stop = function($signo) use(&$sig_handler_stop) {
-	    \V::app()->log->info("Worker[{$this->pid}]: got signal $signo. Stopping....");
-	    $this->loop->removeSignal(SIGINT, $sig_handler_stop);
-	    $this->loop->removeSignal(SIGTERM, $sig_handler_stop);
-	    $this->loop->stop();
-	};
+	//CLD: 2026-11-07T01:05:06+02:00: one handler for both signals, kept: removeSignal() finds it by identity
+	$this->stopHandler = $this->stopWorker(...);
 
-	$this->loop->addSignal(SIGINT, $sig_handler_stop);
-	$this->loop->addSignal(SIGTERM, $sig_handler_stop);
+	$this->loop->addSignal(SIGINT, $this->stopHandler);
+	$this->loop->addSignal(SIGTERM, $this->stopHandler);
 
 	$this->stdin = new \React\Stream\ReadableResourceStream(fopen('php://stdin', 'r+'), $this->loop);
 	$this->stdout = new \React\Stream\WritableResourceStream(fopen('php://stdout', 'w+'), $this->loop);
@@ -954,5 +958,13 @@ class DaemonCommand extends \sys\BaseController {
         $this->loop->run();
 
 	\V::app()->log->info("Worker[{$this->pid}]: exiting....");
+    }
+
+    //CLD: 2026-11-07T01:05:06+02:00: SIGINT / SIGTERM: the loop stops, both signals no longer handled
+    public function stopWorker($signo) {
+	\V::app()->log->info("Worker[{$this->pid}]: got signal $signo. Stopping....");
+	$this->loop->removeSignal(SIGINT, $this->stopHandler);
+	$this->loop->removeSignal(SIGTERM, $this->stopHandler);
+	$this->loop->stop();
     }
 }

@@ -3,7 +3,8 @@
 //CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
 $url = \V::app()->createAbsoluteUrl('/mcp');
 $config = json_encode([ 'mcpServers' => [ 'netflow9' => [ 'type' => 'http', 'url' => $url, 'headers' => [ 'Authorization' => 'Bearer ' . $secret ] ] ] ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-$copy = fn($id) => "<button type='button' class='btn btn-sm btn-outline-secondary' onclick=\"navigator.clipboard.writeText(document.getElementById('{$id}').textContent); this.innerHTML='<i class=\\'bi bi-check2\\'></i>'\" title='Copy'><i class='bi bi-clipboard'></i></button>";
+//CLD: 2026-11-07T01:19:27+02:00: the copy button of element {:id}
+$copyTpl = "<button type='button' class='btn btn-sm btn-outline-secondary' onclick=\"navigator.clipboard.writeText(document.getElementById('{:id}').textContent); this.innerHTML='<i class=\\'bi bi-check2\\'></i>'\" title='Copy'><i class='bi bi-clipboard'></i></button>";
 
 $bodyTpl = '
 <div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle me-1"></i>Copy the token now: it is not shown again.</div>
@@ -17,11 +18,11 @@ $bodyTpl = '
 $body = \util\VString::insert($bodyTpl, [
     'name' => \V::app()->html->escape($token->name),
     'secret' => \V::app()->html->escape($secret),
-    'copySecret' => $copy('mcp-token-value'),
+    'copySecret' => \util\VString::insert($copyTpl, [ 'id' => 'mcp-token-value' ]),
     'url' => \V::app()->html->escape($url),
-    'copyUrl' => $copy('mcp-token-url'),
+    'copyUrl' => \util\VString::insert($copyTpl, [ 'id' => 'mcp-token-url' ]),
     'config' => \V::app()->html->escape($config),
-    'copyConfig' => $copy('mcp-token-config'),
+    'copyConfig' => \util\VString::insert($copyTpl, [ 'id' => 'mcp-token-config' ]),
 ]);
 
 $modal = new \sys\html\Modal([

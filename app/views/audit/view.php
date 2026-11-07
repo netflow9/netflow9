@@ -3,16 +3,9 @@
 //CLD: 2026-10-24T16:30:00+03:00: the account's datetime format (util\Format)
 $when = \util\Format::datetime($entry->created_at);
 
-//a logged value: text as is, other values as JSON
-$show = function($v) {
-    if ($v === null)
-	return "<span class='text-muted'>empty</span>";
-    if (is_bool($v))
-	return $v ? 'yes' : 'no';
-    if (is_array($v) || is_object($v))
-	$v = json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_INVALID_UTF8_IGNORE);
-    return \util\VString::insert('<span style="white-space: pre-wrap; word-break: break-word">{:v}</span>', [ 'v' => \V::app()->html->escape($v) ]);
-};
+//CLD: 2026-11-07T01:19:07+02:00: a logged value (models\AuditLog::valueText: text as is, other values as JSON), or empty
+$valueTpl = '<span style="white-space: pre-wrap; word-break: break-word">{:v}</span>';
+$emptyHtml = "<span class='text-muted'>empty</span>";
 
 //CLD: 2026-10-11T17:45:25+03:00: an execution log entry shows what acted (source, workflow, execution, step, who clicked Run) instead of the user / IP / browser
 $isExec = $entry instanceof \models\ExecutionLog;
@@ -57,7 +50,7 @@ if ($agent) {
     $facts['Read or write'] = \V::app()->html->escape($agent['access'] ?? '');
     $facts['Result'] = \V::app()->html->escape($agent['status'] ?? '');
     $facts['Approved by'] = \V::app()->html->escape($agent['approved_by'] ?? '');
-    $facts['Arguments'] = $show($agent['arguments'] ?? []);
+    $facts['Arguments'] = (($t = \models\AuditLog::valueText($agent['arguments'] ?? [])) === null ? $emptyHtml : \util\VString::insert($valueTpl, [ 'v' => \V::app()->html->escape($t) ]));
 }
 if (!$isExec && !$agent) {
     $facts['IP'] = \V::app()->html->escape($entry->ip);
@@ -85,10 +78,10 @@ foreach($changes as $c) {
 	$cells = \util\VString::insert($maskedTpl, [ 'span' => (int)$hasBefore + (int)$hasAfter ]);
     } else {
 	if ($hasBefore)
-	    $cells .= \util\VString::insert('<td>{:value}</td>', [ 'value' => array_key_exists('before', $c) ? $show($c['before']) : '' ]);
+	    $cells .= \util\VString::insert('<td>{:value}</td>', [ 'value' => array_key_exists('before', $c) ? (($t = \models\AuditLog::valueText($c['before'])) === null ? $emptyHtml : \util\VString::insert($valueTpl, [ 'v' => \V::app()->html->escape($t) ])) : '' ]);
 	if ($hasAfter)
 	    $cells .= \util\VString::insert('<td>{:value}{:inner}</td>', [
-		'value' => array_key_exists('after', $c) ? $show($c['after']) : '',
+		'value' => array_key_exists('after', $c) ? (($t = \models\AuditLog::valueText($c['after'])) === null ? $emptyHtml : \util\VString::insert($valueTpl, [ 'v' => \V::app()->html->escape($t) ])) : '',
 		'inner' => !empty($c['inner']) ? '<div class="small text-muted">contents changed</div>' : '',
 	    ]);
     }

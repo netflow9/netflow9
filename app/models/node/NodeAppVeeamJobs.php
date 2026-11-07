@@ -46,12 +46,11 @@ class NodeAppVeeamJobs extends NodeAppVeeam {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$name = fn() => array_filter([ 'nameFilter' => $text('nameFilter') ]);
 	switch($operation) {
 	    case 'list':
-		return $this->listOf('/api/v1/jobs', $name(), 'job');
+		return $this->listOf('/api/v1/jobs', $this->nameFilter(), 'job');
 	    case 'states':
-		return $this->listOf('/api/v1/jobs/states', $name(), 'job');
+		return $this->listOf('/api/v1/jobs/states', $this->nameFilter(), 'job');
 	}
 	$id = $this->jobId($value('job'));
 	$what = 'job ' . $text('job');
@@ -73,5 +72,10 @@ class NodeAppVeeamJobs extends NodeAppVeeam {
 		return [ $this->post("/api/v1/jobs/{$id}/disable"), "{$what} disabled" ];
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:10:30+02:00: the API's filter of the setting Name contains; none when empty
+    private function nameFilter() {
+	return array_filter([ 'nameFilter' => $this->settingText('nameFilter') ]);
     }
 }

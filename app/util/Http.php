@@ -159,20 +159,22 @@ class Http {
 	    return self::isPrivateNetworkIp(inet_ntop(substr($bin, 12)));
 	if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_RES_RANGE))
 	    return false;
-	$in = function($cidr) use ($bin) {
-	    [ $net, $bits ] = explode('/', $cidr);
-	    $n = inet_pton($net);
-	    if (strlen($n) !== strlen($bin))
-		return false;
-	    $bytes = intdiv((int)$bits, 8);
-	    $rest = (int)$bits % 8;
-	    if (substr($n, 0, $bytes) !== substr($bin, 0, $bytes))
-		return false;
-	    return $rest === 0 || ((ord($n[$bytes]) ^ ord($bin[$bytes])) & (0xff << (8 - $rest)) & 0xff) === 0;
-	};
-	if (!array_filter([ '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10', 'fc00::/7' ], $in))
+	if (!array_filter([ '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10', 'fc00::/7' ], fn($cidr) => self::inNetwork($bin, $cidr)))
 	    return false;
 	return !in_array(inet_ntop($bin), self::ownAddresses(), true);
+    }
+
+    //CLD: 2026-11-07T01:14:34+02:00: whether address $bin (inet_pton) is in network $cidr
+    private static function inNetwork($bin, $cidr) {
+	[ $net, $bits ] = explode('/', $cidr);
+	$n = inet_pton($net);
+	if (strlen($n) !== strlen($bin))
+	    return false;
+	$bytes = intdiv((int)$bits, 8);
+	$rest = (int)$bits % 8;
+	if (substr($n, 0, $bytes) !== substr($bin, 0, $bytes))
+	    return false;
+	return $rest === 0 || ((ord($n[$bytes]) ^ ord($bin[$bytes])) & (0xff << (8 - $rest)) & 0xff) === 0;
     }
 
     //CLD: 2026-11-01T00:30:00+02:00: this machine's addresses (its interfaces), normalized (inet_ntop)

@@ -4,13 +4,12 @@
 //a download, so the form is not pjax (its CSRF token is a field). Import: an export file (+ its passphrase), then the preview
 $om = \V::app()->om;
 $inProject = [ 'aid' => $project->aid, 'project' => $project->_id ];
-$can = fn($o, $perm) => \V::app()->user->can($perm, [ 'object' => $o ]);
-$workflows = array_filter(iterator_to_array($om->find('Workflow', $inProject, [ 'sort' => [ 'name' => 1 ] ]), false), fn($o) => $can($o, 'Workflow::read'));
-$credentials = array_filter(iterator_to_array($om->find('Credential', $inProject, [ 'sort' => [ 'name' => 1 ] ]), false), fn($o) => $can($o, 'Credential::read'));
-$tables = array_filter(iterator_to_array($om->find('DataTableDef', $inProject, [ 'sort' => [ 'name' => 1 ] ]), false), fn($o) => $can($o, 'DataTable::readData'));
+$workflows = array_filter(iterator_to_array($om->find('Workflow', $inProject, [ 'sort' => [ 'name' => 1 ] ]), false), fn($o) => \V::app()->user->can('Workflow::read', [ 'object' => $o ]));
+$credentials = array_filter(iterator_to_array($om->find('Credential', $inProject, [ 'sort' => [ 'name' => 1 ] ]), false), fn($o) => \V::app()->user->can('Credential::read', [ 'object' => $o ]));
+$tables = array_filter(iterator_to_array($om->find('DataTableDef', $inProject, [ 'sort' => [ 'name' => 1 ] ]), false), fn($o) => \V::app()->user->can('DataTable::readData', [ 'object' => $o ]));
 $formId = 'transfer-export-' . uniqid();
 
-//a group of checkboxes `$name[]`, with one to check them all; $extra($o): more after the label
+//a group of checkboxes `$name[]`, with one to check them all
 $groupTpl = '
 <div class="col-12 col-lg-4"><div class="border rounded p-2 h-100">
     <div class="form-check border-bottom pb-1 mb-1">
@@ -30,25 +29,6 @@ $itemTpl = '
     {:extra}
 </div>
 ';
-$group = function($title, $name, array $items, $label, $extra = null) use ($formId, $groupTpl, $itemTpl) {
-    $html = $items ? '' : '<div class="small text-body-secondary">None in this project</div>';
-    foreach($items as $o)
-	$html .= \util\VString::insert($itemTpl, [
-	    'name' => $name,
-	    'value' => (string)$o->_id,
-	    'id' => "{$formId}-{$name}-" . $o->_id,
-	    'label' => $label($o),
-	    'extra' => $extra ? $extra($o) : '',
-	]);
-    return \util\VString::insert($groupTpl, [
-	'formId' => $formId,
-	'name' => $name,
-	'disabled' => $items ? '' : ' disabled',
-	'title' => $title,
-	'count' => count($items),
-	'items' => $html,
-    ]);
-};
 $typeTpl = '{:name} <span class="small text-body-secondary">{:type}</span>';
 $rowsTpl = '
 <div class="form-check form-check-inline small me-0 flex-shrink-0">
@@ -56,6 +36,31 @@ $rowsTpl = '
     <label class="form-check-label" for="{:id}">with rows</label>
 </div>
 ';
+//CLD: 2026-11-07T01:18:40+02:00: the three groups: workflows (their icon), credentials (their type), data tables (+ with rows)
+$groups = '';
+foreach([ 'workflows' => [ 'Workflows', $workflows ], 'credentials' => [ 'Credentials & variables', $credentials ], 'datatables' => [ 'Data tables', $tables ] ] as $name => [ $title, $items ]) {
+    $html = $items ? '' : '<div class="small text-body-secondary">None in this project</div>';
+    foreach($items as $o)
+	$html .= \util\VString::insert($itemTpl, [
+	    'name' => $name,
+	    'value' => (string)$o->_id,
+	    'id' => "{$formId}-{$name}-" . $o->_id,
+	    'label' => match($name) {
+		'workflows' => $o->schema['icon']->display() . ' ' . \V::app()->html->escape((string)$o->name),
+		'credentials' => \util\VString::insert($typeTpl, [ 'name' => \V::app()->html->escape((string)$o->name), 'type' => \V::app()->html->escape($o::$label) ]),
+		default => \V::app()->html->escape((string)$o->name),
+	    },
+	    'extra' => $name === 'datatables' ? \util\VString::insert($rowsTpl, [ 'value' => (string)$o->_id, 'id' => "{$formId}-rows-" . $o->_id ]) : '',
+	]);
+    $groups .= \util\VString::insert($groupTpl, [
+	'formId' => $formId,
+	'name' => $name,
+	'disabled' => $items ? '' : ' disabled',
+	'title' => $title,
+	'count' => count($items),
+	'items' => $html,
+    ]);
+}
 
 echo '<div class="w-100 mt-4"></div>';
 ?>
@@ -65,17 +70,7 @@ echo '<div class="w-100 mt-4"></div>';
 <form id="<?= $formId ?>" method="post" action="<?= \V::app()->createUrl('/project/export', [ 'id' => $project->_id ]) ?>" no-pjax>
     <input type="hidden" name="<?= \V::app()->html->escape(\V::app()->csrf->getKey()) ?>" value="<?= \V::app()->html->escape(\V::app()->csrf->getToken()) ?>">
     <div class="row g-3 mb-3">
-	<?php
-	echo $group('Workflows', 'workflows', $workflows, fn($o) => $o->schema['icon']->display() . ' ' . \V::app()->html->escape((string)$o->name));
-	echo $group('Credentials & variables', 'credentials', $credentials, fn($o) => \util\VString::insert($typeTpl, [
-	    'name' => \V::app()->html->escape((string)$o->name),
-	    'type' => \V::app()->html->escape($o::$label),
-	]));
-	echo $group('Data tables', 'datatables', $tables, fn($o) => \V::app()->html->escape((string)$o->name), fn($o) => \util\VString::insert($rowsTpl, [
-	    'value' => (string)$o->_id,
-	    'id' => "{$formId}-rows-" . $o->_id,
-	]));
-	?>
+	<?= $groups ?>
     </div>
     <div class="form-check mb-3">
 	<input class="form-check-input" type="checkbox" name="used" value="1" id="<?= $formId ?>-used" checked>

@@ -121,12 +121,10 @@ class AgentGuard {
     //the section Guardrails of the AI step's settings; $cloud: the provider is someone else's servers (Mask personal data)
     public static function fields($cloud) {
 	$section = [ 'section' => self::SECTION ];
-	$limit = fn($key, $label, $help, array $ui = [ 'width' => 4 ]) => [ 'key' => $key, 'type' => 'number', 'label' => $label, 'default' => '', 'help' => $help,
-	    'validate' => [ [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => 'must be 0 or more' ] ], 'ui' => $section + $ui ];
 	return array_merge([
-	    $limit('maxToolCalls', 'Most tool calls per run', 'Then the agent stops. Empty: no limit'),
-	    $limit('maxWriteCalls', 'Most write calls per run', 'Of those that change something. Empty: no limit'),
-	    $limit('maxCost', 'Cost limit per run', 'USD from the tokens; credits on System AI. Empty: no limit'),
+	    self::limitField($section, 'maxToolCalls', 'Most tool calls per run', 'Then the agent stops. Empty: no limit'),
+	    self::limitField($section, 'maxWriteCalls', 'Most write calls per run', 'Of those that change something. Empty: no limit'),
+	    self::limitField($section, 'maxCost', 'Cost limit per run', 'USD from the tokens; credits on System AI. Empty: no limit'),
 	    [
 		'key' => 'trustedVariables',
 		'type' => 'text',
@@ -151,6 +149,12 @@ class AgentGuard {
 		'help' => 'Emails, phones, IBANs: placeholders go to the provider, restored in its answer',
 		'ui' => $section + [ 'width' => 6 ],
 	    ] ] : []);
+    }
+
+    //CLD: 2026-11-07T01:13:30+02:00: a limit of the Guardrails section: a number, 0 or more, empty for none
+    private static function limitField(array $section, $key, $label, $help, array $ui = [ 'width' => 4 ]) {
+	return [ 'key' => $key, 'type' => 'number', 'label' => $label, 'default' => '', 'help' => $help,
+	    'validate' => [ [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => 'must be 0 or more' ] ], 'ui' => $section + $ui ];
     }
 
     //the problems of the settings: [ message ]

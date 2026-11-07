@@ -89,8 +89,7 @@ class Embeddings {
 	}
 	$ids = array_values(array_unique(array_filter($ids)));
 	natcasesort($ids);
-	$isEmbed = fn($id) => $provider === 'gemini' ? in_array($id, $embed, true) : (bool)preg_match(self::EMBED_NAMES, $id);
-	$first = array_filter($ids, $isEmbed);
+	$first = array_filter($ids, fn($id) => $provider === 'gemini' ? in_array($id, $embed, true) : (bool)preg_match(self::EMBED_NAMES, $id));
 	$rest = array_diff($ids, $first);
 	return array_merge(array_map(fn($id) => [ 'id' => $id, 'label' => $id ], array_values($first)),
 	    array_map(fn($id) => [ 'id' => $id, 'label' => "{$id} (not named as an embedding model)" ], array_values($rest)));

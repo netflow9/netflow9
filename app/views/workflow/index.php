@@ -11,13 +11,8 @@ $nodeDefsUrl = \V::app()->createUrl('/workflow/node_defs');
 $pageToken = bin2hex(random_bytes(6));
 
 //canvas state comes from the query string; accept only numbers, as it is injected in JS
-$__canvas_num = function($key) {
-    $value = \V::app()->request->query[$key] ?? '';
-    return is_numeric($value) ? (string)(float)$value : '';
-};
-$__canvas_pan_x = $__canvas_num('__canvas_pan_x');
-$__canvas_pan_y = $__canvas_num('__canvas_pan_y');
-$__canvas_zoom = $__canvas_num('__canvas_zoom');
+[ $__canvas_pan_x, $__canvas_pan_y, $__canvas_zoom ] = array_map(fn($key) => is_numeric(\V::app()->request->query[$key] ?? '') ? (string)(float)\V::app()->request->query[$key] : '',
+    [ '__canvas_pan_x', '__canvas_pan_y', '__canvas_zoom' ]);
 
 $nodeInitUrl = \V::app()->createUrl('/workflow/node_init', [ 'id' => $wf->_id ]);
 //CLD: 2026-11-04T08:10:00+02:00: the form of a step, asked when its dialog opens
@@ -36,8 +31,6 @@ $executionKillUrl = \V::app()->createUrl('/workflow/execution_kill', [ 'id' => $
 //CLD: 2026-11-02T14:00:00+02:00: an AI step's trace (app.WfExecutions), Run again; ?execution=&trace= (WorkflowController::trace): the panel opened on them
 $executionTraceUrl = \V::app()->createUrl('/workflow/execution_trace', [ 'id' => $wf->_id ]);
 $executionAgainUrl = \V::app()->createUrl('/workflow/execution_again', [ 'id' => $wf->_id ]);
-//CLD: 2026-11-02T15:46:06+02:00: the Tests panel (app.WfTests; EvalController)
-$testsUrl = fn($action) => \V::app()->createUrl('/eval/' . $action, [ 'id' => $wf->_id ]);
 $openExecution = \util\Validator::rule('oid', (string)(\V::app()->request->query['execution'] ?? '')) ? (string)\V::app()->request->query['execution'] : '';
 $openTrace = $openExecution !== '' && \util\Validator::rule('oid', (string)(\V::app()->request->query['trace'] ?? '')) ? (string)\V::app()->request->query['trace'] : '';
 $canRun = \V::app()->user->can('Workflow::update', [ 'object' => $wf ]) ? 'true' : 'false';
@@ -59,6 +52,12 @@ $canDuplicate = \V::app()->user->can('Workflow::create', [ 'object' => \V::app()
 //part of this page) and marked until the step is changed (options.stepIssues)
 $issues = $shown->validateFlow();
 $issuesJs = \util\JSON::encode($issues);
+
+//CLD: 2026-11-02T15:46:06+02:00: the Tests panel (app.WfTests; EvalController): its URLs, by action
+$testsUrls = [];
+foreach([ 'case_delete', 'case_from_execution', 'case_save', 'data', 'required', 'run_detail', 'run_stop', 'start' ] as $action)
+    $testsUrls[$action] = \V::app()->createUrl('/eval/' . $action, [ 'id' => $wf->_id ]);
+
 $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'id' => $wf->_id, 'version' => $viewVersion ? $viewVersion->_id : null ]));
 
 
@@ -100,7 +99,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
     //CLD: 2026-10-25T20:30:00+02:00: Run and the Executions panel: app.WfExecutions (app.wfexecutions.js), the Debug panel: app.WfDebug (app.wfdebug.js;
     //was `debug`); one bottom panel at a time, the one last open remembered (bottomPanel)
     const exec = new app.WfExecutions(document.querySelector('.exec-panel'), {
-	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}', kill: '{$executionKillUrl}', trace: '{$executionTraceUrl}', again: '{$executionAgainUrl}', saveCase: '{$testsUrl('case_from_execution')}' },
+	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}', kill: '{$executionKillUrl}', trace: '{$executionTraceUrl}', again: '{$executionAgainUrl}', saveCase: '{$testsUrls['case_from_execution']}' },
 	canRun: {$canRun},
 	//CLD: 2026-10-12T20:33:47+03:00: the triggers Run can start
 	runTriggers: {$runTriggers},
@@ -144,7 +143,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
     });
     //CLD: 2026-11-02T15:46:06+02:00: the Tests panel
     const tests = new app.WfTests(document.querySelector('.tests-panel'), {
-	urls: { data: '{$testsUrl('data')}', detail: '{$testsUrl('run_detail')}', save: '{$testsUrl('case_save')}', del: '{$testsUrl('case_delete')}', start: '{$testsUrl('start')}', stop: '{$testsUrl('run_stop')}', required: '{$testsUrl('required')}' },
+	urls: { data: '{$testsUrls['data']}', detail: '{$testsUrls['run_detail']}', save: '{$testsUrls['case_save']}', del: '{$testsUrls['case_delete']}', start: '{$testsUrls['start']}', stop: '{$testsUrls['run_stop']}', required: '{$testsUrls['required']}' },
 	whenSaved: (fn) => autosave.whenSaved(fn),
 	onOpen: () => {
 	    exec.close();

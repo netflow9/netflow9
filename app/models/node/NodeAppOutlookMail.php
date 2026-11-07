@@ -59,8 +59,6 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 	. 'isDraft,importance,categories,hasAttachments,webLink,parentFolderId';
 
     public static function configSchema() {
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
-
 	return [
 	    static::credentialField(),
 	    static::operationField(),
@@ -74,7 +72,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'The message id, e.g. {{ outlook[0].id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_MESSAGE ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::ON_MESSAGE) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn(self::ON_MESSAGE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
@@ -83,7 +81,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'To',
 		'default' => '',
 		'help' => 'Addresses separated by commas, e.g. {{ mail.from }}',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, Ion <ion@example.com>', 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, Ion <ion@example.com>', 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -91,7 +89,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'type' => 'text',
 		'label' => 'Cc',
 		'default' => '',
-		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -99,7 +97,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'type' => 'text',
 		'label' => 'Bcc',
 		'default' => '',
-		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 9 wide, on a new line
@@ -108,7 +106,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'Subject',
 		'default' => '',
 		'help' => 'A reply keeps the original subject when empty',
-		'ui' => [ 'width' => 9, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 9, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -118,7 +116,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 'text',
 		'choices' => self::BODY_TYPES,
-		'ui' => [ 'width' => 3, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    //send / draft
 	    [
@@ -128,7 +126,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'In reply to',
 		'default' => '',
 		'help' => 'Optional: the id of the message answered, e.g. {{ outlook[0].id }}',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
@@ -137,7 +135,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'Attachments',
 		'default' => '',
 		'help' => 'Project file ids separated by commas, or a list; 3 MB in all',
-		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
 		'key' => 'body',
@@ -145,7 +143,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'Message',
 		'default' => '',
 		'help' => '{{ ... }} for expressions',
-		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => $op(self::COMPOSE) ],
+		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 
 	    //search
@@ -156,7 +154,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'Folder',
 		'default' => 'inbox',
 		'help' => 'inbox, archive, sentitems, ... or a folder id; empty: all',
-		'ui' => [ 'width' => 4, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'width' => 4, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 8 wide
@@ -165,7 +163,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'Search',
 		'default' => '',
 		'help' => 'Outlook search, e.g. from:ana@example.com subject:invoice; empty: the newest',
-		'ui' => [ 'width' => 8, 'placeholder' => 'from:ana@example.com subject:invoice', 'expression' => true, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'width' => 8, 'placeholder' => 'from:ana@example.com subject:invoice', 'expression' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
@@ -175,7 +173,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 10,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_MESSAGES, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_MESSAGES ] ],
-		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
@@ -183,7 +181,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'type' => 'switch',
 		'label' => 'Unread only',
 		'default' => false,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'search' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -192,7 +190,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'Save the attachments in the project Files',
 		'default' => false,
 		'help' => 'Allowed file types only (attachment_files)',
-		'ui' => [ 'width' => 3, 'showIf' => $op([ 'search', 'get' ]) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'search', 'get' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
@@ -215,7 +213,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 'none',
 		'choices' => self::MARK,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -224,7 +222,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'Move to folder',
 		'default' => '',
 		'help' => 'e.g. archive, or a folder id',
-		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -233,7 +231,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'label' => 'Add categories',
 		'default' => '',
 		'help' => 'Names separated by commas',
-		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -241,7 +239,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'type' => 'text',
 		'label' => 'Remove categories',
 		'default' => '',
-		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => $op([ 'modify' ]) ],
+		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 
 	    static::timeoutField(60),
@@ -252,20 +250,15 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 
     public function validates($options = []) {
 	$valid = parent::validates($options);
-	$fail = function($message) use (&$valid) {
-	    $this->errors('config', $message);
-	    $valid = false;
-	};
-	$empty = fn($key) => trim((string)$this->cfg($key, '')) === '';
 	$operation = $this->cfg('operation', 'send');
 	if (in_array($operation, self::COMPOSE, true)) {
-	    if ($operation === 'send' && $empty('to') && $empty('cc') && $empty('bcc') && $empty('replyTo'))
-		$fail('To: required (or In reply to)');
-	    if ($empty('subject') && $empty('replyTo'))
-		$fail('Subject: required (or In reply to)');
+	    if ($operation === 'send' && $this->cfgEmpty('to') && $this->cfgEmpty('cc') && $this->cfgEmpty('bcc') && $this->cfgEmpty('replyTo'))
+		$valid = $this->configError('To: required (or In reply to)');
+	    if ($this->cfgEmpty('subject') && $this->cfgEmpty('replyTo'))
+		$valid = $this->configError('Subject: required (or In reply to)');
 	}
-	if ($operation === 'modify' && $this->cfg('mark', 'none') === 'none' && $empty('moveTo') && $empty('addCategories') && $empty('removeCategories'))
-	    $fail('Mark as: choose what to change (mark, move or categories)');
+	if ($operation === 'modify' && $this->cfg('mark', 'none') === 'none' && $this->cfgEmpty('moveTo') && $this->cfgEmpty('addCategories') && $this->cfgEmpty('removeCategories'))
+	    $valid = $this->configError('Mark as: choose what to change (mark, move or categories)');
 	return $valid;
     }
 

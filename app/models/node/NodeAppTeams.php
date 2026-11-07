@@ -49,8 +49,6 @@ class NodeAppTeams extends NodeAppMicrosoft {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
-
 	return [
 	    static::credentialField(),
 	    static::operationField(),
@@ -62,7 +60,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'The team id (List my teams gives them)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'sendChannel', 'reply', 'channels' ] ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'sendChannel', 'reply', 'channels' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'sendChannel', 'reply', 'channels' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
@@ -72,7 +70,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'The channel id (List the channels gives them)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::IN_CHANNEL ],
-		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => $op(self::IN_CHANNEL) ],
+		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn(self::IN_CHANNEL) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
@@ -82,7 +80,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'The channel message replied to, e.g. {{ teams.id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'reply' ] ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'reply' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'reply' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
@@ -92,7 +90,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => 'The chat id (List my chats gives them)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'sendChat' ] ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'sendChat' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'sendChat' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
@@ -101,7 +99,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'label' => 'Subject',
 		'default' => '',
 		'help' => 'Optional',
-		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => $op([ 'sendChannel' ]) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'sendChannel' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -111,7 +109,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 'text',
 		'choices' => self::BODY_TYPES,
-		'ui' => [ 'width' => 3, 'showIf' => $op(self::SEND) ],
+		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::SEND) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
@@ -122,7 +120,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'required' => true,
 		'default' => 'normal',
 		'choices' => self::IMPORTANCE,
-		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op(self::SEND) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => static::operationIn(self::SEND) ],
 	    ],
 	    [
 		'key' => 'message',
@@ -131,7 +129,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'default' => '',
 		'help' => '{{ ... }} for expressions',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::SEND ],
-		'ui' => [ 'rows' => 5, 'expression' => true, 'showIf' => $op(self::SEND) ],
+		'ui' => [ 'rows' => 5, 'expression' => true, 'showIf' => static::operationIn(self::SEND) ],
 	    ],
 
 	    static::timeoutField(60),
@@ -153,15 +151,19 @@ class NodeAppTeams extends NodeAppMicrosoft {
 	$name = static::variableName($config);
 	if ($name === null)
 	    return [];
-	$named = fn($fields, $info) => [ 'type' => 'array', 'info' => $info, 'items' => [ 'type' => 'object', 'fields' => $fields ] ];
 	return [ $name => match($config['operation'] ?? 'sendChannel') {
-	    'teams' => $named([ 'id' => [ 'type' => 'string' ], 'name' => [ 'type' => 'string' ], 'description' => [ 'type' => 'string' ] ], 'the teams: [ { id, name, description } ]'),
-	    'channels' => $named([ 'id' => [ 'type' => 'string' ], 'name' => [ 'type' => 'string' ], 'description' => [ 'type' => 'string' ], 'type' => [ 'type' => 'string' ],
+	    'teams' => self::listOfObjects([ 'id' => [ 'type' => 'string' ], 'name' => [ 'type' => 'string' ], 'description' => [ 'type' => 'string' ] ], 'the teams: [ { id, name, description } ]'),
+	    'channels' => self::listOfObjects([ 'id' => [ 'type' => 'string' ], 'name' => [ 'type' => 'string' ], 'description' => [ 'type' => 'string' ], 'type' => [ 'type' => 'string' ],
 		'link' => [ 'type' => 'string' ] ], 'the channels: [ { id, name, description, type, link } ]'),
-	    'chats' => $named([ 'id' => [ 'type' => 'string' ], 'topic' => [ 'type' => 'string' ], 'type' => [ 'type' => 'string', 'info' => 'oneOnOne, group or meeting' ],
+	    'chats' => self::listOfObjects([ 'id' => [ 'type' => 'string' ], 'topic' => [ 'type' => 'string' ], 'type' => [ 'type' => 'string', 'info' => 'oneOnOne, group or meeting' ],
 		'members' => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ], 'link' => [ 'type' => 'string' ] ], 'the chats: [ { id, topic, type, members, link } ]'),
 	    default => self::messageType(),
 	} ];
+    }
+
+    //CLD: 2026-11-07T01:10:30+02:00: the type of a list of objects with fields $fields
+    private static function listOfObjects($fields, $info) {
+	return [ 'type' => 'array', 'info' => $info, 'items' => [ 'type' => 'object', 'fields' => $fields ] ];
     }
 
     // ------------------------------------------------------------------------------------

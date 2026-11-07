@@ -189,8 +189,12 @@ class TableExport {
     private function definedNames() {
 	$sheet = "'" . str_replace("'", "''", $this->sheet) . "'";
 	[ $from, $to ] = explode(':', $this->filterRange());
-	$abs = fn($ref) => preg_replace('/^([A-Z]+)(\d+)$/', '\$$1\$$2', $ref);
-	return '<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">' . self::escape($sheet . '!' . $abs($from) . ':' . $abs($to)) . '</definedName></definedNames>';
+	return '<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">' . self::escape($sheet . '!' . self::absoluteRef($from) . ':' . self::absoluteRef($to)) . '</definedName></definedNames>';
+    }
+
+    //CLD: 2026-11-07T01:22:46+02:00: cell reference $ref (A1) as an absolute one ($A$1)
+    private static function absoluteRef($ref) {
+	return preg_replace('/^([A-Z]+)(\d+)$/', '\$$1\$$2', $ref);
     }
 
     //0 -> A, 26 -> AA

@@ -56,7 +56,6 @@ class NodeAppFtp extends \models\wf\WfNode {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$choices = fn($capability) => array_column(static::credentialChoices($capability), 'label', 'value');
 	$download = [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'download' ];
 
 	return [
@@ -65,7 +64,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'type' => 'select',
 		'label' => 'Server credential',
 		'required' => true,
-		'choices' => $choices('ftp'),
+		'choices' => self::credentialOptions('ftp'),
 		'help' => 'An FTP / SFTP server credential of the project (menu: Credentials)',
 	    ],
 	    [
@@ -222,7 +221,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'type' => 'select',
 		'label' => 'Decryption key',
 		'default' => '',
-		'choices' => $choices('decrypt'),
+		'choices' => self::credentialOptions('decrypt'),
 		'requiredIf' => [ 'if' => 'decrypt', 'in' => [ 'ext', 'all' ] ],
 		'help' => 'A Decryption key credential: PGP / GPG, OpenSSL or S/MIME',
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'decrypt', 'operator' => 'ne', 'value' => 'none' ] ],
@@ -254,7 +253,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'type' => 'select',
 		'label' => 'Verification key',
 		'default' => '',
-		'choices' => $choices('verify'),
+		'choices' => self::credentialOptions('verify'),
 		'requiredIf' => [ 'if' => 'verifySignature', 'in' => [ 'attached', 'detached' ] ],
 		'help' => 'A Verification key credential: the sender\'s key or certificate',
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'verifySignature', 'operator' => 'ne', 'value' => 'none' ] ],
@@ -320,6 +319,11 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'help' => 'No connection, unreadable folder, failed file',
 	    ],
 	];
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: the credentials of the project with capability $capability, as choices (value => label)
+    private static function credentialOptions($capability) {
+	return array_column(static::credentialChoices($capability), 'label', 'value');
     }
 
     //credentials of the current project providing $capability, for the designer
@@ -444,29 +448,23 @@ class NodeAppFtp extends \models\wf\WfNode {
 
     public function execute($edgeId = null) {
 	$vars = $this->exec->expressionVariables();
-	$text = fn($key, $default = '') => trim(\util\Expression::toText(\util\Expression::render((string)$this->cfg($key, $default), $vars)));
 	$now = time();
 	$start = microtime(true);
 	$operation = $this->cfg('operation', 'download') === 'list' ? 'list' : 'download';
 
 	//the settings (an error here fails the step: they are the workflow's)
-	$folder = \util\FtpClient::normalize($text('folder'));
-	$pattern = $text('pattern', '*');
-	$exclude = $text('exclude', '');
+	$folder = \util\FtpClient::normalize($this->textSetting($vars, 'folder'));
+	$pattern = $this->textSetting($vars, 'pattern', '*');
+	$exclude = $this->textSetting($vars, 'exclude', '');
 	foreach([ 'File names' => $pattern, 'Leave out' => $exclude ] as $label => $p) {
 	    if (($error = self::patternError($p)) !== null)
 		throw new \ErrorException("FTP / SFTP: {$label}: {$error}");
 	}
-	//a single expression keeps its type: a number (Unix time) as it is, anything else (e.g. a date) as text
-	$time = function($key) use ($now) {
-	    $v = $this->expr($key, '');
-	    return self::parseTime(is_int($v) || is_float($v) ? $v : \util\Expression::toText($v), $now);
-	};
-	$after = $time('modifiedAfter');
-	$before = $time('modifiedBefore');
+	$after = $this->timeSetting('modifiedAfter', $now);
+	$before = $this->timeSetting('modifiedBefore', $now);
 	foreach([ 'Modified after' => [ 'modifiedAfter', $after ], 'Modified before' => [ 'modifiedBefore', $before ] ] as $label => [ $key, $t ]) {
-	    if ($t === null && $text($key) !== '')
-		throw new \ErrorException("FTP / SFTP: {$label}: not a date or a relative time (got `" . mb_substr($text($key), 0, 60) . '`)');
+	    if ($t === null && $this->textSetting($vars, $key) !== '')
+		throw new \ErrorException("FTP / SFTP: {$label}: not a date or a relative time (got `" . mb_substr($this->textSetting($vars, $key), 0, 60) . '`)');
 	}
 	$minAge = max(0, (int)$this->cfg('minAge', 0));
 	$youngest = $minAge > 0 ? $now - $minAge * 60 : null;
@@ -476,7 +474,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 	$depth = $this->cfg('subfolders', false) ? max(1, min(self::MAX_DEPTH, (int)$this->cfg('depth', 3))) : 0;
 	$timeout = max(5, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120)));
 	$afterAction = $operation === 'download' ? (string)$this->cfg('after', 'none') : 'none';
-	$moveTo = $afterAction === 'move' ? \util\FtpClient::normalize($text('moveTo')) : '';
+	$moveTo = $afterAction === 'move' ? \util\FtpClient::normalize($this->textSetting($vars, 'moveTo')) : '';
 	if ($afterAction === 'move' && $moveTo === '')
 	    throw new \ErrorException('FTP / SFTP: Move to folder: empty');
 
@@ -554,12 +552,6 @@ class NodeAppFtp extends \models\wf\WfNode {
 		//CLD: 2026-10-20T20:00:00+03:00: separate signatures: a file's signature is `<path><ending>`; signature files of a listed file are not files to take
 		$paths = array_flip(array_column($entries, 'path'));
 		$sigEndings = $verifyMode === 'detached' ? \util\FileVerify::signatureEndings((string)$verCred->method) : [];
-		$signatureOf = function($path) use ($paths, $sigEndings) {
-		    foreach($sigEndings as $ending)
-			if (isset($paths[$path . $ending]))
-			    return $path . $ending;
-		    return null;
-		};
 
 		//2. the filters: names, then times (to the second when a listing's time is close to a limit), sizes, new
 		$limits = array_filter([ $after, $before, $youngest ], fn($t) => $t !== null);
@@ -616,7 +608,12 @@ class NodeAppFtp extends \models\wf\WfNode {
 			continue;
 		    }
 		    //a separate signature: there, or the file waits (does not count, not taken) / an error
-		    $sigPath = $verifyMode === 'detached' ? $signatureOf($entry['path']) : null;
+		    $sigPath = null;
+		    if ($verifyMode === 'detached') {
+			foreach($sigEndings as $ending)
+			    if ($sigPath === null && isset($paths[$entry['path'] . $ending]))
+				$sigPath = $entry['path'] . $ending;
+		    }
 		    if ($verifyMode === 'detached' && $sigPath === null) {
 			if ($missingSignature === 'error')
 			    $result['errors'][] = [ 'path' => $entry['path'], 'error' => 'no signature file (' . implode(', ', array_map(fn($e) => $entry['name'] . $e, $sigEndings)) . ')' ];
@@ -689,6 +686,18 @@ class NodeAppFtp extends \models\wf\WfNode {
 	    throw new \ErrorException('FTP / SFTP: ' . $result['error']);
 	}
 	return [ 0 ];
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: setting $key as text, trimmed, its {{ }} rendered against $vars
+    private function textSetting(array $vars, $key, $default = '') {
+	return trim(\util\Expression::toText(\util\Expression::render((string)$this->cfg($key, $default), $vars)));
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: setting $key as a time (a date, or relative to $now); null when empty
+    //a single expression keeps its type: a number (Unix time) as it is, anything else (e.g. a date) as text
+    private function timeSetting($key, $now) {
+	$v = $this->expr($key, '');
+	return self::parseTime(is_int($v) || is_float($v) ? $v : \util\Expression::toText($v), $now);
     }
 
     //the name a file is saved under: decrypted (the method's ending removed), decompressed (.gz / .bz2 removed)

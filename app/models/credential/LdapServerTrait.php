@@ -22,7 +22,6 @@ trait LdapServerTrait {
     public static $directories = [ 'ad' => 'Active Directory', 'openldap' => 'OpenLDAP, 389 Directory Server or another LDAP server' ];
 
     protected function serverSchema() {
-	$enc = fn($values) => [ 'key' => 'encryption', 'operator' => 'in', 'value' => $values ];
 	return [
 	    [
 		'key' => 'directory',
@@ -88,7 +87,7 @@ trait LdapServerTrait {
 		'help' => 'Off only for a test server: without the check, anyone on the way can read the passwords',
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
-		'ui' => [ 'showIf' => $enc([ 'starttls', 'ldaps' ]) ],
+		'ui' => [ 'showIf' => self::encryptionIn([ 'starttls', 'ldaps' ]) ],
 	    ],
 	    [
 		'key' => 'caCert',
@@ -99,7 +98,7 @@ trait LdapServerTrait {
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
 		'validate' => [ [ 'pemCertificate', 'skipEmpty' => true, 'message' => 'not a certificate (-----BEGIN CERTIFICATE-----)' ] ],
-		'ui' => [ 'rows' => 4, 'placeholder' => '-----BEGIN CERTIFICATE-----', 'showIf' => $enc([ 'starttls', 'ldaps' ]) ],
+		'ui' => [ 'rows' => 4, 'placeholder' => '-----BEGIN CERTIFICATE-----', 'showIf' => self::encryptionIn([ 'starttls', 'ldaps' ]) ],
 	    ],
 	    [
 		'key' => 'bindDn',
@@ -133,6 +132,11 @@ trait LdapServerTrait {
 		'ui' => [ 'placeholder' => 'DC=example,DC=com' ],
 	    ],
 	];
+    }
+
+    //CLD: 2026-11-07T01:06:42+02:00: a field's showIf: shown when the setting `encryption` is one of $values
+    protected static function encryptionIn(array $values) {
+	return [ 'key' => 'encryption', 'operator' => 'in', 'value' => $values ];
     }
 
     //the servers are host names / addresses; a bind DN has its password

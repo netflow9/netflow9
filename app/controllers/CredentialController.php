@@ -59,9 +59,8 @@ class CredentialController extends \sys\BaseController {
 	    \V::app()->error(403, 'Unauthorized');
 
 	//CLD: 2026-11-03T18:00:00+02:00: ?shared=1: the credentials other projects share with this one: name, type, project (the page's second list)
-	$sharedHere = fn() => iterator_to_array(\V::app()->om->find('Credential', [ 'aid' => $this->account->_id ] + \models\Credential::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false);
 	if (!empty($req->query['data']) && !empty($req->query['shared'])) {
-	    $data = array_map(fn($c) => [ '_id' => (string)$c->_id, 'name' => (string)$c->name, 'type' => (string)$c::$label, 'project' => $c::projectName($c->project) ], $sharedHere());
+	    $data = array_map(fn($c) => [ '_id' => (string)$c->_id, 'name' => (string)$c->name, 'type' => (string)$c::$label, 'project' => $c::projectName($c->project) ], $this->sharedHere());
 	    $resp->sendJSON([ 'nRecords' => count($data), 'data' => $data ]);
 	}
 
@@ -70,9 +69,14 @@ class CredentialController extends \sys\BaseController {
 	    $resp->sendJSON($response);
 	}
 
-	$sharedCount = count($sharedHere());
+	$sharedCount = count($this->sharedHere());
 	$canShare = !$this->project->personal && \V::app()->user->can('Credential::share', [ 'object' => $this->projectCredential() ]);
 	$this->render('list', compact('sharedCount', 'canShare'));
+    }
+
+    //CLD: 2026-11-07T01:04:46+02:00: the credentials other projects share with the current one, by name
+    private function sharedHere() {
+	return iterator_to_array(\V::app()->om->find('Credential', [ 'aid' => $this->account->_id ] + \models\Credential::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false);
     }
 
     public function create($req, $resp) {

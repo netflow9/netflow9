@@ -344,7 +344,6 @@ class MailPoll extends \sys\BaseModel {
 
 	$from = $mail->from();
 	//CLD: 2026-10-11T22:58:51+03:00: several values are lists: addresses, references, attachment files; + every header and the attachments
-	$emails = fn($list) => array_values(array_filter(array_map(fn($a) => (string)($a['email'] ?? ''), $list), 'strlen'));
 	$date = $mail->date();
 	$text = self::cut($mail->text(), $maxBody);
 	$html = self::cut($mail->html(), $maxBody);
@@ -353,9 +352,9 @@ class MailPoll extends \sys\BaseModel {
 	    'message_id' => (string)$mail->messageId(),
 	    'from' => (string)($from['email'] ?? ''),
 	    'from_name' => (string)($from['name'] ?? ''),
-	    'to' => $emails($mail->to()),
-	    'cc' => $emails($mail->cc()),
-	    'reply_to' => $emails($mail->replyTo()),
+	    'to' => self::emailsOf($mail->to()),
+	    'cc' => self::emailsOf($mail->cc()),
+	    'reply_to' => self::emailsOf($mail->replyTo()),
 	    'subject' => $mail->subject(),
 	    'date' => $date ? $date->format(DATE_ATOM) : '',
 	    'text' => $text,
@@ -387,6 +386,11 @@ class MailPoll extends \sys\BaseModel {
 	    'received_at' => new \MongoDB\BSON\UTCDateTime(),
 	];
 	return [ $msg, $input ];
+    }
+
+    //CLD: 2026-11-07T01:05:52+02:00: the addresses of a list of parsed addresses ([ email, name ]), the empty ones left out
+    private static function emailsOf($list) {
+	return array_values(array_filter(array_map(fn($a) => (string)($a['email'] ?? ''), $list), 'strlen'));
     }
 
     //at most MAX_BODY bytes, cut on a UTF-8 boundary

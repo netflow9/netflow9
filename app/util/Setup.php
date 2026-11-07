@@ -216,43 +216,41 @@ class Setup {
     //$values: BASE_URL, MONGO_URI, MONGO_DB, SMTP_* , MAIL_FROM, ERRORS_EMAIL (empty ones are written empty; MAIL_FROM is left out when empty)
     //CLD: 2026-10-19T14:18:52+03:00: MAIL_INBOUND_DOMAIN is not asked: written commented out (the Email inbound trigger needs it; Haraka receives that domain)
     public static function envContent(array $v) {
-	$q = fn($s) => "'" . (string)$s . "'";
-	$b = fn($x) => $x ? 'true' : 'false';
 	$lines = [
 	    '#!/bin/bash',
 	    '',
 	    '#CLD: ' . date('c') . ': written by the initial setup (/setup)',
-	    'BASE=' . $q(BASE),
+	    'BASE=' . self::envQuoted(BASE),
 	    '',
-	    'BASE_URL=' . $q($v['BASE_URL']),
+	    'BASE_URL=' . self::envQuoted($v['BASE_URL']),
 	    '',
 	    '#mongo database',
 	    '#mongodb://<username>:<password>@db1.example.net:27017,db2.example.net:2500/?replicaSet=test&connectTimeoutMS=300000',
 	    '#see: https://docs.mongodb.com/manual/reference/connection-string/#connections-connection-options',
-	    'MONGO_URI=' . $q($v['MONGO_URI']),
-	    'MONGO_DB=' . $q($v['MONGO_DB']),
+	    'MONGO_URI=' . self::envQuoted($v['MONGO_URI']),
+	    'MONGO_DB=' . self::envQuoted($v['MONGO_DB']),
 	    '',
 	    '#outbound SMTP',
-	    'SMTP_HOST=' . $q($v['SMTP_HOST']),
+	    'SMTP_HOST=' . self::envQuoted($v['SMTP_HOST']),
 	    'SMTP_PORT=' . (int)$v['SMTP_PORT'],
-	    'SMTP_USERNAME=' . $q($v['SMTP_USERNAME']),
-	    'SMTP_PASSWORD=' . $q($v['SMTP_PASSWORD']),
-	    'SMTP_AUTH=' . $b($v['SMTP_USERNAME'] !== ''),
+	    'SMTP_USERNAME=' . self::envQuoted($v['SMTP_USERNAME']),
+	    'SMTP_PASSWORD=' . self::envQuoted($v['SMTP_PASSWORD']),
+	    'SMTP_AUTH=' . ($v['SMTP_USERNAME'] !== '' ? 'true' : 'false'),
 	    "#false, 'ssl', or 'tls'",
-	    'SMTP_SECURE=' . ($v['SMTP_SECURE'] ? $q($v['SMTP_SECURE']) : 'false'),
+	    'SMTP_SECURE=' . ($v['SMTP_SECURE'] ? self::envQuoted($v['SMTP_SECURE']) : 'false'),
 	    'SMTP_AUTOTLS=true',
 	    '',
-	    'SMTP_DOMAIN=' . $q($v['SMTP_DOMAIN']),
+	    'SMTP_DOMAIN=' . self::envQuoted($v['SMTP_DOMAIN']),
 	];
 	if ($v['MAIL_FROM'] !== '')
-	    $lines[] = 'MAIL_FROM=' . $q($v['MAIL_FROM']);
+	    $lines[] = 'MAIL_FROM=' . self::envQuoted($v['MAIL_FROM']);
 	array_push($lines,
 	    '',
 	    '#where to report errors',
-	    'ERRORS_EMAIL=' . $q($v['ERRORS_EMAIL']),
+	    'ERRORS_EMAIL=' . self::envQuoted($v['ERRORS_EMAIL']),
 	    '',
 	    '#application secret used by \sys\Security encrypt/decrypt',
-	    'APP_SECRET=' . $q(bin2hex(random_bytes(32))),
+	    'APP_SECRET=' . self::envQuoted(bin2hex(random_bytes(32))),
 	    '',
 	    '#the domain of the inbound email addresses (Email inbound trigger; Haraka receives it: haraka/config/nfn.ini domain)',
 	    "#MAIL_INBOUND_DOMAIN='" . ((string)parse_url($v['BASE_URL'], PHP_URL_HOST) ?: 'example.com') . "'",
@@ -272,6 +270,12 @@ class Setup {
 	);
 	return implode("\n", $lines);
     }
+
+    //CLD: 2026-11-07T01:16:14+02:00: $s single-quoted for app.env (literal: see V::parse_env)
+    private static function envQuoted($s) {
+	return "'" . (string)$s . "'";
+    }
+
 
     //CLD: 2026-10-29T02:00:00+02:00: shared by the browser setup (controllers\SetupController) and the command-line one (commands\SysCommand)
     //connects to the server's database ($server: ServerForm::values()) and makes it the app's; it must have no account yet. Returns null, or [ field, message ]

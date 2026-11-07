@@ -77,19 +77,6 @@ class NodeAppVmwareAlarms extends NodeAppVmware {
 	$root = (string)($content['rootFolder']['value'] ?? 'group-d1');
 	$states = $vc->vim('GET', "Folder/{$root}/triggeredAlarmState");
 	$names = [];
-	$nameOf = function($type, $id, $path) use ($vc, &$names) {
-	    $k = "{$type}/{$id}";
-	    if (!array_key_exists($k, $names)) {
-		try {
-		    $r = $vc->vim('GET', "{$type}/{$id}/{$path}");
-		    $names[$k] = (string)($path === 'info' ? ($r['name'] ?? '') : $r);
-		} catch (\RuntimeException $e) {
-		    //removed meanwhile, or not readable: its id is shown
-		    $names[$k] = '';
-		}
-	    }
-	    return $names[$k] !== '' ? $names[$k] : $id;
-	};
 	$out = [];
 	foreach(is_array($states) ? $states : [] as $s) {
 	    $status = (string)($s['overallStatus'] ?? '');
@@ -102,12 +89,27 @@ class NodeAppVmwareAlarms extends NodeAppVmware {
 		continue;
 	    $alarm = (string)($s['alarm']['value'] ?? '');
 	    $entity = (string)($s['entity']['value'] ?? '');
-	    $out[] = [ 'key' => "{$alarm}|{$entity}", 'alarm' => [ 'id' => $alarm, 'name' => $nameOf('Alarm', $alarm, 'info') ],
-		'entity' => [ 'type' => $etype, 'id' => $entity, 'name' => $nameOf($etype, $entity, 'name') ], 'status' => $status, 'time' => (string)($s['time'] ?? ''),
+	    $out[] = [ 'key' => "{$alarm}|{$entity}", 'alarm' => [ 'id' => $alarm, 'name' => self::nameOf($vc, $names, 'Alarm', $alarm, 'info') ],
+		'entity' => [ 'type' => $etype, 'id' => $entity, 'name' => self::nameOf($vc, $names, $etype, $entity, 'name') ], 'status' => $status, 'time' => (string)($s['time'] ?? ''),
 		'acknowledged' => (bool)($s['acknowledged'] ?? false), 'acknowledgedBy' => $s['acknowledgedByUser'] ?? null, 'acknowledgedTime' => $s['acknowledgedTime'] ?? null ];
 	}
 	usort($out, fn($a, $b) => [ $b['status'] === 'red', $b['time'] ] <=> [ $a['status'] === 'red', $a['time'] ]);
 	return $out;
+    }
+
+    //CLD: 2026-11-07T01:10:30+02:00: the name of object $type/$id (read once: $names keeps them; property $path of it); its id when it is gone or not readable
+    private static function nameOf(\util\VSphere $vc, array &$names, $type, $id, $path) {
+	$k = "{$type}/{$id}";
+	if (!array_key_exists($k, $names)) {
+	    try {
+		$r = $vc->vim('GET', "{$type}/{$id}/{$path}");
+		$names[$k] = (string)($path === 'info' ? ($r['name'] ?? '') : $r);
+	    } catch (\RuntimeException $e) {
+		//removed meanwhile, or not readable: its id is shown
+		$names[$k] = '';
+	    }
+	}
+	return $names[$k] !== '' ? $names[$k] : $id;
     }
 
     //an alarm for the log: the alarm's name on the object, its status

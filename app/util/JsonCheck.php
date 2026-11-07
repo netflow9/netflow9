@@ -245,18 +245,17 @@ class JsonCheck {
 	    if ($member['key'] !== null)
 		$m[$member['key']] = $member;
 	}
-	$isExpr = fn($x) => $x['type'] === 'expression' || ($x['type'] === 'string' && $x['value'] === null);
 
 	if (!isset($m['jsonrpc']))
 	    $this->fail('"jsonrpc": "2.0" is missing', $v['start']);
 	$x = $m['jsonrpc']['value'];
-	if (!$isExpr($x) && ($x['type'] !== 'string' || $x['value'] !== '2.0'))
+	if (!self::isExpression($x) && ($x['type'] !== 'string' || $x['value'] !== '2.0'))
 	    $this->fail('"jsonrpc" must be "2.0"', $x['start'], $x['end']);
 
 	if (!isset($m['method']))
 	    $this->fail('"method" (the name of the method called) is missing', $v['start']);
 	$x = $m['method']['value'];
-	if (!$isExpr($x)) {
+	if (!self::isExpression($x)) {
 	    if ($x['type'] !== 'string')
 		$this->fail('"method" is a text: the name of the method called', $x['start'], $x['end']);
 	    if (trim($x['value']) === '')
@@ -285,6 +284,11 @@ class JsonCheck {
 	    if (!in_array($key, [ 'jsonrpc', 'method', 'params', 'id' ], true))
 		$this->warn("`{$key}` is not a member of a JSON-RPC 2.0 request", $member['start'], $member['end']);
 	}
+    }
+
+    //CLD: 2026-11-07T01:14:34+02:00: whether value $x of the parsed content is an expression ({{ }}: its value known only when the step runs)
+    private static function isExpression($x) {
+	return $x['type'] === 'expression' || ($x['type'] === 'string' && $x['value'] === null);
     }
 }
 

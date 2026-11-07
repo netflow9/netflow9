@@ -58,7 +58,6 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
     }
 
     public static function configSchema() {
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 	$choices = [];
 	foreach(self::credentialChoices() as $c)
 	    $choices[$c['value']] = $c['label'];
@@ -87,7 +86,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 		'default' => '',
 		'help' => 'One statement. A {{ }} is sent as a parameter: WHERE id = {{ order.id }} (not for table or column names)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'query', 'execute' ] ],
-		'ui' => [ 'rows' => 6, 'expression' => 'text', 'code' => true, 'placeholder' => 'SELECT id, name FROM customers WHERE country = {{ country }}', 'showIf' => $op([ 'query', 'execute' ]) ],
+		'ui' => [ 'rows' => 6, 'expression' => 'text', 'code' => true, 'placeholder' => 'SELECT id, name FROM customers WHERE country = {{ country }}', 'showIf' => static::operationIn([ 'query', 'execute' ]) ],
 	    ],
 	    [
 		'key' => 'table',
@@ -97,7 +96,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 		'help' => 'A table, or schema.table',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'insert' ] ],
 		'validate' => [ [ 'regex', 'pattern' => '^[A-Za-z_][A-Za-z0-9_$#]*(\.[A-Za-z_][A-Za-z0-9_$#]*){0,2}$', 'skipEmpty' => true, 'message' => 'A table name: letters, digits, _ $ #' ] ],
-		'ui' => [ 'width' => 4, 'placeholder' => 'orders', 'showIf' => $op([ 'insert' ]) ],
+		'ui' => [ 'width' => 4, 'placeholder' => 'orders', 'showIf' => static::operationIn([ 'insert' ]) ],
 	    ],
 	    [
 		'key' => 'rows',
@@ -107,7 +106,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 		'help' => 'An expression giving a list of objects keyed by column, e.g. {{ response.body.items }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'insert' ] ],
 		//CLD: 2026-11-01T21:50:00+02:00: + agent: as an AI step's tool, a list (util\AgentTools)
-		'ui' => [ 'rows' => 3, 'width' => 8, 'expression' => true, 'showIf' => $op([ 'insert' ]), 'agent' => [ 'type' => 'list', 'help' => 'A list of objects keyed by column' ] ],
+		'ui' => [ 'rows' => 3, 'width' => 8, 'expression' => true, 'showIf' => static::operationIn([ 'insert' ]), 'agent' => [ 'type' => 'list', 'help' => 'A list of objects keyed by column' ] ],
 	    ],
 	    [
 		'key' => 'maxRows',
@@ -117,7 +116,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 		'default' => 1000,
 		'help' => 'More are left out (truncated)',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_ROWS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_ROWS ] ],
-		'ui' => [ 'limit' => true, 'step' => 1, 'showIf' => $op([ 'query' ]) ],
+		'ui' => [ 'limit' => true, 'step' => 1, 'showIf' => static::operationIn([ 'query' ]) ],
 	    ],
 	    [
 		'key' => 'timeout',

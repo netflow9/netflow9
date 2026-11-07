@@ -234,6 +234,22 @@ class WfNode extends \sys\NestedModel {
 	return array_merge($labels, $ports['after'] ?? []);
     }
 
+    //CLD: 2026-11-07T01:02:13+02:00: a field's showIf: shown when the setting `operation` is one of $ops
+    protected static function operationIn(array $ops) {
+	return [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
+    }
+
+    //CLD: 2026-11-07T01:02:35+02:00: message $message as an error of the config (validates()); false, for the validity: $valid = $this->configError(...)
+    protected function configError($message) {
+	$this->errors('config', $message);
+	return false;
+    }
+
+    //CLD: 2026-11-07T01:02:35+02:00: whether setting $key is empty (blank text)
+    protected function cfgEmpty($key) {
+	return trim((string)$this->cfg($key, '')) === '';
+    }
+
     //the node's configuration (from the designer's inspector)
     public function cfg($key, $default = null) {
 	$config = $this->config;

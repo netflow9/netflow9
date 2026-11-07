@@ -51,7 +51,6 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$op = fn($ops) => [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
 	return [
 	    static::credentialField(),
 	    static::operationField(),
@@ -63,7 +62,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'The document id or its link, e.g. {{ doc.id }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_DOCUMENT ],
-		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://docs.google.com/document/d/...', 'expression' => true, 'showIf' => $op(self::ON_DOCUMENT) ],
+		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://docs.google.com/document/d/...', 'expression' => true, 'showIf' => static::operationIn(self::ON_DOCUMENT) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
@@ -73,7 +72,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'Copy: empty gives "Copy of <title>"',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'create' ] ],
-		'ui' => [ 'width' => 6, 'placeholder' => 'Offer {{ client.name }}', 'expression' => true, 'showIf' => $op([ 'create', 'copy' ]) ],
+		'ui' => [ 'width' => 6, 'placeholder' => 'Offer {{ client.name }}', 'expression' => true, 'showIf' => static::operationIn([ 'create', 'copy' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
@@ -83,7 +82,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'required' => true,
 		'default' => 'markdown',
 		'choices' => self::FORMATS,
-		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $op(self::WRITE) ],
+		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn(self::WRITE) ],
 	    ],
 	    [
 		'key' => 'content',
@@ -92,7 +91,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'Create: optional',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'append' ] ],
-		'ui' => [ 'rows' => 8, 'expression' => true, 'placeholder' => "# Report {{ date }}\n\n- **Orders:** {{ orders.length }}", 'showIf' => $op(self::WRITE) ],
+		'ui' => [ 'rows' => 8, 'expression' => true, 'placeholder' => "# Report {{ date }}\n\n- **Orders:** {{ orders.length }}", 'showIf' => static::operationIn(self::WRITE) ],
 	    ],
 	    [
 		'key' => 'replacements',
@@ -102,7 +101,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'label' => 'Replace',
 		'itemLabel' => 'Replacement',
 		'default' => [],
-		'ui' => [ 'addLabel' => 'Add replacement', 'compact' => true, 'maxRows' => self::MAX_REPLACE, 'showIf' => $op([ 'replace' ]) ],
+		'ui' => [ 'addLabel' => 'Add replacement', 'compact' => true, 'maxRows' => self::MAX_REPLACE, 'showIf' => static::operationIn([ 'replace' ]) ],
 	    ],
 	    [
 		//CLD: 2026-10-24T12:49:07+03:00: layout: 9 wide, on a new line
@@ -112,7 +111,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'default' => '',
 		'help' => 'Optional: {{ ... }} giving an object: each {{key}} in the document gets its value',
 		//CLD: 2026-11-01T21:50:00+02:00: + agent: as an AI step's tool, an object (util\AgentTools)
-		'ui' => [ 'width' => 9, 'newRow' => true, 'placeholder' => '{{ row }}', 'expression' => true, 'showIf' => $op([ 'replace' ]),
+		'ui' => [ 'width' => 9, 'newRow' => true, 'placeholder' => '{{ row }}', 'expression' => true, 'showIf' => static::operationIn([ 'replace' ]),
 		    'agent' => [ 'type' => 'object', 'help' => 'Optional: each {{key}} in the document gets its value' ] ],
 	    ],
 	    [
@@ -122,7 +121,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'type' => 'switch',
 		'label' => 'Match case',
 		'default' => true,
-		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => $op([ 'replace' ]) ],
+		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => static::operationIn([ 'replace' ]) ],
 	    ],
 	    static::timeoutField(60),
 	    static::variableField('The document: { id, title, url, ... }'),

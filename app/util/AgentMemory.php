@@ -173,29 +173,26 @@ class AgentMemory {
 	    if (!$table)
 		throw new \ErrorException('the data table of Long-term memory is no longer in the project');
 	    $on = "data table {$table->name}";
-	    $save = fn($fact) => self::saveRow($table, $fact, $scope, $conv, $ai);
-	    $find = fn($query, $limit) => self::findRows($table, $query, $limit, $scope);
+	    $mem = [ 'table' => $table, 'scope' => $scope, 'conv' => $conv, 'ai' => $ai ];
 	} else {
 	    $kb = \models\kb\KnowledgeBase::named((string)$ai->cfg('memoryKb', ''), $project->aid, $project->_id);
 	    if (!$kb)
 		throw new \ErrorException('the knowledge base of Long-term memory is no longer in the project');
 	    $on = "knowledge base {$kb->name}";
-	    $save = fn($fact) => self::saveDocument($kb, $fact, $scope, $conv, $timeout);
-	    $find = fn($query, $limit) => self::findDocuments($kb, $query, $limit, $scope, $timeout);
+	    $mem = [ 'kb' => $kb, 'scope' => $scope, 'conv' => $conv, 'timeout' => $timeout ];
 	}
-	$json = fn($v) => json_encode($v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 	return [
 	    self::REMEMBER => [ 'name' => self::REMEMBER, 'kind' => 'memory', 'writes' => true, 'title' => 'Remember', 'ask' => AgentGuard::on($ai->cfg('memoryApproval', false)),
 		'askMeta' => [ 'what' => 'Remember', 'on' => $on, 'label' => 'Long-term memory', 'main' => [ 'fact' ] ],
 		'description' => 'Saves a fact for later conversations: one short sentence that stands on its own (who, what). Save what will still matter later: not what is only about this message, and never passwords or keys.',
 		'schema' => json_decode(JSON::encode([ 'type' => 'object', 'properties' => [ 'fact' => [ 'type' => 'string', 'description' => 'The fact, at most ' . self::MAX_FACT . ' characters' ] ], 'required' => [ 'fact' ] ])),
 		'check' => fn(array $args) => self::factError($args),
-		'run' => function(array $args) use ($save, $json) {
+		'run' => function(array $args) use ($mem) {
 		    $wrong = self::factError($args);
 		    if ($wrong !== null)
 			return [ $wrong, true, [] ];
 		    try {
-			return [ $json([ 'saved' => true, 'id' => $save(trim((string)$args['fact'])) ]), false, [] ];
+			return [ self::toJson([ 'saved' => true, 'id' => self::saveFact($mem, trim((string)$args['fact'])) ]), false, [] ];
 		    } catch (\ErrorException | \util\LimitException $e) {
 			return [ $e->getMessage(), true, [] ];
 		    }
@@ -204,17 +201,34 @@ class AgentMemory {
 		'description' => 'Searches the facts saved with remember in earlier conversations. Use it when the person refers to something from before, or when what you know of them would help.',
 		'schema' => json_decode(JSON::encode([ 'type' => 'object', 'properties' => [ 'query' => [ 'type' => 'string', 'description' => 'What to look for: keywords, in the language of the facts' ],
 		    'limit' => [ 'type' => 'integer', 'description' => 'The most facts to return (default ' . self::RECALL_DEFAULT . ', at most ' . self::RECALL_MAX . ')' ] ], 'required' => [ 'query' ] ])),
-		'run' => function(array $args) use ($find, $json) {
+		'run' => function(array $args) use ($mem) {
 		    $query = trim(Expression::toText($args['query'] ?? ''));
 		    if ($query === '')
 			return [ 'query: what to look for', true, [] ];
 		    try {
-			return [ $json([ 'facts' => $find($query, max(1, min(self::RECALL_MAX, (int)($args['limit'] ?? self::RECALL_DEFAULT)))) ]), false, [] ];
+			return [ self::toJson([ 'facts' => self::findFacts($mem, $query, max(1, min(self::RECALL_MAX, (int)($args['limit'] ?? self::RECALL_DEFAULT)))) ]), false, [] ];
 		    } catch (\ErrorException $e) {
 			return [ $e->getMessage(), true, [] ];
 		    }
 		} ],
 	];
+    }
+
+    //CLD: 2026-11-07T01:13:30+02:00: fact $fact saved in the memory $mem of tools() (a data table's row, or a knowledge base's document): its id
+    private static function saveFact(array $mem, $fact) {
+	return isset($mem['table']) ? self::saveRow($mem['table'], $fact, $mem['scope'], $mem['conv'], $mem['ai'])
+	    : self::saveDocument($mem['kb'], $fact, $mem['scope'], $mem['conv'], $mem['timeout']);
+    }
+
+    //CLD: 2026-11-07T01:13:30+02:00: the facts of memory $mem (tools()) matching $query, at most $limit
+    private static function findFacts(array $mem, $query, $limit) {
+	return isset($mem['table']) ? self::findRows($mem['table'], $query, $limit, $mem['scope'])
+	    : self::findDocuments($mem['kb'], $query, $limit, $mem['scope'], $mem['timeout']);
+    }
+
+    //CLD: 2026-11-07T01:13:30+02:00: $v as JSON for the model (slashes and Unicode as they are, invalid UTF-8 replaced)
+    private static function toJson($v) {
+	return json_encode($v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     private static function factError(array $args) {

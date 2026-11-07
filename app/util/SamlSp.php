@@ -63,31 +63,35 @@ class SamlSp {
     public static function metadata(SamlSettings $s) {
 	$doc = new \DOMDocument('1.0', 'UTF-8');
 	$doc->formatOutput = true;
-	$md = fn($name) => $doc->createElementNS(SamlXml::MD, 'md:' . $name);
-	$ed = $doc->appendChild($md('EntityDescriptor'));
+	$ed = $doc->appendChild(self::mdElement($doc, 'EntityDescriptor'));
 	$ed->setAttribute('entityID', $s->spEntityId());
-	$sp = $ed->appendChild($md('SPSSODescriptor'));
+	$sp = $ed->appendChild(self::mdElement($doc, 'SPSSODescriptor'));
 	$sp->setAttribute('AuthnRequestsSigned', $s->signRequests ? 'true' : 'false');
 	$sp->setAttribute('WantAssertionsSigned', 'true');
 	$sp->setAttribute('protocolSupportEnumeration', SamlXml::SAMLP);
 	foreach([ 'signing', 'encryption' ] as $use) {
-	    $kd = $sp->appendChild($md('KeyDescriptor'));
+	    $kd = $sp->appendChild(self::mdElement($doc, 'KeyDescriptor'));
 	    $kd->setAttribute('use', $use);
 	    $kd->appendChild($doc->createElementNS(SamlXml::DS, 'ds:KeyInfo'))->appendChild($doc->createElementNS(SamlXml::DS, 'ds:X509Data'))
 		->appendChild($doc->createElementNS(SamlXml::DS, 'ds:X509Certificate'))->appendChild($doc->createTextNode(SamlXml::certBody($s->spCert)));
 	    if ($use === 'encryption') {
 		foreach([ 'http://www.w3.org/2009/xmlenc11#aes256-gcm', 'http://www.w3.org/2009/xmlenc11#aes128-gcm', 'http://www.w3.org/2001/04/xmlenc#aes256-cbc',
 		    'http://www.w3.org/2001/04/xmlenc#aes128-cbc', SamlXml::RSA_OAEP_MGF1P ] as $alg)
-		    $kd->appendChild($md('EncryptionMethod'))->setAttribute('Algorithm', $alg);
+		    $kd->appendChild(self::mdElement($doc, 'EncryptionMethod'))->setAttribute('Algorithm', $alg);
 	    }
 	}
-	$sp->appendChild($md('NameIDFormat'))->appendChild($doc->createTextNode((string)$s->nameIdFormat));
-	$acs = $sp->appendChild($md('AssertionConsumerService'));
+	$sp->appendChild(self::mdElement($doc, 'NameIDFormat'))->appendChild($doc->createTextNode((string)$s->nameIdFormat));
+	$acs = $sp->appendChild(self::mdElement($doc, 'AssertionConsumerService'));
 	$acs->setAttribute('Binding', self::BINDING_POST);
 	$acs->setAttribute('Location', $s->acsUrl());
 	$acs->setAttribute('index', '0');
 	$acs->setAttribute('isDefault', 'true');
 	return $doc->saveXML();
+    }
+
+    //CLD: 2026-11-07T01:16:14+02:00: a new md:$name element of $doc (SAML metadata)
+    private static function mdElement(\DOMDocument $doc, $name) {
+	return $doc->createElementNS(SamlXml::MD, 'md:' . $name);
     }
 
     // ------------------------------------------------------------------------------------
@@ -146,8 +150,7 @@ class SamlSp {
 	if ($code->getAttribute('Value') !== self::SUCCESS) {
 	    $sub = SamlXml::children($code, SamlXml::SAMLP, 'StatusCode')[0] ?? null;
 	    $msg = SamlXml::children($status, SamlXml::SAMLP, 'StatusMessage')[0] ?? null;
-	    $short = fn($v) => preg_replace('/^urn:oasis:names:tc:SAML:2.0:status:/', '', (string)$v);
-	    throw new SamlException('the IdP refused the sign-in: ' . $short($code->getAttribute('Value')) . ($sub ? ' / ' . $short($sub->getAttribute('Value')) : '')
+	    throw new SamlException('the IdP refused the sign-in: ' . self::statusName($code->getAttribute('Value')) . ($sub ? ' / ' . self::statusName($sub->getAttribute('Value')) : '')
 		. ($msg ? ': ' . trim($msg->textContent) : ''));
 	}
 
@@ -180,6 +183,11 @@ class SamlSp {
 	    throw new SamlException('neither the response nor the assertion is signed');
 
 	return self::assertion($s, $assertion, $expected, $now) + [ 'encrypted' => (bool)$encrypted, 'signedBy' => $signedBy ];
+    }
+
+    //CLD: 2026-11-07T01:16:14+02:00: a SAML status code without its urn:oasis:names:tc:SAML:2.0:status: prefix
+    private static function statusName($v) {
+	return preg_replace('/^urn:oasis:names:tc:SAML:2.0:status:/', '', (string)$v);
     }
 
     //the assertion of an EncryptedAssertion, in a document of its own (with the namespaces in scope where it was: some IdPs declare them on the response)

@@ -198,12 +198,14 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 	if ($from === '' || preg_match('/^(mailer-daemon|postmaster)@/i', $from))
 	    return true;
 	$h = (new \util\MailParser($raw))->headers();
-	$one = function($name) use ($h) {
-	    $v = $h[$name] ?? '';
-	    return strtolower(trim((string)(is_array($v) ? ($v[0] ?? '') : $v)));
-	};
-	$auto = $one('auto-submitted');
-	return ($auto !== '' && $auto !== 'no') || in_array($one('precedence'), [ 'bulk', 'list', 'junk', 'auto_reply' ], true) || $one('x-autoreply') !== '' || $one('x-autorespond') !== '';
+	$auto = self::headerValue($h, 'auto-submitted');
+	return ($auto !== '' && $auto !== 'no') || in_array(self::headerValue($h, 'precedence'), [ 'bulk', 'list', 'junk', 'auto_reply' ], true) || self::headerValue($h, 'x-autoreply') !== '' || self::headerValue($h, 'x-autorespond') !== '';
+    }
+
+    //CLD: 2026-11-07T01:11:11+02:00: header $name of headers $h (its first value), lower case, trimmed; '' when absent
+    private static function headerValue($h, $name) {
+	$v = $h[$name] ?? '';
+	return strtolower(trim((string)(is_array($v) ? ($v[0] ?? '') : $v)));
     }
 
     //CLD: 2026-11-02T18:00:00+02:00: new: run $exe of an email (MailPoll::startMessage: its variable has the message) in its conversation: the one whose messages it replies to, when it comes from the same sender (an address that knows a

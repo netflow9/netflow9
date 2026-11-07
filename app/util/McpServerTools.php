@@ -292,7 +292,6 @@ class McpServerTools {
     public static function call($name, array $args, $project, $asUser = true) {
 	$aid = $project->aid;
 	$user = $asUser ? \V::app()->user : null;
-	$can = fn($permName, $o) => !$asUser || \V::app()->user->can($permName, [ 'object' => $o ]);
 	$om = \V::app()->om;
 
 	switch($name) {
@@ -300,7 +299,7 @@ class McpServerTools {
 		$list = [];
 		//CLD: 2026-11-03T14:00:00+02:00: + the tables shared with the project (with their project and what the project may do)
 		foreach($om->find('DataTableDef', [ 'aid' => $aid ] + \models\datatable\DataTableDef::visibleInQuery($project->_id), [ 'sort' => [ 'name' => 1 ] ]) as $t) {
-		    if (!$can('DataTable::read', $t))
+		    if (!self::allowed($asUser, 'DataTable::read', $t))
 			continue;
 		    //CLD: 2026-10-22T01:11:17+03:00: tableInfo (+ choices, points_to; shared with the structure tools)
 		    $list[] = self::tableInfo($t) + ($t->isHome($project->_id) ? [] : [ 'shared_from' => $t::projectName($t->project), 'access' => (string)($t->shareOf($project->_id)['access'] ?? '') ]);
@@ -308,7 +307,7 @@ class McpServerTools {
 		return [ 'tables' => $list ];
 
 	    case 'query_table':
-		$t = self::table($args, $project, 'DataTable::readData', $can);
+		$t = self::table($args, $project, 'DataTable::readData', fn($permName, $o) => self::allowed($asUser, $permName, $o));
 		$columns = $t->columns();
 		$query = \models\datatable\DataTableDef::conditionsQuery(self::listArg($args, 'conditions'), (string)($args['match'] ?? 'all'), $columns, fn($v) => $v, $aid);
 		$options = [ 'skip' => max(0, (int)($args['offset'] ?? 0)), 'limit' => max(1, min(self::MAX_ROWS, (int)($args['limit'] ?? 50))) ];
@@ -325,7 +324,7 @@ class McpServerTools {
 		return [ 'rows' => $rows, 'count' => count($rows), 'total' => $om->count($t->iname, $query) ];
 
 	    case 'insert_rows':
-		$t = self::table($args, $project, 'DataTable::writeData', $can);
+		$t = self::table($args, $project, 'DataTable::writeData', fn($permName, $o) => self::allowed($asUser, $permName, $o));
 		$columns = $t->columns();
 		$list = self::listArg($args, 'rows');
 		if (!$list)
@@ -346,21 +345,21 @@ class McpServerTools {
 		return [ 'inserted' => count($ids), 'ids' => $ids ];
 
 	    case 'update_row':
-		$t = self::table($args, $project, 'DataTable::writeData', $can);
+		$t = self::table($args, $project, 'DataTable::writeData', fn($permName, $o) => self::allowed($asUser, $permName, $o));
 		$columns = $t->columns();
 		$row = self::rowFrom($t, $columns, $args['values'] ?? null, self::rowById($t, $args['id'] ?? ''), 'values: ');
 		$row->save();
 		return [ 'row' => \models\datatable\DataTableDef::rowValue($row, $columns) ];
 
 	    case 'delete_row':
-		$t = self::table($args, $project, 'DataTable::writeData', $can);
+		$t = self::table($args, $project, 'DataTable::writeData', fn($permName, $o) => self::allowed($asUser, $permName, $o));
 		self::rowById($t, $args['id'] ?? '')->delete();
 		return [ 'deleted' => 1 ];
 
 	    //CLD: 2026-10-22T01:11:17+03:00: the structure of the data tables
 	    case 'create_table':
 		$proto = $om->create('DataTableDef', [ 'aid' => $aid, 'project' => $project->_id ]);
-		if (!$can('DataTable::create', $proto))
+		if (!self::allowed($asUser, 'DataTable::create', $proto))
 		    throw new \ErrorException('you may not create data tables in this project');
 		$columns = self::listArg($args, 'columns');
 		if (!$columns)
@@ -393,7 +392,7 @@ class McpServerTools {
 		return [ 'table' => self::tableInfo($t) ];
 
 	    case 'update_table':
-		$t = self::table($args, $project, 'DataTable::update', $can);
+		$t = self::table($args, $project, 'DataTable::update', fn($permName, $o) => self::allowed($asUser, $permName, $o));
 		$t->name = trim((string)($args['name'] ?? ''));
 		if (!$t->validates())
 		    throw new \ErrorException('name: ' . self::messagesOf($t));
@@ -402,13 +401,13 @@ class McpServerTools {
 		return [ 'table' => self::tableInfo($t) ];
 
 	    case 'add_column':
-		$t = self::table($args, $project, 'DataTable::update', $can);
+		$t = self::table($args, $project, 'DataTable::update', fn($permName, $o) => self::allowed($asUser, $permName, $o));
 		\sys\fields\Field::create(self::columnForm($t->iname, $aid, $args['column'] ?? null, $project, 'column: ')->data())->save();
 		$om->registerDataTables();
 		return [ 'table' => self::tableInfo($t) ];
 
 	    case 'update_column':
-		$t = self::table($args, $project, 'DataTable::update', $can);
+		$t = self::table($args, $project, 'DataTable::update', fn($permName, $o) => self::allowed($asUser, $permName, $o));
 		$field = self::columnOf($t, $args['key'] ?? '');
 		foreach([ 'type', 'points_to', 'new_key' ] as $locked) {
 		    if (array_key_exists($locked, $args))
@@ -433,7 +432,7 @@ class McpServerTools {
 		return [ 'table' => self::tableInfo($t) ];
 
 	    case 'delete_column':
-		$t = self::table($args, $project, 'DataTable::update', $can);
+		$t = self::table($args, $project, 'DataTable::update', fn($permName, $o) => self::allowed($asUser, $permName, $o));
 		$field = self::columnOf($t, $args['key'] ?? '');
 		$key = (string)$field->key;
 		$field->delete();
@@ -446,7 +445,7 @@ class McpServerTools {
 	    case 'list_workflows':
 		$list = [];
 		foreach($om->find('Workflow', [ 'aid' => $aid, 'project' => $project->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $wf) {
-		    if (!$can('Workflow::read', $wf))
+		    if (!self::allowed($asUser, 'Workflow::read', $wf))
 			continue;
 		    $live = $wf->liveCopy() ?: $wf;
 		    $trigger = self::triggerOf($live);
@@ -457,7 +456,7 @@ class McpServerTools {
 
 	    case 'run_workflow':
 		$wf = self::findIn('Workflow', $args['workflow'] ?? '', $project, 'workflow');
-		if (!$can('Workflow::update', $wf))
+		if (!self::allowed($asUser, 'Workflow::update', $wf))
 		    throw new \ErrorException('you may not run this workflow');
 		$live = $wf->liveCopy() ?: $wf;
 		$trigger = self::triggerOf($live);
@@ -507,7 +506,7 @@ class McpServerTools {
 
 	    case 'get_workflow':
 		$wf = self::findIn('Workflow', $args['workflow'] ?? '', $project, 'workflow');
-		if (!$can('Workflow::read', $wf))
+		if (!self::allowed($asUser, 'Workflow::read', $wf))
 		    throw new \ErrorException('you may not read this workflow');
 		return \util\WorkflowSpec::toSpec($wf);
 
@@ -516,7 +515,7 @@ class McpServerTools {
 		if ($name === '')
 		    throw new \ErrorException('name: give the workflow a name');
 		$wf = $om->create('Workflow', [ 'aid' => $aid, 'project' => $project->_id, 'name' => mb_substr($name, 0, 100) ]);
-		if (!$can('Workflow::create', $wf))
+		if (!self::allowed($asUser, 'Workflow::create', $wf))
 		    throw new \ErrorException('you may not create workflows in this project');
 		if (!self::listArg($args, 'steps'))
 		    throw new \ErrorException('steps: give at least the trigger');
@@ -524,7 +523,7 @@ class McpServerTools {
 
 	    case 'update_workflow':
 		$wf = self::findIn('Workflow', $args['workflow'] ?? '', $project, 'workflow');
-		if (!$can('Workflow::update', $wf))
+		if (!self::allowed($asUser, 'Workflow::update', $wf))
 		    throw new \ErrorException('you may not change this workflow');
 		if (array_key_exists('steps', $args) !== array_key_exists('connections', $args))
 		    throw new \ErrorException('give both steps and connections (the whole new draft), or neither');
@@ -539,7 +538,7 @@ class McpServerTools {
 	    //CLD: 2026-11-02T15:46:06+02:00: a workflow's tests: over MCP the request waits for them as run_workflow does
 	    case 'run_tests':
 		$wf = self::findIn('Workflow', $args['workflow'] ?? '', $project, 'workflow');
-		if (!$can('Workflow::update', $wf))
+		if (!self::allowed($asUser, 'Workflow::update', $wf))
 		    throw new \ErrorException('you may not run this workflow\'s tests');
 		[ $run, $new ] = \util\AgentEval::start($wf, $user ? (string)$user->name . ' (MCP)' : 'MCP');
 		if ($new && $asUser)
@@ -553,7 +552,7 @@ class McpServerTools {
 
 	    case 'get_test_run':
 		$wf = self::findIn('Workflow', $args['workflow'] ?? '', $project, 'workflow');
-		if (!$can('Workflow::read', $wf))
+		if (!self::allowed($asUser, 'Workflow::read', $wf))
 		    throw new \ErrorException('you may not read this workflow');
 		$id = trim((string)($args['id'] ?? ''));
 		if ($id === '')
@@ -567,7 +566,7 @@ class McpServerTools {
 		$id = (string)($args['id'] ?? '');
 		$exe = \util\Validator::rule('oid', $id) ? $om->findOne('WfExecution', [ '_id' => $id, 'aid' => $aid, 'project' => $project->_id ]) : null;
 		$wf = $exe ? $om->findOne('Workflow', [ '_id' => $exe->wf, 'aid' => $aid ]) : null;
-		if (!$exe || !$wf || !$can('Workflow::read', $wf))
+		if (!$exe || !$wf || !self::allowed($asUser, 'Workflow::read', $wf))
 			throw new \ErrorException("no execution `{$id}` in this project");
 		$log = [];
 		foreach(array_slice((array)$exe->log, -self::MAX_LOG) as $line)
@@ -580,7 +579,7 @@ class McpServerTools {
 	    case 'list_knowledge_bases':
 		$list = [];
 		foreach($om->find('KnowledgeBase', [ 'aid' => $aid, 'project' => $project->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $kb) {
-		    if (!$can('KnowledgeBase::read', $kb))
+		    if (!self::allowed($asUser, 'KnowledgeBase::read', $kb))
 			continue;
 		    $list[] = [ 'id' => (string)$kb->_id, 'name' => (string)$kb->name, 'description' => (string)$kb->description, 'documents' => (int)$kb->documents,
 			'chunks' => (int)$kb->chunks, 'state' => (string)($kb->state ?: 'ready') ];
@@ -589,7 +588,7 @@ class McpServerTools {
 
 	    case 'query_knowledge_base':
 		$kb = self::findIn('KnowledgeBase', $args['knowledge_base'] ?? '', $project, 'knowledge base');
-		if (!$can('KnowledgeBase::read', $kb))
+		if (!self::allowed($asUser, 'KnowledgeBase::read', $kb))
 		    throw new \ErrorException("you may not read knowledge base `{$kb->name}`");
 		$query = trim((string)($args['query'] ?? ''));
 		if ($query === '')
@@ -604,7 +603,7 @@ class McpServerTools {
 		    $query['filename'] = new \MongoDB\BSON\Regex(preg_quote($search), 'i');
 		$list = [];
 		foreach($om->find('File', $query, [ 'sort' => [ '_id' => -1 ], 'limit' => max(1, min(200, (int)($args['limit'] ?? 50))) ]) as $f) {
-		    if (($f->metadata['aid'] ?? $f->aid) != $aid || !$can('File::read', $f))
+		    if (($f->metadata['aid'] ?? $f->aid) != $aid || !self::allowed($asUser, 'File::read', $f))
 			continue;
 		    $list[] = [ 'id' => (string)$f->_id, 'filename' => (string)$f->filename, 'size' => (int)$f->length, 'type' => (string)$f->type,
 			'created_at' => \util\Expression::hostValue($f->created_at) ];
@@ -614,7 +613,7 @@ class McpServerTools {
 	    case 'read_file':
 		$id = (string)($args['id'] ?? '');
 		$f = \util\Validator::rule('oid', $id) ? $om->findOne('File', [ '_id' => $id, 'metadata.project' => $project->_id ]) : null;
-		if (!$f || ($f->metadata['aid'] ?? $f->aid) != $aid || !$can('File::read', $f))
+		if (!$f || ($f->metadata['aid'] ?? $f->aid) != $aid || !self::allowed($asUser, 'File::read', $f))
 		    throw new \ErrorException("no file `{$id}` in this project");
 		//CLD: 2026-10-27T23:11:38+02:00: a PDF or an Office document: its text (models\node\NodeAppAi::fileText: its own size limit)
 		if ($f->extension() === 'pdf' || \util\OfficeText::isSupported($f->extension()))
@@ -630,7 +629,7 @@ class McpServerTools {
 	    case 'read_image':
 		$id = (string)($args['id'] ?? '');
 		$f = \util\Validator::rule('oid', $id) ? $om->findOne('File', [ '_id' => $id, 'metadata.project' => $project->_id ]) : null;
-		if (!$f || ($f->metadata['aid'] ?? $f->aid) != $aid || !$can('File::read', $f))
+		if (!$f || ($f->metadata['aid'] ?? $f->aid) != $aid || !self::allowed($asUser, 'File::read', $f))
 		    throw new \ErrorException("no file `{$id}` in this project");
 		return [ 'id' => (string)$f->_id, 'filename' => (string)$f->filename, self::IMAGES => [ \models\node\NodeAppAi::fileImage($f) ] ];
 
@@ -638,7 +637,7 @@ class McpServerTools {
 		$list = [];
 		//CLD: 2026-10-22T00:28:13+03:00: the credentials of type Variable, with Credential::read
 		foreach($om->find('CredentialVariable', [ 'aid' => $aid, 'project' => $project->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $v) {
-		    if ($can('Credential::read', $v))
+		    if (self::allowed($asUser, 'Credential::read', $v))
 			$list[] = [ 'name' => (string)$v->name, 'value' => $v->value, 'description' => (string)$v->description ];
 		}
 		return [ 'variables' => $list ];
@@ -646,7 +645,12 @@ class McpServerTools {
 	throw new \ErrorException("unknown tool `{$name}`");
     }
 
-    //the data table named / with the id in $args['table'], if the user has $permName on it ($can, see call())
+    //CLD: 2026-11-07T01:16:14+02:00: whether the call may use object $o with permission $permName: always without a user ($asUser false: an AI step, the workflow's own)
+    private static function allowed($asUser, $permName, $o) {
+	return !$asUser || \V::app()->user->can($permName, [ 'object' => $o ]);
+    }
+
+    //the data table named / with the id in $args['table'], if the user has $permName on it (fn($permName, $o) => self::allowed($asUser, $permName, $o), see call())
     private static function table(array $args, $project, $permName, \Closure $can) {
 	//CLD: 2026-11-03T14:00:00+02:00: not of the project: one shared with it (by id, or its name when no table of the project has it); what the share's level does not give is refused also for an AI step ($can passes)
 	try {

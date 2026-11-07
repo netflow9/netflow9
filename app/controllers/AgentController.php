@@ -140,23 +140,27 @@ class AgentController extends \sys\BaseController {
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
 	$aid = $this->account->_id ?? null;
-	$names = fn($c) => (string)(\V::app()->om->findOne('Workflow', [ '_id' => $c['wf'], 'aid' => $aid ])->name ?? '');
 	if (isset($req->query['id'])) {
 	    $conv = AgentConversation::read((string)$req->query['id'], $aid);
 	    if (!$conv)
 		\V::app()->error(404, 'Not found');
 	    if ($req->is('post')) {
 		AgentConversation::remove($conv);
-		\models\AuditLog::record('agent.conversation.delete', null, 'a conversation with ' . $names($conv) . ' of ' . ($conv['user_name'] ?: $conv['user_email'] ?: 'a guest') . ' (' . (string)$conv['_id'] . ')');
+		\models\AuditLog::record('agent.conversation.delete', null, 'a conversation with ' . $this->workflowName($conv) . ' of ' . ($conv['user_name'] ?: $conv['user_email'] ?: 'a guest') . ' (' . (string)$conv['_id'] . ')');
 		$this->addToast('success', 'Deleted', 'The conversation was deleted');
 		$this->redirect('/agent/conversations');
 	    }
-	    $this->render('conversation', [ 'conv' => $conv, 'agent' => $names($conv), 'turns' => AgentConversation::messagesAfter($conv), 'tools' => AgentConversation::turns($conv) ]);
+	    $this->render('conversation', [ 'conv' => $conv, 'agent' => $this->workflowName($conv), 'turns' => AgentConversation::messagesAfter($conv), 'tools' => AgentConversation::turns($conv) ]);
 	    return;
 	}
 	$list = [];
 	foreach(AgentConversation::coll()->find([ 'aid' => $aid ], \sys\Mongo::ARRAYS + [ 'sort' => [ 'last_at' => -1 ], 'limit' => 200, 'projection' => [ 'guest_key' => 0 ] ]) as $c)
-	    $list[] = $c + [ 'agent' => $names($c) ];
+	    $list[] = $c + [ 'agent' => $this->workflowName($c) ];
 	$this->render('conversations', [ 'list' => $list, 'retention' => (int)($this->account->execution_log_retention ?? 0) ]);
+    }
+
+    //CLD: 2026-11-07T01:04:46+02:00: the name of the workflow of conversation $c ('' when it is gone)
+    private function workflowName($c) {
+	return (string)(\V::app()->om->findOne('Workflow', [ '_id' => $c['wf'], 'aid' => $this->account->_id ?? null ])->name ?? '');
     }
 }

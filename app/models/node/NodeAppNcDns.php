@@ -92,24 +92,26 @@ class NodeAppNcDns extends NodeAppNamecheap {
 
     //a record as setHosts takes it: { Name, Type, Address, TTL, MXPref } (from ours: host, type, value / address, ttl, mxPref; or as getHosts gives it)
     public static function record(array $r, $domain, $label = 'Record') {
-	$get = function(array $keys) use ($r) {
-	    foreach($keys as $k) {
-		if (isset($r[$k]) && !is_array($r[$k]) && trim((string)$r[$k]) !== '')
-		    return $r[$k];
-	    }
-	    return null;
-	};
-	$type = self::type($get([ 'Type', 'type' ]) ?? '', "{$label}: type");
-	$address = trim(\util\Expression::toText($get([ 'Address', 'value', 'address' ]) ?? ''));
+	$type = self::type(self::firstOf($r, [ 'Type', 'type' ]) ?? '', "{$label}: type");
+	$address = trim(\util\Expression::toText(self::firstOf($r, [ 'Address', 'value', 'address' ]) ?? ''));
 	if ($address === '')
 	    throw new \RuntimeException("{$label}: no value");
-	$ttl = (int)($get([ 'TTL', 'ttl' ]) ?? self::TTL_DEFAULT);
+	$ttl = (int)(self::firstOf($r, [ 'TTL', 'ttl' ]) ?? self::TTL_DEFAULT);
 	if ($ttl < self::TTL_MIN || $ttl > self::TTL_MAX)
 	    throw new \RuntimeException("{$label}: TTL from " . self::TTL_MIN . ' to ' . self::TTL_MAX . ", not {$ttl}");
-	$rec = [ 'Name' => self::host($get([ 'Name', 'host', 'name' ]) ?? '@', $domain, "{$label}: host"), 'Type' => $type, 'Address' => $address, 'TTL' => $ttl ];
+	$rec = [ 'Name' => self::host(self::firstOf($r, [ 'Name', 'host', 'name' ]) ?? '@', $domain, "{$label}: host"), 'Type' => $type, 'Address' => $address, 'TTL' => $ttl ];
 	if ($type === 'MX')
-	    $rec['MXPref'] = (int)($get([ 'MXPref', 'mxPref' ]) ?? 10);
+	    $rec['MXPref'] = (int)(self::firstOf($r, [ 'MXPref', 'mxPref' ]) ?? 10);
 	return $rec;
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: the first of keys $keys that $r has as a non-empty value; null when none
+    private static function firstOf(array $r, array $keys) {
+	foreach($keys as $k) {
+	    if (isset($r[$k]) && !is_array($r[$k]) && trim((string)$r[$k]) !== '')
+		return $r[$k];
+	}
+	return null;
     }
 
     //the same record (name, type and value; names and addresses of other types than TXT / CAA compared as names)
@@ -197,9 +199,6 @@ class NodeAppNcDns extends NodeAppNamecheap {
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	[ $domain, $sld, $tld ] = $this->domainOf($value);
-	$named = function() use ($value, $domain) {
-	    return [ self::host($value('host'), $domain), self::type($value('type')) ];
-	};
 	switch($operation) {
 	    case 'records':
 		[ $records, $emailType, $attrs ] = $this->hosts($sld, $tld);
@@ -210,31 +209,28 @@ class NodeAppNcDns extends NodeAppNamecheap {
 		    \util\Format::plural(count($records), 'record') . " of {$domain}" ];
 	    case 'add':
 	    case 'set':
-		[ $host, $type ] = $named();
+		[ $host, $type ] = $this->namedRecord($domain);
 		$new = self::record([ 'host' => $host, 'type' => $type, 'value' => $value('address'), 'ttl' => $text('ttl') !== '' ? $text('ttl') : self::TTL_DEFAULT, 'mxPref' => $text('mxPref') !== '' ? $text('mxPref') : 10 ], $domain);
 		[ $records, $emailType ] = $this->hosts($sld, $tld);
-		$same = fn($r) => self::sameRecord($r, $new) && (int)$r['TTL'] === $new['TTL'] && ($type !== 'MX' || (int)($r['MXPref'] ?? 10) === $new['MXPref']);
 		if ($operation === 'add') {
-		    if (array_filter($records, $same))
+		    if (array_filter($records, fn($r) => self::sameAs($r, $new, $type)))
 			return [ $this->writeHosts($domain, $sld, $tld, $records, $records, $emailType, [], []), "{$host} {$type} of {$domain} is there already" ];
 		    //the same value with another TTL / priority: replaced, not doubled
 		    $removed = array_values(array_filter($records, fn($r) => self::sameRecord($r, $new)));
 		    $kept = array_values(array_filter($records, fn($r) => !self::sameRecord($r, $new)));
 		    return [ $this->writeHosts($domain, $sld, $tld, $records, array_merge($kept, [ $new ]), $emailType, [ $new ], $removed), "{$host} {$type} {$new['Address']} added to {$domain}" ];
 		}
-		$mine = fn($r) => strcasecmp($r['Name'], $host) === 0 && $r['Type'] === $type;
-		$theirs = array_values(array_filter($records, $mine));
-		if (count($theirs) === 1 && $same($theirs[0]))
+		$theirs = array_values(array_filter($records, fn($r) => self::isHostType($r, $host, $type)));
+		if (count($theirs) === 1 && self::sameAs($theirs[0], $new, $type))
 		    return [ $this->writeHosts($domain, $sld, $tld, $records, $records, $emailType, [], []), "{$host} {$type} of {$domain} is {$new['Address']} already" ];
-		$kept = array_values(array_filter($records, fn($r) => !$mine($r)));
+		$kept = array_values(array_filter($records, fn($r) => !self::isHostType($r, $host, $type)));
 		return [ $this->writeHosts($domain, $sld, $tld, $records, array_merge($kept, [ $new ]), $emailType, [ $new ], $theirs), "{$host} {$type} of {$domain} set to {$new['Address']}" ];
 	    case 'remove':
-		[ $host, $type ] = $named();
+		[ $host, $type ] = $this->namedRecord($domain);
 		$address = $text('address');
 		[ $records, $emailType ] = $this->hosts($sld, $tld);
-		$match = fn($r) => strcasecmp($r['Name'], $host) === 0 && $r['Type'] === $type && ($address === '' || self::sameRecord($r, [ 'Name' => $host, 'Type' => $type, 'Address' => $address ]));
-		$removed = array_values(array_filter($records, $match));
-		$kept = array_values(array_filter($records, fn($r) => !$match($r)));
+		$removed = array_values(array_filter($records, fn($r) => self::matchesRecord($r, $host, $type, $address)));
+		$kept = array_values(array_filter($records, fn($r) => !self::matchesRecord($r, $host, $type, $address)));
 		return [ $this->writeHosts($domain, $sld, $tld, $records, $kept, $emailType, [], $removed), \util\Format::plural(count($removed), 'record') . " removed from {$domain}" ];
 	    case 'replace':
 		$list = self::listValue($value('records'), 'Records');
@@ -299,5 +295,25 @@ class NodeAppNcDns extends NodeAppNamecheap {
 		return [ [ 'domain' => $domain, 'count' => $n ], \util\Format::plural($n, 'forward') . " set for {$domain}" ];
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: the settings Host and Type of a record of $domain: [ host, type ]
+    private function namedRecord($domain) {
+	return [ self::host($this->settingOf('host'), $domain), self::type($this->settingOf('type')) ];
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: whether record $r is record $new, its TTL (and MX preference) too
+    private static function sameAs($r, $new, $type) {
+	return self::sameRecord($r, $new) && (int)$r['TTL'] === $new['TTL'] && ($type !== 'MX' || (int)($r['MXPref'] ?? 10) === $new['MXPref']);
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: whether record $r is host $host's of type $type
+    private static function isHostType($r, $host, $type) {
+	return strcasecmp($r['Name'], $host) === 0 && $r['Type'] === $type;
+    }
+
+    //CLD: 2026-11-07T01:09:58+02:00: whether record $r is host $host's of type $type (and of address $address, when given)
+    private static function matchesRecord($r, $host, $type, $address) {
+	return strcasecmp($r['Name'], $host) === 0 && $r['Type'] === $type && ($address === '' || self::sameRecord($r, [ 'Name' => $host, 'Type' => $type, 'Address' => $address ]));
     }
 }

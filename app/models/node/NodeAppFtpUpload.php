@@ -51,14 +51,13 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 
     public static function configSchema() {
 	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
-	$choices = fn($capability) => array_column(static::credentialChoices($capability), 'label', 'value');
 	return [
 	    [
 		'key' => 'credential',
 		'type' => 'select',
 		'label' => 'Server credential',
 		'required' => true,
-		'choices' => $choices('ftp'),
+		'choices' => self::credentialOptions('ftp'),
 		'help' => 'An FTP / SFTP server credential of the project (menu: Credentials)',
 	    ],
 	    [
@@ -168,7 +167,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'type' => 'select',
 		'label' => 'Encryption key',
 		'default' => '',
-		'choices' => $choices('encrypt'),
+		'choices' => self::credentialOptions('encrypt'),
 		'requiredIf' => [ 'if' => 'encrypt', 'in' => [ true ] ],
 		'help' => 'An Encryption key credential: the recipient\'s PGP key, a passphrase, an OpenSSL password or S/MIME certificate',
 		'ui' => [ 'width' => 9, 'showIf' => [ 'key' => 'encrypt', 'operator' => 'eq', 'value' => true ] ],
@@ -189,7 +188,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'type' => 'select',
 		'label' => 'Signing key',
 		'default' => '',
-		'choices' => $choices('sign'),
+		'choices' => self::credentialOptions('sign'),
 		'requiredIf' => [ 'if' => 'sign', 'in' => [ true ] ],
 		'help' => 'A Signing key credential: PGP, S/MIME certificate + key, or a private key',
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'sign', 'operator' => 'eq', 'value' => true ] ],
@@ -235,6 +234,11 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'help' => 'No connection, or a failed file',
 	    ],
 	];
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: the credentials of the project with capability $capability, as choices (value => label)
+    private static function credentialOptions($capability) {
+	return array_column(static::credentialChoices($capability), 'label', 'value');
     }
 
     //credentials of the current project providing $capability, for the designer
@@ -334,7 +338,6 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 
     public function execute($edgeId = null) {
 	$vars = $this->exec->expressionVariables();
-	$text = fn($key, $default = '') => trim(\util\Expression::toText(\util\Expression::render((string)$this->cfg($key, $default), $vars)));
 	$start = microtime(true);
 	$now = time();
 
@@ -357,8 +360,8 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	$signMode = $this->cfg('signMode', 'attached') === 'detached' ? 'detached' : 'attached';
 	if ($signCred && $signMode === 'attached' && !\util\FileSign::canAttach((string)$signCred->method))
 	    throw new \ErrorException('FTP / SFTP Upload: a plain private key signature is always a separate file (Signature: a separate signature file)');
-	$folder = \util\FtpClient::normalize($text('folder'));
-	$template = $text('filename');
+	$folder = \util\FtpClient::normalize($this->textSetting($vars, 'folder'));
+	$template = $this->textSetting($vars, 'filename');
 	$compress = (bool)$this->cfg('compress', false);
 	$opts = [ 'compress' => $compress, 'encCred' => $encCred, 'signCred' => $signCred, 'signMode' => $signMode, 'safe' => (bool)$this->cfg('safeUpload', true),
 	    'verify' => (bool)$this->cfg('verify', true), 'ifExists' => (string)$this->cfg('ifExists', 'overwrite'), 'createFolders' => (bool)$this->cfg('createFolders', true) ];
@@ -443,6 +446,11 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	    throw new \ErrorException('FTP / SFTP Upload: ' . $result['error']);
 	}
 	return [ 0 ];
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: setting $key as text, trimmed, its {{ }} rendered against $vars
+    private function textSetting(array $vars, $key, $default = '') {
+	return trim(\util\Expression::toText(\util\Expression::render((string)$this->cfg($key, $default), $vars)));
     }
 
     //CLD: 2026-10-20T19:00:00+03:00: the endings the name gets, in order: .gz, the attached signature's (unless PGP signs and encrypts in one message), the encryption's

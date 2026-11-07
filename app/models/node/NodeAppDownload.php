@@ -101,12 +101,12 @@ class NodeAppDownload extends NodeAppHttp {
     public function execute($edgeId = null) {
 	//CLD: 2026-10-13T15:24:28+03:00: + the project variables (vars)
 	$vars = $this->exec->expressionVariables();
-	$text = fn($v) => \util\Expression::toText(\util\Expression::render((string)$v, $vars));
+	$this->textVars = $vars;
 
-	$url = trim($text($this->cfg('url', '')));
+	$url = trim($this->textOf($this->cfg('url', '')));
 	//CLD: 2026-10-17T21:08:58+03:00: a data: URL: no request
 	if (stripos($url, 'data:') === 0)
-	    return $this->saveDataUrl($url, $text);
+	    return $this->saveDataUrl($url);
 	if (!preg_match('~^https?://[^\s/?#]+~i', $url))
 	    throw new \ErrorException('Download File: the URL must start with http:// or https:// or be a data: URL (got `' . mb_substr($url, 0, 100) . '`)');
 	$shownUrl = preg_replace('/[?#].*$/', '', $url);
@@ -115,12 +115,12 @@ class NodeAppDownload extends NodeAppHttp {
 	$query = [];
 	foreach((array)$this->cfg('query', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
-		$query[] = [ (string)$row['name'], $text($row['value'] ?? '') ];
+		$query[] = [ (string)$row['name'], $this->textOf($row['value'] ?? '') ];
 	}
 	$headers = [];
 	foreach((array)$this->cfg('headers', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
-		$headers[strtolower($row['name'])] = $row['name'] . ': ' . str_replace([ "\r", "\n" ], ' ', $text($row['value'] ?? ''));
+		$headers[strtolower($row['name'])] = $row['name'] . ': ' . str_replace([ "\r", "\n" ], ' ', $this->textOf($row['value'] ?? ''));
 	}
 	$credId = (string)$this->cfg('credential', '');
 	if ($credId !== '') {
@@ -153,7 +153,7 @@ class NodeAppDownload extends NodeAppHttp {
 	    $error = "HTTP status {$status}";
 
 	//CLD: 2026-10-12T08:55:21+03:00: only the file types that may be uploaded (File::$extensions)
-	$filename = self::filename($text($this->cfg('filename', '')), $respHeaders['content-disposition'] ?? '', $effective ?: $shownUrl, $contentType);
+	$filename = self::filename($this->textOf($this->cfg('filename', '')), $respHeaders['content-disposition'] ?? '', $effective ?: $shownUrl, $contentType);
 	if ($error === null && !\models\File::isAllowedName($filename))
 	    $error = "file type not allowed: `{$filename}` (allowed: " . implode(', ', array_keys(\models\File::$extensions)) . ')';
 
@@ -208,7 +208,7 @@ class NodeAppDownload extends NodeAppHttp {
 
     //CLD: 2026-10-17T21:08:58+03:00: a data: URL (data:[<type>][;charset=...][;base64],<data>) saved as the file: the name as for a download (no Content-Disposition, no URL name: `download` + the
     //type's extension), the same limits (largest size, allowed types) and On error
-    protected function saveDataUrl($url, \Closure $text) {
+    protected function saveDataUrl($url) {
 	$error = null;
 	$contentType = '';
 	$data = '';
@@ -225,7 +225,7 @@ class NodeAppDownload extends NodeAppHttp {
 	    elseif (strlen($data) > $maxBytes)
 		$error = 'the file is larger than ' . (int)($maxBytes / 1048576) . ' MB';
 	}
-	$filename = self::filename($text($this->cfg('filename', '')), '', '', $contentType);
+	$filename = self::filename($this->textOf($this->cfg('filename', '')), '', '', $contentType);
 	if ($error === null && !\models\File::isAllowedName($filename))
 	    $error = "file type not allowed: `{$filename}` (allowed: " . implode(', ', array_keys(\models\File::$extensions)) . ')';
 	$shown = 'data:' . ($contentType ?: '?');

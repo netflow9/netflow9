@@ -156,14 +156,6 @@ class WfSchedule {
     //does the schedule $cfg match the minute of $t (local time; seconds ignored)?
     public static function matches(array $cfg, \DateTimeInterface $t) {
 	$minute = (int)$t->format('G') * 60 + (int)$t->format('i');
-	//CLD: 2026-10-29T22:12:26+02:00: any of the times (comma-separated)
-	$atTime = function() use ($cfg, $t) {
-	    foreach(explode(',', (string)($cfg['time'] ?? '')) as $time) {
-		if (preg_match('/^(\d{1,2}):(\d{2})$/', trim($time), $m) === 1 && (int)$m[1] === (int)$t->format('G') && (int)$m[2] === (int)$t->format('i'))
-		    return true;
-	    }
-	    return false;
-	};
 
 	switch($cfg['mode'] ?? 'daily') {
 	    case 'interval':
@@ -181,18 +173,27 @@ class WfSchedule {
 		}
 		return false;
 	    case 'daily':
-		return $atTime();
+		return self::atTime($cfg, $t);
 	    case 'weekly':
 		$days = array_map('strval', (array)($cfg['weekdays'] ?? []));
-		return in_array($t->format('w'), $days, true) && $atTime();
+		return in_array($t->format('w'), $days, true) && self::atTime($cfg, $t);
 	    case 'monthly':
-		return (int)($cfg['day'] ?? 0) === (int)$t->format('j') && $atTime();
+		return (int)($cfg['day'] ?? 0) === (int)$t->format('j') && self::atTime($cfg, $t);
 	    case 'cron':
 		try {
 		    return (new \util\Cron((string)($cfg['cron'] ?? '')))->matches($t);
 		} catch (\InvalidArgumentException $e) {
 		    return false;
 		}
+	}
+	return false;
+    }
+
+    //CLD: 2026-11-07T01:11:11+02:00: whether time $t is one of the schedule's times (HH:MM, comma-separated)
+    private static function atTime(array $cfg, \DateTimeInterface $t) {
+	foreach(explode(',', (string)($cfg['time'] ?? '')) as $time) {
+	    if (preg_match('/^(\d{1,2}):(\d{2})$/', trim($time), $m) === 1 && (int)$m[1] === (int)$t->format('G') && (int)$m[2] === (int)$t->format('i'))
+		return true;
 	}
 	return false;
     }

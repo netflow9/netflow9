@@ -207,7 +207,6 @@ class Workflow extends \sys\BaseModel {
 	$home = [ 'aid' => $this->aid, 'project' => $this->project ];
 	$versions = array_filter([ $this, $this->liveCopy() ]);
 	$texts = \util\Transfer::textsOf($versions);
-	$names = fn($list) => array_values(array_unique(array_map(fn($o) => (string)$o->name, $list)));
 
 	[ $credentials, $tables ] = \util\Transfer::usedBy($om->findOne('Project', [ '_id' => $this->project, 'aid' => $this->aid ]), $versions);
 	$ids = array_values(array_filter($texts, fn($t) => \util\Validator::rule('oid', $t) && $t !== (string)$this->_id));
@@ -219,7 +218,7 @@ class Workflow extends \sys\BaseModel {
 	$used = [];
 	foreach([ 'credentials' => $credentials, 'data tables' => $tables, 'workflows' => $workflows, 'knowledge bases' => $bases, 'variables' => $variables ] as $kind => $list) {
 	    if ($list)
-		$used[] = $kind . ': ' . implode(', ', $names($list));
+		$used[] = $kind . ': ' . implode(', ', array_values(array_unique(array_map(fn($o) => (string)$o->name, $list))));
 	}
 	return $used;
     }
@@ -403,29 +402,7 @@ class Workflow extends \sys\BaseModel {
 	if (!isset($byId[$wfid]))
 	    return [];
 
-	$classOf = function($n) use ($defs) {
-	    $def = $defs[$n['fqname'] ?? ''] ?? null;
-	    return $def ? \V::app()->om->getObjectClass($def['objectName']) : null;
-	};
 	$vars = [];
-	//CLD: 2026-10-13T12:34:29+03:00: the whole type description (+ fields, items: util\Expression::typeAt); a variable with `from` (a value text, e.g. the
-	//Set step's) gets the type of that value among the variables at its step (util\Expression::typeOf; nested at most MAX_TYPE_DEPTH steps deep)
-	$add = function(array $list, $n) use (&$vars, $nodes, $depth) {
-	    $title = trim((string)($n['title'] ?? ''));
-	    foreach($list as $name => $v) {
-		if (isset($vars[$name]))
-		    continue;
-		if (isset($v['from']))
-		    $v = array_merge($depth < self::MAX_TYPE_DEPTH ? \util\Expression::typeOf($v['from'], self::variablesAt($nodes, (string)$n['wfid'], $depth + 1)) : [ 'type' => 'any' ], array_intersect_key($v, [ 'info' => 1 ]));
-		//CLD: 2026-10-13T12:43:20+03:00: `itemsOf` (a list's value text, e.g. the Loop's item): the type of that list's items (unknown: any)
-		if (isset($v['itemsOf'])) {
-		    $list = $depth < self::MAX_TYPE_DEPTH ? \util\Expression::typeOf($v['itemsOf'], self::variablesAt($nodes, (string)$n['wfid'], $depth + 1)) : [];
-		    $v = array_merge(is_array($list['items'] ?? null) ? $list['items'] : [ 'type' => 'any' ], array_intersect_key($v, [ 'info' => 1 ]));
-		}
-		unset($v['from'], $v['itemsOf']);
-		$vars[$name] = [ 'type' => $v['type'] ?? 'any', 'info' => trim(($v['info'] ?? '') . ($title !== '' ? " (step \"{$title}\")" : '')) ] + array_intersect_key($v, [ 'fields' => 1, 'items' => 1 ]);
-	    }
-	};
 
 	//back from the step: the steps before it, and the loops it is in (then the steps before them)
 	$seen = [ $wfid => true ];
@@ -437,28 +414,51 @@ class Workflow extends \sys\BaseModel {
 	    if ($parent && isset($byId[$parent]) && !isset($seen[$parent])) {
 		$seen[$parent] = true;
 		$queue[] = $parent;
-		if ($class = $classOf($byId[$parent]))
-		    $add($class::innerVariables($byId[$parent]['config'] ?? []), $byId[$parent]);
+		if ($class = self::nodeClassFrom($defs, $byId[$parent]))
+		    self::addVariables($vars, $class::innerVariables($byId[$parent]['config'] ?? []), $byId[$parent], $nodes, $depth);
 	    }
 	    foreach($from[$id] ?? [] as $prev) {
 		if (isset($seen[$prev]) || !isset($byId[$prev]))
 		    continue;
 		$seen[$prev] = true;
 		$queue[] = $prev;
-		if ($class = $classOf($byId[$prev]))
-		    $add($class::outputVariables($byId[$prev]['config'] ?? []), $byId[$prev]);
+		if ($class = self::nodeClassFrom($defs, $byId[$prev]))
+		    self::addVariables($vars, $class::outputVariables($byId[$prev]['config'] ?? []), $byId[$prev], $nodes, $depth);
 	    }
 	}
 	ksort($vars);
 	return $vars;
     }
 
+    //CLD: 2026-11-07T01:06:42+02:00: the class of step $n among the step definitions $defs (null: unknown)
+    private static function nodeClassFrom($defs, $n) {
+	$def = $defs[$n['fqname'] ?? ''] ?? null;
+	return $def ? \V::app()->om->getObjectClass($def['objectName']) : null;
+    }
+
+    //CLD: 2026-10-13T12:34:29+03:00: the whole type description (+ fields, items: util\Expression::typeAt); a variable with `from` (a value text, e.g. the
+    //Set step's) gets the type of that value among the variables at its step (util\Expression::typeOf; nested at most MAX_TYPE_DEPTH steps deep)
+    //CLD: 2026-11-07T01:06:42+02:00: the variables $list of step $n added to $vars (those not there yet): `from` / `itemsOf` resolved against the steps before $n, its title in their info
+    private static function addVariables(array &$vars, array $list, $n, $nodes, $depth) {
+	$title = trim((string)($n['title'] ?? ''));
+	foreach($list as $name => $v) {
+	    if (isset($vars[$name]))
+		continue;
+	    if (isset($v['from']))
+		$v = array_merge($depth < self::MAX_TYPE_DEPTH ? \util\Expression::typeOf($v['from'], self::variablesAt($nodes, (string)$n['wfid'], $depth + 1)) : [ 'type' => 'any' ], array_intersect_key($v, [ 'info' => 1 ]));
+	    //CLD: 2026-10-13T12:43:20+03:00: `itemsOf` (a list's value text, e.g. the Loop's item): the type of that list's items (unknown: any)
+	    if (isset($v['itemsOf'])) {
+		$items = $depth < self::MAX_TYPE_DEPTH ? \util\Expression::typeOf($v['itemsOf'], self::variablesAt($nodes, (string)$n['wfid'], $depth + 1)) : [];
+		$v = array_merge(is_array($items['items'] ?? null) ? $items['items'] : [ 'type' => 'any' ], array_intersect_key($v, [ 'info' => 1 ]));
+	    }
+	    unset($v['from'], $v['itemsOf']);
+	    $vars[$name] = [ 'type' => $v['type'] ?? 'any', 'info' => trim(($v['info'] ?? '') . ($title !== '' ? " (step \"{$title}\")" : '')) ] + array_intersect_key($v, [ 'fields' => 1, 'items' => 1 ]);
+	}
+    }
+
     public function validateFlow() {
 	$defs = \models\wf\WfNode::getAll();
 	$issues = [];
-	$add = function($level, $node, $message) use (&$issues) {
-	    $issues[] = [ 'level' => $level, 'node' => $node, 'message' => $message ];
-	};
 
 	//split nodes / edges (the designer saves a list or a map; the key is the element's wfid)
 	$nodes = [];
@@ -477,12 +477,12 @@ class Workflow extends \sys\BaseModel {
 	foreach($nodes as $id => $n) {
 	    $d = $defs[$n['fqname'] ?? ''] ?? null;
 	    if (empty($d)) {
-		$add('error', $id, 'Unknown step type');
+		self::addIssue($issues, 'error', $id, 'Unknown step type');
 		continue;
 	    }
 	    //CLD: 2026-11-01T16:11:37+02:00: a step this server cannot run (WfNode::available: e.g. Email (inbound) without Haraka, a database without its PDO driver): the workflow cannot be published or run
 	    if (!\V::app()->om->getObjectClass($d['objectName'])::available())
-		$add('error', $id, "{$d['label']} is not available on this server");
+		self::addIssue($issues, 'error', $id, "{$d['label']} is not available on this server");
 	    //CLD: 2026-10-11T20:24:33+03:00: the step's own outputs when they follow its config (e.g. Switch cases; keep in sync with outPortsOf() in app.workflow.js)
 	    if (!empty($d['outPorts'])) {
 		$class = \V::app()->om->getObjectClass($d['objectName']);
@@ -493,28 +493,23 @@ class Workflow extends \sys\BaseModel {
 	    $def[$id] = $d;
 	}
 
-	//CLD: 2026-10-11T13:46:00+03:00: the level of a step: the loop it is in, null at the top (keep in sync with validateFlow() in app.workflow.js)
-	$levelOf = function($id) use ($nodes, $def) {
-	    $parent = $nodes[$id]['parentId'] ?? null;
-	    return (!empty($parent) && !empty($def[$parent]['isContainer'])) ? $parent : null;
-	};
 
 	//exactly one trigger
 	$triggers = array_keys(array_filter($def, fn($d) => $d['type'] == 'trigger'));
 	if (empty($triggers))
-	    $add('error', null, 'The workflow has no trigger');
+	    self::addIssue($issues, 'error', null, 'The workflow has no trigger');
 	foreach(array_slice($triggers, 1) as $id)
-	    $add('error', $id, 'Only one trigger is allowed');
+	    self::addIssue($issues, 'error', $id, 'Only one trigger is allowed');
 	//CLD: 2026-10-14T21:06:38+03:00: a loop cannot be inside another loop (keep in sync with validateFlow() in app.workflow.js)
 	foreach($def as $id => $d) {
-	    if (!empty($d['isContainer']) && $levelOf($id) !== null)
-		$add('error', $id, 'A loop cannot be inside another loop');
+	    if (!empty($d['isContainer']) && self::loopOf($nodes, $def, $id) !== null)
+		self::addIssue($issues, 'error', $id, 'A loop cannot be inside another loop');
 	}
 	//CLD: 2026-10-11T13:39:20+03:00: a trigger cannot be inside a loop (keep in sync with validateFlow() in app.workflow.js)
 	foreach($triggers as $id) {
 	    $parent = $nodes[$id]['parentId'] ?? null;
 	    if (!empty($parent) && !empty($def[$parent]['isContainer']))
-		$add('error', $id, 'A trigger cannot be inside a loop');
+		self::addIssue($issues, 'error', $id, 'A trigger cannot be inside a loop');
 	}
 
 	//connections
@@ -526,45 +521,45 @@ class Workflow extends \sys\BaseModel {
 	    $from = $e['fromNode'] ?? null;
 	    $to = $e['toNode'] ?? null;
 	    if (!isset($def[$from]) || !isset($def[$to])) {
-		$add('error', isset($def[$from]) ? $from : (isset($def[$to]) ? $to : null), 'A connection points to a missing step');
+		self::addIssue($issues, 'error', isset($def[$from]) ? $from : (isset($def[$to]) ? $to : null), 'A connection points to a missing step');
 		continue;
 	    }
 	    $fd = $def[$from];
 	    $td = $def[$to];
 	    if (!empty($fd['isNote']) || !empty($td['isNote'])) {
-		$add('error', !empty($fd['isNote']) ? $from : $to, 'Notes cannot be connected');
+		self::addIssue($issues, 'error', !empty($fd['isNote']) ? $from : $to, 'Notes cannot be connected');
 		continue;
 	    }
 	    if ($td['inputs'] == 0) {
-		$add('error', $to, 'This step cannot have incoming connections');
+		self::addIssue($issues, 'error', $to, 'This step cannot have incoming connections');
 		continue;
 	    }
 	    //CLD: 2026-10-11T13:46:00+03:00: connections stay on their level (a loop's own input / output belong to the level around it)
-	    if ($levelOf($from) !== $levelOf($to)) {
-		$add('error', $from, "A connection cannot cross a loop's border");
+	    if (self::loopOf($nodes, $def, $from) !== self::loopOf($nodes, $def, $to)) {
+		self::addIssue($issues, 'error', $from, "A connection cannot cross a loop's border");
 		continue;
 	    }
 
 	    $fromPort = $e['fromPort'] ?? null;
 	    $toPort = $e['toPort'] ?? null;
 	    if (!is_numeric($fromPort) || $fromPort < 0 || $fromPort >= $fd['outputs']) {
-		$add('error', $from, 'A connection leaves from an output this step does not have');
+		self::addIssue($issues, 'error', $from, 'A connection leaves from an output this step does not have');
 		continue;
 	    }
 	    if (!is_numeric($toPort) || $toPort < 0 || $toPort >= $td['inputs']) {
-		$add('error', $to, 'A connection arrives at an input this step does not have');
+		self::addIssue($issues, 'error', $to, 'A connection arrives at an input this step does not have');
 		continue;
 	    }
 
 	    $key = "{$from}|{$fromPort}|{$to}|{$toPort}";
 	    if (isset($seen[$key])) {
-		$add('error', $from, 'Duplicate connection');
+		self::addIssue($issues, 'error', $from, 'Duplicate connection');
 		continue;
 	    }
 	    $seen[$key] = true;
 
 	    if ($from == $to)
-		$add('warning', $from, 'This step is connected to itself');
+		self::addIssue($issues, 'warning', $from, 'This step is connected to itself');
 
 	    $adjacent[$from][] = $to;
 	    $inputsUsed[$to][(int)$toPort] = true;
@@ -595,7 +590,7 @@ class Workflow extends \sys\BaseModel {
 	    //CLD: 2026-10-11T13:46:00+03:00: top-level steps only (the steps inside a loop are checked from the loop's starting step, below)
 	    $unreached = [];
 	    foreach($def as $id => $d) {
-		if (empty($d['isNote']) && $levelOf($id) === null && !isset($reached[$id]))
+		if (empty($d['isNote']) && self::loopOf($nodes, $def, $id) === null && !isset($reached[$id]))
 		    $unreached[$id] = true;
 	    }
 
@@ -613,7 +608,7 @@ class Workflow extends \sys\BaseModel {
 	    }
 	    foreach(array_keys($unreached) as $id) {
 		if (in_array($id, $starts, true) || !isset($fromStarts[$id]))
-		    $add('error', $id, 'Not connected to the trigger');
+		    self::addIssue($issues, 'error', $id, 'Not connected to the trigger');
 	    }
 	}
 
@@ -622,19 +617,19 @@ class Workflow extends \sys\BaseModel {
 	foreach($def as $loopId => $loopDef) {
 	    if (empty($loopDef['isContainer']))
 		continue;
-	    $inner = array_keys(array_filter($def, fn($d, $id) => empty($d['isNote']) && $d['type'] != 'trigger' && $levelOf($id) === $loopId, ARRAY_FILTER_USE_BOTH));
+	    $inner = array_keys(array_filter($def, fn($d, $id) => empty($d['isNote']) && $d['type'] != 'trigger' && self::loopOf($nodes, $def, $id) === $loopId, ARRAY_FILTER_USE_BOTH));
 	    if (empty($inner)) {
-		$add('warning', $loopId, 'The loop is empty');
+		self::addIssue($issues, 'warning', $loopId, 'The loop is empty');
 		continue;
 	    }
 	    $starts = array_values(array_filter($inner, fn($id) => empty($hasIncoming[$id])));
 	    if (empty($starts)) {
-		$add('error', $loopId, 'The loop has no starting step: every step inside has an incoming connection');
+		self::addIssue($issues, 'error', $loopId, 'The loop has no starting step: every step inside has an incoming connection');
 		continue;
 	    }
 	    if (count($starts) > 1) {
 		foreach($starts as $id)
-		    $add('error', $id, 'Only one step inside a loop may have no incoming connection: each pass starts there');
+		    self::addIssue($issues, 'error', $id, 'Only one step inside a loop may have no incoming connection: each pass starts there');
 		continue;
 	    }
 	    $reached = [ $starts[0] => true ];
@@ -650,13 +645,13 @@ class Workflow extends \sys\BaseModel {
 	    }
 	    foreach($inner as $id) {
 		if (!isset($reached[$id]))
-		    $add('error', $id, "Not connected to the loop's starting step");
+		    self::addIssue($issues, 'error', $id, "Not connected to the loop's starting step");
 	    }
 	}
 
 	//CLD: 2026-11-02T18:00:00+02:00: a Chat trigger with no Reply to chat: the person would get no answer
 	if (array_filter($def, fn($d) => ($d['type'] ?? '') === 'trigger' && ($d['name'] ?? '') === 'chat') && !array_filter($def, fn($d) => ($d['name'] ?? '') === 'chatreply'))
-	    $add('warning', null, 'A Chat trigger needs a Reply to chat step to answer');
+	    self::addIssue($issues, 'warning', null, 'A Chat trigger needs a Reply to chat step to answer');
 
 	//several outputs (If): every output should lead somewhere; several inputs (Merge): every input should be fed
 	foreach($def as $id => $d) {
@@ -665,21 +660,32 @@ class Workflow extends \sys\BaseModel {
 	    if ($d['outputs'] > 1) {
 		for ($p = 0; $p < $d['outputs']; $p++) {
 		    if (empty($outputsUsed[$id][$p]))
-			$add('warning', $id, "Output `" . ($d['outLabels'][$p] ?? $p + 1) . "` is not connected");
+			self::addIssue($issues, 'warning', $id, "Output `" . ($d['outLabels'][$p] ?? $p + 1) . "` is not connected");
 		}
 	    }
 	    if ($d['inputs'] > 1) {
 		$used = count($inputsUsed[$id] ?? []);
 		if ($used < $d['inputs'])
-		    $add('warning', $id, "Only {$used} of {$d['inputs']} inputs are connected");
+		    self::addIssue($issues, 'warning', $id, "Only {$used} of {$d['inputs']} inputs are connected");
 	    }
 	    //CLD: 2026-11-02T23:00:00+02:00: an AI step whose spending cannot be counted (it may still run)
 	    $class = \V::app()->om->getObjectClass($d['objectName']);
 	    if (is_subclass_of($class, \models\node\NodeAppAi::class) && ($warning = \util\AgentGuard::priceWarning($class::CAPABILITY, (array)($nodes[$id]['config'] ?? []), $this->aid)))
-		$add('warning', $id, $warning);
+		self::addIssue($issues, 'warning', $id, $warning);
 	}
 
 	return $issues;
+    }
+
+    //CLD: 2026-11-07T01:06:42+02:00: a problem of validateFlow(): $level (error / warning), the step it is about (null: the workflow), $message
+    private static function addIssue(array &$issues, $level, $node, $message) {
+	$issues[] = [ 'level' => $level, 'node' => $node, 'message' => $message ];
+    }
+
+    //CLD: 2026-11-07T01:06:42+02:00: the level of step $id: the loop it is in (its parent, when that is a container), null at the top (keep in sync with validateFlow() in app.workflow.js)
+    private static function loopOf($nodes, $def, $id) {
+	$parent = $nodes[$id]['parentId'] ?? null;
+	return (!empty($parent) && !empty($def[$parent]['isContainer'])) ? $parent : null;
     }
 
     public function __toString() {

@@ -245,107 +245,7 @@ class WorkflowSpec {
 	$preds = [];
 	foreach($edges as $e)
 	    $preds[$e['toNode']][] = $e['fromNode'];
-	$level = fn($parent) => array_keys(array_filter($nodes, fn($n) => $n['parentId'] === $parent));
-	$isLoop = fn($id) => !empty($defs[$nodes[$id]['fqname']]['isContainer']);
-
-	//[ positions relative to the level's origin (id => [ x, y, w, h ]), width, height ] of a level as if all its steps were new
-	$measure = function($parent) use (&$measure, &$nodes, $edges, $defs, $level, $isLoop) {
-	    $ids = $level($parent);
-	    if (!$ids)
-		return [ [], 0, 0 ];
-	    $col = array_fill_keys($ids, 0);
-	    for($pass = 0; $pass < count($ids); $pass++) {
-		$changed = false;
-		foreach($edges as $e) {
-		    if (isset($col[$e['fromNode']], $col[$e['toNode']]) && $col[$e['toNode']] < $col[$e['fromNode']] + 1 && $col[$e['fromNode']] + 1 < count($ids)) {
-			$col[$e['toNode']] = $col[$e['fromNode']] + 1;
-			$changed = true;
-		    }
-		}
-		if (!$changed)
-		    break;
-	    }
-	    $dims = [];
-	    foreach($ids as $id) {
-		$def = $defs[$nodes[$id]['fqname']];
-		if ($isLoop($id)) {
-		    [ , $w, $h ] = $measure($id);
-		    $dims[$id] = [ max($def['defaultWidth'], $w + 2 * self::PAD), max($def['defaultHeight'], $h + self::PAD_TOP + self::PAD_BOTTOM) ];
-		} else {
-		    $dims[$id] = [ $def['defaultWidth'], $def['defaultHeight'] ];
-		}
-	    }
-	    $widths = [];
-	    foreach($ids as $id)
-		$widths[$col[$id]] = max($widths[$col[$id]] ?? 0, $dims[$id][0]);
-	    ksort($widths);
-	    $x = 0;
-	    $colX = [];
-	    foreach($widths as $c => $w) {
-		$colX[$c] = $x;
-		$x += $w + self::GAP_X;
-	    }
-	    $pos = [];
-	    $rowY = [];
-	    $maxX = 0;
-	    $maxY = 0;
-	    foreach($ids as $id) {
-		$y = $rowY[$col[$id]] ?? 0;
-		$pos[$id] = [ $colX[$col[$id]], $y, $dims[$id][0], $dims[$id][1] ];
-		$rowY[$col[$id]] = $y + $dims[$id][1] + self::GAP_Y;
-		$maxX = max($maxX, $colX[$col[$id]] + $dims[$id][0]);
-		$maxY = max($maxY, $y + $dims[$id][1]);
-	    }
-	    return [ $pos, $maxX, $maxY ];
-	};
-
-	$overlaps = function($g, $ids) use (&$nodes) {
-	    foreach($ids as $o) {
-		$h = $nodes[$o]['geometry'];
-		if ($h !== null && $g['x'] < $h['x'] + $h['w'] && $h['x'] < $g['x'] + $g['w'] && $g['y'] < $h['y'] + $h['h'] && $h['y'] < $g['y'] + $g['h'])
-		    return true;
-	    }
-	    return false;
-	};
-
-	//one level placed from its origin (absolute), then the loops in it
-	$place = function($parent, $ox, $oy) use (&$place, &$nodes, $level, $isLoop, $measure, $preds, $overlaps) {
-	    $ids = $level($parent);
-	    $kept = array_values(array_filter($ids, fn($id) => $nodes[$id]['geometry'] !== null));
-	    $new = array_values(array_filter($ids, fn($id) => $nodes[$id]['geometry'] === null));
-	    if ($new) {
-		[ $pos ] = $measure($parent);
-		if (!$kept) {
-		    foreach($new as $id)
-			$nodes[$id]['geometry'] = [ 'x' => $ox + $pos[$id][0], 'y' => $oy + $pos[$id][1], 'w' => $pos[$id][2], 'h' => $pos[$id][3] ];
-		} else {
-		    foreach($new as $id) {
-			[ , , $w, $h ] = $pos[$id];
-			$anchor = null;
-			foreach($preds[$id] ?? [] as $p) {
-			    if (in_array($p, $ids, true) && $nodes[$p]['geometry'] !== null) {
-				$anchor = $nodes[$p]['geometry'];
-				break;
-			    }
-			}
-			if ($anchor !== null) {
-			    $g = [ 'x' => $anchor['x'] + $anchor['w'] + self::GAP_X, 'y' => $anchor['y'], 'w' => $w, 'h' => $h ];
-			} else {
-			    $placed = array_filter($ids, fn($o) => $nodes[$o]['geometry'] !== null);
-			    $g = [ 'x' => min(array_map(fn($o) => $nodes[$o]['geometry']['x'], $placed)), 'y' => max(array_map(fn($o) => $nodes[$o]['geometry']['y'] + $nodes[$o]['geometry']['h'], $placed)) + self::GAP_Y, 'w' => $w, 'h' => $h ];
-			}
-			for($tries = 0; $tries < 100 && $overlaps($g, $ids); $tries++)
-			    $g['y'] += $h + self::GAP_Y;
-			$nodes[$id]['geometry'] = $g;
-		    }
-		}
-	    }
-	    foreach($ids as $id) {
-		if ($isLoop($id))
-		    $place($id, $nodes[$id]['geometry']['x'] + self::PAD, $nodes[$id]['geometry']['y'] + self::PAD_TOP);
-	    }
-	};
-	$place(null, 0, 0);
+	self::place($nodes, $edges, $defs, $preds, null, 0, 0);
 
 	//loops grown around their steps
 	//CLD: 2026-10-14T21:17:55+03:00: in any order (one level: a loop cannot be inside another loop)
@@ -357,6 +257,115 @@ class WorkflowSpec {
 	    $nodes[$parent]['geometry']['w'] = max($nodes[$parent]['geometry']['w'], $g['x'] + $g['w'] - $nodes[$parent]['geometry']['x'] + self::PAD);
 	    $nodes[$parent]['geometry']['h'] = max($nodes[$parent]['geometry']['h'], $g['y'] + $g['h'] - $nodes[$parent]['geometry']['y'] + self::PAD_BOTTOM);
 	}
+    }
+
+    //CLD: 2026-11-07T01:17:08+02:00: the ids of the steps of level $parent (null: the top; else a loop's)
+    private static function levelOf(array $nodes, $parent) {
+	return array_keys(array_filter($nodes, fn($n) => $n['parentId'] === $parent));
+    }
+
+    //CLD: 2026-11-07T01:17:08+02:00: whether step $id is a loop (a container)
+    private static function isLoop(array $nodes, array $defs, $id) {
+	return !empty($defs[$nodes[$id]['fqname']]['isContainer']);
+    }
+
+    //[ positions relative to the level's origin (id => [ x, y, w, h ]), width, height ] of a level as if all its steps were new
+    private static function measure(array $nodes, array $edges, array $defs, $parent) {
+    $ids = self::levelOf($nodes, $parent);
+    if (!$ids)
+	return [ [], 0, 0 ];
+    $col = array_fill_keys($ids, 0);
+    for($pass = 0; $pass < count($ids); $pass++) {
+	$changed = false;
+	foreach($edges as $e) {
+	    if (isset($col[$e['fromNode']], $col[$e['toNode']]) && $col[$e['toNode']] < $col[$e['fromNode']] + 1 && $col[$e['fromNode']] + 1 < count($ids)) {
+		$col[$e['toNode']] = $col[$e['fromNode']] + 1;
+		$changed = true;
+	    }
+	}
+	if (!$changed)
+	    break;
+    }
+    $dims = [];
+    foreach($ids as $id) {
+	$def = $defs[$nodes[$id]['fqname']];
+	if (self::isLoop($nodes, $defs, $id)) {
+	    [ , $w, $h ] = self::measure($nodes, $edges, $defs, $id);
+	    $dims[$id] = [ max($def['defaultWidth'], $w + 2 * self::PAD), max($def['defaultHeight'], $h + self::PAD_TOP + self::PAD_BOTTOM) ];
+	} else {
+	    $dims[$id] = [ $def['defaultWidth'], $def['defaultHeight'] ];
+	}
+    }
+    $widths = [];
+    foreach($ids as $id)
+	$widths[$col[$id]] = max($widths[$col[$id]] ?? 0, $dims[$id][0]);
+    ksort($widths);
+    $x = 0;
+    $colX = [];
+    foreach($widths as $c => $w) {
+	$colX[$c] = $x;
+	$x += $w + self::GAP_X;
+    }
+    $pos = [];
+    $rowY = [];
+    $maxX = 0;
+    $maxY = 0;
+    foreach($ids as $id) {
+	$y = $rowY[$col[$id]] ?? 0;
+	$pos[$id] = [ $colX[$col[$id]], $y, $dims[$id][0], $dims[$id][1] ];
+	$rowY[$col[$id]] = $y + $dims[$id][1] + self::GAP_Y;
+	$maxX = max($maxX, $colX[$col[$id]] + $dims[$id][0]);
+	$maxY = max($maxY, $y + $dims[$id][1]);
+    }
+    return [ $pos, $maxX, $maxY ];
+    }
+
+    //CLD: 2026-11-07T01:17:08+02:00: whether geometry $g overlaps a placed step of $ids
+    private static function overlaps(array $nodes, $g, $ids) {
+    foreach($ids as $o) {
+	$h = $nodes[$o]['geometry'];
+	if ($h !== null && $g['x'] < $h['x'] + $h['w'] && $h['x'] < $g['x'] + $g['w'] && $g['y'] < $h['y'] + $h['h'] && $h['y'] < $g['y'] + $g['h'])
+	    return true;
+    }
+    return false;
+    }
+
+    //one level placed from its origin (absolute), then the loops in it
+    private static function place(array &$nodes, array $edges, array $defs, array $preds, $parent, $ox, $oy) {
+    $ids = self::levelOf($nodes, $parent);
+    $kept = array_values(array_filter($ids, fn($id) => $nodes[$id]['geometry'] !== null));
+    $new = array_values(array_filter($ids, fn($id) => $nodes[$id]['geometry'] === null));
+    if ($new) {
+	[ $pos ] = self::measure($nodes, $edges, $defs, $parent);
+	if (!$kept) {
+	    foreach($new as $id)
+		$nodes[$id]['geometry'] = [ 'x' => $ox + $pos[$id][0], 'y' => $oy + $pos[$id][1], 'w' => $pos[$id][2], 'h' => $pos[$id][3] ];
+	} else {
+	    foreach($new as $id) {
+		[ , , $w, $h ] = $pos[$id];
+		$anchor = null;
+		foreach($preds[$id] ?? [] as $p) {
+		    if (in_array($p, $ids, true) && $nodes[$p]['geometry'] !== null) {
+			$anchor = $nodes[$p]['geometry'];
+			break;
+		    }
+		}
+		if ($anchor !== null) {
+		    $g = [ 'x' => $anchor['x'] + $anchor['w'] + self::GAP_X, 'y' => $anchor['y'], 'w' => $w, 'h' => $h ];
+		} else {
+		    $placed = array_filter($ids, fn($o) => $nodes[$o]['geometry'] !== null);
+		    $g = [ 'x' => min(array_map(fn($o) => $nodes[$o]['geometry']['x'], $placed)), 'y' => max(array_map(fn($o) => $nodes[$o]['geometry']['y'] + $nodes[$o]['geometry']['h'], $placed)) + self::GAP_Y, 'w' => $w, 'h' => $h ];
+		}
+		for($tries = 0; $tries < 100 && self::overlaps($nodes, $g, $ids); $tries++)
+		    $g['y'] += $h + self::GAP_Y;
+		$nodes[$id]['geometry'] = $g;
+	    }
+	}
+    }
+    foreach($ids as $id) {
+	if (self::isLoop($nodes, $defs, $id))
+	    self::place($nodes, $edges, $defs, $preds, $id, $nodes[$id]['geometry']['x'] + self::PAD, $nodes[$id]['geometry']['y'] + self::PAD_TOP);
+    }
     }
 
     public static function schema() {

@@ -277,14 +277,18 @@ abstract class LdapClient {
 	if ($lowerName === 'objectguid' && strlen($value) === 16) {
 	    $h = bin2hex($value);
 	    //the first three parts are little-endian
-	    $p = fn($s) => implode('', array_reverse(str_split($s, 2)));
-	    return $p(substr($h, 0, 8)) . '-' . $p(substr($h, 8, 4)) . '-' . $p(substr($h, 12, 4)) . '-' . substr($h, 16, 4) . '-' . substr($h, 20);
+	    return self::swapPairs(substr($h, 0, 8)) . '-' . self::swapPairs(substr($h, 8, 4)) . '-' . self::swapPairs(substr($h, 12, 4)) . '-' . substr($h, 16, 4) . '-' . substr($h, 20);
 	}
 	if ($lowerName === 'objectsid' && strlen($value) >= 8)
 	    return self::sid($value);
 	if (!mb_check_encoding($value, 'UTF-8') || preg_match('/[\x00-\x08\x0e-\x1f]/', $value))
 	    return base64_encode($value);
 	return $value;
+    }
+
+    //CLD: 2026-11-07T01:14:34+02:00: hex text $s with its bytes in reverse order (a GUID's little-endian parts)
+    private static function swapPairs($s) {
+	return implode('', array_reverse(str_split($s, 2)));
     }
 
     //a binary SID as S-1-5-21-...

@@ -13,20 +13,9 @@ $roles = [];
 foreach(\V::app()->om->find('Role', [ 'aid' => $project->aid ], [ 'sort' => [ 'name' => 1 ] ]) as $r)
     $roles[(string)$r->_id] = (string)$r;
 $members = (array)$project->members;
-$roleSelect = function($name, $selected, $attrs = '') use ($roles) {
-    $options = '';
-    foreach($roles as $id => $label)
-	$options .= \util\VString::insert('<option value="{:value}"{:selected}>{:label}</option>', [
-	    'value' => \V::app()->html->escape($id),
-	    'selected' => $id === (string)$selected ? ' selected' : '',
-	    'label' => \V::app()->html->escape($label),
-	]);
-    return \util\VString::insert('<select name="{:name}" class="form-select form-select-sm" {:attrs}>{:options}</select>', [
-	'name' => $name,
-	'attrs' => $attrs,
-	'options' => $options,
-    ]);
-};
+//CLD: 2026-11-07T01:20:20+02:00: the role select (`role`): one option per role of the account
+$roleSelectTpl = '<select name="role" class="form-select form-select-sm" {:attrs}>{:options}</select>';
+$roleOptionTpl = '<option value="{:value}"{:selected}>{:label}</option>';
 
 echo '<div class="w-100 mt-4"></div>';
 
@@ -37,6 +26,11 @@ if ($canManage) {
 	    $candidates[(string)$u->_id] = (string)$u . ($u->email ? ' <' . $u->email . '>' : '');
     }
     $memberRole = (string)(\V::app()->om->findOne('Role', [ 'aid' => $project->aid, 'iname' => 'member' ])->_id ?? '');
+    //the role of who is added or invited: Member at first
+    $roleOptions = '';
+    foreach($roles as $id => $label)
+	$roleOptions .= \util\VString::insert($roleOptionTpl, [ 'value' => \V::app()->html->escape($id), 'selected' => $id === $memberRole ? ' selected' : '', 'label' => \V::app()->html->escape($label) ]);
+    $memberRoleSelect = \util\VString::insert($roleSelectTpl, [ 'attrs' => '', 'options' => $roleOptions ]);
     $addTpl = '
 <form method="post" action="{:action}" class="d-flex flex-wrap gap-2 align-items-end mb-3">
     <div>
@@ -57,7 +51,7 @@ if ($canManage) {
 	'action' => \V::app()->createUrl('/project/member_add', [ 'id' => $project->_id ]),
 	'disabled' => $candidates ? '' : ' disabled',
 	'options' => $options,
-	'role' => $roleSelect('role', $memberRole),
+	'role' => $memberRoleSelect,
     ]);
 
     //CLD: 2026-10-17T22:00:00+03:00: invite by email (ProjectController::member_invite): a user of the account is added; another address gets a link to join (needs User::create)
@@ -75,7 +69,7 @@ if ($canManage) {
 ';
     echo \util\VString::insert($inviteTpl, [
 	'action' => \V::app()->createUrl('/project/member_invite', [ 'id' => $project->_id ]),
-	'role' => $roleSelect('role', $memberRole),
+	'role' => $memberRoleSelect,
 	'help' => $canInvite ? 'A user of the account is added now; anyone else gets an email with a link to join, valid 7 days.'
 	    : 'Users of the account are added now; only who may add users can invite new people.',
     ]);
@@ -89,12 +83,15 @@ $removeTpl = '<a class="btn btn-sm btn-outline-danger" href="{:href}" data-metho
 foreach($members as $key => $item) {
     $name = (string)\V::app()->om->findById('User', $key);
     $q = [ 'id' => (string)$project->_id, 'user' => (string)$key ];
+    $roleOptions = '';
+    foreach($roles as $id => $label)
+	$roleOptions .= \util\VString::insert($roleOptionTpl, [ 'value' => \V::app()->html->escape($id), 'selected' => $id === (string)($item['role'] ?? '') ? ' selected' : '', 'label' => \V::app()->html->escape($label) ]);
     echo \util\VString::insert($memberTpl, [
 	'name' => \V::app()->html->escape($name),
 	'role' => $canManage
 	    ? \util\VString::insert($roleFormTpl, [
 		'action' => \V::app()->createUrl('/project/member_role', $q),
-		'select' => $roleSelect('role', $item['role'] ?? '', "onchange='this.form.requestSubmit()' aria-label='Role'"),
+		'select' => \util\VString::insert($roleSelectTpl, [ 'attrs' => "onchange='this.form.requestSubmit()' aria-label='Role'", 'options' => $roleOptions ]),
 	    ])
 	    : \V::app()->html->escape($roles[(string)($item['role'] ?? '')] ?? ''),
 	'remove' => $canManage

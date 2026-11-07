@@ -55,17 +55,6 @@ class NodeAppGzReports extends NodeAppGravityZone {
 
     //the report file $path saved in Files: the entries of a ZIP (of the types Files allow; at most MAX_ENTRIES), else the file as <report id>.<type>: [ { id, filename, size, contentType } ]
     protected function saveReport($path, $reportId, $mime) {
-	$save = function($filename, $stream, $size) {
-	    $id = \models\File::createFromStream($filename, $stream, [ 'metadata' => [
-		'project' => $this->exec->project,
-		'aid' => $this->exec->aid,
-		'owner' => null,
-		'source' => 'gravityzone',
-		'wf' => $this->exec->wf,
-		'created_at' => new \MongoDB\BSON\UTCDateTime(),
-	    ] ]);
-	    return [ 'id' => (string)$id, 'filename' => $filename, 'size' => (int)$size, 'contentType' => \models\File::CONTENT_TYPES[strtolower(pathinfo($filename, PATHINFO_EXTENSION))] ?? 'application/octet-stream' ];
-	};
 	$zip = new \ZipArchive();
 	if ($zip->open($path, \ZipArchive::RDONLY) !== true) {
 	    $ext = [ 'text/csv' => 'csv', 'application/pdf' => 'pdf', 'application/json' => 'json' ][$mime] ?? 'csv';
@@ -74,7 +63,7 @@ class NodeAppGzReports extends NodeAppGravityZone {
 		throw new \RuntimeException("file type not allowed: `{$filename}`");
 	    $in = fopen($path, 'rb');
 	    try {
-		return [ $save($filename, $in, filesize($path)) ];
+		return [ $this->saveFile($filename, $in, filesize($path)) ];
 	    } finally {
 		fclose($in);
 	    }
@@ -94,7 +83,7 @@ class NodeAppGzReports extends NodeAppGravityZone {
 		fclose($in);
 		rewind($tmp);
 		try {
-		    $files[] = $save($filename, $tmp, (int)$stat['size']);
+		    $files[] = $this->saveFile($filename, $tmp, (int)$stat['size']);
 		} finally {
 		    fclose($tmp);
 		}
@@ -107,8 +96,20 @@ class NodeAppGzReports extends NodeAppGravityZone {
 	return $files;
     }
 
+    //CLD: 2026-11-07T01:09:01+02:00: stream $stream ($size bytes) saved as a file of the project named $filename: [ id, filename, size, contentType ]
+    private function saveFile($filename, $stream, $size) {
+	$id = \models\File::createFromStream($filename, $stream, [ 'metadata' => [
+	    'project' => $this->exec->project,
+	    'aid' => $this->exec->aid,
+	    'owner' => null,
+	    'source' => 'gravityzone',
+	    'wf' => $this->exec->wf,
+	    'created_at' => new \MongoDB\BSON\UTCDateTime(),
+	] ]);
+	return [ 'id' => (string)$id, 'filename' => $filename, 'size' => (int)$size, 'contentType' => \models\File::CONTENT_TYPES[strtolower(pathinfo($filename, PATHINFO_EXTENSION))] ?? 'application/octet-stream' ];
+    }
+
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$report = fn() => [ 'reportId' => self::id($value('reportId'), 'Report') ];
 	switch($operation) {
 	    case 'create':
 		if ($text('reportName') === '')
@@ -119,9 +120,9 @@ class NodeAppGzReports extends NodeAppGravityZone {
 	    case 'list':
 		return $this->listOf('reports', 'getReportsList', [], 'report');
 	    case 'links':
-		return self::done($this->rpc('reports', 'getDownloadLinks', $report()), 'links of report ' . $text('reportId'));
+		return self::done($this->rpc('reports', 'getDownloadLinks', $this->reportRef()), 'links of report ' . $text('reportId'));
 	    case 'download':
-		$links = $this->rpc('reports', 'getDownloadLinks', $report());
+		$links = $this->rpc('reports', 'getDownloadLinks', $this->reportRef());
 		$url = is_array($links) ? (string)($links['lastInstanceUrl'] ?? '') : '';
 		if (empty($links['readyForDownload']) || $url === '')
 		    throw new \RuntimeException('the report has no instance ready to download yet');
@@ -139,8 +140,13 @@ class NodeAppGzReports extends NodeAppGravityZone {
 		}
 		return self::done([ 'files' => $files, 'count' => count($files) ], 'saved ' . implode(', ', array_map(fn($f) => "`{$f['filename']}`", $files)));
 	    case 'delete':
-		return self::done($this->rpc('reports', 'deleteReport', $report()), 'report ' . $text('reportId') . ' deleted');
+		return self::done($this->rpc('reports', 'deleteReport', $this->reportRef()), 'report ' . $text('reportId') . ' deleted');
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: the report of the setting Report
+    private function reportRef() {
+	return [ 'reportId' => self::id($this->settingOf('reportId'), 'Report') ];
     }
 }

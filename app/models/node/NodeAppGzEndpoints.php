@@ -62,11 +62,9 @@ class NodeAppGzEndpoints extends NodeAppGravityZone {
     }
 
     protected function runOperation($operation, \Closure $text, \Closure $value) {
-	$group = fn() => self::id($value('groupId'), 'Group', false);
-	$depth = fn() => $this->cfg('recursive', true) ? [ 'filters' => [ 'depth' => [ 'allItemsRecursively' => true ] ] ] : [];
 	switch($operation) {
 	    case 'list':
-		$p = array_filter([ 'parentId' => $group() ]) + $depth();
+		$p = array_filter([ 'parentId' => $this->groupSetting() ]) + $this->depthFilter();
 		$m = (string)$this->cfg('managed', 'all');
 		if ($m !== 'all')
 		    $p['isManaged'] = $m === 'managed';
@@ -75,9 +73,9 @@ class NodeAppGzEndpoints extends NodeAppGravityZone {
 		$r = $this->rpc('network', 'getManagedEndpointDetails', [ 'endpointId' => self::id($value('endpointId'), 'Endpoint') ]);
 		return self::done($r, 'endpoint ' . ($r['name'] ?? $text('endpointId')));
 	    case 'inventory':
-		return $this->listOf('network', 'getNetworkInventoryItems', array_filter([ 'parentId' => $group() ]) + $depth(), 'item');
+		return $this->listOf('network', 'getNetworkInventoryItems', array_filter([ 'parentId' => $this->groupSetting() ]) + $this->depthFilter(), 'item');
 	    case 'groups':
-		$r = $this->rpc('network', 'getCustomGroupsList', array_filter([ 'parentId' => $group() ]));
+		$r = $this->rpc('network', 'getCustomGroupsList', array_filter([ 'parentId' => $this->groupSetting() ]));
 		return self::done($r, \util\Format::plural(is_array($r) ? count($r) : 0, 'group'));
 	    case 'scan':
 		$targets = self::ids($value('targetIds'), 'Targets');
@@ -103,5 +101,15 @@ class NodeAppGzEndpoints extends NodeAppGravityZone {
 		return self::done($r, 'policy assigned to ' . \util\Format::plural(count($targets), 'target'));
 	}
 	throw new \RuntimeException("unknown operation `{$operation}`");
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: the setting Group (an id; empty: none)
+    private function groupSetting() {
+	return self::id($this->settingOf('groupId'), 'Group', false);
+    }
+
+    //CLD: 2026-11-07T01:09:01+02:00: the filter of the setting Recursive: the items of the subgroups too
+    private function depthFilter() {
+	return $this->cfg('recursive', true) ? [ 'filters' => [ 'depth' => [ 'allItemsRecursively' => true ] ] ] : [];
     }
 }

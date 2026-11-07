@@ -1,5 +1,10 @@
 <?php
 
+//CLD: 2026-11-07T01:05:06+02:00: app.env's SYSTEM_AI_<name>, else $default
+function system_ai_env($name, $default = '') {
+    return defined('SYSTEM_AI_' . $name) ? constant('SYSTEM_AI_' . $name) : $default;
+}
+
 function get_config($mode = 'web') {
 
     //plugins
@@ -93,17 +98,16 @@ function get_config($mode = 'web') {
 	    The credits per model and the margin: plugins.json (MultiTenant: credit_rates)
 	*/
 	'ai.system' => (function() {
-	    $env = fn($name, $default = '') => defined('SYSTEM_AI_' . $name) ? constant('SYSTEM_AI_' . $name) : $default;
 	    return [
-		'provider' => (string)$env('PROVIDER'),
-		'url' => (string)$env('URL'),
-		'api_key' => (string)$env('API_KEY'),
-		'model' => (string)$env('MODEL'),
-		'effort' => (string)$env('EFFORT'),
-		'price_input' => (float)$env('PRICE_INPUT', 0),
-		'price_output' => (float)$env('PRICE_OUTPUT', 0),
-		'monthly_credits' => (int)$env('MONTHLY_CREDITS', 0),
-		'max_credits_per_request' => (int)$env('MAX_CREDITS_PER_REQUEST', 0),
+		'provider' => (string)system_ai_env('PROVIDER'),
+		'url' => (string)system_ai_env('URL'),
+		'api_key' => (string)system_ai_env('API_KEY'),
+		'model' => (string)system_ai_env('MODEL'),
+		'effort' => (string)system_ai_env('EFFORT'),
+		'price_input' => (float)system_ai_env('PRICE_INPUT', 0),
+		'price_output' => (float)system_ai_env('PRICE_OUTPUT', 0),
+		'monthly_credits' => (int)system_ai_env('MONTHLY_CREDITS', 0),
+		'max_credits_per_request' => (int)system_ai_env('MAX_CREDITS_PER_REQUEST', 0),
 	    ];
 	})(),
 

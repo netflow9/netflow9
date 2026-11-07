@@ -35,17 +35,16 @@ class ImapCommand extends \sys\BaseController {
 
     public function test($req = null, $resp = null) {
 	$p = $req->params ?? [];
-	$opt = fn($key, $default) => (isset($p[$key]) && $p[$key] !== true) ? (string)$p[$key] : $default;
 
-	$preset = self::PRESETS[$opt('preset', '')] ?? [];
-	$host = $opt('host', $preset['host'] ?? self::HOST);
-	$port = (int)$opt('port', (string)($preset['port'] ?? self::PORT));
-	$security = $opt('security', $preset['security'] ?? self::SECURITY);
-	$user = $opt('user', self::USER);
-	$password = $opt('password', self::PASSWORD);
-	$token = $opt('token', self::TOKEN);
-	$folder = $opt('folder', self::FOLDER);
-	$count = max(0, (int)$opt('count', (string)self::COUNT));
+	$preset = self::PRESETS[self::opt($p, 'preset', '')] ?? [];
+	$host = self::opt($p, 'host', $preset['host'] ?? self::HOST);
+	$port = (int)self::opt($p, 'port', (string)($preset['port'] ?? self::PORT));
+	$security = self::opt($p, 'security', $preset['security'] ?? self::SECURITY);
+	$user = self::opt($p, 'user', self::USER);
+	$password = self::opt($p, 'password', self::PASSWORD);
+	$token = self::opt($p, 'token', self::TOKEN);
+	$folder = self::opt($p, 'folder', self::FOLDER);
+	$count = max(0, (int)self::opt($p, 'count', (string)self::COUNT));
 
 	if (isset($p['preset']) && empty($preset))
 	    $this->fail('options', 'unknown preset (gmail, outlook)');
@@ -131,6 +130,11 @@ class ImapCommand extends \sys\BaseController {
 	    return 'ok';
 	});
 	echo "all steps passed\n";
+    }
+
+    //CLD: 2026-11-07T01:04:46+02:00: option --$key of the command line ($p), else $default (also when given without a value)
+    private static function opt(array $p, $key, $default) {
+	return (isset($p[$key]) && $p[$key] !== true) ? (string)$p[$key] : $default;
     }
 
     //run one step: prints its name, result and time; stops the command when it fails

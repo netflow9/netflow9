@@ -1125,26 +1125,28 @@ abstract class NodeAppAi extends \models\wf\WfNode {
     //CLD: 2026-10-30T23:30:00+02:00: new: the file ids in $value - one, a list, objects with `id` / `file` (e.g. an attachment), or text with ids -, each once
     public static function fileIds($value) {
 	$ids = [];
-	$collect = function($v) use (&$collect, &$ids) {
-	    if (is_object($v))
-		$v = (array)$v;
-	    if (is_array($v)) {
-		if (!array_is_list($v)) {
-		    $id = $v['file'] ?? $v['id'] ?? null;
-		    if ($id !== null)
-			$collect($id);
-		    return;
-		}
-		foreach($v as $item)
-		    $collect($item);
+	self::collectFileIds($value, $ids);
+	return array_keys($ids);
+    }
+
+    //CLD: 2026-11-07T01:07:16+02:00: the file ids in $v added to $ids (id => true): an object's `file` / `id`, each item of a list, the ObjectIds in a text
+    private static function collectFileIds($v, array &$ids) {
+	if (is_object($v))
+	    $v = (array)$v;
+	if (is_array($v)) {
+	    if (!array_is_list($v)) {
+		$id = $v['file'] ?? $v['id'] ?? null;
+		if ($id !== null)
+		    self::collectFileIds($id, $ids);
 		return;
 	    }
-	    if (is_string($v) && preg_match_all('/\b[a-f0-9]{24}\b/i', $v, $m))
-		foreach($m[0] as $id)
-		    $ids[strtolower($id)] = true;
-	};
-	$collect($value);
-	return array_keys($ids);
+	    foreach($v as $item)
+		self::collectFileIds($item, $ids);
+	    return;
+	}
+	if (is_string($v) && preg_match_all('/\b[a-f0-9]{24}\b/i', $v, $m))
+	    foreach($m[0] as $id)
+		$ids[strtolower($id)] = true;
     }
 
     //CLD: 2026-11-01T23:30:00+02:00: new: a tool's result as sent to the model: cut at MAX_TOOL_RESULT, logged ($note after the tool's name), listed in $calls =>
