@@ -1,8 +1,12 @@
 <?php
-//CLD: 2026-11-01T02:00:00+02:00: new: the Data access tab of the account's settings (AccountController::settings, the owners: Account::update): the projects whose MCP server is on
-//(switches mcp_projects[]: Account::mcpEnabled). $account, $projects (id => Project)
-//CLD: 2026-11-01T03:30:00+02:00: + $owners (id => User): the owners of the personal projects
-//CLD: 2026-11-01T03:00:00+02:00: the MCP server only: what the Assistant may read moved to the Assistant's settings (AssistantSettings data_access), linked from here
+/*
+    the Data access tab of the account's settings (AccountController::settings, the owners: Account::update):
+	the projects whose MCP server is on (switches mcp_projects[]: Account::mcpEnabled).
+    $account, $projects (id => Project)
+    $owners (id => User): the owners of the personal projects
+    the MCP server only: what the Assistant may read moved to the Assistant's settings (AssistantSettings data_access), linked from here
+*/
+
 $on = array_map('strval', (array)($account->mcp_projects ?? []));
 $rows = '';
 foreach($projects as $id => $p)

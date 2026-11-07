@@ -1,7 +1,9 @@
 <?php
-//CLD: 2026-10-31T11:32:07+02:00: the Settings tab of the account's settings
-//CLD: 2026-11-01T00:30:00+02:00: two columns (security and logs on the left, dates and integrations on the right; one column below xl), to fit one screen;
-//+ Integrations: private network addresses (Account allow_private_addresses)
+/*
+    the Settings tab of the account's settings
+    two columns (security and logs on the left, dates and integrations on the right; one column below xl), to fit one screen;
+    + Integrations: private network addresses (Account allow_private_addresses)
+*/
 ?>
     <?= \V::app()->form->create($account) ?>
 	<div class="row">

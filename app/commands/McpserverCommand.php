@@ -6,7 +6,8 @@ use util\ToolServers;
 use models\ToolServerAccess;
 use models\ToolServerSlot;
 
-//CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers (util\ToolServers) and the accounts that may use them
+/*
+    the installation's tool servers (util\ToolServers) and the accounts that may use them
 //CLD: 2026-11-01T11:55:18+02:00: core: ./v mcpserver::<action>; the servers are in
 //mcp.json (next to app.env): + add / remove (the installers use them, e.g. scripts/playwright-mcp.sh: the only writers of the file, with Settings > Tool servers)
 //  ../v mcpserver::list                                  the servers: reachable?, the accounts enabled, the sessions open
@@ -17,6 +18,8 @@ use models\ToolServerSlot;
 //  ../v mcpserver::enable --account=<id> --server=<id>    the account's AI steps may use the server
 //  ../v mcpserver::disable --account=<id> --server=<id>
 //  ../v mcpserver::test [--server=<id>]                   connects, lists the tools (those offered marked); a web browser: opens a public page, not a private address
+*/
+
 class McpserverCommand extends \sys\BaseController {
 
     public function list($req = null, $resp = null) {

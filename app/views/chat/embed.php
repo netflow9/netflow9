@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-02T18:00:00+02:00: new: the embeddable chat page (ChatController::open): the page is the chat, nothing around it
+//the embeddable chat page (ChatController::open): the page is the chat, nothing around it
 
 $this->pageTitle = $title;
 $id = 'agent-chat-' . bin2hex(random_bytes(4));

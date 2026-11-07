@@ -1,12 +1,16 @@
 <?php
-//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number
 /*
-    CLD: 2026-10-24T09:45:36+03:00: new: the account's usage (AccountController::settings, its Usage tab): $account, $usage (util\Tiers::usage), $limits (util\Tiers::limits), $projects ([ id => Project ]);
+    the account's usage (AccountController::settings, its Usage tab):
+	$account,
+	$usage (util\Tiers::usage),
+	$limits (util\Tiers::limits),
+	$projects ([ id => Project ]);
+
     each limit with what is used (yellow from 80%, red at the limit), the tier's features, the usage per project (a breakdown: the limits are the account's)
 */
 use util\Tiers;
 
-//CLD: 2026-10-31T11:32:07+02:00: the Usage tab of the account's settings: no page header of its own;
+//the Usage tab of the account's settings: no page header of its own;
 //the plan's badge only with tiers (the MultiTenant plugin: Tiers::enabled; without it there is no plan to show)
 $showTier = Tiers::enabled();
 

@@ -115,8 +115,7 @@ JS . "}({$connectJs});");
 
 <div class="main-header py-2 px-3">
     <?php
-    $exp = new \sys\html\BtnExpandSidebar();
-    echo $exp->render();
+    echo (new \sys\html\BtnExpandSidebar())->render();
 
     $bc = new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],

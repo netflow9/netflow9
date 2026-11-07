@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-10-21T10:00:00+03:00: new: the LDAP sign-in settings page (LdapController::settings): the settings (app.smartform of models\LdapSettings, in sections; posted as one JSON
+    the LDAP sign-in settings page (LdapController::settings): the settings (app.smartform of models\LdapSettings, in sections; posted as one JSON
     value `settings_json`: the groups' rows are an edit grid), Test connection and Try a sign-in (LdapController::test, with the form's values: nothing saved), the LDAP users
     of the account (Unlink). The empty attribute / filter fields show the chosen directory's usual values
 */

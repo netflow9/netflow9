@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-10-31T11:05:39+02:00: new: the installation's services (ServicesController::index):
+    the installation's services (ServicesController::index):
     $services, each with its `status` (util\Services::status); start / stop / restart (ServicesController::control)
 */
 $this->pageTitle = 'Services';
@@ -16,6 +16,5 @@ $this->pageTitle = 'Services';
 </div>
 
 <div class="main-body p-4">
-    <?php //CLD: 2026-10-31T19:30:00+02:00: the table: _table.php (the account settings' tab too) ?>
     <?php require(dirname(__FILE__) . '/_table.php'); ?>
 </div>

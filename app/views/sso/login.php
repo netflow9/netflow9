@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-23T12:00:00+03:00: new: "Sign in with SSO" (SsoController::login): the email, whose account's identity provider signs the person in
+//"Sign in with SSO" (SsoController::login): the email, whose account's identity provider signs the person in
 $this->pageTitle = \V::t('Sign in with SSO');
 ?>
 

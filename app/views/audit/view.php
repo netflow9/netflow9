@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-11T17:35:22+03:00: new view: an audit log entry (AuditController::view, dialog): who, when, what, and its changes (before -> after)
+//an audit log entry (AuditController::view, dialog): who, when, what, and its changes (before -> after)
 //CLD: 2026-10-24T16:30:00+03:00: the account's datetime format (util\Format)
 $when = \util\Format::datetime($entry->created_at);
 

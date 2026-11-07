@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-11-03T14:00:00+02:00: new: the Share dialog (ShareController): $resource, $object (its kind), $names (project id => name), $targets (the projects it can still be shared with)
+//the Share dialog (ShareController): $resource, $object (its kind), $names (project id => name), $targets (the projects it can still be shared with)
 $q = [ 'object' => $object, 'id' => (string)$resource->_id ];
 //CLD: 2026-11-07T01:20:20+02:00: the level select (`access`): one option per share level
 $levelSelectTpl = '<select name="access" class="form-select form-select-sm" {:attrs}>{:options}</select>';
