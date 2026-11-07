@@ -44,18 +44,14 @@ class NodeAppWorkflow extends \models\wf\WfNode {
     //CLD: 2026-11-04T08:10:00+02:00: the documents as read, the published versions read together (was a model per workflow, with a query per published one: Workflow::copyFor,
     //~70 ms for 270 workflows): the steps are those a call runs, as copyFor(): the published version, else the draft in the workflow's own project
     private static function readCallable($aid, $project) {
-	$arrays = [ 'root' => 'array', 'document' => 'array', 'array' => 'array' ];
-	$mongo = \V::app()->mongo;
-	$workflows = $mongo->selectCollection(\models\Workflow::_database(), \models\Workflow::_collection())->find(
-	    [ 'aid' => $aid ] + \models\Workflow::visibleInQuery($project),
-	    [ 'sort' => [ 'name' => 1 ], 'typeMap' => $arrays, 'projection' => [ 'name' => 1, 'project' => 1, 'status' => 1, 'version' => 1, 'nodes' => 1 ] ]
-	)->toArray();
+	$om = \V::app()->om;
+	$workflows = $om->find('Workflow', [ 'aid' => $aid ] + \models\Workflow::visibleInQuery($project),
+	    [ 'arrays' => true, 'sort' => [ 'name' => 1 ], 'projection' => [ 'name' => 1, 'project' => 1, 'status' => 1, 'version' => 1, 'nodes' => 1 ] ]);
 
 	$versionIds = array_column(array_filter($workflows, self::isPublished(...)), 'version');
 	$versions = [];
 	if ($versionIds) {
-	    $class = \V::app()->om->getObjectClass('WfVersion');
-	    foreach($mongo->selectCollection($class::_database(), $class::_collection())->find([ '_id' => [ '$in' => $versionIds ], 'aid' => $aid ], [ 'typeMap' => $arrays, 'projection' => [ 'wf' => 1, 'nodes' => 1 ] ]) as $v)
+	    foreach($om->find('WfVersion', [ '_id' => [ '$in' => $versionIds ], 'aid' => $aid ], [ 'arrays' => true, 'projection' => [ 'wf' => 1, 'nodes' => 1 ] ]) as $v)
 		$versions[(string)$v['_id']] = $v;
 	}
 
