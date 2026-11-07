@@ -20,6 +20,7 @@ if (!window.app)
 //its x takes the marks off (hide())
 //CLD: 2026-11-02T14:00:00+02:00: + an AI step's trace in the details (urls.trace: WorkflowController::execution_trace): its visits, opened one loaded and followed while it runs; rounds collapsed, a tool call
 //opens on its arguments and result (what is open stays over the refreshes: traceKeys); Run again with the same inputs (urls.again: execution_again, asked again in place); openTrace(execution, trace)
+//CLD: 2026-11-07T11:20:00+02:00: the variables as a tree: each object / list opens and closes as the trace's rounds (closed at first; what is open stays over the refreshes: traceKeys)
 window.app.WfExecutions = (function() {
     //the one of the current designer page
     let current = null;
@@ -471,7 +472,6 @@ window.app.WfExecutions = (function() {
 	    const e = this.detail;
 	    if (!box || !e)
 		return;
-	    const vars = JSON.stringify(e.variables || {}, null, 2);
 	    const log = (e.log || []).map((l) => `<div class='debug-log-line'><span style='color: var(--rail22-debug-muted)'>${esc((l.time || '').slice(11))}</span> ${l.title ? `<span class='tag'>[${esc(l.title)}]</span>` : ''}${esc(l.message)}</div>`).join('');
 	    //Delete: an execution of the draft that has finished (asked again in place: Yes / No)
 	    const del = this.deletable(e) ? `<span class='exec-delete ms-auto flex-shrink-0'><button type='button' class='debug-icon-btn btn-exec-delete' title='Delete this execution'><i class='bi bi-trash'></i></button></span>` : '';
@@ -494,7 +494,7 @@ window.app.WfExecutions = (function() {
 		<div class='debug-panel-title mt-2 mb-1'>Log</div>
 		${log || `<div style='color: var(--rail22-debug-muted)'>(empty)</div>`}
 		<div class='debug-panel-title mt-2 mb-1'>Variables</div>
-		<pre class='mb-0' style='color: inherit; white-space: pre-wrap'>${esc(vars)}</pre>`;
+		${this.varsHtml(e)}`;
 	    box.scrollTop = top;
 	    this.loadTraces(e);
 	    if (this.traceToShow) {
@@ -504,6 +504,31 @@ window.app.WfExecutions = (function() {
 		    this.traceToShow = null;
 		}
 	    }
+	}
+
+	/* ---------------- the variables ---------------- */
+	//CLD: 2026-11-07T11:20:00+02:00: new: the variables of execution `e`, each one a line; an object or a list a <details> (its keys / items inside)
+	varsHtml(e) {
+	    const vars = e.variables || {};
+	    const names = Object.keys(vars);
+	    if (!names.length)
+		return muted('(none)');
+	    return `<div class='small' style='font-family: var(--bs-font-monospace)'>${names.map((name) => this.valueHtml(`v:${e.id}:${encodeURIComponent(name)}`, name, vars[name])).join('')}</div>`;
+	}
+
+	//value `v` named `name` (a key, an index); `key`: where it is in the variables (traceKeys)
+	valueHtml(key, name, v) {
+	    const label = `<span class='tag'>${esc(name)}</span>`;
+	    if (v === null || typeof v !== 'object')
+		return `<div style='white-space: pre-wrap; word-break: break-word'>${label}: ${esc(JSON.stringify(v))}</div>`;
+	    const list = Array.isArray(v);
+	    const entries = list ? v.map((x, i) => [ i, x ]) : Object.entries(v);
+	    if (!entries.length)
+		return `<div>${label}: ${muted(list ? '[]' : '{}')}</div>`;
+	    return `<details data-key='${esc(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
+		<summary style='cursor: pointer'>${label} ${muted(list ? `[ ${entries.length} item(s) ]` : `{ ${entries.length} key(s) }`)}</summary>
+		<div class='ps-3'>${entries.map(([k, x]) => this.valueHtml(`${key}/${encodeURIComponent(k)}`, k, x)).join('')}</div>
+	    </details>`;
 	}
 
 	/* ---------------- an AI step's trace ---------------- */
