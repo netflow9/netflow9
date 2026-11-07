@@ -129,7 +129,7 @@ class Http {
     }
 
     //the addresses $host resolves to, when all are public: [ ips, null ]; else [ [], the reason ]
-    //CLD: 2026-11-01T00:30:00+02:00: + $private: addresses of a private network accepted too (isPrivateNetworkIp)
+    //CLD: 2026-11-01T00:30:00+02:00: + $private: addresses of a private network accepted too (util\Ip::isPrivateNetwork)
     public static function publicAddresses($host, $private = false) {
 	$host = trim((string)$host, '[]');
 	if ($host === '')
@@ -143,67 +143,10 @@ class Http {
 		return [ [], "the host {$host} is not found" ];
 	}
 	foreach($ips as $ip) {
-	    if (!self::isPublicIp($ip) && !($private && self::isPrivateNetworkIp($ip)))
+	    if (!Ip::isPublic($ip) && !($private && Ip::isPrivateNetwork($ip)))
 		return [ [], "the host {$host} is not " . ($private ? 'a public or private network address (this machine, link-local and reserved ones are refused)' : 'a public address') ];
 	}
 	return [ $ips, null ];
-    }
-
-    //CLD: 2026-11-01T00:30:00+02:00: an address of a private network (RFC 1918, shared 100.64/10, IPv6 unique local fc00::/7), not one of this machine's own (its interfaces), not loopback,
-    //link-local or reserved; IPv4-mapped IPv6 by its IPv4 address
-    public static function isPrivateNetworkIp($ip) {
-	$bin = @inet_pton((string)$ip);
-	if ($bin === false)
-	    return false;
-	if (strlen($bin) === 16 && str_starts_with($bin, str_repeat("\0", 10) . "\xff\xff"))
-	    return self::isPrivateNetworkIp(inet_ntop(substr($bin, 12)));
-	if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_RES_RANGE))
-	    return false;
-	if (!array_filter([ '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10', 'fc00::/7' ], fn($cidr) => self::inNetwork($bin, $cidr)))
-	    return false;
-	return !in_array(inet_ntop($bin), self::ownAddresses(), true);
-    }
-
-    //CLD: 2026-11-07T01:14:34+02:00: whether address $bin (inet_pton) is in network $cidr
-    private static function inNetwork($bin, $cidr) {
-	[ $net, $bits ] = explode('/', $cidr);
-	$n = inet_pton($net);
-	if (strlen($n) !== strlen($bin))
-	    return false;
-	$bytes = intdiv((int)$bits, 8);
-	$rest = (int)$bits % 8;
-	if (substr($n, 0, $bytes) !== substr($bin, 0, $bytes))
-	    return false;
-	return $rest === 0 || ((ord($n[$bytes]) ^ ord($bin[$bytes])) & (0xff << (8 - $rest)) & 0xff) === 0;
-    }
-
-    //CLD: 2026-11-01T00:30:00+02:00: this machine's addresses (its interfaces), normalized (inet_ntop)
-    public static function ownAddresses() {
-	static $own = null;
-	if ($own === null) {
-	    $own = [];
-	    foreach(function_exists('net_get_interfaces') ? (array)@net_get_interfaces() : [] as $if) {
-		foreach((array)($if['unicast'] ?? []) as $u) {
-		    $b = isset($u['address']) ? @inet_pton((string)$u['address']) : false;
-		    if ($b !== false)
-			$own[] = inet_ntop($b);
-		}
-	    }
-	    foreach(@gethostbynamel((string)gethostname()) ?: [] as $a)
-		$own[] = inet_ntop(inet_pton($a));
-	    $own = array_values(array_unique($own));
-	}
-	return $own;
-    }
-
-    //an address of the internet (not this machine, a private network, link-local, reserved, ...); NAT64 (64:ff9b::/96) by the IPv4 address it holds
-    public static function isPublicIp($ip) {
-	if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_GLOBAL_RANGE))
-	    return false;
-	$bin = @inet_pton($ip);
-	if (strlen((string)$bin) === 16 && str_starts_with($bin, hex2bin('0064ff9b0000000000000000')))
-	    return self::isPublicIp(inet_ntop(substr($bin, 12)));
-	return true;
     }
 
     // ------------------------------------------------------------------------------------
@@ -308,7 +251,7 @@ class Http {
 	$r['contentType'] = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
 	$r['mime'] = strtolower(trim(explode(';', $r['contentType'])[0]));
 	if ($r['tooLarge'])
-	    $r['error'] = 'the answer is larger than ' . self::mb($maxBytes);
+	    $r['error'] = 'the answer is larger than ' . Format::bytes($maxBytes);
 	elseif ($ok === false)
 	    $r['error'] = curl_error($ch) ?: 'no answer';
 	curl_close($ch);
@@ -340,10 +283,5 @@ class Http {
 	}
 	$lines[] = $value === '' ? $name . ':' : $name . ': ' . $value;
 	return $lines;
-    }
-
-    //CLD: 2026-10-24T16:30:00+03:00: util\Format::bytes
-    protected static function mb($bytes) {
-	return Format::bytes($bytes);
     }
 }

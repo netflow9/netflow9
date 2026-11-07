@@ -2111,7 +2111,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('steps: audience and group (HTTP Request, Download File, Read a web page, Webhook, Gmail, Ollama, If)',
 	    [ [ 'advanced', 'developer' ], [ 'basic', 'web' ], [ 'basic', 'web' ], [ 'advanced', 'trigger' ], [ 'basic', 'google' ], [ 'advanced', 'ai' ], [ 'basic', 'flow' ] ],
 	    array_map(fn($fq) => [ $defs[$fq]['audience'] ?? null, $defs[$fq]['category'] ?? null ], [ 'app::http', 'app::download', 'app::webpage', 'trigger::webhook', 'app::gmail', 'app::ollama', 'core::if' ]));
-	$this->check('http: public addresses', [ true, true, false, false, false, false, false, false, false, false ], array_map([ $H, 'isPublicIp' ],
+	$this->check('http: public addresses', [ true, true, false, false, false, false, false, false, false, false ], array_map([ \util\Ip::class, 'isPublic' ],
 	    [ '8.8.8.8', '2606:4700::1111', '127.0.0.1', '10.1.2.3', '192.168.0.1', '100.64.0.1', '169.254.169.254', '::1', '::ffff:127.0.0.1', '64:ff9b::7f00:1' ]));
 	$this->check('http: a host of this machine is not public', [ [], 'the host localhost is not a public address' ], $H::publicAddresses('localhost'));
 	$this->check('http: the guard before any connection; https only', [ 'the host 127.0.0.1 is not a public address', 'not an https:// address' ],
@@ -6301,7 +6301,7 @@ class CheckCommand extends \sys\BaseController {
 
 	//util\Http: private network addresses
 	$this->check('gravityzone: private network addresses (not loopback, link-local, this machine; IPv4-mapped too)', [ true, true, true, true, false, false, false, false, false ],
-	    array_map([ $H, 'isPrivateNetworkIp' ], [ '10.1.2.3', '172.20.0.1', '192.168.5.5', 'fd00::1', '127.0.0.1', '169.254.169.254', '::1', '8.8.8.8', \util\Http::ownAddresses()[2] ?? '127.0.0.2' ]));
+	    array_map([ \util\Ip::class, 'isPrivateNetwork' ], [ '10.1.2.3', '172.20.0.1', '192.168.5.5', 'fd00::1', '127.0.0.1', '169.254.169.254', '::1', '8.8.8.8', \util\Ip::ownAddresses()[2] ?? '127.0.0.2' ]));
 	$this->check('gravityzone: the guard with private addresses: loopback still refused', true,
 	    str_contains((string)$H::request('GET', 'http://127.0.0.1:1/', [ 'public' => true, 'private' => true ])['error'], 'link-local and reserved ones are refused'));
 	$this->check('gravityzone: the access URL as given, without a pasted /v1.0/jsonrpc/...', [ 'https://cloud.gravityzone.bitdefender.com/api', 'https://gz.local/api' ],
@@ -6734,8 +6734,8 @@ class CheckCommand extends \sys\BaseController {
 	    $F::baseUrl('https://fw:8443/api/v2/'), $A::subnet('10.1.2.3'), $A::subnet('10.1.2.0/24'), $A::subnet('10.1.0.0 255.255.0.0'),
 	    str_contains($thrown(fn() => $A::subnet('10.1.2.0/33')), 'not a subnet'), $F::errorText([ 'status' => 'error', 'http_status' => 500, 'error' => -5 ], 500) ]);
 	$this->check('fortigate: IPs from text or a list of objects (srcip), checked; one not an IP refused', [ [ '198.51.100.1', '2001:db8::1' ], [ '192.0.2.5' ], true ], [
-	    \models\node\NodeAppFortiGate::ips("198.51.100.1, 2001:db8::1\n198.51.100.1", 'IPs'), \models\node\NodeAppFortiGate::ips([ [ 'srcip' => '192.0.2.5' ] ], 'IPs'),
-	    str_contains($thrown(fn() => \models\node\NodeAppFortiGate::ips('1.2.3.4; evil.example', 'IPs')), 'not an IP address: `evil.example`') ]);
+	    \util\Ip::addresses("198.51.100.1, 2001:db8::1\n198.51.100.1", 'IPs'), \util\Ip::addresses([ [ 'srcip' => '192.0.2.5' ] ], 'IPs'),
+	    str_contains($thrown(fn() => \util\Ip::addresses('1.2.3.4; evil.example', 'IPs')), 'not an IP address: `evil.example`') ]);
 
 	$dir = sys_get_temp_dir() . '/rail22-check-fgt-' . uniqid();
 	@mkdir($dir, 0700, true);
@@ -8510,7 +8510,7 @@ class CheckCommand extends \sys\BaseController {
     //CLD: 2026-11-01T02:00:00+02:00: the account's Data access: the MCP server per project (Account::mcpEnabled; /mcp refuses the tokens of a project whose server is off: a POST to this installation's
     //web server, skipped when it cannot be reached), what the designer's Assistant may read (structure only: the structure tools, a data tool refused, the variables without values,
     //the system prompt says so; structure and data: every tool)
-    //CLD: 2026-11-03T12:00:00+02:00: the user's role in a project decides what they may do there (models\Project::can): the account role's project scope gives nothing by itself, global scope passes
+    //CLD: 2026-11-03T12:00:00+02:00: the user's role in a project decides what they may do there (models\Project::checkAccess): the account role's project scope gives nothing by itself, global scope passes
     //everywhere, a permission asked without an object is asked of the current project. Run with the web rules (the console passes every check); the role is set on sys\AAA
     private function suiteRoles() {
 	$om = \V::app()->om;
@@ -8525,7 +8525,7 @@ class CheckCommand extends \sys\BaseController {
 	$auth = \V::app()->auth;
 	$user = \V::app()->user;
 	$mode = \V::app()->config('app.mode');
-	[ $roleBefore, $projectBefore ] = [ $auth->userRole, $user->crtProject ];
+	$projectBefore = $user->crtProject;
 	$uid = new \MongoDB\BSON\ObjectId();
 	$project = null;
 	try {
@@ -8544,7 +8544,7 @@ class CheckCommand extends \sys\BaseController {
 	    ];
 	    //[ permission => allowed ] for the account role $account and the project role $inProject (null: not a member)
 	    $allowed = function($account, $inProject) use ($om, $auth, $project, $objects, $uid, $roles) {
-		$auth->userRole = $roles[$account];
+		$auth->userRoles[(string)$uid] = $roles[$account];
 		$project->members = $inProject ? [ (string)$uid => [ 'role' => is_string($inProject) && isset($roles[$inProject]) ? $roles[$inProject]->_id : $inProject ] ] : [];
 		$om->updateMany('Project', [ '_id' => $project->_id ], [ '$set' => [ 'members' => $project->members ] ]);
 		$result = [];
@@ -8583,7 +8583,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('roles: no object: account Owner: allowed; a permission of the account too', [ true, true ], [ $auth->checkAccess($uid, 'DataTable::create'), $auth->checkAccess($uid, 'Project::create') ]);
 	} finally {
 	    \V::app()->config('app.mode', $mode);
-	    $auth->userRole = $roleBefore;
+	    unset($auth->userRoles[(string)$uid]);
 	    $user->crtProject = $projectBefore;
 	    $project?->delete();
 	}
@@ -8597,7 +8597,6 @@ class CheckCommand extends \sys\BaseController {
 	$here = $this->project;
 	$auth = \V::app()->auth;
 	$mode = \V::app()->config('app.mode');
-	$roleBefore = $auth->userRole;
 	$tools = \util\McpServerTools::class;
 	$home = $third = $dt = null;
 	$roles = [];
@@ -8678,7 +8677,7 @@ class CheckCommand extends \sys\BaseController {
 	    if (!in_array(null, $roles, true)) {
 		$uid = new \MongoDB\BSON\ObjectId();
 		$can = function($inHome, $inHere, array $perms) use ($om, $auth, $uid, $roles, $home, $here, $reload) {
-		    $auth->userRole = $roles['member'];
+		    $auth->userRoles[(string)$uid] = $roles['member'];
 		    $set = fn($p, $r) => $om->updateMany('Project', [ '_id' => $p->_id ], [ '$set' => [ 'members' => array_merge(array_diff_key((array)$om->findById('Project', (string)$p->_id)->members, [ (string)$uid => 1 ]), $r ? [ (string)$uid => [ 'role' => $roles[$r]->_id ] ] : []) ] ]);
 		    $set($home, $inHome);
 		    $set($here, $inHere);
@@ -8703,7 +8702,7 @@ class CheckCommand extends \sys\BaseController {
 		    $this->check('sharing: Owner here, level read: no change of rows', [ true, false, false, false, false ], $can(null, 'owner', $perms));
 		} finally {
 		    \V::app()->config('app.mode', $mode);
-		    $auth->userRole = $roleBefore;
+		    unset($auth->userRoles[(string)$uid]);
 		    $om->updateMany('Project', [ '_id' => $here->_id ], [ '$set' => [ 'members' => $membersBefore ] ]);
 		}
 	    }
@@ -8754,7 +8753,7 @@ class CheckCommand extends \sys\BaseController {
 		$uid2 = new \MongoDB\BSON\ObjectId();
 		$membersHere = (array)$om->findById('Project', (string)$here->_id)->members;
 		$as = function($role) use ($om, $here, $uid2, $roles, $membersHere, $auth, $sid) {
-		    $auth->userRole = $roles['member'];
+		    $auth->userRoles[(string)$uid2] = $roles['member'];
 		    $om->updateMany('Project', [ '_id' => $here->_id ], [ '$set' => [ 'members' => $membersHere + ($role ? [ (string)$uid2 => [ 'role' => $roles[$role]->_id ] ] : []) ] ]);
 		    $w = $om->findById('Workflow', $sid);
 		    return array_map(fn($p) => $auth->checkAccess($uid2, $p, [ 'object' => $w ]), [ 'Workflow::viewShared', 'Workflow::read', 'Workflow::update', 'Workflow::publish', 'Workflow::share', 'Workflow::delete' ]);
@@ -8766,7 +8765,7 @@ class CheckCommand extends \sys\BaseController {
 		    $this->check('sharing workflows: Participant here, or not a member: nothing', [ [ false, false, false, false, false, false ], [ false, false, false, false, false, false ] ], [ $as('participant'), $as(null) ]);
 		} finally {
 		    \V::app()->config('app.mode', $mode);
-		    $auth->userRole = $roleBefore;
+		    unset($auth->userRoles[(string)$uid2]);
 		    $om->updateMany('Project', [ '_id' => $here->_id ], [ '$set' => [ 'members' => $membersHere ] ]);
 		}
 	    }
@@ -8844,13 +8843,13 @@ class CheckCommand extends \sys\BaseController {
 		$uid3 = new \MongoDB\BSON\ObjectId();
 		$membersHere = (array)$om->findById('Project', (string)$here->_id)->members;
 		$om->updateMany('Project', [ '_id' => $here->_id ], [ '$set' => [ 'members' => $membersHere + [ (string)$uid3 => [ 'role' => $roles['owner']->_id ] ] ] ]);
-		$auth->userRole = $roles['member'];
+		$auth->userRoles[(string)$uid3] = $roles['member'];
 		\V::app()->config('app.mode', 'web');
 		try {
 		    $this->check('sharing credentials: an Owner here: may not open, change, delete or share it', [ false, false, false, false ], array_map(fn($perm) => $auth->checkAccess($uid3, $perm, [ 'object' => $reloadC() ]), [ 'Credential::read', 'Credential::update', 'Credential::delete', 'Credential::share' ]));
 		} finally {
 		    \V::app()->config('app.mode', $mode);
-		    $auth->userRole = $roleBefore;
+		    unset($auth->userRoles[(string)$uid3]);
 		    $om->updateMany('Project', [ '_id' => $here->_id ], [ '$set' => [ 'members' => $membersHere ] ]);
 		}
 	    }
@@ -8870,7 +8869,6 @@ class CheckCommand extends \sys\BaseController {
 		[ count((array)$reload()->shares), $gone->state, $refused(fn() => $tools::call('query_table', [ 'table' => $table ], $here, false)) ]);
 	} finally {
 	    \V::app()->config('app.mode', $mode);
-	    $auth->userRole = $roleBefore;
 	    $this->cleanCreated();
 	    if ($dt)
 		$om->findById('DataTableDef', (string)$dt->_id)?->delete();
@@ -9935,20 +9933,19 @@ class CheckCommand extends \sys\BaseController {
 
 	    $personal = $project("Check move personal {$tag}", true);
 	    $auth = \V::app()->auth;
-	    $roleBefore = $auth->userRole;
 	    $roleOf = fn($iname) => $om->findOne('Role', [ 'aid' => $aid, 'iname' => $iname ]);
 	    $uid = (string)new \MongoDB\BSON\ObjectId();
 	    try {
-		$auth->userRole = $roleOf('owner');
+		$auth->userRoles[$uid] = $roleOf('owner');
 		$targets = array_keys($dt->moveTargets($uid));
 		$this->check('move: an account owner: the other projects, not its own, not a personal one', [ true, true, false, false ],
 		    [ in_array((string)$to->_id, $targets, true), in_array((string)$third->_id, $targets, true), in_array((string)$from->_id, $targets, true), in_array((string)$personal->_id, $targets, true) ]);
-		$auth->userRole = $roleOf('member');
+		$auth->userRoles[$uid] = $roleOf('member');
 		$this->check('move: another user: no project without a role there', false, in_array((string)$to->_id, array_keys($dt->moveTargets($uid)), true));
 		$om->updateMany('Project', [ '_id' => $to->_id, 'aid' => $aid ], [ '$set' => [ 'members' => [ $uid => [ 'role' => $roleOf('owner')->_id ] ] ] ]);
 		$this->check('move: another user: the project where their role lets them create it', [ (string)$to->_id ], array_values(array_filter(array_keys($dt->moveTargets($uid)), fn($id) => $id === (string)$to->_id)));
 	    } finally {
-		$auth->userRole = $roleBefore;
+		unset($auth->userRoles[$uid]);
 	    }
 
 	    $same = $om->create('DataTableDef', [ 'aid' => $aid, 'name' => "chk_move_{$tag}", 'iname' => "data-table-chk-move-b-{$tag}", 'project' => $third->_id ]);

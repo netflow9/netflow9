@@ -141,11 +141,6 @@ class AgentTools {
 	return $ops;
     }
 
-    //CLD: 2026-11-01T23:30:00+02:00: new: the tools of family $key that change something (those that ask for approval by default)
-    public static function writeTools($key) {
-	return array_keys(array_filter(self::operations($key), fn($o) => $o['writes']));
-    }
-
     //the tools of family $key that only read (the default of `<family>Tools`)
     public static function readTools($key) {
 	return array_keys(array_filter(self::operations($key), fn($o) => !$o['writes']));

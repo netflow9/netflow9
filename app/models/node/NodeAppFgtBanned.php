@@ -43,13 +43,13 @@ class NodeAppFgtBanned extends NodeAppFortiGate {
 	    case 'list':
 		return $this->listOf('/api/v2/monitor/user/banned', [], 'banned IP');
 	    case 'ban':
-		$ips = self::ips($value('ips'), 'IP addresses', self::MAX_IPS);
+		$ips = \util\Ip::addresses($value('ips'), 'IP addresses', self::MAX_IPS);
 		$minutes = max(0, (int)$this->cfg('minutes', 60));
 		$r = $this->change('POST', '/api/v2/monitor/user/banned/add_users', [ 'ip_addresses' => $ips, 'expiry' => $minutes * 60 ]);
 		return [ [ 'ips' => $ips, 'count' => count($ips), 'minutes' => $minutes, 'results' => $r ],
 		    \util\Format::plural(count($ips), 'IP') . ' banned ' . ($minutes ? "for {$minutes} min" : 'until unbanned') ];
 	    case 'unban':
-		$ips = self::ips($value('ips'), 'IP addresses', self::MAX_IPS);
+		$ips = \util\Ip::addresses($value('ips'), 'IP addresses', self::MAX_IPS);
 		$r = $this->change('POST', '/api/v2/monitor/user/banned/clear_users', [ 'ip_addresses' => $ips ]);
 		return [ [ 'ips' => $ips, 'count' => count($ips), 'results' => $r ], \util\Format::plural(count($ips), 'IP') . ' unbanned' ];
 	    case 'clear':

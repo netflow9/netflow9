@@ -268,7 +268,10 @@ class User extends \sys\BaseModel {
 
 
     public function checkAccess($userId, $permName, $params = []) {
-	$role = \V::app()->auth->getUserRole();
+	//CLD: 2026-11-07T12:00:00+02:00: $userId's account role, not the signed-in user's
+	$role = \V::app()->auth->getUserRole($userId);
+	if (empty($role))
+	    return false;
 
 	//build full permission name
 	if (strpos($permName, '::') === false)

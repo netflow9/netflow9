@@ -53,7 +53,7 @@ class NodeAppFgtUsers extends NodeAppFortiGate {
 	    case 'signedIn':
 		return $this->listOf('/api/v2/monitor/user/firewall', [], 'user');
 	    case 'deauth':
-		$ip = self::ips($value('ip'), 'IP address', 1)[0];
+		$ip = \util\Ip::addresses($value('ip'), 'IP address', 1)[0];
 		return [ $this->change('POST', '/api/v2/monitor/user/firewall/deauth', [ 'user_type' => 'firewall', 'ip' => $ip, 'ip_version' => str_contains($ip, ':') ? 'ip6' : 'ip4' ]),
 		    "user at {$ip} signed out" ];
 	    case 'sslvpn':

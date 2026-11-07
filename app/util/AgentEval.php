@@ -215,7 +215,7 @@ class AgentEval {
 	    foreach(\V::app()->om->find('WfTestCase', [ 'wf' => $wf->_id, 'aid' => $aid ], [ 'sort' => [ '_id' => 1 ] ]) as $case) {
 		if (in_array((string)$case->_id, $done, true))
 		    continue;
-		if (!self::stillRuns($id, $aid))
+		if (!\V::app()->om->count('WfTestRun', [ '_id' => $id, 'aid' => $aid, 'state' => 'running' ]))
 		    return;
 		$result = self::runCase($wf, $case, $id);
 		$results[] = $result;
@@ -228,10 +228,6 @@ class AgentEval {
 	    \V::app()->om->updateOne('WfTestRun', [ '_id' => $id, 'aid' => $aid, 'state' => [ '$in' => WfTestRun::ACTIVE ] ], [ '$set' => [ 'state' => 'error', 'error' => mb_substr($e->getMessage(), 0, self::MAX_DETAIL), 'ended_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
 	}
 	WfTestRun::prune($wf);
-    }
-
-    private static function stillRuns($id, $aid) {
-	return (bool)\V::app()->om->count('WfTestRun', [ '_id' => $id, 'aid' => $aid, 'state' => 'running' ]);
     }
 
     //stop run $run: the case running is killed, its job gone when it has not started. False: it no longer runs

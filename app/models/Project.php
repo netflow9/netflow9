@@ -11,8 +11,6 @@ class Project extends \sys\BaseModel {
 
 
     public function getSchema() {
-	$schema = $this->getSystemSchema();
-
 	$fields = [
 	    //name
 	    [
@@ -80,7 +78,7 @@ class Project extends \sys\BaseModel {
     }
 
     //true if $userId is a member of the project $projectId of account $aid
-    //CLD: 2026-11-03T12:00:00+02:00: only for what needs just the membership (forms); permissions: can()
+    //CLD: 2026-11-03T12:00:00+02:00: only for what needs just the membership (forms); permissions: checkAccess()
     public static function isMember($projectId, $aid, $userId) {
 	if (empty($projectId) || empty($aid) || empty($userId))
 	    return false;
@@ -89,28 +87,25 @@ class Project extends \sys\BaseModel {
 	return !empty($project) && isset($project->members[(string)$userId]);
     }
 
-    //CLD: 2026-11-03T12:00:00+02:00: new: the access rule of everything that belongs to a project: `global` scope in the user's account role passes everywhere; else the user's role in that project decides
-    //(it must be of the project's account and have the permission on). The account role's `project` scope gives nothing by itself
-    public static function can($projectId, $aid, $userId, $permName) {
-	if (\V::app()->auth->getUserRole()?->getPermissionScope($permName) == 'global')
-	    return true;
-	if (empty($projectId) || empty($aid) || empty($userId))
-	    return false;
-
-	$project = \V::app()->om->findOne('Project', [ '_id' => $projectId, 'aid' => $aid ]);
-	$roleId = $project ? ($project->members[(string)$userId]['role'] ?? null) : null;
-	if (empty($roleId))
-	    return false;
-	$role = \V::app()->om->findOne('Role', [ '_id' => $roleId, 'aid' => $aid ]);
-	return !empty($role) && in_array($role->getPermissionScope($permName), [ 'project', 'global' ], true);
-    }
-
+    //CLD: 2026-11-07T12:00:00+02:00: the access rule of everything that belongs to a project: `global` scope in $userId's account role (of this project's account) passes;
+    //else $userId's role in this project decides (it must be of the project's account and have the permission on). The account role's `project` scope gives nothing by itself
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
+	if (empty($userId))
+	    return false;
 
-	//CLD: 2026-11-03T12:00:00+02:00: Project::can
-	return self::can($this->_id, $this->aid, $userId, $permName);
+	$accountRole = \V::app()->auth->getUserRole($userId);
+	if ($accountRole?->getPermissionScope($permName) == 'global' && (empty($this->aid) || (string)$accountRole->aid === (string)$this->aid))
+	    return true;
+	if (empty($this->_id) || empty($this->aid))
+	    return false;
+
+	$roleId = $this->members[(string)$userId]['role'] ?? null;
+	if (empty($roleId))
+	    return false;
+	$role = \V::app()->om->findOne('Role', [ '_id' => $roleId, 'aid' => $this->aid ]);
+	return !empty($role) && in_array($role->getPermissionScope($permName), [ 'project', 'global' ], true);
     }
 
     public function __toString() {

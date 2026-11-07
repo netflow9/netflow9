@@ -59,7 +59,8 @@ class AgentGuard {
 	if (self::on($step->cfg('maskPersonalData', false)) && $step->isCloud())
 	    $this->mask = new PersonalData((array)($saved['mask'] ?? []));
 	if (!$this->system) {
-	    $this->prices = self::pricesFor($step);
+	    //the model's list prices [ input, output, cache read ] (USD per 1M tokens; local servers: nothing); null: not known
+	    $this->prices = AiPrices::of((object)[ 'provider' => $step::CAPABILITY, 'model' => trim((string)$step->cfg('model', '')) ]);
 	}
     }
 
@@ -88,11 +89,6 @@ class AgentGuard {
 
     public function tainted() {
 	return $this->tainted;
-    }
-
-    //a step's prices [ input, output, cache read ] (USD per 1M tokens): the model's list prices (local servers: nothing); null: not known
-    public static function pricesFor($step) {
-	return AiPrices::of((object)[ 'provider' => $step::CAPABILITY, 'model' => trim((string)$step->cfg('model', '')) ]);
     }
 
     //the warning for an AI step of provider $capability with settings $config in account $aid: a Cost limit or the account's budget it cannot be counted in; null: none.

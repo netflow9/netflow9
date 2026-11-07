@@ -199,6 +199,9 @@ class Boot {
 	//	else the personal project,
 	//	else the first project the user is a member of (e.g. a Participant),
 	//	else a personal project created now (as the seed command does);
+	//CLD: 2026-11-07T12:00:00+02:00: one kept in the session that is no longer in the account (deleted) is chosen again
+	if (!empty(\V::app()->user->crtProject) && \V::app()->om->count('Project', [ '_id' => \V::app()->user->crtProject, 'aid' => $account->_id ]) == 0)
+	    \V::app()->user->crtProject = null;
 	if (empty(\V::app()->user->crtProject)) {
 	    $uid = \V::app()->user->_id;
 	    $project = empty($this->user->last_project) ? null : \V::app()->om->findOne('Project', [ '_id' => $this->user->last_project, 'aid' => $account->_id,
@@ -214,6 +217,9 @@ class Boot {
 	    }
 	    \V::app()->user->crtProject = $project->_id;
 	}
+	//CLD: 2026-11-07T12:00:00+02:00: a signed-in user always has a current project: what asks of it (sys\AAA, the controllers) relies on it
+	if (empty(\V::app()->user->crtProject))
+	    throw new \ErrorException('Boot: no current project for user ' . \V::app()->user->_id);
 
     }
 

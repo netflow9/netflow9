@@ -68,7 +68,8 @@ class Workflow extends \sys\BaseModel {
 		'label' => 'Project',
 		'object' => 'Project',
 		'help' => false,
-		'required' => false,
+		//CLD: 2026-11-07T12:00:00+02:00: a workflow always has a project (its access is its project's: models\Project::checkAccess)
+		'required' => true,
 		'perm:read' => 'everybody',
 		'perm:update' => 'permission',
 	    ],
@@ -148,7 +149,7 @@ class Workflow extends \sys\BaseModel {
 
 	//the user's role in the workflow's project decides
 	//or a share with a project where their role allows it (only Workflow::viewShared)
-	return \models\Project::can($this->project, $this->aid, $userId, $permName) || $this->sharedCan($userId, $permName);
+	return \V::app()->om->findById('Project', $this->project)?->checkAccess($userId, $permName) || $this->sharedCan($userId, $permName);
     }
 
     //CLD: 2026-11-03T16:00:00+02:00: why it cannot be shared now, null when it can (the Share dialog)
@@ -177,8 +178,8 @@ class Workflow extends \sys\BaseModel {
 
     //a published one keeps running there: that needs the right to publish there too
     protected function moveAllowedIn($project, $userId) {
-	return \models\Project::can($project->_id, $this->aid, $userId, self::MOVE_PERMS['to'])
-	    && (!$this->liveCopy() || \models\Project::can($project->_id, $this->aid, $userId, 'Workflow::publish'));
+	return $project->checkAccess($userId, self::MOVE_PERMS['to'])
+	    && (!$this->liveCopy() || $project->checkAccess($userId, 'Workflow::publish'));
     }
 
     //CLD: 2026-11-04T15:00:00+02:00: any number of workflows may have the same name

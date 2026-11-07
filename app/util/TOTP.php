@@ -104,7 +104,8 @@ class TOTP {
         for ($i = -$discrepancy; $i <= $discrepancy; $i++) {
             $ts = $timestamp + ($i * $this->period);
             $slice = $this->getTimeSlice($ts);
-            $timeslice = ($this->codeEquals($this->getCode($secret, $ts), $code) ? $slice : $timeslice);
+            //timing-attack safe comparison (see http://blog.ircmaxell.com/2014/11/its-all-about-time.html)
+            $timeslice = (hash_equals($this->getCode($secret, $ts), $code) ? $slice : $timeslice);
         }
 
         return $timeslice > 0;
@@ -120,11 +121,6 @@ class TOTP {
 	    'digits' => $this->digits,
 	];
         return 'otpauth://totp/' . rawurlencode($label) . '?' . http_build_query($query);
-    }
-
-    // Timing-attack safe comparison of 2 codes (see http://blog.ircmaxell.com/2014/11/its-all-about-time.html)
-    private function codeEquals($safe, $user) {
-        return hash_equals($safe, $user);
     }
 
     private function getTimeSlice($time = null, $offset = 0) {

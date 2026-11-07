@@ -44,7 +44,7 @@ trait MovableTrait {
 
     //whether user $userId may have it in $project; a class may ask for more
     protected function moveAllowedIn($project, $userId) {
-	return \models\Project::can($project->_id, $this->aid, $userId, static::MOVE_PERMS['to']);
+	return $project->checkAccess($userId, static::MOVE_PERMS['to']);
     }
 
     //the records that follow it to $project; a class may have some

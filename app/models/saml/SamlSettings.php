@@ -228,11 +228,6 @@ class SamlSettings extends \sys\BaseModel {
 	return \V::app()->createAbsoluteUrl('/sso/acs/' . $this->aid);
     }
 
-    //the link that starts a sign-in at the IdP (e.g. a bookmark of the account's people)
-    public function loginUrl() {
-	return \V::app()->createAbsoluteUrl('/sso/start/' . $this->aid);
-    }
-
     public function spEntityId() {
 	$id = trim((string)$this->spEntityId);
 	return $id !== '' ? $id : $this->metadataUrl();

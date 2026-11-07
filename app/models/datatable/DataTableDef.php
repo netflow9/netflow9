@@ -118,7 +118,7 @@ class DataTableDef extends \sys\BaseModel {
 
 	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the table's project decides
 	//CLD: 2026-11-03T14:00:00+02:00: or a share with a project where their role allows it
-	return \models\Project::can($this->project, $this->aid, $userId, $permName) || $this->sharedCan($userId, $permName);
+	return \V::app()->om->findById('Project', $this->project)?->checkAccess($userId, $permName) || $this->sharedCan($userId, $permName);
     }
 
     //CLD: 2026-11-03T14:00:00+02:00: what the Share dialog warns of: object columns pointing to tables that are not shared (their rows' labels are shown to who reads this one)

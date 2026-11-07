@@ -36,20 +36,6 @@ class AuditController extends \sys\BaseController {
 	$this->agent = $this->log === 'AuditLog' && !empty(\V::app()->request->query['agent']);
     }
 
-    //an unsaved entry of the current project: the object for the list check (project scope = membership)
-    //system log: an entry without a project (only global scope may list it)
-    private function projectEntry() {
-	return \V::app()->om->create($this->log, [
-	    'aid' => $this->account->_id,
-	    'project' => $this->system ? null : ($this->project->_id ?? null),
-	]);
-    }
-
-    //the system log: the whole account; the project log: only the current project's entries
-    private function scopeQuery() {
-	return ($this->system ? [] : [ 'project' => $this->project->_id ?? null ]) + ($this->agent ? [ 'action' => \models\AuditLog::AGENT_ACTION ] : []);
-    }
-
     //the query string of this log's URLs (log, scope)
     private function logQuery() {
 	$params = [];
@@ -61,11 +47,14 @@ class AuditController extends \sys\BaseController {
     }
 
     public function list($req, $resp) {
-	if (!\V::app()->user->can($this->log . '::list', [ 'object' => $this->projectEntry() ]))
+	//the object for the list check: an unsaved entry of the current project (project scope = membership); the system log's has no project (only global scope may list it)
+	$entry = \V::app()->om->create($this->log, [ 'aid' => $this->account->_id, 'project' => $this->system ? null : ($this->project->_id ?? null) ]);
+	if (!\V::app()->user->can($this->log . '::list', [ 'object' => $entry ]))
 	    \V::app()->error(403, 'Unauthorized');
 
 	if (!empty($req->query['data']))
-	    $resp->sendJSON($this->__data($this->log, $this->scopeQuery()));
+	    //the system log: the whole account; the project log: only the current project's entries
+	    $resp->sendJSON($this->__data($this->log, ($this->system ? [] : [ 'project' => $this->project->_id ?? null ]) + ($this->agent ? [ 'action' => \models\AuditLog::AGENT_ACTION ] : [])));
 
 	$system = $this->system;
 	$log = $this->log;

@@ -82,7 +82,7 @@ trait ShareableTrait {
     //whether user $userId may do $permName through a share: their role in a project it is shared with allows it, and the share's level gives it
     public function sharedCan($userId, $permName) {
 	foreach((array)$this->shares as $share) {
-	    if (in_array($permName, static::SHARE_PERMS[(string)$share['access']] ?? [], true) && \models\Project::can($share['project'], $this->aid, $userId, $permName))
+	    if (in_array($permName, static::SHARE_PERMS[(string)$share['access']] ?? [], true) && \V::app()->om->findById('Project', $share['project'])?->checkAccess($userId, $permName))
 		return true;
 	}
 	return false;

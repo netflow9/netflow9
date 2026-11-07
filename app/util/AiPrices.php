@@ -2,7 +2,7 @@
 
 /*
     the prices of AI models, for the cost of a request (USD per 1M tokens): the list prices are in data\AiProviders, owners only choose their budgets. The core's: the Assistant and the
-    AI steps with the account's own key count their budgets with them (models\assistant\AssistantSettings::pricesOf, AgentGuard::pricesFor); the System AI (the MultiTenant plugin) its credits.
+    AI steps with the account's own key count their budgets with them (models\assistant\AssistantSettings::pricesOf, util\AgentGuard); the System AI (the MultiTenant plugin) its credits.
 */
 
 namespace util;
