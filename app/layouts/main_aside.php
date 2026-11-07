@@ -247,14 +247,14 @@ $dd_items = implode('', $dd_items);
 		}
 
 		//CLD: 2026-11-03T16:00:00+02:00: the workflows other projects share with this one: what they offer, in a dialog (WorkflowController::shared)
-		$sharedWfs = array_filter(iterator_to_array(\V::app()->om->find('Workflow', [ 'aid' => $crtProject->aid ] + \models\Workflow::sharedWithQuery($crtProject->_id), [ 'sort' => [ 'name' => 1 ] ]), false),
+		$sharedWfs = array_filter(iterator_to_array(\V::app()->om->find('Workflow', [ 'aid' => $crtProject->aid, 'shares.project' => $crtProject->_id ], [ 'sort' => [ 'name' => 1 ] ]), false),
 		    fn($w) => \V::app()->user->can('Workflow::viewShared', [ 'object' => $w ]));
 		if ($sharedWfs)
 		    echo '<div class="nav-item w-100 ps-2 py-1 pe-2"><span>Shared workflows</span></div>';
 		foreach($sharedWfs as $wf)
 		    echo \util\VString::insert('<li class="nav-item w-100"><a href="{:href}" class="nav-link py-1 text-truncate" title="{:title}"><i class="bi bi-share me-1"></i>{:name}</a></li>', [
 			'href' => \V::app()->createUrl('/workflow/shared', [ 'id' => $wf->_id ]),
-			'title' => \V::app()->html->escape('From project ' . $wf::projectName($wf->project)),
+			'title' => \V::app()->html->escape('From project ' . \V::app()->om->findById('Project', $wf->project)),
 			'name' => \V::app()->html->escape((string)$wf->name),
 		    ]);
 		?>

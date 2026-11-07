@@ -46,14 +46,9 @@ class AssistantUsage extends \sys\BaseModel {
 	], $this->getSystemSchema());
     }
 
-    //the current month (UTC), as the documents' `month`
-    public static function month() {
-	return gmdate('Y-m');
-    }
-
     //what account $aid spent this month: { cost, input_tokens, output_tokens, requests }
     public static function current($aid) {
-	$u = \V::app()->om->findOne('AssistantUsage', [ '_id' => (string)$aid . ':' . self::month(), 'aid' => \V::app()->om->to_oid($aid) ]);
+	$u = \V::app()->om->findOne('AssistantUsage', [ '_id' => (string)$aid . ':' . gmdate('Y-m'), 'aid' => \V::app()->om->to_oid($aid) ]);
 	return (object)[
 	    'cost' => (float)($u->cost ?? 0),
 	    'input_tokens' => (int)($u->input_tokens ?? 0),
@@ -65,10 +60,9 @@ class AssistantUsage extends \sys\BaseModel {
     //adds one request of account $aid: $cost (USD), $usage (the tokens: WorkflowAssistant::ask()'s usage)
     public static function add($aid, $cost, array $usage) {
 	$input = (int)($usage['input_tokens'] ?? 0) + (int)($usage['cache_read_input_tokens'] ?? 0) + (int)($usage['cache_creation_input_tokens'] ?? 0);
-	$month = self::month();
-	\V::app()->om->updateOne('AssistantUsage', [ '_id' => (string)$aid . ':' . $month, 'aid' => \V::app()->om->to_oid($aid) ], [
+	\V::app()->om->updateOne('AssistantUsage', [ '_id' => (string)$aid . ':' . gmdate('Y-m'), 'aid' => \V::app()->om->to_oid($aid) ], [
 	    '$inc' => [ 'cost' => (float)$cost, 'input_tokens' => $input, 'output_tokens' => (int)($usage['output_tokens'] ?? 0), 'requests' => 1 ],
-	    '$set' => [ 'month' => $month ],
+	    '$set' => [ 'month' => gmdate('Y-m') ],
 	], [ 'upsert' => true ]);
     }
 }

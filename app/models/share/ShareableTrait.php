@@ -26,24 +26,6 @@ trait ShareableTrait {
 	return [ [], null ];
     }
 
-    //the `shares` field of the schema
-    protected static function sharesField() {
-	return [
-	    'key' => 'shares',
-	    'type' => 'array',
-	    'label' => 'Shared with',
-	    'help' => false,
-	    'perm:read' => 'nobody',
-	    'perm:update' => 'nobody',
-	    'showInForms' => false,
-	];
-    }
-
-    //query: the resources shared with project $projectId
-    public static function sharedWithQuery($projectId) {
-	return [ 'shares.project' => \V::app()->om->to_oid((string)$projectId) ];
-    }
-
     //query: the resources project $projectId can use: its own and those shared with it
     public static function visibleInQuery($projectId) {
 	$oid = \V::app()->om->to_oid((string)$projectId);
@@ -88,12 +70,6 @@ trait ShareableTrait {
 	return false;
     }
 
-    //the project as "<name>" for messages and labels; '' when it no longer exists
-    public static function projectName($projectId) {
-	$project = \V::app()->om->findOne('Project', [ '_id' => \V::app()->om->to_oid($projectId) ]);
-	return $project ? (string)$project->name : '';
-    }
-
     //shares the resource with $project at $access (a new share, or another level); saved directly (only this field), recorded in the log of both projects. The web layer checks the permission
     //CLD: 2026-11-03T18:00:00+02:00: + $options (shareOptions), named in the logs
     public function setShare($project, $access, array $options = []) {
@@ -124,7 +100,7 @@ trait ShareableTrait {
 
     private function recordShare($action, $project, $level = null) {
 	$what = static::SHARE_WHAT . ' ' . $this->name;
-	$home = self::projectName($this->project);
+	$home = (string)\V::app()->om->findById('Project', $this->project);
 	$suffix = $level !== null ? ": {$level}" : '';
 	\models\AuditLog::record($action, $this, "{$what}: project {$project->name}{$suffix}");
 	\models\AuditLog::record($action, $project, "{$what} of project {$home}{$suffix}");

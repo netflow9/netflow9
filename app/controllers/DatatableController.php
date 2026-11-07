@@ -31,7 +31,7 @@ class DatatableController extends \sys\BaseController {
 		$data[] = [
 		    '_id' => (string)$t->_id,
 		    'name' => $t->name,
-		    'project' => $t::projectName($t->project),
+		    'project' => (string)\V::app()->om->findById('Project', $t->project),
 		    'access' => $t::SHARE_LEVELS[$level] ?? $level,
 		    'rows' => \V::app()->om->count($t->iname, [ 'aid' => $t->aid ]),
 		];
@@ -73,8 +73,7 @@ class DatatableController extends \sys\BaseController {
 
     //CLD: 2026-11-07T01:04:46+02:00: the data tables other projects share with the current one that the user may read, by name
     private function sharedHere() {
-	$def = \models\datatable\DataTableDef::class;
-	return array_filter(iterator_to_array(\V::app()->om->find('DataTableDef', [ 'aid' => $this->account->_id ] + $def::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false),
+	return array_filter(iterator_to_array(\V::app()->om->find('DataTableDef', [ 'aid' => $this->account->_id, 'shares.project' => $this->project->_id ], [ 'sort' => [ 'name' => 1 ] ]), false),
 	    fn($t) => \V::app()->user->can('DataTable::readData', [ 'object' => $t ]));
     }
 

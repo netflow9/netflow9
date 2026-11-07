@@ -60,7 +60,7 @@ class CredentialController extends \sys\BaseController {
 
 	//CLD: 2026-11-03T18:00:00+02:00: ?shared=1: the credentials other projects share with this one: name, type, project (the page's second list)
 	if (!empty($req->query['data']) && !empty($req->query['shared'])) {
-	    $data = array_map(fn($c) => [ '_id' => (string)$c->_id, 'name' => (string)$c->name, 'type' => (string)$c::$label, 'project' => $c::projectName($c->project) ], $this->sharedHere());
+	    $data = array_map(fn($c) => [ '_id' => (string)$c->_id, 'name' => (string)$c->name, 'type' => (string)$c::$label, 'project' => (string)\V::app()->om->findById('Project', $c->project) ], $this->sharedHere());
 	    $resp->sendJSON([ 'nRecords' => count($data), 'data' => $data ]);
 	}
 
@@ -76,7 +76,7 @@ class CredentialController extends \sys\BaseController {
 
     //CLD: 2026-11-07T01:04:46+02:00: the credentials other projects share with the current one, by name
     private function sharedHere() {
-	return iterator_to_array(\V::app()->om->find('Credential', [ 'aid' => $this->account->_id ] + \models\Credential::sharedWithQuery($this->project->_id), [ 'sort' => [ 'name' => 1 ] ]), false);
+	return iterator_to_array(\V::app()->om->find('Credential', [ 'aid' => $this->account->_id, 'shares.project' => $this->project->_id ], [ 'sort' => [ 'name' => 1 ] ]), false);
     }
 
     public function create($req, $resp) {

@@ -150,7 +150,7 @@ class ExecutionLog extends \sys\BaseModel {
 	    elseif (empty($fields['details'])) {
 		$home = static::projectOf($o, $data ?? $o->data());
 		if ($home && (string)$home !== (string)$exe->project)
-		    $fields['details'] = 'By a workflow of project ' . \models\datatable\DataTableDef::projectName($exe->project);
+		    $fields['details'] = 'By a workflow of project ' . \V::app()->om->findById('Project', $exe->project);
 	    }
 	}
 	if ($o instanceof \models\Workflow)

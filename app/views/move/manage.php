@@ -23,7 +23,7 @@ else
     $body = \util\VString::insert('<p class="small text-muted">It leaves project {:home} with everything it holds, and keeps its shares with other projects.</p>{:warnings}
 <label class="form-label small mb-1" for="move-project">Move to</label>
 <select id="move-project" name="project" class="form-select form-select-sm" required>{:options}</select>', [
-	'home' => \V::app()->html->escape($resource::projectName($resource->project)),
+	'home' => \V::app()->html->escape((string)\V::app()->om->findById('Project', $resource->project)),
 	'warnings' => $warnings,
 	'options' => $options,
     ]);

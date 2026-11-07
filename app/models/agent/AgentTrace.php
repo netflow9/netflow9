@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T14:00:00+02:00: new: the trace of an AI step's visit, what the designer's Executions panel shows: one document per visit (a step in a Loop: one per pass; written by util\AgentTracer), its id
+    the trace of an AI step's visit, what the designer's Executions panel shows: one document per visit (a step in a Loop: one per pass; written by util\AgentTracer), its id
     in the step's variable (trace_id). Apart from the execution: an execution is loaded and saved whole, often, and a trace can be megabytes. Rounds, each: n, model, text, text_length (only when
     cut: the full length), stop_reason, tokens { input, output }, cost { usd, credits }, duration_ms, calls: [ { tool, access (read | write | unknown), arguments (JSON text), arguments_length, result,
     result_length, error, duration_ms, images, refused (the limit), approval { state (asked | approved | rejected | expired | not asked), by, at, comment } } ].

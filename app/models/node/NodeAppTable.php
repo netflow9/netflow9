@@ -265,7 +265,7 @@ class NodeAppTable extends \models\wf\WfNode {
 	$choices = [];
 	$project = \V::app()->user->crtProject;
 	foreach(\V::app()->om->find('DataTableDef', [ 'aid' => \V::app()->config('rt.account')->_id ?? null ] + \models\datatable\DataTableDef::visibleInQuery($project), [ 'sort' => [ 'name' => 1 ] ]) as $t)
-	    $choices[(string)$t->_id] = (string)$t->name . ($t->isHome($project) ? '' : ' (shared from ' . $t::projectName($t->project) . ')');
+	    $choices[(string)$t->_id] = (string)$t->name . ($t->isHome($project) ? '' : ' (shared from ' . \V::app()->om->findById('Project', $t->project) . ')');
 	return $choices;
     }
 

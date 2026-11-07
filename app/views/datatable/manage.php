@@ -111,7 +111,7 @@ $script = "
     <?php //CLD: 2026-11-03T14:00:00+02:00: a table of another project, open through a share ?>
     <?php if (!$dt->isHome(\V::app()->user->crtProject)): ?>
     <div class="spacer"></div>
-    <span class="badge text-bg-info"><i class="bi bi-share me-1"></i>From project <?= \V::app()->html->escape($dt::projectName($dt->project)) ?><?= $canWrite ? '' : ' (read only)' ?></span>
+    <span class="badge text-bg-info"><i class="bi bi-share me-1"></i>From project <?= \V::app()->html->escape((string)\V::app()->om->findById('Project', $dt->project)) ?><?= $canWrite ? '' : ' (read only)' ?></span>
     <?php endif; ?>
 </div>
 

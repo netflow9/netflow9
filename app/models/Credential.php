@@ -126,7 +126,15 @@ class Credential extends \sys\BaseModel {
 		'showInForms' => false,
 	    ],
 	    //CLD: 2026-11-03T18:00:00+02:00: the projects it is shared with
-	    self::sharesField(),
+	    [
+		'key' => 'shares',
+		'type' => 'array',
+		'label' => 'Shared with',
+		'help' => false,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
+	    ],
 	];
     }
 
@@ -313,7 +321,7 @@ class Credential extends \sys\BaseModel {
 	    $choices = [];
 	    foreach(\V::app()->om->find(self::FAMILY, [ 'aid' => $aid, '__variant' => [ '$in' => $variants ] ] + self::visibleInQuery($projectId)) as $c) {
 		if (!$c->isHome($projectId)) {
-		    $choices[] = [ 'value' => (string)$c->_id, 'label' => (string)$c->name . ' (' . $c::$label . ', shared from ' . self::projectName($c->project) . ')' ];
+		    $choices[] = [ 'value' => (string)$c->_id, 'label' => (string)$c->name . ' (' . $c::$label . ', shared from ' . \V::app()->om->findById('Project', $c->project) . ')' ];
 		    continue;
 		}
 		$account = (string)($c->email ?? '');

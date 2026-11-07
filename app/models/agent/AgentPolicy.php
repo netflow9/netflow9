@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T10:00:00+02:00: new: what the agents (AI steps with tools) of an account may do, one document per account, set by its owners (Account settings > AI: AccountController::settings);
+    what the agents (AI steps with tools) of an account may do, one document per account, set by its owners (Account settings > AI: AccountController::settings);
     changes are in the audit log (a saved model). No document: nothing is restricted (the defaults).
 	- denied_families: the integration families no agent may use (util\AgentTools::FAMILIES)
 	- write_mode: the tools that change something: all, none, or chosen (allowed_writes: the tools by name; @workflows: workflows run as tools; @mcp: tools of MCP servers and tool servers)
@@ -19,13 +19,17 @@ class AgentPolicy extends \sys\BaseModel {
 	[ [ 'aid' => 1 ], [ 'unique' => true ] ],
     ];
 
-    const WRITE_MODES = [ 'all' => 'All of them', 'none' => 'None', 'chosen' => 'Only those chosen' ];
+    const WRITE_MODES = [
+	'all' => 'All of them',
+	'none' => 'None',
+	'chosen' => 'Only those chosen'
+    ];
     //the entries of allowed_writes that stand for tools with no fixed name
     const WORKFLOWS = '@workflows';
     const MCP = '@mcp';
 
     public function getSchema() {
-	return array_merge([
+	$fields = [
 	    [
 		'key' => 'denied_families',
 		'type' => 'select',
@@ -78,7 +82,8 @@ class AgentPolicy extends \sys\BaseModel {
 		'default' => '',
 		'validate' => [ [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => 'must be 0 or more' ] ],
 	    ],
-	], $this->getSystemSchema());
+	];
+	return array_merge($fields, $this->getSystemSchema());
     }
 
     public function __toString() {

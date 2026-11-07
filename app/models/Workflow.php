@@ -75,7 +75,15 @@ class Workflow extends \sys\BaseModel {
 	    ],
 
 	    //CLD: 2026-11-03T16:00:00+02:00: the projects it is shared with
-	    self::sharesField(),
+	    [
+		'key' => 'shares',
+		'type' => 'array',
+		'label' => 'Shared with',
+		'help' => false,
+		'perm:read' => 'nobody',
+		'perm:update' => 'nobody',
+		'showInForms' => false,
+	    ],
 
 	    [
 		'key' => 'status',

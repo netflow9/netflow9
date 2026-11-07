@@ -59,7 +59,7 @@ trait MovableTrait {
 
     //moves it to $project; saved directly (only these fields), recorded in the log of both projects. The web layer checks the permissions and the name
     public function moveTo($project) {
-	$from = self::projectName($this->project);
+	$from = (string)\V::app()->om->findById('Project', $this->project);
 	$shares = array_values(array_filter((array)$this->shares, fn($s) => (string)$s['project'] !== (string)$project->_id));
 	$this->moveRelated($project);
 	\V::app()->om->updateMany($this->getObjectName(), [ '_id' => $this->_id, 'aid' => $this->aid ], [ '$set' => [ 'project' => $project->_id, 'shares' => $shares ] ]);

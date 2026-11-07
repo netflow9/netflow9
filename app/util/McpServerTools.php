@@ -302,7 +302,7 @@ class McpServerTools {
 		    if (!self::allowed($asUser, 'DataTable::read', $t))
 			continue;
 		    //CLD: 2026-10-22T01:11:17+03:00: tableInfo (+ choices, points_to; shared with the structure tools)
-		    $list[] = self::tableInfo($t) + ($t->isHome($project->_id) ? [] : [ 'shared_from' => $t::projectName($t->project), 'access' => (string)($t->shareOf($project->_id)['access'] ?? '') ]);
+		    $list[] = self::tableInfo($t) + ($t->isHome($project->_id) ? [] : [ 'shared_from' => (string)\V::app()->om->findById('Project', $t->project), 'access' => (string)($t->shareOf($project->_id)['access'] ?? '') ]);
 		}
 		return [ 'tables' => $list ];
 
@@ -657,7 +657,7 @@ class McpServerTools {
 	    $t = self::findIn('DataTableDef', $args['table'] ?? '', $project, 'table');
 	} catch (\ErrorException $e) {
 	    $ref = trim((string)($args['table'] ?? ''));
-	    $query = [ 'aid' => $project->aid ] + \models\datatable\DataTableDef::sharedWithQuery($project->_id) + (\util\Validator::rule('oid', $ref) ? [ '_id' => $ref ] : [ 'name' => $ref ]);
+	    $query = [ 'aid' => $project->aid, 'shares.project' => $project->_id ] + (\util\Validator::rule('oid', $ref) ? [ '_id' => $ref ] : [ 'name' => $ref ]);
 	    $t = $ref === '' ? null : \V::app()->om->findOne('DataTableDef', $query);
 	    if (!$t)
 		throw $e;

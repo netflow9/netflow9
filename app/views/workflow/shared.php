@@ -1,6 +1,6 @@
 <?php
 //CLD: 2026-11-03T16:00:00+02:00: new: what a shared workflow offers (WorkflowController::shared): $wf, $live (its published version, null: not published now), $contract, $steps
-$body = \util\VString::insert('<p class="small text-muted">From project <strong>{:project}</strong>. It runs there, with that project\'s credentials and tables.</p>', [ 'project' => \V::app()->html->escape($wf::projectName($wf->project)) ]);
+$body = \util\VString::insert('<p class="small text-muted">From project <strong>{:project}</strong>. It runs there, with that project\'s credentials and tables.</p>', [ 'project' => \V::app()->html->escape((string)\V::app()->om->findById('Project', $wf->project)) ]);
 
 if (!$live || $contract === null) {
     $body .= '<div class="alert alert-warning small py-2 mb-0"><i class="bi bi-exclamation-triangle me-2"></i>It is not published now: calling it fails until its project publishes it again.</div>';

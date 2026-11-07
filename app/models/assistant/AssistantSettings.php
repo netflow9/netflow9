@@ -176,7 +176,6 @@ class AssistantSettings extends \sys\BaseModel {
 
     //CLD: 2026-10-26T23:49:50+02:00: new: whether a plugin offers the System provider
     public static function systemEnabled() {
-	//CLD: 2026-10-31T22:00:00+02:00: a plugin offers the provider (util\AssistantSystem: the core runs without it)
 	return \util\AssistantSystem::provider() !== null;
     }
 

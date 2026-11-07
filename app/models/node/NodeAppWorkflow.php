@@ -67,7 +67,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 		continue;
 	    $contract = NodeTriggerCall::contractOf($nodes);
 	    if ($contract !== null)
-		$list[(string)$w['_id']] = [ 'name' => (string)($w['name'] ?? '') . ($home ? '' : ' (shared from ' . \models\Workflow::projectName($w['project']) . ')'), 'contract' => $contract ];
+		$list[(string)$w['_id']] = [ 'name' => (string)($w['name'] ?? '') . ($home ? '' : ' (shared from ' . \V::app()->om->findById('Project', $w['project']) . ')'), 'contract' => $contract ];
 	}
 	return $list;
     }
@@ -301,7 +301,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	$child = \models\wf\WfExecution::startFor($live, 'call', [ 'vars' => $inputs, 'caller' => [ 'wf' => (string)$exec->wf, 'name' => (string)($caller->name ?? ''),
 	    'execution' => (string)$exec->_id, 'node' => (string)$nodeId, 'chain' => $chain, 'wait' => (bool)$wait ] ], $contract['wfid']);
 	//CLD: 2026-11-03T16:00:00+02:00: a call from another project says which
-	$from = (string)$exec->project === (string)$wf->project ? '' : ' of project ' . $wf::projectName($exec->project);
+	$from = (string)$exec->project === (string)$wf->project ? '' : ' of project ' . \V::app()->om->findById('Project', $exec->project);
 	$child->log(null, 'started by the workflow ' . (string)($caller->name ?? $exec->wf) . $from . ' (execution ' . (string)$exec->_id . ')');
 	return [ $child, null ];
     }
