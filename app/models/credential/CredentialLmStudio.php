@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T08:36:38+02:00: new: an LM Studio server (local models, an OpenAI-compatible API), for the LM Studio step.
+    a LM Studio server (local models, an OpenAI-compatible API), for the LM Studio step.
     As an OpenAI API credential (CredentialOpenAI: base URL + optional API key, sent as `Authorization: Bearer`;
     Test lists the models), with LM Studio's address as the default.
     Provides `lmstudio` (the LM Studio step) and `http` (the HTTP Request step)

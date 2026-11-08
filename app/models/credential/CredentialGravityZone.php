@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new: a Bitdefender GravityZone console (cloud or on-premises), for the GravityZone steps and the GravityZone event trigger (util\GravityZone):
+    a Bitdefender GravityZone console (cloud or on-premises), for the GravityZone steps and the GravityZone event trigger (util\GravityZone):
     the console's API access URL (My Account > Control Center API), the key's kind (a personal API key: HTTP Basic; a service API key: X-API-Key) and the key (encrypted);
     trustCertificate: an on-premises console's self-signed certificate. An on-premises console on a private address needs the account's "Integrations may connect to private network
     addresses" (Account allow_private_addresses). Test: getApiKeyDetails (the key's APIs). Provides `gravityzone`
@@ -16,7 +16,10 @@ class CredentialGravityZone extends \models\Credential {
     public static $provides = [ 'gravityzone' ];
     public static $testable = true;
 
-    const KEY_TYPES = [ 'personal' => 'Personal API key', 'service' => 'Service API key' ];
+    const KEY_TYPES = [
+	'personal' => 'Personal API key',
+	'service' => 'Service API key'
+    ];
 
     public function getSchema() {
 	return array_merge(parent::getSchema(), [

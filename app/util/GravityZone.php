@@ -1,7 +1,8 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new: the client of the Bitdefender GravityZone Public API (cloud or on-premises console), for the GravityZone credential, steps and trigger.
+    the client of the Bitdefender GravityZone Public API (cloud or on-premises console),
+    for the GravityZone credential, steps and trigger.
     JSON-RPC 2.0 over HTTPS: POST <access URL>/v<version>/jsonrpc/<area> (area: network, incidents, quarantine/computers, reports, push, general, ...), the key as HTTP Basic
     (a personal API key: the key as username, no password) or in X-API-Key (a service API key). Public addresses only, unless the account allows private network addresses
     (Account allow_private_addresses: an on-premises console; never this server itself); the certificate checked unless the credential trusts it (self-signed).

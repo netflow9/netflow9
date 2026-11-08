@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-05T13:00:00+02:00: new: a Namecheap account's API access, for the Namecheap steps (util\Namecheap): the API user, its API key (encrypted), the user the commands act
+    a Namecheap account's API access, for the Namecheap steps (util\Namecheap): the API user, its API key (encrypted), the user the commands act
     for (empty: the API user), the client IP whitelisted for the API in Namecheap (Namecheap answers no other address), the sandbox or production. Test: the account's balance.
     Provides `namecheap`
 */

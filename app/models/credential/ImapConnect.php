@@ -25,7 +25,6 @@ class ImapConnect {
 	$folders = array_column($imap->listFolders(), 'name');
 	$imap->logout();
 	$shown = array_slice($folders, 0, 15);
-	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural
 	return \util\Format::plural(count($folders), 'folder') . ': ' . implode(', ', $shown) . (count($folders) > count($shown) ? ', ...' : '');
     }
 

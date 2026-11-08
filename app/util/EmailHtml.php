@@ -13,18 +13,18 @@
     $r = \util\EmailHtml::render($email, $vars, $subject);  ->  [ html, text, images: [ cid => file id ] ]
 	{{ }} in the HTML blocks, image links and the preheader are evaluated with $vars (util\Expression) and HTML-escaped;
 	links are checked again once filled (only http(s) / mailto).
-	//CLD: 2026-10-23T01:00:00+03:00: except, in an HTML block, a {{ }} that is only a call of markdown2html(...): its text as HTML (util\Markdown: safe, everything of the text escaped),
-	//styled as the block's own tags (headings, lists, tables, code, ...); its text version as plain text
-	//CLD: 2026-10-23T02:30:00+03:00: and a {{ }} that is only a field named html (e.g. {{ ai.html }}: an AI step's answer as HTML): its HTML cleaned to formatting only
-	//(util\HtmlSafe: whatever made it), then styled as the block's tags
-	//CLD: 2026-11-05T15:00:00+02:00: and a {{ }} that is only a call of html(...) (e.g. {{ html(ai.text) }}: an AI step that answers in HTML): cleaned the same way
+	except, in an HTML block, a {{ }} that is only a call of markdown2html(...): its text as HTML (util\Markdown: safe, everything of the text escaped),
+	styled as the block's own tags (headings, lists, tables, code, ...); its text version as plain text
+	and a {{ }} that is only a field named html (e.g. {{ ai.html }}: an AI step's answer as HTML): its HTML cleaned to formatting only
+	(util\HtmlSafe: whatever made it), then styled as the block's tags
+	and a {{ }} that is only a call of html(...) (e.g. {{ html(ai.text) }}: an AI step that answers in HTML): cleaned the same way
 
     Throws on an expression that fails (as the steps' other settings)
 */
 namespace util;
 
 class EmailHtml {
-    //CLD: 2026-11-02T18:00:00+02:00: new: the text of a reply without what it quotes: from the first "On ... wrote:" line or the first line quoted with >, or a line of underscores / "-----Original Message-----". All of it when nothing else is left
+    //the text of a reply without what it quotes: from the first "On ... wrote:" line or the first line quoted with >, or a line of underscores / "-----Original Message-----". All of it when nothing else is left
     public static function withoutQuote($text) {
 	$lines = preg_split('/\R/', (string)$text);
 	$keep = [];
@@ -52,7 +52,7 @@ class EmailHtml {
 	'li' => 'margin: 0 0 6px 0;',
 	'blockquote' => 'margin: 0 0 16px 0; padding: 0 0 0 12px; border-left: 3px solid #d0d5dd; color: #555555;',
 	'a' => 'color: #1a73e8; text-decoration: underline;',
-	//CLD: 2026-10-23T01:00:00+03:00: + what markdown2html(...) gives (util\Markdown)
+	//what markdown2html(...) gives (util\Markdown)
 	'h4' => 'margin: 0 0 10px 0; font-size: 16px; line-height: 1.4; font-weight: bold;',
 	'h5' => 'margin: 0 0 8px 0; font-size: 14px; line-height: 1.4; font-weight: bold;',
 	'h6' => 'margin: 0 0 8px 0; font-size: 13px; line-height: 1.4; font-weight: bold; color: #555555;',
