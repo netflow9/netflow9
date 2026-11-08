@@ -26,7 +26,7 @@ class CredentialSigning extends \models\Credential {
 		'label' => 'Signature',
 		'required' => true,
 		'default' => 'pgp',
-		'choices' => \util\FileSign::METHODS,
+		'choices' => \data\Constants::SIGN_METHODS,
 	    ],
 	    [
 		'key' => 'privateKey',
@@ -90,7 +90,7 @@ class CredentialSigning extends \models\Credential {
 		'type' => 'select',
 		'label' => 'Digest',
 		'default' => 'sha256',
-		'choices' => \util\FileSign::DIGESTS,
+		'choices' => \sys\Security::DIGESTS,
 		'help' => 'Ed25519 keys sign the whole file (no digest)',
 		'ui' => [ 'width' => 6 ],
 	    ],

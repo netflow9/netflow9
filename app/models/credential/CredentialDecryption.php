@@ -28,7 +28,7 @@ class CredentialDecryption extends \models\Credential {
 		'label' => 'Encryption',
 		'required' => true,
 		'default' => 'pgp',
-		'choices' => \util\FileDecrypt::METHODS,
+		'choices' => \data\Constants::DECRYPT_METHODS,
 	    ],
 	    [
 		'key' => 'privateKey',
@@ -70,7 +70,7 @@ class CredentialDecryption extends \models\Credential {
 		'type' => 'select',
 		'label' => 'Cipher',
 		'default' => 'aes-256-cbc',
-		'choices' => \util\FileDecrypt::CIPHERS,
+		'choices' => \sys\Security::CIPHERS,
 		'ui' => [ 'width' => 4, 'showIf' => [ 'key' => 'method', 'operator' => 'eq', 'value' => 'openssl-enc' ] ],
 	    ],
 	    [

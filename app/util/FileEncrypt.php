@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T18:00:00+03:00: new class: encrypts and compresses files on disk, for the FTP / SFTP Upload step (models\node\NodeAppFtpUpload) with an Encryption key
+    encrypts and compresses files on disk, for the FTP / SFTP Upload step (models\node\NodeAppFtpUpload) with an Encryption key
     credential (models\credential\CredentialEncryption): the other way of util\FileDecrypt, whose helpers it uses (the system's tools without a shell, secrets on fd 3,
     key files 0600 in a private temporary folder).
 	- pgp:            OpenPGP to the recipients' public keys (one or several in the key text: the file can be opened by any of them); binary (.gpg) or armored (.asc)
@@ -119,9 +119,7 @@ class FileEncrypt extends FileDecrypt {
 	$password = (string)$cred->passphrase;
 	if ($password === '')
 	    throw new \RuntimeException('the credential has no password');
-	$cipher = (string)($cred->cipher ?: 'aes-256-cbc');
-	if (!isset(self::CIPHERS[$cipher]))
-	    throw new \RuntimeException("unknown cipher `{$cipher}`");
+	$cipher = \sys\Security::cipher($cred->cipher);
 	$args = [ self::tool('openssl'), 'enc', '-e', '-' . $cipher, '-salt', '-in', $in, '-out', $out, '-pass', 'fd:3' ];
 	$kdf = (string)($cred->kdf ?: 'pbkdf2');
 	if ($kdf === 'pbkdf2')

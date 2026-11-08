@@ -16,13 +16,6 @@ class CredentialEncryption extends \models\Credential {
     public static $provides = [ 'encrypt' ];
     public static $testable = true;
 
-    const METHODS = [
-	'pgp' => 'PGP / GPG public key (the recipient\'s)',
-	'pgp-symmetric' => 'PGP / GPG passphrase (symmetric)',
-	'openssl-enc' => 'OpenSSL password (openssl enc)',
-	'cms' => 'S/MIME / CMS certificate (the recipient\'s, .p7m)',
-    ];
-
     public function getSchema() {
 	$secret = [ 'pgp-symmetric', 'openssl-enc' ];
 	return array_merge(parent::getSchema(), [
@@ -32,7 +25,7 @@ class CredentialEncryption extends \models\Credential {
 		'label' => 'Encryption',
 		'required' => true,
 		'default' => 'pgp',
-		'choices' => self::METHODS,
+		'choices' => \data\Constants::ENCRYPT_METHODS,
 	    ],
 	    [
 		'key' => 'publicKey',
@@ -76,7 +69,7 @@ class CredentialEncryption extends \models\Credential {
 		'type' => 'select',
 		'label' => 'Cipher',
 		'default' => 'aes-256-cbc',
-		'choices' => \util\FileDecrypt::CIPHERS,
+		'choices' => \sys\Security::CIPHERS,
 		'ui' => [ 'width' => 4, 'showIf' => [ 'key' => 'method', 'operator' => 'eq', 'value' => 'openssl-enc' ] ],
 	    ],
 	    [

@@ -15,13 +15,6 @@
 namespace util;
 
 class FileDecrypt {
-    const METHODS = [
-	'pgp' => 'PGP / GPG private key',
-	'pgp-symmetric' => 'PGP / GPG passphrase (symmetric)',
-	'openssl-enc' => 'OpenSSL password (openssl enc)',
-	'cms' => 'S/MIME / CMS private key (.p7m)',
-    ];
-
     //the file name endings each method removes (the decrypted file's name); a name with none of them keeps its name
     const EXTENSIONS = [
 	'pgp' => [ 'gpg', 'pgp', 'asc' ],
@@ -31,17 +24,11 @@ class FileDecrypt {
     ];
     const COMPRESSED = [ 'gz' => 'gzip', 'gzip' => 'gzip', 'bz2' => 'bzip2' ];
 
-    //openssl enc ciphers offered (openssl's names)
-    const CIPHERS = [
-	'aes-256-cbc' => 'AES-256-CBC',
-	'aes-192-cbc' => 'AES-192-CBC',
-	'aes-128-cbc' => 'AES-128-CBC',
-	'aes-256-ctr' => 'AES-256-CTR',
-	'aes-128-ctr' => 'AES-128-CTR',
-	'des-ede3-cbc' => '3DES (DES-EDE3-CBC)',
-	'chacha20' => 'ChaCha20',
+    const KDF = [
+	'pbkdf2' => 'PBKDF2 (-pbkdf2)',
+	'md5' => 'Legacy, MD5 (OpenSSL 1.0 default)',
+	'sha256' => 'Legacy, SHA-256 (OpenSSL 1.1 without -pbkdf2)'
     ];
-    const KDF = [ 'pbkdf2' => 'PBKDF2 (-pbkdf2)', 'md5' => 'Legacy, MD5 (OpenSSL 1.0 default)', 'sha256' => 'Legacy, SHA-256 (OpenSSL 1.1 without -pbkdf2)' ];
 
     //seconds a tool may run
     const TIMEOUT = 300;
@@ -170,9 +157,7 @@ class FileDecrypt {
 	$password = (string)$cred->passphrase;
 	if ($password === '')
 	    throw new \RuntimeException('the credential has no password');
-	$cipher = (string)($cred->cipher ?: 'aes-256-cbc');
-	if (!isset(self::CIPHERS[$cipher]))
-	    throw new \RuntimeException("unknown cipher `{$cipher}`");
+	$cipher = \sys\Security::cipher($cred->cipher);
 	$args = [ self::tool('openssl'), 'enc', '-d', '-' . $cipher, '-in', $in, '-out', $out, '-pass', 'fd:3' ];
 	$kdf = (string)($cred->kdf ?: 'pbkdf2');
 	if ($kdf === 'pbkdf2')

@@ -25,7 +25,7 @@ class CredentialVerification extends \models\Credential {
 		'label' => 'Signature',
 		'required' => true,
 		'default' => 'pgp',
-		'choices' => \util\FileVerify::METHODS,
+		'choices' => \data\Constants::VERIFY_METHODS,
 	    ],
 	    [
 		'key' => 'publicKey',
@@ -61,7 +61,7 @@ class CredentialVerification extends \models\Credential {
 		'type' => 'select',
 		'label' => 'Digest',
 		'default' => 'sha256',
-		'choices' => \util\FileSign::DIGESTS,
+		'choices' => \sys\Security::DIGESTS,
 		'help' => 'The one the sender signs with (openssl dgst -sha256 ...); Ed25519: none',
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'method', 'operator' => 'eq', 'value' => 'raw' ] ],
 	    ],

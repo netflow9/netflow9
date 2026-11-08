@@ -23,4 +23,31 @@ class Constants {
 
     //the model names that are not chat models (embeddings, speech, images, moderation, old completions): left out of the AI steps' choices (models\Credential)
     const NOT_CHAT = '/(embed|tts|whisper|transcribe|dall-e|gpt-image|moderation|davinci|babbage|rerank)/i';
+
+    //the ways of encrypting a file (models\credential\CredentialEncryption)
+    const ENCRYPT_METHODS = [
+	'pgp' => 'PGP / GPG public key (the recipient\'s)',
+	'pgp-symmetric' => 'PGP / GPG passphrase (symmetric)',
+	'openssl-enc' => 'OpenSSL password (openssl enc)',
+	'cms' => 'S/MIME / CMS certificate (the recipient\'s, .p7m)',
+    ];
+    //the ways of decrypting a file (util\FileDecrypt; models\credential\CredentialDecryption)
+    const DECRYPT_METHODS = [
+	'pgp' => 'PGP / GPG private key',
+	'pgp-symmetric' => 'PGP / GPG passphrase (symmetric)',
+	'openssl-enc' => 'OpenSSL password (openssl enc)',
+	'cms' => 'S/MIME / CMS private key (.p7m)',
+    ];
+    //the ways of signing a file (util\FileSign; models\credential\CredentialSigning)
+    const SIGN_METHODS = [
+	'pgp' => 'PGP / GPG private key',
+	'cms' => 'S/MIME / CMS: X.509 private key + certificate',
+	'raw' => 'Private key, plain signature (RSA, EC, Ed25519)',
+    ];
+    //the ways of checking a file's signature (util\FileVerify; models\credential\CredentialVerification)
+    const VERIFY_METHODS = [
+	'pgp' => 'PGP / GPG public key (the signer\'s)',
+	'cms' => 'S/MIME / CMS: trusted certificate (the signer\'s, or its CA)',
+	'raw' => 'Public key, plain signature (RSA, EC, Ed25519)',
+    ];
 }

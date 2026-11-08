@@ -4,6 +4,62 @@ namespace sys;
 
 class Security extends BaseObject {
 
+    //digests for signing / verifying files: [ openssl name => label ]
+    const DIGESTS = [
+	'sha256' => 'SHA-256',
+	'sha384' => 'SHA-384',
+	'sha512' => 'SHA-512'
+    ];
+
+    //openssl enc ciphers for encrypting / decrypting files: [ openssl name => label ]
+    const CIPHERS = [
+	'aes-256-cbc' => 'AES-256-CBC',
+	'aes-192-cbc' => 'AES-192-CBC',
+	'aes-128-cbc' => 'AES-128-CBC',
+	'aes-256-ctr' => 'AES-256-CTR',
+	'aes-128-ctr' => 'AES-128-CTR',
+	'des-ede3-cbc' => '3DES (DES-EDE3-CBC)',
+	'chacha20' => 'ChaCha20',
+    ];
+
+    //XML signature (SAML) signature methods: [ algorithm URI => [ key type, openssl digest ] ]
+    const XMLDSIG_SIGNATURES = [
+	'http://www.w3.org/2000/09/xmldsig#rsa-sha1' => [ 'rsa', 'sha1' ],
+	'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256' => [ 'rsa', 'sha256' ],
+	'http://www.w3.org/2001/04/xmldsig-more#rsa-sha384' => [ 'rsa', 'sha384' ],
+	'http://www.w3.org/2001/04/xmldsig-more#rsa-sha512' => [ 'rsa', 'sha512' ],
+	'http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256' => [ 'ecdsa', 'sha256' ],
+	'http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha384' => [ 'ecdsa', 'sha384' ],
+	'http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha512' => [ 'ecdsa', 'sha512' ],
+    ];
+
+    //XML signature / encryption (SAML) digests: [ algorithm URI => openssl digest ]
+    const XMLDSIG_DIGESTS = [
+	'http://www.w3.org/2000/09/xmldsig#sha1' => 'sha1',
+	'http://www.w3.org/2001/04/xmlenc#sha256' => 'sha256',
+	'http://www.w3.org/2001/04/xmldsig-more#sha384' => 'sha384',
+	'http://www.w3.org/2001/04/xmlenc#sha512' => 'sha512',
+    ];
+
+    //XML encryption (SAML) content ciphers: [ algorithm URI => [ openssl cipher, key length, GCM ] ]
+    const XMLENC_CIPHERS = [
+	'http://www.w3.org/2001/04/xmlenc#aes128-cbc' => [ 'aes-128-cbc', 16, false ],
+	'http://www.w3.org/2001/04/xmlenc#aes192-cbc' => [ 'aes-192-cbc', 24, false ],
+	'http://www.w3.org/2001/04/xmlenc#aes256-cbc' => [ 'aes-256-cbc', 32, false ],
+	'http://www.w3.org/2009/xmlenc11#aes128-gcm' => [ 'aes-128-gcm', 16, true ],
+	'http://www.w3.org/2009/xmlenc11#aes192-gcm' => [ 'aes-192-gcm', 24, true ],
+	'http://www.w3.org/2009/xmlenc11#aes256-gcm' => [ 'aes-256-gcm', 32, true ],
+    ];
+
+    //XML encryption (SAML) MGF1 digests of xmlenc11 rsa-oaep: [ algorithm URI => openssl digest ]
+    const XMLENC_MGF = [
+	'http://www.w3.org/2009/xmlenc11#mgf1sha1' => 'sha1',
+	'http://www.w3.org/2009/xmlenc11#mgf1sha224' => 'sha224',
+	'http://www.w3.org/2009/xmlenc11#mgf1sha256' => 'sha256',
+	'http://www.w3.org/2009/xmlenc11#mgf1sha384' => 'sha384',
+	'http://www.w3.org/2009/xmlenc11#mgf1sha512' => 'sha512',
+    ];
+
     public function __construct($config = []) {
 	$defaults = [
 	    'cipher' => 'AES-128-CBC',
@@ -46,6 +102,20 @@ class Security extends BaseObject {
     	return password_verify($password, $hash);
     }
 
+
+    //a digest from DIGESTS, sha256 when empty or unknown
+    public static function digest($name) {
+	$d = (string)($name ?: 'sha256');
+	return isset(self::DIGESTS[$d]) ? $d : 'sha256';
+    }
+
+    //a cipher from CIPHERS, aes-256-cbc when empty; an unknown one: \RuntimeException
+    public static function cipher($name) {
+	$c = (string)($name ?: 'aes-256-cbc');
+	if (!isset(self::CIPHERS[$c]))
+	    throw new \RuntimeException("unknown cipher `{$c}`");
+	return $c;
+    }
 
     //fail loudly instead of encrypting with an empty or guessable key
     protected function requireSecret() {

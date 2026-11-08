@@ -37,43 +37,6 @@ class SamlXml {
 	'http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments' => [ false, true ],
     ];
 
-    //signatures: [ key type, openssl digest ]
-    const SIGNATURES = [
-	'http://www.w3.org/2000/09/xmldsig#rsa-sha1' => [ 'rsa', 'sha1' ],
-	'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256' => [ 'rsa', 'sha256' ],
-	'http://www.w3.org/2001/04/xmldsig-more#rsa-sha384' => [ 'rsa', 'sha384' ],
-	'http://www.w3.org/2001/04/xmldsig-more#rsa-sha512' => [ 'rsa', 'sha512' ],
-	'http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256' => [ 'ecdsa', 'sha256' ],
-	'http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha384' => [ 'ecdsa', 'sha384' ],
-	'http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha512' => [ 'ecdsa', 'sha512' ],
-    ];
-
-    const DIGESTS = [
-	'http://www.w3.org/2000/09/xmldsig#sha1' => 'sha1',
-	'http://www.w3.org/2001/04/xmlenc#sha256' => 'sha256',
-	'http://www.w3.org/2001/04/xmldsig-more#sha384' => 'sha384',
-	'http://www.w3.org/2001/04/xmlenc#sha512' => 'sha512',
-    ];
-
-    //content encryption: [ openssl cipher, key length, GCM ]
-    const CIPHERS = [
-	'http://www.w3.org/2001/04/xmlenc#aes128-cbc' => [ 'aes-128-cbc', 16, false ],
-	'http://www.w3.org/2001/04/xmlenc#aes192-cbc' => [ 'aes-192-cbc', 24, false ],
-	'http://www.w3.org/2001/04/xmlenc#aes256-cbc' => [ 'aes-256-cbc', 32, false ],
-	'http://www.w3.org/2009/xmlenc11#aes128-gcm' => [ 'aes-128-gcm', 16, true ],
-	'http://www.w3.org/2009/xmlenc11#aes192-gcm' => [ 'aes-192-gcm', 24, true ],
-	'http://www.w3.org/2009/xmlenc11#aes256-gcm' => [ 'aes-256-gcm', 32, true ],
-    ];
-
-    //the MGF1 digests of xmlenc11 rsa-oaep
-    const MGF = [
-	'http://www.w3.org/2009/xmlenc11#mgf1sha1' => 'sha1',
-	'http://www.w3.org/2009/xmlenc11#mgf1sha224' => 'sha224',
-	'http://www.w3.org/2009/xmlenc11#mgf1sha256' => 'sha256',
-	'http://www.w3.org/2009/xmlenc11#mgf1sha384' => 'sha384',
-	'http://www.w3.org/2009/xmlenc11#mgf1sha512' => 'sha512',
-    ];
-
     // ------------------------------------------------------------------------------------
     //reading
 
@@ -169,7 +132,7 @@ class SamlXml {
 	$sig = $sigs[0];
 	$info = self::one($sig, self::DS, 'SignedInfo');
 	$method = self::one($info, self::DS, 'SignatureMethod')->getAttribute('Algorithm');
-	if (!isset(self::SIGNATURES[$method]))
+	if (!isset(\sys\Security::XMLDSIG_SIGNATURES[$method]))
 	    throw new SamlException('signature algorithm not supported: ' . $method);
 
 	//one reference: this element, by an ID found once in the document (the signature wrapping attacks)
@@ -195,7 +158,7 @@ class SamlXml {
 	if (!$enveloped)
 	    throw new SamlException('not an enveloped signature');
 	$digestAlg = self::one($ref, self::DS, 'DigestMethod')->getAttribute('Algorithm');
-	if (!isset(self::DIGESTS[$digestAlg]))
+	if (!isset(\sys\Security::XMLDSIG_DIGESTS[$digestAlg]))
 	    throw new SamlException('digest not supported: ' . $digestAlg);
 
 	//the digest: the element without this signature, in a copy of the document (its namespaces in scope)
@@ -203,13 +166,13 @@ class SamlXml {
 	$target = self::byId($copy, $id)[0];
 	foreach(self::children($target, self::DS, 'Signature') as $s)
 	    $target->removeChild($s);
-	$digest = hash(self::DIGESTS[$digestAlg], self::canonical($target, $c14n), true);
+	$digest = hash(\sys\Security::XMLDSIG_DIGESTS[$digestAlg], self::canonical($target, $c14n), true);
 	if (!hash_equals(self::base64(self::one($ref, self::DS, 'DigestValue')->textContent), $digest))
 	    throw new SamlException('the digest of the ' . $element->localName . ' does not match: the signed content was changed');
 
 	//the signature of SignedInfo
 	$signed = self::canonical($info, self::one($info, self::DS, 'CanonicalizationMethod'));
-	[ $type, $hash ] = self::SIGNATURES[$method];
+	[ $type, $hash ] = \sys\Security::XMLDSIG_SIGNATURES[$method];
 	$value = self::base64(self::one($sig, self::DS, 'SignatureValue')->textContent);
 	if ($type === 'ecdsa')
 	    $value = self::ecdsaDer($value);
@@ -284,7 +247,7 @@ class SamlXml {
     public static function decrypt(\DOMElement $container, $keyPem) {
 	$data = self::one($container, self::XENC, 'EncryptedData');
 	$alg = self::one($data, self::XENC, 'EncryptionMethod')->getAttribute('Algorithm');
-	if (!isset(self::CIPHERS[$alg]))
+	if (!isset(\sys\Security::XMLENC_CIPHERS[$alg]))
 	    throw new SamlException('encryption not supported: ' . $alg);
 	//the key: in the data's KeyInfo, else next to the data
 	$ek = null;
@@ -294,7 +257,7 @@ class SamlXml {
 	if (!$ek)
 	    throw new SamlException('no encrypted key in the encrypted assertion');
 	$key = self::decryptKey($ek, $keyPem);
-	[ $cipher, $length, $gcm ] = self::CIPHERS[$alg];
+	[ $cipher, $length, $gcm ] = \sys\Security::XMLENC_CIPHERS[$alg];
 	if (strlen($key) !== $length)
 	    throw new SamlException('the encrypted key does not fit ' . $cipher);
 	$value = self::base64(self::one(self::one($data, self::XENC, 'CipherData'), self::XENC, 'CipherValue')->textContent);
@@ -320,10 +283,10 @@ class SamlXml {
 	$alg = $method->getAttribute('Algorithm');
 	$digest = 'sha1';
 	foreach(self::children($method, self::DS, 'DigestMethod') as $d)
-	    $digest = self::DIGESTS[$d->getAttribute('Algorithm')] ?? throw new SamlException('key digest not supported: ' . $d->getAttribute('Algorithm'));
+	    $digest = \sys\Security::XMLDSIG_DIGESTS[$d->getAttribute('Algorithm')] ?? throw new SamlException('key digest not supported: ' . $d->getAttribute('Algorithm'));
 	$mgf = 'sha1';
 	foreach(self::children($method, self::XENC11, 'MGF') as $m)
-	    $mgf = self::MGF[$m->getAttribute('Algorithm')] ?? throw new SamlException('MGF not supported: ' . $m->getAttribute('Algorithm'));
+	    $mgf = \sys\Security::XMLENC_MGF[$m->getAttribute('Algorithm')] ?? throw new SamlException('MGF not supported: ' . $m->getAttribute('Algorithm'));
 	//RSA 1.5 (PKCS#1 v1.5) is refused: an oracle for the key (Bleichenbacher)
 	if ($alg !== self::RSA_OAEP_MGF1P && $alg !== self::RSA_OAEP)
 	    throw new SamlException('key encryption not supported: ' . $alg . ' (use RSA-OAEP)');
@@ -357,8 +320,8 @@ class SamlXml {
 	$encKey = $data->appendChild(self::newElement($doc, self::DS, 'ds:KeyInfo'))->appendChild(self::newElement($doc, self::XENC, 'xenc:EncryptedKey'));
 	$m = $encKey->appendChild(self::newElement($doc, self::XENC, 'xenc:EncryptionMethod', [ 'Algorithm' => $digest === 'sha1' ? self::RSA_OAEP_MGF1P : self::RSA_OAEP ]));
 	if ($digest !== 'sha1') {
-	    $m->appendChild(self::newElement($doc, self::DS, 'ds:DigestMethod', [ 'Algorithm' => array_search($digest, self::DIGESTS, true) ]));
-	    $m->appendChild(self::newElement($doc, self::XENC11, 'xenc11:MGF', [ 'Algorithm' => array_search($digest, self::MGF, true) ]));
+	    $m->appendChild(self::newElement($doc, self::DS, 'ds:DigestMethod', [ 'Algorithm' => array_search($digest, \sys\Security::XMLDSIG_DIGESTS, true) ]));
+	    $m->appendChild(self::newElement($doc, self::XENC11, 'xenc11:MGF', [ 'Algorithm' => array_search($digest, \sys\Security::XMLENC_MGF, true) ]));
 	}
 	$encKey->appendChild(self::newElement($doc, self::XENC, 'xenc:CipherData'))->appendChild(self::newElement($doc, self::XENC, 'xenc:CipherValue', [], base64_encode($ek)));
 	$data->appendChild(self::newElement($doc, self::XENC, 'xenc:CipherData'))->appendChild(self::newElement($doc, self::XENC, 'xenc:CipherValue', [], base64_encode($iv . $ct . $tag)));

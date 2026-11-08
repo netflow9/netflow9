@@ -13,16 +13,6 @@
 namespace util;
 
 class FileSign extends FileDecrypt {
-    const METHODS = [
-	'pgp' => 'PGP / GPG private key',
-	'cms' => 'S/MIME / CMS: X.509 private key + certificate',
-	'raw' => 'Private key, plain signature (RSA, EC, Ed25519)',
-    ];
-    const DIGESTS = [
-	'sha256' => 'SHA-256',
-	'sha384' => 'SHA-384',
-	'sha512' => 'SHA-512'
-    ];
     const MODES = [
 	'attached' => 'In the file (a signed file)',
 	'detached' => 'A separate signature file, next to it'
@@ -64,11 +54,6 @@ class FileSign extends FileDecrypt {
 	    throw new \RuntimeException('nothing was signed');
     }
 
-    protected static function digest($cred) {
-	$d = (string)($cred->digest ?: 'sha256');
-	return isset(self::DIGESTS[$d]) ? $d : 'sha256';
-    }
-
     protected static function pgpSign($cred, $work, $in, $out, $mode, $encryptTo) {
 	$gpg = self::tool('gpg');
 	$home = $work . '/g';
@@ -81,7 +66,7 @@ class FileSign extends FileDecrypt {
 	    [ $code, $err ] = self::run(array_merge($base, [ '--import', self::secretFile($work, 'key.asc', $key . "\n") ]));
 	    if ($code !== 0)
 		throw new \RuntimeException('the private key could not be read: ' . self::toolMessage($err));
-	    $args = array_merge($base, [ '--yes', '--pinentry-mode', 'loopback', '--passphrase-fd', '3', '--digest-algo', strtoupper(self::digest($cred)), '--output', $out ]);
+	    $args = array_merge($base, [ '--yes', '--pinentry-mode', 'loopback', '--passphrase-fd', '3', '--digest-algo', strtoupper(\sys\Security::digest($cred->digest)), '--output', $out ]);
 	    if (trim((string)$cred->keyId) !== '')
 		array_push($args, '--local-user', trim((string)$cred->keyId));
 	    //one signed and encrypted message: armored as the encryption key says (it names the file: .gpg / .asc)
@@ -119,7 +104,7 @@ class FileSign extends FileDecrypt {
 	$cert = FileEncrypt::certificates($cred->certificate)[0] ?? null;
 	if ($key === '' || $cert === null)
 	    throw new \RuntimeException('the credential needs the private key and its certificate');
-	$args = [ self::tool('openssl'), 'cms', '-sign', '-binary', '-md', self::digest($cred), '-in', $in, '-out', $out, '-outform', 'DER',
+	$args = [ self::tool('openssl'), 'cms', '-sign', '-binary', '-md', \sys\Security::digest($cred->digest), '-in', $in, '-out', $out, '-outform', 'DER',
 	    '-signer', self::secretFile($work, 'cert.pem', $cert . "\n"), '-inkey', self::secretFile($work, 'key.pem', $key . "\n"), '-passin', 'fd:3' ];
 	$chain = FileEncrypt::certificates($cred->chain);
 	if ($chain)
@@ -145,7 +130,7 @@ class FileSign extends FileDecrypt {
 	$eddsa = in_array($type, array_filter([ defined('OPENSSL_KEYTYPE_ED25519') ? OPENSSL_KEYTYPE_ED25519 : null, defined('OPENSSL_KEYTYPE_ED448') ? OPENSSL_KEYTYPE_ED448 : null ], fn($t) => $t !== null), true);
 	$args = $eddsa
 	    ? [ self::tool('openssl'), 'pkeyutl', '-sign', '-rawin', '-inkey', $keyFile, '-passin', 'fd:3', '-in', $in, '-out', $sig ]
-	    : [ self::tool('openssl'), 'dgst', '-' . self::digest($cred), '-sign', $keyFile, '-passin', 'fd:3', '-out', $sig, $in ];
+	    : [ self::tool('openssl'), 'dgst', '-' . \sys\Security::digest($cred->digest), '-sign', $keyFile, '-passin', 'fd:3', '-out', $sig, $in ];
 	[ $code, $err ] = self::run($args, (string)$cred->passphrase);
 	if ($code !== 0) {
 	    @unlink($sig);

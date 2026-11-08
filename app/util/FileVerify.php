@@ -14,11 +14,6 @@
 namespace util;
 
 class FileVerify extends FileDecrypt {
-    const METHODS = [
-	'pgp' => 'PGP / GPG public key (the signer\'s)',
-	'cms' => 'S/MIME / CMS: trusted certificate (the signer\'s, or its CA)',
-	'raw' => 'Public key, plain signature (RSA, EC, Ed25519)',
-    ];
 
     //the endings of a detached signature file, by method
     public static function signatureEndings($method) {
@@ -180,7 +175,7 @@ class FileVerify extends FileDecrypt {
 	}
 	$keyFile = self::secretFile($work, 'pub.pem', $pub . "\n");
 	$eddsa = in_array($details['type'] ?? null, array_filter([ defined('OPENSSL_KEYTYPE_ED25519') ? OPENSSL_KEYTYPE_ED25519 : null, defined('OPENSSL_KEYTYPE_ED448') ? OPENSSL_KEYTYPE_ED448 : null ], fn($t) => $t !== null), true);
-	$digest = in_array((string)$cred->digest, array_keys(FileSign::DIGESTS), true) ? (string)$cred->digest : 'sha256';
+	$digest = \sys\Security::digest($cred->digest);
 	$args = $eddsa
 	    ? [ self::tool('openssl'), 'pkeyutl', '-verify', '-pubin', '-inkey', $keyFile, '-rawin', '-in', $data, '-sigfile', $sig ]
 	    : [ self::tool('openssl'), 'dgst', '-' . $digest, '-verify', $keyFile, '-signature', $sig, $data ];
