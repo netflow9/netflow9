@@ -51,9 +51,8 @@ class TaskController extends \sys\BaseController {
 	if ($task->state !== 'open' || $expired)
 	    $resp->sendJSON([ 'ok' => false, 'error' => $task->state === 'done' ? 'This task was already completed.' : 'This task is no longer open.' ], true, 409);
 
-	$body = json_decode((string)file_get_contents('php://input'), true);
 	$form = \util\SmartForm::normalize($task->form ?? []);
-	[ $answers, $errors ] = \util\SmartForm::answers($form, is_array($body['answers'] ?? null) ? $body['answers'] : []);
+	[ $answers, $errors ] = \util\SmartForm::answers($form, is_array($req->data['answers'] ?? null) ? $req->data['answers'] : []);
 	if ($errors)
 	    $resp->sendJSON([ 'ok' => false, 'error' => 'Some fields need attention.', 'errors' => $errors ], true, 422);
 

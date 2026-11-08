@@ -62,7 +62,10 @@ class McpController extends \sys\APIController {
 
 	if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > \data\Constants::MAX_REQUEST_BODY)
 	    $resp->sendJSON($this->fail(null, -32600, 'Request too large'), true, 413, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-	$body = json_decode((string)file_get_contents('php://input', false, null, 0, \data\Constants::MAX_REQUEST_BODY + 1), true);
+	//CLD: 2026-11-08T12:00:00+02:00: the body as sent (sys\http\Request), decoded whatever its content type; too large without a Content-Length (chunked): 413
+	if (strlen($req->body()) > \data\Constants::MAX_REQUEST_BODY)
+	    $resp->sendJSON($this->fail(null, -32600, 'Request too large'), true, 413, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+	$body = json_decode($req->body(), true);
 	if (!is_array($body) || $body === [])
 	    $resp->sendJSON($this->fail(null, -32700, 'Parse error: a JSON-RPC message (or a list of them) is expected'), true, 400, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 

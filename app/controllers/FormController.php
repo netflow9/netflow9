@@ -93,8 +93,7 @@ class FormController extends \sys\BaseController {
 	}
 
 	//the answers
-	$body = json_decode((string)file_get_contents('php://input'), true);
-	$data = is_array($body['answers'] ?? null) ? $body['answers'] : [];
+	$data = is_array($req->data['answers'] ?? null) ? $req->data['answers'] : [];
 	[ $answers, $errors ] = \util\SmartForm::answers($form, $data);
 	if ($errors)
 	    $resp->sendJSON([ 'ok' => false, 'error' => 'Some fields need attention.', 'errors' => $errors ], true, 422);

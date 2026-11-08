@@ -73,8 +73,7 @@ class AgentController extends \sys\BaseController {
     public function send($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
-	$body = json_decode((string)file_get_contents('php://input'), true);
-	$body = is_array($body) ? $body : [];
+	$body = is_array($req->data) ? $req->data : [];
 	$link = $this->agent($body['agent'] ?? '');
 	$live = $link ? NodeTriggerChat::live($link) : null;
 	if (!$live)
@@ -136,8 +135,7 @@ class AgentController extends \sys\BaseController {
     public function remove($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
-	$body = json_decode((string)file_get_contents('php://input'), true);
-	$conv = $this->own(is_array($body) ? ($body['conversation'] ?? '') : '', $resp);
+	$conv = $this->own(is_array($req->data) ? ($req->data['conversation'] ?? '') : '', $resp);
 	if (AgentConversation::busy($conv))
 	    $resp->sendJSON([ 'ok' => false, 'error' => 'The agent is still answering: try again when it has finished.' ], true, 409);
 	AgentConversation::remove($conv);

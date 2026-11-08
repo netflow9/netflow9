@@ -8,14 +8,21 @@ class Request {
     public $cookie;
     public $files;
     public $method;
+    //CLD: 2026-11-08T12:00:00+02:00: the request headers: lower-case name => value (HTTP_* of $_SERVER, and content-type / content-length)
     public $headers = [];
     public $contentType;
+    //CLD: 2026-11-08T12:00:00+02:00: the content type without its parameters (application/json; charset=utf-8: application/json), lower case
+    public $mediaType = '';
+    //CLD: 2026-11-08T12:00:00+02:00: a JSON body that does not parse (data is null)
+    public $bodyInvalid = false;
     public $userIP = '0.0.0.0';
 
     public $httpHost;
     public $requestUri;
     public $uri = [];
-    
+
+    //the body as sent: body() reads it once
+    protected $body = null;
 
 
     //$config['trusted_proxies'] (config app.trusted_proxies): see userIP below
@@ -28,21 +35,27 @@ class Request {
 
 	if (!empty($_SERVER['CONTENT_TYPE']))
 	    $this->contentType = strtolower($_SERVER['CONTENT_TYPE']);
+	$this->mediaType = trim(explode(';', (string)$this->contentType)[0]);
 
-	//if method is PUT or DELETE, get data by parsing the input
-	if (in_array($this->method, [ 'put', 'delete' ])) {
+	foreach($_SERVER as $key => $value) {
+	    if (str_starts_with($key, 'HTTP_'))
+		$this->headers[strtolower(str_replace('_', '-', substr($key, 5)))] = (string)$value;
+	    elseif ($key === 'CONTENT_TYPE' || $key === 'CONTENT_LENGTH')
+		$this->headers[strtolower(str_replace('_', '-', $key))] = (string)$value;
+	}
+
+	//CLD: 2026-11-08T12:00:00+02:00: a form body of another method than POST (PHP parses POST's only), was PUT / DELETE whatever their content type
+	if ($this->method !== 'post' && $this->mediaType === 'application/x-www-form-urlencoded') {
 	    $result = [];
-	    if(function_exists('mb_parse_str')) {
-		mb_parse_str(file_get_contents('php://input'), $result);
-	    } else {
-		parse_str(file_get_contents('php://input'), $result);
-	    }
+	    mb_parse_str($this->body(), $result);
 	    $this->data = $result;
 	}
 
-	//if a JSON request
-	if (str_contains($this->contentType, 'application/json'))
-	    $this->data = json_decode(file_get_contents('php://input'), true);
+	//CLD: 2026-11-08T12:00:00+02:00: a JSON body (its media type, was any content type naming application/json); one that does not parse: bodyInvalid
+	if ($this->mediaType === 'application/json') {
+	    $this->data = $this->body() === '' ? null : json_decode($this->body(), true);
+	    $this->bodyInvalid = $this->body() !== '' && json_last_error() !== JSON_ERROR_NONE;
+	}
 
 	//the client's address is the connection's; X-Forwarded-For only when the connection comes from a trusted proxy: its last address that is not one of them
 	if (isset($_SERVER['REMOTE_ADDR']))
@@ -63,6 +76,13 @@ class Request {
 
 	//parse the url
 	$this->uri = parse_url($this->requestUri);
+    }
+
+    //CLD: 2026-11-08T12:00:00+02:00: new: the request body as sent (php://input, read once)
+    public function body() {
+	if ($this->body === null)
+	    $this->body = (string)file_get_contents('php://input');
+	return $this->body;
     }
 
     //whether address $ip is one of $list (addresses or CIDR ranges, IPv4 or IPv6)
@@ -142,10 +162,11 @@ class Request {
     public function removeDataParam($name) {
 	$this->removeParam('data', $name);
     }
+    //CLD: 2026-11-08T12:00:00+02:00: data that is not an array (a JSON body of one value: "text", 5) has no keys to remove (unset of a string offset is an error)
     public function removeParam($type, $key) {
 	if ($type == 'query')
 	    unset($this->query[$key]);
-	if ($type == 'data')
+	if ($type == 'data' && is_array($this->data))
 	    unset($this->data[$key]);
     }
 

@@ -64,8 +64,7 @@ class ChatController extends \sys\APIController {
     }
 
     private function post($token, $wf, $copy, array $node, $resp) {
-	$body = json_decode((string)file_get_contents('php://input'), true);
-	$body = is_array($body) ? $body : [];
+	$body = is_array(\V::app()->request->data) ? \V::app()->request->data : [];
 	$text = trim(is_string($body['message'] ?? null) ? $body['message'] : '');
 	if ($text === '' || mb_strlen($text) > AgentConversation::MAX_MESSAGE)
 	    $this->fail(422, $text === '' ? 'Write a message first.' : 'The message is too long (at most ' . AgentConversation::MAX_MESSAGE . ' characters).');

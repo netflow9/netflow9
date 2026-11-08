@@ -25,7 +25,10 @@ class FortigateController extends \sys\APIController {
 	    $this->refuse(413, 'Request body too large');
 	$this->requireBearer($cfg['secret'] ?? '');
 
-	$raw = (string)file_get_contents('php://input', false, null, 0, \data\Constants::MAX_REQUEST_BODY + 1);
+	//CLD: 2026-11-08T12:00:00+02:00: the body as sent (sys\http\Request); too large without a Content-Length (chunked): 413
+	$raw = $req->body();
+	if (strlen($raw) > \data\Constants::MAX_REQUEST_BODY)
+	    $this->refuse(413, 'Request body too large');
 	$this->requireRunnable($wf, $live);
 
 	$data = json_decode($raw, true);

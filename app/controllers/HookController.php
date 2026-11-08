@@ -23,7 +23,7 @@ class HookController extends \sys\APIController {
 	    $this->refuse(413, 'Request body too large');
 
 
-	$this->authenticate($cfg);
+	$this->authenticate($req, $cfg);
 
 	//method
 	$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
@@ -34,14 +34,14 @@ class HookController extends \sys\APIController {
 	}
 
 	//body by content type (not checked for GET)
-	$contentType = strtolower(trim(explode(';', (string)($_SERVER['CONTENT_TYPE'] ?? ''))[0]));
-	[ $bodyText, $bodyData ] = ($method === 'GET') ? [ '', null ] : $this->readBody($cfg['contentType'] ?? 'json', $contentType, $method);
+	$contentType = $req->mediaType;
+	[ $bodyText, $bodyData ] = ($method === 'GET') ? [ '', null ] : $this->readBody($req, $cfg['contentType'] ?? 'json');
 
 	$this->requireRunnable($wf, $live);
 
 	//start: the request is kept as JSON text (any keys allowed)
 	//CLD: 2026-10-17T10:46:42+03:00: the whole request goes into one variable, an object named by the step's `variable` setting (default `webhook`)
-	$query = $_GET;
+	$query = $req->query;
 	$name = (string)($cfg['variable'] ?? 'webhook');
 	if (!\util\Validator::isIdentifier($name))
 	    $name = 'webhook';
@@ -52,7 +52,7 @@ class HookController extends \sys\APIController {
 	    'path' => '/hook/' . $token,
 	    'url' => \V::app()->createAbsoluteUrl('/hook/' . $token) . (($_SERVER['QUERY_STRING'] ?? '') !== '' ? '?' . $_SERVER['QUERY_STRING'] : ''),
 	    'query' => $this->clean($query),
-	    'headers' => $this->requestHeaders($cfg),
+	    'headers' => $this->requestHeaders($req, $cfg),
 	    'content_type' => $contentType,
 	    'body' => is_array($bodyData) ? $this->clean($bodyData) : $bodyText,
 	    'raw' => $bodyText,
@@ -93,7 +93,7 @@ class HookController extends \sys\APIController {
 
     //CLD: 2026-10-07T11:36:11+03:00: request authentication of the node (none / header / bearer / basic / hmac); replies 401 when it fails;
     //fails closed: a mode without its secret refuses every request
-    private function authenticate(array $cfg) {
+    private function authenticate($req, array $cfg) {
 	$mode = $cfg['auth'] ?? 'none';
 	if ($mode === 'none')
 	    return;
@@ -103,11 +103,11 @@ class HookController extends \sys\APIController {
 	switch($mode) {
 	    case 'header':
 		$name = (string)($cfg['authHeader'] ?? '');
-		$ok = $secret !== '' && $name !== '' && hash_equals($secret, (string)$this->header($name));
+		$ok = $secret !== '' && $name !== '' && hash_equals($secret, (string)($req->headers[strtolower($name)] ?? ''));
 		break;
 
 	    case 'bearer':
-		$auth = (string)$this->header('Authorization');
+		$auth = (string)($req->headers['authorization'] ?? '');
 		$ok = $secret !== '' && stripos($auth, 'Bearer ') === 0 && hash_equals($secret, trim(substr($auth, 7)));
 		if (!$ok)
 		    \V::app()->response->addHeader('WWW-Authenticate', 'Bearer');
@@ -116,7 +116,7 @@ class HookController extends \sys\APIController {
 	    case 'basic':
 		$user = (string)($cfg['authUser'] ?? '');
 		$password = (string)($cfg['authPassword'] ?? '');
-		$auth = (string)$this->header('Authorization');
+		$auth = (string)($req->headers['authorization'] ?? '');
 		$given = (stripos($auth, 'Basic ') === 0) ? (string)base64_decode(trim(substr($auth, 6)), true) : '';
 		$ok = $user !== '' && $password !== '' && hash_equals($user . ':' . $password, $given);
 		if (!$ok)
@@ -125,10 +125,10 @@ class HookController extends \sys\APIController {
 
 	    case 'hmac':
 		$name = (string)($cfg['authHeader'] ?? '');
-		$given = strtolower(trim((string)$this->header($name)));
+		$given = strtolower(trim((string)($req->headers[strtolower($name)] ?? '')));
 		if (strpos($given, 'sha256=') === 0)
 		    $given = substr($given, 7);
-		$expected = hash_hmac('sha256', (string)file_get_contents('php://input'), $secret);
+		$expected = hash_hmac('sha256', $req->body(), $secret);
 		$ok = $secret !== '' && $name !== '' && $given !== '' && hash_equals($expected, $given);
 		break;
 	}
@@ -137,58 +137,40 @@ class HookController extends \sys\APIController {
 	    $this->refuse(401, 'Unauthorized');
     }
 
-    //a request header (case-insensitive), or null
-    private function header($name) {
-	$key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
-	return $_SERVER[$key] ?? null;
-    }
-
-    //[ raw text as stored, decoded array or null ]; replies 415 / 400 when the body does not match the configured type
-    private function readBody($expected, $contentType, $method) {
-	$isJson = ($contentType === 'application/json');
-	$isForm = in_array($contentType, [ 'application/x-www-form-urlencoded', 'multipart/form-data' ], true);
-	$isText = (strpos($contentType, 'text/') === 0);
+    //[ raw text as stored, decoded array or null ] of $req's body (decoded by sys\http\Request); replies 415 / 400 when the body does not match the configured type
+    private function readBody($req, $expected) {
+	$isJson = ($req->mediaType === 'application/json');
+	$isForm = in_array($req->mediaType, [ 'application/x-www-form-urlencoded', 'multipart/form-data' ], true);
+	$isText = (strpos($req->mediaType, 'text/') === 0);
 
 	if (($expected === 'json' && !$isJson) || ($expected === 'form' && !$isForm) || ($expected === 'text' && !$isText))
 	    $this->refuse(415, 'Unsupported content type, expected ' . (NodeTriggerWebhook::CONTENT_TYPES[$expected] ?? $expected));
 
 	if ($isForm) {
-	    //PHP parses form bodies of POST only
-	    $data = $_POST;
-	    if ($method !== 'POST' && $contentType === 'application/x-www-form-urlencoded')
-		parse_str((string)file_get_contents('php://input'), $data);
+	    $data = is_array($req->data) ? $req->data : [];
 	    return [ json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), $data ];
 	}
 
-	$raw = (string)file_get_contents('php://input');
 	if ($isJson) {
-	    $data = ($raw === '') ? null : json_decode($raw, true);
-	    if ($raw !== '' && json_last_error() !== JSON_ERROR_NONE)
+	    if ($req->bodyInvalid)
 		$this->refuse(400, 'Invalid JSON body');
-	    return [ $raw, is_array($data) ? $data : null ];
+	    return [ $req->body(), is_array($req->data) ? $req->data : null ];
 	}
-	return [ $raw, null ];
+	return [ $req->body(), null ];
     }
 
     //the request headers as a variable value:
     //lower-case name => value; without the ones carrying secrets (authorization, cookie, the step's secret header)
-    private function requestHeaders(array $cfg) {
+    private function requestHeaders($req, array $cfg) {
 	$skip = [ 'authorization', 'cookie' ];
 	if (($cfg['auth'] ?? 'none') === 'header')
 	    $skip[] = strtolower((string)($cfg['authHeader'] ?? ''));
 
 	$headers = [];
-	foreach($_SERVER as $key => $value) {
-	    if (strpos($key, 'HTTP_') === 0)
-		$name = substr($key, 5);
-	    elseif (in_array($key, [ 'CONTENT_TYPE', 'CONTENT_LENGTH' ], true))
-		$name = $key;
-	    else
+	foreach($req->headers as $name => $value) {
+	    if (in_array($name, $skip, true) || $value === '')
 		continue;
-	    $name = strtolower(str_replace('_', '-', $name));
-	    if (in_array($name, $skip, true) || (string)$value === '')
-		continue;
-	    $headers[$name] = (string)$value;
+	    $headers[$name] = $value;
 	    if (count($headers) >= self::MAX_HEADERS)
 		break;
 	}
