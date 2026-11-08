@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T15:46:06+02:00: new: a test case of a workflow (the designer's Tests panel, util\AgentEval): the inputs of a run and what its AI steps must do with them.
+    a test case of a workflow (the designer's Tests panel, util\AgentEval): the inputs of a run and what its AI steps must do with them.
 	input    { vars: { name: value } }: the first variables, as a trigger gives them
 	tools    mock: every tool call answered from `mocks`, no tool runs; real: the tools that only read run for real, the others are answered from `mocks` or refused (util\AgentEvalContext)
 	mocks    [ { node, tool, arguments (object), result (text), error, cut } ]: the recorded tool results (of the source execution's traces, or written by hand)
@@ -19,9 +19,19 @@ class WfTestCase extends \sys\BaseModel {
 	[ [ 'wf' => 1, '_id' => 1 ], [] ],
     ];
 
-    const MODES = [ 'mock' => 'Recorded results: no tool runs', 'real' => 'Real read tools: the others recorded or refused' ];
-    const CHECKS = [ 'json_field' => 'JSON answer field', 'tool_called' => 'Tool was called', 'tool_not_called' => 'Tool was not called', 'no_write_tool' => 'No write tool was called',
-	'contains' => 'Answer contains', 'not_contains' => 'Answer does not contain', 'judged' => 'Judged by a model' ];
+    const MODES = [
+	'mock' => 'Recorded results: no tool runs',
+	'real' => 'Real read tools: the others recorded or refused'
+    ];
+    const CHECKS = [
+	'json_field' => 'JSON answer field',
+	'tool_called' => 'Tool was called',
+	'tool_not_called' => 'Tool was not called',
+	'no_write_tool' => 'No write tool was called',
+	'contains' => 'Answer contains',
+	'not_contains' => 'Answer does not contain',
+	'judged' => 'Judged by a model'
+    ];
     const OPERATORS = [ 'equals' => 'equals', 'not_equals' => 'does not equal', 'contains' => 'contains', 'matches' => 'matches the pattern', 'exists' => 'exists', 'absent' => 'is absent' ];
     //a workflow's cases, a case's checks, a rubric's characters, a recorded text's characters, the JSON of a case's inputs and recordings (bytes)
     const MAX_CASES = 50;
@@ -31,25 +41,21 @@ class WfTestCase extends \sys\BaseModel {
     const MAX_DATA = 2097152;
 
     public function getSchema() {
-	return array_merge([
+	$fields = [
 	    [ 'key' => 'wf', 'type' => 'object', 'object' => 'Workflow', 'label' => 'Workflow', 'help' => false, 'required' => true ],
 	    [ 'key' => 'project', 'type' => 'object', 'object' => 'Project', 'label' => 'Project', 'help' => false ],
 	    [ 'key' => 'name', 'type' => 'text', 'label' => 'Name', 'help' => false, 'required' => true ],
-	    self::fieldDef('source', 'text', 'Saved from'),
-	    self::fieldDef('trigger', 'text', 'Trigger'),
-	    self::fieldDef('chat', 'checkbox', 'Started by a conversation'),
-	    self::fieldDef('input', 'array', 'Inputs'),
-	    self::fieldDef('tools', 'text', 'Tool calls'),
-	    self::fieldDef('mocks', 'array', 'Recorded tool results'),
-	    self::fieldDef('steps', 'array', 'Recorded steps'),
-	    self::fieldDef('checks', 'array', 'Checks'),
-	    self::fieldDef('notes', 'array', 'Notes'),
-	], $this->getSystemSchema());
-    }
-
-    //CLD: 2026-11-07T01:11:11+02:00: a field without help text
-    private static function fieldDef($key, $type, $label) {
-	return [ 'key' => $key, 'type' => $type, 'label' => $label, 'help' => false ];
+	    [ 'key' => 'source', 'type' => 'text', 'label' => 'Saved from' ],
+	    [ 'key' => 'trigger', 'type' => 'text', 'label' => 'Trigger' ],
+	    [ 'key' => 'chat', 'type' => 'checkbox', 'label' => 'Started by a conversation' ],
+	    [ 'key' => 'input', 'type' => 'array', 'label' => 'Inputs' ],
+	    [ 'key' => 'tools', 'type' => 'text', 'label' => 'Tool calls' ],
+	    [ 'key' => 'mocks', 'type' => 'array', 'label' => 'Recorded tool results' ],
+	    [ 'key' => 'steps', 'type' => 'array', 'label' => 'Recorded steps' ],
+	    [ 'key' => 'checks', 'type' => 'array', 'label' => 'Checks' ],
+	    [ 'key' => 'notes', 'type' => 'array', 'label' => 'Notes' ],
+	];
+	return array_merge($fields, $this->getSystemSchema());
     }
 
     public function __toString() {

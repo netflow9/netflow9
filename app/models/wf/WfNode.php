@@ -37,17 +37,11 @@ class WfNode extends \sys\NestedModel {
 	'web' => 'Web & files',
 	'google' => 'Google',
 	'microsoft' => 'Microsoft',
-	//CLD: 2026-10-31T23:30:00+02:00: the database steps (one per database type)
 	'database' => 'Databases',
-	//CLD: 2026-11-01T00:30:00+02:00: the GravityZone steps
 	'security' => 'Security',
-	//CLD: 2026-11-01T04:00:00+02:00: the Veeam steps
 	'backup' => 'Backup',
-	//CLD: 2026-11-01T08:00:00+02:00: the Checkmk steps
 	'monitoring' => 'Monitoring',
-	//CLD: 2026-11-01T12:00:00+02:00: the VMware steps (CLD: 2026-11-01T14:00:00+02:00: and the Proxmox VE steps; CLD: 2026-11-01T16:00:00+02:00: and the Hyper-V steps)
 	'virtualization' => 'Virtualization',
-	//CLD: 2026-11-05T13:00:00+02:00: the Namecheap steps
 	'domains' => 'Domains & DNS',
 	'ai' => 'AI',
 	'developer' => 'Developer',
@@ -160,11 +154,11 @@ class WfNode extends \sys\NestedModel {
 	    $this->start_at = new \MongoDB\BSON\UTCDateTime();
 	$this->state = 'run';
 
-	//CLD: 2026-10-24T10:27:54+03:00: a step of a feature the account's tier does not have (util\Tiers: its registry `feature`, e.g. LDAP, Google, Microsoft) does not run
+	//a step of a feature the account's tier does not have (util\Tiers: its registry `feature`, e.g. LDAP, Google, Microsoft) does not run
 	if ($this->exec && !\util\Tiers::allows($this->exec->aid, $this->getObjectName()))
 	    throw new \ErrorException(static::$label . ': ' . \util\Tiers::featureMessage($this->exec->aid, \V::app()->om->registry[$this->getObjectName()]['feature']));
 
-	//CLD: 2026-11-02T15:46:06+02:00: a test case: only what has no effect outside the run runs (util\AgentEvalContext); an execution of a test that lost its context (loaded again by something) does not go on at all
+	//a test case: only what has no effect outside the run runs (util\AgentEvalContext); an execution of a test that lost its context (loaded again by something) does not go on at all
 	if ($this->exec && $this->exec->isTest()) {
 	    if (!$this->exec->__test)
 		throw new \ErrorException('a test case cannot go on outside its test run');
@@ -191,7 +185,7 @@ class WfNode extends \sys\NestedModel {
     }
 
     //all output port numbers: 0 .. outputs-1
-    //CLD: 2026-10-11T20:24:33+03:00: the step's own outputs (outLabelsFor its config) when they follow the config
+    //the step's own outputs (outLabelsFor its config) when they follow the config
     public function outputPorts() {
 	$n = static::outputCountFor($this->config);
 	return $n > 0 ? range(0, $n - 1) : [];
@@ -234,7 +228,7 @@ class WfNode extends \sys\NestedModel {
 	return array_merge($labels, $ports['after'] ?? []);
     }
 
-    //CLD: 2026-11-07T01:02:13+02:00: a field's showIf: shown when the setting `operation` is one of $ops
+    //a field's showIf: shown when the setting `operation` is one of $ops
     protected static function operationIn(array $ops) {
 	return [ 'key' => 'operation', 'operator' => 'in', 'value' => $ops ];
     }

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T15:46:06+02:00: new: one run of a workflow's test cases (util\AgentEval: by the daemon). The latest KEEP are kept per workflow, each with its executions (and their traces).
+    one run of a workflow's test cases (util\AgentEval: by the daemon). The latest KEEP are kept per workflow, each with its executions (and their traces).
 	state    queued, running; then passed, failed (a check failed or a case could not run), stopped, error (the run itself could not go on)
 	draft_hash, cases_hash: what it ran (util\AgentEval::draftHash, casesHash): the publish gate wants them to be the current ones
 	cases    [ { case, name, state (pass | fail | error | stopped), execution, trace, error, answer, tokens { input, output }, cost { usd, credits }, duration_ms,
@@ -22,13 +22,41 @@ class WfTestRun extends \sys\BaseModel {
     const ACTIVE = [ 'queued', 'running' ];
 
     public function getSchema() {
-	return array_merge([
-	    [ 'key' => 'wf', 'type' => 'object', 'object' => 'Workflow', 'label' => 'Workflow', 'help' => false ],
-	    [ 'key' => 'project', 'type' => 'object', 'object' => 'Project', 'label' => 'Project', 'help' => false ],
-	    [ 'key' => 'state', 'type' => 'text', 'label' => 'State', 'help' => false ],
-	    [ 'key' => 'cases', 'type' => 'array', 'label' => 'Cases', 'help' => false ],
-	    [ 'key' => 'totals', 'type' => 'array', 'label' => 'Totals', 'help' => false ],
-	], $this->getSystemSchema());
+	$fields = [
+	    [
+		'key' => 'wf',
+		'type' => 'object',
+		'object' => 'Workflow',
+		'label' => 'Workflow',
+		'help' => false
+	    ],
+	    [
+		'key' => 'project',
+		'type' => 'object',
+		'object' => 'Project',
+		'label' => 'Project',
+		'help' => false
+	    ],
+	    [
+		'key' => 'state',
+		'type' => 'text',
+		'label' => 'State',
+		'help' => false
+	    ],
+	    [
+		'key' => 'cases',
+		'type' => 'array',
+		'label' => 'Cases',
+		'help' => false
+	    ],
+	    [
+		'key' => 'totals',
+		'type' => 'array',
+		'label' => 'Totals',
+		'help' => false
+	    ],
+	];
+	return array_merge($fields, $this->getSystemSchema());
     }
 
     //the executions of a run go with it (every way of deleting one comes here)

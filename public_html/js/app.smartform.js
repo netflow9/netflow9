@@ -2230,16 +2230,16 @@ window.app.smartform = (function() {
     }
 
     //CLD: 2026-10-24T12:48:19+03:00: shows / hides the column of a field shown in a row of narrow fields (app.smartform _appendToFlowRow), with the field
-function flowColVisible(el, visible) {
-    const col = el && el.parentElement;
-    if (col && col.parentElement && col.parentElement.dataset && col.parentElement.dataset.flowRow === '1' && col.children.length === 1) {
-	col.classList.toggle('d-none', !visible);
-	if (col._flowBreak)
-	    col._flowBreak.classList.toggle('d-none', !visible);
+    function flowColVisible(el, visible) {
+	const col = el && el.parentElement;
+	if (col && col.parentElement && col.parentElement.dataset && col.parentElement.dataset.flowRow === '1' && col.children.length === 1) {
+	    col.classList.toggle('d-none', !visible);
+	    if (col._flowBreak)
+		col._flowBreak.classList.toggle('d-none', !visible);
+	}
     }
-}
 
-function evalExpr(expr, context, defaultValue) {
+    function evalExpr(expr, context, defaultValue) {
 	if (expr && typeof expr === 'object' && !Array.isArray(expr) && expr.key) {
 	    const scope = expr.scope === 'row' ? context.row : context.data;
 	    return holds(scope ? scope[expr.key] : undefined, expr.operator || 'eq', expr.value);
