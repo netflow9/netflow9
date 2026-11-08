@@ -3,7 +3,7 @@
 /*
     the requests of the Assistant, served at /assistant/<action>:
 	ask      the designer's Assistant
-	chat_add, chat_clear  CLD: 2026-10-23T23:45:00+03:00: the conversation of the workflow, kept (models\assistant\AssistantChat)
+	chat_add, chat_clear  the conversation of the workflow, kept (models\assistant\AssistantChat)
 	settings the Assistant's settings of the account
 	connect  the models of a server (the settings page's Connect)
 */
@@ -52,11 +52,13 @@ class AssistantController extends \sys\BaseController {
 
 	if (!WorkflowAssistant::isReady($settings))
 	    $resp->sendJSON([ 'error' => 'The Assistant is not set up: connect to a server and choose a model in Assistant settings (Settings menu)' ], true, 400);
+
 	//the monthly budget (AssistantSettings::budgetOf): refused once it is spent, else what is left limits the request (WorkflowAssistant::$budget)
 	$budget = AssistantSettings::budgetOf($settings);
 	$left = $budget !== null ? $budget - AssistantUsage::current($wf->aid)->cost : null;
 	if ($left !== null && $left <= 0)
 	    $resp->sendJSON([ 'error' => sprintf('The Assistant\'s monthly budget (%.2f USD) is spent: it is available again next month, or raise the budget in Assistant settings (Settings menu)', $budget) ], true, 429);
+
 	//System: paid in credits. The model's rates (AssistantWallet::ratesOf), then credits reserved (at most the installation's per-request limit, within
 	//the account's monthly limit): they limit the request (WorkflowAssistant::$budget, in credits); settled after it (settle)
 	$hold = null;
