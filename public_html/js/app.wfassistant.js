@@ -31,11 +31,10 @@ window.app.WfAssistant = (function() {
     //the one of the current designer page
     let current = null;
 
-    const esc = (v) => app.utils.escapeHtml(v === null || v === undefined ? '' : String(v));
 
     //plain text with `code`, **bold** and line breaks
     function format(text) {
-	return esc(text)
+	return app.utils.escapeHtml(text)
 	    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
 	    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
 	    .replace(/\n/g, '<br>');
@@ -152,7 +151,7 @@ window.app.WfAssistant = (function() {
 	messageHtml(m) {
 	    //CLD: 2026-10-23T23:45:00+03:00: another person's request: their name above it
 	    if (m.role === 'user')
-		return `<div class="d-flex flex-column align-items-end mb-2">${m.uid && m.uid !== this.o.uid && m.by ? `<div class="text-muted" style="font-size: .75rem">${esc(m.by)}</div>` : ''}<div class="wfa-msg wfa-user rounded-3 px-2 py-1 small">${format(m.text)}</div></div>`;
+		return `<div class="d-flex flex-column align-items-end mb-2">${m.uid && m.uid !== this.o.uid && m.by ? `<div class="text-muted" style="font-size: .75rem">${app.utils.escapeHtml(m.by)}</div>` : ''}<div class="wfa-msg wfa-user rounded-3 px-2 py-1 small">${format(m.text)}</div></div>`;
 	    if (m.error)
 		return `<div class="mb-2"><div class="wfa-msg rounded-3 px-2 py-1 small text-danger-emphasis bg-danger-subtle"><i class="bi bi-exclamation-triangle me-1"></i>${format(m.text)}</div></div>`;
 	    let change = '';
@@ -168,14 +167,14 @@ window.app.WfAssistant = (function() {
 		    <div class="d-flex align-items-center gap-2 mt-1 pt-1 border-top small">
 			<span class="text-success"><i class="bi bi-diagram-3 me-1"></i>Canvas updated: ${c.steps} step${c.steps === 1 ? '' : 's'}</span>
 			${issues.length ? `<span>(${issues.join(', ')})</span>` : ''}
-			${canUndo ? `<button type="button" class="btn btn-link btn-sm p-0 ms-auto wfa-undo" data-id="${esc(m.id)}" title="Put back the steps as they were before this change"><i class="bi bi-arrow-counterclockwise me-1"></i>Undo</button>` : ''}
+			${canUndo ? `<button type="button" class="btn btn-link btn-sm p-0 ms-auto wfa-undo" data-id="${app.utils.escapeHtml(m.id)}" title="Put back the steps as they were before this change"><i class="bi bi-arrow-counterclockwise me-1"></i>Undo</button>` : ''}
 		    </div>`;
 		//CLD: 2026-10-19T17:02:48+03:00: the settings still to fill in (the steps are applied anyway; saving needs them)
 		if (c.toFix && c.toFix.length)
 		    change += `
 		    <div class="mt-1 small text-warning-emphasis">
 			<div><i class="bi bi-pencil-square me-1"></i>To fill in before saving (double-click the step):</div>
-			<ul class="ps-3 mb-0">${c.toFix.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
+			<ul class="ps-3 mb-0">${c.toFix.map((t) => `<li>${app.utils.escapeHtml(t)}</li>`).join('')}</ul>
 		    </div>`;
 	    } else if (m.unchanged) {
 		//CLD: 2026-10-19T17:02:48+03:00: said plainly: the answer alone may read as if something was built
@@ -184,7 +183,7 @@ window.app.WfAssistant = (function() {
 	    //CLD: 2026-10-22T15:00:00+03:00: System: the credits the answer used, and those left
 	    let credits = '';
 	    if (m.credits)
-		credits = `<div class="mt-1 text-muted" style="font-size: .75rem"><i class="bi bi-coin me-1"></i>&minus;${esc(m.credits)} credit${m.credits === 1 ? '' : 's'}${m.creditsLeft != null ? ` &middot; ${esc(m.creditsLeft)} left` : ''}</div>`;
+		credits = `<div class="mt-1 text-muted" style="font-size: .75rem"><i class="bi bi-coin me-1"></i>&minus;${app.utils.escapeHtml(m.credits)} credit${m.credits === 1 ? '' : 's'}${m.creditsLeft != null ? ` &middot; ${app.utils.escapeHtml(m.creditsLeft)} left` : ''}</div>`;
 	    return `<div class="mb-2"><div class="wfa-msg wfa-bot rounded-3 px-2 py-1 small"><div>${format(m.text)}</div>${change}${credits}</div></div>`;
 	}
 

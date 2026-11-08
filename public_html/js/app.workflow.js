@@ -1719,7 +1719,6 @@ window.app.Workflow = (function() {
 	    const id = node.wfid;
 	    const def = this.nodeDefs[node.fqname];
 	    const readonly = !!this.options.readonly;
-	    const esc = app.utils.escapeHtml;
 
 	    //the step name is stored in node.title, everything else in node.config
 	    //CLD: 2026-10-24T12:37:37+03:00: the settings every step places the same way:
@@ -1777,8 +1776,8 @@ window.app.Workflow = (function() {
 		<div class="modal-dialog ${dialogSize} modal-fullscreen-sm-down modal-dialog-scrollable">
 		    <div class="modal-content">
 			<div class="modal-header">
-			    <span class="badge d-inline-flex align-items-center gap-1 me-2" style="background:${def.color}"><i class="bi ${def.icon}"></i>${esc(def.label)}</span>
-			    <h5 class="modal-title text-truncate">${esc(def.isNote ? 'Note' : (node.title || def.label))}</h5>
+			    <span class="badge d-inline-flex align-items-center gap-1 me-2" style="background:${def.color}"><i class="bi ${def.icon}"></i>${app.utils.escapeHtml(def.label)}</span>
+			    <h5 class="modal-title text-truncate">${app.utils.escapeHtml(def.isNote ? 'Note' : (node.title || def.label))}</h5>
 			    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<div class="modal-body"><div class="wf-editor-form"></div></div>

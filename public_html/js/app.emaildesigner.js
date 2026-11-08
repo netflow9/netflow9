@@ -17,7 +17,6 @@ window.app.EmailDesigner = (function() {
     //email-safe image types (Outlook shows no WebP)
     const IMAGE = /\.(png|jpe?g|gif)$/i;
     const FONT = 'font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.5; color: #222222;';
-    const esc = (s) => window.app.utils.escapeHtml(String(s === undefined || s === null ? '' : s));
     let seq = 0;
     const nid = () => 'ed' + (++seq);
 
@@ -201,7 +200,7 @@ window.app.EmailDesigner = (function() {
 		const pad = b.width >= WIDTH ? '0' : '8px 32px';
 		const align = b.align === 'left' ? 'left' : (b.align === 'right' ? 'right' : 'center');
 		el.innerHTML = b.file
-		    ? `<div style="padding:${pad}; text-align:${align}"><img src="/file/content/${esc(b.file)}" alt="${esc(b.alt)}" style="display:inline-block; width:100%; max-width:${Math.min(b.width, WIDTH)}px; height:auto; border:0"></div>`
+		    ? `<div style="padding:${pad}; text-align:${align}"><img src="/file/content/${app.utils.escapeHtml(b.file)}" alt="${app.utils.escapeHtml(b.alt)}" style="display:inline-block; width:100%; max-width:${Math.min(b.width, WIDTH)}px; height:auto; border:0"></div>`
 		    : `<div style="padding:${pad}"><div class="border rounded text-muted small text-center py-4 bg-body-tertiary"><i class="bi bi-image fs-3 d-block"></i>Choose an image (on the right)</div></div>`;
 		el.addEventListener('click', () => { if (this.selected !== b._id) this.select(b._id); });
 	    }
@@ -284,7 +283,7 @@ window.app.EmailDesigner = (function() {
 	    menu.innerHTML = items.length ? '' : '<li class="dropdown-item-text text-muted">No variables before this step</li>';
 	    items.forEach((it) => {
 		const li = document.createElement('li');
-		li.innerHTML = `<button type="button" class="dropdown-item small"><code>${esc(it.label)}</code> <span class="text-muted">${esc(it.detail || '')}</span></button>`;
+		li.innerHTML = `<button type="button" class="dropdown-item small"><code>${app.utils.escapeHtml(it.label)}</code> <span class="text-muted">${app.utils.escapeHtml(it.detail || '')}</span></button>`;
 		li.firstElementChild.addEventListener('mousedown', (ev) => { ev.preventDefault(); insert(it.label); });
 		menu.appendChild(li);
 	    });
@@ -394,7 +393,7 @@ window.app.EmailDesigner = (function() {
 		t.className = `btn p-0 border ${im.id === b.file ? 'border-primary border-2' : ''}`;
 		t.title = im.name;
 		t.disabled = !!this.o.readonly;
-		t.innerHTML = `<img src="/file/content/${esc(im.id)}" alt="" style="width:64px; height:64px; object-fit:cover; display:block">`;
+		t.innerHTML = `<img src="/file/content/${app.utils.escapeHtml(im.id)}" alt="" style="width:64px; height:64px; object-fit:cover; display:block">`;
 		t.addEventListener('click', () => { b.file = im.id; if (!b.alt) b.alt = im.name.replace(/\.[^.]+$/, ''); this.changed(); this.render(); });
 		box.appendChild(t);
 	    });

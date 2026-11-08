@@ -49,7 +49,6 @@ $js = \util\JSON::encode([
 	    field.setInvalid(o.errors[key]);
     });
     const form = container.querySelector('form');
-    const esc = (v) => app.utils.escapeHtml(String(v ?? ''));
 
     //the whole form as one JSON value (the edit grid's rows are not inputs of the form)
     const hidden = document.createElement('input');
@@ -90,7 +89,7 @@ $js = \util\JSON::encode([
 		password: document.getElementById(o.containerId + '-password').value },
 	}).done((r) => {
 	    out.className = 'mt-3 alert small ' + (r.ok ? 'alert-success' : 'alert-warning');
-	    out.innerHTML = (r.lines || []).map((l) => `<div>${esc(l)}</div>`).join('');
+	    out.innerHTML = (r.lines || []).map((l) => `<div>${app.utils.escapeHtml(l)}</div>`).join('');
 	}).fail((x, s) => {
 	    out.className = 'mt-3 alert alert-danger small';
 	    out.textContent = (x.responseJSON && x.responseJSON.error) || 'The test did not run (' + (x.status || s) + ')';

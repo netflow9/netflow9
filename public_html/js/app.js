@@ -329,8 +329,7 @@ app.formatter = (function() {
 	    if (!words)
 		return '';
 	    const d = new Date(past);
-	    const esc = (s) => window.app.utils.escapeHtml(String(s));
-	    return isNaN(d) ? esc(words) : `<time datetime="${esc(d.toISOString())}" title="${esc(this.datetime(d))}">${esc(words)}</time>`;
+	    return isNaN(d) ? app.utils.escapeHtml(words) : `<time datetime="${app.utils.escapeHtml(d.toISOString())}" title="${app.utils.escapeHtml(this.datetime(d))}">${app.utils.escapeHtml(words)}</time>`;
 	},
 
 	timeAgo: function(past, short) {
@@ -508,8 +507,9 @@ app.utils = (function() {
 	    return n;
 	},
 
+	//CLD: 2026-11-08T12:00:00+02:00: any value (null/undefined -> '', numbers -> text) and single quotes too, so the files' own esc() helpers could go
 	escapeHtml: function(s) {
-	    return (s || '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+	    return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 	},
     };
 })();
@@ -553,7 +553,8 @@ app.template = (function() {
     		index = offset + match.length;
 
     		if (escape) {
-    		    source += `'+((_t=(${escape}))==null?'':_escape(_t))+'`;
+    		    //CLD: 2026-11-08T12:00:00+02:00: app.utils.escapeHtml; the compiled function (new Function) sees only globals, never the local _escape it called
+    		    source += `'+((_t=(${escape}))==null?'':app.utils.escapeHtml(_t))+'`;
     		    return;
     		}
     		if (print) {
@@ -577,9 +578,6 @@ app.template = (function() {
 	    }
 
 	    return function(data) {
-		const _escape = (s) => {
-		    return (s || '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-		};
 		return (new Function('obj', source))(data);
 	    };
 	},

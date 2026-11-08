@@ -25,11 +25,10 @@ window.app.Overview = (function() {
     };
     const STORE = 'rail22.overview.period';
 
-    const esc = (s) => window.app.utils.escapeHtml(String(s === undefined || s === null ? '' : s));
     const nf = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 });
     //CLD: 2026-10-26T10:06:24+02:00: for the Kill button (POST)
     const csrf = () => document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
-    const toast = (type, title, body) => window.app.utils.toast({ type: type, title: esc(title), body: esc(body), delay: 5000 });
+    const toast = (type, title, body) => window.app.utils.toast({ type: type, title: app.utils.escapeHtml(title), body: app.utils.escapeHtml(body), delay: 5000 });
 
     //a duration in ms, short
     function duration(ms) {
@@ -50,7 +49,7 @@ window.app.Overview = (function() {
 
     function stateBadge(state) {
 	const [ label, icon, cls ] = STATES[state] || [ state, 'bi-question-circle', 'text-secondary' ];
-	return `<span class="${cls} text-nowrap"><i class="bi ${icon} me-1"></i>${esc(label)}</span>`;
+	return `<span class="${cls} text-nowrap"><i class="bi ${icon} me-1"></i>${app.utils.escapeHtml(label)}</span>`;
     }
 
     //runs per bucket as a small line (de-emphasis ink, the last point in the accent)
@@ -82,7 +81,7 @@ window.app.Overview = (function() {
 	    this.root.innerHTML = `
 		<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
 		    <div class="btn-group btn-group-sm ov-periods" role="group" aria-label="Period">
-			${Object.keys(PERIODS).map((p) => `<button type="button" class="btn btn-outline-secondary" data-period="${p}">${esc(p)}</button>`).join('')}
+			${Object.keys(PERIODS).map((p) => `<button type="button" class="btn btn-outline-secondary" data-period="${p}">${app.utils.escapeHtml(p)}</button>`).join('')}
 		    </div>
 		    <button type="button" class="btn btn-sm btn-outline-secondary ov-refresh" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>
 		    <span class="small text-muted ov-status"></span>
@@ -139,9 +138,9 @@ window.app.Overview = (function() {
 	    const t = d.tiles;
 	    const delta = (now, prev) => {
 		if (!prev)
-		    return `<span class="text-muted">no runs the ${esc(span)} before</span>`;
+		    return `<span class="text-muted">no runs the ${app.utils.escapeHtml(span)} before</span>`;
 		const ch = Math.round((now - prev) / prev * 100);
-		return `<span class="text-muted"><i class="bi ${ch >= 0 ? 'bi-arrow-up-right' : 'bi-arrow-down-right'} me-1"></i>${ch >= 0 ? '+' : ''}${ch}% vs previous ${esc(span)}</span>`;
+		return `<span class="text-muted"><i class="bi ${ch >= 0 ? 'bi-arrow-up-right' : 'bi-arrow-down-right'} me-1"></i>${ch >= 0 ? '+' : ''}${ch}% vs previous ${app.utils.escapeHtml(span)}</span>`;
 	    };
 	    const rateDelta = () => {
 		if (t.success.rate === null || t.success.previous === null)
@@ -161,7 +160,7 @@ window.app.Overview = (function() {
 		</div>
 		<div class="card bg-body mb-3"><div class="card-body">
 		    <h6 class="mb-0">Executions over time</h6>
-		    <div class="small text-muted mb-2">Per ${d.step === 3600 ? 'hour' : 'day'}, last ${esc(span)}</div>
+		    <div class="small text-muted mb-2">Per ${d.step === 3600 ? 'hour' : 'day'}, last ${app.utils.escapeHtml(span)}</div>
 		    <div class="ov-chart" style="height: 240px"><canvas class="ov-timeline" role="img" aria-label="Executions over time, completed and error"></canvas></div>
 		</div></div>
 		<div class="row g-3 mb-3">
@@ -194,9 +193,9 @@ window.app.Overview = (function() {
 	}
 
 	tile(label, value, sub, href) {
-	    const inner = `<div class="small text-muted">${esc(label)}</div><div class="fs-4 fw-semibold lh-sm my-1">${esc(value)}</div><div class="small">${sub}</div>`;
+	    const inner = `<div class="small text-muted">${app.utils.escapeHtml(label)}</div><div class="fs-4 fw-semibold lh-sm my-1">${app.utils.escapeHtml(value)}</div><div class="small">${sub}</div>`;
 	    return `<div class="col-12 col-sm-6 col-lg-4 col-xxl"><div class="card bg-body h-100"><div class="card-body py-3">`
-		+ (href ? `<a href="${esc(href)}" class="text-decoration-none text-reset d-block">${inner}</a>` : inner) + `</div></div></div>`;
+		+ (href ? `<a href="${app.utils.escapeHtml(href)}" class="text-decoration-none text-reset d-block">${inner}</a>` : inner) + `</div></div></div>`;
 	}
 
 	//common chart options: recessive grid and axes, text in text tokens
@@ -215,7 +214,7 @@ window.app.Overview = (function() {
 	}
 
 	empty(canvas, text) {
-	    canvas.parentElement.innerHTML = `<div class="h-100 d-flex align-items-center justify-content-center text-muted small">${esc(text)}</div>`;
+	    canvas.parentElement.innerHTML = `<div class="h-100 d-flex align-items-center justify-content-center text-muted small">${app.utils.escapeHtml(text)}</div>`;
 	}
 
 	timeline() {
@@ -314,10 +313,10 @@ window.app.Overview = (function() {
 		return;
 	    }
 	    el.innerHTML = `<table class="table table-sm table-hover align-middle mb-0">
-		<thead><tr>${cols.map(([ k, l ]) => `<th scope="col" class="${k === 'name' ? '' : 'text-end'} text-nowrap" role="button" data-sort="${k}">${esc(l)}`
+		<thead><tr>${cols.map(([ k, l ]) => `<th scope="col" class="${k === 'name' ? '' : 'text-end'} text-nowrap" role="button" data-sort="${k}">${app.utils.escapeHtml(l)}`
 		    + (this.sort.key === k ? ` <i class="bi ${this.sort.dir > 0 ? 'bi-caret-up-fill' : 'bi-caret-down-fill'} small"></i>` : '') + '</th>').join('')}</tr></thead>
-		<tbody>${rows.map((w) => `<tr role="button" data-href="/workflow/index?id=${esc(w.id)}">
-		    <td>${esc(w.name)} <span class="badge ${w.status === 'draft' ? 'text-bg-light border' : 'text-bg-success'} ms-1">${esc(w.status === 'draft' ? 'draft' : w.status + ' published')}</span></td>
+		<tbody>${rows.map((w) => `<tr role="button" data-href="/workflow/index?id=${app.utils.escapeHtml(w.id)}">
+		    <td>${app.utils.escapeHtml(w.name)} <span class="badge ${w.status === 'draft' ? 'text-bg-light border' : 'text-bg-success'} ms-1">${app.utils.escapeHtml(w.status === 'draft' ? 'draft' : w.status + ' published')}</span></td>
 		    <td class="text-end text-nowrap ov-num">${sparkline(w.spark)} <span class="ms-1">${w.runs}</span></td>
 		    <td class="text-end ov-num">${w.success !== null && w.success < 0.9 ? `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${percent(w.success)}</span>` : percent(w.success)}</td>
 		    <td class="text-end ov-num">${duration(w.p50)}</td>
@@ -342,21 +341,21 @@ window.app.Overview = (function() {
 	    const stuck = (s) => {
 		const since = s.since ? window.app.formatter.timeAgoHtml(s.since, false) : '';
 		if (s.kind === 'task')
-		    return `<a href="/task/${esc(s.task)}" class="text-reset"><i class="bi bi-person-check me-1 text-warning"></i>Task "${esc(s.title)}" overdue</a> <span class="text-muted">· ${esc(s.workflow)} · due ${since}</span>`;
+		    return `<a href="/task/${app.utils.escapeHtml(s.task)}" class="text-reset"><i class="bi bi-person-check me-1 text-warning"></i>Task "${app.utils.escapeHtml(s.title)}" overdue</a> <span class="text-muted">· ${app.utils.escapeHtml(s.workflow)} · due ${since}</span>`;
 		//CLD: 2026-10-26T10:06:24+02:00: + Kill (when the user may change the workflow; asks Yes / No first, see kill())
 		if (s.kind === 'running')
-		    return `<div class="d-flex align-items-center gap-2"><span><i class="bi bi-play-circle me-1 text-warning"></i>Still running, started ${since} <span class="text-muted">· ${esc(s.workflow)}</span></span>`
-			+ (s.canKill ? `<span class="ms-auto text-nowrap ov-kill" data-wf="${esc(s.wf)}" data-id="${esc(s.id)}"><button type="button" class="btn btn-sm btn-outline-danger py-0 ov-kill-ask" title="Stop this execution"><i class="bi bi-stop-circle me-1"></i>Kill</button></span>` : '')
+		    return `<div class="d-flex align-items-center gap-2"><span><i class="bi bi-play-circle me-1 text-warning"></i>Still running, started ${since} <span class="text-muted">· ${app.utils.escapeHtml(s.workflow)}</span></span>`
+			+ (s.canKill ? `<span class="ms-auto text-nowrap ov-kill" data-wf="${app.utils.escapeHtml(s.wf)}" data-id="${app.utils.escapeHtml(s.id)}"><button type="button" class="btn btn-sm btn-outline-danger py-0 ov-kill-ask" title="Stop this execution"><i class="bi bi-stop-circle me-1"></i>Kill</button></span>` : '')
 			+ `</div>`;
-		return `<i class="bi bi-alarm me-1 text-warning"></i>Should have resumed ${since} <span class="text-muted">· ${esc(s.workflow)}</span>`;
+		return `<i class="bi bi-alarm me-1 text-warning"></i>Should have resumed ${since} <span class="text-muted">· ${app.utils.escapeHtml(s.workflow)}</span>`;
 	    };
 	    el.innerHTML = `<div class="row g-3 mb-3">
 		${d.failing.length ? `<div class="col-12 col-lg-7"><div class="card bg-body h-100"><div class="card-body">
 		    <h6 class="mb-0"><i class="bi bi-x-octagon text-danger me-1"></i>Failing steps</h6>
 		    <div class="small text-muted mb-2">The steps where executions failed, most often first</div>
 		    <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Step</th><th class="text-end">Failures</th><th>Last error</th></tr></thead><tbody>
-		    ${d.failing.map((f) => `<tr><td><a href="/workflow/index?id=${esc(f.wf)}" class="text-reset">${esc(f.step)}</a><div class="small text-muted">${esc(f.workflow)}</div></td>
-			<td class="text-end ov-num">${f.count}</td><td class="small"><span class="text-danger">${esc(f.error)}</span><div class="text-muted">${window.app.formatter.timeAgoHtml(f.at, false)}</div></td></tr>`).join('')}
+		    ${d.failing.map((f) => `<tr><td><a href="/workflow/index?id=${app.utils.escapeHtml(f.wf)}" class="text-reset">${app.utils.escapeHtml(f.step)}</a><div class="small text-muted">${app.utils.escapeHtml(f.workflow)}</div></td>
+			<td class="text-end ov-num">${f.count}</td><td class="small"><span class="text-danger">${app.utils.escapeHtml(f.error)}</span><div class="text-muted">${window.app.formatter.timeAgoHtml(f.at, false)}</div></td></tr>`).join('')}
 		    </tbody></table></div></div></div></div>` : ''}
 		${d.stuck.length ? `<div class="col-12 col-lg-${d.failing.length ? 5 : 12}"><div class="card bg-body h-100"><div class="card-body">
 		    <h6 class="mb-0"><i class="bi bi-exclamation-triangle text-warning me-1"></i>Needs attention</h6>
@@ -402,8 +401,8 @@ window.app.Overview = (function() {
 	    }
 	    el.innerHTML = `<table class="table table-sm table-hover align-middle mb-0">
 		<thead><tr><th>Workflow</th><th>Trigger</th><th>State</th><th class="text-end">Run time</th><th class="text-end">Started</th></tr></thead>
-		<tbody>${rows.map((r) => `<tr role="button" data-href="/workflow/index?id=${esc(r.wf)}">
-		    <td>${esc(r.workflow)}</td><td>${esc(TRIGGERS[r.trigger] || r.trigger)}</td><td>${stateBadge(r.state)}</td>
+		<tbody>${rows.map((r) => `<tr role="button" data-href="/workflow/index?id=${app.utils.escapeHtml(r.wf)}">
+		    <td>${app.utils.escapeHtml(r.workflow)}</td><td>${app.utils.escapeHtml(TRIGGERS[r.trigger] || r.trigger)}</td><td>${stateBadge(r.state)}</td>
 		    <td class="text-end ov-num">${duration(r.duration)}</td><td class="text-end text-nowrap">${window.app.formatter.timeAgoHtml(r.at, false)}</td>
 		</tr>`).join('')}</tbody></table>`;
 	    el.querySelectorAll('[data-href]').forEach((tr) => tr.addEventListener('click', () => { window.location.href = tr.dataset.href; }));

@@ -13,7 +13,6 @@ window.app.WfDebug = (function() {
     //the one of the current designer page
     let current = null;
 
-    const esc = (v) => app.utils.escapeHtml(v === null || v === undefined ? '' : String(v));
     const NS = '.wfdebug';
 
     class WfDebug {
@@ -117,9 +116,9 @@ window.app.WfDebug = (function() {
 	    const order = { error: 0, warning: 1 };
 	    const rows = [ ...this.issues ].sort((a, b) => (order[a.level] ?? 2) - (order[b.level] ?? 2)).map((i) => {
 		const icon = i.level === 'error' ? 'bi-x-circle-fill text-danger' : 'bi-exclamation-triangle-fill text-warning';
-		const node = i.node ? `data-node='${esc(i.node)}' role='button' title='Show the step'` : '';
-		const step = i.node ? `<span class='tag'>[${esc(titles[i.node] || i.node)}]</span> ` : '';
-		return `<div class='debug-log-line debug-issue' ${node}><i class='bi ${icon} me-1'></i>${step}${esc(i.message)}</div>`;
+		const node = i.node ? `data-node='${app.utils.escapeHtml(i.node)}' role='button' title='Show the step'` : '';
+		const step = i.node ? `<span class='tag'>[${app.utils.escapeHtml(titles[i.node] || i.node)}]</span> ` : '';
+		return `<div class='debug-log-line debug-issue' ${node}><i class='bi ${icon} me-1'></i>${step}${app.utils.escapeHtml(i.message)}</div>`;
 	    });
 	    box.innerHTML = rows.join('');
 	}

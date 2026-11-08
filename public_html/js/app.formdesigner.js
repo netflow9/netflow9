@@ -50,7 +50,6 @@ window.app.FormDesigner = (function() {
     const RATIOS = { '6-6': [ 6, 6 ], '4-8': [ 4, 8 ], '8-4': [ 8, 4 ], '3-9': [ 3, 9 ], '9-3': [ 9, 3 ], '4-4-4': [ 4, 4, 4 ] };
     const KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-    const esc = (s) => window.app.utils.escapeHtml(String(s === undefined || s === null ? '' : s));
     let seq = 0;
     const nid = () => 'fd' + (++seq);
 
@@ -287,7 +286,7 @@ window.app.FormDesigner = (function() {
 	    //CLD: 2026-10-13T20:18:33+03:00: the palette is a column on the left (the step dialog is full screen), grouped Fields / Design, buttons
 	    //with their label (btn-light + border: the theme's outline-secondary looked disabled)
 	    const button = (type) => `<button type="button" class="btn btn-sm btn-light border w-100 text-start mb-1 fd-add" draggable="true" data-type="${type}" title="Click to add at the end, or drag onto the form">
-		<i class="bi ${TYPES[type].icon} me-2 text-primary"></i>${esc(TYPES[type].label)}</button>`;
+		<i class="bi ${TYPES[type].icon} me-2 text-primary"></i>${app.utils.escapeHtml(TYPES[type].label)}</button>`;
 	    const palette = ro ? '' : '<div class="small text-uppercase text-muted fw-semibold mb-2">Fields</div>'
 		+ Object.keys(TYPES).filter((t) => TYPES[t].input).map(button).join('')
 		+ '<div class="small text-uppercase text-muted fw-semibold mt-3 mb-2">Design</div>'
@@ -376,8 +375,8 @@ window.app.FormDesigner = (function() {
 	    card.innerHTML = `
 		<div class="d-flex align-items-center gap-1 small mb-1">
 		    ${this.o.readonly ? '' : '<i class="bi bi-grip-vertical text-muted" style="cursor:grab"></i>'}
-		    <span class="badge text-bg-light border"><i class="bi ${t.icon} me-1"></i>${esc(t.label)}</span>
-		    ${t.input ? `<code class="small text-truncate">${esc(n.key)}</code>` : ''}
+		    <span class="badge text-bg-light border"><i class="bi ${t.icon} me-1"></i>${app.utils.escapeHtml(t.label)}</span>
+		    ${t.input ? `<code class="small text-truncate">${app.utils.escapeHtml(n.key)}</code>` : ''}
 		    ${n.required ? '<span class="badge text-bg-danger-subtle text-danger-emphasis border-0">required</span>' : ''}
 		    ${n.showIf ? '<span class="badge text-bg-info-subtle text-info-emphasis" title="Shown only when a condition holds"><i class="bi bi-eye-slash"></i></span>' : ''}
 		    ${this.o.readonly ? '' : `<span class="ms-auto text-nowrap">

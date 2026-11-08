@@ -33,7 +33,6 @@ $budget = AssistantSettings::budgetOf($settings);
     const select = form.querySelector('#assistant-model');
     const btn = form.querySelector('.btn-assistant-connect');
     const status = form.querySelector('.assistant-connect-status');
-    const esc = (v) => app.utils.escapeHtml(String(v ?? ''));
 
     //the settings of the chosen provider only
     //CLD: 2026-10-22T14:00:00+03:00: data-assistant-provider: the providers it is for (space-separated); the Server URL shows the provider's own
@@ -57,7 +56,7 @@ $budget = AssistantSettings::budgetOf($settings);
     //the models offered: the server's, the current one chosen when it is among them (else the first)
     const setModels = (models) => {
 	const current = select.value;
-	select.innerHTML = models.map((m) => `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join('');
+	select.innerHTML = models.map((m) => `<option value="${app.utils.escapeHtml(m.id)}">${app.utils.escapeHtml(m.label)}</option>`).join('');
 	select.value = models.some((m) => m.id === current) ? current : models[0].id;
     };
 
@@ -80,7 +79,7 @@ $budget = AssistantSettings::budgetOf($settings);
 	    setModels(r.models || []);
 	    setStatus('text-success', `<i class="bi bi-check-circle me-1"></i>Connected: ${(r.models || []).length} model(s). Choose one, then Save.`);
 	}).fail((x, s) => {
-	    setStatus('text-danger', '<i class="bi bi-exclamation-triangle me-1"></i>' + esc((x.responseJSON && x.responseJSON.error) || 'Could not connect (' + (x.status || s) + ')'));
+	    setStatus('text-danger', '<i class="bi bi-exclamation-triangle me-1"></i>' + app.utils.escapeHtml((x.responseJSON && x.responseJSON.error) || 'Could not connect (' + (x.status || s) + ')'));
 	}).always(() => {
 	    btn.disabled = false;
 	});

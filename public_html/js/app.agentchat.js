@@ -5,8 +5,6 @@ window.AgentChat = (function() {
     const POLL_SLOW = 4000;
     const FAST_FOR = 60000;
 
-    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
     function start(o) {
 	const root = document.getElementById(o.root);
 	if (!root)
@@ -36,7 +34,7 @@ window.AgentChat = (function() {
 	const state = { conversation: embed ? (saved && saved.conversation) || null : o.conversation, key: saved ? saved.key : null, messages: o.messages || [], status: o.status || 'idle', error: '', timer: null, since: 0 };
 
 	root.innerHTML = `
-	    ${embed ? `<div class="d-flex align-items-center border-bottom px-3 py-2"><strong class="flex-fill text-truncate">${esc(o.title)}</strong><button type="button" class="btn btn-sm btn-link ac-new">New conversation</button></div>` : ''}
+	    ${embed ? `<div class="d-flex align-items-center border-bottom px-3 py-2"><strong class="flex-fill text-truncate">${app.utils.escapeHtml(o.title)}</strong><button type="button" class="btn btn-sm btn-link ac-new">New conversation</button></div>` : ''}
 	    <div class="ac-list wf-assistant flex-fill overflow-y-auto p-3" style="min-height: 0" aria-live="polite"></div>
 	    <div class="border-top p-2 wf-assistant">
 		<div class="small text-danger ac-error px-1"></div>
@@ -57,16 +55,16 @@ window.AgentChat = (function() {
 	    const last = state.messages[state.messages.length - 1];
 	    let html = '';
 	    if (o.greeting)
-		html += `<div class="mb-2"><div class="wfa-msg wfa-bot rounded-3 px-2 py-1 small d-inline-block">${esc(o.greeting)}</div></div>`;
+		html += `<div class="mb-2"><div class="wfa-msg wfa-bot rounded-3 px-2 py-1 small d-inline-block">${app.utils.escapeHtml(o.greeting)}</div></div>`;
 	    for (const m of state.messages) {
 		if (m.role === 'user') {
-		    html += `<div class="d-flex flex-column align-items-end mb-2"><div class="wfa-msg wfa-user rounded-3 px-2 py-1 small" style="white-space: pre-wrap">${esc(m.text)}</div></div>`;
+		    html += `<div class="d-flex flex-column align-items-end mb-2"><div class="wfa-msg wfa-user rounded-3 px-2 py-1 small" style="white-space: pre-wrap">${app.utils.escapeHtml(m.text)}</div></div>`;
 		} else if (m.role === 'notice') {
-		    html += `<div class="mb-2"><div class="wfa-msg rounded-3 px-2 py-1 small text-danger-emphasis bg-danger-subtle d-inline-block"><i class="bi bi-exclamation-triangle me-1"></i>${esc(m.text)}</div></div>`;
+		    html += `<div class="mb-2"><div class="wfa-msg rounded-3 px-2 py-1 small text-danger-emphasis bg-danger-subtle d-inline-block"><i class="bi bi-exclamation-triangle me-1"></i>${app.utils.escapeHtml(m.text)}</div></div>`;
 		} else {
-		    const body = m.html ? m.html : `<div style="white-space: pre-wrap">${esc(m.text)}</div>`;
+		    const body = m.html ? m.html : `<div style="white-space: pre-wrap">${app.utils.escapeHtml(m.text)}</div>`;
 		    const buttons = m === last && m.buttons && m.buttons.length && !busy()
-			? `<div class="d-flex flex-wrap gap-1 mt-1">${m.buttons.map((b, i) => `<button type="button" class="btn btn-sm btn-outline-primary ac-choice" data-i="${i}">${esc(b.label)}</button>`).join('')}</div>` : '';
+			? `<div class="d-flex flex-wrap gap-1 mt-1">${m.buttons.map((b, i) => `<button type="button" class="btn btn-sm btn-outline-primary ac-choice" data-i="${i}">${app.utils.escapeHtml(b.label)}</button>`).join('')}</div>` : '';
 		    html += `<div class="mb-2"><div class="wfa-msg wfa-bot rounded-3 px-2 py-1 small d-inline-block">${body}</div>${buttons}</div>`;
 		}
 	    }
@@ -145,7 +143,7 @@ window.AgentChat = (function() {
 		//a new conversation of the app's page: its address, and in the list beside it
 		if (!embed && !state.conversation && data.conversation) {
 		    history.replaceState(history.state, '', `${o.pageUrl}?conversation=${encodeURIComponent(data.conversation)}`);
-		    document.getElementById(o.listId)?.insertAdjacentHTML('afterbegin', `<a class="list-group-item list-group-item-action small text-truncate active" href="${esc(o.pageUrl)}?conversation=${esc(data.conversation)}">${esc((label ?? text).trim().slice(0, 80))}</a>`);
+		    document.getElementById(o.listId)?.insertAdjacentHTML('afterbegin', `<a class="list-group-item list-group-item-action small text-truncate active" href="${app.utils.escapeHtml(o.pageUrl)}?conversation=${app.utils.escapeHtml(data.conversation)}">${app.utils.escapeHtml((label ?? text).trim().slice(0, 80))}</a>`);
 		}
 		state.conversation = data.conversation;
 		if (embed && data.key) {

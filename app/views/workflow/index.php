@@ -376,7 +376,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 		const list = issues.filter((i) => i.level === level);
 		if (!list.length)
 		    return;
-		//escapeHtml escapes double quotes (not single ones): title is double-quoted
+		//CLD: 2026-11-08T12:00:00+02:00: escapeHtml escapes single quotes too now; title stays double-quoted
 		const tip = app.utils.escapeHtml(list.map((i) => '- ' + i.message).join('\\n'));
 		//CLD: 2026-10-11T19:57:28+03:00: + btn-debug-open: a click opens the debug panel (the list)
 		html += `<span class='badge text-bg-\${color} me-1 btn-debug-open' role='button' title=\"\${tip}\"><i class='bi bi-exclamation-triangle me-1'></i>\${list.length} \${level}\${list.length > 1 ? 's' : ''}</span>`;

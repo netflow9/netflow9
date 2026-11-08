@@ -21,7 +21,6 @@ $opts = \util\JSON::encode([
     const root = document.getElementById('knowledge-manage');
     if (!root)
 	return;
-    const esc = (v) => app.utils.escapeHtml(String(v ?? ''));
     const csrf = () => $('meta[name=csrf-token]').attr('content');
     const tbody = root.querySelector('.kb-docs tbody');
     const stats = root.querySelector('.kb-stats');
@@ -33,37 +32,37 @@ $opts = \util\JSON::encode([
 	if (d.status === 'pending')
 	    return '<span class="badge text-bg-secondary"><span class="spinner-border spinner-border-sm me-1" style="width:.7rem;height:.7rem"></span>Indexing</span>';
 	if (d.status === 'error')
-	    return `<span class="badge text-bg-danger" title="${esc(d.error)}">Error</span><div class="small text-danger text-wrap">${esc(d.error)}</div>`;
+	    return `<span class="badge text-bg-danger" title="${app.utils.escapeHtml(d.error)}">Error</span><div class="small text-danger text-wrap">${app.utils.escapeHtml(d.error)}</div>`;
 	return '<span class="badge text-bg-success">Indexed</span>';
     };
     const titleOf = (d) => {
-	const t = esc(d.title || d.key);
+	const t = app.utils.escapeHtml(d.title || d.key);
 	if (d.source === 'file' && d.file)
-	    return `<a href="${esc(o.fileView + '/' + d.file)}">${t}</a>`;
+	    return `<a href="${app.utils.escapeHtml(o.fileView + '/' + d.file)}">${t}</a>`;
 	if (d.source === 'url' && d.url)
-	    return `<a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">${t}</a>`;
+	    return `<a href="${app.utils.escapeHtml(d.url)}" target="_blank" rel="noopener noreferrer">${t}</a>`;
 	return t;
     };
 
     const render = (r) => {
 	const docs = r.documents || [];
 	tbody.innerHTML = docs.length ? docs.map((d) => `<tr>
-	    <td class="ps-3"><i class="bi ${sourceIcon[d.source] || 'bi-file-earmark'} me-1 text-muted"></i>${titleOf(d)}${d.source === 'text' && d.key !== d.title ? `<div class="small text-muted">${esc(d.key)}</div>` : ''}</td>
+	    <td class="ps-3"><i class="bi ${sourceIcon[d.source] || 'bi-file-earmark'} me-1 text-muted"></i>${titleOf(d)}${d.source === 'text' && d.key !== d.title ? `<div class="small text-muted">${app.utils.escapeHtml(d.key)}</div>` : ''}</td>
 	    <td class="text-end">${d.chunks}</td>
 	    <td>${status(d)}</td>
 	    <td class="text-nowrap small">${d.updated_at ? app.formatter.timeAgoHtml(d.updated_at, false) : ''}</td>
-	    <td class="text-end pe-3">${o.canUpdate ? `<a href="${esc(o.remove + (o.remove.includes('?') ? '&' : '?') + 'doc=' + encodeURIComponent(d.id))}" class="btn btn-sm btn-icon px-1 py-0" data-confirm="Remove this document from the knowledge base?" data-method="post" title="Remove"><i class="bi bi-trash"></i></a>` : ''}</td>
+	    <td class="text-end pe-3">${o.canUpdate ? `<a href="${app.utils.escapeHtml(o.remove + (o.remove.includes('?') ? '&' : '?') + 'doc=' + encodeURIComponent(d.id))}" class="btn btn-sm btn-icon px-1 py-0" data-confirm="Remove this document from the knowledge base?" data-method="post" title="Remove"><i class="bi bi-trash"></i></a>` : ''}</td>
 	</tr>`).join('') : '<tr><td colspan="5" class="text-muted small ps-3">No documents yet' + (o.canUpdate ? ': add files, a web page or a text above.' : '.') + '</td></tr>';
 
 	const kb = r.kb || {};
-	stats.innerHTML = `${kb.documents} document(s) &middot; ${kb.chunks} chunk(s)` + (kb.model ? ` &middot; <code>${esc(kb.model)}</code>` : '') + (kb.dims ? ` (${kb.dims} dimensions)` : '');
+	stats.innerHTML = `${kb.documents} document(s) &middot; ${kb.chunks} chunk(s)` + (kb.model ? ` &middot; <code>${app.utils.escapeHtml(kb.model)}</code>` : '') + (kb.dims ? ` (${kb.dims} dimensions)` : '');
 	let n = '';
 	if (kb.state === 'reindexing')
 	    n = '<div class="alert alert-info small py-2"><span class="spinner-border spinner-border-sm me-1"></span>Re-indexing: the chunks are embedded again with the account\'s model. Searches wait until it is done.</div>';
 	else if (kb.needsReindex)
 	    n = '<div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i>Indexed with another model than the account\'s: re-index it before it is searched or added to again.</div>';
 	if (kb.state_message)
-	    n += `<div class="alert alert-danger small py-2">${esc(kb.state_message)}</div>`;
+	    n += `<div class="alert alert-danger small py-2">${app.utils.escapeHtml(kb.state_message)}</div>`;
 	notice.innerHTML = n;
 	root.querySelectorAll('.kb-reindex').forEach((b) => b.classList.toggle('d-none', !(kb.needsReindex || (kb.state !== 'reindexing' && kb.chunks > 0))));
 
@@ -79,7 +78,7 @@ $opts = \util\JSON::encode([
 	el.className = 'kb-add-status small ' + cls;
 	el.innerHTML = html;
     };
-    const failed = (x) => esc((x.responseJSON && x.responseJSON.error) || 'Failed (' + (x.status || 'no answer') + ')');
+    const failed = (x) => app.utils.escapeHtml((x.responseJSON && x.responseJSON.error) || 'Failed (' + (x.status || 'no answer') + ')');
     const post = (form, data) => {
 	const btn = form.querySelector('[type=submit]');
 	btn.disabled = true;
@@ -111,12 +110,12 @@ $opts = \util\JSON::encode([
 	    if (!files.length) {
 		btn.disabled = false;
 		form.reset();
-		say(form, errors.length ? 'text-danger' : 'text-success', (done ? `<i class="bi bi-check-circle me-1"></i>${done} uploaded and queued. ` : '') + errors.map(esc).join('<br>'));
+		say(form, errors.length ? 'text-danger' : 'text-success', (done ? `<i class="bi bi-check-circle me-1"></i>${done} uploaded and queued. ` : '') + errors.map(app.utils.escapeHtml).join('<br>'));
 		load();
 		return;
 	    }
 	    const f = files.shift();
-	    say(form, 'text-muted', `<span class="spinner-border spinner-border-sm me-1"></span>Uploading ${esc(f.name)}&hellip;`);
+	    say(form, 'text-muted', `<span class="spinner-border spinner-border-sm me-1"></span>Uploading ${app.utils.escapeHtml(f.name)}&hellip;`);
 	    const fd = new FormData();
 	    fd.append('file', f);
 	    $.ajax({ url: o.upload, method: 'POST', data: fd, processData: false, contentType: false, dataType: 'json', headers: { 'X-Csrf-Token': csrf() } })
@@ -142,10 +141,10 @@ $opts = \util\JSON::encode([
 		results.innerHTML = `<div class="small text-muted mb-2">${list.length} result(s), ${r.ms} ms</div>` + list.map((x, i) => `<div class="border rounded p-2 mb-2">
 		    <div class="d-flex align-items-center gap-2 small mb-1">
 			<span class="badge text-bg-primary" title="Similarity (-1 to 1)">${Number(x.score).toFixed(3)}</span>
-			<span class="badge text-bg-light border" title="Found by meaning, by words, or both">${esc(x.match)}</span>
-			<span class="fw-semibold text-truncate">${esc(x.title || x.document)}${x.page ? ` &middot; page ${x.page}` : ''}</span>
+			<span class="badge text-bg-light border" title="Found by meaning, by words, or both">${app.utils.escapeHtml(x.match)}</span>
+			<span class="fw-semibold text-truncate">${app.utils.escapeHtml(x.title || x.document)}${x.page ? ` &middot; page ${x.page}` : ''}</span>
 		    </div>
-		    <div class="small" style="white-space: pre-wrap; max-height: 12rem; overflow-y: auto">${esc(x.text)}</div>
+		    <div class="small" style="white-space: pre-wrap; max-height: 12rem; overflow-y: auto">${app.utils.escapeHtml(x.text)}</div>
 		</div>`).join('');
 	    })
 	    .fail((x) => { results.innerHTML = `<div class="small text-danger">${failed(x)}</div>`; })

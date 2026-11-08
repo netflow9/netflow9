@@ -20,7 +20,6 @@ $connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/knowledge/conn
     const btn = form.querySelector('.btn-embedding-connect');
     const status = form.querySelector('.embedding-connect-status');
     const urlInput = form.querySelector('[name=url]');
-    const esc = (v) => app.utils.escapeHtml(String(v ?? ''));
 
     const setStatus = (cls, html) => {
 	status.className = 'embedding-connect-status small ' + cls;
@@ -29,7 +28,7 @@ $connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/knowledge/conn
     //the models offered: the server's, the current one chosen when it is among them (else the first)
     const setModels = (models) => {
 	const current = select.value;
-	select.innerHTML = models.map((m) => `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join('');
+	select.innerHTML = models.map((m) => `<option value="${app.utils.escapeHtml(m.id)}">${app.utils.escapeHtml(m.label)}</option>`).join('');
 	select.value = models.some((m) => m.id === current) ? current : models[0].id;
     };
     const connect = () => {
@@ -45,7 +44,7 @@ $connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/knowledge/conn
 	    setModels(r.models || []);
 	    setStatus('text-success', `<i class="bi bi-check-circle me-1"></i>Connected: ${(r.models || []).length} model(s). Choose one, then Save.`);
 	}).fail((x, s) => {
-	    setStatus('text-danger', '<i class="bi bi-exclamation-triangle me-1"></i>' + esc((x.responseJSON && x.responseJSON.error) || 'Could not connect (' + (x.status || s) + ')'));
+	    setStatus('text-danger', '<i class="bi bi-exclamation-triangle me-1"></i>' + app.utils.escapeHtml((x.responseJSON && x.responseJSON.error) || 'Could not connect (' + (x.status || s) + ')'));
 	}).always(() => {
 	    btn.disabled = false;
 	});

@@ -219,7 +219,6 @@ window.app.ExprInput = (function() {
 		this.panel.className = 'expr-problems small mt-1';
 		this.input.insertAdjacentElement('afterend', this.panel);
 	    }
-	    const esc = app.utils.escapeHtml;
 	    //in a table cell (e.g. an edit grid row) only the icons, the message as their tooltip
 	    //also in a row of an edit grid with layout `rows` (.edit-grid-row)
 	    const compact = !!this.input.closest('td, .edit-grid-row');
@@ -228,8 +227,8 @@ window.app.ExprInput = (function() {
 		//a name field: no position (the whole value)
 		const where = this.mode === 'name' ? '' : (this.input.tagName === 'TEXTAREA' ? `${p.line}:${p.column}` : `col ${p.column}`);
 		if (compact)
-		    return `<i class='bi ${icon} me-1' role='button' title="${esc(where + ': ' + p.message)}" data-start='${p.start}' data-end='${p.end}'></i>`;
-		return `<div class='d-flex gap-1 align-items-baseline' role='button' data-start='${p.start}' data-end='${p.end}'><i class='bi ${icon}'></i><span class='text-muted text-nowrap'>${esc(where)}</span><span>${esc(p.message)}</span></div>`;
+		    return `<i class='bi ${icon} me-1' role='button' title="${app.utils.escapeHtml(where + ': ' + p.message)}" data-start='${p.start}' data-end='${p.end}'></i>`;
+		return `<div class='d-flex gap-1 align-items-baseline' role='button' data-start='${p.start}' data-end='${p.end}'><i class='bi ${icon}'></i><span class='text-muted text-nowrap'>${app.utils.escapeHtml(where)}</span><span>${app.utils.escapeHtml(p.message)}</span></div>`;
 	    }).join('');
 	    //a click selects the place of the problem
 	    this.panel.querySelectorAll('[data-start]').forEach((el) => el.addEventListener('mousedown', (e) => {
@@ -256,12 +255,11 @@ window.app.ExprInput = (function() {
 		this.menu.addEventListener('mousedown', (e) => e.preventDefault());
 		document.body.appendChild(this.menu);
 	    }
-	    const esc = app.utils.escapeHtml;
 	    this.menu.innerHTML = this.items.map((it, i) => `
 		<li><a href='#' class='dropdown-item d-flex gap-2 align-items-baseline py-1' data-index='${i}'>
 		    <i class='bi ${KIND_ICONS[it.kind] || 'bi-dot'} text-muted'></i>
-		    <span class='font-monospace'>${esc(it.label)}</span>
-		    <span class='ms-auto ps-3 text-muted text-truncate' style='max-width: 18rem'>${esc(it.detail || '')}</span>
+		    <span class='font-monospace'>${app.utils.escapeHtml(it.label)}</span>
+		    <span class='ms-auto ps-3 text-muted text-truncate' style='max-width: 18rem'>${app.utils.escapeHtml(it.detail || '')}</span>
 		</a></li>`).join('');
 	    this.menu.querySelectorAll('[data-index]').forEach((a) => a.addEventListener('click', (e) => {
 		e.preventDefault();

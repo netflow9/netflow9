@@ -25,9 +25,8 @@ window.app.WfExecutions = (function() {
     //the one of the current designer page
     let current = null;
 
-    const esc = (v) => app.utils.escapeHtml(v === null || v === undefined ? '' : String(v));
     const csrf = () => $('meta[name=csrf-token]').attr('content');
-    const toast = (type, title, body) => app.utils.toast({ type: type, title: esc(title), body: esc(body), delay: 5000 });
+    const toast = (type, title, body) => app.utils.toast({ type: type, title: app.utils.escapeHtml(title), body: app.utils.escapeHtml(body), delay: 5000 });
     const active = (state) => state === 'new' || state === 'run';
     const NS = '.wfexecutions';
 
@@ -48,14 +47,14 @@ window.app.WfExecutions = (function() {
     function badge(state) {
 	const colors = { end: 'success', error: 'danger', run: 'primary', new: 'info', sleep: 'warning', cancel: 'secondary' };
 	const labels = { end: 'completed', run: 'running', sleep: 'sleeping' };
-	return `<span class='badge text-bg-${colors[state] || 'secondary'}'>${esc(labels[state] || state)}</span>`;
+	return `<span class='badge text-bg-${colors[state] || 'secondary'}'>${app.utils.escapeHtml(labels[state] || state)}</span>`;
     }
 
     //CLD: 2026-11-02T14:00:00+02:00: the trace: its state; an estimated cost or credits; a text cut; a tool call's approval
     function traceBadge(state) {
 	const colors = { running: 'primary', waiting: 'warning', done: 'success', error: 'danger', stopped: 'secondary' };
 	const labels = { running: 'running', waiting: 'waiting for approval', done: 'done', error: 'failed', stopped: 'stopped' };
-	return `<span class='badge text-bg-${colors[state] || 'secondary'}'>${esc(labels[state] || state)}</span>`;
+	return `<span class='badge text-bg-${colors[state] || 'secondary'}'>${app.utils.escapeHtml(labels[state] || state)}</span>`;
     }
 
     function costText(cost) {
@@ -67,8 +66,8 @@ window.app.WfExecutions = (function() {
     }
 
     const muted = (html) => `<span style='color: var(--rail22-debug-muted)'>${html}</span>`;
-    const cutNote = (shown, full) => full ? `<div class='small' style='color: var(--rail22-debug-muted)'>Cut: the first ${esc(Number(String(shown || '').length).toLocaleString())} of ${esc(Number(full).toLocaleString())} characters</div>` : '';
-    const block = (text) => `<pre class='mb-1 small' style='color: inherit; white-space: pre-wrap'>${esc(text)}</pre>`;
+    const cutNote = (shown, full) => full ? `<div class='small' style='color: var(--rail22-debug-muted)'>Cut: the first ${app.utils.escapeHtml(Number(String(shown || '').length).toLocaleString())} of ${app.utils.escapeHtml(Number(full).toLocaleString())} characters</div>` : '';
+    const block = (text) => `<pre class='mb-1 small' style='color: inherit; white-space: pre-wrap'>${app.utils.escapeHtml(text)}</pre>`;
 
     function approvalBadge(a, waiting) {
 	if (!a)
@@ -76,7 +75,7 @@ window.app.WfExecutions = (function() {
 	const by = a.by ? ' by ' + a.by : '';
 	const shown = { asked: waiting ? [ 'warning', 'waiting for approval' ] : [ 'secondary', 'not decided' ], approved: [ 'success', 'approved' + by ], rejected: [ 'danger', 'rejected' + by ],
 	    expired: [ 'secondary', 'not approved in time' ], 'not asked': [ 'secondary', 'not asked: a limit stopped the agent' ] }[a.state] || [ 'secondary', a.state ];
-	return `<span class='badge text-bg-${shown[0]}'>${esc(shown[1])}</span>`;
+	return `<span class='badge text-bg-${shown[0]}'>${app.utils.escapeHtml(shown[1])}</span>`;
     }
 
     class WfExecutions {
@@ -442,7 +441,7 @@ window.app.WfExecutions = (function() {
 		});
 		wrap.appendChild(el);
 	    }
-	    this.chipEl.innerHTML = `${badge(e.state)}<span role='button' title='Show it in the Executions panel'>Run of ${esc(e.started || e.created || '-')} <span class='text-body-secondary'>${esc(versionLabel(e))}</span></span>`
+	    this.chipEl.innerHTML = `${badge(e.state)}<span role='button' title='Show it in the Executions panel'>Run of ${app.utils.escapeHtml(e.started || e.created || '-')} <span class='text-body-secondary'>${app.utils.escapeHtml(versionLabel(e))}</span></span>`
 		+ `<button type='button' class='btn btn-sm btn-link text-body-secondary p-0 lh-1 btn-run-chip-hide' title='Hide the marks of this run' aria-label='Hide'><i class='bi bi-x-lg'></i></button>`;
 	}
 
@@ -459,10 +458,10 @@ window.app.WfExecutions = (function() {
 		return;
 	    }
 	    box.innerHTML = this.list.map((e) => `
-		<div class='exec-row d-flex align-items-center gap-2 px-1 rounded${e.id === this.selected ? ' exec-selected' : ''}' data-id='${esc(e.id)}' title='${esc(e.error || '')}' style='cursor: pointer'>
+		<div class='exec-row d-flex align-items-center gap-2 px-1 rounded${e.id === this.selected ? ' exec-selected' : ''}' data-id='${app.utils.escapeHtml(e.id)}' title='${app.utils.escapeHtml(e.error || '')}' style='cursor: pointer'>
 		    ${badge(e.state)}${e.rerun_of ? ` <i class='bi bi-arrow-repeat' title='Run again with the inputs of another execution'></i>` : ''}
-		    <span class='exec-time'>${esc(e.started || e.created)}</span>
-		    <span class='exec-what' style='color: var(--rail22-debug-muted)' title='${esc(e.trigger + ' ' + versionLabel(e))}'>${esc(e.trigger)} ${esc(versionLabel(e))}</span>
+		    <span class='exec-time'>${app.utils.escapeHtml(e.started || e.created)}</span>
+		    <span class='exec-what' style='color: var(--rail22-debug-muted)' title='${app.utils.escapeHtml(e.trigger + ' ' + versionLabel(e))}'>${app.utils.escapeHtml(e.trigger)} ${app.utils.escapeHtml(versionLabel(e))}</span>
 		    <span class='exec-duration ms-auto' style='color: var(--rail22-debug-muted)'>${duration(e.duration)}</span>
 		</div>`).join('');
 	}
@@ -472,7 +471,7 @@ window.app.WfExecutions = (function() {
 	    const e = this.detail;
 	    if (!box || !e)
 		return;
-	    const log = (e.log || []).map((l) => `<div class='debug-log-line'><span style='color: var(--rail22-debug-muted)'>${esc((l.time || '').slice(11))}</span> ${l.title ? `<span class='tag'>[${esc(l.title)}]</span>` : ''}${esc(l.message)}</div>`).join('');
+	    const log = (e.log || []).map((l) => `<div class='debug-log-line'><span style='color: var(--rail22-debug-muted)'>${app.utils.escapeHtml((l.time || '').slice(11))}</span> ${l.title ? `<span class='tag'>[${app.utils.escapeHtml(l.title)}]</span>` : ''}${app.utils.escapeHtml(l.message)}</div>`).join('');
 	    //Delete: an execution of the draft that has finished (asked again in place: Yes / No)
 	    const del = this.deletable(e) ? `<span class='exec-delete ms-auto flex-shrink-0'><button type='button' class='debug-icon-btn btn-exec-delete' title='Delete this execution'><i class='bi bi-trash'></i></button></span>` : '';
 	    //CLD: 2026-10-26T10:14:16+02:00: Kill: one that is new / running / waiting (Kill? Yes / No; kept over the 2 s refresh while asked: askKill)
@@ -485,11 +484,11 @@ window.app.WfExecutions = (function() {
 		: `<button type='button' class='debug-icon-btn btn-exec-again' title='Run again with the same inputs, on the current draft'><i class='bi bi-arrow-repeat'></i></button>`) + `</span>`;
 	    //CLD: 2026-11-02T15:46:06+02:00: Save as test case; a test's execution says so
 	    const saveCase = this.againable(e) && this.o.urls.saveCase ? `<button type='button' class='debug-icon-btn btn-exec-save-case' title='Save as test case: its inputs and tool results'><i class='bi bi-clipboard-plus'></i></button>` : '';
-	    const from = e.test_run ? `, a test` : e.rerun_of ? `, <a href='#' class='exec-rerun-of' data-id='${esc(e.rerun_of)}'>run again of another execution</a>` : '';
+	    const from = e.test_run ? `, a test` : e.rerun_of ? `, <a href='#' class='exec-rerun-of' data-id='${app.utils.escapeHtml(e.rerun_of)}'>run again of another execution</a>` : '';
 	    const top = box.scrollTop;
 	    box.innerHTML = `
-		<div class='mb-1 d-flex flex-wrap align-items-center gap-1'><span>${badge(e.state)} <span style='color: var(--rail22-debug-muted)'>${esc(e.trigger)} ${esc(versionLabel(e))}, started ${esc(e.started || e.created || '-')}${e.duration !== null ? ', ' + duration(e.duration) : ''}${e.wake_at ? ', wakes at ' + esc(e.wake_at) : ''}${from}</span></span><span class='ms-auto d-inline-flex align-items-center gap-1'>${saveCase}${again}${del}${kill}</span></div>
-		${e.error ? `<div class='text-danger mb-1'>${esc(e.error)}</div>` : ''}
+		<div class='mb-1 d-flex flex-wrap align-items-center gap-1'><span>${badge(e.state)} <span style='color: var(--rail22-debug-muted)'>${app.utils.escapeHtml(e.trigger)} ${app.utils.escapeHtml(versionLabel(e))}, started ${app.utils.escapeHtml(e.started || e.created || '-')}${e.duration !== null ? ', ' + duration(e.duration) : ''}${e.wake_at ? ', wakes at ' + app.utils.escapeHtml(e.wake_at) : ''}${from}</span></span><span class='ms-auto d-inline-flex align-items-center gap-1'>${saveCase}${again}${del}${kill}</span></div>
+		${e.error ? `<div class='text-danger mb-1'>${app.utils.escapeHtml(e.error)}</div>` : ''}
 		${this.tracesHtml(e)}
 		<div class='debug-panel-title mt-2 mb-1'>Log</div>
 		${log || `<div style='color: var(--rail22-debug-muted)'>(empty)</div>`}
@@ -518,14 +517,14 @@ window.app.WfExecutions = (function() {
 
 	//value `v` named `name` (a key, an index); `key`: where it is in the variables (traceKeys)
 	valueHtml(key, name, v) {
-	    const label = `<span class='tag'>${esc(name)}</span>`;
+	    const label = `<span class='tag'>${app.utils.escapeHtml(name)}</span>`;
 	    if (v === null || typeof v !== 'object')
-		return `<div style='white-space: pre-wrap; word-break: break-word'>${label}: ${esc(JSON.stringify(v))}</div>`;
+		return `<div style='white-space: pre-wrap; word-break: break-word'>${label}: ${app.utils.escapeHtml(JSON.stringify(v))}</div>`;
 	    const list = Array.isArray(v);
 	    const entries = list ? v.map((x, i) => [ i, x ]) : Object.entries(v);
 	    if (!entries.length)
 		return `<div>${label}: ${muted(list ? '[]' : '{}')}</div>`;
-	    return `<details data-key='${esc(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
+	    return `<details data-key='${app.utils.escapeHtml(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
 		<summary style='cursor: pointer'>${label} ${muted(list ? `[ ${entries.length} item(s) ]` : `{ ${entries.length} key(s) }`)}</summary>
 		<div class='ps-3'>${entries.map(([k, x]) => this.valueHtml(`${key}/${encodeURIComponent(k)}`, k, x)).join('')}</div>
 	    </details>`;
@@ -563,7 +562,7 @@ window.app.WfExecutions = (function() {
 	tracesHtml(e) {
 	    if (!(e.traces || []).length)
 		return '';
-	    const more = e.traces_total > e.traces.length ? `<div class='small' style='color: var(--rail22-debug-muted)'>The first ${esc(e.traces.length)} of ${esc(e.traces_total)} visits</div>` : '';
+	    const more = e.traces_total > e.traces.length ? `<div class='small' style='color: var(--rail22-debug-muted)'>The first ${app.utils.escapeHtml(e.traces.length)} of ${app.utils.escapeHtml(e.traces_total)} visits</div>` : '';
 	    return `<div class='debug-panel-title mt-2 mb-1'>Agent trace</div>${e.traces.map((t) => this.traceHtml(t, e)).join('')}${more}`;
 	}
 
@@ -571,14 +570,14 @@ window.app.WfExecutions = (function() {
 	    const totals = t.totals || {};
 	    const n = (v) => Number(v || 0).toLocaleString();
 	    const money = costText(totals.cost);
-	    const parts = [ esc(t.provider + (t.model ? ' ' + t.model : '')), `${n(totals.rounds)} round(s)`, `${n(totals.tool_calls)} tool call(s)${totals.write_calls ? ', ' + n(totals.write_calls) + ' write' : ''}`,
+	    const parts = [ app.utils.escapeHtml(t.provider + (t.model ? ' ' + t.model : '')), `${n(totals.rounds)} round(s)`, `${n(totals.tool_calls)} tool call(s)${totals.write_calls ? ', ' + n(totals.write_calls) + ' write' : ''}`,
 		`${n(totals.input_tokens)} + ${n(totals.output_tokens)} tokens` ];
 	    //CLD: 2026-11-02T18:00:00+02:00: Continue the conversation: what the step was given (a summary made now: its tokens are in the run's usage, not in these rounds)
 	    if (t.conversation)
 		parts.push(`${n(t.conversation.turns)} earlier turn(s)${t.conversation.summary ? ' and a summary' : ''}${t.conversation.summarized ? `, ${n(t.conversation.summarized.turns)} summarized now (${n(t.conversation.summarized.tokens.input)} + ${n(t.conversation.summarized.tokens.output)} tokens)` : ''}`);
-	    parts.push(money ? esc(money) + (t.system ? '' : ' (estimated)') : `<span title='Set the prices of this model: on the step, or in Account settings &gt; AI'>cost not known</span>`);
+	    parts.push(money ? app.utils.escapeHtml(money) + (t.system ? '' : ' (estimated)') : `<span title='Set the prices of this model: on the step, or in Account settings &gt; AI'>cost not known</span>`);
 	    if (t.duration !== null)
-		parts.push(esc(duration(t.duration)));
+		parts.push(app.utils.escapeHtml(duration(t.duration)));
 	    const open = this.traceIsOpen(t, e);
 	    const data = this.traces[t.id];
 	    let body = '';
@@ -586,9 +585,9 @@ window.app.WfExecutions = (function() {
 		body = data.missing ? muted('This trace could not be loaded') : (data.rounds || []).map((r) => this.roundHtml(t, r)).join('') || muted('No call to the model yet');
 	    else if (open)
 		body = muted('Loading…');
-	    return `<details class='mb-1' data-key='${esc(t.id)}' data-trace='${esc(t.id)}'${open ? ' open' : ''}>
-		<summary style='cursor: pointer'>${traceBadge(t.state)} <span class='tag'>[${esc(t.step)}${t.visit > 1 ? ' #' + esc(t.visit) : ''}]</span> ${muted(parts.join(', '))}</summary>
-		<div class='ps-3 pt-1'>${t.error ? `<div class='text-danger mb-1'>${esc(t.error)}</div>` : ''}${body}</div>
+	    return `<details class='mb-1' data-key='${app.utils.escapeHtml(t.id)}' data-trace='${app.utils.escapeHtml(t.id)}'${open ? ' open' : ''}>
+		<summary style='cursor: pointer'>${traceBadge(t.state)} <span class='tag'>[${app.utils.escapeHtml(t.step)}${t.visit > 1 ? ' #' + app.utils.escapeHtml(t.visit) : ''}]</span> ${muted(parts.join(', '))}</summary>
+		<div class='ps-3 pt-1'>${t.error ? `<div class='text-danger mb-1'>${app.utils.escapeHtml(t.error)}</div>` : ''}${body}</div>
 	    </details>`;
 	}
 
@@ -597,17 +596,17 @@ window.app.WfExecutions = (function() {
 	    const tokens = r.tokens || {};
 	    const calls = r.calls || [];
 	    const money = costText(r.cost);
-	    const parts = [ esc(r.model), `${Number(tokens.input || 0).toLocaleString()} + ${Number(tokens.output || 0).toLocaleString()} tokens` ];
+	    const parts = [ app.utils.escapeHtml(r.model), `${Number(tokens.input || 0).toLocaleString()} + ${Number(tokens.output || 0).toLocaleString()} tokens` ];
 	    if (money)
-		parts.push(esc(money));
-	    parts.push(esc(duration(r.duration_ms)));
+		parts.push(app.utils.escapeHtml(money));
+	    parts.push(app.utils.escapeHtml(duration(r.duration_ms)));
 	    if (calls.length)
 		parts.push(calls.length + ' tool call(s)');
 	    const asked = calls.filter((c) => c.approval).length;
 	    if (asked)
 		parts.push(asked + ' asked for approval');
-	    return `<details class='mb-1' data-key='${esc(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
-		<summary style='cursor: pointer'>Round ${esc(r.n)} ${muted(parts.join(', '))}${calls.some((c) => c.access === 'write') ? ` <span class='badge text-bg-warning'>write</span>` : ''}</summary>
+	    return `<details class='mb-1' data-key='${app.utils.escapeHtml(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
+		<summary style='cursor: pointer'>Round ${app.utils.escapeHtml(r.n)} ${muted(parts.join(', '))}${calls.some((c) => c.access === 'write') ? ` <span class='badge text-bg-warning'>write</span>` : ''}</summary>
 		<div class='ps-3 pt-1'>
 		    ${r.text ? block(r.text) + cutNote(r.text, r.text_length) : ''}
 		    ${calls.map((c, i) => this.callHtml(t, key, c, i)).join('')}
@@ -619,12 +618,12 @@ window.app.WfExecutions = (function() {
 	    const key = `${roundKey}:c${i}`;
 	    const waiting = t.state === 'waiting';
 	    const a = c.approval;
-	    const decided = a && (a.by || a.at || a.comment) ? `<div class='small mb-1'>${muted('Decision:')} ${esc(a.state)}${a.by ? ' by ' + esc(a.by) : ''}${a.at ? ', ' + esc(a.at) : ''}${a.comment ? ': ' + esc(a.comment) : ''}</div>` : '';
+	    const decided = a && (a.by || a.at || a.comment) ? `<div class='small mb-1'>${muted('Decision:')} ${app.utils.escapeHtml(a.state)}${a.by ? ' by ' + app.utils.escapeHtml(a.by) : ''}${a.at ? ', ' + app.utils.escapeHtml(a.at) : ''}${a.comment ? ': ' + app.utils.escapeHtml(a.comment) : ''}</div>` : '';
 	    const result = c.result !== undefined ? block(c.result || '(empty)') + cutNote(c.result, c.result_length) : muted(a && a.state === 'asked' && waiting ? 'Not run: waiting for approval' : 'Not run');
-	    return `<details class='mb-1' data-key='${esc(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
-		<summary style='cursor: pointer'><i class='bi bi-wrench'></i> <code>${esc(c.tool)}</code> ${c.access === 'write' ? `<span class='badge text-bg-warning'>write</span>` : muted(esc(c.access))}
+	    return `<details class='mb-1' data-key='${app.utils.escapeHtml(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
+		<summary style='cursor: pointer'><i class='bi bi-wrench'></i> <code>${app.utils.escapeHtml(c.tool)}</code> ${c.access === 'write' ? `<span class='badge text-bg-warning'>write</span>` : muted(app.utils.escapeHtml(c.access))}
 		    ${approvalBadge(a, waiting)}${c.refused ? ` <span class='badge text-bg-danger'>stopped by a limit</span>` : ''}${c.error && !c.refused ? ` <span class='text-danger'>error</span>` : ''}
-		    ${c.duration_ms !== undefined && c.result !== undefined && !(a && a.state !== 'approved') ? muted(esc(duration(c.duration_ms))) : ''}${c.images ? ' ' + muted(esc(c.images) + ' image(s)') : ''}</summary>
+		    ${c.duration_ms !== undefined && c.result !== undefined && !(a && a.state !== 'approved') ? muted(app.utils.escapeHtml(duration(c.duration_ms))) : ''}${c.images ? ' ' + muted(app.utils.escapeHtml(c.images) + ' image(s)') : ''}</summary>
 		<div class='ps-3 pt-1'>
 		    ${decided}
 		    <div class='small' style='color: var(--rail22-debug-muted)'>Arguments</div>
