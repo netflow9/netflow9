@@ -54,7 +54,7 @@ class AgentTrace extends \sys\BaseModel {
 	    [ '$set' => [ 'state' => 'stopped', 'ended_at' => new \MongoDB\BSON\UTCDateTime() ] ]);
     }
 
-    //the execution is deleted
+    //hook execution:before-delete (sys\Boot): the execution is deleted
     public static function dropFor($exe) {
 	\V::app()->om->deleteMany('AgentTrace', [ 'execution' => $exe->_id, 'aid' => $exe->aid ]);
     }

@@ -4587,7 +4587,13 @@ class CheckCommand extends \sys\BaseController {
 	    [ $wf, $link ] = $publish('agent', $agentNodes());
 	    [ , $live, $node ] = \models\node\NodeTriggerChat::live($link);
 	    $person = fn($u) => [ 'user' => (string)$u->_id, 'user_name' => (string)$u, 'user_email' => (string)$u->email, 'who' => 'u:' . (string)$u->_id ];
-	    $begin = fn($u, array $more = []) => $C::begin([ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => $node['wfid'], 'channel' => 'app' ] + $more + $person($u));
+	    //CLD: 2026-11-08T14:40:00+02:00: a new conversation as the chat pages and triggers make one: create, save(), its data
+	    $newConv = function(array $doc) use ($om) {
+		$conv = $om->create('AgentConversation', $doc);
+		$conv->save();
+		return $conv->data();
+	    };
+	    $begin = fn($u, array $more = []) => $newConv([ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => $node['wfid'], 'channel' => 'app' ] + $more + $person($u));
 	    $say = function(array $conv, $text, array $o = [], $copy = null, $at = null) use ($C, &$live, &$node) {
 		$exe = $C::startTurn($copy ?? $live, $at ?? $node, $C::read($conv['_id'], $conv['aid']), $text, $o);
 		if ($exe)
@@ -4677,7 +4683,7 @@ class CheckCommand extends \sys\BaseController {
 	    $kbCreated->addDocument('manual', 'A manual', 'Printers are serviced on Fridays by the vendor', [], [ 'type' => 'text' ]);
 	    [ $wfB, $linkB ] = $publish('agent kb', $agentNodes([ 'memoryStore' => 'knowledge', 'memoryKb' => $kbName, 'memoryTable' => '' ]));
 	    [ , $liveB, $nodeB ] = \models\node\NodeTriggerChat::live($linkB);
-	    $sayB = fn($u, $text) => $say($C::begin([ 'aid' => $wfB->aid, 'project' => $wfB->project, 'wf' => $wfB->_id, 'node' => $nodeB['wfid'], 'channel' => 'app' ] + $person($u)), $text, [], $liveB, $nodeB);
+	    $sayB = fn($u, $text) => $say($newConv([ 'aid' => $wfB->aid, 'project' => $wfB->project, 'wf' => $wfB->_id, 'node' => $nodeB['wfid'], 'channel' => 'app' ] + $person($u)), $text, [], $liveB, $nodeB);
 	    $savedB = $sayB($ana, 'note' . $script([ [ [ 'remember', [ 'fact' => 'Ana services printers on Fridays' ] ] ] ]));
 	    $foundB = (string)($sayB($ana, 'find' . $script([ [ [ 'recall', [ 'query' => 'printers Fridays' ] ] ] ]))?->getVariable('ai')['text'] ?? '');
 	    $otherB = (string)($sayB($bob, 'find' . $script([ [ [ 'recall', [ 'query' => 'printers Fridays' ] ] ] ]))?->getVariable('ai')['text'] ?? '');
@@ -4687,7 +4693,7 @@ class CheckCommand extends \sys\BaseController {
 	    // ---- Mask personal data: the earlier turns too; the store holds the real value
 	    [ $wfM, $linkM ] = $publish('agent mask', $agentNodes([ 'maskPersonalData' => true, 'memoryStore' => '' ]));
 	    [ , $liveM, $nodeM ] = \models\node\NodeTriggerChat::live($linkM);
-	    $convM = $C::begin([ 'aid' => $wfM->aid, 'project' => $wfM->project, 'wf' => $wfM->_id, 'node' => $nodeM['wfid'], 'channel' => 'app' ] + $person($ana));
+	    $convM = $newConv([ 'aid' => $wfM->aid, 'project' => $wfM->project, 'wf' => $wfM->_id, 'node' => $nodeM['wfid'], 'channel' => 'app' ] + $person($ana));
 	    $say($convM, 'Write to ana.pop@firma.ro' . $script([]), [], $liveM, $nodeM);
 	    $say($convM, 'Again' . $script([]), [], $liveM, $nodeM);
 	    $this->check('agent chat: Mask personal data: the earlier turn is masked too; the conversation keeps the real text', [ false, true, true ],
@@ -4703,7 +4709,7 @@ class CheckCommand extends \sys\BaseController {
 		}
 		[ $wfP, $linkP ] = $publish("agent {$step}", $agentNodes([ 'memoryStore' => '' ], [], $step, $cred));
 		[ , $liveP, $nodeP ] = \models\node\NodeTriggerChat::live($linkP);
-		$convP = $C::begin([ 'aid' => $wfP->aid, 'project' => $wfP->project, 'wf' => $wfP->_id, 'node' => $nodeP['wfid'], 'channel' => 'app' ] + $person($ana));
+		$convP = $newConv([ 'aid' => $wfP->aid, 'project' => $wfP->project, 'wf' => $wfP->_id, 'node' => $nodeP['wfid'], 'channel' => 'app' ] + $person($ana));
 		$say($convP, 'first turn' . $script([]), [], $liveP, $nodeP);
 		$next = $say($convP, 'second turn' . $script([]), [], $liveP, $nodeP);
 		$b = $lastChat();
@@ -4716,7 +4722,7 @@ class CheckCommand extends \sys\BaseController {
 	    // ---- older turns: summarized once, the summary goes instead of them; a limit of tokens too
 	    [ $wfS, $linkS ] = $publish('agent summary', $agentNodes([ 'memoryTurns' => 1, 'memoryStore' => '' ]));
 	    [ , $liveS, $nodeS ] = \models\node\NodeTriggerChat::live($linkS);
-	    $convS = $C::begin([ 'aid' => $wfS->aid, 'project' => $wfS->project, 'wf' => $wfS->_id, 'node' => $nodeS['wfid'], 'channel' => 'app' ] + $person($ana));
+	    $convS = $newConv([ 'aid' => $wfS->aid, 'project' => $wfS->project, 'wf' => $wfS->_id, 'node' => $nodeS['wfid'], 'channel' => 'app' ] + $person($ana));
 	    $say($convS, 'alpha turn' . $script([]), [], $liveS, $nodeS);
 	    $say($convS, 'beta turn' . $script([]), [], $liveS, $nodeS);
 	    $third = $say($convS, 'gamma turn' . $script([]), [], $liveS, $nodeS);
@@ -4732,7 +4738,7 @@ class CheckCommand extends \sys\BaseController {
 	    // ---- approvals and limits inside a conversation
 	    [ $wfA, $linkA ] = $publish('agent approval', $agentNodes([ 'memoryApproval' => true, 'approvalUsers' => [ (string)$bob->_id ] ]));
 	    [ , $liveA, $nodeA ] = \models\node\NodeTriggerChat::live($linkA);
-	    $convA = $C::begin([ 'aid' => $wfA->aid, 'project' => $wfA->project, 'wf' => $wfA->_id, 'node' => $nodeA['wfid'], 'channel' => 'app' ] + $person($ana));
+	    $convA = $newConv([ 'aid' => $wfA->aid, 'project' => $wfA->project, 'wf' => $wfA->_id, 'node' => $nodeA['wfid'], 'channel' => 'app' ] + $person($ana));
 	    $say($convA, 'before' . $script([]), [], $liveA, $nodeA);
 	    $asks = $say($convA, 'remember this' . $script([ [ [ 'remember', [ 'fact' => 'Approved fact' ] ] ] ]), [], $liveA, $nodeA);
 	    $convA = $C::read($convA['_id'], $account->_id);
@@ -4749,7 +4755,7 @@ class CheckCommand extends \sys\BaseController {
 	    //who asked does not approve it, when no approvers are chosen; chosen ones are
 	    [ $wfN, $linkN ] = $publish('agent no approvers', $agentNodes([ 'memoryApproval' => true ]));
 	    [ , $liveN, $nodeN ] = \models\node\NodeTriggerChat::live($linkN);
-	    $asked = $say($C::begin([ 'aid' => $wfN->aid, 'project' => $wfN->project, 'wf' => $wfN->_id, 'node' => $nodeN['wfid'], 'channel' => 'app' ] + $person($ana)), 'remember' . $script([ [ [ 'remember', [ 'fact' => 'Self approved' ] ] ] ]), [], $liveN, $nodeN);
+	    $asked = $say($newConv([ 'aid' => $wfN->aid, 'project' => $wfN->project, 'wf' => $wfN->_id, 'node' => $nodeN['wfid'], 'channel' => 'app' ] + $person($ana)), 'remember' . $script([ [ [ 'remember', [ 'fact' => 'Self approved' ] ] ] ]), [], $liveN, $nodeN);
 	    $taskN = $om->findOne('WfTask', [ 'execution' => $asked->_id ]);
 	    $this->check('agent chat: no approvers chosen: any member approves, but not who is talking to the agent', [ false, true, false ], [ $taskN->isFor($ana), $taskN->isFor($bob), $taskN->isFor($outsider) ]);
 	    $asked->kill('check');
@@ -4757,7 +4763,7 @@ class CheckCommand extends \sys\BaseController {
 
 	    [ $wfL, $linkL ] = $publish('agent limit', $agentNodes([ 'maxToolCalls' => 1 ]));
 	    [ , $liveL, $nodeL ] = \models\node\NodeTriggerChat::live($linkL);
-	    $convL = $C::begin([ 'aid' => $wfL->aid, 'project' => $wfL->project, 'wf' => $wfL->_id, 'node' => $nodeL['wfid'], 'channel' => 'app' ] + $person($ana));
+	    $convL = $newConv([ 'aid' => $wfL->aid, 'project' => $wfL->project, 'wf' => $wfL->_id, 'node' => $nodeL['wfid'], 'channel' => 'app' ] + $person($ana));
 	    $stopped = $say($convL, 'two calls' . $script([ [ [ 'recall', [ 'query' => 'a' ] ], [ 'recall', [ 'query' => 'b' ] ] ] ]), [], $liveL, $nodeL);
 	    $msgsL = $C::messagesAfter($C::read($convL['_id'], $account->_id));
 	    $this->check('agent chat: a limit stops the agent: the run fails, the page has a notice that does not say why, the next message can be sent', [ 'error', 'notice', false, false ],
@@ -4765,7 +4771,7 @@ class CheckCommand extends \sys\BaseController {
 
 	    $lock = $publish('agent lockdown', $agentNodes([ 'lockdown' => true, 'approvalUsers' => [ (string)$bob->_id ] ]));
 	    [ , $liveK, $nodeK ] = \models\node\NodeTriggerChat::live($lock[1]);
-	    $convK = $C::begin([ 'aid' => $lock[0]->aid, 'project' => $lock[0]->project, 'wf' => $lock[0]->_id, 'node' => $nodeK['wfid'], 'channel' => 'app' ] + $person($ana));
+	    $convK = $newConv([ 'aid' => $lock[0]->aid, 'project' => $lock[0]->project, 'wf' => $lock[0]->_id, 'node' => $nodeK['wfid'], 'channel' => 'app' ] + $person($ana));
 	    $locked = $say($convK, 'save it' . $script([ [ [ 'remember', [ 'fact' => 'Locked fact' ] ] ] ]), [], $liveK, $nodeK);
 	    $this->check('agent chat: Lockdown: a person\'s message counts as untrusted input: Remember asks', 'sleep', $locked?->state);
 	    $locked?->kill('check');
@@ -4802,7 +4808,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('agent chat: off: no token; an import makes a new one', [ false, true ], [ array_key_exists('embed_token', \models\node\NodeTriggerChat::tokenData([ 'config' => [ 'embed' => false, 'embedToken' => $embedToken ] ])), \models\node\NodeTriggerChat::forTransfer([ 'embed' => true, 'embedToken' => $embedToken ])['embedToken'] !== $embedToken ]);
 	    $bad = $this->errorsOf('embed bad origin', $agentNodes([], [ 'embed' => true, 'embedOrigins' => "https://a.example; script-src *" ]));
 	    $this->check('agent chat: an address that is not one is refused (it goes in a security header)', true, str_contains(json_encode($bad), 'Sites that may embed it'));
-	    $guest = $C::begin([ 'aid' => $wfE->aid, 'project' => $wfE->project, 'wf' => $wfE->_id, 'node' => 't', 'channel' => 'embed', 'user_name' => 'Guest', 'guest_key' => 'sekret' ]);
+	    $guest = $newConv([ 'aid' => $wfE->aid, 'project' => $wfE->project, 'wf' => $wfE->_id, 'node' => 't', 'channel' => 'embed', 'user_name' => 'Guest', 'guest_key' => hash('sha256', 'sekret') ]);
 	    $this->check('agent chat: a guest\'s conversation: only its key reaches it; only its hash is kept', [ true, false, false, false ], [ $C::keyMatches($guest, 'sekret'), $C::keyMatches($guest, 'other'), $C::keyMatches($guest, ''), $guest['guest_key'] === 'sekret' ]);
 
 	    // ---- email: replies thread into the same conversation

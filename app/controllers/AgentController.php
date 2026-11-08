@@ -92,11 +92,18 @@ class AgentController extends \sys\BaseController {
 	$conv = null;
 	if (!empty($body['conversation'])) {
 	    $conv = AgentConversation::read((string)$body['conversation'], $wf->aid);
-	    if (!$conv || (string)$conv['wf'] !== (string)$wf->_id || (string)$conv['user'] !== (string)$user->_id)
+	    //CLD: 2026-11-08T14:40:00+02:00: user ?? '': a conversation of another channel has none
+	    if (!$conv || (string)$conv['wf'] !== (string)$wf->_id || (string)($conv['user'] ?? '') !== (string)$user->_id)
 		$resp->sendJSON([ 'ok' => false, 'error' => 'This conversation is not yours.' ], true, 404);
 	}
-	$conv = $conv ?: AgentConversation::begin([ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => $node['wfid'], 'channel' => 'app', 'user' => (string)$user->_id, 'user_name' => (string)$user->name,
-	    'user_email' => (string)$user->email, 'who' => 'u:' . (string)$user->_id ]);
+	//CLD: 2026-11-08T14:40:00+02:00: a new conversation made here, through save() (the defaults and last_at: AgentConversation)
+	if (!$conv) {
+	    $new = \V::app()->om->create('AgentConversation', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => (string)$node['wfid'], 'channel' => 'app',
+		'user' => (string)$user->_id, 'user_name' => (string)$user->name, 'user_email' => (string)$user->email, 'who' => 'u:' . (string)$user->_id ]);
+	    if (!$new->save())
+		$resp->sendJSON([ 'ok' => false, 'error' => 'The conversation could not be started.' ], true, 500);
+	    $conv = $new->data();
+	}
 	$after = (int)$conv['seq'];
 	$label = isset($body['label']) && is_string($body['label']) ? mb_substr(trim($body['label']), 0, 200) : null;
 	try {
@@ -115,7 +122,8 @@ class AgentController extends \sys\BaseController {
     //the user's own conversation ?conversation / $id, else 404
     private function own($id, $resp) {
 	$conv = AgentConversation::read((string)$id, $this->account->_id ?? null);
-	if (!$conv || (string)$conv['user'] !== (string)\V::app()->user->_id)
+	//CLD: 2026-11-08T14:40:00+02:00: user ?? '': a conversation of another channel has none
+	if (!$conv || (string)($conv['user'] ?? '') !== (string)\V::app()->user->_id)
 	    $resp->sendJSON([ 'ok' => false, 'error' => 'This conversation is not yours.' ], true, 404);
 	return $conv;
     }

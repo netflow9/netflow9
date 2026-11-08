@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new trigger: GravityZone event - starts the workflow when Bitdefender GravityZone's Event Push Service sends events (JSON-RPC: params.events).
+    GravityZone event - starts the workflow when Bitdefender GravityZone's Event Push Service sends events (JSON-RPC: params.events).
     The step's address /gravityzone/<token> (GravityzoneController::receive) and a secret GravityZone sends as `Authorization: Bearer <secret>` (made when the step is added).
     Connect (on): publishing the workflow sets the push service of the credential's key to this address (push.setPushEventSettings: jsonRPC, the event types chosen, all when none),
     unpublishing turns it off (when it still points here): onPublish / onUnpublish (WorkflowController::publish / unpublish). A GravityZone key has one push service: connecting

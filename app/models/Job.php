@@ -124,6 +124,7 @@ class Job extends \sys\BaseModel {
 	if (!empty($options['key'])) {
 	    $doc['key'] = (string)$options['key'];
 	}
+	//CLD: 2026-11-08T14:10:00+02:00: insertOne, not save(): save() rethrows any error as \ErrorException, the duplicate key (11000) of options['key'] would be lost
 	try {
 	    $id = \V::app()->om->insertOne('Job', \V::app()->om->create('Job', $doc));
 	} catch (\MongoDB\Driver\Exception\BulkWriteException $e) {

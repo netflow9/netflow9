@@ -337,8 +337,9 @@ class KnowledgeBase extends \sys\BaseModel {
 	    \V::app()->om->insertMany('KbChunk', $batch);
 	if ($old)
 	    \V::app()->om->updateOne('KbDocument', [ '_id' => $docId, 'aid' => $this->aid ], [ '$set' => $doc ]);
-	else
-	    \V::app()->om->insertOne('KbDocument', \V::app()->om->create('KbDocument', [ '_id' => $docId ] + $doc + [ 'created_at' => $now ]));
+	//CLD: 2026-11-08T14:10:00+02:00: save() (one write per document; no log entries: auditLog false in SysObjects); save() sets created_at
+	elseif (!\V::app()->om->create('KbDocument', [ '_id' => $docId ] + $doc)->save())
+	    throw new \ErrorException('the document was not saved');
 	$this->recount();
 	return [ 'key' => $key, 'title' => $title, 'status' => $old && ($old['status'] ?? 'indexed') === 'indexed' ? 'replaced' : 'added', 'chunks' => count($pieces) ];
     }
@@ -457,9 +458,10 @@ class KnowledgeBase extends \sys\BaseModel {
 	$old = \V::app()->om->findOne('KbDocument', [ 'kb' => $this->_id, 'aid' => $this->aid, 'key' => $key ], [ 'arrays' => true ]);
 	if ($old)
 	    \V::app()->om->updateOne('KbDocument', [ '_id' => $old['_id'], 'aid' => $this->aid ], [ '$set' => [ 'status' => 'pending', 'error' => null, 'updated_at' => $now ] ]);
-	else
-	    \V::app()->om->insertOne('KbDocument', \V::app()->om->create('KbDocument', [ 'aid' => $this->aid, 'kb' => $this->_id, 'key' => $key, 'title' => $title, 'source' => $type, 'file' => $extra['file'] ?? null, 'url' => $extra['url'] ?? null,
-		'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'created_at' => $now, 'updated_at' => $now ]));
+	//CLD: 2026-11-08T14:10:00+02:00: save() (one write per document added); save() sets created_at
+	elseif (!\V::app()->om->create('KbDocument', [ 'aid' => $this->aid, 'kb' => $this->_id, 'key' => $key, 'title' => $title, 'source' => $type, 'file' => $extra['file'] ?? null, 'url' => $extra['url'] ?? null,
+	    'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'updated_at' => $now ])->save())
+	    throw new \ErrorException('the document was not saved');
 	$this->recount();
 	\models\Job::submit('\models\kb\KnowledgeBase::indexJob', [ 'aid' => (string)$this->aid, 'project' => (string)$this->project, 'kb' => (string)$this->_id, 'key' => $key, 'src' => $src ],
 	    [ 'delete_on_done' => true ]);

@@ -225,8 +225,14 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 		return false;
 	}
 	$mail = [ 'to' => $from, 'subject' => (string)($msg['subject'] ?? ''), 'reply_to' => (string)$rcpt ];
-	$conv = $conv ?: $C::begin([ 'aid' => $live->aid, 'project' => $live->project, 'wf' => $live->_id, 'node' => $node['wfid'], 'channel' => 'email', 'user_name' => (string)($msg['from_name'] ?? ''), 'user_email' => $from,
-	    'who' => 'm:' . $from, 'refs' => [], 'mail' => $mail ]);
+	//CLD: 2026-11-08T14:40:00+02:00: a new conversation made here, through save() (the defaults and last_at: AgentConversation)
+	if (!$conv) {
+	    $new = \V::app()->om->create('AgentConversation', [ 'aid' => $live->aid, 'project' => $live->project, 'wf' => $live->_id, 'node' => (string)$node['wfid'], 'channel' => 'email',
+		'user_name' => (string)($msg['from_name'] ?? ''), 'user_email' => $from, 'who' => 'm:' . $from, 'refs' => [], 'mail' => $mail ]);
+	    if (!$new->save())
+		throw new \ErrorException('the conversation was not saved');
+	    $conv = $new->data();
+	}
 	\V::app()->om->updateOne('AgentConversation', [ '_id' => $conv['_id'], 'aid' => $conv['aid'] ], [ '$set' => [ 'mail' => $mail ] ] + ($own !== '' ? [ '$push' => [ 'refs' => [ '$each' => [ $own ], '$slice' => -$C::MAX_REFS ] ] ] : []));
 	//the refs just pushed: the answer's In-Reply-To
 	$conv = $C::read($conv['_id'], $conv['aid']);

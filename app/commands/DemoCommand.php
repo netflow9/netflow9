@@ -365,8 +365,11 @@ class DemoCommand extends \sys\BaseController {
 	foreach(self::POLICY as $title => $text) {
 	    $s = \models\kb\KnowledgeBase::textSource($title, $title . "\n\n" . $text, '');
 	    $now = new UTCDateTime();
-	    \V::app()->om->insertOne('KbDocument', \V::app()->om->create('KbDocument', [ 'aid' => $kb->aid, 'kb' => $kb->_id, 'key' => $s['key'], 'title' => $s['title'], 'source' => 'text', 'file' => null, 'url' => null,
-		'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'created_at' => $now, 'updated_at' => $now ]));
+	    //CLD: 2026-11-08T14:10:00+02:00: save(), as KnowledgeBase::addDocument does; save() sets created_at
+	    $doc = \V::app()->om->create('KbDocument', [ 'aid' => $kb->aid, 'kb' => $kb->_id, 'key' => $s['key'], 'title' => $s['title'], 'source' => 'text', 'file' => null, 'url' => null,
+		'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'updated_at' => $now ]);
+	    if (!$doc->save())
+		return 'knowledge base document not made: ' . $s['title'];
 	    \models\kb\KnowledgeBase::indexJob([ 'aid' => (string)$kb->aid, 'project' => (string)$kb->project, 'kb' => (string)$kb->_id, 'key' => $s['key'],
 		'src' => [ 'type' => 'text', 'title' => $s['title'], 'text' => $s['text'], 'key' => $s['key'] ] ]);
 	}

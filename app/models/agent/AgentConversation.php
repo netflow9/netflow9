@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T18:00:00+02:00: new: a conversation with an agent (a workflow that starts with a Chat trigger, or an Email (inbound) / Teams message trigger that keeps conversations).
+    a conversation with an agent (a workflow that starts with a Chat trigger, or an Email (inbound) / Teams message trigger that keeps conversations).
 	One document per conversation; its messages are models\agent\AgentMessage (apart: a conversation can be long, the page reads only what is new).
 	Each message of a person starts a run (startTurn): the run's variables message, conversation, user; the Reply to chat step adds the answers (reply()), the AI steps read the earlier turns
 	(context()) and write what their tools did on the turn (noteTools()).
@@ -23,6 +23,10 @@ class AgentConversation extends \sys\BaseModel {
 	[ [ 'aid' => 1, 'last_at' => -1 ], [] ],
 	[ [ 'aid' => 1, 'wf' => 1, 'thread' => 1 ], [ 'sparse' => true ] ],
 	[ [ 'aid' => 1, 'wf' => 1, 'refs' => 1 ], [ 'sparse' => true ] ],
+	//CLD: 2026-11-08T12:20:00+02:00: the conversation a run answers (beforeExecutionDelete, at each execution deleted)
+	[ [ 'execution' => 1 ], [] ],
+	//CLD: 2026-11-08T12:30:00+02:00: a workflow's conversations (beforeWorkflowDelete)
+	[ [ 'wf' => 1 ], [] ],
     ];
 
     //the longest message of a person (characters), the turns and the text of each in the variable `conversation.history`, the refs kept, the conversations a page lists
@@ -42,30 +46,98 @@ class AgentConversation extends \sys\BaseModel {
     const PRUNE_RUNS = 500;
 
     public function getSchema() {
-	return array_merge([
-	    [ 'key' => 'wf', 'type' => 'object', 'object' => 'Workflow', 'label' => 'Workflow', 'help' => false ],
-	    [ 'key' => 'project', 'type' => 'object', 'object' => 'Project', 'label' => 'Project', 'help' => false ],
-	    [ 'key' => 'channel', 'type' => 'text', 'label' => 'Channel', 'help' => false ],
-	    [ 'key' => 'title', 'type' => 'text', 'label' => 'Title', 'help' => false ],
-	], $this->getSystemSchema());
+	$fields = [
+	    [
+		'key' => 'wf',
+		'type' => 'object',
+		'object' => 'Workflow',
+		'label' => 'Workflow',
+		'help' => false
+	    ],
+	    [
+		'key' => 'project',
+		'type' => 'object',
+		'object' => 'Project',
+		'label' => 'Project',
+		'help' => false
+	    ],
+	    [
+		'key' => 'channel',
+		'type' => 'text',
+		'label' => 'Channel',
+		'help' => false
+	    ],
+	    //CLD: 2026-11-08T14:40:00+02:00: defaults of a new conversation: the pages read title, turns, summary, user_name, user_email without a fallback;
+	    //summary_upto 0: the summary is written only while it matches (summarize)
+	    [
+		'key' => 'title',
+		'type' => 'text',
+		'label' => 'Title',
+		'default' => '',
+		'help' => false
+	    ],
+	    [
+		'key' => 'user_name',
+		'type' => 'text',
+		'label' => 'Name',
+		'default' => '',
+		'help' => false
+	    ],
+	    [
+		'key' => 'user_email',
+		'type' => 'text',
+		'label' => 'Email',
+		'default' => '',
+		'help' => false
+	    ],
+	    [
+		'key' => 'who',
+		'type' => 'text',
+		'label' => 'Who',
+		'default' => '',
+		'help' => false
+	    ],
+	    [
+		'key' => 'seq',
+		'type' => 'number',
+		'label' => 'Last message',
+		'default' => 0,
+		'help' => false
+	    ],
+	    [
+		'key' => 'turns',
+		'type' => 'number',
+		'label' => 'Turns',
+		'default' => 0,
+		'help' => false
+	    ],
+	    [
+		'key' => 'summary',
+		'type' => 'text',
+		'label' => 'Summary',
+		'default' => '',
+		'help' => false
+	    ],
+	    [
+		'key' => 'summary_upto',
+		'type' => 'number',
+		'label' => 'Summarized up to',
+		'default' => 0,
+		'help' => false
+	    ],
+	];
+	return array_merge($fields, $this->getSystemSchema());
+    }
+
+    //CLD: 2026-11-08T14:40:00+02:00: a new conversation: last_at (the lists' order, prune()) from its start
+    public function beforeSave() {
+	parent::beforeSave();
+	if (!$this->exists() && empty($this->last_at))
+	    $this->last_at = new \MongoDB\BSON\UTCDateTime();
     }
 
     // ------------------------------------------------------------------------------------
     //conversations
-
-    //a new conversation: $f: aid, project, wf, node, channel, user, user_name, user_email, who, guest_key (the key itself), thread, refs, mail, credential => the document
-    public static function begin(array $f) {
-	$now = new \MongoDB\BSON\UTCDateTime();
-	$doc = [ 'aid' => $f['aid'], 'project' => $f['project'], 'wf' => $f['wf'], 'node' => (string)$f['node'], 'channel' => (string)$f['channel'], 'user' => isset($f['user']) ? (string)$f['user'] : null,
-	    'user_name' => (string)($f['user_name'] ?? ''), 'user_email' => (string)($f['user_email'] ?? ''), 'who' => (string)($f['who'] ?? ''),
-	    'guest_key' => isset($f['guest_key']) ? hash('sha256', (string)$f['guest_key']) : null, 'title' => '', 'seq' => 0, 'turns' => 0, 'summary' => '', 'summary_upto' => 0, 'summary_at' => null,
-	    'execution' => null, 'created_at' => $now, 'last_at' => $now ];
-	foreach([ 'thread', 'refs', 'mail', 'credential' ] as $k)
-	    if (isset($f[$k]))
-		$doc[$k] = $f[$k];
-	$doc['_id'] = \V::app()->om->insertOne('AgentConversation', \V::app()->om->create('AgentConversation', $doc));
-	return $doc;
-    }
 
     //conversation $id of account $aid; null: no such conversation
     public static function read($id, $aid) {
@@ -104,8 +176,14 @@ class AgentConversation extends \sys\BaseModel {
 
     //hook workflow:before-delete (sys\Boot)
     public static function beforeWorkflowDelete($wf) {
-	foreach(\V::app()->om->find('AgentConversation', [ 'wf' => $wf->_id, 'aid' => $wf->aid ], [ 'arrays' => true, 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $c)
+	foreach(\V::app()->om->find('AgentConversation', [ 'wf' => $wf->_id ], [ 'arrays' => true, 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $c)
 	    self::remove($c);
+    }
+
+    //CLD: 2026-11-08T12:10:00+02:00: hook execution:before-delete (sys\Boot): a deleted run no longer answers its conversation; else the conversation keeps its id and prune() never removes it.
+    //By the id only: some deletes read only _id and aid (Workflow::beforeDelete)
+    public static function beforeExecutionDelete($exe) {
+	\V::app()->om->updateMany('AgentConversation', [ 'execution' => (string)$exe->_id ], [ '$set' => [ 'execution' => null ] ]);
     }
 
     // ------------------------------------------------------------------------------------
@@ -122,7 +200,10 @@ class AgentConversation extends \sys\BaseModel {
 	    [ 'arrays' => true, 'projection' => [ 'seq' => 1 ] ]);
 	if (!$after)
 	    throw new \ErrorException('the conversation is gone');
-	\V::app()->om->insertOne('AgentMessage', \V::app()->om->create('AgentMessage', [ 'aid' => $conv['aid'], 'conversation' => $conv['_id'], 'seq' => (int)$after['seq'], 'role' => (string)$role, 'at' => $now ] + $fields));
+	//CLD: 2026-11-08T13:40:00+02:00: save(): a couple of messages a turn, beside an AI call, not too frequent for it; no log entries (auditLog false in SysObjects)
+	$message = \V::app()->om->create('AgentMessage', [ 'aid' => $conv['aid'], 'conversation' => $conv['_id'], 'seq' => (int)$after['seq'], 'role' => (string)$role, 'at' => $now ] + $fields);
+	if (!$message->save())
+	    throw new \ErrorException('the message was not saved');
 	return (int)$after['seq'];
     }
 

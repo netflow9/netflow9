@@ -158,9 +158,15 @@ class NodeTriggerTeams extends \models\wf\WfNode {
 	    return null;
 	$from = (array)($m['from']['user'] ?? []);
 	$person = [ 'id' => (string)($from['id'] ?? ''), 'name' => (string)($from['displayName'] ?? ''), 'email' => '' ];
-	$conv = \V::app()->om->findOne('AgentConversation', [ 'aid' => $wf->aid, 'wf' => $wf->_id, 'thread' => (string)$chat ], [ 'arrays' => true ])
-	    ?: \models\agent\AgentConversation::begin([ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => $node['wfid'], 'channel' => 'teams', 'user_name' => $person['name'], 'who' => 't:' . $person['id'], 'thread' => (string)$chat,
-		'credential' => (string)($node['config']['credential'] ?? '') ]);
+	$conv = \V::app()->om->findOne('AgentConversation', [ 'aid' => $wf->aid, 'wf' => $wf->_id, 'thread' => (string)$chat ], [ 'arrays' => true ]);
+	//CLD: 2026-11-08T14:40:00+02:00: a new conversation made here, through save() (the defaults and last_at: AgentConversation)
+	if (!$conv) {
+	    $new = \V::app()->om->create('AgentConversation', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => (string)$node['wfid'], 'channel' => 'teams',
+		'user_name' => $person['name'], 'who' => 't:' . $person['id'], 'thread' => (string)$chat, 'credential' => (string)($node['config']['credential'] ?? '') ]);
+	    if (!$new->save())
+		throw new \ErrorException('the conversation was not saved');
+	    $conv = $new->data();
+	}
 	return \models\agent\AgentConversation::startTurn($wf, $node, $conv, $text, [ 'wait' => false, 'trigger' => 'teams', 'user' => $person, 'input' => [ 'who' => 't:' . $person['id'] ],
 	    'vars' => [ 'teams' => [ 'chat' => (string)$chat, 'message_id' => (string)($m['id'] ?? '') ] ] ]);
     }

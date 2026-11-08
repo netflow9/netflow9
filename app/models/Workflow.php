@@ -321,12 +321,14 @@ class Workflow extends \sys\BaseModel {
     public function beforeDelete() {
 	if ($this->runVersion !== null)
 	    throw new \LogicException('a copy of a published version cannot be deleted');
+
 	parent::beforeDelete();
 	\V::app()->hooks->applyHook('workflow:before-delete', [ $this ]);
-	//CLD: 2026-10-12T12:31:46+03:00: through ObjectManager: each deleted with its model (only the ids are read; both are kept out of the logs)
-	//CLD: 2026-11-02T15:46:06+02:00: + its test cases and test runs
+
+	//through ObjectManager: each deleted with its model (only the ids are read; both are kept out of the logs)
+	//+ its test cases and test runs
 	foreach([ 'WfTestCase', 'WfTestRun', 'WfExecution', 'WfVersion' ] as $objectName) {
-	    foreach(\V::app()->om->find($objectName, [ 'wf' => $this->_id, 'aid' => $this->aid ], [ 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $o)
+	    foreach(\V::app()->om->find($objectName, [ 'wf' => $this->_id ], [ 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $o)
 		$o->delete();
 	}
     }

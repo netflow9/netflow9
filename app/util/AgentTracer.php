@@ -40,9 +40,14 @@ class AgentTracer {
 	$trace = new self($step, new \MongoDB\BSON\ObjectId());
 	$now = new \MongoDB\BSON\UTCDateTime();
 	$exec = $step->exec;
-	$trace->attempt(fn() => \V::app()->om->insertOne('AgentTrace', \V::app()->om->create('AgentTrace', [ '_id' => $trace->id, 'aid' => $exec->aid, 'project' => $exec->project, 'wf' => $exec->wf, 'execution' => $exec->_id,
-	    'node' => (string)$step->wfid, 'step' => (string)($step->title ?: $step::$label), 'visit' => (int)$step->runs + 1, 'provider' => $step::PROVIDER, 'model' => trim((string)$step->cfg('model', '')),
-	    'state' => 'running', 'rounds' => [], 'totals' => self::emptyTotals(), 'created_at' => $now, 'started_at' => $now, 'updated_at' => $now ])));
+	//CLD: 2026-11-08T13:50:00+02:00: save() (one write per visit of the step); a failed save throws, as a failed insert did, so attempt() logs it once
+	$trace->attempt(function() use ($trace, $step, $exec, $now) {
+	    $doc = \V::app()->om->create('AgentTrace', [ '_id' => $trace->id, 'aid' => $exec->aid, 'project' => $exec->project, 'wf' => $exec->wf, 'execution' => $exec->_id,
+		'node' => (string)$step->wfid, 'step' => (string)($step->title ?: $step::$label), 'visit' => (int)$step->runs + 1, 'provider' => $step::PROVIDER, 'model' => trim((string)$step->cfg('model', '')),
+		'state' => 'running', 'rounds' => [], 'totals' => self::emptyTotals(), 'started_at' => $now, 'updated_at' => $now ]);
+	    if (!$doc->save())
+		throw new \ErrorException('the trace was not saved');
+	});
 	return $trace;
     }
 

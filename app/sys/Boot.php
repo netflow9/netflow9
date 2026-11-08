@@ -19,7 +19,7 @@ class Boot {
 	\V::app()->hooks->addHook('model:after-delete', [ \models\AuditLog::class, 'afterModelDelete' ]);
 	\V::app()->hooks->addHook('model:after-save', [ \models\ExecutionLog::class, 'afterModelSave' ]);
 	\V::app()->hooks->addHook('model:after-delete', [ \models\ExecutionLog::class, 'afterModelDelete' ]);
-	//CLD: 2026-11-04T08:10:00+02:00: the choices of the step forms read in this request may have changed
+	//the choices of the step forms read in this request may have changed
 	\V::app()->hooks->addHook('model:after-save', [ \models\wf\WfNode::class, 'forgetChoices' ]);
 	\V::app()->hooks->addHook('model:after-delete', [ \models\wf\WfNode::class, 'forgetChoices' ]);
 
@@ -48,6 +48,9 @@ class Boot {
 	//CLD: 2026-11-02T18:00:00+02:00: the conversations with an agent go with its workflow; a run that stops ends its turn
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\agent\AgentConversation::class, 'beforeWorkflowDelete' ]);
 	\V::app()->hooks->addHook('execution:stopped', [ \models\agent\AgentConversation::class, 'afterRun' ]);
+	//CLD: 2026-11-08T12:00:00+02:00: an execution's AI step traces go with it; CLD: 2026-11-08T12:10:00+02:00: and the conversation it answers is freed
+	\V::app()->hooks->addHook('execution:before-delete', [ \models\agent\AgentTrace::class, 'dropFor' ]);
+	\V::app()->hooks->addHook('execution:before-delete', [ \models\agent\AgentConversation::class, 'beforeExecutionDelete' ]);
 
 	//a completed Email (inbound) run deletes its raw message, in every mode: the daemon runs them
 	\V::app()->hooks->addHook('execution:end', [ \models\node\NodeTriggerEmail::class, 'afterExecutionEnd' ]);

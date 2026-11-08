@@ -177,8 +177,10 @@ class AgentEval {
 	$id = new \MongoDB\BSON\ObjectId();
 	$now = new \MongoDB\BSON\UTCDateTime();
 	$run = [ '_id' => $id, 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'state' => 'queued', 'by' => (string)$by, 'draft_hash' => self::draftHash($wf->nodes), 'cases_hash' => self::casesHash($wf),
-	    'cases' => [], 'totals' => self::emptyTotals(), 'created_at' => $now, 'updated_at' => $now ];
-	\V::app()->om->insertOne('WfTestRun', \V::app()->om->create('WfTestRun', $run));
+	    'cases' => [], 'totals' => self::emptyTotals(), 'updated_at' => $now ];
+	//CLD: 2026-11-08T13:50:00+02:00: save() (one write per test run); save() sets created_at
+	if (!\V::app()->om->create('WfTestRun', $run)->save())
+	    throw new \ErrorException('the test run was not saved');
 	if (self::$inline) {
 	    self::job((object)[ 'run' => (string)$id, 'aid' => $wf->aid ]);
 	    return [ WfTestRun::read((string)$id, $wf), true ];

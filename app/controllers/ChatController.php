@@ -82,7 +82,12 @@ class ChatController extends \sys\APIController {
 		$this->fail(404, 'This conversation is gone.');
 	} else {
 	    $key = bin2hex(random_bytes(24));
-	    $conv = AgentConversation::begin([ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => $node['wfid'], 'channel' => 'embed', 'user_name' => 'Guest', 'guest_key' => $key ]);
+	    //CLD: 2026-11-08T14:40:00+02:00: a new conversation made here, through save() (the defaults and last_at: AgentConversation); the page keeps $key, the conversation its sha256
+	    $new = \V::app()->om->create('AgentConversation', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => (string)$node['wfid'], 'channel' => 'embed',
+		'user_name' => 'Guest', 'guest_key' => hash('sha256', $key) ]);
+	    if (!$new->save())
+		$this->fail(500, 'This chat cannot answer now.');
+	    $conv = $new->data();
 	}
 	$after = (int)$conv['seq'];
 	$label = is_string($body['label'] ?? null) ? mb_substr(trim($body['label']), 0, 200) : null;

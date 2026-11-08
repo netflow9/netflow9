@@ -17,6 +17,8 @@ class AssistantChat extends \sys\BaseModel {
     protected static $collection = 'assistant_chats';
     public static $indexes = [
 	[ [ 'aid' => 1, 'wf' => 1 ], [ 'unique' => true ] ],
+	//CLD: 2026-11-08T12:30:00+02:00: a workflow's conversation (beforeWorkflowDelete)
+	[ [ 'wf' => 1 ], [] ],
     ];
 
     //the messages kept (as the panel's MAX_KEPT), the longest text kept, the most settings to fill in kept per message
@@ -56,7 +58,7 @@ class AssistantChat extends \sys\BaseModel {
 
     //hook workflow:before-delete (sys\Boot)
     public static function beforeWorkflowDelete($wf) {
-	foreach(\V::app()->om->find('AssistantChat', [ 'wf' => $wf->_id, 'aid' => $wf->aid ]) as $chat)
+	foreach(\V::app()->om->find('AssistantChat', [ 'wf' => $wf->_id ]) as $chat)
 	    $chat->delete();
     }
 

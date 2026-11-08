@@ -115,10 +115,11 @@ class WfExecution extends \sys\BaseModel {
 	return $exe;
     }
 
-    //CLD: 2026-11-02T14:00:00+02:00: new: its AI steps' traces go with it (every way of deleting an execution comes here)
+    //every way of deleting an execution comes here; the data of other features (e.g. its AI steps' traces) goes in execution:before-delete
+    //CLD: 2026-11-08T12:00:00+02:00: the traces through the hook (sys\Boot), as workflow:before-delete: the execution does not call the agent models
     public function beforeDelete() {
 	parent::beforeDelete();
-	\models\agent\AgentTrace::dropFor($this);
+	\V::app()->hooks->applyHook('execution:before-delete', [ $this ]);
     }
 
     //CLD: 2026-11-02T14:00:00+02:00: new: a new execution (not saved) of workflow $wf's draft with the inputs of this finished one: the same trigger, input and first variables, so a change of the steps (e.g. a prompt)
