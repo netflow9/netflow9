@@ -19,6 +19,8 @@ namespace util;
 class Migrations {
     const LIST = [
 	[ 'id' => 'markdown2html', 'version' => '0.99.820', 'label' => 'the expression function markdown() renamed markdown2html()', 'method' => 'markdown2html' ],
+	//CLD: 2026-11-08T12:00:00+02:00: the users' UI fields moved into User prefs
+	[ 'id' => 'userPrefs', 'version' => '0.99.839', 'label' => 'the users\' last_project, sidebar_width, sidebar_collapsed, hide_advanced_steps moved into prefs', 'method' => 'userPrefs' ],
     ];
 
     //the states of an execution that may still run (a Wait, a Human task): it runs from its own copy of the steps
@@ -139,5 +141,20 @@ class Migrations {
 	    return $config === $node['config'] ? null : [ 'config' => $config ] + $node;
 	}, $dryRun);
 	return ($dryRun ? 'would change ' : 'changed ') . Format::plural($steps, 'step') . ' in ' . Format::plural($docs, 'workflow, version or execution', 'workflows, versions or executions');
+    }
+
+    //CLD: 2026-11-08T12:00:00+02:00: new: 0.99.839: a user's last_project, sidebar_width, sidebar_collapsed and hide_advanced_steps are keys of its `prefs` (merged
+    //into the ones it may have already; one already in prefs is kept), the old fields removed
+    protected static function userPrefs($dryRun) {
+	$keys = [ 'last_project', 'sidebar_width', 'sidebar_collapsed', 'hide_advanced_steps' ];
+	$coll = \V::app()->mongo->selectCollection(\models\User::_database(), \models\User::_collection());
+	$n = 0;
+	foreach($coll->find([ '$or' => array_map(fn($k) => [ $k => [ '$exists' => true ] ], $keys) ], [ 'typeMap' => \sys\Mongo::TYPEMAP ]) as $u) {
+	    $prefs = (is_array($u['prefs'] ?? null) ? $u['prefs'] : []) + array_filter(array_intersect_key($u, array_flip($keys)), fn($v) => $v !== null);
+	    if (!$dryRun)
+		$coll->updateOne([ '_id' => $u['_id'] ], [ '$set' => [ 'prefs' => (object)$prefs ], '$unset' => array_fill_keys($keys, '') ]);
+	    $n++;
+	}
+	return ($dryRun ? 'would change ' : 'changed ') . Format::plural($n, 'user');
     }
 }

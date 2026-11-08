@@ -4,12 +4,16 @@ namespace models;
 
 class Credential extends \sys\BaseModel {
     use \sys\PolymorphTrait;
-    //CLD: 2026-11-03T18:00:00+02:00: a credential can be shared with other projects of the account: their workflows use it. No permission comes with it: they do not open, test or change it. Variables are not shared
+    //a credential can be shared with other projects of the account: their workflows use it.
+    //No permission comes with it: they do not open, test or change it. Variables are not shared
     use \models\share\ShareableTrait;
-    //CLD: 2026-11-04T12:00:00+02:00: and moved to another project
+    //and moved to another project
     use \models\share\MovableTrait;
 
-    const MOVE_PERMS = [ 'from' => 'Credential::delete', 'to' => 'Credential::create' ];
+    const MOVE_PERMS = [
+	'from' => 'Credential::delete',
+	'to' => 'Credential::create'
+    ];
     const MOVE_ACTION = 'credential.move';
 
     const SHARE_PERM = 'Credential::share';
@@ -17,7 +21,7 @@ class Credential extends \sys\BaseModel {
     const SHARE_LEVELS = [ 'use' => 'Use in workflows' ];
     const SHARE_PERMS = [ 'use' => [] ];
 
-    //CLD: 2026-10-09T17:21:14+03:00: the family's registry name (variants: 'variant-of' => FAMILY)
+    //the family's registry name (variants: 'variant-of' => FAMILY)
     const FAMILY = 'Credential';
 
     protected static $collection = 'credentials';
@@ -125,7 +129,7 @@ class Credential extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-11-03T18:00:00+02:00: the projects it is shared with
+	    //the projects it is shared with
 	    [
 		'key' => 'shares',
 		'type' => 'array',
@@ -138,22 +142,22 @@ class Credential extends \sys\BaseModel {
 	];
     }
 
-    //CLD: 2026-11-03T18:00:00+02:00: variables are read by name in expressions: each project keeps its own
+    //variables are read by name in expressions: each project keeps its own
     public function shareProblem() {
 	return $this instanceof \models\credential\CredentialVariable ? 'Variables are not shared: each project has its own.' : null;
     }
 
-    //CLD: 2026-11-04T12:00:00+02:00: read by name, so nothing can name what would break
+    //read by name, so nothing can name what would break
     public function moveProblem() {
 	return $this instanceof \models\credential\CredentialVariable ? 'Variables are not moved: each project has its own, and workflows read them by name.' : null;
     }
 
-    //CLD: 2026-11-04T12:00:00+02:00: the name is unique among all the kinds of credentials
+    //the name is unique among all the kinds of credentials
     protected function moveFamily() {
 	return self::FAMILY;
     }
 
-    //CLD: 2026-11-03T18:00:00+02:00: a credential an HTTP step can send anywhere: the Share dialog asks for its hosts
+    //a credential an HTTP step can send anywhere: the Share dialog asks for its hosts
     public function shareUsesHosts() {
 	return $this->provides('http');
     }
@@ -175,7 +179,7 @@ class Credential extends \sys\BaseModel {
 	return [ [ 'hosts' => array_values(array_unique($hosts)), 'any_host' => $any ], null ];
     }
 
-    //CLD: 2026-11-03T18:00:00+02:00: what the Share dialog says
+    //what the Share dialog says
     public function shareWarnings() {
 	$warnings = [ 'Workflows there act with its full rights. They do not see its secret or settings, and cannot change, test or delete it.' ];
 	if ($this->shareUsesHosts())

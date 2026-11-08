@@ -522,43 +522,22 @@ class SiteController extends \sys\BaseController {
 
 	\V::app()->user->crtProject = $project->_id;
 	//CLD: 2026-10-30T12:00:00+02:00: the next session starts on this project (Boot)
-	\models\User::rememberUi([ 'last_project' => $project->_id ]);
+	\V::app()->var('rt.user')->rememberPrefs([ 'last_project' => $project->_id ]);
 
 	$resp->redirect('/site/index');
     }
 
-    //CLD: 2026-10-30T12:00:00+02:00: new: the sidebar's width (px) set by its resize handle (app.sidebar), kept for the user (User sidebar_width)
-    //CLD: 2026-10-30T13:00:00+02:00: renamed: + `collapsed` (0 / 1: User sidebar_collapsed); each one optional
-    public function sidebar($req, $resp) {
+    //CLD: 2026-11-08T12:00:00+02:00: new: the signed-in user's preferences kept (User prefs: any of its keys, e.g. sidebar_width, sidebar_collapsed 0 / 1 by app.sidebar,
+    //hide_advanced_steps 0 / 1 by the designer's step picker); a key it does not have, or a value its field refuses: 400, with the errors
+    public function prefs($req, $resp) {
 	if (\V::app()->user->isGuest)
 	    \V::app()->error(401, 'Unauthorized');
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 
-	$set = [];
-	if (isset($req->data['width'])) {
-	    $w = filter_var($req->data['width'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => self::SIDEBAR_MIN_W, 'max_range' => self::SIDEBAR_MAX_W ] ]);
-	    if ($w === false)
-		\V::app()->error(400, 'Invalid width');
-	    $set['sidebar_width'] = $w;
-	}
-	if (isset($req->data['collapsed']))
-	    $set['sidebar_collapsed'] = (bool)filter_var($req->data['collapsed'], FILTER_VALIDATE_BOOLEAN);
-	\models\User::rememberUi($set);
-
-	$resp->sendJSON([ 'ok' => true ]);
-    }
-
-    //CLD: 2026-10-30T15:00:00+02:00: new: the designer's step picker shows the advanced steps or not (`show`: 0 / 1), kept for the user (User hide_advanced_steps)
-    public function steps_view($req, $resp) {
-	if (\V::app()->user->isGuest)
-	    \V::app()->error(401, 'Unauthorized');
-	if (!$req->is('post'))
-	    \V::app()->error(405, 'Method not allowed');
-	if (!isset($req->data['show']))
-	    \V::app()->error(400, 'Missing show');
-
-	\models\User::rememberUi([ 'hide_advanced_steps' => !filter_var($req->data['show'], FILTER_VALIDATE_BOOLEAN) ]);
+	$errors = \V::app()->var('rt.user')->rememberPrefs(is_array($req->data) ? $req->data : []);
+	if ($errors)
+	    $resp->sendJSON([ 'ok' => false, 'errors' => $errors ], true, 400);
 	$resp->sendJSON([ 'ok' => true ]);
     }
 

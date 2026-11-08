@@ -3,13 +3,16 @@
 namespace models;
 
 class Workflow extends \sys\BaseModel {
-    //CLD: 2026-11-03T16:00:00+02:00: a published workflow that starts with Called by a workflow can be shared with other projects of the account: they call it and see what it offers (not Workflow::read: that is also its runs,
+    //a published workflow that starts with Called by a workflow can be shared with other projects of the account: they call it and see what it offers (not Workflow::read: that is also its runs,
     //its settings, its tests). It runs in its own project
+
     use \models\share\ShareableTrait;
-    //CLD: 2026-11-04T15:00:00+02:00: and moved to another project
     use \models\share\MovableTrait;
 
-    const MOVE_PERMS = [ 'from' => 'Workflow::delete', 'to' => 'Workflow::create' ];
+    const MOVE_PERMS = [
+	'from' => 'Workflow::delete',
+	'to' => 'Workflow::create'
+    ];
     const MOVE_ACTION = 'workflow.move';
     //what follows it, by their `wf`: its versions and runs, its tests, its tasks, its triggers' state and token, its conversations and traces. The logs stay as written
     const MOVE_RELATED = [ 'WfVersion', 'WfExecution', 'WfTestCase', 'WfTestRun', 'WfTask', 'TriggerToken', 'TriggerState', 'MailPoll', 'RemoteFileState', 'AgentConversation', 'AgentTrace' ];
@@ -31,10 +34,10 @@ class Workflow extends \sys\BaseModel {
     const DRAFT = 'draft';
     const PUBLISHED = 'published';
 
-    //CLD: 2026-10-11T13:51:42+03:00: set on a copy made by forVersion(): the version whose steps it holds (runs record it); such a copy is never saved
+    //set on a copy made by forVersion(): the version whose steps it holds (runs record it); such a copy is never saved
     public $runVersion = null;
 
-    //CLD: 2026-10-19T17:10:00+03:00: the step errors found by validatesDraft() (a draft is saved with them)
+    //the step errors found by validatesDraft() (a draft is saved with them)
     public $stepIssues = [];
 
     public function getSchema() {
@@ -68,13 +71,12 @@ class Workflow extends \sys\BaseModel {
 		'label' => 'Project',
 		'object' => 'Project',
 		'help' => false,
-		//CLD: 2026-11-07T12:00:00+02:00: a workflow always has a project (its access is its project's: models\Project::checkAccess)
 		'required' => true,
 		'perm:read' => 'everybody',
 		'perm:update' => 'permission',
 	    ],
 
-	    //CLD: 2026-11-03T16:00:00+02:00: the projects it is shared with
+	    //the projects it is shared with
 	    [
 		'key' => 'shares',
 		'type' => 'array',
@@ -160,7 +162,7 @@ class Workflow extends \sys\BaseModel {
 	return \V::app()->om->findById('Project', $this->project)?->checkAccess($userId, $permName) || $this->sharedCan($userId, $permName);
     }
 
-    //CLD: 2026-11-03T16:00:00+02:00: why it cannot be shared now, null when it can (the Share dialog)
+    //why it cannot be shared now, null when it can (the Share dialog)
     public function shareProblem() {
 	$live = $this->liveCopy();
 	if (!$live)
@@ -389,7 +391,7 @@ class Workflow extends \sys\BaseModel {
 	return $this->version_count;
     }
 
-    //CLD: 2026-10-13T12:34:29+03:00: how many steps deep a variable's type is looked for through `from` (Set steps copying Set steps; variablesAt)
+    //how many steps deep a variable's type is looked for through `from` (Set steps copying Set steps; variablesAt)
     const MAX_TYPE_DEPTH = 8;
 
     //CLD: 2026-10-06T23:25:57+03:00: checks how the steps are connected; returns [ [ 'level' => error|warning, 'node' => wfid|null, 'message' => ... ], ... ]
@@ -688,12 +690,12 @@ class Workflow extends \sys\BaseModel {
 	return $issues;
     }
 
-    //CLD: 2026-11-07T01:06:42+02:00: a problem of validateFlow(): $level (error / warning), the step it is about (null: the workflow), $message
+    //a problem of validateFlow(): $level (error / warning), the step it is about (null: the workflow), $message
     private static function addIssue(array &$issues, $level, $node, $message) {
 	$issues[] = [ 'level' => $level, 'node' => $node, 'message' => $message ];
     }
 
-    //CLD: 2026-11-07T01:06:42+02:00: the level of step $id: the loop it is in (its parent, when that is a container), null at the top (keep in sync with validateFlow() in app.workflow.js)
+    //the level of step $id: the loop it is in (its parent, when that is a container), null at the top (keep in sync with validateFlow() in app.workflow.js)
     private static function loopOf($nodes, $def, $id) {
 	$parent = $nodes[$id]['parentId'] ?? null;
 	return (!empty($parent) && !empty($def[$parent]['isContainer'])) ? $parent : null;

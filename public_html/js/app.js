@@ -9,22 +9,22 @@ window.app.sidebar = (function() {
     let sidebar;
     let lastWidth = 0;
 
-    //CLD: 2026-10-30T12:00:00+02:00: the width set by the resize handle is kept for the user (User sidebar_width: every browser):
-    //rendered by the layout (aside data-width), saved by /site/sidebar
+    //CLD: 2026-10-30T12:00:00+02:00: the width set by the resize handle is kept for the user (User prefs sidebar_width: every browser):
+    //rendered by the layout (aside data-width), saved by /site/prefs
     const storedWidth = () => {
 	const w = parseInt(sidebar.attr('data-width'), 10);
 	return Number.isFinite(w) ? Math.max(minWidth, Math.min(maxWidth, w)) : null;
     };
-    //CLD: 2026-10-30T13:00:00+02:00: + the collapsed state (User sidebar_collapsed; rendered by the layout: aside.collapsed); storeWidth saves both (a drag expands the sidebar)
+    //CLD: 2026-10-30T13:00:00+02:00: + the collapsed state (User prefs sidebar_collapsed; rendered by the layout: aside.collapsed); storeWidth saves both (a drag expands the sidebar)
     const store = (data) => {
-	$.ajax({ url: '/site/sidebar', method: 'POST', data: data, dataType: 'json',
+	$.ajax({ url: '/site/prefs', method: 'POST', data: data, dataType: 'json',
 	    headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content'), 'X-Requested-With': 'XMLHttpRequest' } })
 	    .fail((xhr) => console.warn('app.sidebar: the state was not saved', xhr.status));
     };
     const storeWidth = (w) => {
 	w = Math.round(w);
 	sidebar.attr('data-width', w);
-	store({ width: w, collapsed: 0 });
+	store({ sidebar_width: w, sidebar_collapsed: 0 });
     };
 
     //CLD: 2026-10-19T22:19:24+03:00: the width goes in the --sidebar-w custom property, so the theme's media queries can replace it
@@ -95,7 +95,7 @@ window.app.sidebar = (function() {
 		    isCollapsed = true;
 		    sidebar.addClass('collapsed');
 		    $('.btn-expand-sidebar').removeClass('d-none');
-		    store({ collapsed: 1 });
+		    store({ sidebar_collapsed: 1 });
 	    })
 	    _document.on('click', '.btn-expand-sidebar', (e) => {
 		    //CLD: 2026-10-19T22:19:24+03:00: preventDefault (an <a href="#">); small screen: opens the drawer
@@ -106,7 +106,7 @@ window.app.sidebar = (function() {
 		    sidebar.removeClass('collapsed');
 		    setWidth(lastWidth);
 		    $('.btn-expand-sidebar').addClass('d-none');
-		    store({ collapsed: 0 });
+		    store({ sidebar_collapsed: 0 });
 	    });
 
 	    //CLD: 2026-10-19T22:19:24+03:00: the drawer closes on its backdrop, Escape, a link that navigates, going back, or when the window gets wide

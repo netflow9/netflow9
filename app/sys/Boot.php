@@ -165,8 +165,11 @@ class Boot {
 	}
 	$this->user = $user;
 
-	//the stored user, for the layout (its UI state: sidebar_width, sidebar_collapsed)
+	//the stored user
 	\V::app()->config('rt.user', $user);
+	//CLD: 2026-11-08T12:00:00+02:00: its preferences (User prefs): the defaults + what is stored, cast (a key no longer in `prefs`' fields dropped); for the layout and views
+	$prefs = $user->schema['prefs']->nestedObject(is_array($user->prefs) ? $user->prefs : [])->data();
+	\V::app()->config('rt.prefs', $prefs);
 
 	$account = \V::app()->om->findById('Account', \V::app()->user->aid);
 	if (empty($account)) {
@@ -198,7 +201,7 @@ class Boot {
 	\V::app()->session->setState(Session::KEY_ACTIVE_TS, $now);
 
 	//set a project in session
-	//the project last opened (User last_project), if the user still owns it or is a member,
+	//the project last opened (User prefs last_project), if the user still owns it or is a member,
 	//	else the personal project,
 	//	else the first project the user is a member of (e.g. a Participant),
 	//	else a personal project created now (as the seed command does);
@@ -207,7 +210,7 @@ class Boot {
 	    \V::app()->user->crtProject = null;
 	if (empty(\V::app()->user->crtProject)) {
 	    $uid = \V::app()->user->_id;
-	    $project = empty($this->user->last_project) ? null : \V::app()->om->findOne('Project', [ '_id' => $this->user->last_project, 'aid' => $account->_id,
+	    $project = empty($prefs['last_project']) ? null : \V::app()->om->findOne('Project', [ '_id' => $prefs['last_project'], 'aid' => $account->_id,
 		'$or' => [ [ 'owner' => $uid ], [ 'members.' . (string)$uid => [ '$exists' => true ] ] ] ]);
 	    if (empty($project))
 		$project = \V::app()->om->findOne('Project', [ 'aid' => $account->_id, 'owner' => $uid, 'personal' => true ]);

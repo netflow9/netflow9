@@ -5613,7 +5613,7 @@ class CheckCommand extends \sys\BaseController {
 
     //CLD: 2026-10-24T00:20:00+03:00: new: a 2FA code is accepted once (User::useTfaCode: the same code again, an older window's code, a wrong one refused; the next window's accepted);
     //the "forgot password" limits (LoginThrottle reset_email: 3, reset_ip: 10 in an hour, then locked)
-    //CLD: 2026-10-25T11:20:00+02:00: users made by an administrator: the welcome email's link (models\User::sendPasswordLink: 7 days, it sets the password through /site/reset, not for a
+    //CLD: 2026-10-25T11:20:00+02:00: users made by an administrator: the welcome email's link (UserController::sendPasswordLink: 7 days, it sets the password through /site/reset, not for a
     //disabled user), and the edit's guard: the account keeps an active Owner (UserController::isActiveOwner / activeOwners)
     private function suiteUsers() {
 	$om = \V::app()->om;
@@ -5629,7 +5629,8 @@ class CheckCommand extends \sys\BaseController {
 	    }
 
 	    $before = $om->count('Job', []);
-	    $sent = [ $users['a']->sendPasswordLink($users['o']), $users['b']->sendPasswordLink($users['o']) ];
+	    $sendLink = new \ReflectionMethod(\controllers\UserController::class, 'sendPasswordLink');
+	    $sent = [ $sendLink->invoke(null, $users['a'], $users['o']), $sendLink->invoke(null, $users['b'], $users['o']) ];
 	    $job = $om->findOne('Job', [ 'job_data.to' => 'zz-users-a@example.com' ]);
 	    if ($job)
 		$jobs[] = $job;

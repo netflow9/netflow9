@@ -1998,7 +1998,8 @@ window.app.Workflow = (function() {
 		filter();
 		fitPicker(picker);
 		search.trigger('focus');
-		$.ajax({ url: '/site/steps_view', method: 'POST', data: { show: this.options.showAdvancedSteps ? 1 : 0 }, dataType: 'json',
+		//CLD: 2026-11-08T12:00:00+02:00: kept for the user by /site/prefs (User prefs hide_advanced_steps)
+		$.ajax({ url: '/site/prefs', method: 'POST', data: { hide_advanced_steps: this.options.showAdvancedSteps ? 0 : 1 }, dataType: 'json',
 		    headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content'), 'X-Requested-With': 'XMLHttpRequest' } })
 		    .fail((xhr) => console.warn('app.Workflow: the steps view was not saved', xhr.status));
 	    });

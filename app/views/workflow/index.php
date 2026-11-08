@@ -40,8 +40,8 @@ $isPublished = $wf->status === \models\Workflow::PUBLISHED && $activeVersion !==
 $draftChanged = $activeVersion !== null && !$wf->draftMatches($activeVersion);
 $shown = $viewVersion ? $wf->forVersion($viewVersion) : $wf;
 $readonly = $viewVersion ? 'true' : 'false';
-//CLD: 2026-10-30T15:00:00+02:00: the step picker lists the advanced steps (User hide_advanced_steps: not set, they are listed)
-$showAdvancedSteps = empty(\V::app()->var('rt.user')->hide_advanced_steps) ? 'true' : 'false';
+//CLD: 2026-10-30T15:00:00+02:00: the step picker lists the advanced steps (User prefs hide_advanced_steps)
+$showAdvancedSteps = empty(\V::app()->var('rt.prefs')['hide_advanced_steps']) ? 'true' : 'false';
 $canUpdate = \V::app()->user->can('Workflow::update', [ 'object' => $wf ]);
 $canPublish = \V::app()->user->can('Workflow::publish', [ 'object' => $wf ]);
 $canDelete = \V::app()->user->can('Workflow::delete', [ 'object' => $wf ]);

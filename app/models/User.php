@@ -9,32 +9,12 @@ class User extends \sys\BaseModel {
 	[ [ 'username' => 1 ], [] ],
 	[ [ 'email' => 1 ], [] ],
 	[ [ 'aid' => 1 ], [] ],
-	//CLD: 2026-10-24T08:20:00+03:00: a "forgot password" link's token (only its hash; sparse: most users have none)
+	//a "forgot password" link's token (only its hash; sparse: most users have none)
 	[ [ 'reset_token_hash' => 1 ], [ 'unique' => true, 'sparse' => true ] ],
     ];
 
-    //CLD: 2026-10-24T08:20:00+03:00: how long a "forgot password" link works
+    //how long a "forgot password" link works
     const RESET_VALID = 86400;
-    //CLD: 2026-10-25T11:20:00+02:00: how long the link of a new user's welcome email works (UserController::create / send_link), as a project invitation's
-    const WELCOME_VALID = 7 * 86400;
-
-    //CLD: 2026-10-25T11:20:00+02:00: a link to choose a password, emailed to this user (a new user's first one, or again on request): data\SysEmails `user_welcome`, by $by (who
-    //created the user); false when the user has no password here (e.g. LDAP / SSO) or is not active
-    public function sendPasswordLink($by = null) {
-	if ($this->state !== 'active' || \sys\Identity::passwordSource($this) !== null)
-	    return false;
-	$token = $this->startPasswordReset(\V::app()->request->userIP ?? null, self::WELCOME_VALID);
-	$account = \V::app()->om->findById('Account', (string)$this->aid);
-	\util\EmailSend::system('user_welcome', (string)$this->email, [
-	    'inviter' => trim((string)($by->firstname ?? '') . ' ' . (string)($by->lastname ?? '')) ?: 'An administrator',
-	    'account' => (string)($account->name ?? '') ?: (string)($account->hostname ?? ''),
-	    'email' => (string)$this->email,
-	    'days' => (string)(self::WELCOME_VALID / 86400),
-	    'link' => \V::app()->createAbsoluteUrl('/site/reset', [ 't' => $token ]),
-	]);
-	return true;
-    }
-
 
     // we use these attributes just readonly, usually for display only
     // define just the fields that needs formatting: avatar, datetime
@@ -64,7 +44,6 @@ class User extends \sys\BaseModel {
 		'help' => false,
 		'perm:read' => 'nobody',
 		'perm:update' => 'permission',
-		//CLD: 2026-10-10T18:54:42+03:00: not a form field (set by the password change / system)
 		'showInForms' => false,
 	    ],
 	    //firstname
@@ -168,62 +147,70 @@ class User extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-10-30T12:00:00+02:00: the UI kept across sessions and browsers: the project last opened (the next session starts on it, Boot) and the sidebar's width (px, set by its
-	    //resize handle: app.sidebar). Written by rememberUi only (not save(): no audit entry)
+	    //CLD: 2026-11-08T12:00:00+02:00: the user's preferences, one nested object (a field per preference: a new one is one more entry in `fields`): the project last
+	    //opened (the next session starts on it, Boot), the sidebar's width (px, its resize handle) and collapsed state (its buttons: app.sidebar), the designer's step picker
+	    //listing the basic steps only (its "Advanced steps" switch: app.workflow.js; the advanced ones still found by its search). Written by rememberPrefs only (not
+	    //save(): no audit entry); read from rt.prefs (Boot: the defaults + what is stored)
 	    [
-		'key' => 'last_project',
-		'type' => 'object',
-		'label' => 'Last project',
-		'object' => 'Project',
+		'key' => 'prefs',
+		'type' => 'nested',
+		'label' => 'Preferences',
 		'perm:read' => 'nobody',
 		'perm:update' => 'nobody',
 		'showInForms' => false,
+		'fields' => [
+		    [
+			'key' => 'last_project',
+			'type' => 'object',
+			'object' => 'Project',
+			'label' => 'Last project'
+		    ],
+		    [
+			'key' => 'sidebar_width',
+			'type' => 'number',
+			'label' => 'Sidebar width',
+			'validate' => [ [ 'inRange', 'lower' => \controllers\SiteController::SIDEBAR_MIN_W, 'upper' => \controllers\SiteController::SIDEBAR_MAX_W, 'skipEmpty' => true,
+			    'message' => 'From ' . \controllers\SiteController::SIDEBAR_MIN_W . ' to ' . \controllers\SiteController::SIDEBAR_MAX_W ] ]
+		    ],
+		    [
+			'key' => 'sidebar_collapsed',
+			'type' => 'checkbox',
+			'label' => 'Sidebar collapsed',
+			'default' => false
+		    ],
+		    [
+			'key' => 'hide_advanced_steps',
+			'type' => 'checkbox',
+			'label' => 'Hide advanced steps',
+			'default' => true
+		    ],
+		],
 	    ],
-	    [
-		'key' => 'sidebar_width',
-		'type' => 'number',
-		'label' => 'Sidebar width',
-		'perm:read' => 'nobody',
-		'perm:update' => 'nobody',
-		'showInForms' => false,
-	    ],
-	    //CLD: 2026-10-30T13:00:00+02:00: the sidebar collapsed (its collapse / expand buttons: app.sidebar)
-	    [
-		'key' => 'sidebar_collapsed',
-		'type' => 'checkbox',
-		'label' => 'Sidebar collapsed',
-		'default' => false,
-		'perm:read' => 'nobody',
-		'perm:update' => 'nobody',
-		'showInForms' => false,
-	    ],
-	    //CLD: 2026-10-30T15:00:00+02:00: the designer's step picker lists the basic steps only (its "Advanced steps" switch: app.workflow.js); the advanced ones still found by its
-	    //search. New users: true (beforeSave); missing (the users before it): false, every step listed
-	    [
-		'key' => 'hide_advanced_steps',
-		'type' => 'checkbox',
-		'label' => 'Hide advanced steps',
-		'default' => false,
-		'perm:read' => 'nobody',
-		'perm:update' => 'nobody',
-		'showInForms' => false,
-	    ]
 	];
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //CLD: 2026-10-30T15:00:00+02:00: a new user's step picker starts with the basic steps only (User hide_advanced_steps)
-    public function beforeSave() {
-	parent::beforeSave();
-	if (!$this->exists())
-	    $this->hide_advanced_steps = true;
-    }
+    //CLD: 2026-11-08T12:00:00+02:00: new: the preferences in $set kept: only keys of `prefs`' fields, cast and validated by them. Written directly (not save(): no
+    //audit entry), merged into the stored ones in the database (an update pipeline): the others, and another tab's changes, are kept; a missing or empty `prefs` is
+    //started. Returns the errors ([ key => [ messages ] ]), [] when kept
+    public function rememberPrefs(array $set) {
+	$field = $this->schema['prefs'];
+	$unknown = array_diff(array_keys($set), array_column($field->nestedFields(), 'key'));
+	if ($unknown)
+	    return [ (string)reset($unknown) => [ \V::t('Unknown preference') ] ];
+	if (empty($set))
+	    return [];
 
-    //CLD: 2026-10-30T12:00:00+02:00: new: the signed-in user's UI state kept ($set: last_project, sidebar_width, sidebar_collapsed, hide_advanced_steps)
-    public static function rememberUi(array $set) {
-	if (\V::app()->user->isGuest || empty($set))
-	    return;
-	\V::app()->om->updateOne('User', [ '_id' => \V::app()->user->_id ], [ '$set' => $set ]);
+	$prefs = $field->nestedObject($set);
+	if (!$prefs->validates())
+	    return $prefs->errors();
+	//the given keys only: the cast object also holds the other fields' defaults
+	$values = array_intersect_key($prefs->data(), $set);
+	\V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid ], [ [ '$set' => [ 'prefs' => [ '$mergeObjects' => [
+	    [ '$cond' => [ [ '$eq' => [ [ '$type' => '$prefs' ], 'object' ] ], '$prefs', [ '$literal' => (object)[] ] ] ],
+	    [ '$literal' => (object)$values ],
+	] ] ] ] ]);
+	return [];
     }
 
     public function __toString() {
@@ -232,7 +219,7 @@ class User extends \sys\BaseModel {
 
     //CLD: 2026-10-24T08:20:00+03:00: new: a new "forgot password" link for this user, valid RESET_VALID seconds, asked from $ip; replaces the user's earlier one.
     //Returns the token (for the email; only its hash is kept)
-    //CLD: 2026-10-25T11:20:00+02:00: + $valid: seconds the link works (default RESET_VALID; a new user's first password: WELCOME_VALID)
+    //CLD: 2026-10-25T11:20:00+02:00: + $valid: seconds the link works (default RESET_VALID; a new user's first password: UserController::WELCOME_VALID)
     public function startPasswordReset($ip = null, $valid = null) {
 	$token = bin2hex(random_bytes(24));
 	\V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid ], [ '$set' => [

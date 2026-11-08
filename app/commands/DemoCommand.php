@@ -110,7 +110,7 @@ class DemoCommand extends \sys\BaseController {
 	//Maria opens it when she signs in (her personal project made now, as sys\Boot would)
 	$om->create('Project', [ 'aid' => $account->_id, 'name' => 'Personal', 'owner' => $u['maria']->_id, 'personal' => true,
 	    'members' => [ (string)$u['maria']->_id => [ 'role' => $roles['owner']->_id ] ] ])->save();
-	$u['maria']->last_project = (string)$project->_id;
+	$u['maria']->prefs = [ 'last_project' => $project->_id ];
 	$u['maria']->save();
 	\V::app()->user->crtProject = (string)$project->_id;
 
