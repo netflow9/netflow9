@@ -20,8 +20,6 @@ class ProjectInvite extends \sys\BaseModel {
 	[ [ 'expires_at' => 1 ], [ 'expireAfterSeconds' => 0 ] ],
     ];
 
-    const VALID = 7 * 86400;
-
     public function _init() {
 	parent::_init();
 	$this->_config['global'] = true;
@@ -85,7 +83,7 @@ class ProjectInvite extends \sys\BaseModel {
 	    'role' => $roleId,
 	    'invited_by' => $by ? $by->_id : null,
 	    'token_hash' => hash('sha256', $token),
-	    'expires_at' => new \MongoDB\BSON\UTCDateTime((time() + self::VALID) * 1000)
+	    'expires_at' => new \MongoDB\BSON\UTCDateTime((time() + \data\Constants::INVITE_VALID) * 1000)
 	]);
 	if (!$invite->validates() || !$invite->save())
 	    throw new \ErrorException('ProjectInvite: not saved: ' . json_encode($invite->errors()));

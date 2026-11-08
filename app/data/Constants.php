@@ -10,8 +10,13 @@ class Constants {
 
     //how long a "forgot password" link works (seconds)
     const RESET_VALID = 86400;
+    //how long a project invitation's link works (seconds; models\user\ProjectInvite)
+    const INVITE_VALID = 7 * 86400;
     //how long the link of a new user's welcome email works (seconds; UserController::create / send_link), as a project invitation's
-    const WELCOME_VALID = 7 * 86400;
+    const WELCOME_VALID = self::INVITE_VALID;
+
+    //the largest request body accepted by the public endpoints (bytes): webhooks (HookController), MCP (McpController), the FortiGate push (FortigateController)
+    const MAX_REQUEST_BODY = 1048576;
 
     //the objects of a project that can be shared with other projects of the account and moved to another one (ShareController: the `object` parameter)
     const PROJECT_KINDS = [ 'DataTableDef', 'Workflow', 'Credential' ];

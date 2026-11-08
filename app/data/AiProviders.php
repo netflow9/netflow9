@@ -10,6 +10,9 @@
 	embeddings  whether it makes embeddings (the knowledge bases)
 	url         its own API: the AI steps' credentials, the embeddings
 	chat_url    its OpenAI-compatible API, for the Assistant, when that is another address than url
+	api_version          (anthropic) the API version sent with every request (anthropic-version): its credential, the Assistant, the System AI
+	fallback_models      (anthropic) the models server-side fallback is offered for (beta server-side-fallback-2026-07-01, fallbacks: "default"):
+			     the Claude step, the Assistant
     Not here: the System AI (it is an installation's server, see models\assistant\AssistantSettings::providers)
 */
 
@@ -24,6 +27,8 @@ class AiProviders {
 	    'cloud' => true,
 	    'embeddings' => false,
 	    'url' => 'https://api.anthropic.com',
+	    'api_version' => '2023-06-01',
+	    'fallback_models' => '/^claude-(opus-5|sonnet-5-5|fable-5)/',
 	],
 	'openai' => [
 	    'label' => 'OpenAI (or another OpenAI-compatible server)',

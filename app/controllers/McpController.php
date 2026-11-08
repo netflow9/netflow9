@@ -17,9 +17,6 @@ class McpController extends \sys\APIController {
     //supported protocol versions, newest first (initialize answers the client's when supported, else the newest)
     const PROTOCOL_VERSIONS = [ '2025-06-18', '2025-03-26', '2024-11-05' ];
 
-    //largest accepted request body (bytes)
-    const MAX_BODY = 1048576;
-
     //last_used_at is written at most this often (seconds)
     const TOUCH_EVERY = 60;
 
@@ -63,9 +60,9 @@ class McpController extends \sys\APIController {
 	if ($version !== '' && !in_array($version, self::PROTOCOL_VERSIONS, true))
 	    $resp->sendJSON($this->fail(null, -32600, "Unsupported MCP-Protocol-Version {$version}"), true, 400, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-	if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > self::MAX_BODY)
+	if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > \data\Constants::MAX_REQUEST_BODY)
 	    $resp->sendJSON($this->fail(null, -32600, 'Request too large'), true, 413, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-	$body = json_decode((string)file_get_contents('php://input', false, null, 0, self::MAX_BODY + 1), true);
+	$body = json_decode((string)file_get_contents('php://input', false, null, 0, \data\Constants::MAX_REQUEST_BODY + 1), true);
 	if (!is_array($body) || $body === [])
 	    $resp->sendJSON($this->fail(null, -32700, 'Parse error: a JSON-RPC message (or a list of them) is expected'), true, 400, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 

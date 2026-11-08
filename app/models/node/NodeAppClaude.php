@@ -18,9 +18,6 @@ class NodeAppClaude extends NodeAppAi {
     const CAPABILITY = 'anthropic';
     const PROVIDER = \data\AiProviders::DATA[self::CAPABILITY]['name'];
 
-    //the models server-side fallback is offered for (beta server-side-fallback-2026-07-01, fallbacks: "default")
-    const FALLBACK_MODELS = '/^claude-(opus-5|sonnet-5-5|fable-5)/';
-
     protected static function defaultModel() {
 	return \data\AiProviders::DEFAULT_MODEL;
     }
@@ -104,7 +101,7 @@ class NodeAppClaude extends NodeAppAi {
 		$body['tools'][] = [ 'name' => $t['name'], 'description' => mb_substr($t['description'], 0, 1000), 'input_schema' => $t['schema'] ];
 	}
 	$headers = $cred->httpAuth()['headers'];
-	if ($this->cfg('fallback', true) && preg_match(self::FALLBACK_MODELS, $model)) {
+	if ($this->cfg('fallback', true) && preg_match(\data\AiProviders::DATA['anthropic']['fallback_models'], $model)) {
 	    $body['fallbacks'] = 'default';
 	    $headers['anthropic-beta'] = 'server-side-fallback-2026-07-01';
 	}

@@ -18,9 +18,6 @@ class CredentialAnthropic extends \models\Credential {
     public static $provides = [ 'anthropic', 'http' ];
     public static $testable = true;
 
-    //the API version sent with every request
-    const API_VERSION = '2023-06-01';
-
     public function getSchema() {
 	return array_merge(parent::getSchema(), [
 	    [
@@ -46,7 +43,7 @@ class CredentialAnthropic extends \models\Credential {
     }
 
     public function httpAuth() {
-	return [ 'headers' => [ 'x-api-key' => (string)$this->apiKey, 'anthropic-version' => self::API_VERSION ], 'query' => [] ];
+	return [ 'headers' => [ 'x-api-key' => (string)$this->apiKey, 'anthropic-version' => \data\AiProviders::DATA['anthropic']['api_version'] ], 'query' => [] ];
     }
 
     //the models the key can use

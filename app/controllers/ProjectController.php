@@ -309,7 +309,7 @@ class ProjectController extends \sys\BaseController {
 	    $this->backTo($project, 'members');
 	}
 	[ , $token ] = \models\user\ProjectInvite::start($project, $email, $role->_id, $inviter);
-	\util\EmailSend::system('project_invite', $email, $vars + [ 'link' => \V::app()->createAbsoluteUrl('/site/invite', [ 't' => $token ]), 'days' => intdiv(\models\user\ProjectInvite::VALID, 86400) ]);
+	\util\EmailSend::system('project_invite', $email, $vars + [ 'link' => \V::app()->createAbsoluteUrl('/site/invite', [ 't' => $token ]), 'days' => intdiv(\data\Constants::INVITE_VALID, 86400) ]);
 	\models\AuditLog::record('project.member.invite', $project, $email . ' invited as ' . (string)$role);
 	$this->addToast('success', 'OK', 'Invitation sent to ' . $email);
 	$this->backTo($project, 'members');
@@ -332,7 +332,7 @@ class ProjectController extends \sys\BaseController {
 	    //CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
 	    \util\EmailSend::system('project_invite', (string)$invite->email, [ 'inviter' => (string)$inviter, 'project' => (string)$project->name,
 		'account' => (string)($this->account->name ?? '') ?: (string)$this->account->hostname, 'link' => \V::app()->createAbsoluteUrl('/site/invite', [ 't' => $token ]),
-		'days' => intdiv(\models\user\ProjectInvite::VALID, 86400) ]);
+		'days' => intdiv(\data\Constants::INVITE_VALID, 86400) ]);
 	    $this->addToast('success', 'OK', 'Invitation sent again to ' . $invite->email);
 	}
 	$this->redirect('/project/settings', [ 'id' => (string)$project->_id, '__tab' => 'members' ]);

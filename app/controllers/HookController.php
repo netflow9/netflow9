@@ -8,9 +8,6 @@ use \models\node\NodeTriggerWebhook;
 
 class HookController extends \sys\APIController {
 
-    //largest accepted request body (bytes)
-    const MAX_BODY = 1048576;
-
     //limits of the request variable: headers kept, levels of query / body data
     const MAX_HEADERS = 100;
     const REFUSED = 'webhook.refused';
@@ -22,7 +19,7 @@ class HookController extends \sys\APIController {
 	$cfg = $node['config'];
 
 	//size first (the HMAC check reads the body), then authentication, before anything else is revealed
-	if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > self::MAX_BODY)
+	if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > \data\Constants::MAX_REQUEST_BODY)
 	    $this->refuse(413, 'Request body too large');
 
 

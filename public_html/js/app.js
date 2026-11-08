@@ -3,8 +3,9 @@ if (!window.app)
     window.app = {};
 
 window.app.sidebar = (function() {
-    const minWidth = 250; //px
-    const maxWidth = 400; //px
+    //CLD: 2026-11-08T12:00:00+02:00: the width limits (px) are the layout's (aside data-min-width / data-max-width: data\Constants), read by init
+    let minWidth = 250;
+    let maxWidth = 400;
 
     let sidebar;
     let lastWidth = 0;
@@ -69,6 +70,8 @@ window.app.sidebar = (function() {
 
 	init: function() {
 	    sidebar = $('.sidebar');
+	    minWidth = parseInt(sidebar.attr('data-min-width'), 10) || minWidth;
+	    maxWidth = parseInt(sidebar.attr('data-max-width'), 10) || maxWidth;
 
 	    if (!sidebar)
 		return;

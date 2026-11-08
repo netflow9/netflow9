@@ -10,7 +10,6 @@ namespace controllers;
 
 class FortigateController extends \sys\APIController {
 
-    const MAX_BODY = 1048576;
     const REFUSED = 'fortigate.refused';
 
     //called by FortiGate: no CSRF token, the URL's token and the secret are the credential
@@ -22,11 +21,11 @@ class FortigateController extends \sys\APIController {
 	    $resp->addHeader('Allow', 'POST');
 	    $this->refuse(405, 'Method not allowed, use POST');
 	}
-	if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > self::MAX_BODY)
+	if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > \data\Constants::MAX_REQUEST_BODY)
 	    $this->refuse(413, 'Request body too large');
 	$this->requireBearer($cfg['secret'] ?? '');
 
-	$raw = (string)file_get_contents('php://input', false, null, 0, self::MAX_BODY + 1);
+	$raw = (string)file_get_contents('php://input', false, null, 0, \data\Constants::MAX_REQUEST_BODY + 1);
 	$this->requireRunnable($wf, $live);
 
 	$data = json_decode($raw, true);

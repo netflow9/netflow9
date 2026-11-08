@@ -45,8 +45,6 @@ class WorkflowAssistant {
     const MAX_TURN = 10000;
     //a tool result longer than this is cut (characters)
     const MAX_TOOL_RESULT = 30000;
-    //the models server-side fallback is offered for (as NodeAppClaude::FALLBACK_MODELS)
-    const FALLBACK_MODELS = '/^claude-(opus-5|sonnet-5-5|fable-5)/';
 
     //CLD: 2026-10-23T23:30:00+03:00: every tool of util\MCPTools is offered, as the user
 
@@ -120,7 +118,7 @@ class WorkflowAssistant {
 	    public function __construct(private $provider, public $baseUrl, private $apiKey) {}
 	    public function httpAuth() {
 		if (\data\AiProviders::DATA[$this->provider]['protocol'] === 'anthropic')
-		    return [ 'headers' => [ 'x-api-key' => $this->apiKey, 'anthropic-version' => \models\credential\CredentialAnthropic::API_VERSION ], 'query' => [] ];
+		    return [ 'headers' => [ 'x-api-key' => $this->apiKey, 'anthropic-version' => \data\AiProviders::DATA['anthropic']['api_version'] ], 'query' => [] ];
 		return [ 'headers' => $this->apiKey !== '' ? [ 'Authorization' => 'Bearer ' . $this->apiKey ] : [], 'query' => [] ];
 	    }
 	    public function provides($capability) { return $capability === $this->provider; }
@@ -533,7 +531,7 @@ TXT;
 	];
 	$headers = $this->cred->httpAuth()['headers'];
 	//a declined request is retried on the model Anthropic recommends (as NodeAppClaude)
-	if (preg_match(self::FALLBACK_MODELS, $this->model)) {
+	if (preg_match(\data\AiProviders::DATA['anthropic']['fallback_models'], $this->model)) {
 	    $body['fallbacks'] = 'default';
 	    $headers['anthropic-beta'] = 'server-side-fallback-2026-07-01';
 	}
