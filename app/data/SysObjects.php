@@ -448,6 +448,11 @@ class SysObjects {
 		'class' => 'models\node\NodeAppWebPage',
 		'wfNode' => true,
 	    ],
+	    //CLD: 2026-11-08T12:00:00+02:00: Read a certificate (an SSL / TLS certificate decoded: the one a server sends, or a certificate file at a URL)
+	    'NodeAppCertificate' => [
+		'class' => 'models\node\NodeAppCertificate',
+		'wfNode' => true,
+	    ],
 	    //CLD: 2026-10-20T16:00:00+03:00: FTP / SFTP (list or download files: filters, decryption, decompression, afterwards delete / move)
 	    'NodeAppFtp' => [
 		'class' => 'models\node\NodeAppFtp',
