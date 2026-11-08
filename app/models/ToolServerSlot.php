@@ -9,7 +9,6 @@
 namespace models;
 
 class ToolServerSlot extends \sys\BaseModel {
-    //CLD: 2026-11-01T11:55:18+02:00: toolserver_slots
     protected static $collection = 'toolserver_slots';
 
     //seconds a slot is held without being renewed
@@ -22,11 +21,31 @@ class ToolServerSlot extends \sys\BaseModel {
 
     public function getSchema() {
 	return [
-	    [ 'key' => 'server', 'type' => 'text', 'label' => 'Server' ],
-	    [ 'key' => 'account', 'type' => 'text', 'label' => 'Account' ],
-	    [ 'key' => 'pid', 'type' => 'number', 'label' => 'Process' ],
-	    [ 'key' => 'since', 'type' => 'datetime', 'label' => 'Since' ],
-	    [ 'key' => 'until', 'type' => 'datetime', 'label' => 'Until' ],
+	    [
+		'key' => 'server',
+		'type' => 'text',
+		'label' => 'Server'
+	    ],
+	    [
+		'key' => 'account',
+		'type' => 'text',
+		'label' => 'Account'
+	    ],
+	    [
+		'key' => 'pid',
+		'type' => 'number',
+		'label' => 'Process'
+	    ],
+	    [
+		'key' => 'since',
+		'type' => 'datetime',
+		'label' => 'Since'
+	    ],
+	    [
+		'key' => 'until',
+		'type' => 'datetime',
+		'label' => 'Until'
+	    ],
 	];
     }
 

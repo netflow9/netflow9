@@ -100,7 +100,7 @@ class AssistantSettings extends \sys\BaseModel {
 		'default' => \data\AiProviders::DEFAULT_EFFORT,
 		'choices' => \data\AiProviders::EFFORT,
 	    ],
-	    //CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read (util\WorkflowAssistant): structure (tables' columns, workflows, step types, file names, variable names) or structure and data
+	    //what the Assistant may read (util\WorkflowAssistant): structure (tables' columns, workflows, step types, file names, variable names) or structure and data
 	    //(rows, file contents, images, executions, variable values)
 	    [
 		'key' => 'data_access',
@@ -113,7 +113,7 @@ class AssistantSettings extends \sys\BaseModel {
 		'default' => 'structure',
 		'choices' => self::DATA_ACCESS,
 	    ],
-	    //CLD: 2026-10-22T14:00:00+03:00: the monthly budget
+	    //the monthly budget
 	    [
 		'key' => 'budget',
 		'type' => 'number',
@@ -126,12 +126,11 @@ class AssistantSettings extends \sys\BaseModel {
 		    [ 'inRange', 'lower' => 0, 'skipEmpty' => true, 'message' => 'must be 0 or more' ],
 		],
 	    ],
-	    //CLD: 2026-10-22T15:00:00+03:00: System: the account's own limit on its credits
+	    //System: the account's own limit on its credits
 	    [
 		'key' => 'credit_cap',
 		'type' => 'number',
 		'label' => 'Monthly credit limit',
-		//CLD: 2026-10-23T10:00:00+03:00: the month's credits are the account's (the AI steps' too)
 		'help' => 'The Assistant stops once the credits the account used this calendar month (UTC: the Assistant and the AI steps on the System AI) reach it. Empty or 0: no limit',
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',

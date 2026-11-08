@@ -102,21 +102,18 @@ class UserController extends \sys\BaseController {
 	return $this->redirect('/user/list');
     }
 
-    //how long the link of a new user's welcome email works (create / send_link), as a project invitation's
-    const WELCOME_VALID = 7 * 86400;
-
     //a link to choose a password, emailed to $user (a new user's first one, or again on request): data\SysEmails `user_welcome`, by $by (who
     //created the user); false when the user has no password here (e.g. LDAP / SSO) or is not active
     protected static function sendPasswordLink(\models\User $user, $by = null) {
 	if ($user->state !== 'active' || \sys\Identity::passwordSource($user) !== null)
 	    return false;
-	$token = $user->startPasswordReset(\V::app()->request->userIP ?? null, self::WELCOME_VALID);
+	$token = $user->startPasswordReset(\V::app()->request->userIP ?? null, \data\Constants::WELCOME_VALID);
 	$account = \V::app()->om->findById('Account', (string)$user->aid);
 	\util\EmailSend::system('user_welcome', (string)$user->email, [
 	    'inviter' => trim((string)($by->firstname ?? '') . ' ' . (string)($by->lastname ?? '')) ?: 'An administrator',
 	    'account' => (string)($account->name ?? '') ?: (string)($account->hostname ?? ''),
 	    'email' => (string)$user->email,
-	    'days' => (string)(self::WELCOME_VALID / 86400),
+	    'days' => (string)(\data\Constants::WELCOME_VALID / 86400),
 	    'link' => \V::app()->createAbsoluteUrl('/site/reset', [ 't' => $token ]),
 	]);
 	return true;

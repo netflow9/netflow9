@@ -1,15 +1,21 @@
 <?php
 
-//CLD: 2026-10-21T18:00:00+03:00: new model: the sign-in throttle (SOC2.md gap 8). Failed attempts are counted per key in a window; at the key's limit, the key is locked for a while.
-//MongoDB removes a record when its window and lock are over (expires_at, a TTL index; created by `v sys::indexes`)
-//  keys:   name:<sign-in name>   the user or email typed (lower case; counted whether or not such a user exists: a lock tells nothing about the accounts)
-//          ip:<address>           the connection's address (REMOTE_ADDR: X-Forwarded-For is sent by the client); a success does not clear it
-//          tfa:<user id>          wrong 2FA codes; cleared only by a complete sign-in (the password alone does not give more code guesses)
-//          CLD: 2026-10-24T00:20:00+03:00: reset_ip:<address>, reset_email:<email>   "forgot password" requests (each one counts, not only failures)
-//  $seconds = LoginThrottle::lockedFor($key);       0, or the seconds the key stays locked
-//  $locked = LoginThrottle::fail($key);             counts a failure; true when this failure locked the key
-//  LoginThrottle::clear($key);                      after a success
+/*
+    the sign-in throttle (SOC2.md gap 8).
+    Failed attempts are counted per key in a window; at the key's limit, the key is locked for a while.
 
+    MongoDB removes a record when its window and lock are over (expires_at, a TTL index; created by `v sys::indexes`)
+    keys:
+	name:<sign-in name>   the user or email typed (lower case; counted whether or not such a user exists: a lock tells nothing about the accounts)
+        ip:<address>           the connection's address (REMOTE_ADDR: X-Forwarded-For is sent by the client); a success does not clear it
+	tfa:<user id>          wrong 2FA codes; cleared only by a complete sign-in (the password alone does not give more code guesses)
+	reset_ip:<address>,
+	reset_email:<email>   "forgot password" requests (each one counts, not only failures)
+
+    $seconds = LoginThrottle::lockedFor($key);       0, or the seconds the key stays locked
+    $locked = LoginThrottle::fail($key);             counts a failure; true when this failure locked the key
+    LoginThrottle::clear($key);                      after a success
+*/
 namespace models\user;
 
 class LoginThrottle extends \sys\BaseModel {
@@ -23,10 +29,8 @@ class LoginThrottle extends \sys\BaseModel {
 	'name' => [ 5, 900, 900 ],
 	'ip' => [ 20, 900, 900 ],
 	'tfa' => [ 5, 900, 900 ],
-	//CLD: 2026-10-24T00:20:00+03:00: "forgot password" requests (SiteController::forgot; SOC2.md gap 12): per address and per email, in an hour; then an hour's lock
 	'reset_ip' => [ 10, 3600, 3600 ],
 	'reset_email' => [ 3, 3600, 3600 ],
-	//CLD: 2026-11-02T18:00:00+02:00: messages to the agents (each one counts): an embedded page's visitors, per address; a signed-in user
 	'chat_ip' => [ 60, 3600, 900 ],
 	'chat_user' => [ 300, 3600, 300 ],
     ];
@@ -73,7 +77,6 @@ class LoginThrottle extends \sys\BaseModel {
 	return 'tfa:' . (string)$userId;
     }
 
-    //CLD: 2026-10-24T00:20:00+03:00: "forgot password" requests: from the connection's address, and for an email (lower case)
     public static function resetIpKey() {
 	return 'reset_ip:' . (string)($_SERVER['REMOTE_ADDR'] ?? '');
     }

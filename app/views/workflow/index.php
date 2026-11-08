@@ -621,10 +621,10 @@ $formOptions = [
 		$items .= \util\VString::insert('<li><a class="dropdown-item" href="{:href}"><i class="bi bi-share me-2"></i>Share&hellip;</a></li>', [
 		    'href' => \V::app()->createUrl('/share/manage', [ 'object' => 'Workflow', 'id' => $id ]),
 		]);
-	    //CLD: 2026-11-04T15:00:00+02:00: Move (MoveController), as Delete: it leaves this project
+	    //CLD: 2026-11-04T15:00:00+02:00: Move (ShareController::move), as Delete: it leaves this project
 	    if ($canDelete)
 		$items .= \util\VString::insert('<li><a class="dropdown-item" href="{:href}"><i class="bi bi-folder-symlink me-2"></i>Move to project&hellip;</a></li>', [
-		    'href' => \V::app()->createUrl('/move/manage', [ 'object' => 'Workflow', 'id' => $id ]),
+		    'href' => \V::app()->createUrl('/share/move', [ 'object' => 'Workflow', 'id' => $id ]),
 		]);
 	    if ($canDuplicate)
 		$items .= \util\VString::insert('<li><a class="dropdown-item btn-duplicate-wf" href="{:href}" data-method="post" data-confirm="Create a new workflow from the saved draft?"><i class="bi bi-copy me-2"></i>Duplicate</a></li>', [

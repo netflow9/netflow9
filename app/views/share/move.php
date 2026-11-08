@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-11-04T12:00:00+02:00: new: the Move dialog (MoveController): $resource, $object (its kind), $targets (project id => the projects it can move to)
+//CLD: 2026-11-04T12:00:00+02:00: new: the Move dialog (ShareController::move): $resource, $object (its kind), $targets (project id => the projects it can move to)
 $alertTpl = '<div class="alert alert-warning small py-2 mb-3"><i class="bi bi-exclamation-triangle me-2"></i>{:text}</div>';
 
 $warnings = '';
@@ -34,7 +34,7 @@ $modal = new \sys\html\Modal([
     'body' => $body,
     'footer' => "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>" . ($canMove ? 'Cancel' : 'Close') . '</button>'
 	. ($canMove ? "<button type='submit' class='btn btn-primary'><i class='bi bi-folder-symlink me-1'></i>Move</button>" : ''),
-    'beforeContent' => \util\VString::insert('<form method="post" action="{:action}" class="m-0">', [ 'action' => \V::app()->createUrl('/move/manage', [ 'object' => $object, 'id' => $resource->_id ]) ]),
+    'beforeContent' => \util\VString::insert('<form method="post" action="{:action}" class="m-0">', [ 'action' => \V::app()->createUrl('/share/move', [ 'object' => $object, 'id' => $resource->_id ]) ]),
     'afterContent' => '</form>',
 ]);
 echo $modal->render();

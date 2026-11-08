@@ -8,9 +8,6 @@ class SiteController extends \sys\BaseController {
     //and how long the choice waits (seconds)
     const CHOICES = 'login_choices';
     const CHOICES_TTL = 300;
-    //CLD: 2026-10-30T12:00:00+02:00: the sidebar's width limits (px; as app.sidebar's minWidth / maxWidth)
-    const SIDEBAR_MIN_W = 250;
-    const SIDEBAR_MAX_W = 400;
 
     public function login($req, $resp) {
 	$this->layout = 'bare';
@@ -19,7 +16,7 @@ class SiteController extends \sys\BaseController {
 
 	if ($req->is('post')) {
 	    $form->assign($req->data);
-	    //CLD: 2026-10-21T18:00:00+03:00: the sign-in throttle (models\user\LoginThrottle): a locked name or address is refused before the password is checked
+	    //the sign-in throttle (models\user\LoginThrottle): a locked name or address is refused before the password is checked
 	    $nameKey = \models\user\LoginThrottle::nameKey($form->username);
 	    $ipKey = \models\user\LoginThrottle::ipKey();
 	    $lockedFor = max(\models\user\LoginThrottle::lockedFor($nameKey), \models\user\LoginThrottle::lockedFor($ipKey));
@@ -63,7 +60,7 @@ class SiteController extends \sys\BaseController {
 	$this->render('login', compact('form'));
     }
 
-    //CLD: 2026-10-17T22:00:00+03:00: the link of a project invitation (models\user\ProjectInvite): the user's name and password; then the user (of the invitation's account, account role
+    //the link of a project invitation (models\user\ProjectInvite): the user's name and password; then the user (of the invitation's account, account role
     //Member, active), a member of the invited projects, signed in on the project. When the address became a user of the account meanwhile, it joins the projects and signs in as usual.
     //An expired / used link says so
     public function invite($req, $resp) {
@@ -104,8 +101,9 @@ class SiteController extends \sys\BaseController {
 	$this->render('invite', [ 'form' => $form, 'invite' => $invite, 'project' => $project, 'account' => $account, 'existing' => $existing, 'token' => $token ]);
     }
 
-    //CLD: 2026-10-16T13:15:57+03:00: signs user $user in and goes to the app: first the 2FA step when the user has one (unless $tfaDone), else the login (persistent: $remember) and its
-    //audit entry ($details)
+    //signs user $user in and goes to the app:
+    //first the 2FA step when the user has one (unless $tfaDone),
+    //else the login (persistent: $remember) and its audit entry ($details)
     //CLD: 2026-10-19T11:21:19+03:00: public static: also used by the Registration plugin's sign-up (uses no controller state; $this->signIn() calls still work)
     public static function signIn($user, $remember = false, $details = null, $tfaDone = false) {
 	if (!$tfaDone && !empty($user->tfa_secret)) {
@@ -117,13 +115,12 @@ class SiteController extends \sys\BaseController {
 	$identity = new \sys\Identity();
 	if (!$identity->authenticateById((string)$user->_id))
 	    \V::app()->response->redirect('/site/login');
-	//CLD: 2026-10-05T20:02:30+03:00: persistent session only with "remember me"
 	\V::app()->user->login($identity, $remember);
 	\models\AuditLog::record('login', $user, $details);
 	\V::app()->response->redirect('/site/index');
     }
 
-    //CLD: 2026-10-16T13:15:57+03:00: "forgot username or password" (user's choices: the email asked; for each active user of that address - an address may sign in to several accounts -
+    //forgot username or password (user's choices: the email asked; for each active user of that address - an address may sign in to several accounts -
     //an email with the username and a link to set a new password, valid once for 24 hours; the same answer whether or not the address has an account)
     public function forgot($req, $resp) {
 	if (!\V::app()->user->isGuest)
@@ -278,11 +275,10 @@ class SiteController extends \sys\BaseController {
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
 
-	//CLD: 2026-10-11T21:35:50+03:00: POST only (the Settings menu's Logout is a form; a GET link let any page log the user out)
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 
-	//CLD: 2026-10-11T17:35:22+03:00: audit log (before: the user is still known)
+	//audit log (before: the user is still known)
 	\models\AuditLog::record('logout', \V::app()->om->findById('User', \V::app()->user->_id));
 	\V::app()->user->logout();
 	$resp->redirect(\V::app()->user->getLoginUrl());
@@ -295,12 +291,11 @@ class SiteController extends \sys\BaseController {
 	$this->render('index');
     }
 
-    //CLD: 2026-10-14T21:43:04+03:00: new action: the figures of the Overview dashboard (public_html/js/app.overview.js), JSON, for the current project and ?period=24h|7d|30d|90d:
+    //the figures of the Overview dashboard (public_html/js/app.overview.js), JSON, for the current project and ?period=24h|7d|30d|90d:
     //tiles (executions, success rate, run time p50 / p95, running now, open tasks; with the previous period), executions per hour / day (completed, error), by trigger,
     //per workflow (runs, success, p50 / p95, last run, runs per bucket), failing steps, stuck work (long runs, late wake-ups, overdue tasks), recent executions.
     //Only the workflows the user may read (Workflow::read); without any, only the user's open tasks. Buckets and durations in ms; moments (at, since) as ISO 8601
     //(app.formatter.timeAgo takes them)
-    //CLD: 2026-10-19T12:05:32+03:00: app.formatter.timeAgo
     const OVERVIEW_PERIODS = [ '24h' => [ 86400, 3600 ], '7d' => [ 7 * 86400, 86400 ], '30d' => [ 30 * 86400, 86400 ], '90d' => [ 90 * 86400, 86400 ] ];
     const OVERVIEW_MAX = 50000;
     //a run (not sleeping) this long is listed as stuck
@@ -349,7 +344,6 @@ class SiteController extends \sys\BaseController {
 	$overdueTasks = array_values(array_filter($tasks, fn($t) => (self::msOf($t->due_at) ?? PHP_INT_MAX) < $now * 1000));
 	$out['tiles']['tasks'] = [ 'open' => count($tasks), 'overdue' => count($overdueTasks) ];
 	if (!$workflows) {
-	    //CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON
 	    $resp->sendJSON($out);
 	}
 
@@ -480,7 +474,6 @@ class SiteController extends \sys\BaseController {
 		'state' => (string)$e->state, 'duration' => $start !== null && $end !== null ? $end - $start : null, 'at' => self::isoOf($e->_id, $tz) ];
 	}
 
-	//CLD: 2026-10-18T12:49:28+03:00: Response::sendJSON
 	$resp->sendJSON($out);
     }
 
@@ -521,13 +514,13 @@ class SiteController extends \sys\BaseController {
 	    \V::app()->error(403, 'Unauthorized');
 
 	\V::app()->user->crtProject = $project->_id;
-	//CLD: 2026-10-30T12:00:00+02:00: the next session starts on this project (Boot)
+	//the next session starts on this project (Boot)
 	\V::app()->var('rt.user')->rememberPrefs([ 'last_project' => $project->_id ]);
 
 	$resp->redirect('/site/index');
     }
 
-    //CLD: 2026-11-08T12:00:00+02:00: new: the signed-in user's preferences kept (User prefs: any of its keys, e.g. sidebar_width, sidebar_collapsed 0 / 1 by app.sidebar,
+    //the signed-in user's preferences kept (User prefs: any of its keys, e.g. sidebar_width, sidebar_collapsed 0 / 1 by app.sidebar,
     //hide_advanced_steps 0 / 1 by the designer's step picker); a key it does not have, or a value its field refuses: 400, with the errors
     public function prefs($req, $resp) {
 	if (\V::app()->user->isGuest)

@@ -332,7 +332,7 @@ class V {
 
 
 	if (is_file($cFile)) {
-	    require $cFile;
+	    require_once($cFile);
 	} else {
 	    $cClass = htmlspecialchars($cClass, ENT_QUOTES, 'UTF-8');
 	    \V::app()->log->debug("V::run: file not found: $cFile. render error");

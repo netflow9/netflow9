@@ -25,12 +25,40 @@ class TriggerState extends \sys\BaseModel {
 
     public function getSchema() {
 	return [
-	    [ 'key' => 'wf', 'type' => 'object', 'object' => 'Workflow', 'label' => 'Workflow', 'required' => true ],
-	    [ 'key' => 'node', 'type' => 'text', 'label' => 'Step', 'required' => true ],
-	    [ 'key' => 'project', 'type' => 'object', 'object' => 'Project', 'label' => 'Project' ],
-	    [ 'key' => 'data', 'type' => 'array', 'label' => 'Data' ],
-	    [ 'key' => 'checked_at', 'type' => 'datetime', 'label' => 'Last check' ],
-	    [ 'key' => 'locked_until', 'type' => 'datetime', 'label' => 'Locked until' ],
+	    [
+		'key' => 'wf',
+		'type' => 'object',
+		'object' => 'Workflow',
+		'label' => 'Workflow',
+		'required' => true
+	    ],
+	    [
+		'key' => 'node',
+		'type' => 'text',
+		'label' => 'Step',
+		'required' => true
+	    ],
+	    [
+		'key' => 'project',
+		'type' => 'object',
+		'object' => 'Project',
+		'label' => 'Project'
+	    ],
+	    [
+		'key' => 'data',
+		'type' => 'array',
+		'label' => 'Data'
+	    ],
+	    [
+		'key' => 'checked_at',
+		'type' => 'datetime',
+		'label' => 'Last check'
+	    ],
+	    [
+		'key' => 'locked_until',
+		'type' => 'datetime',
+		'label' => 'Locked until'
+	    ],
 	];
     }
 

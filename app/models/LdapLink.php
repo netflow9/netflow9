@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-21T10:00:00+03:00: new: a user of an account who is an LDAP user (signs in with the directory's password only; util\LdapAuth): the user, the person's DN and
+//a user of an account who is an LDAP user (signs in with the directory's password only; util\LdapAuth): the user, the person's DN and
 //directory name (`login`, lower case: a name typed without @domain finds the user), when the user was last refreshed from the directory. Made on a first LDAP sign-in
 //(a user created, or an existing one linked); removed with the user, or by the settings page (Unlink: the user signs in with a password of this application again)
 

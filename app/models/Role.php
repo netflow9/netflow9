@@ -4,7 +4,6 @@ namespace models;
 
 class Role extends \sys\BaseModel {
     protected static $collection = 'roles';
-    //CLD: 2026-10-12T12:18:11+03:00: roles of an account (created by `v sys::indexes`)
     public static $indexes = [
 	[ [ 'aid' => 1, 'iname' => 1 ], [] ],
     ];

@@ -19,7 +19,7 @@ $shareAction = $canShare ? "share: `<a href='{$shareUrl}' class='btn btn-sm btn-
 		" : '';
 $sharedDataUrl = \V::app()->createUrl('', [ 'data' => 1, 'shared' => 1 ]);
 //CLD: 2026-11-04T12:00:00+02:00: Move, as Delete: it leaves this project
-$moveAction = \V::app()->user->can('DataTable::delete') ? "move: `<a href='/move/manage?object=DataTableDef&id={{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Move to another project'><i class='bi bi-folder-symlink'></i></a>`,
+$moveAction = \V::app()->user->can('DataTable::delete') ? "move: `<a href='/share/move?object=DataTableDef&id={{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Move to another project'><i class='bi bi-folder-symlink'></i></a>`,
 		" : '';
 
 $script = "

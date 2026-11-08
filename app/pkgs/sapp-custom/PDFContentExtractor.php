@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-10-27T22:40:00+02:00: new: the text and the images of a PDF document (PDFDoc), read from the content streams of its pages (and of the Form XObjects they draw):
+    the text and the images of a PDF document (PDFDoc), read from the content streams of its pages (and of the Form XObjects they draw):
 
     text    the strings the pages show (Tj, TJ, ', "), in the order they are drawn, as UTF-8: by the font's ToUnicode CMap, else by its encoding (WinAnsi, MacRoman, Standard,
             Differences: glyph names); 1 byte codes (simple fonts) or the code space of a Type0 font's encoding (Identity-H: 2 bytes; UCS2 / UTF16 CMaps). Spaces and line

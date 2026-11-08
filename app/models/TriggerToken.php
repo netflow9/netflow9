@@ -23,7 +23,7 @@ class TriggerToken extends \sys\BaseModel {
 	[ [ 'token' => 1 ], [ 'unique' => true ] ],
 	[ [ 'wf' => 1 ], [] ],
 	[ [ 'aid' => 1, 'project' => 1, 'type' => 1 ], [] ],
-	//CLD: 2026-11-02T18:00:00+02:00: the embeddable page of a Chat trigger (controllers\ChatController)
+	//the embeddable page of a Chat trigger (controllers\ChatController)
 	[ [ 'data.embed_token' => 1 ], [ 'sparse' => true ] ],
     ];
 
@@ -115,7 +115,7 @@ class TriggerToken extends \sys\BaseModel {
     }
 
 
-    //CLD: 2026-10-18T15:00:00+03:00: the token formats: `hex` 32 hex digits (Webhook, Form: in their URLs), `code` 8 lower-case letters / digits (Email: the part of the address after the account prefix)
+    //the token formats: `hex` 32 hex digits (Webhook, Form: in their URLs), `code` 8 lower-case letters / digits (Email: the part of the address after the account prefix)
     const FORMATS = [
 	'hex' => '/^[a-f0-9]{32}$/',
 	'code' => '/^[a-z0-9]{8}$/'

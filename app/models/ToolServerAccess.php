@@ -8,19 +8,23 @@
 namespace models;
 
 class ToolServerAccess extends \sys\BaseModel {
-    //CLD: 2026-11-01T11:55:18+02:00: toolserver_access
     protected static $collection = 'toolserver_access';
 
-    //CLD: 2026-10-22T23:00:00+03:00: global: set by super-admins for any account (the administration), always read by the account's id
+    //global: set by super-admins for any account (the administration), always read by the account's id
     public function _init() {
 	parent::_init();
 	$this->_config['global'] = true;
     }
 
     public function getSchema() {
-	return array_merge([
-	    [ 'key' => 'servers', 'type' => 'array', 'label' => 'Servers' ],
-	], $this->getSystemSchema());
+	$fields = [
+	    [
+		'key' => 'servers',
+		'type' => 'array',
+		'label' => 'Servers'
+	    ],
+	];
+	return array_merge($fields, $this->getSystemSchema());
     }
 
     //the server ids account $aid may use

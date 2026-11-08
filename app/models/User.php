@@ -13,9 +13,6 @@ class User extends \sys\BaseModel {
 	[ [ 'reset_token_hash' => 1 ], [ 'unique' => true, 'sparse' => true ] ],
     ];
 
-    //how long a "forgot password" link works
-    const RESET_VALID = 86400;
-
     // we use these attributes just readonly, usually for display only
     // define just the fields that needs formatting: avatar, datetime
     public function getSchema() {
@@ -169,8 +166,8 @@ class User extends \sys\BaseModel {
 			'key' => 'sidebar_width',
 			'type' => 'number',
 			'label' => 'Sidebar width',
-			'validate' => [ [ 'inRange', 'lower' => \controllers\SiteController::SIDEBAR_MIN_W, 'upper' => \controllers\SiteController::SIDEBAR_MAX_W, 'skipEmpty' => true,
-			    'message' => 'From ' . \controllers\SiteController::SIDEBAR_MIN_W . ' to ' . \controllers\SiteController::SIDEBAR_MAX_W ] ]
+			'validate' => [ [ 'inRange', 'lower' => \data\Constants::SIDEBAR_MIN_W, 'upper' => \data\Constants::SIDEBAR_MAX_W, 'skipEmpty' => true,
+			    'message' => 'From ' . \data\Constants::SIDEBAR_MIN_W . ' to ' . \data\Constants::SIDEBAR_MAX_W ] ]
 		    ],
 		    [
 			'key' => 'sidebar_collapsed',
@@ -206,7 +203,7 @@ class User extends \sys\BaseModel {
 	    return $prefs->errors();
 	//the given keys only: the cast object also holds the other fields' defaults
 	$values = array_intersect_key($prefs->data(), $set);
-	\V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid ], [ [ '$set' => [ 'prefs' => [ '$mergeObjects' => [
+	\V::app()->om->updateOne('User', [ '_id' => $this->_id ], [ [ '$set' => [ 'prefs' => [ '$mergeObjects' => [
 	    [ '$cond' => [ [ '$eq' => [ [ '$type' => '$prefs' ], 'object' ] ], '$prefs', [ '$literal' => (object)[] ] ] ],
 	    [ '$literal' => (object)$values ],
 	] ] ] ] ]);
@@ -217,14 +214,14 @@ class User extends \sys\BaseModel {
 	return $this->firstname . ' ' . $this->lastname;
     }
 
-    //CLD: 2026-10-24T08:20:00+03:00: new: a new "forgot password" link for this user, valid RESET_VALID seconds, asked from $ip; replaces the user's earlier one.
+    //CLD: 2026-10-24T08:20:00+03:00: new: a new "forgot password" link for this user, valid Constants::RESET_VALID seconds, asked from $ip; replaces the user's earlier one.
     //Returns the token (for the email; only its hash is kept)
-    //CLD: 2026-10-25T11:20:00+02:00: + $valid: seconds the link works (default RESET_VALID; a new user's first password: UserController::WELCOME_VALID)
+    //CLD: 2026-10-25T11:20:00+02:00: + $valid: seconds the link works (default Constants::RESET_VALID; a new user's first password: Constants::WELCOME_VALID)
     public function startPasswordReset($ip = null, $valid = null) {
 	$token = bin2hex(random_bytes(24));
-	\V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid ], [ '$set' => [
+	\V::app()->om->updateOne('User', [ '_id' => $this->_id ], [ '$set' => [
 	    'reset_token_hash' => hash('sha256', $token),
-	    'reset_expires_at' => new \MongoDB\BSON\UTCDateTime((time() + (int)($valid ?? self::RESET_VALID)) * 1000),
+	    'reset_expires_at' => new \MongoDB\BSON\UTCDateTime((time() + (int)($valid ?? \data\Constants::RESET_VALID)) * 1000),
 	    'reset_ip' => $ip,
 	] ]);
 	return $token;
@@ -239,7 +236,7 @@ class User extends \sys\BaseModel {
 
     //the user's "forgot password" link used up (after the new password is set)
     public function clearPasswordReset() {
-	\V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid ], [ '$unset' => [ 'reset_token_hash' => '', 'reset_expires_at' => '', 'reset_ip' => '' ] ]);
+	\V::app()->om->updateOne('User', [ '_id' => $this->_id ], [ '$unset' => [ 'reset_token_hash' => '', 'reset_expires_at' => '', 'reset_ip' => '' ] ]);
     }
 
     //2FA code $code of $secret (default: the user's own) accepted only once: refused when its time window is not newer than the last one accepted
@@ -249,7 +246,7 @@ class User extends \sys\BaseModel {
 	$slice = 0;
 	if (!(new \util\TOTP())->verifyCode($secret ?? $this->tfa_secret, (string)$code, 1, null, $slice))
 	    return false;
-	return \V::app()->om->updateOne('User', [ '_id' => $this->_id, 'aid' => $this->aid, '$or' => [ [ 'tfa_last_slice' => [ '$lt' => $slice ] ], [ 'tfa_last_slice' => null ] ] ],
+	return \V::app()->om->updateOne('User', [ '_id' => $this->_id, '$or' => [ [ 'tfa_last_slice' => [ '$lt' => $slice ] ], [ 'tfa_last_slice' => null ] ] ],
 	    [ '$set' => [ 'tfa_last_slice' => $slice ] ]) > 0;
     }
 

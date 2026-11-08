@@ -1,29 +1,30 @@
 <?php
 
 /*
-    the Share dialog of a resource (models\share\ShareableTrait): who it is shared with, at which level, what uses it there.
-    ?object=<kind>&id=<id>: manage shows it (POST: a new share); POST change: a share's level; POST remove: ends a share (&project=<id>). Each answers with the dialog again.
+    the Share and Move dialogs of a resource of a project (data\Constants::PROJECT_KINDS), ?object=<kind>&id=<id>:
+
+    the Share dialog (models\share\ShareableTrait): who it is shared with, at which level, what uses it there.
+    manage shows it (POST: a new share); POST change: a share's level; POST remove: ends a share (&project=<id>). Each answers with the dialog again.
     Needs the resource's SHARE_PERM in its home project. A personal project neither shares nor receives
+
+    the Move dialog (models\share\MovableTrait): which project it can move to, what stops working in its own.
+    move shows it; POST (`project`): moves it. Needs the resource's MOVE_PERMS: `from` on it, `to` in the new project
 */
 
 namespace controllers;
 
 class ShareController extends \sys\BaseController {
 
-    //what can be shared: the `object` parameter
-    const KINDS = [ 'DataTableDef', 'Workflow', 'Credential' ];
-
     public function _init() {
 	parent::_init();
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
-	$this->account = \V::app()->config('rt.account');
+	$this->account = \V::app()->var('rt.account');
     }
 
     public function manage($req, $resp) {
-	$resource = $this->resource();
+	$resource = $this->resource('share');
 	if ($req->is('post')) {
 	    $project = $this->targetProject($resource, (string)($req->data['project'] ?? ''));
 	    $access = (string)($req->data['access'] ?? '');
@@ -43,7 +44,7 @@ class ShareController extends \sys\BaseController {
     public function change($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
-	$resource = $this->resource();
+	$resource = $this->resource('share');
 	$access = (string)($req->data['access'] ?? '');
 	if (isset($resource::SHARE_LEVELS[$access]))
 	    $this->saved($resource, $this->sharedProject($resource), $access, $req->data);
@@ -53,10 +54,37 @@ class ShareController extends \sys\BaseController {
     public function remove($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
-	$resource = $this->resource();
+	$resource = $this->resource('share');
 	$resource->removeShare($this->sharedProject($resource));
 	$this->addEvent('object::updated', [ 'object' => $resource->getObjectName(), 'oid' => (string)$resource->_id ]);
 	$this->show($resource);
+    }
+
+    public function move($req, $resp) {
+	$resource = $this->resource('move');
+	$object = (string)$req->query['object'];
+	$targets = $resource->moveTargets(\V::app()->user->_id);
+
+	if ($req->is('post')) {
+	    $project = $targets[(string)($req->data['project'] ?? '')] ?? null;
+	    $problem = $resource->moveProblem() ?? ($project ? $resource->moveNameProblem($project) : 'Choose a project');
+	    if ($problem !== null) {
+		$this->addToast('error', 'Not moved', $problem);
+	    } else {
+		$resource->moveTo($project);
+		$this->addToast('success', 'Moved', (string)$resource->name . ' is now in project ' . $project->name);
+		//CLD: 2026-11-04T15:00:00+02:00: its designer is open behind the dialog and would go on saving: as a delete, away from it
+		if ($resource instanceof \models\Workflow) {
+		    $this->addEvent('sidebar::refresh');
+		    $this->redirect('/site/index');
+		}
+		//as a delete: it left this list
+		$this->addEvent('object::deleted', [ 'object' => $resource->getObjectName(), 'oid' => (string)$resource->_id ]);
+		$this->sendEvents();
+	    }
+	}
+
+	$this->render('move', compact('resource', 'object', 'targets'));
     }
 
     //CLD: 2026-11-03T18:00:00+02:00: + what the resource asks for (shareOptions: a credential's hosts)
@@ -82,16 +110,19 @@ class ShareController extends \sys\BaseController {
 	$this->render('manage', compact('resource', 'object', 'names', 'targets'));
     }
 
-    //the resource of the request, if the user may share it (404 / 403 otherwise)
-    private function resource() {
+    //CLD: 2026-11-08T12:00:00+02:00: + $action: share (SHARE_PERM; not from a personal project: 400) or move (MOVE_PERMS `from`)
+    //the resource of the request, if the user may share / move it (404 / 403 otherwise)
+    private function resource($action) {
 	$object = (string)(\V::app()->request->query['object'] ?? '');
-	if (!in_array($object, self::KINDS, true))
+	if (!in_array($object, \data\Constants::PROJECT_KINDS, true))
 	    \V::app()->error(404, 'Not found');
 	$resource = \V::app()->om->findOne($object, [ '_id' => $this->getOidOrError(), 'aid' => $this->account->_id ]);
 	if (empty($resource))
 	    \V::app()->error(404, 'Not found');
-	if (!\V::app()->user->can($resource::SHARE_PERM, [ 'object' => $resource ]))
+	if (!\V::app()->user->can($action === 'move' ? $resource::MOVE_PERMS['from'] : $resource::SHARE_PERM, [ 'object' => $resource ]))
 	    \V::app()->error(403, 'Unauthorized');
+	if ($action === 'move')
+	    return $resource;
 	$home = \V::app()->om->findOne('Project', [ '_id' => $resource->project, 'aid' => $resource->aid ]);
 	if (empty($home) || $home->personal)
 	    \V::app()->error(400, 'A personal project cannot share');

@@ -50,7 +50,7 @@ class AuditLog extends \sys\BaseModel {
 	'datatable.import' => 'Import data table',
 	//CLD: 2026-11-04T10:00:00+02:00: a data table's rows downloaded as an Excel file (DatatableController::export)
 	'datatable.export' => 'Export data table',
-	//CLD: 2026-11-04T12:00:00+02:00: moved to another project (MoveController)
+	//CLD: 2026-11-04T12:00:00+02:00: moved to another project (ShareController::move)
 	'datatable.move' => 'Move data table',
 	'credential.move' => 'Move credential',
 	'workflow.move' => 'Move workflow',

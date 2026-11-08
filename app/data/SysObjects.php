@@ -79,7 +79,7 @@ class SysObjects {
 	    ],
 	    //CLD: 2026-11-07T10:37:49+02:00: the web sessions' records (sys\Session)
 	    'WebSession' => [
-		'class' => 'models\user\WebSession',
+		'class' => 'models\sys\WebSession',
 		'auditLog' => false,
 	    ],
 

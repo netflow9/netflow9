@@ -122,7 +122,7 @@ class Session extends BaseObject implements \SessionHandlerInterface, \SessionUp
 	    $id = session_id();
 	if ((string)$id === '')
 	    return null;
-	//the records: models\user\WebSession
+	//the records: models\sys\WebSession
 	return \V::app()->om->findOne('WebSession', [ '_id' => (string)$id ], [ 'arrays' => true ]);
     }
 

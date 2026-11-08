@@ -18,8 +18,7 @@ class TaskController extends \sys\BaseController {
 		\V::app()->response->sendJSON([ 'ok' => false, 'error' => 'Log in first.' ], true, 401);
 	    $this->redirect(\V::app()->user->getLoginUrl());
 	}
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
-	$this->account = \V::app()->config('rt.account');
+	$this->account = \V::app()->var('rt.account');
     }
 
     public function list($req, $resp) {

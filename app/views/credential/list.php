@@ -57,7 +57,7 @@ $shareAction = $canShare ? "share: `{% if ((app.credentialTypes[item.__variant] 
 
 //CLD: 2026-11-04T12:00:00+02:00: Move, as Delete: it leaves this project (not the variables, as Share)
 $moveAction = \V::app()->user->can('Credential::delete', [ 'object' => \V::app()->om->create(\models\Credential::FAMILY, [ 'aid' => \V::app()->config('rt.account')->_id, 'project' => \V::app()->user->crtProject ]) ])
-    ? "move: `{% if ((app.credentialTypes[item.__variant] || {}).shareable) { %}<a href='/move/manage?object=Credential&id={{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Move to another project'><i class='bi bi-folder-symlink'></i></a>{% } %}`,
+    ? "move: `{% if ((app.credentialTypes[item.__variant] || {}).shareable) { %}<a href='/share/move?object=Credential&id={{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Move to another project'><i class='bi bi-folder-symlink'></i></a>{% } %}`,
 		    " : '';
 
 $script = "

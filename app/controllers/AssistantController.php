@@ -23,8 +23,7 @@ class AssistantController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
-	$this->account = \V::app()->config('rt.account');
+	$this->account = \V::app()->var('rt.account');
     }
 
     //workflow ?id of the current account that the user may $permName, else 404 / 403 (as WorkflowController::findWorkflow)

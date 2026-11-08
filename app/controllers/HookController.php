@@ -11,7 +11,7 @@ class HookController extends \sys\APIController {
     //largest accepted request body (bytes)
     const MAX_BODY = 1048576;
 
-    //CLD: 2026-10-17T10:46:42+03:00: limits of the request variable: headers kept, levels of query / body data
+    //limits of the request variable: headers kept, levels of query / body data
     const MAX_HEADERS = 100;
     const REFUSED = 'webhook.refused';
 
@@ -21,7 +21,7 @@ class HookController extends \sys\APIController {
 	[ $hook, $wf, $live, $node ] = $this->triggerOf('trigger::webhook', $token);
 	$cfg = $node['config'];
 
-	//CLD: 2026-10-07T11:36:11+03:00: size first (the HMAC check reads the body), then authentication, before anything else is revealed
+	//size first (the HMAC check reads the body), then authentication, before anything else is revealed
 	if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > self::MAX_BODY)
 	    $this->refuse(413, 'Request body too large');
 
@@ -173,8 +173,8 @@ class HookController extends \sys\APIController {
 	return [ $raw, null ];
     }
 
-    //CLD: 2026-10-17T10:46:42+03:00: the request headers as a variable value: lower-case name => value; without the ones carrying secrets (authorization, cookie, the
-    //step's secret header)
+    //the request headers as a variable value:
+    //lower-case name => value; without the ones carrying secrets (authorization, cookie, the step's secret header)
     private function requestHeaders(array $cfg) {
 	$skip = [ 'authorization', 'cookie' ];
 	if (($cfg['auth'] ?? 'none') === 'header')
