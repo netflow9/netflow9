@@ -57,7 +57,9 @@ class KnowledgeController extends \sys\BaseController {
     }
 
     public function list($req, $resp) {
-	if (!\V::app()->user->can('KnowledgeBase::list', [ 'object' => $this->proto() ]))
+	if (empty($this->project))
+	    \V::app()->error(404, 'No project');
+	if (!\V::app()->user->can('KnowledgeBase::list'))
 	    \V::app()->error(403, 'Unauthorized');
 
 	if (!empty($req->query['data'])) {

@@ -214,12 +214,9 @@ class Credential extends \sys\BaseModel {
 	return false;
     }
 
-    //CLD: 2026-10-22T01:58:24+03:00: the model names that are not chat models (embeddings, speech, images, moderation, old completions): left out of the AI steps' choices
-    const NOT_CHAT = '/(embed|tts|whisper|transcribe|dall-e|gpt-image|moderation|davinci|babbage|rerank)/i';
-
     //CLD: 2026-10-22T01:58:24+03:00: the chat models among $ids (NOT_CHAT left out), sorted, each once
     public static function chatModels(array $ids) {
-	$list = array_values(array_unique(array_filter(array_map(fn($id) => trim((string)$id), $ids), fn($id) => $id !== '' && !preg_match(self::NOT_CHAT, $id))));
+	$list = array_values(array_unique(array_filter(array_map(fn($id) => trim((string)$id), $ids), fn($id) => $id !== '' && !preg_match(\data\Constants::NOT_CHAT, $id))));
 	natcasesort($list);
 	return array_values($list);
     }

@@ -3,8 +3,7 @@
 $this->pageTitle = 'MCP server';
 
 $createBtn = '';
-$__newToken = \V::app()->om->create('McpToken', [ 'aid' => \V::app()->config('rt.account')->_id, 'project' => $project->_id ]);
-if (\V::app()->user->can('McpToken::create', [ 'object' => $__newToken ])) {
+if (\V::app()->user->can('McpToken::create')) {
     $createBtn = \V::app()->html->link(
 	'Create token',
 	\V::app()->createUrl('/token/create'),
@@ -12,7 +11,7 @@ if (\V::app()->user->can('McpToken::create', [ 'object' => $__newToken ])) {
     );
 }
 $deleteAction = '';
-if (\V::app()->user->can('McpToken::delete', [ 'object' => $__newToken ]))
+if (\V::app()->user->can('McpToken::delete'))
     $deleteAction = "<a href='/token/delete/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' data-confirm='Revoke this token? Clients using it stop working.' data-method='post' title='Revoke'><i class='bi bi-trash'></i></a>";
 
 //schema and filtering

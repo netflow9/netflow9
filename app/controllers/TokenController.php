@@ -31,9 +31,7 @@ class TokenController extends \sys\BaseController {
     }
 
     public function list($req, $resp) {
-	//an unsaved token of the current project: the object for the check (project scope = membership)
-	$token = \V::app()->om->create('McpToken', [ 'aid' => $this->account->_id, 'project' => $this->project->_id ]);
-	if (!\V::app()->user->can('McpToken::list', [ 'object' => $token ]))
+	if (!\V::app()->user->can('McpToken::list'))
 	    \V::app()->error(403, 'Unauthorized');
 
 	if (!empty($req->query['data']))
@@ -43,10 +41,11 @@ class TokenController extends \sys\BaseController {
     }
 
     public function create($req, $resp) {
-	//unsaved until it is valid: first the object for the check (project scope = membership)
-	$token = \V::app()->om->create('McpToken', [ 'aid' => $this->account->_id, 'project' => $this->project->_id ]);
-	if (!\V::app()->user->can('McpToken::create', [ 'object' => $token ]))
+	if (!\V::app()->user->can('McpToken::create'))
 	    \V::app()->error(403, 'Unauthorized');
+
+	//unsaved until it is valid
+	$token = \V::app()->om->create('McpToken', [ 'aid' => $this->account->_id, 'project' => $this->project->_id ]);
 
 	if ($req->is('post')) {
 	    $token->assign($req->data, true);

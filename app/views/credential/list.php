@@ -2,14 +2,13 @@
 $this->pageTitle = 'Credentials & variables';
 
 $createBtn = '';
-$__new = \V::app()->om->create('Credential', [ 'aid' => \V::app()->config('rt.account')->_id, 'project' => \V::app()->user->crtProject ]);
-if (\V::app()->user->can('Credential::create', [ 'object' => $__new ])) {
+if (\V::app()->user->can('Credential::create')) {
     $groups = [];
     foreach(\V::app()->om->getVariants('Credential') as $name => $class) {
-	//CLD: 2026-10-24T09:45:36+03:00: the types of a feature the account's tier does not have are not offered (util\Tiers)
-	if (!\util\Tiers::allows(\V::app()->config('rt.account'), $name))
+	//the types of a feature the account's tier does not have are not offered (util\Tiers)
+	if (!\util\Tiers::allows(\V::app()->var('rt.account'), $name))
 	    continue;
-	//CLD: 2026-10-25T17:40:00+02:00: nor the types this PHP cannot use (Credential::available(): e.g. a database type without its PDO driver)
+	//nor the types this PHP cannot use (Credential::available(): e.g. a database type without its PDO driver)
 	if (!$class::available())
 	    continue;
 	$search = \V::app()->html->escape(str_replace("'", ' ', mb_strtolower($class::$label . ' ' . $class::$group)));
@@ -56,7 +55,7 @@ $shareAction = $canShare ? "share: `{% if ((app.credentialTypes[item.__variant] 
 		    " : '';
 
 //CLD: 2026-11-04T12:00:00+02:00: Move, as Delete: it leaves this project (not the variables, as Share)
-$moveAction = \V::app()->user->can('Credential::delete', [ 'object' => \V::app()->om->create(\models\Credential::FAMILY, [ 'aid' => \V::app()->config('rt.account')->_id, 'project' => \V::app()->user->crtProject ]) ])
+$moveAction = \V::app()->user->can('Credential::delete')
     ? "move: `{% if ((app.credentialTypes[item.__variant] || {}).shareable) { %}<a href='/share/move?object=Credential&id={{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Move to another project'><i class='bi bi-folder-symlink'></i></a>{% } %}`,
 		    " : '';
 

@@ -130,8 +130,7 @@ $dd_items = implode('', $dd_items);
 		</div>
 
 		<?php
-		//credentials enabled; checked on an unsaved credential of the current project (project scope = membership)
-		if (\V::app()->user->can('Credential::list', [ 'object' => \V::app()->om->create('Credential', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
+		if (\V::app()->user->can('Credential::list')) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-key"></i> Credentials & variables',
 			'/credential/list',
@@ -147,7 +146,7 @@ $dd_items = implode('', $dd_items);
 		    );
 		}
 
-		if (\V::app()->user->can('KnowledgeBase::list', [ 'object' => \V::app()->om->create('KnowledgeBase', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
+		if (\V::app()->user->can('KnowledgeBase::list')) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-journal-bookmark"></i> Knowledge bases',
 			'/knowledge/list',
@@ -155,7 +154,7 @@ $dd_items = implode('', $dd_items);
 		    );
 		}
 
-		if (\V::app()->user->can('File::list', [ 'object' => \V::app()->om->create('File', [ 'aid' => $crtProject->aid, 'metadata' => [ 'project' => $crtProject->_id ] ]) ])) {
+		if (\V::app()->user->can('File::list')) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-files"></i> Files',
 			'/file/list',
@@ -165,7 +164,7 @@ $dd_items = implode('', $dd_items);
 
 		//CLD: 2026-10-26T23:56:07+02:00: the MCP server link (its tokens)
 		//CLD: 2026-11-01T02:00:00+02:00: when the project's MCP server is on (Account::mcpEnabled)
-		if ($crtAccount->mcpEnabled($crtProject->_id) && \V::app()->user->can('McpToken::list', [ 'object' => \V::app()->om->create('McpToken', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
+		if ($crtAccount->mcpEnabled($crtProject->_id) && \V::app()->user->can('McpToken::list')) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-plug"></i> MCP server',
 			'/token/list',
@@ -176,14 +175,14 @@ $dd_items = implode('', $dd_items);
 		\V::app()->hooks->applyHook('layout:aside-project-menu', [ $crtProject ]);
 
 		$wfCreateUrl = '';
-		if (\V::app()->user->can('Workflow::create', [ 'object' => \V::app()->om->create('Workflow', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ])) {
+		if (\V::app()->user->can('Workflow::create')) {
 		    $wfCreateUrl = \V::app()->html->link(
 			'<i class="bi bi-plus-lg"></i>',
 			'/workflow/create',
 			[ 'escape' => false, 'data-method' => 'post' ]
 		    );
 		}
-		$canReadWf = \V::app()->user->can('Workflow::read', [ 'object' => \V::app()->om->create('Workflow', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ]);
+		$canReadWf = \V::app()->user->can('Workflow::read');
 		if ($canReadWf || $wfCreateUrl !== '') {
 		    echo "
 		    <div class='nav-item w-100 ps-2 py-1 pe-2'>

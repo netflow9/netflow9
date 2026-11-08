@@ -25,14 +25,6 @@ class CredentialController extends \sys\BaseController {
 	    \V::app()->error(404, 'No current project');
     }
 
-    //an unsaved credential of the current project: the object for list/create checks (project scope = membership)
-    private function projectCredential($variant = null) {
-	return \V::app()->om->create($variant ?: \models\Credential::FAMILY, [
-	    'aid' => $this->account->_id,
-	    'project' => $this->project->_id,
-	]);
-    }
-
     //credential `id` of the current account and project, if the user has $permName
     private function findOrError($permName) {
 	$oid = $this->getOidOrError();
@@ -55,7 +47,7 @@ class CredentialController extends \sys\BaseController {
     }
 
     public function list($req, $resp) {
-	if (!\V::app()->user->can('Credential::list', [ 'object' => $this->projectCredential() ]))
+	if (!\V::app()->user->can('Credential::list'))
 	    \V::app()->error(403, 'Unauthorized');
 
 	//CLD: 2026-11-03T18:00:00+02:00: ?shared=1: the credentials other projects share with this one: name, type, project (the page's second list)
@@ -70,7 +62,7 @@ class CredentialController extends \sys\BaseController {
 	}
 
 	$sharedCount = count($this->sharedHere());
-	$canShare = !$this->project->personal && \V::app()->user->can('Credential::share', [ 'object' => $this->projectCredential() ]);
+	$canShare = !$this->project->personal && \V::app()->user->can('Credential::share');
 	$this->render('list', compact('sharedCount', 'canShare'));
     }
 
@@ -91,7 +83,7 @@ class CredentialController extends \sys\BaseController {
 	if ($class !== null && !$class::available())
 	    \V::app()->error(409, 'This credential type is not available: the server lacks the PHP extension it needs');
 
-	$cred = $this->projectCredential($type);
+	$cred = \V::app()->om->create($type, [ 'aid' => $this->account->_id, 'project' => $this->project->_id ]);
 	if (!\V::app()->user->can('Credential::create', [ 'object' => $cred ]))
 	    \V::app()->error(403, 'Unauthorized');
 

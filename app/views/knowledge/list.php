@@ -3,9 +3,8 @@
 
 $this->pageTitle = 'Knowledge bases';
 
-$proto = \V::app()->om->create('KnowledgeBase', [ 'aid' => \V::app()->var('rt.account')->_id, 'project' => \V::app()->om->to_oid(\V::app()->user->crtProject) ]);
 $createBtn = '';
-if (\V::app()->user->can('KnowledgeBase::create', [ 'object' => $proto ]) && $settings->ready())
+if (\V::app()->user->can('KnowledgeBase::create') && $settings->ready())
     $createBtn = \V::app()->html->link('Create', \V::app()->createUrl('/knowledge/create'), [ 'class' => 'btn btn-primary btn-sm', 'escape' => false ]);
 
 $dataUrl = \V::app()->createUrl('', [ 'data' => 1 ]);
