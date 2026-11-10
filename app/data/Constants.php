@@ -19,7 +19,11 @@ class Constants {
     const MAX_REQUEST_BODY = 1048576;
 
     //the objects of a project that can be shared with other projects of the account and moved to another one (ShareController: the `object` parameter)
-    const PROJECT_KINDS = [ 'DataTableDef', 'Workflow', 'Credential' ];
+    const PROJECT_KINDS = [
+	'DataTableDef',
+	'Workflow',
+	'Credential'
+    ];
 
     //the model names that are not chat models (embeddings, speech, images, moderation, old completions): left out of the AI steps' choices (models\Credential)
     const NOT_CHAT = '/(embed|tts|whisper|transcribe|dall-e|gpt-image|moderation|davinci|babbage|rerank)/i';
