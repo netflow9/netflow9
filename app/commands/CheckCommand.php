@@ -9457,7 +9457,7 @@ class CheckCommand extends \sys\BaseController {
 	$attr = [ \models\credential\CredentialMysql::class, 'attr' ];
 	$this->check('Database: MySQL: LOAD DATA LOCAL off, native types, TLS without checking the certificate', [ false, false, false, true ],
 	    [ $mysqlOptions[$attr('LOCAL_INFILE')] ?? null, $mysqlOptions[\PDO::ATTR_EMULATE_PREPARES] ?? null, $mysqlOptions[$attr('SSL_VERIFY_SERVER_CERT')] ?? null,
-		\models\credential\CredentialMysql::caFile() === null || isset($mysqlOptions[$attr('SSL_CA')]) ]);
+		\util\Certificate::systemCaFile() === null || isset($mysqlOptions[$attr('SSL_CA')]) ]);
 	$errorsOf = function($name, $data) use ($cred) {
 	    $c = $cred($name, $data);
 	    $c->validates();
@@ -9582,12 +9582,8 @@ class CheckCommand extends \sys\BaseController {
 	$om = \V::app()->om;
 
 	//the test IdP's key pair
-	$idpKey = openssl_pkey_new([ 'private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA ]);
-	openssl_pkey_export($idpKey, $idpKeyPem);
-	openssl_x509_export(openssl_csr_sign(openssl_csr_new([ 'commonName' => 'idp.example.test' ], $idpKey, [ 'digest_alg' => 'sha256' ]), null, $idpKey, 30, [ 'digest_alg' => 'sha256' ]), $idpCert);
-	$otherKey = openssl_pkey_new([ 'private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA ]);
-	openssl_pkey_export($otherKey, $otherKeyPem);
-	openssl_x509_export(openssl_csr_sign(openssl_csr_new([ 'commonName' => 'evil.example.test' ], $otherKey, [ 'digest_alg' => 'sha256' ]), null, $otherKey, 30, [ 'digest_alg' => 'sha256' ]), $otherCert);
+	[ $idpCert, $idpKeyPem ] = \util\Certificate::selfSigned('idp.example.test', null, 30);
+	[ $otherCert, $otherKeyPem ] = \util\Certificate::selfSigned('evil.example.test', null, 30);
 
 	$account = \models\Account::create([ 'state' => 'active', 'name' => 'Check SAML ' . uniqid() ]);
 	$account->save();
@@ -9623,13 +9619,13 @@ class CheckCommand extends \sys\BaseController {
 	    $xp = $X::xpath($md);
 	    $this->check('SAML SP metadata: entity ID, the ACS (HTTP-POST), the certificate for signing and encryption', [ $s->spEntityId(), $s->acsUrl(), 2, true ], [
 		$md->documentElement->getAttribute('entityID'), $xp->query('//md:AssertionConsumerService[@Binding="' . $Sp::BINDING_POST . '"]')->item(0)?->getAttribute('Location'),
-		$xp->query('//md:KeyDescriptor//ds:X509Certificate')->length, $xp->query('//ds:X509Certificate')->item(0)?->textContent === $X::certBody($s->spCert) ]);
+		$xp->query('//md:KeyDescriptor//ds:X509Certificate')->length, $xp->query('//ds:X509Certificate')->item(0)?->textContent === \util\Certificate::body($s->spCert) ]);
 
 	    //an IdP's metadata (an EntitiesDescriptor, a POST and a Redirect binding)
 	    $idpMd = '<md:EntitiesDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><md:EntityDescriptor entityID="https://idp.example.test/saml">'
 		. '<md:IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"><md:KeyDescriptor use="signing"><ds:KeyInfo><ds:X509Data><ds:X509Certificate>'
-		. $X::certBody($idpCert) . '</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor><md:KeyDescriptor use="encryption"><ds:KeyInfo><ds:X509Data><ds:X509Certificate>'
-		. $X::certBody($otherCert) . '</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor><md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>'
+		. \util\Certificate::body($idpCert) . '</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor><md:KeyDescriptor use="encryption"><ds:KeyInfo><ds:X509Data><ds:X509Certificate>'
+		. \util\Certificate::body($otherCert) . '</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor><md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>'
 		. '<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://idp.example.test/post"/>'
 		. '<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.example.test/redirect"/></md:IDPSSODescriptor></md:EntityDescriptor></md:EntitiesDescriptor>';
 	    $read = $Sp::idpMetadata($idpMd);

@@ -136,7 +136,7 @@ class FileEncrypt extends FileDecrypt {
     }
 
     protected static function cmsEncrypt($cred, $work, $in, $out) {
-	$certs = self::certificates($cred->certificate);
+	$certs = Certificate::certificates($cred->certificate);
 	if (!$certs)
 	    throw new \RuntimeException('the credential has no certificate');
 	$args = [ self::tool('openssl'), 'cms', '-encrypt', '-binary', '-aes256', '-in', $in, '-out', $out, '-outform', 'DER' ];
@@ -147,12 +147,6 @@ class FileEncrypt extends FileDecrypt {
 	    @unlink($out);
 	    throw new \RuntimeException('openssl cms: ' . self::toolMessage($err));
 	}
-    }
-
-    //the PEM certificates of $text
-    public static function certificates($text) {
-	preg_match_all('/-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----/s', (string)$text, $m);
-	return $m[0];
     }
 
     //$in gzip-compressed into $out: its size
@@ -189,12 +183,10 @@ class FileEncrypt extends FileDecrypt {
 	}
 	if ($method === 'cms') {
 	    $names = [];
-	    foreach(self::certificates($cred->certificate) as $pem) {
-		$info = @openssl_x509_parse($pem);
-		if (!$info)
-		    throw new \RuntimeException('a certificate could not be read');
-		$name = (string)($info['subject']['CN'] ?? $info['name'] ?? '?');
-		if (($info['validTo_time_t'] ?? PHP_INT_MAX) < time())
+	    foreach(Certificate::certificates($cred->certificate) as $pem) {
+		$c = Certificate::decode($pem, false, false);
+		$name = (string)($c['commonName'] ?? '?');
+		if ($c['expired'])
 		    throw new \RuntimeException("the certificate of {$name} has expired");
 		$names[] = $name;
 	    }

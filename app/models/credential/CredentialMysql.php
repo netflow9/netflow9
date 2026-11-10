@@ -32,23 +32,13 @@ class CredentialMysql extends CredentialDatabase {
 	return class_exists('Pdo\Mysql') ? constant("Pdo\\Mysql::ATTR_{$name}") : constant("PDO::MYSQL_ATTR_{$name}");
     }
 
-    //the system's CA bundle
-    public static function caFile() {
-	$default = function_exists('openssl_get_cert_locations') ? (string)(openssl_get_cert_locations()['default_cert_file'] ?? '') : '';
-	foreach([ $default, '/etc/pki/tls/certs/ca-bundle.crt', '/etc/ssl/certs/ca-certificates.crt', '/etc/ssl/cert.pem' ] as $f) {
-	    if ($f !== '' && is_file($f))
-		return $f;
-	}
-	return null;
-    }
-
     protected function dsn($driver, $timeout) {
 	$dsn = 'mysql:host=' . $this->dsnValue('host') . ';port=' . $this->port() . ';charset=utf8mb4';
 	if ($this->dsnValue('database') !== '')
 	    $dsn .= ';dbname=' . $this->dsnValue('database');
 	$options = [ \PDO::ATTR_TIMEOUT => $timeout, \PDO::ATTR_EMULATE_PREPARES => false, self::attr('LOCAL_INFILE') => false ];
 	if ($this->tls === 'encrypt' || $this->tls === 'verify') {
-	    $ca = self::caFile();
+	    $ca = \util\Certificate::systemCaFile();
 	    if ($ca === null && $this->tls === 'verify')
 		throw new \RuntimeException('no CA bundle found on this server to check the certificate');
 	    if ($ca !== null)

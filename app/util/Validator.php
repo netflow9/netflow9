@@ -398,7 +398,7 @@ class Validator {
 	    'pgpPublicKey' => function($value, $format, $options) {
 		if (!static::_when($options) || static::_blank($value))
 		    return true;
-		$blocks = static::pemBlocks($value, 'PGP PUBLIC KEY BLOCK');
+		$blocks = Certificate::pemBlocks($value, 'PGP PUBLIC KEY BLOCK');
 		foreach($blocks as $b) {
 		    if (static::pgpPacketTag($b['data']) !== 6)
 			return false;
@@ -411,7 +411,7 @@ class Validator {
 	    'pgpPrivateKey' => function($value, $format, $options) {
 		if (!static::_when($options) || static::_blank($value))
 		    return true;
-		$blocks = static::pemBlocks($value, 'PGP PRIVATE KEY BLOCK');
+		$blocks = Certificate::pemBlocks($value, 'PGP PRIVATE KEY BLOCK');
 		if (empty($blocks) || (empty($options['multiple']) && count($blocks) > 1))
 		    return false;
 		foreach($blocks as $b) {
@@ -425,19 +425,19 @@ class Validator {
 	    'pemPublicKey' => function($value, $format, $options) {
 		if (!static::_when($options) || static::_blank($value))
 		    return true;
-		$blocks = array_merge(static::pemBlocks($value, 'PUBLIC KEY'), static::pemBlocks($value, 'RSA PUBLIC KEY'));
+		$blocks = array_merge(Certificate::pemBlocks($value, 'PUBLIC KEY'), Certificate::pemBlocks($value, 'RSA PUBLIC KEY'));
 		return count($blocks) === 1 && $blocks[0]['data'] !== null && @openssl_pkey_get_public($blocks[0]['pem']) !== false;
 	    },
 
-	    //`pemCertificate`: PEM certificate(s) (-----BEGIN CERTIFICATE-----), each readable by OpenSSL; 'multiple' => false: exactly one
+	    //CLD: 2026-11-10T13:09:10+02:00: `pemCertificate`: PEM certificate(s) (-----BEGIN CERTIFICATE-----; X509 / TRUSTED CERTIFICATE too, as util\Certificate reads them), each readable by OpenSSL; 'multiple' => false: exactly one
 	    'pemCertificate' => function($value, $format, $options) {
 		if (!static::_when($options) || static::_blank($value))
 		    return true;
-		$blocks = static::pemBlocks($value, 'CERTIFICATE');
-		if (empty($blocks) || (($options['multiple'] ?? true) === false && count($blocks) > 1))
+		$certs = Certificate::certificates($value);
+		if (!$certs || (($options['multiple'] ?? true) === false && count($certs) > 1))
 		    return false;
-		foreach($blocks as $b) {
-		    if (@openssl_x509_read($b['pem']) === false)
+		foreach($certs as $pem) {
+		    if (@openssl_x509_read($pem) === false)
 			return false;
 		}
 		return true;
@@ -455,7 +455,7 @@ class Validator {
 	    'sshPrivateKey' => function($value, $format, $options) {
 		if (!static::_when($options) || static::_blank($value))
 		    return true;
-		$blocks = static::pemBlocks($value, 'OPENSSH PRIVATE KEY');
+		$blocks = Certificate::pemBlocks($value, 'OPENSSH PRIVATE KEY');
 		if ($blocks)
 		    return count($blocks) === 1 && str_starts_with((string)$blocks[0]['data'], "openssh-key-v1\0");
 		return static::isPemPrivateKey($value);
@@ -486,26 +486,6 @@ class Validator {
 	return !is_scalar($value) || trim((string)$value) === '';
     }
 
-    //CLD: 2026-10-20T14:03:59+03:00: the armored / PEM blocks of $text labelled $label (e.g. 'CERTIFICATE'), in order: [ 'label', 'pem' (the whole block),
-    //'data' (the decoded body; null when it is not base64) ]; headers (Version:, Proc-Type:, DEK-Info:, ...) and the PGP checksum line are not part of the body
-    public static function pemBlocks($text, $label) {
-	$q = preg_quote($label, '/');
-	preg_match_all('/-----BEGIN (' . $q . ')-----(.*?)-----END ' . $q . '-----/s', (string)$text, $m, PREG_SET_ORDER);
-	$blocks = [];
-	foreach($m as $match) {
-	    $lines = [];
-	    foreach(preg_split('/\R/', trim($match[2])) as $line) {
-		$line = trim($line);
-		if ($line === '' || str_contains($line, ':') || preg_match('/^=[A-Za-z0-9+\/]{4}$/', $line))
-		    continue;
-		$lines[] = $line;
-	    }
-	    $data = base64_decode(implode('', $lines), true);
-	    $blocks[] = [ 'label' => $match[1], 'pem' => $match[0], 'data' => ($data === false || $data === '') ? null : $data ];
-	}
-	return $blocks;
-    }
-
     //CLD: 2026-10-20T14:03:59+03:00: the tag of the first OpenPGP packet of $data (RFC 4880 4.2: old and new formats; 5 = secret key, 6 = public key); null: not a packet
     public static function pgpPacketTag($data) {
 	if (!is_string($data) || $data === '')
@@ -520,7 +500,7 @@ class Validator {
     public static function isPemPrivateKey($text) {
 	$blocks = [];
 	foreach([ 'PRIVATE KEY', 'ENCRYPTED PRIVATE KEY', 'RSA PRIVATE KEY', 'EC PRIVATE KEY', 'DSA PRIVATE KEY' ] as $label)
-	    $blocks = array_merge($blocks, static::pemBlocks($text, $label));
+	    $blocks = array_merge($blocks, Certificate::pemBlocks($text, $label));
 	if (count($blocks) !== 1 || $blocks[0]['data'] === null)
 	    return false;
 	$b = $blocks[0];

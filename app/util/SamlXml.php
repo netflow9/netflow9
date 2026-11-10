@@ -222,23 +222,13 @@ class SamlXml {
 	if (!openssl_sign($info->C14N(true, false), $value, $keyPem, 'sha256'))
 	    throw new SamlException('could not sign: ' . openssl_error_string());
 	self::addDs($doc, $sig, 'SignatureValue', [], base64_encode($value));
-	self::addDs($doc, self::addDs($doc, self::addDs($doc, $sig, 'KeyInfo'), 'X509Data'), 'X509Certificate', [], self::certBody($certPem));
+	self::addDs($doc, self::addDs($doc, self::addDs($doc, $sig, 'KeyInfo'), 'X509Data'), 'X509Certificate', [], Certificate::body($certPem));
 	return $sig;
     }
 
     //CLD: 2026-11-07T01:16:14+02:00: a new ds:$name element of $doc (attributes $attrs, text $text) appended to $parent
     private static function addDs(\DOMDocument $doc, \DOMNode $parent, $name, $attrs = [], $text = null) {
 	return $parent->appendChild(self::newElement($doc, self::DS, 'ds:' . $name, $attrs, $text));
-    }
-
-    //the base64 body of a PEM certificate
-    public static function certBody($pem) {
-	return preg_replace('/-----[^-]+-----|\s+/', '', (string)$pem);
-    }
-
-    //a PEM certificate of a base64 body
-    public static function certPem($body) {
-	return "-----BEGIN CERTIFICATE-----\n" . chunk_split(preg_replace('/\s+/', '', (string)$body), 64, "\n") . "-----END CERTIFICATE-----\n";
     }
 
     // ------------------------------------------------------------------------------------

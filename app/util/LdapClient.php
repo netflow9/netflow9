@@ -100,13 +100,8 @@ abstract class LdapClient {
 
     //the CA certificate in a private temporary file (removed by the caller: removeFile()); null without one
     protected function caFile() {
-	$pem = trim((string)$this->options['caCert']);
-	if ($pem === '')
-	    return null;
-	$file = tempnam(sys_get_temp_dir(), 'ldapca');
-	chmod($file, 0600);
-	file_put_contents($file, $pem . "\n");
-	return $file;
+	$certs = Certificate::certificates($this->options['caCert']);
+	return $certs ? Certificate::tempFile($certs) : null;
     }
 
     protected static function removeFile($file) {

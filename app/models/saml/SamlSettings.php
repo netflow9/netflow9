@@ -12,7 +12,7 @@
 
 namespace models\saml;
 
-use util\SamlXml;
+use util\Certificate;
 
 class SamlSettings extends \sys\BaseModel {
     //CLD: 2026-10-26T07:23:58+02:00: the role choices are read from the database: not cached (BaseModel::attachSchema)
@@ -237,15 +237,8 @@ class SamlSettings extends \sys\BaseModel {
     public function keys($renew = false) {
 	if (!$renew && trim((string)$this->spCert) !== '' && trim((string)$this->spKey) !== '')
 	    return;
-	$key = openssl_pkey_new([ 'private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA ]);
 	$host = parse_url(\V::app()->createAbsoluteUrl('/'), PHP_URL_HOST) ?: 'localhost';
-	$csr = $key ? openssl_csr_new([ 'commonName' => mb_substr($host, 0, 64), 'organizationName' => mb_substr((string)\V::app()->config('app.name'), 0, 64) ?: 'SAML' ], $key,
-	    [ 'digest_alg' => 'sha256' ]) : false;
-	$cert = $csr ? openssl_csr_sign($csr, null, $key, 3650, [ 'digest_alg' => 'sha256' ], random_int(1, PHP_INT_MAX)) : false;
-	if (!$cert || !openssl_x509_export($cert, $certPem) || !openssl_pkey_export($key, $keyPem))
-	    throw new \ErrorException('SAML: the service provider\'s key pair was not made: ' . openssl_error_string());
-	$this->spCert = $certPem;
-	$this->spKey = $keyPem;
+	[ $this->spCert, $this->spKey ] = Certificate::selfSigned($host, (string)\V::app()->config('app.name') ?: 'SAML', 3650);
     }
 
     //the expiry of this service provider's certificate (a timestamp), or null
@@ -259,14 +252,7 @@ class SamlSettings extends \sys\BaseModel {
 
     //the IdP's certificates (PEM)
     public function idpCertList() {
-	preg_match_all('/-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----/s', (string)$this->idpCerts, $m);
-	$certs = [];
-	foreach($m[0] as $pem)
-	    $certs[] = SamlXml::certPem(SamlXml::certBody($pem));
-	//a bare base64 body (copied from the metadata's X509Certificate)
-	if (!$certs && preg_match('/^[A-Za-z0-9+\/=\s]{100,}$/', trim((string)$this->idpCerts)))
-	    $certs[] = SamlXml::certPem(trim((string)$this->idpCerts));
-	return $certs;
+	return Certificate::certificates($this->idpCerts, true);
     }
 
     //the attribute names tried for $key (attrEmail, ...): the setting, else the usual ones
@@ -318,7 +304,7 @@ class SamlSettings extends \sys\BaseModel {
 		$valid = false;
 	    }
 	    foreach($certs as $i => $pem) {
-		if (!@openssl_pkey_get_public($pem)) {
+		if (@openssl_x509_read($pem) === false) {
 		    $this->errors('idpCerts', 'certificate ' . ($i + 1) . ' is not readable');
 		    $valid = false;
 		}

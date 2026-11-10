@@ -101,12 +101,12 @@ class FileSign extends FileDecrypt {
 
     protected static function cmsSign($cred, $work, $in, $out, $mode) {
 	$key = trim((string)$cred->privateKey);
-	$cert = FileEncrypt::certificates($cred->certificate)[0] ?? null;
+	$cert = Certificate::certificates($cred->certificate)[0] ?? null;
 	if ($key === '' || $cert === null)
 	    throw new \RuntimeException('the credential needs the private key and its certificate');
 	$args = [ self::tool('openssl'), 'cms', '-sign', '-binary', '-md', \sys\Security::digest($cred->digest), '-in', $in, '-out', $out, '-outform', 'DER',
 	    '-signer', self::secretFile($work, 'cert.pem', $cert . "\n"), '-inkey', self::secretFile($work, 'key.pem', $key . "\n"), '-passin', 'fd:3' ];
-	$chain = FileEncrypt::certificates($cred->chain);
+	$chain = Certificate::certificates($cred->chain);
 	if ($chain)
 	    array_push($args, '-certfile', self::secretFile($work, 'chain.pem', implode("\n", $chain) . "\n"));
 	if ($mode === 'attached')
@@ -120,15 +120,11 @@ class FileSign extends FileDecrypt {
 
     protected static function rawSign($cred, $work, $in, $out) {
 	$key = trim((string)$cred->privateKey);
-	$pkey = @openssl_pkey_get_private($key, (string)$cred->passphrase);
-	if ($pkey === false)
-	    throw new \RuntimeException('the private key could not be opened (is the passphrase right?)');
-	$type = openssl_pkey_get_details($pkey)['type'] ?? null;
+	$pkey = Certificate::privateKey($key, $cred->passphrase);
 	$keyFile = self::secretFile($work, 'key.pem', $key . "\n");
 	$sig = !empty($cred->armor) ? $work . '/sig.bin' : $out;
 	//EdDSA signs the whole message (no digest of it: pkeyutl -rawin); RSA / EC: a digest (dgst, read as a stream)
-	$eddsa = in_array($type, array_filter([ defined('OPENSSL_KEYTYPE_ED25519') ? OPENSSL_KEYTYPE_ED25519 : null, defined('OPENSSL_KEYTYPE_ED448') ? OPENSSL_KEYTYPE_ED448 : null ], fn($t) => $t !== null), true);
-	$args = $eddsa
+	$args = Certificate::keyInfo($pkey)['eddsa']
 	    ? [ self::tool('openssl'), 'pkeyutl', '-sign', '-rawin', '-inkey', $keyFile, '-passin', 'fd:3', '-in', $in, '-out', $sig ]
 	    : [ self::tool('openssl'), 'dgst', '-' . \sys\Security::digest($cred->digest), '-sign', $keyFile, '-passin', 'fd:3', '-out', $sig, $in ];
 	[ $code, $err ] = self::run($args, (string)$cred->passphrase);
@@ -172,23 +168,18 @@ class FileSign extends FileDecrypt {
 		self::removeDir($work);
 	    }
 	}
-	$pkey = @openssl_pkey_get_private(trim((string)$cred->privateKey), (string)$cred->passphrase);
-	if ($pkey === false)
-	    throw new \RuntimeException('the private key could not be opened (is the passphrase right?)');
-	$details = openssl_pkey_get_details($pkey);
 	if ($method === 'cms') {
-	    $cert = FileEncrypt::certificates($cred->certificate)[0] ?? null;
+	    $cert = Certificate::certificates($cred->certificate)[0] ?? null;
 	    if ($cert === null)
 		throw new \RuntimeException('no certificate');
-	    if (!openssl_x509_check_private_key($cert, $pkey))
-		throw new \RuntimeException('the certificate does not belong to the private key');
-	    $info = openssl_x509_parse($cert);
-	    if (($info['validTo_time_t'] ?? PHP_INT_MAX) < time())
+	    Certificate::privateKey($cred->privateKey, $cred->passphrase, $cert);
+	    $c = Certificate::decode($cert, false, false);
+	    if ($c['expired'])
 		throw new \RuntimeException('the certificate has expired');
 	    //CLD: 2026-10-24T16:30:00+03:00: the account's date format (Format::date)
-	    return 'signs as ' . (string)($info['subject']['CN'] ?? $info['name'] ?? '?') . ' (until ' . Format::date((int)$info['validTo_time_t']) . ')';
+	    return 'signs as ' . (string)($c['commonName'] ?? '?') . ' (until ' . Format::date(strtotime($c['validTo'])) . ')';
 	}
-	$types = [ OPENSSL_KEYTYPE_RSA => 'RSA', OPENSSL_KEYTYPE_EC => 'EC' ] + (defined('OPENSSL_KEYTYPE_ED25519') ? [ OPENSSL_KEYTYPE_ED25519 => 'Ed25519' ] : []);
-	return ($types[$details['type'] ?? -1] ?? 'a') . ' key' . (!empty($details['bits']) ? ' of ' . $details['bits'] . ' bits' : '');
+	$k = Certificate::keyInfo(Certificate::privateKey($cred->privateKey, $cred->passphrase));
+	return ($k['type'] ?? 'a') . ' key' . (!empty($k['bits']) ? ' of ' . $k['bits'] . ' bits' : '');
     }
 }

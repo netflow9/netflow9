@@ -135,7 +135,7 @@ class FileVerify extends FileDecrypt {
 
     //CMS: attached ($out: the content) or detached ($content: the signed file); the trusted certificates are the CAs; the signer's subject
     protected static function verifyCms($cred, $work, $in, $out, $content) {
-	$certs = FileEncrypt::certificates($cred->certificate);
+	$certs = Certificate::certificates($cred->certificate);
 	if (!$certs)
 	    throw new \RuntimeException('the credential has no certificate');
 	$head = (string)file_get_contents($in, false, null, 0, 4096);
@@ -156,17 +156,16 @@ class FileVerify extends FileDecrypt {
 	    };
 	    throw new \RuntimeException($message);
 	}
-	$info = is_file($signerFile) ? @openssl_x509_parse((string)file_get_contents($signerFile)) : null;
-	return [ 'signer' => (string)($info['subject']['CN'] ?? $info['name'] ?? 'a trusted certificate') ];
+	$signer = is_file($signerFile) ? (Certificate::certificates(file_get_contents($signerFile))[0] ?? null) : null;
+	return [ 'signer' => (string)(($signer !== null ? Certificate::decode($signer, false, false)['commonName'] : null) ?? 'a trusted certificate') ];
     }
 
     //a plain signature (binary or base64) of $data with the public key
     protected static function verifyRaw($cred, $work, $data, $sig) {
 	$pub = trim((string)$cred->publicKey);
-	$pkey = @openssl_pkey_get_public($pub);
-	if ($pkey === false)
+	$key = Certificate::keyInfo($pub);
+	if ($key === null)
 	    throw new \RuntimeException('the public key could not be read');
-	$details = openssl_pkey_get_details($pkey);
 	$bytes = (string)file_get_contents($sig, false, null, 0, 65536);
 	//base64 (a text of base64 characters only) decoded
 	if (preg_match('/^[A-Za-z0-9+\/=\s]+$/', $bytes) && ($decoded = base64_decode(preg_replace('/\s+/', '', $bytes), true)) !== false && $decoded !== '') {
@@ -174,7 +173,7 @@ class FileVerify extends FileDecrypt {
 	    file_put_contents($sig, $decoded);
 	}
 	$keyFile = self::secretFile($work, 'pub.pem', $pub . "\n");
-	$eddsa = in_array($details['type'] ?? null, array_filter([ defined('OPENSSL_KEYTYPE_ED25519') ? OPENSSL_KEYTYPE_ED25519 : null, defined('OPENSSL_KEYTYPE_ED448') ? OPENSSL_KEYTYPE_ED448 : null ], fn($t) => $t !== null), true);
+	$eddsa = $key['eddsa'];
 	$digest = \sys\Security::digest($cred->digest);
 	$args = $eddsa
 	    ? [ self::tool('openssl'), 'pkeyutl', '-verify', '-pubin', '-inkey', $keyFile, '-rawin', '-in', $data, '-sigfile', $sig ]
@@ -182,8 +181,7 @@ class FileVerify extends FileDecrypt {
 	[ $code, $err, $outText ] = self::run($args);
 	if ($code !== 0 || !preg_match('/Verified OK|Signature Verified Successfully/i', $outText . $err))
 	    throw new \RuntimeException('bad signature: the file was changed after it was signed, or it was signed with another key' . ($eddsa ? '' : " (or not with {$digest})"));
-	$types = [ OPENSSL_KEYTYPE_RSA => 'RSA', OPENSSL_KEYTYPE_EC => 'EC' ] + (defined('OPENSSL_KEYTYPE_ED25519') ? [ OPENSSL_KEYTYPE_ED25519 => 'Ed25519' ] : []);
-	return [ 'signer' => ($types[$details['type'] ?? -1] ?? 'the') . ' key' ];
+	return [ 'signer' => ($key['type'] ?? 'the') . ' key' ];
     }
 
     //the credential's own check: pgp: the signing keys (their users); cms: the certificates (subjects, not expired); raw: the key's type
@@ -206,11 +204,9 @@ class FileVerify extends FileDecrypt {
 	}
 	if ($method === 'cms')
 	    return str_replace('recipient', 'trusted', FileEncrypt::checkKeys($cred));
-	$pkey = @openssl_pkey_get_public(trim((string)$cred->publicKey));
-	if ($pkey === false)
+	$key = Certificate::keyInfo(trim((string)$cred->publicKey));
+	if ($key === null)
 	    throw new \RuntimeException('the public key could not be read');
-	$details = openssl_pkey_get_details($pkey);
-	$types = [ OPENSSL_KEYTYPE_RSA => 'RSA', OPENSSL_KEYTYPE_EC => 'EC' ] + (defined('OPENSSL_KEYTYPE_ED25519') ? [ OPENSSL_KEYTYPE_ED25519 => 'Ed25519' ] : []);
-	return ($types[$details['type'] ?? -1] ?? 'a') . ' public key' . (!empty($details['bits']) ? ' of ' . $details['bits'] . ' bits' : '');
+	return ($key['type'] ?? 'a') . ' public key' . (!empty($key['bits']) ? ' of ' . $key['bits'] . ' bits' : '');
     }
 }

@@ -180,8 +180,9 @@ class FileDecrypt {
 	if ($key === '')
 	    throw new \RuntimeException('the credential has no private key');
 	$args = [ self::tool('openssl'), 'cms', '-decrypt', '-binary', '-in', $in, '-out', $out, '-inkey', self::secretFile($work, 'key.pem', $key . "\n"), '-passin', 'fd:3' ];
-	if (trim((string)$cred->certificate) !== '')
-	    array_push($args, '-recip', self::secretFile($work, 'cert.pem', trim((string)$cred->certificate) . "\n"));
+	$cert = Certificate::certificates($cred->certificate)[0] ?? null;
+	if ($cert !== null)
+	    array_push($args, '-recip', self::secretFile($work, 'cert.pem', $cert));
 	$head = (string)file_get_contents($in, false, null, 0, 4096);
 	$form = str_starts_with(ltrim($head), '-----BEGIN') ? 'PEM' : (preg_match('/^(MIME-Version|Content-Type):/mi', $head) ? 'SMIME' : 'DER');
 	array_push($args, '-inform', $form);
@@ -253,13 +254,8 @@ class FileDecrypt {
 	    }
 	}
 	if ($method === 'cms') {
-	    $key = @openssl_pkey_get_private(trim((string)$cred->privateKey), (string)$cred->passphrase);
-	    if ($key === false)
-		throw new \RuntimeException('the private key could not be opened (is the passphrase right?)');
-	    $details = openssl_pkey_get_details($key);
-	    if (trim((string)$cred->certificate) !== '' && !openssl_x509_check_private_key(trim((string)$cred->certificate), $key))
-		throw new \RuntimeException('the certificate does not belong to the private key');
-	    return 'private key of ' . (int)($details['bits'] ?? 0) . ' bits';
+	    $key = Certificate::privateKey($cred->privateKey, $cred->passphrase, Certificate::certificates($cred->certificate)[0] ?? null);
+	    return 'private key of ' . (int)(Certificate::keyInfo($key)['bits'] ?? 0) . ' bits';
 	}
 	if ((string)$cred->passphrase === '')
 	    throw new \RuntimeException('no ' . ($method === 'openssl-enc' ? 'password' : 'passphrase'));
