@@ -44,6 +44,8 @@ class WfNode extends \sys\NestedModel {
 	'virtualization' => 'Virtualization',
 	'domains' => 'Domains & DNS',
 	'ai' => 'AI',
+	//CLD: 2026-11-10T12:00:00+02:00: the steps of a country or region (the Regional<code> plugins, e.g. RegionalRO)
+	'regional' => 'Regional',
 	'developer' => 'Developer',
     ];
     //a step started by the daemon's scheduler on its schedule (config of models\wf\WfSchedule); the class implements runScheduled()

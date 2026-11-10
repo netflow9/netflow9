@@ -1165,7 +1165,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	$ids = [];
 	foreach((array)$this->cfg('mcp', []) as $id)
 	    $ids[] = [ 'mcp', (string)$id ];
-	foreach(\util\AgentTools::FAMILIES as $key => $fam)
+	foreach(\util\AgentTools::families() as $key => $fam)
 	    if ((string)$this->cfg("{$key}Credential", '') !== '')
 		$ids[] = [ $fam['capability'], (string)$this->cfg("{$key}Credential") ];
 	foreach($ids as [ $capability, $id ])

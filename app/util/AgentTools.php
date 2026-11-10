@@ -19,6 +19,8 @@
 	`approval_reason` when the tool has a `reason` of its own) and `approval` (what, on what, its main arguments: the task's title) and `check` (its arguments checked without
 	running: a wrong call is not sent for approval). Who approves: `approvalUsers`, `approvalRoles` (as a Human task), `approvalTimeout` / `approvalTimeoutUnit` (none: no time limit).
 	The AI step asks and resumes (models\node\NodeAppAi: askApproval, decided)
+    CLD: 2026-11-10T14:00:00+02:00: the plugins' families too (families(): FAMILIES + hook agent:families); a family of public services (`credential` => false: no credential) is chosen with
+	`<family>Credential` = NO_CREDENTIAL ("Used")
 */
 
 namespace util;
@@ -53,6 +55,9 @@ class AgentTools {
 	'googleDocs' => [ 'label' => 'Google Docs', 'prefix' => 'gdocs', 'capability' => null, 'steps' => [ \models\node\NodeAppGoogleDocs::class ] ],
     ];
 
+    //CLD: 2026-11-10T14:00:00+02:00: the value of `<family>Credential` of a family without credential (`credential` => false): the family is used
+    const NO_CREDENTIAL = 'use';
+
     //the AI step's settings of the families and of the workflows
     const SECTION = 'Integrations';
     const WORKFLOWS = 'workflows';
@@ -75,6 +80,30 @@ class AgentTools {
     const INPUT_TYPES = [ 'text' => 'string', 'number' => 'number', 'boolean' => 'boolean', 'list' => 'array', 'object' => 'object', 'any' => null ];
 
     private static $steps = null;
+    private static $families = null;
+
+    //CLD: 2026-11-10T14:00:00+02:00: new: the families: the core's (FAMILIES) and the plugins' (hook agent:families: an \ArrayObject the plugins add entries to, key => an entry as FAMILIES', + `credential`
+    //=> false for public services), built once; an entry with a key already taken, no label, a prefix that is not snake_case, or neither base nor steps is left out (logged)
+    public static function families() {
+	if (self::$families !== null)
+	    return self::$families;
+	$box = new \ArrayObject();
+	\V::app()->hooks->applyHook('agent:families', [ $box ]);
+	self::$families = self::FAMILIES;
+	$prefixes = array_column(self::FAMILIES, 'prefix');
+	foreach($box as $key => $fam) {
+	    $key = (string)$key;
+	    $ok = \util\Validator::isIdentifier($key) && !isset(self::$families[$key]) && is_array($fam) && trim((string)($fam['label'] ?? '')) !== ''
+		&& preg_match('/^[a-z][a-z0-9_]{0,30}$/', (string)($fam['prefix'] ?? '')) && !in_array($fam['prefix'], $prefixes, true) && (!empty($fam['base']) || !empty($fam['steps']));
+	    if (!$ok) {
+		error_log("agent:families: the family `{$key}` is left out (its key or prefix is taken, or it has no label, prefix, base or steps)");
+		continue;
+	    }
+	    self::$families[$key] = $fam + [ 'capability' => null ];
+	    $prefixes[] = $fam['prefix'];
+	}
+	return self::$families;
+    }
 
     // ------------------------------------------------------------------------------------
     //the families
@@ -88,7 +117,7 @@ class AgentTools {
 		$class = ltrim(\V::app()->om->getObjectClass($objectName), '\\');
 		$registered[$class] = $objectName;
 	    }
-	    foreach(self::FAMILIES as $k => $fam) {
+	    foreach(self::families() as $k => $fam) {
 		$list = [];
 		foreach($registered as $class => $objectName) {
 		    $in = isset($fam['steps']) ? in_array($class, $fam['steps'], true) : is_subclass_of($class, $fam['base']);
@@ -106,7 +135,7 @@ class AgentTools {
 
     //the capability a credential of step $class provides: the family's, else the step's own (Microsoft / Google: $capability; Database: capability())
     public static function capabilityOf($key, $class) {
-	$cap = self::FAMILIES[$key]['capability'] ?? null;
+	$cap = self::families()[$key]['capability'] ?? null;
 	if ($cap !== null)
 	    return $cap;
 	return method_exists($class, 'capability') ? $class::capability() : (string)($class::$capability ?? '');
@@ -120,7 +149,7 @@ class AgentTools {
     //the operations of family $key as tools: [ tool name => [ class, op, label (<step>: <operation>), short (without the words the family's steps start with: the settings'
     //choices), writes ] ] (alternatives: those of the first step, the same for all)
     public static function operations($key) {
-	$fam = self::FAMILIES[$key];
+	$fam = self::families()[$key];
 	$steps = self::steps($key);
 	if (!empty($fam['alt']))
 	    $steps = array_slice($steps, 0, 1, true);
@@ -167,7 +196,7 @@ class AgentTools {
 
     //the step of family $key that uses credential $cred (alternatives: the one of its type; else any): its class, null when none
     protected static function stepFor($key, $cred, $class) {
-	if (empty(self::FAMILIES[$key]['alt']))
+	if (empty(self::families()[$key]['alt']))
 	    return $class;
 	foreach(array_keys(self::steps($key)) as $c) {
 	    if ($cred->provides(self::capabilityOf($key, $c)) && $c::available())
@@ -192,11 +221,13 @@ class AgentTools {
     //operations (the read ones by default)
     public static function familyFields($aid, $project) {
 	$fields = [];
-	foreach(self::FAMILIES as $key => $fam) {
+	foreach(self::families() as $key => $fam) {
 	    $ops = self::operations($key);
 	    if (!$ops)
 		continue;
-	    $creds = $aid ? self::credentialChoices($key, $aid, $project) : [];
+	    //CLD: 2026-11-10T14:00:00+02:00: a family without credential: "Used", always offered
+	    $public = ($fam['credential'] ?? true) === false;
+	    $creds = $public ? [ self::NO_CREDENTIAL => 'Used (no credential)' ] : ($aid ? self::credentialChoices($key, $aid, $project) : []);
 	    if ($aid && !$creds)
 		continue;
 	    $fields[] = [
@@ -205,7 +236,7 @@ class AgentTools {
 		'label' => $fam['label'],
 		'choices' => $creds,
 		'default' => '',
-		'help' => 'The credential the model uses',
+		'help' => $public ? 'A public service: the model may use it' : 'The credential the model uses',
 		'ui' => [ 'section' => self::SECTION, 'width' => 4, 'newRow' => true, 'placeholder' => 'Not used' ],
 	    ];
 	    //CLD: 2026-11-01T23:30:00+02:00: 4 wide: the approvals next to it
@@ -328,9 +359,13 @@ class AgentTools {
     public static function errors($step) {
 	$errors = [];
 	$wf = $step->workflow;
-	foreach(self::FAMILIES as $key => $fam) {
+	foreach(self::families() as $key => $fam) {
 	    $id = (string)$step->cfg("{$key}Credential", '');
-	    if ($id !== '' && (!$wf || !self::credential($key, $wf, $id)))
+	    //CLD: 2026-11-10T14:00:00+02:00: a family without credential: Used or not
+	    if (($fam['credential'] ?? true) === false) {
+		if ($id !== '' && $id !== self::NO_CREDENTIAL)
+		    $errors[] = "{$fam['label']}: Used, or Not used";
+	    } elseif ($id !== '' && (!$wf || !self::credential($key, $wf, $id)))
 		$errors[] = "{$fam['label']}: choose a credential of this project";
 	    $known = self::operations($key);
 	    //CLD: 2026-11-01T23:30:00+02:00: + the operations that ask for approval
@@ -378,12 +413,13 @@ class AgentTools {
     public static function tools($ai) {
 	$tools = [];
 	$exec = $ai->exec;
-	foreach(self::FAMILIES as $key => $fam) {
+	foreach(self::families() as $key => $fam) {
 	    $id = (string)$ai->cfg("{$key}Credential", '');
 	    if ($id === '')
 		continue;
-	    $cred = self::credential($key, $exec, $id);
-	    if (!$cred)
+	    //CLD: 2026-11-10T14:00:00+02:00: a family without credential: none
+	    $cred = ($fam['credential'] ?? true) === false ? null : self::credential($key, $exec, $id);
+	    if (!$cred && ($fam['credential'] ?? true) !== false)
 		throw new \ErrorException("the {$fam['label']} credential is no longer available");
 	    $wanted = array_map('strval', (array)($ai->cfg("{$key}Tools", null) ?? self::readTools($key)));
 	    foreach(self::operations($key) as $name => $o) {
@@ -399,7 +435,7 @@ class AgentTools {
 		    default => $o['writes'] };
 		[ $schema, $reason ] = $ask ? self::withReason($schema) : [ $schema, null ];
 		//CLD: 2026-11-02T10:00:00+02:00: + kind, family, writes, askMeta (util\AgentGuard: the account's policy, the limits, approval when the policy or a lockdown asks for it)
-		$meta = [ 'what' => trim(preg_replace('/\s*\([^)]*\)\s*$/', '', (string)$class::OPERATIONS[$o['op']])), 'on' => "{$fam['label']} {$cred->name}",
+		$meta = [ 'what' => trim(preg_replace('/\s*\([^)]*\)\s*$/', '', (string)$class::OPERATIONS[$o['op']])), 'on' => $cred ? "{$fam['label']} {$cred->name}" : $fam['label'],
 		    'label' => $o['label'], 'main' => array_keys(array_filter($fields, fn($f) => $f['required'])) ];
 		$tools[$name] = [ 'name' => $name, 'kind' => 'integration', 'family' => $key, 'writes' => (bool)$o['writes'], 'askMeta' => $meta,
 		    'description' => "[{$fam['label']}] {$o['label']}" . ($o['writes'] ? ' - changes it' : ' - reads only')
@@ -687,6 +723,7 @@ class AgentTools {
 
     //runs operation $op of step $class (object $objectName) for AI step $ai with credential $cred: the step made with the arguments as its settings, run in $ai's execution
     //(logged under $ai) => [ the result as JSON, isError, images ]
+    //CLD: 2026-11-10T14:00:00+02:00: $cred null: a family without credential
     protected static function runStep($ai, $objectName, $class, $op, $cred, array $fields, array $args) {
 	[ $values, $error ] = self::arguments($fields, $args);
 	if ($error !== null)
@@ -696,7 +733,7 @@ class AgentTools {
 	    if (($f['key'] ?? '') === 'timeout')
 		$timeout = $f['default'] ?? null;
 	$step = \V::app()->om->create($objectName, [ 'wfid' => (string)$ai->wfid, 'fqname' => $class::$type . '::' . $class::$name, 'title' => (string)($ai->title ?? $class::$label),
-	    'config' => $values + [ 'credential' => (string)$cred->_id, 'operation' => $op, 'params' => '', 'variable' => '', 'onError' => 'fail' ] + ($timeout !== null ? [ 'timeout' => $timeout ] : []) ]);
+	    'config' => $values + [ 'credential' => $cred ? (string)$cred->_id : '', 'operation' => $op, 'params' => '', 'variable' => '', 'onError' => 'fail' ] + ($timeout !== null ? [ 'timeout' => $timeout ] : []) ]);
 	$step->exec = $ai->exec;
 	$step->workflow = $ai->workflow;
 	$step->toolCall = true;

@@ -55,7 +55,7 @@ class AccountController extends \sys\BaseController {
 	    $policy = \models\agent\AgentPolicy::ofAccount($account->_id);
 	    if ($req->is('post')) {
 		$data = $req->data;
-		$data['denied_families'] = array_values(array_diff(array_keys(\util\AgentTools::FAMILIES), array_map('strval', (array)($data['allowed_families'] ?? []))));
+		$data['denied_families'] = array_values(array_diff(array_keys(\util\AgentTools::families()), array_map('strval', (array)($data['allowed_families'] ?? []))));
 		$data['allowed_writes'] = array_map('strval', (array)($data['allowed_writes'] ?? []));
 		unset($data['allowed_families']);
 		$policy->assign($data, true);

@@ -3,7 +3,7 @@
 /*
     what the agents (AI steps with tools) of an account may do, one document per account, set by its owners (Account settings > AI: AccountController::settings);
     changes are in the audit log (a saved model). No document: nothing is restricted (the defaults).
-	- denied_families: the integration families no agent may use (util\AgentTools::FAMILIES)
+	- denied_families: the integration families no agent may use (util\AgentTools::families())
 	- write_mode: the tools that change something: all, none, or chosen (allowed_writes: the tools by name; @workflows: workflows run as tools; @mcp: tools of MCP servers and tool servers)
 	- writes_need_approval: a tool that changes something always waits for a person's approval
 	- budget: the most the AI steps with the account's own keys may spend per calendar month (USD; estimated from the tokens: models\agent\AgentUsage), at the list prices (data\AiProviders); the System AI uses credits instead
@@ -38,7 +38,7 @@ class AgentPolicy extends \sys\BaseModel {
 		'help' => false,
 		'perm:read' => 'everybody',
 		'perm:update' => 'everybody',
-		'choices' => array_map(fn($f) => $f['label'], \util\AgentTools::FAMILIES),
+		'choices' => array_map(fn($f) => $f['label'], \util\AgentTools::families()),
 		'default' => [],
 	    ],
 	    [
@@ -96,7 +96,7 @@ class AgentPolicy extends \sys\BaseModel {
 	foreach(\util\MCPTools::all() as $t)
 	    if (($t['annotations']['readOnlyHint'] ?? false) !== true)
 		$choices[$t['name']] = 'Project: ' . ($t['title'] ?? $t['name']);
-	foreach(\util\AgentTools::FAMILIES as $key => $fam)
+	foreach(\util\AgentTools::families() as $key => $fam)
 	    foreach(\util\AgentTools::operations($key) as $name => $o)
 		if ($o['writes'])
 		    $choices[$name] = $fam['label'] . ': ' . $o['short'];
@@ -147,7 +147,7 @@ class AgentPolicy extends \sys\BaseModel {
 	$policy = self::ofAccount($wf->aid);
 	$why = 'by the account\'s AI policy (Account settings > AI)';
 	$errors = [];
-	foreach(\util\AgentTools::FAMILIES as $key => $fam) {
+	foreach(\util\AgentTools::families() as $key => $fam) {
 	    if ((string)$step->cfg("{$key}Credential", '') === '')
 		continue;
 	    if (!$policy->familyAllowed($key)) {

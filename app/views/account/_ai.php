@@ -1,7 +1,7 @@
 <?php
 //CLD: 2026-11-02T10:00:00+02:00: new: the AI tab of the account's settings (AccountController::settings, the owners): what the agents may do (models\agent\AgentPolicy: $policy), the month's spending ($spent, models\agent\AgentUsage)
 $families = '';
-foreach(\util\AgentTools::FAMILIES as $key => $fam) {
+foreach(\util\AgentTools::families() as $key => $fam) {
     if (!\util\AgentTools::operations($key))
 	continue;
     $families .= \util\VString::insert('<div class="col-md-6"><div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" role="switch" name="allowed_families[]" value="{:key}" id="fam-{:key}"{:checked}>'

@@ -3383,7 +3383,7 @@ class CheckCommand extends \sys\BaseController {
 	//every integration step says which operations change something, the operations it names are its own
 	$problems = [];
 	$count = 0;
-	foreach(array_keys($A::FAMILIES) as $key) {
+	foreach(array_keys($A::families()) as $key) {
 	    foreach(array_keys($A::steps($key)) as $class) {
 		$count++;
 		if (!defined("{$class}::WRITES") || !is_array($class::WRITES))

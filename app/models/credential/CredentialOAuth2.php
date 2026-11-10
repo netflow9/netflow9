@@ -31,6 +31,11 @@ abstract class CredentialOAuth2 extends \models\Credential {
 	return [];
     }
 
+    //CLD: 2026-11-10T12:00:00+02:00: more parameters of every token request, the code's and the refreshes' (e.g. token_content_type=jwt for ANAF)
+    public function tokenParams() {
+	return [];
+    }
+
     public static function isOAuth() {
 	return true;
     }
@@ -130,7 +135,8 @@ abstract class CredentialOAuth2 extends \models\Credential {
 	    'code_verifier' => $verifier,
 	    'client_id' => $this->clientId,
 	    'client_secret' => $this->clientSecret,
-	]);
+	//CLD: 2026-11-10T12:00:00+02:00: + tokenParams()
+	] + $this->tokenParams());
 	if (empty($tokens['refresh_token']))
 	    throw new \Exception('the provider sent no refresh token (offline access)');
 	$this->storeTokens($tokens);
@@ -151,7 +157,8 @@ abstract class CredentialOAuth2 extends \models\Credential {
 	    'refresh_token' => $this->refresh_token,
 	    'client_id' => $this->clientId,
 	    'client_secret' => $this->clientSecret,
-	] + $this->refreshParams());
+	//CLD: 2026-11-10T12:00:00+02:00: + tokenParams()
+	] + $this->refreshParams() + $this->tokenParams());
 	$this->storeTokens($tokens);
 	$this->save();
 	return $this->access_token;
