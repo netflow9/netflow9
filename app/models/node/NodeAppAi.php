@@ -18,28 +18,28 @@
 		administrator enabled for the account (hook ai:mcp-servers, localServers()); one session each per run, closed after it
 	    the tool servers are core (util\ToolServers: mcp.json, e.g. the web browser of scripts/playwright-mcp.sh), those enabled for the
 	//account by its owners or the super-admins
-	//CLD: 2026-11-01T21:50:00+02:00: + Rail22's own steps and workflows (util\AgentTools): in the section Integrations, a credential per integration family (`<family>Credential`: GravityZone,
+	//Rail22's own steps and workflows (util\AgentTools): in the section Integrations, a credential per integration family (`<family>Credential`: GravityZone,
 	//FortiGate, ..., a database, Gmail, ...) and the operations the model may use (`<family>Tools`; default: those that only read); Workflows (`workflows`): the project's workflows
 	//that start with Called by a workflow, run as tools
-	//CLD: 2026-11-01T23:30:00+02:00: approvals: a tool that asks for approval (util\AgentTools: per operation / workflow) is not run when the model calls it; the calls of that round that
+	//approvals: a tool that asks for approval (util\AgentTools: per operation / workflow) is not run when the model calls it; the calls of that round that
 	//ask are sent in one task (WfTask kind ai-approval: the approvers, a time limit, Approve / Reject for each, a comment), the conversation and the round saved (saveBlob:
 	//GridFS, nothing in memory: a restart of the daemon loses nothing; node `agentWait`: { task, file }) and the step sleeps. When the task is decided (or its time limit
 	//passes), the step resumes the same conversation: the approved calls run, the others are tool errors ("rejected by Maria Lopez: wrong address", "not approved in time").
 	//Waiting does not count in the timeout (per call to the model); System AI credits: charged before the wait, reserved again on resume. Killing the run cancels the task
 	rounds, max tokens, timeout, the variable, on error (fail | the `error` output).
-	//CLD: 2026-10-17T21:00:54+03:00: + images: project image files sent with the prompt; images in tool results (read_image, MCP servers' image content) go to the model as images too
-	//CLD: 2026-10-27T23:11:38+02:00: images -> files (`files`; a saved step's `images` is still read, moved on save): images, PDF, text and Office files sent with the prompt
+	//images, PDF, text and Office files sent with the prompt (setting Files, `files`; a saved step's `images` is still read, moved on save)
 	//(promptFiles: parts image / pdf / text, mapped by each provider's startConversation). PDFs as (`pdfs`): auto (documents where the provider reads them: pdfAsDocuments),
-	//documents (the PDF itself), text (its text and images: ddn\sapp\PDFContentExtractor); Office files as their text (util\OfficeText)
+	//documents (the PDF itself), text (its text and images: ddn\sapp\PDFContentExtractor); Office files as their text (util\OfficeText);
+	//images in tool results (read_image, MCP servers' image content) go to the model as images too
 	The agent loop: the model is called, the tools it asks for are run and their results sent back, until it answers (at most `maxRounds` calls).
 	    The provider classes build the requests: startConversation(), callModel(), addToolResults().
 	The variable (default `ai`): { text, json, model, stop_reason, rounds, tool_calls: [ { tool, arguments, error } ], usage: { input_tokens, output_tokens } }; on error { error }
-	//CLD: 2026-10-23T02:30:00+03:00: + html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page, an HTTP request or an email
+	//html: the text as safe HTML (util\Markdown: models answer in Markdown), e.g. for a web page, an HTTP request or an email
 	//({{ ai.html }} formatted: util\EmailHtml)
-    //CLD: 2026-11-02T10:00:00+02:00: what keeps the agent in bounds: util\AgentGuard (limits, the account's policy, untrusted content marked, lockdown, masking), each tool call in the audit log
-    //CLD: 2026-11-02T14:00:00+02:00: each visit writes its trace (util\AgentTracer, models\agent\AgentTrace; the Executions panel): rounds, tool calls, approvals, tokens, cost; its id in the variable (trace_id)
-    //CLD: 2026-11-02T18:00:00+02:00: Continue the conversation: in a run started by a chat message, the earlier turns go to the model (addConversation, addHistory; older ones summarized); remember, recall: util\AgentMemory
-    //CLD: 2026-10-23T10:00:00+03:00: Credential `system` (SYSTEM): the installation's System AI instead of a credential of the project, when it is of the step's provider (a plugin gives
+    //what keeps the agent in bounds: util\AgentGuard (limits, the account's policy, untrusted content marked, lockdown, masking), each tool call in the audit log
+    //each visit writes its trace (util\AgentTracer, models\agent\AgentTrace; the Executions panel): rounds, tool calls, approvals, tokens, cost; its id in the variable (trace_id)
+    //Continue the conversation: in a run started by a chat message, the earlier turns go to the model (addConversation, addHistory; older ones summarized); remember, recall: util\AgentMemory
+    //Credential `system` (SYSTEM): the installation's System AI instead of a credential of the project, when it is of the step's provider (a plugin gives
     //it: hook ai:system-provider, systemProvider(); the MultiTenant plugin's System AI). A run reserves the account's credits, counts each call's tokens in credits, stops before a call once the
     //reserved ones are used up, and is charged what it used (its session: start, add, exhausted, finish)
 */
@@ -49,7 +49,7 @@ namespace models\node;
 abstract class NodeAppAi extends \models\wf\WfNode {
     public static $type = 'app';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: the AI steps in AI
+    //the step picker: the AI steps in AI
     public static $category = 'ai';
     public static $inputs = 1;
     public static $outputs = 1;
@@ -59,14 +59,14 @@ abstract class NodeAppAi extends \models\wf\WfNode {
     const CAPABILITY = '';
     const PROVIDER = '';
 
-    //CLD: 2026-10-23T10:00:00+03:00: the Credential value of the System AI
+    //the Credential value of the System AI
     const SYSTEM = 'system';
     const OUTPUT = [ 'text' => 'Text', 'json' => 'JSON' ];
 
     const MAX_ROUNDS = 25;
     const MAX_TOKENS = 64000;
     const MAX_TIMEOUT = 600;
-    //CLD: 2026-10-29T22:44:26+02:00: the Timeout's default (s); a step on a local server (Lemonade, Ollama) sets its own, and its MAX_TIMEOUT (static:: below)
+    //the Timeout's default (s); a step on a local server (Lemonade, Ollama) sets its own, and its MAX_TIMEOUT (static:: below)
     const DEFAULT_TIMEOUT = 300;
     //a tool result longer than this is cut before it is sent to the model (characters)
     const MAX_TOOL_RESULT = 50000;
@@ -74,36 +74,36 @@ abstract class NodeAppAi extends \models\wf\WfNode {
     const MAX_RESPONSE = 10 * 1024 * 1024;
 
     const DEFAULT_TOOLS = [ 'list_tables', 'query_table', 'list_workflows', 'get_execution', 'list_files', 'read_file', 'read_image', 'list_variables' ];
-    //CLD: 2026-10-27T23:11:38+02:00: MAX_FILES: the files sent with the prompt
+    //MAX_FILES: the files sent with the prompt
     const MAX_FILES = 20;
     const MAX_IMAGE = 5242880;
     const IMAGE_TYPES = [ 'image/png', 'image/jpeg', 'image/gif', 'image/webp' ];
-    //CLD: 2026-10-27T23:11:38+02:00: the files' limits: a PDF (bytes), a text file read (bytes), the text of a file (characters: cut after), all the files of a request (bytes sent),
+    //the files' limits: a PDF (bytes), a text file read (bytes), the text of a file (characters: cut after), all the files of a request (bytes sent),
     //the images taken from a PDF read as text
     const MAX_PDF = 20971520;
     const MAX_TEXT_FILE = 10485760;
     const MAX_TEXT = 200000;
     const MAX_SEND = 31457280;
     const MAX_PDF_IMAGES = 10;
-    //CLD: 2026-10-27T23:11:38+02:00: the text files sent as text (by extension)
+    //the text files sent as text (by extension)
     const TEXT_TYPES = [ 'txt', 'csv', 'tsv', 'md', 'json', 'xml', 'yaml', 'yml', 'html', 'htm', 'log' ];
-    //CLD: 2026-10-27T23:11:38+02:00: setting PDFs as; PDF_PARTS: the provider can be sent a PDF itself (false: as text only, `document` not offered)
+    //setting PDFs as; PDF_PARTS: the provider can be sent a PDF itself (false: as text only, `document` not offered)
     const PDFS = [ 'auto' => 'Auto', 'document' => 'Documents', 'text' => 'Text and images' ];
     const PDF_PARTS = true;
-    //CLD: 2026-11-01T23:30:00+02:00: approvals: the decisions of the task's form, the task's kind, the longest value shown of an argument
+    //approvals: the decisions of the task's form, the task's kind, the longest value shown of an argument
     const DECISIONS = [ 'approve' => 'Approve', 'reject' => 'Reject' ];
     const APPROVAL_KIND = 'ai-approval';
     const MAX_ARGUMENT_SHOWN = 500;
 
-    //CLD: 2026-11-02T10:00:00+02:00: the run's util\AgentGuard; what the agent did so far (kept in the variable when a limit stops it)
+    //the run's util\AgentGuard; what the agent did so far (kept in the variable when a limit stops it)
     public $guard = null;
     private $progress = null;
-    //CLD: 2026-11-02T14:00:00+02:00: the trace of this visit (util\AgentTracer)
+    //the trace of this visit (util\AgentTracer)
     public $tracer = null;
-    //CLD: 2026-11-02T18:00:00+02:00: the tokens of a summary of the conversation (counted in the variable's usage)
+    //the tokens of a summary of the conversation (counted in the variable's usage)
     private $summaryUsage = [ 0, 0 ];
 
-    //CLD: 2026-11-02T10:00:00+02:00: new: whether the provider is someone else's servers (util\AgentGuard: Mask personal data)
+    //whether the provider is someone else's servers (util\AgentGuard: Mask personal data)
     public static function isCloud() {
 	return \data\AiProviders::isCloud(static::CAPABILITY);
     }
@@ -112,9 +112,9 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return \util\MCPTools::all();
     }
 
-    //CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers account $aid may use: [ id => [ id, label, description, open: fn(int $timeout) => an MCP client (initialize,
-    //listTools, callTool, close: as util\McpClient), tools: the tool names the model may use (null: all the server lists) ] ]. $aid null: none (outside an account)
-    //CLD: 2026-11-01T11:55:18+02:00: the core's (util\ToolServers::ofAccount), then the hook `ai:mcp-servers` (its arguments
+    //the installation's tool servers account $aid may use: [ id => [ id, label, description, open: fn(int $timeout) => an MCP client (initialize,
+    //listTools, callTool, close: as util\McpClient), tools: the tool names the model may use (null: all the server lists) ] ]. $aid null: none (outside an account).
+    //The core's (util\ToolServers::ofAccount), then the hook `ai:mcp-servers` (its arguments
     //are an \ArrayObject the servers are added to, and $aid; e.g. the check suite's server)
     public static function localServers($aid) {
 	if (empty($aid))
@@ -124,7 +124,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return $servers->getArrayCopy();
     }
 
-    //CLD: 2026-10-23T10:00:00+03:00: new: the installation's System AI for account $aid, when it is of this step's provider (static::CAPABILITY), given by a plugin (hook
+    //the installation's System AI for account $aid, when it is of this step's provider (static::CAPABILITY), given by a plugin (hook
     //`ai:system-provider`: its arguments are an \ArrayObject the plugin sets `provider` of, and $aid): [ provider, model (the System's), label, credential: fn() => the credential
     //(baseUrl, httpAuth, ...: as the provider's), start: fn(string $model, array $info) => the run's session (add([ input, output ]), exhausted(), reserved(), finish() =>
     //[ credits charged, left ]; \ErrorException when the model is not priced or no credits are left) ]; null: none, another provider, or no account
@@ -137,14 +137,14 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return is_array($p) && ($p['provider'] ?? '') === static::CAPABILITY ? $p : null;
     }
 
-    //CLD: 2026-10-23T10:00:00+03:00: new: the designer's account (null outside the designer: a web request of a person with a project), as the choices of the credentials
+    //the designer's account (null outside the designer: a web request of a person with a project), as the choices of the credentials
     protected static function designerAccount() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return null;
 	return \V::app()->config('rt.account')->_id ?? null;
     }
 
-    //CLD: 2026-10-17T21:00:54+03:00: image file $f as [ mimeType, data (base64) ]; \ErrorException when it is not an image the models read (File::$imageMimeTypes) or is too large
+    //image file $f as [ mimeType, data (base64) ]; \ErrorException when it is not an image the models read (File::$imageMimeTypes) or is too large
     public static function fileImage($f) {
 	$mime = $f->imageMimeType();
 	if ($mime === null)
@@ -154,7 +154,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return [ $mime, base64_encode($f->getContents()) ];
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: new: the text of file $f, at most $maxChars (cut, with a marker): a PDF (its pages' text: pdfRead), an Office document (util\OfficeText), a text
+    //the text of file $f, at most $maxChars (cut, with a marker): a PDF (its pages' text: pdfRead), an Office document (util\OfficeText), a text
     //file (TEXT_TYPES: UTF-8); null when it is none of them; \ErrorException when it cannot be read (also used by the read_file tool)
     public static function fileText($f, $maxChars = self::MAX_TEXT) {
 	$ext = $f->extension();
@@ -184,7 +184,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return mb_strlen($text) > $maxChars ? mb_substr($text, 0, $maxChars) . "\n[... cut at {$maxChars} characters]" : $text;
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: new: PDF $bytes read: [ text (its pages', "--- page N ---" before each), images (at most $maxImages, those the models read: [ [ mimeType, data
+    //PDF $bytes read: [ text (its pages', "--- page N ---" before each), images (at most $maxImages, those the models read: [ [ mimeType, data
     //(base64) ] ]), pages ]; \ErrorException when it is not a PDF, is encrypted, or has neither text nor images (scanned: send it as a document)
     public static function pdfRead($bytes, $name, $maxChars = self::MAX_TEXT, $maxImages = self::MAX_PDF_IMAGES) {
 	try {
@@ -217,13 +217,12 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return [ 'text' => implode("\n\n", $pages), 'images' => $images, 'pages' => $doc->get_page_count() ];
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: new: whether PDFs as Auto sends the PDF itself with credential $cred (override: the providers that read PDFs); false: its text and images
+    //whether PDFs as Auto sends the PDF itself with credential $cred (override: the providers that read PDFs); false: its text and images
     protected function pdfAsDocuments($cred) {
 	return false;
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: new: a text file part as the text sent: <file name="...">...</file>
-    //CLD: 2026-11-02T10:00:00+02:00: `wrapped`: already so, inside its untrusted marks (util\AgentGuard::files)
+    //a text file part as the text sent: <file name="...">...</file>; `wrapped`: already so, inside its untrusted marks (util\AgentGuard::files)
     protected static function fileAsText(array $part) {
 	if (!empty($part['wrapped']))
 	    return $part['text'];
@@ -242,20 +241,20 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 
     public static function configSchema() {
 	$credentials = [];
-	//CLD: 2026-10-23T10:00:00+03:00: the System AI first, when it is of the step's provider
+	//the System AI first, when it is of the step's provider
 	$system = static::systemProvider(static::designerAccount());
 	if ($system)
 	    $credentials[self::SYSTEM] = $system['label'];
 	foreach(static::choices(static::CAPABILITY) as $c)
 	    $credentials[$c['value']] = $c['label'];
-	//CLD: 2026-10-14T14:27:53+03:00: [ value => label ] (the choices of `select` fields)
+	//[ value => label ] (the choices of `select` fields)
 	$mcp = [];
 	foreach(static::choices('mcp') as $c)
 	    $mcp[$c['value']] = $c['label'];
 	$tools = [];
 	foreach(static::projectTools() as $t)
 	    $tools[$t['name']] = $t['title'] . ' (' . $t['name'] . ')';
-	//CLD: 2026-10-22T22:00:00+03:00: the installation's tool servers of the account (designer)
+	//the installation's tool servers of the account (designer)
 	$servers = [];
 	foreach(static::localServers(\V::app()->config('app.mode') == 'web' ? (\V::app()->config('rt.account')->_id ?? null) : null) as $id => $srv)
 	    $servers[$id] = $srv['label'];
@@ -266,48 +265,45 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'type' => 'select',
 		'label' => 'Credential',
 		'choices' => $credentials,
-		//CLD: 2026-10-23T10:00:00+03:00: + System AI
-		//CLD: 2026-10-24T13:04:58+03:00: 4 wide: the model and the provider's
-		//settings next to it on line 2
+		//or System AI; 4 wide: the model and the provider's settings next to it on line 2
 		'help' => static::PROVIDER . ' credential' . ($system ? ', or System AI (AI credits)' : ''),
 		'ui' => [ 'width' => 4 ],
-		//CLD: 2026-10-14T14:18:23+03:00: required by the model; validates() checks it is a credential of the project
+		//required by the model; validates() checks it is a credential of the project
 		'required' => true,
 	    ],
-	    //CLD: 2026-10-22T01:58:24+03:00: in the form, a select of the models the chosen credential recorded (its Test: Credential::recordModels), a name not listed can be typed; on the server
+	    //in the form, a select of the models the chosen credential recorded (its Test: Credential::recordModels), a name not listed can be typed; on the server
 	    //it stays text (any model name: workflows made by the MCP tools / the Assistant, a list not refreshed yet)
 	    [
-		//CLD: 2026-10-24T13:04:58+03:00: layout: 4 wide
+		//layout: 4 wide
 		'key' => 'model',
 		'type' => 'text',
 		'label' => 'Model',
 		'required' => true,
 		'default' => static::defaultModel(),
 		'help' => 'Or type a name',
-		//CLD: 2026-10-24T12:42:45+03:00: next to the credential (the designer: 6 wide)
-		//CLD: 2026-10-29T10:30:00+02:00: 8 wide: the provider's settings next to it (providerSchema) are under "Advanced…"
+		//next to the credential, 8 wide: the provider's settings next to it (providerSchema) are under "Advanced…"
 		'ui' => [ 'width' => 8, 'type' => 'select', 'allowCustom' => true, 'placeholder' => 'Choose a model...', 'choicesBy' => [ 'key' => 'credential', 'choices' => (object)static::modelChoices(),
 		    'empty' => 'No models recorded: Test the credential, or type a name' ] ],
 	    ],
 	], static::providerSchema(), [
 	    [
-		//CLD: 2026-10-24T13:04:58+03:00: layout: 4 lines
+		//layout: 4 lines
 		'key' => 'system',
 		'type' => 'textarea',
 		'label' => 'System prompt',
-		//CLD: 2026-10-24T12:42:45+03:00: next to the prompt, as tall
+		//next to the prompt, as tall
 		'help' => 'Who the model is and how it works (optional)',
 		'ui' => [ 'rows' => 4, 'expression' => true, 'width' => 6, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T13:04:58+03:00: layout: 4 lines
+		//layout: 4 lines
 		'key' => 'prompt',
 		'type' => 'textarea',
 		'label' => 'Prompt',
 		'required' => true,
-		//CLD: 2026-10-13T08:15:00+03:00: the example after the Email trigger's message variable (mail.text)
+		//the example after the Email trigger's message variable (mail.text)
 		'help' => 'The request; {{ ... }} for expressions, e.g. {{ mail.text }}',
-		//CLD: 2026-10-24T12:42:45+03:00: next to the system prompt
+		//next to the system prompt
 		'ui' => [ 'rows' => 4, 'expression' => true, 'width' => 6 ],
 	    ],
 	    [
@@ -317,22 +313,20 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'text',
 		'choices' => self::OUTPUT,
-		//CLD: 2026-10-24T13:04:58+03:00: not on a new line (line 2 is full: the credential, the model, the provider's settings)
-		//CLD: 2026-10-24T12:42:45+03:00: before the images, 3 wide on a new line
+		//not on a new line (line 2 is full: the credential, the model, the provider's settings)
 		'help' => 'JSON: parsed (variable .json)',
 		'ui' => [ 'width' => 3 ],
 	    ],
-	    //CLD: 2026-10-17T21:00:54+03:00: image files sent with the prompt
-	    //CLD: 2026-10-27T23:11:38+02:00: Files: images, PDF, text and Office files; 6 wide, PDFs as next to it
+	    //Files: images, PDF, text and Office files sent with the prompt; 6 wide, PDFs as next to it
 	    [
 		'key' => 'files',
 		'type' => 'text',
 		'label' => 'Files',
-		//CLD: 2026-10-24T12:42:45+03:00: next to the answer
+		//next to the answer
 		'help' => 'Optional: images, PDF, text or Office files (at most ' . self::MAX_FILES . '): {{ file.id }}, a list, or file ids',
 		'ui' => [ 'expression' => true, 'width' => 6 ],
 	    ],
-	    //CLD: 2026-10-27T23:11:38+02:00: new: how the PDFs are sent (no Documents for a provider that cannot be sent a PDF: PDF_PARTS)
+	    //how the PDFs are sent (no Documents for a provider that cannot be sent a PDF: PDF_PARTS)
 	    [
 		'key' => 'pdfs',
 		'type' => 'select',
@@ -350,7 +344,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 'ai',
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: pattern from the validate rule (util\WidgetsUtil)
+		//pattern from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'width' => 6, 'variableName' => 'write' ],
 	    ],
 	    [
@@ -358,35 +352,34 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'type' => 'textarea',
 		'label' => 'JSON schema',
 		'help' => 'Optional: the JSON schema the answer must follow, e.g. {"type": "object", "properties": {"category": {"type": "string"}}, "required": ["category"], "additionalProperties": false}',
-		//CLD: 2026-10-14T14:08:12+03:00: condition made by util\FormSchema::showIf
-		//CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
+		//a condition array (app.smartform evaluates it)
 		'ui' => [ 'rows' => 4, 'showIf' => [ 'key' => 'output', 'operator' => 'eq', 'value' => 'json' ] ],
 	    ],
 	    [
 		'key' => 'tools',
-		//CLD: 2026-10-14T14:27:53+03:00: a `select` field with `multiple` and its choices
+		//a `select` field with `multiple` and its choices
 		'type' => 'select',
 		'multiple' => true,
 		'choices' => $tools,
 		'label' => 'Use these tools',
-		'default' => array_values(array_intersect(self::DEFAULT_TOOLS, array_keys($tools))), //CLD: 2026-10-20T23:40:00+03:00: those there are
-		//CLD: 2026-10-24T12:42:45+03:00: the tools in a row (tools 6 wide, MCP servers and tool servers 3)
+		'default' => array_values(array_intersect(self::DEFAULT_TOOLS, array_keys($tools))), //those there are
+		//the tools in a row (tools 6 wide, MCP servers and tool servers 3)
 		'help' => 'What the model may do in this project',
 		'ui' => [ 'placeholder' => 'None', 'width' => 6, 'newRow' => true ],
 	    ],
 	    [
 		'key' => 'mcp',
-		//CLD: 2026-10-14T14:27:53+03:00: a `select` field with `multiple` and its choices
+		//a `select` field with `multiple` and its choices
 		'type' => 'select',
 		'multiple' => true,
 		'choices' => $mcp,
 		'label' => 'MCP servers',
 		'default' => [],
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide
+		//3 wide
 		'help' => 'The project\'s MCP credentials',
 		'ui' => [ 'placeholder' => 'None', 'width' => 3 ],
 	    ],
-	    //CLD: 2026-10-22T22:00:00+03:00: new: the installation's tool servers (localServers)
+	    //the installation's tool servers (localServers)
 	    [
 		'key' => 'servers',
 		'type' => 'select',
@@ -394,11 +387,11 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'choices' => $servers,
 		'label' => 'Tool servers',
 		'default' => [],
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide
+		//3 wide
 		'help' => 'E.g. a web browser',
 		'ui' => [ 'placeholder' => $servers ? 'None' : 'None enabled', 'width' => 3 ],
 	    ],
-	    //CLD: 2026-10-30T23:30:00+02:00: new: knowledge bases of the project the model may search (the search_knowledge_base tool: models\kb\KnowledgeBase::search)
+	    //knowledge bases of the project the model may search (the search_knowledge_base tool: models\kb\KnowledgeBase::search)
 	    [
 		'key' => 'knowledge',
 		'type' => 'select',
@@ -409,7 +402,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'help' => 'The model searches them when it needs to',
 		'ui' => [ 'placeholder' => 'None', 'width' => 6, 'newRow' => true ],
 	    ],
-	    //CLD: 2026-11-01T21:50:00+02:00: new: the workflows of the project the model may run (util\AgentTools: wf_<name> tools)
+	    //the workflows of the project the model may run (util\AgentTools: wf_<name> tools)
 	    \util\AgentTools::workflowsField(),
 	    [
 		'key' => 'knowledgeResults',
@@ -429,8 +422,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'default' => 10,
 		'help' => 'Calls to the model (tool uses too)',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_ROUNDS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_ROUNDS ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
-		//CLD: 2026-10-24T12:42:45+03:00: a limit: the designer puts it on the last line, before the timeout
+		//a limit: the designer puts it on the last line, before the timeout (min / max from the validate rule: util\WidgetsUtil)
 		'ui' => [ 'limit' => true ],
 	    ],
 	    [
@@ -441,7 +433,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'default' => 16000,
 		'help' => 'Longest answer per call',
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_TOKENS, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_TOKENS ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
+		//min / max from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'limit' => true ],
 	    ],
 	    [
@@ -449,11 +441,11 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'type' => 'number',
 		'label' => 'Timeout (s)',
 		'required' => true,
-		//CLD: 2026-10-29T22:44:26+02:00: the step's DEFAULT_TIMEOUT / MAX_TIMEOUT (static::)
+		//the step's DEFAULT_TIMEOUT / MAX_TIMEOUT (static::)
 		'default' => static::DEFAULT_TIMEOUT,
 		'help' => 'Per call to the model',
 		'validate' => [ [ 'inRange', 'lower' => 5, 'upper' => static::MAX_TIMEOUT, 'skipEmpty' => true, 'message' => 'from 5 to ' . static::MAX_TIMEOUT ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
+		//min / max from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'width' => 4 ],
 	    ],
 	    [
@@ -465,13 +457,12 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		'choices' => self::ON_ERROR,
 		'help' => 'Unreachable, declined, cut off, bad JSON',
 	    ],
-	//CLD: 2026-11-02T18:00:00+02:00: + the sections Integrations (in the designer, the families with a credential in the project: util\AgentTools), Approvals, Guardrails
+	//the sections Integrations (in the designer, the families with a credential in the project: util\AgentTools), Approvals, Guardrails
 	//(the limits and defences), the conversation and the long-term memory
 	], \util\AgentMemory::fields(static::designerAccount(), static::designerAccount() ? \V::app()->user->crtProject : null), \util\AgentTools::familyFields(static::designerAccount(), static::designerAccount() ? \V::app()->user->crtProject : null), \util\AgentTools::approvalFields(), \util\AgentGuard::fields(static::isCloud()));
     }
 
-    //CLD: 2026-10-22T01:58:24+03:00: the models each credential of the current project (providing static::CAPABILITY) recorded: [ credential id => [ model ] ], for the designer
-    //CLD: 2026-10-23T10:00:00+03:00: + the System AI's model (SYSTEM)
+    //the models each credential of the current project (providing static::CAPABILITY) recorded, and the System AI's (SYSTEM): [ credential id => [ model ] ], for the designer
     protected static function modelChoices() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
@@ -482,7 +473,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	$variants = \models\Credential::variantsProviding(static::CAPABILITY);
 	if (!$variants)
 	    return $map;
-	//CLD: 2026-11-03T18:00:00+02:00: + the credentials shared with the project
+	//the project's credentials and those shared with it
 	foreach(\V::app()->om->find(\models\Credential::FAMILY, [ 'aid' => \V::app()->config('rt.account')->_id ?? null, '__variant' => [ '$in' => $variants ] ] + \models\Credential::visibleInQuery(\V::app()->user->crtProject)) as $c)
 	    $map[(string)$c->_id] = array_values(array_map('strval', (array)($c->models ?? [])));
 	return $map;
@@ -499,23 +490,23 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'ai') : 'ai';
 	return \util\Validator::isIdentifier($name) ? [ $name => [ 'type' => 'object',
 	    'info' => 'the answer: { text, html, json, model, stop_reason, rounds, tool_calls, usage, trace_id }; on error { error, trace_id }',
-	    //CLD: 2026-10-13T12:34:29+03:00: the fields and their types (suggested after `ai.`)
+	    //the fields and their types (suggested after `ai.`)
 	    'fields' => [
 		'text' => [ 'type' => 'string', 'info' => 'the answer' ],
-		//CLD: 2026-10-23T01:10:00+03:00: the answer's Markdown as HTML
+		//the answer's Markdown as HTML
 		'html' => [ 'type' => 'string', 'info' => 'the answer as safe HTML (its Markdown converted); in an email {{ ai.html }} shows it formatted' ], 'json' => [ 'type' => 'any', 'info' => 'the answer as JSON (answer: JSON)' ], 'model' => [ 'type' => 'string' ], 'stop_reason' => [ 'type' => 'string' ],
 		'rounds' => [ 'type' => 'number' ], 'tool_calls' => [ 'type' => 'array', 'items' => [ 'type' => 'object', 'fields' => [ 'tool' => [ 'type' => 'string' ], 'arguments' => [ 'type' => 'object' ], 'error' => [ 'type' => 'boolean' ] ] ] ],
 		'usage' => [ 'type' => 'object', 'fields' => [ 'input_tokens' => [ 'type' => 'number' ], 'output_tokens' => [ 'type' => 'number' ] ] ], 'error' => [ 'type' => 'string', 'info' => 'on error only' ],
 			'cost' => [ 'type' => 'object', 'info' => 'estimated from the tokens (usd) or the System AI credits used', 'fields' => [ 'usd' => [ 'type' => 'number' ], 'credits' => [ 'type' => 'number' ] ] ],
 			'limit' => [ 'type' => 'string', 'info' => 'the limit that stopped the agent: tool_calls, write_calls, cost, budget' ],
-			//CLD: 2026-11-02T14:00:00+02:00: new
+			//new
 			'trace_id' => [ 'type' => 'string', 'info' => 'the id of this visit\'s trace; a link to it: /workflow/trace?id={{ ai.trace_id }}' ],
 	    ] ] ] : [];
     }
 
     //the credential and the MCP servers: of the workflow's project; the tools: known; the schema: a JSON object
     public function validates($options = []) {
-	//CLD: 2026-10-27T23:11:38+02:00: a step saved with Images (key images): its value moves to Files
+	//a step saved with Images (key images): its value moves to Files
 	$config = is_array($this->config) ? $this->config : [];
 	if (array_key_exists('images', $config)) {
 	    if (trim(\util\Expression::toText($config['files'] ?? '')) === '')
@@ -525,8 +516,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	}
 	$valid = parent::validates($options);
 	$cred = (string)$this->cfg('credential', '');
-	//CLD: 2026-10-14T14:18:23+03:00: an empty one is reported by the field's `required`
-	//CLD: 2026-10-23T10:00:00+03:00: System AI: when the installation's is of this provider
+	//an empty one is reported by the field's `required`; System AI: when the installation's is of this provider
 	if ($cred === self::SYSTEM) {
 	    if (!static::systemProvider($this->workflow->aid ?? null)) {
 		$this->errors('config', 'Credential: this installation\'s System AI does not serve ' . static::PROVIDER . ' steps: choose a credential of this project');
@@ -543,7 +533,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		break;
 	    }
 	}
-	//CLD: 2026-10-22T22:00:00+03:00: the tool servers: enabled for the workflow's account
+	//the tool servers: enabled for the workflow's account
 	$enabled = static::localServers($this->workflow->aid ?? null);
 	foreach((array)$this->cfg('servers', []) as $id) {
 	    if (!isset($enabled[(string)$id])) {
@@ -552,7 +542,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		break;
 	    }
 	}
-	//CLD: 2026-10-30T23:30:00+02:00: the knowledge bases: of the workflow's project
+	//the knowledge bases: of the workflow's project
 	foreach((array)$this->cfg('knowledge', []) as $kbName) {
 	    if ($this->workflow && !\models\kb\KnowledgeBase::named((string)$kbName, $this->workflow->aid, $this->workflow->project)) {
 		$this->errors('config', "Knowledge bases: the project has no knowledge base `{$kbName}`");
@@ -566,7 +556,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		$valid = false;
 	    }
 	}
-	//CLD: 2026-11-02T18:00:00+02:00: the integrations (a credential of the project, known operations), the workflows (of the project, called by a workflow), the guardrails,
+	//the integrations (a credential of the project, known operations), the workflows (of the project, called by a workflow), the guardrails,
 	//what the account's AI policy does not allow (it says why), the long-term memory
 	foreach(array_merge(\util\AgentTools::errors($this), \util\AgentGuard::errors($this), \models\agent\AgentPolicy::stepErrors($this), \util\AgentMemory::errors($this)) as $message) {
 	    $this->errors('config', $message);
@@ -583,10 +573,8 @@ abstract class NodeAppAi extends \models\wf\WfNode {
     // ------------------------------------------------------------------------------------
     //the provider (implemented by the step classes)
 
-    //a new conversation: the provider's state (messages, ...)
-    //CLD: 2026-10-17T21:00:54+03:00: + $images: sent with the prompt, [ [ mimeType, data (base64) ] ]
-    //CLD: 2026-10-27T23:11:38+02:00: $files: the parts sent before the prompt (promptFiles): [ type: image, mime, data (base64), name ], [ type: pdf, data (base64), name ],
-    //[ type: text, text, name ] (fileAsText)
+    //a new conversation: the provider's state (messages, ...); $files: the parts sent before the prompt (promptFiles): [ type: image, mime, data (base64), name ],
+    //[ type: pdf, data (base64), name ], [ type: text, text, name ] (fileAsText)
     abstract protected function startConversation($cred, $system, $prompt, $schema, array $files = []);
 
     //one call: [ text, calls: [ [ id, name, arguments (array) ] ], stop_reason, model, usage: [ input, output ], continue: bool (call again without tool results) ];
@@ -594,10 +582,10 @@ abstract class NodeAppAi extends \models\wf\WfNode {
     abstract protected function callModel($cred, array &$state, array $tools, $schema);
 
     //the results of the calls: [ [ id, text, isError ] ], added to $state
-    //CLD: 2026-10-17T21:00:54+03:00: [ [ id, text, isError, images: [ [ mimeType, data ] ] ] ]
+    //[ [ id, text, isError, images: [ [ mimeType, data ] ] ] ]
     abstract protected function addToolResults(array &$state, array $results);
 
-    //CLD: 2026-11-02T18:00:00+02:00: new: the earlier turns [ [ role: user | assistant, text ] ] put before the prompt in $state (a new conversation: the prompt is its last message). Gemini's state differs: its own
+    //the earlier turns [ [ role: user | assistant, text ] ] put before the prompt in $state (a new conversation: the prompt is its last message). Gemini's state differs: its own
     protected function addHistory(array &$state, array $turns) {
 	$prompt = array_pop($state['messages']);
 	foreach($turns as [ $role, $text ])
@@ -611,7 +599,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
     public function execute($edgeId = null) {
 	$name = (string)$this->cfg('variable', 'ai');
 	$label = static::$label;
-	//CLD: 2026-11-01T23:30:00+02:00: waiting for an approval: the task still open (in its time limit), the step sleeps on
+	//waiting for an approval: the task still open (in its time limit), the step sleeps on
 	if (!empty($this->agentWait) && $this->stillWaiting())
 	    return self::SLEEP;
 	$clients = [];
@@ -620,16 +608,16 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	} catch (\Exception $e) {
 	    foreach($clients as $c)
 		$this->closeClient($c);
-	    //CLD: 2026-11-01T23:30:00+02:00: a resumed step that fails: its saved conversation removed
+	    //a resumed step that fails: its saved conversation removed
 	    $this->dropWait();
 	    $message = $e->getMessage();
-	    //CLD: 2026-11-02T18:00:00+02:00: what the tools did before it failed stays part of the turn
+	    //what the tools did before it failed stays part of the turn
 	    $this->noteTools((array)($this->progress['tool_calls'] ?? []));
-	    //CLD: 2026-11-02T15:46:06+02:00: a test case: for its checks
+	    //a test case: for its checks
 	    $this->exec->__test?->visit($this, null, $message, (array)$this->progress);
-	    //CLD: 2026-11-02T14:00:00+02:00: the visit's trace ends; its id in the variable
+	    //the visit's trace ends; its id in the variable
 	    $this->tracer?->finish('error', $message);
-	    //CLD: 2026-11-02T10:00:00+02:00: a limit reached: what the agent did so far is kept
+	    //a limit reached: what the agent did so far is kept
 	    if (\util\Validator::isIdentifier($name))
 		$this->exec->setVariable($name, [ 'error' => $message ] + ($this->tracer ? [ 'trace_id' => $this->tracer->id() ] : []) + ($e instanceof \util\AgentLimitReached ? [ 'limit' => $e->limit ] + (array)$this->progress + [ 'tool_calls' => [] ]
 		    + ($this->guard ? [ 'cost' => $this->guard->costs() ] : []) : []));
@@ -640,19 +628,19 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	}
 	foreach($clients as $c)
 	    $this->closeClient($c);
-	//CLD: 2026-11-01T23:30:00+02:00: waiting for an approval
+	//waiting for an approval
 	if ($result === self::SLEEP)
 	    return self::SLEEP;
-	//CLD: 2026-11-02T18:00:00+02:00: what the tools did: part of the turn, in the later turns' context
+	//what the tools did: part of the turn, in the later turns' context
 	$this->noteTools((array)($result['tool_calls'] ?? []));
-	//CLD: 2026-11-02T15:46:06+02:00: a test case: for its checks
+	//a test case: for its checks
 	$this->exec->__test?->visit($this, $result);
 	if (\util\Validator::isIdentifier($name))
 	    $this->exec->setVariable($name, $result);
 	return [ 0 ];
     }
 
-    //CLD: 2026-11-02T18:00:00+02:00: new: $calls (the step's tool calls) on the turn of the conversation that started the run. Not for a Run again
+    //$calls (the step's tool calls) on the turn of the conversation that started the run. Not for a Run again
     protected function noteTools(array $calls) {
 	if (!$calls || !empty($this->exec->rerun_of))
 	    return;
@@ -661,7 +649,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    \models\agent\AgentConversation::noteTools($at[0], $at[1], $calls, fn($t) => $this->tracer ? $this->tracer->scrub($t) : $t);
     }
 
-    //CLD: 2026-11-02T18:00:00+02:00: new: Continue the conversation: the earlier turns of the conversation added to $state (a new conversation of the step); what no longer fits summarized first, when the step says so.
+    //Continue the conversation: the earlier turns of the conversation added to $state (a new conversation of the step); what no longer fits summarized first, when the step says so.
     //Sent marked as they came: what the tools did between the untrusted marks, everything masked as the prompt is, and the run has read untrusted content (a lockdown holds). A failed summary does not stop the turn
     protected function addConversation($cred, array &$state, $session) {
 	if (!\util\AgentGuard::on($this->cfg('continueConversation', false)))
@@ -695,7 +683,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	$this->tracer->conversation([ 'turns' => count($context['recent']), 'summary' => $context['summary'] !== '', 'summarized' => $made ]);
     }
 
-    //CLD: 2026-11-02T18:00:00+02:00: new: the turns of $context['older'] and the summary so far as one summary, by this step's model, saved in the conversation => [ the summary (the old one when it fails), what it took ]. The
+    //the turns of $context['older'] and the summary so far as one summary, by this step's model, saved in the conversation => [ the summary (the old one when it fails), what it took ]. The
     //cost limit and the budget hold (AgentLimitReached goes on: the agent stops), its tokens count. A Run again does not change the conversation
     protected function summarize($cred, array $conv, array $context, $session) {
 	$guard = $this->guard;
@@ -734,10 +722,10 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 
     //the agent loop; $clients gets the MCP clients opened (closed by execute())
     protected function run(array &$clients) {
-	//CLD: 2026-11-02T14:00:00+02:00: the visit's trace, the first thing: a visit that fails at once has one too
+	//the visit's trace, the first thing: a visit that fails at once has one too
 	$this->tracer = !empty($this->agentWait['trace']) ? \util\AgentTracer::resume($this, (string)$this->agentWait['trace']) : \util\AgentTracer::begin($this);
 	$this->traceSecrets();
-	//CLD: 2026-10-23T10:00:00+03:00: System AI: its credential (the session, with the credits: below)
+	//System AI: its credential (the session, with the credits: below)
 	$system = null;
 	if ((string)$this->cfg('credential', '') === self::SYSTEM) {
 	    $system = static::systemProvider($this->exec->aid ?? null);
@@ -750,11 +738,11 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	if (empty($cred))
 	    throw new \ErrorException('the credential is no longer available');
 	$project = \V::app()->om->findOne('Project', [ '_id' => $this->exec->project, 'aid' => $this->exec->aid ]);
-	//CLD: 2026-11-01T23:30:00+02:00: resumed after an approval: the saved conversation (no files again: they are in it)
+	//resumed after an approval: the saved conversation (no files again: they are in it)
 	$resume = !empty($this->agentWait) ? $this->loadWait() : null;
-	//CLD: 2026-11-02T10:00:00+02:00: the guard of this run (resumed: as it was saved)
+	//the guard of this run (resumed: as it was saved)
 	$this->guard = new \util\AgentGuard($this, $system !== null, $resume['guard'] ?? null);
-	//CLD: 2026-11-02T23:00:00+02:00: a limit or budget this model's spending is not counted in: said in the run's log
+	//a limit or budget this model's spending is not counted in: said in the run's log
 	if ($system === null && !$resume && ($warning = \util\AgentGuard::priceWarning(static::CAPABILITY, [ 'model' => $this->cfg('model', ''), 'maxCost' => $this->cfg('maxCost', '') ], $this->exec->aid)))
 	    $this->exec->log($this->wfid, static::$label . ': ' . $warning);
 	$this->tracer->addSecrets($cred);
@@ -762,19 +750,16 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 
 	$json = $this->cfg('output', 'text') === 'json';
 	$schema = $json && trim((string)$this->cfg('jsonSchema', '')) !== '' ? json_decode((string)$this->cfg('jsonSchema')) : null;
-	//CLD: 2026-10-17T21:00:54+03:00: the images sent with the prompt
-	//CLD: 2026-10-27T23:11:38+02:00: the files (promptFiles)
+	//the files sent with the prompt (promptFiles)
 	$files = $resume ? [] : $this->guard->files($this->promptFiles($project, $cred));
 
-	//CLD: 2026-10-22T22:00:00+03:00: collectTools()
-	//CLD: 2026-11-02T10:00:00+02:00: only those the account's policy allows (govern())
+	//the tools (collectTools), only those the account's policy allows (govern())
 	$tools = $this->guard->govern($this->collectTools($clients, $project));
-	//CLD: 2026-11-02T15:46:06+02:00: a test case: recorded results, no write tool runs (util\AgentEvalContext)
+	//a test case: recorded results, no write tool runs (util\AgentEvalContext)
 	if ($this->exec->__test)
 	    $tools = $this->exec->__test->tools($this, $tools);
 
-	//CLD: 2026-10-23T10:00:00+03:00: $systemPrompt
-	//CLD: 2026-11-02T10:00:00+02:00: the prompts through the guard (the values from outside marked, masked; the rules in the system prompt); only for a new conversation (a resumed one has them)
+	//the prompts ($systemPrompt) through the guard (the values from outside marked, masked; the rules in the system prompt); only for a new conversation (a resumed one has them)
 	$state = $resume ? $resume['state'] : null;
 	if (!$resume) {
 	    $vars = $this->exec->expressionVariables();
@@ -783,10 +768,10 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    $systemPrompt = $this->guard->systemPrompt($this->cfg('system', ''), $vars);
 	    $state = $this->startConversation($cred, $systemPrompt, $this->guard->prompt($this->cfg('prompt', ''), $vars), $json ? ($schema ?: true) : null, $files);
 	}
-	//CLD: 2026-10-23T10:00:00+03:00: System AI: the credits reserved for the run (refused: not priced, none left); charged what it used when it ends, also on failure
+	//System AI: the credits reserved for the run (refused: not priced, none left); charged what it used when it ends, also on failure
 	$session = $system ? ($system['start'])(trim((string)$this->cfg('model', '')), [ 'wfid' => (string)($this->exec->wf ?? ''), 'exid' => (string)($this->exec->_id ?? '') ]) : null;
 	try {
-	    //CLD: 2026-11-02T18:00:00+02:00: the conversation's earlier turns, after the System AI's credits are reserved: a summary is paid like any call
+	    //the conversation's earlier turns, after the System AI's credits are reserved: a summary is paid like any call
 	    if (!$resume)
 		$this->addConversation($cred, $state, $session);
 	    return $this->loop($cred, $state, $tools, $json, $schema, $session, $resume);
@@ -798,18 +783,17 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	}
     }
 
-    //CLD: 2026-10-23T10:00:00+03:00: new: the calls to the model and the tool calls, until it answers => the variable's value. $session: the System AI's (null: a credential
-    //of the project): each call's tokens counted, no call once its credits are used up
-    //CLD: 2026-11-01T23:30:00+02:00: + $resume (loadWait: a round waiting for an approval, decided): its results completed (decided()) and sent, then the next rounds; a round with calls that
-    //ask for approval: saved, the task made, self::SLEEP (askApproval)
+    //the calls to the model and the tool calls, until it answers => the variable's value. $session: the System AI's (null: a credential
+    //of the project): each call's tokens counted, no call once its credits are used up. $resume (loadWait: a round waiting for an approval, decided): its results
+    //completed (decided()) and sent, then the next rounds; a round with calls that ask for approval: saved, the task made, self::SLEEP (askApproval)
     protected function loop($cred, array $state, array $tools, $json, $schema, $session, $resume = null) {
 	$maxRounds = max(1, min(self::MAX_ROUNDS, (int)$this->cfg('maxRounds', 10)));
-	//CLD: 2026-11-02T18:00:00+02:00: + a summary of the conversation made in this visit
+	//with a summary of the conversation made in this visit
 	$usage = [ 'input_tokens' => $this->summaryUsage[0], 'output_tokens' => $this->summaryUsage[1] ];
 	$calls = [];
 	$answer = null;
 	$round = 1;
-	//CLD: 2026-11-02T10:00:00+02:00: what execute() keeps when a limit stops the agent
+	//what execute() keeps when a limit stops the agent
 	$this->progress = [ 'rounds' => &$round, 'tool_calls' => &$calls, 'usage' => &$usage ];
 	$guard = $this->guard;
 	if ($resume) {
@@ -820,7 +804,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	for(; $round <= $maxRounds; $round++) {
 	    if ($session && $round > 1 && $session->exhausted())
 		throw new \ErrorException('the System AI credits reserved for this step (' . $session->reserved() . ') are used up before the model finished');
-	    //CLD: 2026-11-02T10:00:00+02:00: the run's cost limit, the account's monthly budget
+	    //the run's cost limit, the account's monthly budget
 	    $guard->beforeCall();
 	    $asked = microtime(true);
 	    $answer = $this->callModel($cred, $state, $tools, $json ? ($schema ?: true) : null);
@@ -830,7 +814,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    if ($session)
 		$session->add($answer['usage']);
 	    $guard->afterCall($answer['usage'], $session);
-	    //CLD: 2026-11-02T14:00:00+02:00: the round in the trace, tokens and cost included
+	    //the round in the trace, tokens and cost included
 	    $this->tracer->round($round, $answer, $askedMs);
 	    if (!empty($answer['continue']))
 		continue;
@@ -838,24 +822,24 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		break;
 	    if ($round === $maxRounds)
 		throw new \ErrorException("the model still wanted to use tools after {$maxRounds} round(s) (raise Rounds)");
-	    //CLD: 2026-11-02T10:00:00+02:00: the cost limit reached: the tools it asks for are not run
+	    //the cost limit reached: the tools it asks for are not run
 	    $guard->checkCost();
 	    $results = [];
 	    $pending = [];
 	    foreach($answer['calls'] as [ $id, $tool, $args ]) {
-		//CLD: 2026-10-17T21:00:54+03:00: + the images of the result
+		//the images of the result
 		$toolImages = [];
-		//CLD: 2026-11-02T14:00:00+02:00: in the trace as the model wrote it, before the masked values go back; $took: how long the tool ran
+		//in the trace as the model wrote it, before the masked values go back; $took: how long the tool ran
 		$this->tracer->call($round, count($results), $tool, $args, $guard->accessOf($tool));
 		$took = 0;
-		//CLD: 2026-11-02T10:00:00+02:00: masked values back in the arguments; past a limit: the agent stops; approval: also by the policy or a lockdown (approvalFor)
+		//masked values back in the arguments; past a limit: the agent stops; approval: also by the policy or a lockdown (approvalFor)
 		$args = $guard->restore($args);
 		$asks = null;
 		if (isset($tools[$tool]) && is_array($args)) {
 		    $reached = $guard->takeCall($tools[$tool]);
 		    if ($reached)
 			$this->limitReached($reached, $tool, $args, $pending, $calls, $round, count($results));
-		    //CLD: 2026-11-02T15:46:06+02:00: nothing asks in a test: what would have to ask does not run (util\AgentEvalContext)
+		    //nothing asks in a test: what would have to ask does not run (util\AgentEvalContext)
 		    $asks = $this->exec->__test ? null : $guard->approvalFor($tools[$tool]);
 		}
 		if (!isset($tools[$tool])) {
@@ -863,11 +847,10 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		} elseif (!is_array($args)) {
 		    [ $text, $isError ] = [ 'the arguments are not a JSON object', true ];
 		} elseif ($asks && ($wrong = ($tools[$tool]['check'])($args)) !== null) {
-		    //CLD: 2026-11-01T23:30:00+02:00: a call that asks for approval with wrong arguments: a tool error, not sent for approval
+		    //a call that asks for approval with wrong arguments: a tool error, not sent for approval
 		    [ $text, $isError ] = [ $wrong, true ];
 		} elseif ($asks) {
-		    //CLD: 2026-11-01T23:30:00+02:00: asks for approval: not run now (its place kept in the results)
-		    //CLD: 2026-11-02T10:00:00+02:00: + meta: what asks (the tool's `approval` or `lockdown`)
+		    //asks for approval: not run now (its place kept in the results); meta: what asks (the tool's `approval` or `lockdown`)
 		    $pending[] = [ 'index' => count($results), 'call' => count($calls), 'id' => $id, 'tool' => $tool, 'args' => $args, 'meta' => $asks ];
 		    $calls[] = [ 'tool' => $tool, 'arguments' => $args, 'error' => false, 'approval' => 'asked' ];
 		    $this->tracer->approval($round, count($results), 'asked');
@@ -884,7 +867,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		    $took = (int)((microtime(true) - $started) * 1000);
 		}
 		$this->tracer->result($round, count($results), $text, $isError, $took, count((array)$toolImages));
-		//CLD: 2026-11-01T23:30:00+02:00: toolResult()
+		//toolResult()
 		$results[] = $this->toolResult($id, $tool, $args, $text, $isError, (array)$toolImages, $calls);
 	    }
 	    if ($pending)
@@ -894,11 +877,11 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	if (!empty($answer['continue']))
 	    throw new \ErrorException("the model did not finish in {$maxRounds} rounds (raise Rounds)");
 
-	//CLD: 2026-11-02T10:00:00+02:00: the masked values back in the answer
+	//the masked values back in the answer
 	$text = trim((string)$guard->restore((string)$answer['text']));
-	//CLD: 2026-10-23T01:10:00+03:00: + html (util\Markdown)
+	//html: util\Markdown
 	$result = [ 'text' => $text, 'html' => \util\Markdown::toHtml($text), 'json' => null, 'model' => $answer['model'], 'stop_reason' => $answer['stop_reason'], 'rounds' => min($round, $maxRounds),
-	    'tool_calls' => $calls, 'usage' => $usage, 'cost' => $guard->costs(), 'trace_id' => $this->tracer->id() ]; //CLD: 2026-11-02T10:00:00+02:00: + cost //CLD: 2026-11-02T14:00:00+02:00: + trace_id
+	    'tool_calls' => $calls, 'usage' => $usage, 'cost' => $guard->costs(), 'trace_id' => $this->tracer->id() ];
 	if ($json) {
 	    $clean = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $text);
 	    $parsed = json_decode($clean, true);
@@ -911,26 +894,23 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return $result;
     }
 
-    //CLD: 2026-10-22T22:00:00+03:00: new: the tools the model may use: [ name => [ name, description, schema (object), run: fn(args) => [ text, isError, images ] ] ];
+    //the tools the model may use: [ name => [ name, description, schema (object), run: fn(args) => [ text, isError, images ] ] ];
     //$clients gets the MCP sessions opened (closed by execute()). The project's tools, the MCP server credentials' tools (mcp<n>_<tool>), the installation's tool servers' tools
-    //(<server>_<tool>: only those the server allows)
-    //CLD: 2026-11-01T21:50:00+02:00: + the integrations' operations (<prefix>_<step>_<operation>) and the workflows (wf_<name>): util\AgentTools
+    //(<server>_<tool>: only those the server allows), the integrations' operations (<prefix>_<step>_<operation>) and the workflows (wf_<name>): util\AgentTools
     protected function collectTools(array &$clients, $project) {
 	//the tools: [ name => [ name, description, schema (object), run: fn(args) => [ text, isError ] ] ]
-	//CLD: 2026-10-17T21:00:54+03:00: run: fn(args) => [ text, isError, images: [ [ mimeType, data ] ] ]
+	//run: fn(args) => [ text, isError, images: [ [ mimeType, data ] ] ]
 	$tools = [];
 	$wanted = array_map('strval', (array)$this->cfg('tools', []));
 	foreach(static::projectTools() as $t) {
 	    if (!in_array($t['name'], $wanted, true))
 		continue;
-	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
-	    //CLD: 2026-11-02T10:00:00+02:00: + kind, title, writes: not marked read-only
+	    //writes: not marked read-only
 	    $tools[$t['name']] = [ 'name' => $t['name'], 'kind' => 'project', 'title' => $t['title'] ?? $t['name'], 'writes' => ($t['annotations']['readOnlyHint'] ?? false) !== true,
 		'description' => $t['description'], 'schema' => json_decode(\util\JSON::encode($t['inputSchema'])),
 		'run' => function(array $args) use ($t, $project) {
 		    try {
-			//CLD: 2026-10-17T21:00:54+03:00: the images of the result (read_image) apart
-			//CLD: 2026-10-20T23:40:00+03:00: the tool's run (projectTools)
+			//the tool's run (projectTools), the images of the result (read_image) apart
 			[ $result, $images ] = ($t['run'])($args, $project);
 			return [ json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), false, $images ];
 		    } catch (\ErrorException $e) {
@@ -938,13 +918,13 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		    }
 		} ];
 	}
-	//CLD: 2026-10-29T22:44:26+02:00: the step's default
+	//the step's default
 	$timeout = (int)$this->cfg('timeout', static::DEFAULT_TIMEOUT);
-	//CLD: 2026-10-30T23:30:00+02:00: the knowledge bases: one tool searching them (knowledgeTool)
+	//the knowledge bases: one tool searching them (knowledgeTool)
 	$tools += $this->knowledgeTool($project, $timeout);
-	//CLD: 2026-11-01T21:50:00+02:00: the operations of the integrations and the workflows the step names (util\AgentTools: run in this execution, as steps / Run a workflow)
+	//the operations of the integrations and the workflows the step names (util\AgentTools: run in this execution, as steps / Run a workflow)
 	$tools += \util\AgentTools::tools($this);
-	//CLD: 2026-11-02T18:00:00+02:00: the long-term memory: remember, recall (util\AgentMemory)
+	//the long-term memory: remember, recall (util\AgentMemory)
 	$tools += \util\AgentMemory::tools($this, $project, $timeout);
 	foreach((array)$this->cfg('mcp', []) as $i => $id) {
 	    $mcp = \models\Credential::findFor($this->exec, (string)$id, 'mcp');
@@ -955,7 +935,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    //names unique and as the providers want them (letters, digits, _ -, at most 64): mcp<n>_<tool>
 	    $tools += $this->mcpTools($client, 'mcp' . ($i + 1), "MCP server `{$mcp->name}`", (string)$mcp->name, null);
 	}
-	//CLD: 2026-10-22T22:00:00+03:00: the installation's tool servers enabled for the account: a session each (the server's open() may refuse: too many at once)
+	//the installation's tool servers enabled for the account: a session each (the server's open() may refuse: too many at once)
 	$enabled = static::localServers($this->exec->aid ?? null);
 	foreach((array)$this->cfg('servers', []) as $id) {
 	    $srv = $enabled[(string)$id] ?? null;
@@ -972,7 +952,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return $tools;
     }
 
-    //CLD: 2026-10-30T23:30:00+02:00: new: the search_knowledge_base tool over the knowledge bases of setting Knowledge bases (none: no tool): its arguments query and, with more
+    //the search_knowledge_base tool over the knowledge bases of setting Knowledge bases (none: no tool): its arguments query and, with more
     //than one, knowledge_base (one of their names); its result { results: [ { text, title, document, page, score } ] } (KnowledgeBase::search, Search results at most)
     protected function knowledgeTool($project, $timeout) {
 	$kbs = [];
@@ -992,9 +972,8 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    $required[] = 'knowledge_base';
 	}
 	$k = max(1, min(20, (int)$this->cfg('knowledgeResults', 5)));
-	//CLD: 2026-11-02T10:00:00+02:00: + kind, writes
 	return [ 'search_knowledge_base' => [ 'name' => 'search_knowledge_base', 'kind' => 'knowledge', 'writes' => false,
-	    //CLD: 2026-10-31T01:00:00+02:00: + each knowledge base's description (what its documents are about)
+	    //each knowledge base's description (what its documents are about)
 	    'description' => 'Searches the knowledge base' . (count($names) > 1 ? 's ' : ' ') . implode(', ', array_map(fn($kb) => "`{$kb->name}`"
 		. (trim((string)$kb->description) !== '' ? ' (' . trim(preg_replace('/\s+/', ' ', (string)$kb->description)) . ')' : ''), $kbs))
 		. ' - documents of this project - and returns the passages that best match the query, with their document titles. Use it to answer from those documents; search again with other words when the passages do not answer.',
@@ -1013,7 +992,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    } ] ];
     }
 
-    //CLD: 2026-10-22T22:00:00+03:00: new: the tools of MCP session $client (initialized here) named <$prefix>_<tool>, described with [$label];
+    //the tools of MCP session $client (initialized here) named <$prefix>_<tool>, described with [$label];
     //$allow: the tool names offered (null: all); $what names the server in errors
     protected function mcpTools($client, $prefix, $what, $label, $allow) {
 	try {
@@ -1028,7 +1007,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		continue;
 	    //names unique and as the providers want them (letters, digits, _ -, at most 64)
 	    $tn = substr(preg_replace('/[^A-Za-z0-9_-]/', '_', $prefix . '_' . $t['name']), 0, 64);
-	    //CLD: 2026-11-02T10:00:00+02:00: + kind, title, writes: not marked read-only by the server
+	    //writes: not marked read-only by the server
 	    $tools[$tn] = [ 'name' => $tn, 'kind' => 'mcp', 'title' => "{$label}: " . ($t['title'] ?? $t['name']), 'writes' => (((array)($t['annotations'] ?? []))['readOnlyHint'] ?? false) !== true,
 		'description' => "[{$label}] " . ($t['description'] ?: ($t['title'] ?? $t['name'])), 'schema' => $t['inputSchema'],
 		'run' => function(array $args) use ($client, $t) {
@@ -1036,7 +1015,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		    $parts = [];
 		    $images = [];
 		    foreach((array)($r['content'] ?? []) as $c) {
-			//CLD: 2026-10-17T21:00:54+03:00: image content goes as an image, when it is a type the models read and not too large
+			//image content goes as an image, when it is a type the models read and not too large
 			if (($c['type'] ?? '') === 'image') {
 			    $mime = strtolower((string)($c['mimeType'] ?? ''));
 			    $size = (int)(strlen((string)($c['data'] ?? '')) * 3 / 4);
@@ -1056,23 +1035,21 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return $tools;
     }
 
-    //CLD: 2026-10-17T21:00:54+03:00: the image files of setting Images (file ids: one, a list, objects with `id` / `file` - e.g. an attachment -, or text with ids) of project $project:
-    //[ [ mimeType, data (base64) ] ]; \ErrorException for a file that is not there or not an image
-    //CLD: 2026-10-27T23:11:38+02:00: promptFiles: the files of setting Files (else of a saved step's Images), as the parts startConversation sends: images
-    //(fileImage), PDFs (the PDF itself, or its text and images: setting PDFs as, pdfAsDocuments($cred)), Office and text files (fileText); \ErrorException for a file that is not
-    //there, not of these types, too large, or more than MAX_SEND bytes in all
+    //the files of setting Files (else of a saved step's Images: file ids: one, a list, objects with `id` / `file` - e.g. an attachment -, or text with ids) of project $project,
+    //as the parts startConversation sends: images (fileImage), PDFs (the PDF itself, or its text and images: setting PDFs as, pdfAsDocuments($cred)), Office and text files
+    //(fileText); \ErrorException for a file that is not there, not of these types, too large, or more than MAX_SEND bytes in all
     protected function promptFiles($project, $cred) {
 	$value = $this->expr('files', '');
 	if ($value === '' || $value === null || $value === [])
 	    $value = $this->expr('images', '');
-	//CLD: 2026-10-30T23:30:00+02:00: fileIds() (the Knowledge base step reads its Files the same way)
+	//fileIds() (the Knowledge base step reads its Files the same way)
 	$ids = array_fill_keys(self::fileIds($value), true);
 	if (count($ids) > self::MAX_FILES)
 	    throw new \ErrorException('Files: ' . count($ids) . ' files, at most ' . self::MAX_FILES);
 	$mode = (string)$this->cfg('pdfs', 'auto');
 	if ($mode === 'auto')
 	    $mode = $this->pdfAsDocuments($cred) ? 'document' : 'text';
-	//CLD: 2026-11-02T10:00:00+02:00: masking: a PDF itself cannot be masked, its text can
+	//masking: a PDF itself cannot be masked, its text can
 	if ($this->guard?->masking())
 	    $mode = 'text';
 	$parts = [];
@@ -1123,14 +1100,14 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return $parts;
     }
 
-    //CLD: 2026-10-30T23:30:00+02:00: new: the file ids in $value - one, a list, objects with `id` / `file` (e.g. an attachment), or text with ids -, each once
+    //the file ids in $value - one, a list, objects with `id` / `file` (e.g. an attachment), or text with ids -, each once
     public static function fileIds($value) {
 	$ids = [];
 	self::collectFileIds($value, $ids);
 	return array_keys($ids);
     }
 
-    //CLD: 2026-11-07T01:07:16+02:00: the file ids in $v added to $ids (id => true): an object's `file` / `id`, each item of a list, the ObjectIds in a text
+    //the file ids in $v added to $ids (id => true): an object's `file` / `id`, each item of a list, the ObjectIds in a text
     private static function collectFileIds($v, array &$ids) {
 	if (is_object($v))
 	    $v = (array)$v;
@@ -1150,9 +1127,8 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		$ids[strtolower($id)] = true;
     }
 
-    //CLD: 2026-11-01T23:30:00+02:00: new: a tool's result as sent to the model: cut at MAX_TOOL_RESULT, logged ($note after the tool's name), listed in $calls =>
-    //[ id, text, isError, images ]
-    //CLD: 2026-11-02T10:00:00+02:00: masked and marked as untrusted (AgentGuard::result: the cut too); + in the audit log: $status (default: ok / error), $by: who approved it
+    //a tool's result as sent to the model: cut at MAX_TOOL_RESULT, masked and marked as untrusted (AgentGuard::result: the cut too), logged ($note after the tool's name),
+    //listed in $calls => [ id, text, isError, images ]; in the audit log: $status (default: ok / error), $by: who approved it
     protected function toolResult($id, $tool, $args, $text, $isError, array $images, array &$calls, $note = '', $status = null, $by = null) {
 	$this->guard->audit($tool, $args, $status ?? ($isError ? 'error' : 'ok'), $by);
 	$this->exec->log($this->wfid, static::$label . ": tool {$tool}" . $note . ($isError ? ' -> error: ' . mb_substr($text, 0, 200) : '') . ($images ? ', ' . count($images) . ' image(s)' : ''));
@@ -1160,7 +1136,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	return [ $id, $this->guard->result($tool, $text, self::MAX_TOOL_RESULT), $isError, $images ];
     }
 
-    //CLD: 2026-11-02T14:00:00+02:00: new: the values of the credentials the step names (MCP servers, integrations) never go in its trace, wherever they turn up (the provider's: added in run(), the System AI's too)
+    //the values of the credentials the step names (MCP servers, integrations) never go in its trace, wherever they turn up (the provider's: added in run(), the System AI's too)
     protected function traceSecrets() {
 	$ids = [];
 	foreach((array)$this->cfg('mcp', []) as $id)
@@ -1172,8 +1148,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    $this->tracer->addSecrets(\models\Credential::findFor($this->exec, $id, $capability));
     }
 
-    //CLD: 2026-11-02T10:00:00+02:00: new: call $tool went past a limit: not run, nor are the round's calls that were to ask (in $calls: not run; in the audit log), the agent stops
-    //CLD: 2026-11-02T14:00:00+02:00: + $round, $index: the call's place in the trace
+    //call $tool went past a limit: not run, nor are the round's calls that were to ask (in $calls: not run; in the audit log), the agent stops; $round, $index: the call's place in the trace
     protected function limitReached(\util\AgentLimitReached $reached, $tool, array $args, array $pending, array &$calls, $round, $index) {
 	foreach($pending as $p) {
 	    $calls[$p['call']] = [ 'tool' => $p['tool'], 'arguments' => $p['args'], 'error' => true, 'approval' => 'not asked' ];
@@ -1188,14 +1163,14 @@ abstract class NodeAppAi extends \models\wf\WfNode {
     }
 
     // ------------------------------------------------------------------------------------
-    //CLD: 2026-11-01T23:30:00+02:00: approvals
+    //approvals
 
     //the calls $pending of round $round ask for approval: the conversation saved, one task for them all (its title, the agent's reasons, the arguments, Approve / Reject each and a
     //comment; the approvers and the time limit of the settings), the step sleeps => self::SLEEP
     protected function askApproval(array $state, $round, array $answer, array $results, array $pending, array $calls, array $usage, array $tools) {
 	$items = [];
 	foreach($pending as $p) {
-	    //CLD: 2026-11-02T10:00:00+02:00: $p['meta']; the model's words with the masked values back; in the audit log
+	    //$p['meta']; the model's words with the masked values back; in the audit log
 	    $meta = $p['meta'];
 	    $args = \util\AgentTools::withoutReason($p['args'], $meta['reason']);
 	    $reason = trim(\util\Expression::toText($p['args'][$meta['reason']] ?? ''));
@@ -1205,7 +1180,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	}
 	$exec = $this->exec;
 	$file = self::saveBlob($exec, [ 'state' => $state, 'round' => $round, 'answer' => [ 'text' => (string)($answer['text'] ?? ''), 'model' => (string)($answer['model'] ?? ''),
-	    'stop_reason' => (string)($answer['stop_reason'] ?? '') ], 'results' => $results, 'pending' => $pending, 'calls' => $calls, 'usage' => $usage, 'guard' => $this->guard->save() ]); //CLD: 2026-11-02T10:00:00+02:00: + guard
+	    'stop_reason' => (string)($answer['stop_reason'] ?? '') ], 'results' => $results, 'pending' => $pending, 'calls' => $calls, 'usage' => $usage, 'guard' => $this->guard->save() ]);
 	$several = count($items) > 1;
 	$fields = [];
 	$lines = [ (string)($this->title ?: static::$label) . ' (an AI step) asks to do ' . ($several ? 'these actions' : 'this') . ':' ];
@@ -1223,7 +1198,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	}
 	$fields[] = [ 'type' => 'textarea', 'key' => 'comment', 'label' => 'Comment', 'helpText' => 'Optional: the agent reads it with a rejection', 'rows' => 2 ];
 	$unit = (string)$this->cfg('approvalTimeoutUnit', 'none');
-	$due = isset(\data\TimeUnits::SECONDS[$unit]) ? new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('approvalTimeout', 1)) * \data\TimeUnits::SECONDS[$unit]) * 1000) : null;
+	$due = isset(\data\Constants::TIME_UNIT_SECONDS[$unit]) ? new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('approvalTimeout', 1)) * \data\Constants::TIME_UNIT_SECONDS[$unit]) * 1000) : null;
 	$task = \V::app()->om->create('WfTask', [
 	    'aid' => $exec->aid,
 	    'project' => $exec->project,
@@ -1238,7 +1213,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    'submitLabel' => 'Send',
 	    'users' => array_values(array_map('strval', (array)$this->cfg('approvalUsers', []))),
 	    'roles' => array_values(array_map('strval', (array)$this->cfg('approvalRoles', []))),
-	    //CLD: 2026-11-02T18:00:00+02:00: who talks to the agent does not approve its actions (when no approvers are chosen: models\wf\WfTask::isFor)
+	    //who talks to the agent does not approve its actions (when no approvers are chosen: models\wf\WfTask::isFor)
 	    'not_by' => (string)(\models\agent\AgentConversation::ofExecution($exec)[0]['user'] ?? ''),
 	    'state' => 'open',
 	    'due_at' => $due,
@@ -1247,7 +1222,7 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 	    self::dropBlob($file);
 	    throw new \ErrorException('the approval task could not be saved: ' . json_encode($task->errors(), JSON_UNESCAPED_UNICODE));
 	}
-	//CLD: 2026-11-02T14:00:00+02:00: + trace: the visit goes on in the same trace
+	//trace: the visit goes on in the same trace
 	$this->agentWait = [ 'task' => (string)$task->_id, 'file' => (string)$file, 'trace' => $this->tracer->id() ];
 	$this->tracer->waiting();
 	$this->resume_at = $due;
@@ -1312,11 +1287,11 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 		[ $text, $isError ] = [ $decision, true ];
 		$outcome = $done ? 'rejected' : 'expired';
 	    }
-	    //CLD: 2026-11-02T14:00:00+02:00: the decision and the result in the trace (rejected, not in time: the same text the model gets)
+	    //the decision and the result in the trace (rejected, not in time: the same text the model gets)
 	    $this->tracer->approval($resume['round'], $p['index'], $outcome, $done ? $who : null, $done ? $task->completed_at : null, $done && $outcome === 'rejected' ? $comment : '');
 	    $this->tracer->result($resume['round'], $p['index'], $text, $isError, $took, count((array)$images));
 	    $one = [];
-	    //CLD: 2026-11-02T10:00:00+02:00: + what the audit log says: approved by whom, else why it did not run
+	    //what the audit log says: approved by whom, else why it did not run
 	    $withoutReason = \util\AgentTools::withoutReason($p['args'], $p['meta']['reason'] ?? null);
 	    $results[$p['index']] = $this->toolResult($p['id'], $p['tool'], $withoutReason, $text, $isError, (array)$images, $one, " ({$decision})",
 		$outcome === 'approved' ? null : ($done ? 'rejected' : 'not approved in time'), $outcome === 'approved' && $user ? $user : null);
@@ -1428,9 +1403,9 @@ abstract class NodeAppAi extends \models\wf\WfNode {
 
     //POST $body as JSON to $url: the decoded answer ($assoc = false: as objects, to send parts of it back unchanged); \ErrorException when there is no answer, an HTTP
     //error (with the provider's message) or no JSON
-    //CLD: 2026-10-23T15:00:00+03:00: through util\Http
+    //through util\Http
     protected function postJson($url, array $headers, array $body, $assoc = true) {
-	//CLD: 2026-10-29T22:44:26+02:00: the step's limits (static::)
+	//the step's limits (static::)
 	$timeout = max(5, min(static::MAX_TIMEOUT, (int)$this->cfg('timeout', static::DEFAULT_TIMEOUT)));
 	$r = \util\Http::json('POST', $url, [ 'headers' => $headers, 'json' => $body, 'timeout' => $timeout, 'maxBytes' => self::MAX_RESPONSE ]);
 	if ($r['tooLarge'])

@@ -17,7 +17,7 @@ class NodeAppTask extends \models\wf\WfNode {
     public static $label = 'Human task';
     public static $icon = 'bi-person-check';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: in Flow
+    //the step picker: in Flow
     public static $category = 'flow';
     public static $inputs = 1;
     public static $outputs = 1;
@@ -31,10 +31,10 @@ class NodeAppTask extends \models\wf\WfNode {
 	]
     ];
 
-    const UNITS = [ 'none' => 'No time limit' ] + \data\TimeUnits::LABELS;
+    const UNITS = [ 'none' => 'No time limit' ] + \data\Constants::TIME_UNITS;
 
     //the choices of the current project (the designer's user): its members, the account's roles
-    //CLD: 2026-11-01T23:30:00+02:00: public (the AI steps' approvers: util\AgentTools::approvalFields)
+    //public (the AI steps' approvers: util\AgentTools::approvalFields)
     public static function memberChoices() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
@@ -126,7 +126,7 @@ class NodeAppTask extends \models\wf\WfNode {
 		'ui' => [ 'width' => 4 ],
 	    ],
 	    [
-		//CLD: 2026-10-29T10:30:00+02:00: not under "Advanced…" (the designer's section of the technical settings, where a step's timeout goes): the task's deadline, next to its unit
+		//not under "Advanced…" (the designer's section of the technical settings, where a step's timeout goes): the task's deadline, next to its unit
 		'key' => 'timeout',
 		'type' => 'number',
 		'label' => 'After',
@@ -240,7 +240,7 @@ class NodeAppTask extends \models\wf\WfNode {
 	    $users[] = (string)$u->_id;
 	}
 	$unit = (string)$this->cfg('timeoutUnit', 'none');
-	$due = isset(\data\TimeUnits::SECONDS[$unit]) ? new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('timeout', 1)) * \data\TimeUnits::SECONDS[$unit]) * 1000) : null;
+	$due = isset(\data\Constants::TIME_UNIT_SECONDS[$unit]) ? new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('timeout', 1)) * \data\Constants::TIME_UNIT_SECONDS[$unit]) * 1000) : null;
 	$task = \V::app()->om->create('WfTask', [
 	    'aid' => $this->exec->aid,
 	    'project' => $this->exec->project,
@@ -263,7 +263,7 @@ class NodeAppTask extends \models\wf\WfNode {
 	return self::SLEEP;
     }
 
-    //CLD: 2026-11-07T01:10:30+02:00: setting $key as text, trimmed, its {{ }} rendered against $vars
+    //setting $key as text, trimmed, its {{ }} rendered against $vars
     private function textSetting(array $vars, $key) {
 	return trim(\util\Expression::toText(\util\Expression::render((string)$this->cfg($key, ''), $vars)));
     }

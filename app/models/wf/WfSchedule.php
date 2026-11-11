@@ -5,7 +5,7 @@
 	    every N minutes from midnight (every 15: :00 :15 :30 :45); at :00 of every Nth hour from midnight;
 	    at 00:00 of every Nth day (counted from 1970-01-01)
 	daily:    time                   HH:MM
-	          //CLD: 2026-10-29T22:12:26+02:00: time: one or more times, comma-separated (HH:MM, HH:MM: e.g. 09:00, 18:00), for daily / weekly / monthly
+	          //time: one or more times, comma-separated (HH:MM, HH:MM: e.g. 09:00, 18:00), for daily / weekly / monthly
 	weekly:   weekdays + time        cron day-of-week numbers (0 = Sunday)
 	monthly:  day + time             months without the day are skipped
 	cron:     cron                   minute hour day-of-month month day-of-week (util\Cron)
@@ -58,7 +58,7 @@ class WfSchedule {
 		'type' => 'select',
 		'label' => 'Units',
 		'default' => 'minutes',
-		'choices' => \data\TimeUnits::LABELS,
+		'choices' => \data\Constants::TIME_UNITS,
 		'requiredIf' => [ 'if' => 'mode', 'in' => [ 'interval' ] ],
 		'ui' => [
 		    'width' => 6,
@@ -83,13 +83,13 @@ class WfSchedule {
 		],
 		'requiredIf' => [ 'if' => 'mode', 'in' => [ 'weekly' ], 'message' => 'Choose the days of the week' ],
 		'ui' => [
-		    //CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
+		    //a condition array (app.smartform evaluates it)
 		    'showIf' => [ 'key' => 'mode', 'operator' => 'eq', 'value' => 'weekly' ],
 		],
 	    ],
 
 	    //daily, weekly, monthly; placed before `day` so it stays left-aligned when `day` is hidden
-	    //CLD: 2026-10-29T22:12:26+02:00: one or more times, comma-separated (e.g. 09:00, 18:00: runs at each); a text input
+	    //one or more times, comma-separated (e.g. 09:00, 18:00: runs at each); a text input
 	    [
 		'key' => 'time',
 		'type' => 'text',
@@ -137,7 +137,7 @@ class WfSchedule {
 		],
 		'ui' => [
 		    'placeholder' => '*/15 * * * *',
-		    //CLD: 2026-10-14T20:17:14+03:00: a condition array (app.smartform evaluates it)
+		    //a condition array (app.smartform evaluates it)
 		    'showIf' => [ 'key' => 'mode', 'operator' => 'eq', 'value' => 'cron' ],
 		    'pattern' => '^\s*[0-9A-Za-z*,/-]+(\s+[0-9A-Za-z*,/-]+){4}\s*$',
 		    'patternMessage' => 'Use 5 fields: minute hour day-of-month month day-of-week',
@@ -189,7 +189,7 @@ class WfSchedule {
 	return false;
     }
 
-    //CLD: 2026-11-07T01:11:11+02:00: whether time $t is one of the schedule's times (HH:MM, comma-separated)
+    //whether time $t is one of the schedule's times (HH:MM, comma-separated)
     private static function atTime(array $cfg, \DateTimeInterface $t) {
 	foreach(explode(',', (string)($cfg['time'] ?? '')) as $time) {
 	    if (preg_match('/^(\d{1,2}):(\d{2})$/', trim($time), $m) === 1 && (int)$m[1] === (int)$t->format('G') && (int)$m[2] === (int)$t->format('i'))
@@ -202,7 +202,7 @@ class WfSchedule {
     public static function validate(array $cfg) {
 	if (($cfg['mode'] ?? '') !== 'weekly')
 	    return null;
-	//CLD: 2026-10-14T14:18:23+03:00: only unknown days (no days: the weekdays field's requiredIf rule)
+	//only unknown days (no days: the weekdays field's requiredIf rule)
 	$days = array_map('strval', (array)($cfg['weekdays'] ?? []));
 	if (array_diff($days, [ '0', '1', '2', '3', '4', '5', '6' ]))
 	    return 'unknown day of the week';

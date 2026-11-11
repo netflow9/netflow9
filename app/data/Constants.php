@@ -15,6 +15,21 @@ class Constants {
     //how long the link of a new user's welcome email works (seconds; UserController::create / send_link), as a project invitation's
     const WELCOME_VALID = self::INVITE_VALID;
 
+    //the time units of the steps' time limits and schedules (Human task, AI step approvals, Run a workflow, Schedule): labels, seconds
+    const TIME_UNITS = [
+	'minutes' => 'Minutes',
+	'hours' => 'Hours',
+	'days' => 'Days'
+    ];
+    const TIME_UNIT_SECONDS = [
+	'minutes' => 60,
+	'hours' => 3600,
+	'days' => 86400
+    ];
+    //with seconds: only the Wait step takes them (for the others a unit of seconds is no unit: a Task has no time limit then)
+    const TIME_UNITS_ALL = [ 'seconds' => 'Seconds' ] + self::TIME_UNITS;
+    const TIME_UNIT_SECONDS_ALL = [ 'seconds' => 1 ] + self::TIME_UNIT_SECONDS;
+
     //the largest request body accepted by the public endpoints (bytes): webhooks (HookController), MCP (McpController), the FortiGate push (FortigateController)
     const MAX_REQUEST_BODY = 1048576;
 

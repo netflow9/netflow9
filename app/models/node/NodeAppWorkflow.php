@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-30T19:00:00+02:00: new step: Run a workflow - starts another workflow of the project, one that starts with Called by a workflow (NodeTriggerCall: its inputs and
+    Run a workflow - starts another workflow of the project, one that starts with Called by a workflow (NodeTriggerCall: its inputs and
     outputs are the contract). It runs the workflow's published version, else its draft (as MCP run_workflow).
     Settings: the workflow, its inputs (rows: an input of the workflow, a value; {{ }} expressions), wait for it to finish or start it and continue, the variable (default `result`),
     on error (fail the step, or continue on a second output `error`), how long to wait.
@@ -30,9 +30,8 @@ class NodeAppWorkflow extends \models\wf\WfNode {
     //while the workflow is paused, this step checks it at least this often (s; it is resumed when the workflow ends)
     const CHECK_EVERY = 3600;
 
-    //the workflows of the current project (the designer's user) that start with Called by a workflow: [ id => [ name, contract ] ]
-    //CLD: 2026-11-03T16:00:00+02:00: + those shared with it and published, named with their project
-    //CLD: 2026-11-01T21:50:00+02:00: public (the AI steps' Workflows setting: util\AgentTools)
+    //the workflows of the current project (the designer's user) that start with Called by a workflow, and those shared with it and published, named with their project:
+    //[ id => [ name, contract ] ]; public (the AI steps' Workflows setting: util\AgentTools)
     public static function callable() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
@@ -41,8 +40,8 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	return \models\wf\WfNode::rememberedChoices("callable:{$aid}:{$project}", fn() => self::readCallable($aid, $project));
     }
 
-    //CLD: 2026-11-04T08:10:00+02:00: the documents as read, the published versions read together (was a model per workflow, with a query per published one: Workflow::copyFor,
-    //~70 ms for 270 workflows): the steps are those a call runs, as copyFor(): the published version, else the draft in the workflow's own project
+    //the documents as read, the published versions read together (one query, not a model per workflow: ~70 ms for 270 workflows): the steps are those a call runs,
+    //as Workflow::copyFor(): the published version, else the draft in the workflow's own project
     private static function readCallable($aid, $project) {
 	$om = \V::app()->om;
 	$workflows = $om->find('Workflow', [ 'aid' => $aid ] + \models\Workflow::visibleInQuery($project),
@@ -72,7 +71,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	return $list;
     }
 
-    //CLD: 2026-11-07T01:10:30+02:00: whether workflow document $w has a published version
+    //whether workflow document $w has a published version
     private static function isPublished($w) {
 	return ($w['status'] ?? '') === \models\Workflow::PUBLISHED && !empty($w['version']);
     }
@@ -160,21 +159,21 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 		'label' => 'Unit',
 		'required' => true,
 		'default' => 'days',
-		'choices' => \data\TimeUnits::LABELS,
+		'choices' => \data\Constants::TIME_UNITS,
 		'ui' => [ 'limit' => true, 'showIf' => [ 'key' => 'mode', 'operator' => 'eq', 'value' => 'wait' ] ],
 	    ],
 	];
     }
 
     //the workflow called by a step of $config, in $aid (default: the current account); null when missing
-    //CLD: 2026-11-01T21:50:00+02:00: public (util\AgentTools: the workflows of an AI step's tools)
+    //public (util\AgentTools: the workflows of an AI step's tools)
     public static function findWorkflow($id, $aid = null, $project = null) {
 	$id = (string)$id;
 	if ($id === '' || !\util\Validator::rule('oid', $id))
 	    return null;
 	$query = [ '_id' => $id, 'aid' => $aid ?? (\V::app()->config('rt.account')->_id ?? null) ];
 	if ($project !== null)
-	    //CLD: 2026-11-03T16:00:00+02:00: or shared with $project
+	    //or shared with $project
 	    $query += \models\Workflow::visibleInQuery($project);
 	return \V::app()->om->findOne('Workflow', $query);
     }
@@ -185,7 +184,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	if (!\util\Validator::isIdentifier($name))
 	    return [];
 	$outputs = [];
-	//CLD: 2026-11-03T16:00:00+02:00: for a user, only a workflow of their current project or shared with it
+	//for a user, only a workflow of their current project or shared with it
 	$project = \V::app()->config('app.mode') == 'web' ? \V::app()->user->crtProject : null;
 	$wf = static::findWorkflow($config['workflow'] ?? '', null, $project);
 	$copy = $wf ? ($project ? $wf->copyFor($project) : ($wf->liveCopy() ?: $wf)) : null;
@@ -204,7 +203,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	if ($id === '' || !$this->workflow)
 	    return $valid;
 	$wf = static::findWorkflow($id, $this->workflow->aid, $this->workflow->project);
-	//CLD: 2026-11-03T16:00:00+02:00: copyFor: a shared workflow counts only while published
+	//copyFor: a shared workflow counts only while published
 	$contract = $wf ? NodeTriggerCall::contractOf($wf->copyFor($this->workflow->project)?->nodes) : null;
 	if (!$wf || $contract === null) {
 	    $this->errors('config', 'Workflow: choose a workflow of this project that starts with Called by a workflow, or a published one shared with it');
@@ -252,7 +251,7 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 		$inputs[(string)$row['name']] = \util\Expression::render((string)($row['value'] ?? ''), $vars);
 	}
 	$wait = $this->cfg('mode', 'wait') !== 'start';
-	//CLD: 2026-11-01T21:50:00+02:00: the checks and the new execution in startChild() (the AI steps' workflow tools start them the same way)
+	//the checks and the new execution in startChild() (the AI steps' workflow tools start them the same way)
 	[ $child, $error ] = static::startChild($exec, $wf, $inputs, $wait, (string)$this->wfid);
 	if ($child === null)
 	    return $this->failed($error);
@@ -269,17 +268,17 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	if ($state === 'sleep') {
 	    $unit = (string)$this->cfg('timeoutUnit', 'days');
 	    $this->child = (string)$child->_id;
-	    $this->deadline = new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('timeout', 1)) * (\data\TimeUnits::SECONDS[$unit] ?? 86400)) * 1000);
+	    $this->deadline = new \MongoDB\BSON\UTCDateTime((time() + max(1, (int)$this->cfg('timeout', 1)) * (\data\Constants::TIME_UNIT_SECONDS[$unit] ?? 86400)) * 1000);
 	    return $this->pause();
 	}
 	return $this->finish($child);
     }
 
-    //CLD: 2026-11-01T21:50:00+02:00: new: workflow $wf started by execution $exec (its step $nodeId) with $inputs (the inputs' values, cast by its trigger), $wait: the caller waits
+    //workflow $wf started by execution $exec (its step $nodeId) with $inputs (the inputs' values, cast by its trigger), $wait: the caller waits
     //for it (it is queued when the workflow ends: WfExecution::notifyCaller). The checks: it starts with Called by a workflow, has no errors, is not already in the chain of callers,
     //not too deep (MAX_DEPTH). [ the new execution (not saved), null ] or [ null, why it cannot start ]
     public static function startChild($exec, $wf, array $inputs, $wait, $nodeId) {
-	//CLD: 2026-11-03T16:00:00+02:00: copyFor: a shared workflow runs only its published version, so the draft its project is working on never reaches other projects
+	//copyFor: a shared workflow runs only its published version, so the draft its project is working on never reaches other projects
 	$live = $wf->copyFor($exec->project);
 	if ($live === null)
 	    return [ null, "{$wf->name} is shared with this project but not published now" ];
@@ -300,13 +299,13 @@ class NodeAppWorkflow extends \models\wf\WfNode {
 	$caller = \V::app()->om->findOne('Workflow', [ '_id' => $exec->wf, 'aid' => $exec->aid ]);
 	$child = \models\wf\WfExecution::startFor($live, 'call', [ 'vars' => $inputs, 'caller' => [ 'wf' => (string)$exec->wf, 'name' => (string)($caller->name ?? ''),
 	    'execution' => (string)$exec->_id, 'node' => (string)$nodeId, 'chain' => $chain, 'wait' => (bool)$wait ] ], $contract['wfid']);
-	//CLD: 2026-11-03T16:00:00+02:00: a call from another project says which
+	//a call from another project says which
 	$from = (string)$exec->project === (string)$wf->project ? '' : ' of project ' . \V::app()->om->findById('Project', $exec->project);
 	$child->log(null, 'started by the workflow ' . (string)($caller->name ?? $exec->wf) . $from . ' (execution ' . (string)$exec->_id . ')');
 	return [ $child, null ];
     }
 
-    //CLD: 2026-11-01T21:50:00+02:00: new: the outputs of ended execution $child (its trigger's outputs: [ name => value ], null when it did not set one)
+    //the outputs of ended execution $child (its trigger's outputs: [ name => value ], null when it did not set one)
     public static function outputsOf($child) {
 	$outputs = [];
 	$variables = is_array($child->variables) ? $child->variables : [];
