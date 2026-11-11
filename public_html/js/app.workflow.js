@@ -168,7 +168,9 @@ window.app.Workflow = (function() {
     	    const el = document.createElement('div');
     	    const isSelected = this.wfid === d.selectedId;
 
-    	    el.className = 'node' + (def.isContainer ? ' container' : '') + (def.isNote ? ' note' : '') + (isSelected ? ' selected' : '') + (isDropTarget ? ' drop-target' : '');
+    	    //CLD: 2026-11-11T21:05:00+02:00: loops are .wf-loop, not .container: Bootstrap's .container max-width (1320px and less) capped a wide loop, its box
+    	    //overflowing centred, shifted left with its ports, while edges start at the loop's real right edge
+    	    el.className = 'node' + (def.isContainer ? ' wf-loop' : '') + (def.isNote ? ' note' : '') + (isSelected ? ' selected' : '') + (isDropTarget ? ' drop-target' : '');
     	    el.style.left = this.geometry.x + 'px';
     	    el.style.top = this.geometry.y + 'px';
     	    el.style.width = this.geometry.w + 'px';

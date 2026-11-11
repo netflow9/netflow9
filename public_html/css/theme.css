@@ -11890,7 +11890,7 @@ textarea.form-control-lg {
   background: var(--rail22-debug-accent);
 }
 
-/* CLD: 2026-10-19T22:55:00+03:00: dragged with pointer events (app.workflow.js setupPanelResize): touch-action none, so a drag on a touch screen resizes the
+/* dragged with pointer events (app.workflow.js setupPanelResize): touch-action none, so a drag on a touch screen resizes the
    panel instead of scrolling the page; a taller handle and a longer grip where the pointer is a finger */
 .debug-resize-handle {
   touch-action: none;
@@ -11998,7 +11998,7 @@ textarea.form-control-lg {
   background: rgba(255, 255, 255, 0.15);
 }
 
-/* CLD: 2026-10-26T12:00:00+02:00: the scrollbars of the panels' inner boxes (the Executions list and details) visible on the dark background too (they had the
+/* the scrollbars of the panels' inner boxes (the Executions list and details) visible on the dark background too (they had the
    global thumb, 15% of the emphasis color: invisible in the light theme); Firefox: scrollbar-color */
 .debug-panel {
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
@@ -12047,7 +12047,7 @@ body {
 }
 
 /* ---------- SIDEBAR ---------- */
-/*  CLD: 2026-10-19T22:19:24+03:00: the width (drag-resize, stored width) is set by JS as the --sidebar-w custom property (was inline width/min-width),
+/*  the width (drag-resize, stored width) is set by JS as the --sidebar-w custom property,
     so the media queries below can replace it (drawer on small screens); collapse is the .collapsed class
 */
 .sidebar {
@@ -12129,7 +12129,7 @@ body {
   display: none;
 }
 
-/* CLD: 2026-10-19T23:05:00+03:00: dragged with pointer events (app.sidebar in app.js): touch-action none, so a touch drag resizes instead of scrolling.
+/* dragged with pointer events (app.sidebar in app.js): touch-action none, so a touch drag resizes instead of scrolling.
    Where the pointer is a finger (from lg up: below it the sidebar is a drawer, without the handle) the handle is 12px wide and inside the sidebar
    (half of the 6px one is outside, cut off by the sidebar's overflow); the sidebar's padding keeps its content (e.g. the items' menus) out from under it */
 .sidebar-resize-handle {
@@ -12165,7 +12165,7 @@ body {
   font-weight: 500;
 }
 
-/* CLD: 2026-10-17T21:40:00+03:00: the menu (three dots) of a sidebar item shows on hover, while focused or open; always on touch screens (no hover) */
+/* the menu (three dots) of a sidebar item shows on hover, while focused or open; always on touch screens (no hover) */
 .sidebar .nav-item .sidebar-item-menu {
   opacity: 0;
 }
@@ -12180,7 +12180,7 @@ body {
   .sidebar .nav-item .sidebar-item-menu {
     opacity: 1;
   }
-  /* CLD: 2026-10-19T22:19:24+03:00: larger touch targets */
+  /* larger touch targets */
   .sidebar .nav .nav-link,
   .sidebar .dropdown-item {
     min-height: 2.5rem;
@@ -12189,7 +12189,7 @@ body {
     gap: 0.25rem;
   }
 }
-/* CLD: 2026-10-19T22:19:24+03:00: below lg the sidebar is a drawer over the page (it took most of a phone's width): hidden off-screen, opened by
+/* below lg the sidebar is a drawer over the page (it took most of a phone's width): hidden off-screen, opened by
    the expand button (.sidebar-open on .app-shell, app.sidebar in app.js), closed by its collapse button, the backdrop or a menu click.
    The desktop width / collapsed state do not apply here, so they are kept for when the window gets wider again */
 .sidebar-backdrop {
@@ -12291,7 +12291,7 @@ body {
   max-width: 50vw;
 }
 
-/* CLD: 2026-10-19T22:19:24+03:00: icon-only buttons on phones: the text of a header button is in .btn-label */
+/* icon-only buttons on phones: the text of a header button is in .btn-label */
 @media (max-width: 767.98px) {
   .main-header .btn-label {
     display: none;
@@ -12303,7 +12303,7 @@ body {
   overflow-y: auto;
 }
 
-/* CLD: 2026-10-19T22:19:24+03:00: less padding on phones (the views use p-4) */
+/* less padding on phones (the views use p-4) */
 @media (max-width: 767.98px) {
   .main-body.p-4 {
     padding: 1rem !important;
@@ -12696,7 +12696,7 @@ body {
   box-shadow: 0 0 0 4px var(--bs-info);
 }
 .node .node-box {
-  /* CLD: 2026-10-19T23:40:00+03:00: bigger ports where the pointer is a finger: drawn larger (transform: the box and its place, set by app.workflow.js from the
+  /* bigger ports where the pointer is a finger: drawn larger (transform: the box and its place, set by app.workflow.js from the
      11px / 3x15px sizes, stay as they are) and with a larger invisible area to touch (::before; a touch on it is a touch on the port). The areas of two
      outputs do not overlap: they are ~24px apart (two outputs) or 26px (more: minHeightFor). Nearby input ports are found by distance (app.workflow.js startConnect) */
 }
@@ -12741,7 +12741,7 @@ body {
 .node {
   /* ---------- Container / loop node ---------- */
 }
-.node.container {
+.node.wf-loop {
   z-index: 0;
 }
 .node .node-box.container-box {
@@ -12832,7 +12832,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.node.container.drop-target .node-box {
+.node.wf-loop.drop-target .node-box {
   border-color: var(--type-color);
   background: var(--type-color-soft, var(--accent-soft));
 }
@@ -12907,7 +12907,7 @@ body {
   cursor: grabbing !important;
 }
 
-/* CLD: 2026-10-19T23:20:00+03:00: touches on the canvas are the designer's (app.workflow.js: pan, pinch to zoom, step drag / resize, new connections), not the
+/* touches on the canvas are the designer's (app.workflow.js: pan, pinch to zoom, step drag / resize, new connections), not the
    browser's (scroll, page zoom: it cancelled those pointer gestures). Not inherited, but it applies to every element inside the canvas */
 #canvas-wrap {
   touch-action: none;
@@ -13011,7 +13011,7 @@ body {
   display: none;
 }
 
-/* CLD: 2026-10-19T23:05:00+03:00: dragged with pointer events (app.workflow.js setupInspectorResize): touch-action none, so a touch drag resizes instead of
+/* dragged with pointer events (app.workflow.js setupInspectorResize): touch-action none, so a touch drag resizes instead of
    scrolling. Where the pointer is a finger (from lg up: below it the panel is over the canvas, without the handle) the handle is 12px wide and inside the
    panel (half of the 6px one is outside, cut off by the panel's overflow); the panel's padding keeps its content out from under it */
 .inspector-resize-handle {
@@ -13037,7 +13037,7 @@ body {
   pointer-events: none;
 }
 
-/* CLD: 2026-10-19T22:19:24+03:00: below lg the right-side panels (.inspector, e.g. the Assistant's) go over the canvas instead of taking its width;
+/* below lg the right-side panels (.inspector, e.g. the Assistant's) go over the canvas instead of taking its width;
    !important beats the width the resize handle sets inline (app.workflow.js setupInspectorResize; the handle is hidden here) */
 @media (max-width: 991.98px) {
   #canvas-form {
@@ -13061,7 +13061,7 @@ body {
     display: none;
   }
 }
-/* CLD: 2026-10-19T22:19:24+03:00: the Executions panel: the list beside the details (was style width 380px in views/workflow/index.php); below md the list
+/* the Executions panel: the list beside the details; below md the list
    goes above the details */
 .exec-panel .exec-list {
   width: 380px;
@@ -13069,14 +13069,14 @@ body {
   flex-shrink: 0;
 }
 
-/* CLD: 2026-10-25T18:30:00+02:00: the Executions panel rows (were page CSS in views/workflow/index.php: not applied when the designer is loaded via PJAX);
+/* the Executions panel rows (here, not page CSS: the designer may be loaded via PJAX);
    the list wider (460px from md), a row on one line: the time and the duration never wrap, the trigger / version is cut */
 @media (min-width: 768px) {
   .exec-panel .exec-list {
     width: 460px;
   }
 }
-/* CLD: 2026-10-26T12:00:00+02:00: the details scroll vertically within the panel (scrollbar always shown, so the end of a long log / output is reachable);
+/* the details scroll vertically within the panel (scrollbar always shown, so the end of a long log / output is reachable);
    min-width 0: a long unbroken text wraps instead of widening the box past the panel */
 .exec-panel .exec-detail {
   min-width: 0;
@@ -13124,7 +13124,7 @@ body {
     padding-left: 1rem;
   }
 }
-/* CLD: 2026-10-25T18:45:00+02:00: the designer's Assistant panel (the Assistant plugin; was page CSS in plugins/Assistant/Plugin.php): the messages and the input */
+/* the designer's Assistant panel: the messages and the input */
 .wf-assistant .wfa-msg {
   max-width: 92%;
   overflow-wrap: anywhere;
