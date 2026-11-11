@@ -162,8 +162,7 @@ $dd_items = implode('', $dd_items);
 		    );
 		}
 
-		//CLD: 2026-10-26T23:56:07+02:00: the MCP server link (its tokens)
-		//CLD: 2026-11-01T02:00:00+02:00: when the project's MCP server is on (Account::mcpEnabled)
+		//the MCP server link (its tokens), when the project's MCP server is on (Account::mcpEnabled)
 		if ($crtAccount->mcpEnabled($crtProject->_id) && \V::app()->user->can('McpToken::list')) {
 		    echo \V::app()->html->link(
 			'<i class="bi bi-plug"></i> MCP server',
@@ -193,6 +192,8 @@ $dd_items = implode('', $dd_items);
 		}
 
 		$wfs = $canReadWf ? \V::app()->om->find('Workflow', [ 'project' => $crtProject->_id]) : [];
+		//CLD: 2026-11-11T12:00:00+02:00: Duplicate in each workflow's menu: Workflow::create in this project, as the designer's $canDuplicate
+		$canDuplicateWf = \V::app()->user->can('Workflow::create', [ 'object' => \V::app()->om->create('Workflow', [ 'aid' => $crtProject->aid, 'project' => $crtProject->_id ]) ]);
 		foreach($wfs as $wf) {
 		    $url = \V::app()->createUrl('/workflow/index', [ 'id' => $wf->_id ]);
 		    $name = $wf->schema['icon']->display() . ' ' . $wf->schema['name']->display();
@@ -201,8 +202,8 @@ $dd_items = implode('', $dd_items);
 		    if ($published)
 			$name .= " <i class='bi bi-circle-fill text-success ms-1' style='font-size: .45rem; vertical-align: middle' title='Published'></i>";
 
-		    //CLD: 2026-10-17T21:30:00+03:00: a menu (three dots) per workflow: Publish (the designer's Publish dialog: shown when not published, or the draft changed since), Unpublish
-		    //(published), Delete; each with its permission (as the designer's status menu), with the designer's confirmations; none allowed: no menu
+		    //a menu (three dots) per workflow: Publish (the designer's Publish dialog: shown when not published, or the draft changed since), Unpublish
+		    //(published), Share, Move, Duplicate (the saved draft), Delete; each with its permission (as the designer's status menu), with the designer's confirmations; none allowed: no menu
 		    $items = '';
 		    if (\V::app()->user->can('Workflow::publish', [ 'object' => $wf ])) {
 			$active = $published ? $wf->publishedVersion() : null;
@@ -216,16 +217,21 @@ $dd_items = implode('', $dd_items);
 			    ]);
 		    }
 
-		    //CLD: 2026-11-03T16:00:00+02:00: Share (ShareController), not in a personal project
+		    //Share (ShareController), not in a personal project
 		    if (!$crtProject->personal && \V::app()->user->can('Workflow::share', [ 'object' => $wf ]))
 			$items .= \util\VString::insert('<a class="dropdown-item px-2" href="{:href}"><i class="bi bi-share me-2"></i>Share&hellip;</a>', [
 			    'href' => \V::app()->createUrl('/share/manage', [ 'object' => 'Workflow', 'id' => $wf->_id ]),
 			]);
 
-		    //CLD: 2026-11-04T17:00:00+02:00: Move (ShareController::move), as Delete: it leaves this project
+		    //Move (ShareController::move), as Delete: it leaves this project
 		    if (\V::app()->user->can('Workflow::delete', [ 'object' => $wf ]))
 			$items .= \util\VString::insert('<a class="dropdown-item px-2" href="{:href}"><i class="bi bi-folder-symlink me-2"></i>Move to project&hellip;</a>', [
 			    'href' => \V::app()->createUrl('/share/move', [ 'object' => 'Workflow', 'id' => $wf->_id ]),
+			]);
+
+		    if ($canDuplicateWf)
+			$items .= \util\VString::insert('<a class="dropdown-item px-2" href="{:href}" data-method="post" data-confirm="Create a new workflow from the saved draft?"><i class="bi bi-copy me-2"></i>Duplicate</a>', [
+			    'href' => \V::app()->createUrl('/workflow/duplicate', [ 'id' => $wf->_id ]),
 			]);
 
 		    if (\V::app()->user->can('Workflow::delete', [ 'object' => $wf ]))
@@ -245,7 +251,7 @@ $dd_items = implode('', $dd_items);
 		    ";
 		}
 
-		//CLD: 2026-11-03T16:00:00+02:00: the workflows other projects share with this one: what they offer, in a dialog (WorkflowController::shared)
+		//the workflows other projects share with this one: what they offer, in a dialog (WorkflowController::shared)
 		$sharedWfs = array_filter(iterator_to_array(\V::app()->om->find('Workflow', [ 'aid' => $crtProject->aid, 'shares.project' => $crtProject->_id ], [ 'sort' => [ 'name' => 1 ] ]), false),
 		    fn($w) => \V::app()->user->can('Workflow::viewShared', [ 'object' => $w ]));
 		if ($sharedWfs)
