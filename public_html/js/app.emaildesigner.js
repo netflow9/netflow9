@@ -1,5 +1,5 @@
 /*
- * CLD: 2026-10-16T12:00:26+03:00: new component: the email designer (user's design: simple, block based, one column) - edits an email made of blocks, as models\EmailBlocks
+ * new component: the email designer (user's design: simple, block based, one column) - edits an email made of blocks, as models\EmailBlocks
  * stores it ({ preheader, blocks: [ { type: html, html } | { type: image, file, alt, width, align, href } ] }); util\EmailHtml turns it into what is sent.
  *
  *   const d = new app.EmailDesigner(el, { value, readonly, onChange: (value) => ..., expression: { url, params } });
@@ -353,7 +353,7 @@ window.app.EmailDesigner = (function() {
 		    url: '/file/upload',
 		    accept: '.png,.jpg,.jpeg,.gif',
 		    formData: () => {
-			const p = document.querySelector('meta[name=csrf-param]')?.content, t = document.querySelector('meta[name=csrf-token]')?.content;
+			const p = document.querySelector('meta[name=csrf-param]')?.content, t = app.utils.csrf();
 			return p && t ? { [p]: t } : {};
 		    },
 		    onUploadStart: () => { msg.textContent = 'Uploading…'; },

@@ -78,7 +78,7 @@ window.AgentChat = (function() {
 	    sendBtn.disabled = busy();
 	}
 
-	const headers = () => embed ? { 'Content-Type': 'application/json', 'X-Chat-Key': state.key || '' } : { 'Content-Type': 'application/json', 'X-Csrf-Token': document.querySelector('meta[name=csrf-token]')?.content || '', 'X-Requested-With': 'XMLHttpRequest' };
+	const headers = () => embed ? { 'Content-Type': 'application/json', 'X-Chat-Key': state.key || '' } : { 'Content-Type': 'application/json', 'X-Csrf-Token': app.utils.csrf(), 'X-Requested-With': 'XMLHttpRequest' };
 
 	async function call(url, options) {
 	    const r = await fetch(url, Object.assign({ credentials: embed ? 'omit' : 'same-origin', headers: headers() }, options));

@@ -125,7 +125,7 @@ window.app.ExprInput = (function() {
 	}
 
 	//the cursor is after an unclosed {{ (a rough test; the server decides)
-	//CLD: 2026-10-13T15:32:41+03:00: a script (syntax script) is code everywhere
+	//a script (syntax script) is code everywhere
 	_inExpression() {
 	    if (this.syntax === 'script')
 		return true;
@@ -168,7 +168,7 @@ window.app.ExprInput = (function() {
 		    credentials: 'same-origin',
 		    signal: signal,
 		    //X-Requested-With: the server reads the CSRF token from the header only for AJAX / pjax requests
-		    headers: { 'X-Csrf-Token': document.querySelector('meta[name=csrf-token]')?.content || '', 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+		    headers: { 'X-Csrf-Token': app.utils.csrf(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
 		});
 		if (!res.ok)
 		    return null;

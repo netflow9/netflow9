@@ -1,45 +1,32 @@
 if (!window.app)
     window.app = {};
 
-//CLD: 2026-10-25T20:30:00+02:00: the designer's Run and Executions panel, a class as app.Workflow / app.WfAssistant:
+//the designer's Run and Executions panel, a class as app.Workflow / app.WfAssistant:
 //
 //   const executions = new app.WfExecutions(panel, options);     (the panel element: .exec-panel, or its selector)
 //
 //Run starts the saved workflow at its trigger (WfNode::startNow; runs on the server after the answer); the panel lists the latest executions and shows one (summary, log,
-//variables), refreshed every 2 s while one is new / running; an execution of the draft that has finished can be deleted, or all of them (asked again in place).
-//CLD: 2026-10-26T10:14:16+02:00: one that is new / running / waiting can be killed (asked again in place; urls.kill: WorkflowController::execution_kill)
+//variables), refreshed every 2 s while one is new / running; an execution of the draft that has finished can be deleted, or all of them (asked again in place);
+//one that is new / running / waiting can be killed (asked again in place; urls.kill: WorkflowController::execution_kill)
 //options: urls { run, list, detail, del, delAll, kill }, canRun (the user may run the workflow), runTriggers (the triggers Run can start: fqnames), whenSaved(fn) (fn once the
 //changes are saved: Run starts the saved draft), onOpen() / onClose() (the page: one bottom panel at a time, the one last open remembered).
 //The page tells it of the steps: onDataChange(workflow, serialized) (the Run button's state; the first call is the saved state), markSaved(serialized) (autosave); `dirty`:
 //changes not saved yet. Methods: run(), open(), close(), toggle(), refresh(), destroy(). One per designer page: a new one destroys the previous one (its timer stopped, its
 //listeners removed).
-//CLD: 2026-10-29T21:30:00+02:00: + onShow(run): the selected execution's steps and connections (detail.run, WorkflowController::runStatus) for the canvas, refreshed with it; null when
-//none is shown (the panel closed, the execution deleted). Opened with none selected: the latest one still running / waiting is selected (the live one on the canvas)
-//CLD: 2026-10-29T21:38:25+02:00: the execution on the canvas (`shown`) stays when the panel is closed, refreshed every 2 s while it runs; showLive(): the latest one running / waiting is shown
+//onShow(run): the selected execution's steps and connections (detail.run, WorkflowController::runStatus) for the canvas, refreshed with it; null when
+//none is shown (the panel closed, the execution deleted). Opened with none selected: the latest one still running / waiting is selected (the live one on the canvas).
+//The execution on the canvas (`shown`) stays when the panel is closed, refreshed every 2 s while it runs; showLive(): the latest one running / waiting is shown
 //without opening the panel (the page, when the designer opens). A chip at the top of the canvas (options.chip(): the canvas element) says which one: a click opens it in the panel,
-//its x takes the marks off (hide())
-//CLD: 2026-11-02T14:00:00+02:00: + an AI step's trace in the details (urls.trace: WorkflowController::execution_trace): its visits, opened one loaded and followed while it runs; rounds collapsed, a tool call
-//opens on its arguments and result (what is open stays over the refreshes: traceKeys); Run again with the same inputs (urls.again: execution_again, asked again in place); openTrace(execution, trace)
-//CLD: 2026-11-07T11:20:00+02:00: the variables as a tree: each object / list opens and closes as the trace's rounds (closed at first; what is open stays over the refreshes: traceKeys)
+//its x takes the marks off (hide()).
+//An AI step's trace in the details (urls.trace: WorkflowController::execution_trace): its visits, opened one loaded and followed while it runs; rounds collapsed, a tool call
+//opens on its arguments and result (what is open stays over the refreshes: traceKeys); Run again with the same inputs (urls.again: execution_again, asked again in place); openTrace(execution, trace).
+//The variables as a tree: each object / list opens and closes as the trace's rounds (closed at first; what is open stays over the refreshes: traceKeys)
 window.app.WfExecutions = (function() {
     //the one of the current designer page
     let current = null;
 
-    const csrf = () => $('meta[name=csrf-token]').attr('content');
-    const toast = (type, title, body) => app.utils.toast({ type: type, title: app.utils.escapeHtml(title), body: app.utils.escapeHtml(body), delay: 5000 });
     const active = (state) => state === 'new' || state === 'run';
     const NS = '.wfexecutions';
-
-    function duration(ms) {
-	if (ms === null || ms === undefined)
-	    return '';
-	if (ms < 1000)
-	    return ms + ' ms';
-	if (ms < 60000)
-	    return (ms / 1000).toFixed(1) + ' s';
-	const sec = Math.round(ms / 1000);
-	return Math.floor(sec / 60) + 'm ' + String(sec % 60).padStart(2, '0') + 's';
-    }
 
     //the published version an execution ran, or the draft
     const versionLabel = (e) => e.version === null || e.version === undefined ? '(draft)' : '(v' + e.version + ')';
@@ -47,26 +34,18 @@ window.app.WfExecutions = (function() {
     function badge(state) {
 	const colors = { end: 'success', error: 'danger', run: 'primary', new: 'info', sleep: 'warning', cancel: 'secondary' };
 	const labels = { end: 'completed', run: 'running', sleep: 'sleeping' };
-	return `<span class='badge text-bg-${colors[state] || 'secondary'}'>${app.utils.escapeHtml(labels[state] || state)}</span>`;
+	return app.utils.badge(colors[state] || 'secondary', labels[state] || state);
     }
 
-    //CLD: 2026-11-02T14:00:00+02:00: the trace: its state; an estimated cost or credits; a text cut; a tool call's approval
+    //the trace: its state; an estimated cost or credits; a text cut; a tool call's approval
     function traceBadge(state) {
 	const colors = { running: 'primary', waiting: 'warning', done: 'success', error: 'danger', stopped: 'secondary' };
 	const labels = { running: 'running', waiting: 'waiting for approval', done: 'done', error: 'failed', stopped: 'stopped' };
-	return `<span class='badge text-bg-${colors[state] || 'secondary'}'>${app.utils.escapeHtml(labels[state] || state)}</span>`;
-    }
-
-    function costText(cost) {
-	if (cost && cost.usd !== null && cost.usd !== undefined)
-	    return 'about $' + Number(cost.usd).toFixed(cost.usd > 0 && cost.usd < 0.01 ? 4 : 2);
-	if (cost && cost.credits !== null && cost.credits !== undefined)
-	    return cost.credits + ' credit(s)';
-	return '';
+	return app.utils.badge(colors[state] || 'secondary', labels[state] || state);
     }
 
     const muted = (html) => `<span style='color: var(--rail22-debug-muted)'>${html}</span>`;
-    const cutNote = (shown, full) => full ? `<div class='small' style='color: var(--rail22-debug-muted)'>Cut: the first ${app.utils.escapeHtml(Number(String(shown || '').length).toLocaleString())} of ${app.utils.escapeHtml(Number(full).toLocaleString())} characters</div>` : '';
+    const cutNote = (shown, full) => full ? `<div class='small' style='color: var(--rail22-debug-muted)'>Cut: the first ${app.utils.escapeHtml(app.formatter.number(String(shown || '').length))} of ${app.utils.escapeHtml(app.formatter.number(full))} characters</div>` : '';
     const block = (text) => `<pre class='mb-1 small' style='color: inherit; white-space: pre-wrap'>${app.utils.escapeHtml(text)}</pre>`;
 
     function approvalBadge(a, waiting) {
@@ -75,7 +54,7 @@ window.app.WfExecutions = (function() {
 	const by = a.by ? ' by ' + a.by : '';
 	const shown = { asked: waiting ? [ 'warning', 'waiting for approval' ] : [ 'secondary', 'not decided' ], approved: [ 'success', 'approved' + by ], rejected: [ 'danger', 'rejected' + by ],
 	    expired: [ 'secondary', 'not approved in time' ], 'not asked': [ 'secondary', 'not asked: a limit stopped the agent' ] }[a.state] || [ 'secondary', a.state ];
-	return `<span class='badge text-bg-${shown[0]}'>${app.utils.escapeHtml(shown[1])}</span>`;
+	return app.utils.badge(shown[0], shown[1]);
     }
 
     class WfExecutions {
@@ -85,8 +64,6 @@ window.app.WfExecutions = (function() {
 	    current = this;
 
 	    this.el = typeof panel === 'string' ? document.querySelector(panel) : panel;
-	    //CLD: 2026-10-29T21:30:00+02:00: + onShow
-	    //CLD: 2026-10-29T21:38:25+02:00: + chip
 	    this.o = Object.assign({ urls: {}, canRun: false, runTriggers: [], whenSaved: (fn) => fn(), onOpen: () => {}, onClose: () => {}, onShow: () => {}, chip: () => null, onCaseSaved: () => {} }, options || {});
 	    //baseline: the last saved state (markSaved), current: the latest, dirty: changes not saved yet
 	    this.baseline = null;
@@ -97,11 +74,11 @@ window.app.WfExecutions = (function() {
 	    this.selected = null;
 	    this.detail = null;
 	    this.timer = null;
-	    //CLD: 2026-10-29T21:38:25+02:00: the execution on the canvas (its id, its details), whether the panel is open or not; the chip saying which
+	    //the execution on the canvas (its id, its details), whether the panel is open or not; the chip saying which
 	    this.shown = null;
 	    this.shownDetail = null;
 	    this.chipEl = null;
-	    //CLD: 2026-11-02T14:00:00+02:00: the traces: those loaded (id => with its rounds), being loaded, whether opened by the user (id => yes / no; not told: the only one of a run is open), the rounds and calls open, one to show
+	    //the traces: those loaded (id => with its rounds), being loaded, whether opened by the user (id => yes / no; not told: the only one of a run is open), the rounds and calls open, one to show
 	    this.traces = {};
 	    this.traceLoading = new Set();
 	    this.traceOpen = new Map();
@@ -156,7 +133,7 @@ window.app.WfExecutions = (function() {
 		e.preventDefault();
 		this.restoreDeleteAll();
 	    }, '.btn-exec-delete-all-no');
-	    //CLD: 2026-10-26T10:14:16+02:00: kill a new / running / waiting execution (asked again in place)
+	    //kill a new / running / waiting execution (asked again in place)
 	    this.on($panel, 'click', (e) => {
 		e.preventDefault();
 		this.askKill = this.selected;
@@ -174,7 +151,7 @@ window.app.WfExecutions = (function() {
 		this.askKill = null;
 		this.renderDetail();
 	    }, '.btn-exec-kill-no');
-	    //CLD: 2026-11-02T14:00:00+02:00: Run again (asked again in place; kept over the 2 s refresh while asked: askAgain)
+	    //Run again (asked again in place; kept over the 2 s refresh while asked: askAgain)
 	    this.on($panel, 'click', (e) => {
 		e.preventDefault();
 		this.askAgain = this.selected;
@@ -192,7 +169,7 @@ window.app.WfExecutions = (function() {
 		this.askAgain = null;
 		this.renderDetail();
 	    }, '.btn-exec-again-no');
-	    //CLD: 2026-11-02T15:46:06+02:00: Save as test case
+	    //Save as test case
 	    this.on($panel, 'click', (e) => {
 		e.preventDefault();
 		this.saveCase();
@@ -201,7 +178,7 @@ window.app.WfExecutions = (function() {
 		e.preventDefault();
 		this.select(e.currentTarget.dataset.id);
 	    }, '.exec-rerun-of');
-	    //CLD: 2026-11-02T14:00:00+02:00: a trace, a round, a tool call opened or closed (the click comes before the element toggles)
+	    //a trace, a round, a tool call opened or closed (the click comes before the element toggles)
 	    this.on($panel, 'click', (e) => {
 		const d = e.currentTarget.parentElement;
 		const open = !d.open;
@@ -230,7 +207,7 @@ window.app.WfExecutions = (function() {
 	    clearInterval(this.timer);
 	    this.timer = null;
 	    this.bound.splice(0).forEach(($el) => $el.off(NS));
-	    //CLD: 2026-10-29T21:38:25+02:00: the chip goes with it
+	    //the chip goes with it
 	    if (this.chipEl)
 		this.chipEl.remove();
 	    this.chipEl = null;
@@ -270,19 +247,19 @@ window.app.WfExecutions = (function() {
 	}
 
 	start() {
-	    $.ajax({ url: this.o.urls.run, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': csrf() } })
+	    $.ajax({ url: this.o.urls.run, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': app.utils.csrf() } })
 		.done((resp) => {
 		    //nothing started (e.g. no new mail) -> the reason; several executions (one per message) -> the first is shown
 		    if (!resp.execution) {
-			toast('info', 'Nothing started', resp.message || 'Nothing was started');
+			app.utils.toastText('info', 'Nothing started', resp.message || 'Nothing was started');
 			return;
 		    }
 		    const n = (resp.executions || []).length;
-		    toast('success', 'Started', n > 1 ? n + ' executions started (one per message)' : 'Execution started');
+		    app.utils.toastText('success', 'Started', n > 1 ? n + ' executions started (one per message)' : 'Execution started');
 		    this.open();
 		    this.select(resp.execution);
 		})
-		.fail((xhr) => toast('error', 'Not started', (xhr.responseJSON && xhr.responseJSON.error) || 'The workflow could not be started'));
+		.fail((xhr) => app.utils.toastText('error', 'Not started', (xhr.responseJSON && xhr.responseJSON.error) || 'The workflow could not be started'));
 	}
 
 	/* ---------------- the panel ---------------- */
@@ -312,14 +289,13 @@ window.app.WfExecutions = (function() {
 		this.timer = setInterval(() => this.tick(), 2000);
 	}
 
-	//CLD: 2026-10-29T21:38:25+02:00: the execution on the canvas stays (its timer too, while it runs: tick)
+	//the execution on the canvas stays (its timer too, while it runs: tick)
 	close() {
 	    if (this.el)
 		this.el.classList.add('d-none');
 	    this.o.onClose();
 	}
-
-	//CLD: 2026-10-29T21:38:25+02:00: + the execution on the canvas while it runs, the panel open or not
+	//the execution on the canvas while it runs, the panel open or not
 	tick() {
 	    //the page was left (pjax)
 	    const here = !this.el || document.body.contains(this.el);
@@ -346,8 +322,7 @@ window.app.WfExecutions = (function() {
 	    $.getJSON(this.o.urls.list).done((resp) => {
 		this.list = resp.executions || [];
 		this.renderList();
-		//CLD: 2026-10-29T21:30:00+02:00: none selected: the latest one running / waiting (shown on the canvas)
-		//CLD: 2026-10-29T21:38:25+02:00: or the one on the canvas
+		//none selected: the one on the canvas, else the latest one running / waiting
 		const live = this.list.find((e) => active(e.state) || e.state === 'sleep');
 		const pick = this.selected ? null : (this.shown || (live && live.id));
 		if (pick && this.isOpen())
@@ -356,8 +331,6 @@ window.app.WfExecutions = (function() {
 	    if (this.selected)
 		this.loadDetail(this.selected);
 	}
-
-	//CLD: 2026-10-29T21:38:25+02:00: + shown on the canvas
 	select(id) {
 	    this.selected = id;
 	    this.shown = id;
@@ -365,7 +338,7 @@ window.app.WfExecutions = (function() {
 	    this.loadDetail(id);
 	}
 
-	//CLD: 2026-10-29T21:38:25+02:00: the details of the one selected (the panel) and / or of the one on the canvas (its marks, the chip)
+	//the details of the one selected (the panel) and / or of the one on the canvas (its marks, the chip)
 	loadDetail(id) {
 	    $.getJSON(this.o.urls.detail, { execution: id }).done((resp) => {
 		const e = resp.execution;
@@ -384,13 +357,13 @@ window.app.WfExecutions = (function() {
 	}
 
 	/* ---------------- the execution on the canvas ---------------- */
-	//CLD: 2026-10-29T21:38:25+02:00: show execution `id` on the canvas (the panel not opened)
+	//show execution `id` on the canvas (the panel not opened)
 	show(id) {
 	    this.shown = id;
 	    this.loadDetail(id);
 	}
 
-	//CLD: 2026-10-29T21:38:25+02:00: the marks taken off the canvas (the chip's x; the execution deleted); selecting one in the panel shows it again
+	//the marks taken off the canvas (the chip's x; the execution deleted); selecting one in the panel shows it again
 	hide() {
 	    this.shown = null;
 	    this.shownDetail = null;
@@ -398,7 +371,7 @@ window.app.WfExecutions = (function() {
 	    this.renderChip();
 	}
 
-	//CLD: 2026-10-29T21:38:25+02:00: the latest execution running / waiting, if any, on the canvas (the designer opened with the panel closed)
+	//the latest execution running / waiting, if any, on the canvas (the designer opened with the panel closed)
 	showLive() {
 	    $.getJSON(this.o.urls.list).done((resp) => {
 		if (this.shown || this.isOpen() || current !== this)
@@ -409,7 +382,7 @@ window.app.WfExecutions = (function() {
 	    });
 	}
 
-	//CLD: 2026-10-29T21:38:25+02:00: the chip at the top of the canvas: the state and start of the execution shown, x to hide it; none when none is shown
+	//the chip at the top of the canvas: the state and start of the execution shown, x to hide it; none when none is shown
 	renderChip() {
 	    const e = this.shown ? this.shownDetail : null;
 	    if (!e) {
@@ -462,7 +435,7 @@ window.app.WfExecutions = (function() {
 		    ${badge(e.state)}${e.rerun_of ? ` <i class='bi bi-arrow-repeat' title='Run again with the inputs of another execution'></i>` : ''}
 		    <span class='exec-time'>${app.utils.escapeHtml(e.started || e.created)}</span>
 		    <span class='exec-what' style='color: var(--rail22-debug-muted)' title='${app.utils.escapeHtml(e.trigger + ' ' + versionLabel(e))}'>${app.utils.escapeHtml(e.trigger)} ${app.utils.escapeHtml(versionLabel(e))}</span>
-		    <span class='exec-duration ms-auto' style='color: var(--rail22-debug-muted)'>${duration(e.duration)}</span>
+		    <span class='exec-duration ms-auto' style='color: var(--rail22-debug-muted)'>${app.formatter.duration(e.duration)}</span>
 		</div>`).join('');
 	}
 
@@ -474,20 +447,20 @@ window.app.WfExecutions = (function() {
 	    const log = (e.log || []).map((l) => `<div class='debug-log-line'><span style='color: var(--rail22-debug-muted)'>${app.utils.escapeHtml((l.time || '').slice(11))}</span> ${l.title ? `<span class='tag'>[${app.utils.escapeHtml(l.title)}]</span>` : ''}${app.utils.escapeHtml(l.message)}</div>`).join('');
 	    //Delete: an execution of the draft that has finished (asked again in place: Yes / No)
 	    const del = this.deletable(e) ? `<span class='exec-delete ms-auto flex-shrink-0'><button type='button' class='debug-icon-btn btn-exec-delete' title='Delete this execution'><i class='bi bi-trash'></i></button></span>` : '';
-	    //CLD: 2026-10-26T10:14:16+02:00: Kill: one that is new / running / waiting (Kill? Yes / No; kept over the 2 s refresh while asked: askKill)
+	    //Kill: one that is new / running / waiting (Kill? Yes / No; kept over the 2 s refresh while asked: askKill)
 	    const kill = !this.killable(e) ? '' : `<span class='exec-kill ms-auto flex-shrink-0'>` + (this.askKill === e.id
 		? `<span class='me-1'>Kill?</span><button type='button' class='debug-icon-btn btn-exec-kill-yes text-danger' title='Yes, stop it'><i class='bi bi-check-lg'></i></button><button type='button' class='debug-icon-btn btn-exec-kill-no' title='No'><i class='bi bi-x-lg'></i></button>`
 		: `<button type='button' class='debug-icon-btn btn-exec-kill text-danger' title='Kill this execution'><i class='bi bi-stop-circle'></i></button>`) + `</span>`;
-	    //CLD: 2026-11-02T14:00:00+02:00: Run again: one that has finished, by a user who may run the workflow; the one it ran again; its position kept over a refresh
+	    //Run again: one that has finished, by a user who may run the workflow; the one it ran again; its position kept over a refresh
 	    const again = !this.againable(e) ? '' : `<span class='exec-again d-inline-flex align-items-center'>` + (this.askAgain === e.id
 		? `<span class='me-1'>Run again on the current draft? Its tools run again too.</span><button type='button' class='debug-icon-btn btn-exec-again-yes' title='Yes, run it again'><i class='bi bi-check-lg'></i></button><button type='button' class='debug-icon-btn btn-exec-again-no' title='No'><i class='bi bi-x-lg'></i></button>`
 		: `<button type='button' class='debug-icon-btn btn-exec-again' title='Run again with the same inputs, on the current draft'><i class='bi bi-arrow-repeat'></i></button>`) + `</span>`;
-	    //CLD: 2026-11-02T15:46:06+02:00: Save as test case; a test's execution says so
+	    //Save as test case; a test's execution says so
 	    const saveCase = this.againable(e) && this.o.urls.saveCase ? `<button type='button' class='debug-icon-btn btn-exec-save-case' title='Save as test case: its inputs and tool results'><i class='bi bi-clipboard-plus'></i></button>` : '';
 	    const from = e.test_run ? `, a test` : e.rerun_of ? `, <a href='#' class='exec-rerun-of' data-id='${app.utils.escapeHtml(e.rerun_of)}'>run again of another execution</a>` : '';
 	    const top = box.scrollTop;
 	    box.innerHTML = `
-		<div class='mb-1 d-flex flex-wrap align-items-center gap-1'><span>${badge(e.state)} <span style='color: var(--rail22-debug-muted)'>${app.utils.escapeHtml(e.trigger)} ${app.utils.escapeHtml(versionLabel(e))}, started ${app.utils.escapeHtml(e.started || e.created || '-')}${e.duration !== null ? ', ' + duration(e.duration) : ''}${e.wake_at ? ', wakes at ' + app.utils.escapeHtml(e.wake_at) : ''}${from}</span></span><span class='ms-auto d-inline-flex align-items-center gap-1'>${saveCase}${again}${del}${kill}</span></div>
+		<div class='mb-1 d-flex flex-wrap align-items-center gap-1'><span>${badge(e.state)} <span style='color: var(--rail22-debug-muted)'>${app.utils.escapeHtml(e.trigger)} ${app.utils.escapeHtml(versionLabel(e))}, started ${app.utils.escapeHtml(e.started || e.created || '-')}${e.duration !== null ? ', ' + app.formatter.duration(e.duration) : ''}${e.wake_at ? ', wakes at ' + app.utils.escapeHtml(e.wake_at) : ''}${from}</span></span><span class='ms-auto d-inline-flex align-items-center gap-1'>${saveCase}${again}${del}${kill}</span></div>
 		${e.error ? `<div class='text-danger mb-1'>${app.utils.escapeHtml(e.error)}</div>` : ''}
 		${this.tracesHtml(e)}
 		<div class='debug-panel-title mt-2 mb-1'>Log</div>
@@ -506,7 +479,7 @@ window.app.WfExecutions = (function() {
 	}
 
 	/* ---------------- the variables ---------------- */
-	//CLD: 2026-11-07T11:20:00+02:00: new: the variables of execution `e`, each one a line; an object or a list a <details> (its keys / items inside)
+	//the variables of execution `e`, each one a line; an object or a list a <details> (its keys / items inside)
 	varsHtml(e) {
 	    const vars = e.variables || {};
 	    const names = Object.keys(vars);
@@ -531,7 +504,7 @@ window.app.WfExecutions = (function() {
 	}
 
 	/* ---------------- an AI step's trace ---------------- */
-	//CLD: 2026-11-02T14:00:00+02:00: new: whether trace `t` of execution `e` is open
+	//whether trace `t` of execution `e` is open
 	traceIsOpen(t, e) {
 	    return this.traceOpen.has(t.id) ? this.traceOpen.get(t.id) : (e.traces || []).length === 1;
 	}
@@ -568,16 +541,15 @@ window.app.WfExecutions = (function() {
 
 	traceHtml(t, e) {
 	    const totals = t.totals || {};
-	    const n = (v) => Number(v || 0).toLocaleString();
-	    const money = costText(totals.cost);
-	    const parts = [ app.utils.escapeHtml(t.provider + (t.model ? ' ' + t.model : '')), `${n(totals.rounds)} round(s)`, `${n(totals.tool_calls)} tool call(s)${totals.write_calls ? ', ' + n(totals.write_calls) + ' write' : ''}`,
-		`${n(totals.input_tokens)} + ${n(totals.output_tokens)} tokens` ];
-	    //CLD: 2026-11-02T18:00:00+02:00: Continue the conversation: what the step was given (a summary made now: its tokens are in the run's usage, not in these rounds)
+	    const money = app.formatter.cost(totals.cost, true);
+	    const parts = [ app.utils.escapeHtml(t.provider + (t.model ? ' ' + t.model : '')), `${app.formatter.number(totals.rounds)} round(s)`, `${app.formatter.number(totals.tool_calls)} tool call(s)${totals.write_calls ? ', ' + app.formatter.number(totals.write_calls) + ' write' : ''}`,
+		`${app.formatter.number(totals.input_tokens)} + ${app.formatter.number(totals.output_tokens)} tokens` ];
+	    //Continue the conversation: what the step was given (a summary made now: its tokens are in the run's usage, not in these rounds)
 	    if (t.conversation)
-		parts.push(`${n(t.conversation.turns)} earlier turn(s)${t.conversation.summary ? ' and a summary' : ''}${t.conversation.summarized ? `, ${n(t.conversation.summarized.turns)} summarized now (${n(t.conversation.summarized.tokens.input)} + ${n(t.conversation.summarized.tokens.output)} tokens)` : ''}`);
+		parts.push(`${app.formatter.number(t.conversation.turns)} earlier turn(s)${t.conversation.summary ? ' and a summary' : ''}${t.conversation.summarized ? `, ${app.formatter.number(t.conversation.summarized.turns)} summarized now (${app.formatter.number(t.conversation.summarized.tokens.input)} + ${app.formatter.number(t.conversation.summarized.tokens.output)} tokens)` : ''}`);
 	    parts.push(money ? app.utils.escapeHtml(money) + (t.system ? '' : ' (estimated)') : `<span title='Set the prices of this model: on the step, or in Account settings &gt; AI'>cost not known</span>`);
 	    if (t.duration !== null)
-		parts.push(app.utils.escapeHtml(duration(t.duration)));
+		parts.push(app.utils.escapeHtml(app.formatter.duration(t.duration)));
 	    const open = this.traceIsOpen(t, e);
 	    const data = this.traces[t.id];
 	    let body = '';
@@ -595,18 +567,18 @@ window.app.WfExecutions = (function() {
 	    const key = `${t.id}:r${r.n}`;
 	    const tokens = r.tokens || {};
 	    const calls = r.calls || [];
-	    const money = costText(r.cost);
-	    const parts = [ app.utils.escapeHtml(r.model), `${Number(tokens.input || 0).toLocaleString()} + ${Number(tokens.output || 0).toLocaleString()} tokens` ];
+	    const money = app.formatter.cost(r.cost, true);
+	    const parts = [ app.utils.escapeHtml(r.model), `${app.formatter.tokens(tokens)} tokens` ];
 	    if (money)
 		parts.push(app.utils.escapeHtml(money));
-	    parts.push(app.utils.escapeHtml(duration(r.duration_ms)));
+	    parts.push(app.utils.escapeHtml(app.formatter.duration(r.duration_ms)));
 	    if (calls.length)
 		parts.push(calls.length + ' tool call(s)');
 	    const asked = calls.filter((c) => c.approval).length;
 	    if (asked)
 		parts.push(asked + ' asked for approval');
 	    return `<details class='mb-1' data-key='${app.utils.escapeHtml(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
-		<summary style='cursor: pointer'>Round ${app.utils.escapeHtml(r.n)} ${muted(parts.join(', '))}${calls.some((c) => c.access === 'write') ? ` <span class='badge text-bg-warning'>write</span>` : ''}</summary>
+		<summary style='cursor: pointer'>Round ${app.utils.escapeHtml(r.n)} ${muted(parts.join(', '))}${calls.some((c) => c.access === 'write') ? ' ' + app.utils.badge('warning', 'write') : ''}</summary>
 		<div class='ps-3 pt-1'>
 		    ${r.text ? block(r.text) + cutNote(r.text, r.text_length) : ''}
 		    ${calls.map((c, i) => this.callHtml(t, key, c, i)).join('')}
@@ -621,9 +593,9 @@ window.app.WfExecutions = (function() {
 	    const decided = a && (a.by || a.at || a.comment) ? `<div class='small mb-1'>${muted('Decision:')} ${app.utils.escapeHtml(a.state)}${a.by ? ' by ' + app.utils.escapeHtml(a.by) : ''}${a.at ? ', ' + app.utils.escapeHtml(a.at) : ''}${a.comment ? ': ' + app.utils.escapeHtml(a.comment) : ''}</div>` : '';
 	    const result = c.result !== undefined ? block(c.result || '(empty)') + cutNote(c.result, c.result_length) : muted(a && a.state === 'asked' && waiting ? 'Not run: waiting for approval' : 'Not run');
 	    return `<details class='mb-1' data-key='${app.utils.escapeHtml(key)}'${this.traceKeys.has(key) ? ' open' : ''}>
-		<summary style='cursor: pointer'><i class='bi bi-wrench'></i> <code>${app.utils.escapeHtml(c.tool)}</code> ${c.access === 'write' ? `<span class='badge text-bg-warning'>write</span>` : muted(app.utils.escapeHtml(c.access))}
-		    ${approvalBadge(a, waiting)}${c.refused ? ` <span class='badge text-bg-danger'>stopped by a limit</span>` : ''}${c.error && !c.refused ? ` <span class='text-danger'>error</span>` : ''}
-		    ${c.duration_ms !== undefined && c.result !== undefined && !(a && a.state !== 'approved') ? muted(app.utils.escapeHtml(duration(c.duration_ms))) : ''}${c.images ? ' ' + muted(app.utils.escapeHtml(c.images) + ' image(s)') : ''}</summary>
+		<summary style='cursor: pointer'><i class='bi bi-wrench'></i> <code>${app.utils.escapeHtml(c.tool)}</code> ${c.access === 'write' ? app.utils.badge('warning', 'write') : muted(app.utils.escapeHtml(c.access))}
+		    ${approvalBadge(a, waiting)}${c.refused ? ' ' + app.utils.badge('danger', 'stopped by a limit') : ''}${c.error && !c.refused ? ` <span class='text-danger'>error</span>` : ''}
+		    ${c.duration_ms !== undefined && c.result !== undefined && !(a && a.state !== 'approved') ? muted(app.utils.escapeHtml(app.formatter.duration(c.duration_ms))) : ''}${c.images ? ' ' + muted(app.utils.escapeHtml(c.images) + ' image(s)') : ''}</summary>
 		<div class='ps-3 pt-1'>
 		    ${decided}
 		    <div class='small' style='color: var(--rail22-debug-muted)'>Arguments</div>
@@ -634,7 +606,7 @@ window.app.WfExecutions = (function() {
 	    </details>`;
 	}
 
-	//CLD: 2026-11-02T14:00:00+02:00: new: the panel on execution `id`, its trace `trace` open (a link to a trace: WorkflowController::trace)
+	//the panel on execution `id`, its trace `trace` open (a link to a trace: WorkflowController::trace)
 	openTrace(id, trace) {
 	    if (trace) {
 		this.traceOpen.set(trace, true);
@@ -645,21 +617,21 @@ window.app.WfExecutions = (function() {
 	}
 
 	/* ---------------- run again ---------------- */
-	//CLD: 2026-11-02T14:00:00+02:00: new: a finished execution, by a user who may run the workflow
+	//a finished execution, by a user who may run the workflow
 	againable(e) {
-	    //CLD: 2026-11-02T15:46:06+02:00: not one of a test run
+	    //not one of a test run
 	    return this.o.canRun && !!this.o.urls.again && !e.test_run && ![ 'new', 'run', 'sleep' ].includes(e.state);
 	}
 
-	//CLD: 2026-11-02T15:46:06+02:00: Save as test case: a finished execution that is not itself a test (the Tests panel: app.WfTests)
+	//Save as test case: a finished execution that is not itself a test (the Tests panel: app.WfTests)
 	saveCase() {
 	    const id = this.selected;
 	    if (!id || !this.o.urls.saveCase)
 		return;
 	    const url = this.o.urls.saveCase + (this.o.urls.saveCase.includes('?') ? '&' : '?') + 'execution=' + encodeURIComponent(id);
-	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-CSRF-Token': csrf() } })
+	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-CSRF-Token': app.utils.csrf() } })
 		.done((resp) => this.o.onCaseSaved(resp.case))
-		.fail((xhr) => toast('error', 'Not saved', (xhr.responseJSON && xhr.responseJSON.error) || 'The test case could not be saved'));
+		.fail((xhr) => app.utils.toastText('error', 'Not saved', (xhr.responseJSON && xhr.responseJSON.error) || 'The test case could not be saved'));
 	}
 
 	//the selected execution's inputs, as a new execution, once the changes are saved (the change to compare); it is shown
@@ -671,18 +643,18 @@ window.app.WfExecutions = (function() {
 		return;
 	    const url = this.o.urls.again + (this.o.urls.again.includes('?') ? '&' : '?') + 'execution=' + encodeURIComponent(id);
 	    this.o.whenSaved(() => {
-		$.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': csrf() } })
+		$.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': app.utils.csrf() } })
 		    .done((resp) => {
-			toast('success', 'Started', 'Running again with the same inputs');
+			app.utils.toastText('success', 'Started', 'Running again with the same inputs');
 			this.select(resp.execution);
 			this.refresh();
 			this.ensureTimer();
 		    })
-		    .fail((xhr) => toast('error', 'Not started', (xhr.responseJSON && xhr.responseJSON.error) || 'The execution could not be run again'));
+		    .fail((xhr) => app.utils.toastText('error', 'Not started', (xhr.responseJSON && xhr.responseJSON.error) || 'The execution could not be run again'));
 	    });
 	}
 
-	//CLD: 2026-10-29T21:38:25+02:00: the canvas: hide()
+	//the canvas: hide()
 	clearDetail() {
 	    this.selected = null;
 	    this.detail = null;
@@ -692,7 +664,7 @@ window.app.WfExecutions = (function() {
 	}
 
 	/* ---------------- kill ---------------- */
-	//CLD: 2026-10-26T10:14:16+02:00: an execution that is new / running / waiting, by a user who may run the workflow
+	//an execution that is new / running / waiting, by a user who may run the workflow
 	killable(e) {
 	    return this.o.canRun && !!this.o.urls.kill && [ 'new', 'run', 'sleep' ].includes(e.state);
 	}
@@ -704,9 +676,9 @@ window.app.WfExecutions = (function() {
 	    if (!id)
 		return;
 	    const url = this.o.urls.kill + (this.o.urls.kill.includes('?') ? '&' : '?') + 'execution=' + encodeURIComponent(id);
-	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': csrf() } })
-		.done(() => toast('success', 'Killed', 'The execution was stopped'))
-		.fail((xhr) => toast('error', 'Not killed', (xhr.responseJSON && xhr.responseJSON.error) || 'The execution could not be killed'))
+	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': app.utils.csrf() } })
+		.done(() => app.utils.toastText('success', 'Killed', 'The execution was stopped'))
+		.fail((xhr) => app.utils.toastText('error', 'Not killed', (xhr.responseJSON && xhr.responseJSON.error) || 'The execution could not be killed'))
 		.always(() => this.refresh());
 	}
 
@@ -731,19 +703,19 @@ window.app.WfExecutions = (function() {
 	    if (!id)
 		return;
 	    const url = this.o.urls.del + (this.o.urls.del.includes('?') ? '&' : '?') + 'execution=' + encodeURIComponent(id);
-	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': csrf() } })
+	    $.ajax({ url: url, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': app.utils.csrf() } })
 		.done(() => {
 		    this.list = this.list.filter((e) => e.id !== id);
-		    //CLD: 2026-10-29T21:38:25+02:00: off the canvas
+		    //off the canvas
 		    if (this.shown === id)
 			this.hide();
 		    if (this.selected === id)
 			this.clearDetail();
 		    this.renderList();
-		    toast('success', 'Deleted', 'Execution deleted');
+		    app.utils.toastText('success', 'Deleted', 'Execution deleted');
 		})
 		.fail((xhr) => {
-		    toast('error', 'Not deleted', (xhr.responseJSON && xhr.responseJSON.error) || 'The execution could not be deleted');
+		    app.utils.toastText('error', 'Not deleted', (xhr.responseJSON && xhr.responseJSON.error) || 'The execution could not be deleted');
 		    this.renderDetail();
 		});
 	}
@@ -765,21 +737,21 @@ window.app.WfExecutions = (function() {
 
 	//deletes all finished executions of the draft; the list is reloaded, the details cleared when the selected one is gone
 	removeAll() {
-	    $.ajax({ url: this.o.urls.delAll, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': csrf() } })
+	    $.ajax({ url: this.o.urls.delAll, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': app.utils.csrf() } })
 		.done((resp) => {
 		    this.restoreDeleteAll();
 		    if (this.detail && this.deletable(this.detail))
 			this.clearDetail();
-		    //CLD: 2026-10-29T21:38:25+02:00: off the canvas
+		    //off the canvas
 		    if (this.shownDetail && this.deletable(this.shownDetail))
 			this.hide();
 		    this.refresh();
 		    const n = resp.deleted || 0;
-		    toast('success', 'Deleted', (n === 1 ? '1 execution deleted' : n + ' executions deleted') + (resp.kept ? ', ' + resp.kept + ' kept (running / sleeping or of a published version)' : ''));
+		    app.utils.toastText('success', 'Deleted', (n === 1 ? '1 execution deleted' : n + ' executions deleted') + (resp.kept ? ', ' + resp.kept + ' kept (running / sleeping or of a published version)' : ''));
 		})
 		.fail((xhr) => {
 		    this.restoreDeleteAll();
-		    toast('error', 'Not deleted', (xhr.responseJSON && xhr.responseJSON.error) || 'The executions could not be deleted');
+		    app.utils.toastText('error', 'Not deleted', (xhr.responseJSON && xhr.responseJSON.error) || 'The executions could not be deleted');
 		});
 	}
     }

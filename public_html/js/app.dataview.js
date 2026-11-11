@@ -12,7 +12,7 @@ window.app.BaseDataView = (function() {
 	    this.readonly = options.readonly || false;
 	    this.updateColumnUrl = options.updateColumnUrl || false;
 	    this.createColumnUrl = options.createColumnUrl || false;
-	    //CLD: 2026-10-05T21:06:21+03:00: URL template for deleting a column; `__KEY__` is replaced with the column key (as in updateColumnUrl)
+	    //URL template for deleting a column; `__KEY__` is replaced with the column key (as in updateColumnUrl)
 	    this.deleteColumnUrl = options.deleteColumnUrl || false;
 	    this.schema = options.data || {};
 	}
@@ -53,7 +53,7 @@ window.app.BaseDataView = (function() {
 	constructor(parent, options) {
 	    this.parent = parent;
 
-	    //CLD: 2026-10-19T22:19:24+03:00: grows up to 20rem, never under 8rem
+	    //grows up to 20rem, never under 8rem
 	    const defLayout = `
 	    <input type="text" class="form-control form-control-sm flex-grow-1 search-input" style="max-width: 20rem; min-width: 8rem; flex-basis: 12rem" placeholder="Search..." value="{{search}}">
 	    `;
@@ -161,7 +161,7 @@ window.app.BaseDataView = (function() {
     }
 
 
-    //CLD: 2026-11-04T10:00:00+02:00: the Export button: downloads options.url with the current search and filter (all the pages: no pager); no button without options.url
+    //the Export button: downloads options.url with the current search and filter (all the pages: no pager); no button without options.url
     class Exporter {
 	constructor(parent, options) {
 	    this.parent = parent;
@@ -195,7 +195,7 @@ window.app.BaseDataView = (function() {
 
 	filterOps = false;
 
-	//CLD: 2026-10-30T17:18:20+02:00: saved views (a named filter, shared by the users of a data table): options.views = { listUrl, createUrl, deleteUrl (__VIEW__: the view's id) };
+	//saved views (a named filter, shared by the users of a data table): options.views = { listUrl, createUrl, deleteUrl (__VIEW__: the view's id) };
 	//none without it. crtView: the view applied ({ id, name, filter }), null after a filter changed by hand
 	views = null;
 	viewList = [];
@@ -210,7 +210,7 @@ window.app.BaseDataView = (function() {
     		<button class="btn btn-sm btn-outline-info dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
     		    Filter <span class="filter-count d-none badge rounded-pill bg-warning">0</span>
     		</button>
-    		<!--CLD: 2026-10-19T22:19:24+03:00: no wider than the window (was 30rem)-->
+    		<!--no wider than the window-->
     		<div class="dropdown-menu p-2" style="width:min(30rem, calc(100vw - 2rem)); z-index: 1030">
     		    <div class="filter-rows"></div>
     		    <div class="text-end pb-2">
@@ -232,7 +232,7 @@ window.app.BaseDataView = (function() {
 	}
 
 	render() {
-	    //CLD: 2026-10-30T17:18:20+02:00: the views dropdown before the filter's, when options.views
+	    //the views dropdown before the filter's, when options.views
 	    if (!this.views)
 		return this.renderer({});
 	    return `
@@ -416,7 +416,7 @@ window.app.BaseDataView = (function() {
 	    return url;
 	}
 
-	//CLD: 2026-10-30T17:18:20+02:00: the current filter used: back to the first page, data reloaded, the count badge and the view's name updated
+	//the current filter used: back to the first page, data reloaded, the count badge and the view's name updated
 	applyCurrent() {
 	    if (this.parent.widgets.pager)
 		this.parent.widgets.pager.reset();
@@ -430,12 +430,12 @@ window.app.BaseDataView = (function() {
 		this.viewsWrap.querySelector('.filter-view-name').textContent = this.crtView ? this.crtView.name : 'View';
 	}
 
-	//CLD: 2026-10-30T17:18:20+02:00: a request to the views' URLs: the answer's JSON, or an Error with its `error`
+	//a request to the views' URLs: the answer's JSON, or an Error with its `error`
 	async viewsRequest(url, body) {
 	    const opts = { headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } };
 	    if (body) {
 		opts.method = 'POST';
-		opts.headers['X-Csrf-Token'] = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+		opts.headers['X-Csrf-Token'] = app.utils.csrf();
 		opts.body = body;
 	    }
 	    const res = await fetch(url, opts);
@@ -449,7 +449,7 @@ window.app.BaseDataView = (function() {
 	    app.utils.toast({ type: type, title: app.utils.escapeHtml(title), body: app.utils.escapeHtml(body), delay: 5000 });
 	}
 
-	//CLD: 2026-10-30T17:18:20+02:00: the views' list (loaded each time the dropdown opens: views saved by others are seen)
+	//the views' list (loaded each time the dropdown opens: views saved by others are seen)
 	async loadViews() {
 	    const list = this.viewsWrap.querySelector('.filter-views-list');
 	    list.innerHTML = `<div class="text-center p-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>`;
@@ -563,7 +563,7 @@ window.app.BaseDataView = (function() {
 	    if (this.filterWrap)
 		return;
 
-	    //CLD: 2026-10-30T17:18:20+02:00: the views dropdown
+	    //the views dropdown
 	    if (this.views) {
 		this.viewsWrap = this.parent.container.getElementsByClassName('filter-views')[0];
 		this.viewsWrap.querySelector('.dropdown-toggle').addEventListener('show.bs.dropdown', () => this.loadViews());
@@ -589,7 +589,7 @@ window.app.BaseDataView = (function() {
 	    //apply filter
 	    this.filterWrap.getElementsByClassName('btn-filter-apply')[0].addEventListener('click', (e) => {
 		this.crtFilter = this.draftFilter.map(this.cloneRow);
-		//CLD: 2026-10-30T17:18:20+02:00: a filter changed by hand is no longer the view's; paging reset, reload and badge in applyCurrent()
+		//a filter changed by hand is not the view's any more; paging reset, reload and badge in applyCurrent()
 		this.crtView = null;
 		this.applyCurrent();
 
@@ -626,7 +626,7 @@ window.app.BaseDataView = (function() {
 
 	renderer = null;
 
-	//CLD: 2026-10-30T17:18:20+02:00: the page size kept in this browser (localStorage) under options.storeKey, when given; the page-number input's debounce timer
+	//the page size kept in this browser (localStorage) under options.storeKey, when given; the page-number input's debounce timer
 	storeKey = null;
 	timer = null;
 
@@ -634,10 +634,9 @@ window.app.BaseDataView = (function() {
 	    this.parent = parent;
 	    this.storeKey = options.storeKey || null;
 	    const defLayout = `
-	    <!--CLD: 2026-10-19T22:19:24+03:00: the range text hidden on phones-->
-	    <!--CLD: 2026-10-19T22:41:00+03:00: no flex-wrap (the select, width 100% from .form-select, took a line of its own and pushed the arrows below); w-auto on the select-->
+	    <!--the range text hidden on phones; no flex-wrap (the select, width 100% from .form-select, would take a line of its own); w-auto on the select-->
 	    <div class="flex-shrink-0 d-flex align-items-center gap-2 pager-container">
-		<!--CLD: 2026-10-13T08:04:46+03:00: the range: "1-10", or "0" when there are no records (was "1-0 of 0")-->
+		<!--the range: "1-10", or "0" when there are no records-->
 		<div class="d-none d-sm-block" style="white-space:pre">Showing {{range}} of {{nRecords}}</div>
     		<select class="form-select form-select-sm w-auto nav-page-size">
     		    <option value="5">5/pg</option>
@@ -656,7 +655,7 @@ window.app.BaseDataView = (function() {
 	    `;
 	    this.renderer = app.template.compile(options.layout || defLayout);
 
-	    //CLD: 2026-10-30T17:18:20+02:00: the kept page size, if it is one of the select's sizes
+	    //the kept page size, if it is one of the select's sizes
 	    if (this.storeKey) {
 		let kept = null;
 		try { kept = parseInt(localStorage.getItem(this.storeKey), 10); } catch (e) { /* not kept */ }
@@ -670,7 +669,7 @@ window.app.BaseDataView = (function() {
 	    el.innerHTML = this.renderer({
 		startRecord: this.startRecord,
 		endRecord: this.endRecord,
-		//CLD: 2026-10-13T08:04:46+03:00: the records shown, as text: "0" when there are none
+		//the records shown, as text: "0" when there are none
 		range: this.nRecords > 0 ? this.startRecord + '-' + this.endRecord : '0',
 		nRecords: this.nRecords,
 		crtPage: this.crtPage,
@@ -689,7 +688,7 @@ window.app.BaseDataView = (function() {
 	    this.crtPage = 1;
 	}
 
-	//CLD: 2026-10-30T17:18:20+02:00: go to page n (from the page-number input): kept within 1..nPages, nothing for an empty / invalid number or the current page
+	//go to page n (from the page-number input): kept within 1..nPages, nothing for an empty / invalid number or the current page
 	goTo(n) {
 	    if (this.timer)
 		clearTimeout(this.timer);
@@ -705,7 +704,7 @@ window.app.BaseDataView = (function() {
 	}
 
 	onDataLoaded(data) {
-	    //CLD: 2026-10-30T17:18:20+02:00: data loaded by another control (arrows, page size, search, filter): a pending page-number change is dropped
+	    //data loaded by another control (arrows, page size, search, filter): a pending page-number change is dropped
 	    if (this.timer)
 		clearTimeout(this.timer);
 	    this.timer = null;
@@ -739,16 +738,16 @@ window.app.BaseDataView = (function() {
 	    pgSizeSel.value = this.pageSize;
 	    pgSizeSel.addEventListener('change', (e) => {
 		this.pageSize = parseInt(e.target.value);
-		//CLD: 2026-10-30T17:18:20+02:00: kept in this browser (options.storeKey)
+		//kept in this browser (options.storeKey)
 		if (this.storeKey) {
 		    try { localStorage.setItem(this.storeKey, String(this.pageSize)); } catch (e) { /* not kept */ }
 		}
-		//CLD: 2026-10-11T21:48:17+03:00: back to the first page (the current page may not exist with the new size: e.g. page 2 of 12 records at 25/pg showed nothing)
+		//back to the first page (the current page may not exist with the new size: e.g. page 2 of 12 records at 25/pg showed nothing)
 		this.crtPage = 1;
 		this.parent.loadData();
 	    })
 
-	    //CLD: 2026-10-30T17:18:20+02:00: the page-number input (had no handler): its up / down arrows or typing change the page 500 ms after the last change
+	    //the page-number input (had no handler): its up / down arrows or typing change the page 500 ms after the last change
 	    //(debounce, as the search), Enter at once
 	    const pgNumber = this.parent.container.getElementsByClassName('nav-page-number')[0];
 	    pgNumber.addEventListener('input', (e) => {
@@ -951,7 +950,7 @@ window.app.ListView = (function() {
 	constructor(rootEl, options) {
 	    super(rootEl, options);
 
-	    //CLD: 2026-10-19T22:19:24+03:00: the toolbar wraps on narrow screens (flex-wrap)
+	    //the toolbar wraps on narrow screens (flex-wrap)
 	    const defLayout = `
 	    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
 		{{ title }}
@@ -991,7 +990,7 @@ window.app.ListView = (function() {
     return ListView;
 })();
 
-//CLD: 2026-10-11T22:01:40+03:00: the grid view (a table: columns from the schema, column designer, row actions, add-row button, empty filler rows)
+//the grid view (a table: columns from the schema, column designer, row actions, add-row button, empty filler rows)
 window.app.GridView = (function() {
     class GridView extends app.BaseDataView {
 
@@ -1000,7 +999,7 @@ window.app.GridView = (function() {
         constructor(container, opts) {
     	super(container, opts);
 
-    	//CLD: 2026-10-19T22:19:24+03:00: the toolbar wraps on narrow screens (flex-wrap)
+    	//the toolbar wraps on narrow screens (flex-wrap)
     	const defLayout = `
     	<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
     	    {{title}}
@@ -1077,8 +1076,7 @@ window.app.GridView = (function() {
         	    if (!this.schema.readonly) {
         		var editLi = null;
         		var delLi = null;
-    		//CLD: 2026-10-05T21:06:21+03:00: plain links handled by app.pjax (modal form / confirm + POST) instead of the undefined
-    		//openColumnModal() / deleteSelectedColumn() mock functions; URLs come from schema.updateColumnUrl / deleteColumnUrl
+    		//plain links handled by app.pjax (modal form / confirm + POST); URLs come from schema.updateColumnUrl / deleteColumnUrl
     		const columnUrl = (tpl) => tpl.replace('__KEY__', encodeURIComponent(colName));
         		if (col.edit && this.schema.updateColumnUrl) {
         		    editLi = document.createElement("li");
@@ -1160,10 +1158,10 @@ window.app.GridView = (function() {
 
     	const addTh = document.createElement("th");
     	addTh.className = "col-th sticky-top p-0";
-    	//CLD: 2026-11-04T08:27:09+02:00: as wide as the add-column button
+    	//as wide as the add-column button
     	addTh.style.width = "48px";
 
-    	//CLD: 2026-10-05T21:06:21+03:00: show the add-column button only when there is a URL for it
+    	//show the add-column button only when there is a URL for it
         	if (!this.schema.readonly && this.schema.createColumnUrl) {
         	    const btn = document.createElement('button');
         	    btn.className = 'btn btn-sm btn-circle-xs btn-outline-primary mx-2 my-1';
@@ -1190,7 +1188,7 @@ window.app.GridView = (function() {
     	    emptyTd.style.cursor = "pointer";
     	    emptyTd.colSpan = this.schema.getVisibleColumnNames().length + 1;
     	    emptyTd.innerHTML = this.renderEmpty(); //app.template.compile(this.emptyLayout)();
-    	    //CLD: 2026-10-13T08:03:04+03:00: the text in the middle of the row (renderFiller makes the row as tall as a full page); no hover highlight on it
+    	    //the text in the middle of the row (renderFiller makes the row as tall as a full page); no hover highlight on it
     	    emptyTd.style.verticalAlign = 'middle';
     	    emptyTd.style.setProperty('--bs-table-bg-state', 'transparent');
 
@@ -1215,7 +1213,7 @@ window.app.GridView = (function() {
         		    td.className = 'p-0 position-relative';
         		    //td.style.width = col.width + "px";
 
-        		    //CLD: 2026-10-30T00:00:00Z: boolean columns (checkbox / switch) shown as text, as any other field
+        		    //boolean columns (checkbox / switch) shown as text, as any other field
         		    const content = document.createElement("div");
         		    content.className = "cell-content px-2 py-1 text-truncate w-100 h-100";
         		    content.textContent = row[colName];
@@ -1247,7 +1245,7 @@ window.app.GridView = (function() {
     			    rowActionsTpl[key] = app.template.compile(this.gridOptions.rowActions[key]);
     			rowActionsHtml += rowActionsTpl[key]({item: row});
     		    });
-    		    //CLD: 2026-11-04T08:27:09+02:00: in a panel floating over the right edge of the visible part of the table (the cell is sticky); no panel when this row has no actions
+    		    //in a panel floating over the right edge of the visible part of the table (the cell is sticky); no panel when this row has no actions
     		    if (rowActionsHtml.trim() !== '') {
     			const actions = document.createElement("div");
     			actions.className = "row-actions";
@@ -1274,7 +1272,7 @@ window.app.GridView = (function() {
         	    btn.className = 'btn btn-sm btn-circle-xs btn-outline-primary mx-2 my-1';
         	    btn.innerHTML = '<i class="bi bi-plus-lg"></i>';
         	    btn.title = 'Add row';
-    	    //CLD: 2026-10-05T21:30:59+03:00: the button had no handler; open the add-row form (modal) like the add-column button
+    	    //the button had no handler; open the add-row form (modal) like the add-column button
     	    btn.addEventListener("click", () => {
     		app.pjax.fetch(this.gridOptions.createRowUrl, { push: false });
     	    });
@@ -1287,7 +1285,7 @@ window.app.GridView = (function() {
     	this.renderFiller(gridBody);
         }
 
-        //CLD: 2026-10-11T21:48:17+03:00: a page with fewer records than the page size is filled with empty rows (as tall as a record row), so the table keeps its size from page to
+        //a page with fewer records than the page size is filled with empty rows (as tall as a record row), so the table keeps its size from page to
         //page; they are not clickable and not highlighted on hover. The "no records" row counts as one row
         renderFiller(gridBody) {
     	const pager = this.widgets.pager;
@@ -1322,7 +1320,7 @@ window.app.GridView = (function() {
     	    gridBody.appendChild(tr);
     	}
 
-    	//CLD: 2026-10-13T08:03:04+03:00: no records: one row only, the "No data" row, as tall as a full page of rows (page size x a filler row's height; the "No data"
+    	//no records: one row only, the "No data" row, as tall as a full page of rows (page size x a filler row's height; the "No data"
     	//text is taller than a row), so the table keeps its size; when the table is not laid out (hidden: no heights) the fillers stay
     	if (!this.data.length) {
     	    const emptyTr = gridBody.querySelector('tr.grid-empty');

@@ -1990,7 +1990,7 @@ window.app.Workflow = (function() {
 		search.trigger('focus');
 		//kept for the user by /site/prefs (User prefs hide_advanced_steps)
 		$.ajax({ url: '/site/prefs', method: 'POST', data: { hide_advanced_steps: this.options.showAdvancedSteps ? 0 : 1 }, dataType: 'json',
-		    headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content'), 'X-Requested-With': 'XMLHttpRequest' } })
+		    headers: { 'X-Csrf-Token': app.utils.csrf(), 'X-Requested-With': 'XMLHttpRequest' } })
 		    .fail((xhr) => console.warn('app.Workflow: the steps view was not saved', xhr.status));
 	    });
 	    filter();

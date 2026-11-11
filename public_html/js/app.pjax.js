@@ -83,7 +83,7 @@ window.app.pjax = (function() {
     		    settings.timeout = 60 * 1000; //60 seconds
     		}
 		xhr.setRequestHeader('X-PJAX', 'true')
-        	xhr.setRequestHeader('X-Csrf-Token', $('meta[name=csrf-token]').attr('content'));
+        	xhr.setRequestHeader('X-Csrf-Token', app.utils.csrf());
 
 		//disable source element
 		if (options.source)
@@ -230,7 +230,7 @@ window.app.pjax = (function() {
 	init: function() {
 
 
-	    //CLD: 2026-10-16T13:33:48+03:00: confirm in a small popover next to the clicked element (below it, above when there is no room; Popper). Closed by the
+	    //confirm in a small popover next to the clicked element (below it, above when there is no room; Popper). Closed by the
 	    //buttons, Escape, a click elsewhere or scrolling; one open at a time. An element in a dropdown menu (hidden once clicked) anchors to the menu's toggle
 	    let confirmBox = null;
 	    const closeConfirm = () => {
@@ -307,8 +307,7 @@ window.app.pjax = (function() {
 
 
 	    //submits
-	    //CLD: 2026-10-11T21:35:50+03:00: forms only (was ':not([no-pjax])': it also matched the form's ancestors, so a form with no-pjax was still taken over, with
-	    //currentTarget = an ancestor, and failed on its missing method)
+	    //forms only (a selector without `form` also matches the form's ancestors, so a form with no-pjax would still be taken over)
 	    $(document).on('submit', 'form:not([no-pjax])', function(e) {
 		e.preventDefault();
 		
@@ -332,7 +331,7 @@ window.app.pjax = (function() {
 
 		if (formMethod.match(/post/i)) {
 		    const csrfParam = $('meta[name=csrf-param]').attr('content');
-		    const csrfToken = $('meta[name=csrf-token]').attr('content');
+		    const csrfToken = app.utils.csrf();
 
 		    if (csrfParam.length && csrfToken.length)
 			formData.append(csrfParam, csrfToken);
@@ -391,7 +390,7 @@ window.app.pjax = (function() {
 		// extend some defaults with data from clicked element
 		var options = $.extend({}, { push: true, source: $(link) }, $(link).data());
 
-		//CLD: 2026-10-11T21:32:01+03:00: data-method (e.g. data-method="post": a link that changes something) is the request's method (the CSRF token goes in the
+		//data-method (e.g. data-method="post": a link that changes something) is the request's method (the CSRF token goes in the
 		//X-Csrf-Token header); such a request is not pushed to the history (back / reload must not repeat it). Was only picked up implicitly through data()
 		const method = String($(link).data('method') || 'get').toUpperCase();
 		options.method = method;

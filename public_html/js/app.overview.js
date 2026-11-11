@@ -12,7 +12,7 @@
 window.app.Overview = (function() {
 
     const PERIODS = { '24h': '24 hours', '7d': '7 days', '30d': '30 days', '90d': '90 days' };
-    //CLD: 2026-10-17T20:40:00+03:00: the triggers of the runs (`email`: the Email inbound trigger, `file`: the File upload trigger)
+    //the triggers of the runs (`email`: the Email inbound trigger, `file`: the File upload trigger)
     const TRIGGERS = { manual: 'Manual', schedule: 'Schedule', webhook: 'Webhook', imap: 'Email (IMAP)', email: 'Email (inbound)', form: 'Form', file: 'File upload' };
     //state -> [ label, icon, text class ]: never color alone
     const STATES = {
@@ -24,26 +24,6 @@ window.app.Overview = (function() {
 	new: [ 'New', 'bi-circle', 'text-secondary' ],
     };
     const STORE = 'rail22.overview.period';
-
-    const nf = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 });
-    //CLD: 2026-10-26T10:06:24+02:00: for the Kill button (POST)
-    const csrf = () => document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
-    const toast = (type, title, body) => window.app.utils.toast({ type: type, title: app.utils.escapeHtml(title), body: app.utils.escapeHtml(body), delay: 5000 });
-
-    //a duration in ms, short
-    function duration(ms) {
-	if (ms === null || ms === undefined)
-	    return '–';
-	if (ms < 1000)
-	    return Math.round(ms) + ' ms';
-	const s = ms / 1000;
-	if (s < 60)
-	    return (s < 10 ? s.toFixed(1) : Math.round(s)) + ' s';
-	const m = Math.floor(s / 60);
-	if (m < 60)
-	    return m + 'm ' + Math.round(s % 60) + 's';
-	return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
-    }
 
     const percent = (r) => r === null || r === undefined ? '–' : (Math.round(r * 1000) / 10) + '%';
 
@@ -93,7 +73,7 @@ window.app.Overview = (function() {
 		this.load();
 	    }));
 	    this.root.querySelector('.ov-refresh').addEventListener('click', () => this.load());
-	    //CLD: 2026-10-24T11:20:00+03:00: the charts take the theme's colors when it changes (app.theme); the listener goes away with the page (pjax: the overview no longer in it)
+	    //the charts take the theme's colors when it changes (app.theme); the listener goes away with the page (pjax: the overview no longer in it)
 	    const onTheme = () => {
 		if (!this.root.isConnected)
 		    document.removeEventListener('app:themechange', onTheme);
@@ -113,7 +93,7 @@ window.app.Overview = (function() {
 		    throw new Error('the server answered ' + res.status);
 		this.data = await res.json();
 		this.render();
-		this.root.querySelector('.ov-status').textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		this.root.querySelector('.ov-status').textContent = 'Updated ' + app.formatter.shortTime(new Date());
 	    } catch (err) {
 		this.root.querySelector('.ov-status').textContent = 'Could not load the figures (' + err.message + ')';
 	    }
@@ -131,7 +111,7 @@ window.app.Overview = (function() {
 	    const body = this.root.querySelector('.ov-body');
 	    const span = PERIODS[d.period];
 	    if (!d.workflowsVisible) {
-		body.innerHTML = `<div class="row g-3">${this.tile('Open tasks', nf.format(d.tiles.tasks.open),
+		body.innerHTML = `<div class="row g-3">${this.tile('Open tasks', app.formatter.compact(d.tiles.tasks.open),
 		    d.tiles.tasks.overdue ? `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${d.tiles.tasks.overdue} overdue</span>` : 'none overdue', '/task/list')}</div>`;
 		return;
 	    }
@@ -152,11 +132,11 @@ window.app.Overview = (function() {
 	    };
 	    body.innerHTML = `
 		<div class="row g-3 mb-3">
-		    ${this.tile('Executions', nf.format(t.executions.value), delta(t.executions.value, t.executions.previous))}
+		    ${this.tile('Executions', app.formatter.compact(t.executions.value), delta(t.executions.value, t.executions.previous))}
 		    ${this.tile('Success rate', percent(t.success.rate), rateDelta())}
-		    ${this.tile('Median run time', duration(t.duration.p50), `<span class="text-muted">95% within ${duration(t.duration.p95)}</span>`)}
-		    ${this.tile('Running now', nf.format(t.running.value), `<span class="text-muted">${t.running.waiting} waiting for a person</span>`)}
-		    ${this.tile('Open tasks', nf.format(t.tasks.open), t.tasks.overdue ? `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${t.tasks.overdue} overdue</span>` : '<span class="text-muted">none overdue</span>', '/task/list')}
+		    ${this.tile('Median run time', app.formatter.duration(t.duration.p50, '–'), `<span class="text-muted">95% within ${app.formatter.duration(t.duration.p95, '–')}</span>`)}
+		    ${this.tile('Running now', app.formatter.compact(t.running.value), `<span class="text-muted">${t.running.waiting} waiting for a person</span>`)}
+		    ${this.tile('Open tasks', app.formatter.compact(t.tasks.open), t.tasks.overdue ? `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${t.tasks.overdue} overdue</span>` : '<span class="text-muted">none overdue</span>', '/task/list')}
 		</div>
 		<div class="card bg-body mb-3"><div class="card-body">
 		    <h6 class="mb-0">Executions over time</h6>
@@ -224,8 +204,8 @@ window.app.Overview = (function() {
 	    if (!total)
 		return this.empty(canvas, 'No executions in this period');
 	    const labels = d.buckets.map((ms) => d.step === 3600
-		? new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-		: new Date(ms).toLocaleDateString([], { day: 'numeric', month: 'short' }));
+		? app.formatter.shortTime(ms)
+		: app.formatter.shortDate(ms));
 	    const surface = this.color('surface');
 	    const opts = this.base();
 	    opts.plugins.legend = { display: true, position: 'top', align: 'start', labels: { color: this.color('text'), usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 10, boxHeight: 10 } };
@@ -289,10 +269,10 @@ window.app.Overview = (function() {
 		return this.empty(canvas, 'No completed runs in this period');
 	    const opts = this.base();
 	    opts.indexAxis = 'y';
-	    opts.scales.x = { grid: { color: this.color('grid'), lineWidth: 1 }, border: { display: false }, beginAtZero: true, ticks: { color: this.color('muted'), callback: (v) => duration(v) } };
+	    opts.scales.x = { grid: { color: this.color('grid'), lineWidth: 1 }, border: { display: false }, beginAtZero: true, ticks: { color: this.color('muted'), callback: (v) => app.formatter.duration(v, '–') } };
 	    opts.scales.y = { grid: { display: false }, border: { color: this.color('grid') }, ticks: { color: this.color('text') } };
 	    opts.plugins.tooltip.displayColors = false;
-	    opts.plugins.tooltip.callbacks = { label: (item) => 'median ' + duration(rows[item.dataIndex].p50) + ' · 95% within ' + duration(rows[item.dataIndex].p95) };
+	    opts.plugins.tooltip.callbacks = { label: (item) => 'median ' + app.formatter.duration(rows[item.dataIndex].p50, '–') + ' · 95% within ' + app.formatter.duration(rows[item.dataIndex].p95, '–') };
 	    this.charts.push(new window.Chart(canvas, {
 		type: 'bar',
 		data: {
@@ -319,7 +299,7 @@ window.app.Overview = (function() {
 		    <td>${app.utils.escapeHtml(w.name)} <span class="badge ${w.status === 'draft' ? 'text-bg-light border' : 'text-bg-success'} ms-1">${app.utils.escapeHtml(w.status === 'draft' ? 'draft' : w.status + ' published')}</span></td>
 		    <td class="text-end text-nowrap ov-num">${sparkline(w.spark)} <span class="ms-1">${w.runs}</span></td>
 		    <td class="text-end ov-num">${w.success !== null && w.success < 0.9 ? `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${percent(w.success)}</span>` : percent(w.success)}</td>
-		    <td class="text-end ov-num">${duration(w.p50)}</td>
+		    <td class="text-end ov-num">${app.formatter.duration(w.p50, '–')}</td>
 		    <td class="text-end text-nowrap">${w.last ? window.app.formatter.timeAgoHtml(w.last.at, false) + ' · ' + stateBadge(w.last.state) : '<span class="text-muted">never</span>'}</td>
 		</tr>`).join('')}</tbody></table>`;
 	    el.querySelectorAll('[data-sort]').forEach((th) => th.addEventListener('click', () => {
@@ -337,12 +317,12 @@ window.app.Overview = (function() {
 		el.innerHTML = '';
 		return;
 	    }
-	    //CLD: 2026-10-24T17:30:00+03:00: app.formatter.timeAgoHtml: the date and time in the account's format as a tooltip
+	    //app.formatter.timeAgoHtml: the date and time in the account's format as a tooltip
 	    const stuck = (s) => {
 		const since = s.since ? window.app.formatter.timeAgoHtml(s.since, false) : '';
 		if (s.kind === 'task')
 		    return `<a href="/task/${app.utils.escapeHtml(s.task)}" class="text-reset"><i class="bi bi-person-check me-1 text-warning"></i>Task "${app.utils.escapeHtml(s.title)}" overdue</a> <span class="text-muted">· ${app.utils.escapeHtml(s.workflow)} · due ${since}</span>`;
-		//CLD: 2026-10-26T10:06:24+02:00: + Kill (when the user may change the workflow; asks Yes / No first, see kill())
+		//Kill (when the user may change the workflow; asks Yes / No first, see kill())
 		if (s.kind === 'running')
 		    return `<div class="d-flex align-items-center gap-2"><span><i class="bi bi-play-circle me-1 text-warning"></i>Still running, started ${since} <span class="text-muted">· ${app.utils.escapeHtml(s.workflow)}</span></span>`
 			+ (s.canKill ? `<span class="ms-auto text-nowrap ov-kill" data-wf="${app.utils.escapeHtml(s.wf)}" data-id="${app.utils.escapeHtml(s.id)}"><button type="button" class="btn btn-sm btn-outline-danger py-0 ov-kill-ask" title="Stop this execution"><i class="bi bi-stop-circle me-1"></i>Kill</button></span>` : '')
@@ -366,7 +346,7 @@ window.app.Overview = (function() {
 	    el.querySelectorAll('.ov-kill').forEach((box) => this.killButton(box));
 	}
 
-	//CLD: 2026-10-26T10:06:24+02:00: Kill becomes `Kill? Yes / No`; Yes kills the execution (WorkflowController::execution_kill) and reloads the figures
+	//Kill becomes `Kill? Yes / No`; Yes kills the execution (WorkflowController::execution_kill) and reloads the figures
 	killButton(box) {
 	    const ask = () => {
 		box.innerHTML = `<span class="me-1">Kill it?</span><button type="button" class="btn btn-sm btn-danger py-0 ov-kill-yes">Yes</button> <button type="button" class="btn btn-sm btn-outline-secondary py-0 ov-kill-no">No</button>`;
@@ -381,13 +361,13 @@ window.app.Overview = (function() {
 	    box.querySelectorAll('button').forEach((b) => { b.disabled = true; });
 	    try {
 		const url = '/workflow/execution_kill?id=' + encodeURIComponent(box.dataset.wf) + '&execution=' + encodeURIComponent(box.dataset.id);
-		const res = await fetch(url, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-Csrf-Token': csrf(), Accept: 'application/json' } });
+		const res = await fetch(url, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-Csrf-Token': app.utils.csrf(), Accept: 'application/json' } });
 		const body = await res.json().catch(() => ({}));
 		if (!res.ok)
 		    throw new Error(body.error || 'the server answered ' + res.status);
-		toast('success', 'Killed', 'The execution was stopped');
+		app.utils.toastText('success', 'Killed', 'The execution was stopped');
 	    } catch (err) {
-		toast('error', 'Not killed', err.message);
+		app.utils.toastText('error', 'Not killed', err.message);
 	    }
 	    this.load();
 	}
@@ -403,7 +383,7 @@ window.app.Overview = (function() {
 		<thead><tr><th>Workflow</th><th>Trigger</th><th>State</th><th class="text-end">Run time</th><th class="text-end">Started</th></tr></thead>
 		<tbody>${rows.map((r) => `<tr role="button" data-href="/workflow/index?id=${app.utils.escapeHtml(r.wf)}">
 		    <td>${app.utils.escapeHtml(r.workflow)}</td><td>${app.utils.escapeHtml(TRIGGERS[r.trigger] || r.trigger)}</td><td>${stateBadge(r.state)}</td>
-		    <td class="text-end ov-num">${duration(r.duration)}</td><td class="text-end text-nowrap">${window.app.formatter.timeAgoHtml(r.at, false)}</td>
+		    <td class="text-end ov-num">${app.formatter.duration(r.duration, '–')}</td><td class="text-end text-nowrap">${window.app.formatter.timeAgoHtml(r.at, false)}</td>
 		</tr>`).join('')}</tbody></table>`;
 	    el.querySelectorAll('[data-href]').forEach((tr) => tr.addEventListener('click', () => { window.location.href = tr.dataset.href; }));
 	}

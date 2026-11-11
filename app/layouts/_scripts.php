@@ -2,6 +2,7 @@
 
 //register some js before hook-call
 $js_assets = [
+    'app.formatter.js',
     'app.pjax.js',
     'app.fieldhelper.js',
     'app.exprinput.js',
@@ -14,11 +15,11 @@ $js_assets = [
     'app.workflow.js',
     'app.wfexecutions.js',
     'app.wfdebug.js',
-    //CLD: 2026-11-02T15:46:06+02:00: the designer's Tests panel
+    //the designer's Tests panel
     'app.wftests.js',
     'app.wfassistant.js',
     'app.dataview.js',
-    //CLD: 2026-11-02T18:00:00+02:00: the chat pages of the agents
+    //the chat pages of the agents
     'app.agentchat.js',
     //last
     'app.js',

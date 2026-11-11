@@ -1,7 +1,7 @@
 if (!window.app)
     window.app = {};
 
-//CLD: 2026-11-02T15:46:06+02:00: new: the designer's Tests panel, a class as app.WfExecutions / app.WfDebug
+//the designer's Tests panel, a class as app.WfExecutions / app.WfDebug
 //
 //   const tests = new app.WfTests(panel, options);     (the panel element: .tests-panel, or its selector)
 //
@@ -11,33 +11,19 @@ if (!window.app)
 window.app.WfTests = (function() {
     let current = null;
 
-    const csrf = () => $('meta[name=csrf-token]').attr('content');
-    const toast = (type, title, body) => app.utils.toast({ type: type, title: app.utils.escapeHtml(title), body: app.utils.escapeHtml(body), delay: 5000 });
     const NS = '.wftests';
     const active = (state) => state === 'queued' || state === 'running';
     const muted = (html) => `<span style='color: var(--rail22-debug-muted)'>${html}</span>`;
 
     function runBadge(state) {
 	const colors = { passed: 'success', failed: 'danger', error: 'danger', running: 'primary', queued: 'info', stopped: 'secondary' };
-	return `<span class='badge text-bg-${colors[state] || 'secondary'}'>${app.utils.escapeHtml(state)}</span>`;
+	return app.utils.badge(colors[state] || 'secondary', state);
     }
 
     function caseBadge(state) {
 	const shown = { pass: [ 'success', 'pass' ], fail: [ 'danger', 'fail' ], error: [ 'danger', 'could not run' ], stopped: [ 'secondary', 'stopped' ] }[state] || [ 'secondary', state ];
-	return `<span class='badge text-bg-${shown[0]}'>${app.utils.escapeHtml(shown[1])}</span>`;
+	return app.utils.badge(shown[0], shown[1]);
     }
-
-    function costText(cost) {
-	const parts = [];
-	if (cost && cost.usd !== null && cost.usd !== undefined)
-	    parts.push('$' + Number(cost.usd).toFixed(cost.usd > 0 && cost.usd < 0.01 ? 4 : 2));
-	if (cost && cost.credits !== null && cost.credits !== undefined)
-	    parts.push(cost.credits + ' credit(s)');
-	return parts.join(', ');
-    }
-
-    const tokensText = (t) => Number((t && t.input) || 0).toLocaleString() + ' + ' + Number((t && t.output) || 0).toLocaleString();
-    const signed = (n) => (n > 0 ? '+' : '') + Number(n).toLocaleString();
 
     function changeText(d) {
 	if (!d)
@@ -45,9 +31,9 @@ window.app.WfTests = (function() {
 	const shown = { new: [ 'info', 'new' ], fixed: [ 'success', 'fixed' ], broken: [ 'danger', 'broken' ] }[d.change];
 	const parts = [];
 	if (shown)
-	    parts.push(`<span class='badge text-bg-${shown[0]}'>${shown[1]}</span>`);
+	    parts.push(app.utils.badge(shown[0], shown[1]));
 	if (d.tokens)
-	    parts.push(app.utils.escapeHtml(signed(d.tokens) + ' tokens'));
+	    parts.push(app.utils.escapeHtml(app.formatter.number(d.tokens, true) + ' tokens'));
 	if (d.cost_usd)
 	    parts.push(app.utils.escapeHtml((d.cost_usd > 0 ? '+$' : '-$') + Math.abs(d.cost_usd).toFixed(4)));
 	if (d.answer_changed)
@@ -298,7 +284,7 @@ window.app.WfTests = (function() {
 		const open = this.openRows.has(c.case);
 		const checks = (c.checks || []).map((k) => {
 		    const moved = ((changes[c.case] || {}).checks || []).find((x) => x.label === k.label);
-		    return `<div class='d-flex gap-2'><i class='bi ${k.pass ? 'bi-check-lg text-success' : 'bi-x-lg text-danger'}'></i><span>${app.utils.escapeHtml(k.label)}${k.detail ? ' ' + muted('- ' + app.utils.escapeHtml(k.detail)) : ''}${moved ? ` <span class='badge text-bg-${moved.now ? 'success' : 'danger'}'>${moved.now ? 'fixed' : 'broken'}</span>` : ''}</span></div>`;
+		    return `<div class='d-flex gap-2'><i class='bi ${k.pass ? 'bi-check-lg text-success' : 'bi-x-lg text-danger'}'></i><span>${app.utils.escapeHtml(k.label)}${k.detail ? ' ' + muted('- ' + app.utils.escapeHtml(k.detail)) : ''}${moved ? ' ' + app.utils.badge(moved.now ? 'success' : 'danger', moved.now ? 'fixed' : 'broken') : ''}</span></div>`;
 		}).join('');
 		const more = !open ? '' : `<tr><td colspan='6' class='small'>
 		    ${c.error ? `<div class='text-danger mb-1'>${app.utils.escapeHtml(c.error)}</div>` : ''}
@@ -311,15 +297,15 @@ window.app.WfTests = (function() {
 		    <td><i class='bi bi-chevron-${open ? 'down' : 'right'} me-1'></i>${app.utils.escapeHtml(c.name)}</td>
 		    <td>${caseBadge(c.state)}</td>
 		    <td class='text-nowrap'>${(c.checks || []).length - failed} / ${(c.checks || []).length}</td>
-		    <td class='text-nowrap'>${app.utils.escapeHtml(tokensText(c.tokens))}</td>
-		    <td class='text-nowrap'>${app.utils.escapeHtml(costText(c.cost))}</td>
+		    <td class='text-nowrap'>${app.utils.escapeHtml(app.formatter.tokens(c.tokens))}</td>
+		    <td class='text-nowrap'>${app.utils.escapeHtml(app.formatter.cost(c.cost))}</td>
 		    <td>${changeText(changes[c.case])}</td>
 		</tr>${more}`;
 	    }).join('');
 	    const t = run.totals || {};
 	    const removed = (diff.removed || []).length ? `<div class='small mt-1'>${muted('Not in this run: ' + app.utils.escapeHtml(diff.removed.join(', ')))}</div>` : '';
 	    return `<div class='d-flex flex-wrap align-items-center gap-2 mb-2'>${select}${runBadge(run.state)}
-		    <span class='small'>${muted(app.utils.escapeHtml(`${t.passed || 0} of ${t.cases || 0} passed, ${tokensText(t.tokens)} tokens${costText(t.cost) ? ', ' + costText(t.cost) : ''}${run.by ? ', by ' + run.by : ''}`))}</span></div>
+		    <span class='small'>${muted(app.utils.escapeHtml(`${t.passed || 0} of ${t.cases || 0} passed, ${app.formatter.tokens(t.tokens)} tokens${app.formatter.cost(t.cost) ? ', ' + app.formatter.cost(t.cost) : ''}${run.by ? ', by ' + run.by : ''}`))}</span></div>
 		${run.error ? `<div class='text-danger small mb-1'>${app.utils.escapeHtml(run.error)}</div>` : ''}
 		${rows ? `<table class='table table-sm table-dark table-hover align-middle small mb-0' style='--bs-table-bg: transparent'>
 		    <thead><tr><th>Case</th><th>Result</th><th>Checks</th><th>Tokens</th><th>Cost</th><th>${diff.previous ? 'Since the last run' : 'First run'}</th></tr></thead><tbody>${rows}</tbody></table>` : muted(active(run.state) ? 'Running the first case...' : 'No results')}
@@ -422,7 +408,7 @@ window.app.WfTests = (function() {
 	}
 
 	post(url, data) {
-	    return $.ajax({ url: url, method: 'POST', dataType: 'json', data: data || {}, headers: { 'X-Csrf-Token': csrf() } });
+	    return $.ajax({ url: url, method: 'POST', dataType: 'json', data: data || {}, headers: { 'X-Csrf-Token': app.utils.csrf() } });
 	}
 
 	saveCase() {
@@ -434,16 +420,16 @@ window.app.WfTests = (function() {
 		vars = JSON.parse(this.find('#case-vars').value || '{}');
 		mocks = JSON.parse(this.find('#case-mocks').value || '[]');
 	    } catch (e) {
-		toast('error', 'Not saved', 'Inputs and Recorded tool results must be valid JSON: ' + e.message);
+		app.utils.toastText('error', 'Not saved', 'Inputs and Recorded tool results must be valid JSON: ' + e.message);
 		return;
 	    }
 	    this.post(this.o.urls.save, { case_id: c.id || '', case: JSON.stringify({ name: c.name, vars: vars, tools: c.tools, mocks: mocks, checks: c.checks }) })
 		.done(() => {
-		    toast('success', 'Saved', 'The test case is saved');
+		    app.utils.toastText('success', 'Saved', 'The test case is saved');
 		    this.editing = null;
 		    this.refresh();
 		})
-		.fail((xhr) => toast('error', 'Not saved', (xhr.responseJSON && xhr.responseJSON.error) || 'The test case could not be saved'));
+		.fail((xhr) => app.utils.toastText('error', 'Not saved', (xhr.responseJSON && xhr.responseJSON.error) || 'The test case could not be saved'));
 	}
 
 	deleteCase() {
@@ -451,7 +437,7 @@ window.app.WfTests = (function() {
 	    this.post(url).done(() => {
 		this.editing = null;
 		this.refresh();
-	    }).fail((xhr) => toast('error', 'Not deleted', (xhr.responseJSON && xhr.responseJSON.error) || 'The test case could not be deleted'));
+	    }).fail((xhr) => app.utils.toastText('error', 'Not deleted', (xhr.responseJSON && xhr.responseJSON.error) || 'The test case could not be deleted'));
 	}
 
 	/* ---------------- a run ---------------- */
@@ -463,7 +449,7 @@ window.app.WfTests = (function() {
 		    this.editing = null;
 		    this.detail = null;
 		    this.refresh();
-		}).fail((xhr) => toast('error', 'Not started', (xhr.responseJSON && xhr.responseJSON.error) || 'The tests could not be started'));
+		}).fail((xhr) => app.utils.toastText('error', 'Not started', (xhr.responseJSON && xhr.responseJSON.error) || 'The tests could not be started'));
 	    });
 	}
 
@@ -473,7 +459,7 @@ window.app.WfTests = (function() {
 	}
 
 	setRequired(on) {
-	    this.post(this.o.urls.required, { required: on ? 1 : 0 }).fail((xhr) => toast('error', 'Not changed', (xhr.responseJSON && xhr.responseJSON.error) || 'The setting could not be changed')).always(() => this.refresh());
+	    this.post(this.o.urls.required, { required: on ? 1 : 0 }).fail((xhr) => app.utils.toastText('error', 'Not changed', (xhr.responseJSON && xhr.responseJSON.error) || 'The setting could not be changed')).always(() => this.refresh());
 	}
     }
 

@@ -3,23 +3,23 @@ if (!window.app)
     window.app = {};
 
 window.app.sidebar = (function() {
-    //CLD: 2026-11-08T12:00:00+02:00: the width limits (px) are the layout's (aside data-min-width / data-max-width: data\Constants), read by init
+    //the width limits (px) are the layout's (aside data-min-width / data-max-width: data\Constants), read by init
     let minWidth = 250;
     let maxWidth = 400;
 
     let sidebar;
     let lastWidth = 0;
 
-    //CLD: 2026-10-30T12:00:00+02:00: the width set by the resize handle is kept for the user (User prefs sidebar_width: every browser):
+    //the width set by the resize handle is kept for the user (User prefs sidebar_width: every browser):
     //rendered by the layout (aside data-width), saved by /site/prefs
     const storedWidth = () => {
 	const w = parseInt(sidebar.attr('data-width'), 10);
 	return Number.isFinite(w) ? Math.max(minWidth, Math.min(maxWidth, w)) : null;
     };
-    //CLD: 2026-10-30T13:00:00+02:00: + the collapsed state (User prefs sidebar_collapsed; rendered by the layout: aside.collapsed); storeWidth saves both (a drag expands the sidebar)
+    //the collapsed state (User prefs sidebar_collapsed; rendered by the layout: aside.collapsed); storeWidth saves both (a drag expands the sidebar)
     const store = (data) => {
 	$.ajax({ url: '/site/prefs', method: 'POST', data: data, dataType: 'json',
-	    headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content'), 'X-Requested-With': 'XMLHttpRequest' } })
+	    headers: { 'X-Csrf-Token': app.utils.csrf(), 'X-Requested-With': 'XMLHttpRequest' } })
 	    .fail((xhr) => console.warn('app.sidebar: the state was not saved', xhr.status));
     };
     const storeWidth = (w) => {
@@ -28,13 +28,13 @@ window.app.sidebar = (function() {
 	store({ sidebar_width: w, sidebar_collapsed: 0 });
     };
 
-    //CLD: 2026-10-19T22:19:24+03:00: the width goes in the --sidebar-w custom property, so the theme's media queries can replace it
+    //the width goes in the --sidebar-w custom property, so the theme's media queries can replace it
     const setWidth = (w) => {
 	if (sidebar && sidebar[0])
 	    sidebar[0].style.setProperty('--sidebar-w', w + 'px');
     };
 
-    //CLD: 2026-10-19T22:19:24+03:00: below lg (theme rail22/_app.scss: media-breakpoint-down(lg)) the sidebar is a drawer: .sidebar-open on .app-shell shows it;
+    //below lg (theme rail22/_app.scss: media-breakpoint-down(lg)) the sidebar is a drawer: .sidebar-open on .app-shell shows it;
     //the desktop width and collapsed state are left as they are
     const mobileQuery = window.matchMedia('(max-width: 991.98px)');
     const isMobile = () => mobileQuery.matches;
@@ -76,12 +76,11 @@ window.app.sidebar = (function() {
 	    if (!sidebar)
 		return;
 
-	    //CLD: 2026-10-30T13:00:00+02:00: rendered collapsed (the state kept for the user)
+	    //rendered collapsed (the state kept for the user)
 	    isCollapsed = sidebar.hasClass('collapsed');
-	    //CLD: 2026-10-19T22:19:24+03:00: on a small screen the drawer's width is not the desktop one: 16rem, the theme's default
-	    //CLD: 2026-10-30T13:00:00+02:00: the same when collapsed (its width is 0)
+	    //on a small screen (and when collapsed: its width is 0) the drawer's width is not the desktop one: 16rem, the theme's default
 	    lastWidth = isMobile() || isCollapsed ? 16 * parseFloat(getComputedStyle(document.documentElement).fontSize) : sidebar.width();
-	    //CLD: 2026-10-19T19:05:00+03:00: the stored width, if any
+	    //the stored width, if any
 	    const stored = storedWidth();
 	    if (stored !== null) {
 		lastWidth = stored;
@@ -92,7 +91,7 @@ window.app.sidebar = (function() {
 	    _document.on('click', '.btn-collapse-sidebar', (e) => {
 		    console.log('sidebar: click on collapsed');
 		    e.preventDefault();
-		    //CLD: 2026-10-19T22:19:24+03:00: small screen: closes the drawer
+		    //small screen: closes the drawer
 		    if (isMobile())
 			return closeDrawer();
 		    isCollapsed = true;
@@ -101,7 +100,7 @@ window.app.sidebar = (function() {
 		    store({ sidebar_collapsed: 1 });
 	    })
 	    _document.on('click', '.btn-expand-sidebar', (e) => {
-		    //CLD: 2026-10-19T22:19:24+03:00: preventDefault (an <a href="#">); small screen: opens the drawer
+		    //preventDefault (an <a href="#">); small screen: opens the drawer
 		    e.preventDefault();
 		    if (isMobile())
 			return openDrawer();
@@ -112,7 +111,7 @@ window.app.sidebar = (function() {
 		    store({ sidebar_collapsed: 0 });
 	    });
 
-	    //CLD: 2026-10-19T22:19:24+03:00: the drawer closes on its backdrop, Escape, a link that navigates, going back, or when the window gets wide
+	    //the drawer closes on its backdrop, Escape, a link that navigates, going back, or when the window gets wide
 	    _document.on('click', '.sidebar-backdrop', closeDrawer);
 	    _document.on('keydown', (e) => {
 		if (e.key === 'Escape' && $('.app-shell').hasClass('sidebar-open'))
@@ -126,7 +125,7 @@ window.app.sidebar = (function() {
 	    window.addEventListener('popstate', closeDrawer);
 	    mobileQuery.addEventListener('change', closeDrawer);
 
-	    //CLD: 2026-10-19T23:05:00+03:00: pointer events (mouse, touch and pen), as the designer's panels
+	    //pointer events (mouse, touch and pen), as the designer's panels
 	    //(app.workflow.js setupPanelResize): the pointer is captured by the handle, pointercancel ends the drag like pointerup; touch-action none on the
 	    //handle (theme rail22/_app.scss). Delegated on the sidebar: the handle is new after the aside is rendered again (sidebar::refresh)
 	    sidebar.on('pointerdown', '.sidebar-resize-handle', (e) => {
@@ -142,7 +141,7 @@ window.app.sidebar = (function() {
 
 		handle.addClass('dragging');
 		sidebar.removeClass('collapsed');
-		//CLD: 2026-10-30T13:00:00+02:00: expanded by the drag, as by the expand button (saved with the width: storeWidth)
+		//expanded by the drag, as by the expand button (saved with the width: storeWidth)
 		isCollapsed = false;
 		$('.btn-expand-sidebar').addClass('d-none');
 		$('body').css({ userSelect: 'none', cursor: 'col-resize' });
@@ -163,7 +162,7 @@ window.app.sidebar = (function() {
 			try {
 			    handle[0].releasePointerCapture(pointerId);
 			} catch (err) {}
-			//CLD: 2026-10-19T19:05:00+03:00: kept for the next page loads
+			//kept for the next page loads
 			storeWidth(lastWidth);
 		    });
 	    });
@@ -197,212 +196,6 @@ window.app.sidebar = (function() {
     return api;
 })();
 
-
-//CLD: 2026-10-19T12:05:32+03:00: timeAgo is app.formatter.timeAgo(past, short):
-//past is a date or ISO 8601 text; short: 1d, ~1h, <1m... instead of `1 day ago`; empty past -> ''
-app.formatter = (function() {
-    const __texts = {
-	normal: {
-	    aboutOneDay: '1 day ago',
-	    aboutOneHour: 'about 1 hour ago',
-	    aboutOneMonth: 'about 1 month ago',
-	    aboutOneYear: 'about 1 year ago',
-	    days: '{0} days ago',
-	    hours: '{0} hours ago',
-	    lessThanAMinute: 'less than a minute ago',
-	    lessThanOneHour: '{0} minutes ago',
-	    months: '{0} months ago',
-	    oneMinute: '1 minute ago',
-	    years: 'over {0} years ago',
-	    never: 'Never',
-	},
-	short: {
-	    aboutOneDay: '1d',
-	    aboutOneHour: '~1h',
-	    aboutOneMonth: '~1M',
-	    aboutOneYear : '~y',
-	    days: '{0}d',
-	    hours: '{0}h',
-	    lessThanAMinute: '<1m',
-	    lessThanOneHour: '{0}m',
-	    months: '{0}M',
-	    oneMinute: '1m',
-	    years: '>{0}y',
-	}
-    };
-
-    function format(format) {
-	var args = Array.prototype.slice.call(arguments, 1);
-	return format.replace(/{(\d+)}/g, function(match, number) { 
-    	    return typeof args[number] != 'undefined' ? args[number] : match;
-	});
-    }
-
-    function isLessThan29Seconds(s) {
-	return s < 30;
-    }
-
-    function isLessThan1Min29Seconds(s) {
-	return s < 90;
-    }
-
-    function isLessThan44Min29Secs(s) {
-	return s < 44 * 60 + 30;
-    }
-
-    function isLessThan1Hour29Mins59Seconds(s) {
-	return s < 1 * 3600 + 29 * 60 + 59;
-    }
-
-    function isLessThan23Hours59Mins29Seconds(s) {
-	return s < 23 * 3600 + 59 * 60 + 29;
-    }
-
-    function isLessThan47Hours59Mins29Seconds(s) {
-	return s < 47 * 3600 + 59 * 60 + 29;
-    }
-
-    function isLessThan29Days23Hours59Mins29Seconds(s) {
-	return s < 29 * 24 * 3600 + 23 * 3600 + 59 * 60 + 29;
-    }
-
-    function isLessThan59Days23Hours59Mins29Secs(s) {
-	return s < 59 * 24 * 3600 + 23 * 3600 + 59 * 60 + 29;
-    }
-
-    function isLessThan1Year(s) {
-	return s < 363 * 24 * 3600;
-    }
-
-    function isLessThan2Years(s) {
-	return s < 363 * 24 * 3600 + 365 * 24 * 3600;
-    }
-
-    function isMoreThan2Years(s) {
-        return s > 2 * 365 * 24 * 3600;
-    }
-
-    //CLD: 2026-10-24T17:30:00+03:00: d (Date / ISO 8601 text) in a PHP date() format (app.DatePicker.formatDate; without it: ISO 8601)
-    function formatAs(d, fmt) {
-	if (!d)
-	    return '';
-	d = d instanceof Date ? d : new Date(d);
-	if (isNaN(d))
-	    return '';
-	return window.app.DatePicker ? window.app.DatePicker.formatDate(d, fmt) : d.toISOString();
-    }
-
-    return {
-	//CLD: 2026-10-24T18:00:00+03:00: as util\Format::bytes: 1536 -> "1.5 KB", 0 -> "0 B"; binary (1024) or decimal (1000) units, KB / MB / GB / TB / PB;
-	//trailing zeros dropped, rounding up to the next unit (1023.96 KB -> "1 MB"); empty or not a number -> ''
-	bytes: function(bytes, decimals = 1, binary = true) {
-	    if (bytes === null || bytes === undefined || bytes === '' || isNaN(bytes))
-		return '';
-	    bytes = Number(bytes);
-	    const base = binary ? 1024 : 1000;
-	    const units = [ 'B', 'KB', 'MB', 'GB', 'TB', 'PB' ];
-	    let i = 0;
-	    while (Math.abs(bytes) >= base && i < units.length - 1) {
-		bytes /= base;
-		i++;
-	    }
-	    if (i > 0 && i < units.length - 1 && Math.abs(Number(bytes.toFixed(decimals))) >= base) {
-		bytes /= base;
-		i++;
-	    }
-	    return (i === 0 ? String(Math.trunc(bytes)) : String(Number(bytes.toFixed(decimals)))) + ' ' + units[i];
-	},
-
-	//CLD: 2026-10-24T17:30:00+03:00: a date / datetime in the account's format (<html> data-date-format / data-datetime-format: util\Format, PHP date() tokens,
-	//app.DatePicker.formatDate), in the browser's time zone; d: a Date or ISO 8601 text; empty or not a date -> ''
-	date: function(d) {
-	    return formatAs(d, document.documentElement.dataset.dateFormat || 'Y-m-d');
-	},
-
-	datetime: function(d) {
-	    return formatAs(d, document.documentElement.dataset.datetimeFormat || 'Y-m-d H:i:s');
-	},
-
-	//CLD: 2026-10-24T17:30:00+03:00: timeAgo as <time datetime="ISO 8601" title="the datetime, in the account's format">words</time> (escaped; as util\Format::timeagoHtml)
-	timeAgoHtml: function(past, short) {
-	    const words = this.timeAgo(past, short);
-	    if (!words)
-		return '';
-	    const d = new Date(past);
-	    return isNaN(d) ? app.utils.escapeHtml(words) : `<time datetime="${app.utils.escapeHtml(d.toISOString())}" title="${app.utils.escapeHtml(this.datetime(d))}">${app.utils.escapeHtml(words)}</time>`;
-	},
-
-	timeAgo: function(past, short) {
-	    if (!past)
-		return '';
-	    if (!past.length)
-		return '';
-
-	    const texts = short ? __texts.short : __texts.normal;
-
-	    past = new Date(past);
-	    const now = new Date;
-    	    const diff = Math.floor((now - past) / 1000);
-
-    	    // rule 1
-    	    // less than 29secs
-    	    if (isLessThan29Seconds(diff))
-        	return texts.lessThanAMinute;
-
-    	    // rule 2
-    	    // more than 29secs and less than 1min29secss
-    	    if (isLessThan1Min29Seconds(diff))
-        	return texts.oneMinute;
-
-    	    // rule 3
-    	    // between 1min30secs and 44mins29secs
-    	    if (isLessThan44Min29Secs(diff))
-        	return format(texts.lessThanOneHour, Math.floor(diff / 60));
-
-    	    // rule 4
-    	    // between 44mins30secs and 1hour29mins59secs
-    	    if (isLessThan1Hour29Mins59Seconds(diff))
-        	return texts.aboutOneHour;
-
-    	    // rule 5
-    	    // between 1hour29mins59secs and 23hours59mins29secs
-    	    if (isLessThan23Hours59Mins29Seconds(diff))
-        	return format(texts.hours, Math.floor(diff / 3600));
-
-    	    // rule 6
-    	    // between 23hours59mins30secs and 47hours59mins29secs
-    	    if (isLessThan47Hours59Mins29Seconds(diff))
-        	return texts.aboutOneDay;
-
-    	    // rule 7
-    	    // between 47hours59mins30secs and 29days23hours59mins29secs
-    	    if (isLessThan29Days23Hours59Mins29Seconds(diff))
-        	return format(texts.days, Math.floor(diff / (24 * 3600)));
-
-    	    // rule 8
-    	    // between 29days23hours59mins30secs and 59days23hours59mins29secs
-    	    if (isLessThan59Days23Hours59Mins29Secs(diff))
-        	return texts.aboutOneMonth;
-
-    	    // rule 9
-    	    // between 59days23hours59mins30secs and 1year (minus 1sec)
-    	    if (isLessThan1Year(diff)) {
-		const months = Math.max((now.getFullYear() - past.getFullYear()) * 12 + now.getMonth() - past.getMonth(), 0);
-        	return format(texts.months, months);
-    	    }
-
-    	    // rule 10
-    	    // between 1year and 2years (minus 1sec)
-    	    if (isLessThan2Years(diff))
-        	return texts.aboutOneYear;
-
-    	    // rule 11
-    	    // 2years or more
-	    const years = Math.max(now.getFullYear() - past.getFullYear(), 0);
-	    return format(texts.years, years);
-	},
-    };
-})();
 
 //event handler
 app.events = (function() {
@@ -495,6 +288,21 @@ app.utils = (function() {
 	    bootstrap.Toast.getOrCreateInstance(toast[0]).show();
 	},
 
+	//a toast of plain texts (escaped), shown 5 s: type error, warning, success, info
+	toastText: function(type, title, body) {
+	    this.toast({ type: type, title: this.escapeHtml(title), body: this.escapeHtml(body), delay: 5000 });
+	},
+
+	//the page's CSRF token (<meta name=csrf-token>), for the X-Csrf-Token header of a POST
+	csrf: function() {
+	    return document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+	},
+
+	//a Bootstrap badge: <span class='badge text-bg-COLOR'>label</span>, the label escaped; color: success, danger, primary, info, warning, secondary
+	badge: function(color, label) {
+	    return `<span class='badge text-bg-${color}'>${this.escapeHtml(label)}</span>`;
+	},
+
 	//create a DOM element with given className and attributes
 	el: function (tag, className, attrs) {
 	    const n = document.createElement(tag);
@@ -507,7 +315,7 @@ app.utils = (function() {
 	    return n;
 	},
 
-	//CLD: 2026-11-08T12:00:00+02:00: any value (null/undefined -> '', numbers -> text) and single quotes too, so the files' own esc() helpers could go
+	//any value (null/undefined -> '', numbers -> text) and single quotes too, so the files' own esc() helpers could go
 	escapeHtml: function(s) {
 	    return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 	},
@@ -553,7 +361,7 @@ app.template = (function() {
     		index = offset + match.length;
 
     		if (escape) {
-    		    //CLD: 2026-11-08T12:00:00+02:00: app.utils.escapeHtml; the compiled function (new Function) sees only globals, never the local _escape it called
+    		    //app.utils.escapeHtml; the compiled function (new Function) sees only globals, never the local _escape it called
     		    source += `'+((_t=(${escape}))==null?'':app.utils.escapeHtml(_t))+'`;
     		    return;
     		}
@@ -584,7 +392,7 @@ app.template = (function() {
     };
 })();
 
-//CLD: 2026-10-24T11:20:00+03:00: new: the theme, light, dark or auto (the system's), chosen per browser (localStorage rail22.theme; read first by the <head> script of
+//the theme, light, dark or auto (the system's), chosen per browser (localStorage rail22.theme; read first by the <head> script of
 //layouts/_webpage.php, which sets data-bs-theme / data-theme-choice on <html> before the styles load). The switcher: buttons [data-theme-value] (the sidebar's); auto follows
 //the system's changes, another tab's choice is followed too; when the theme shown changes: `app:themechange` on document ({ detail: { theme } }), e.g. the overview's charts
 app.theme = (function() {

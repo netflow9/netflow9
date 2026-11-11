@@ -1,26 +1,31 @@
-/*
-    the model may also be an OpenAI-compatible one (the chosen credential's)
-//CLD: 2026-10-19T15:26:28+03:00: new: the Assistant of the workflow designer (the right-side inspector): the person describes the workflow or a change, Claude builds it on the
-//canvas (WorkflowController::assistant, util\WorkflowAssistant). The designer's current steps go with each request (unsaved changes included); the answer's steps replace
-//the canvas (app.workflow.setNodes), not saved: the person reviews and saves them. Each change can be undone (the steps before it, kept while the page lives).
-//CLD: 2026-10-19T18:05:00+03:00: the canvas is saved automatically now (each change, the Assistant's too) and the designer's Undo (Ctrl+Z) puts it back
-//The conversation is kept per workflow in sessionStorage (saving reloads the designer)
-//CLD: 2026-10-23T23:45:00+03:00: kept on the server instead (models\AssistantChat, shared by the people who may change the workflow): options.messages (the page's), each new
-//message sent to options.chatUrl, New conversation to options.clearUrl; options.uid: the viewer (the others' requests show who wrote them)
-//CLD: 2026-10-26T23:49:50+02:00: a class, as app.CodeEditor / app.ExprInput, loaded with the app (layouts/_scripts.php); the requests go to AssistantController::ask:
-//
-//   new app.WfAssistant(panel, { wfid, url })
-//
-//options.designer: the app.Workflow it works on (default: app.Workflow.current, the page's). The server and model are those of Assistant settings.
-//
-//panel: the Assistant's panel of the designer (#wf-assistant-panel, views/assistant/_designer_panel.php). It is open or closed as last time, the top-bar buttons
-//(.btn-assistant-toggle) toggle it, .wfa-close closes it; the conversation is set up when the panel has one (.wfa-messages: the draft, who may change it, Assistant settings set up).
-//One per designer page: a new one destroys the previous one (its request is dropped); destroy() also stops listening to the page.
-*/
-
 if (!window.app)
     window.app = {};
 
+/*!
+ * the workflow designer's Assistant (the right-side panel): the person describes the workflow or a change, the model builds it on the canvas
+ * (AssistantController::ask, util\WorkflowAssistant). The designer's current steps go with each request (unsaved changes included); the answer's steps replace
+ * the canvas (app.Workflow setNodes), saved automatically as any change, and the designer's Undo (Ctrl+Z) puts them back. The server and model are those of
+ * Assistant settings (the model may also be an OpenAI-compatible one: the chosen credential's).
+ * The conversation is kept on the server (models\assistant\AssistantChat, shared by the people who may change the workflow); the others' requests show who wrote them.
+ * The panel (#wf-assistant-panel, views/assistant/_designer_panel.php) is open or closed as last time (localStorage); the top-bar buttons (.btn-assistant-toggle)
+ * toggle it, .wfa-close closes it; the conversation is set up only when the panel has one (.wfa-messages: the draft, who may change it, Assistant settings set up).
+ * One per designer page: a new one destroys the previous one (its request is dropped).
+ *
+ * options: wfid, url (ask), chatUrl (keep a message), clearUrl (New conversation), uid (the viewer), messages (the kept conversation),
+ * designer (the app.Workflow it works on; default app.Workflow.current, the page's)
+ *
+ * methods:
+ *   send(text)                the request: the answer's steps go on the canvas, the turn is kept
+ *   showPanel(open, remember) open / close the panel; remember: kept for the next designers (a person's click)
+ *   designer()                the app.Workflow it works on
+ *   destroy()                 its request dropped, its listeners outside the panel removed
+ *
+ *   const a = new app.WfAssistant(document.getElementById('wf-assistant-panel'), {
+ *       wfid, url: '/assistant/ask?id=<wf>', chatUrl: '/assistant/chat_add?id=<wf>', clearUrl: '/assistant/chat_clear?id=<wf>', uid, messages: [],
+ *   });
+ *   a.showPanel(true);
+ *   a.send('Send me an email when the webhook is called');
+ */
 window.app.WfAssistant = (function() {
     //the steps before each change: { '<wfid>:<message id>': nodes } (kept while the page lives: shared by the designer pages app.pjax loads)
     const undo = {};
@@ -32,14 +37,6 @@ window.app.WfAssistant = (function() {
     let current = null;
 
 
-    //plain text with `code`, **bold** and line breaks
-    function format(text) {
-	return app.utils.escapeHtml(text)
-	    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
-	    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
-	    .replace(/\n/g, '<br>');
-    }
-
     const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
     class WfAssistant {
@@ -49,7 +46,7 @@ window.app.WfAssistant = (function() {
 	    current = this;
 
 	    this.panel = typeof panel === 'string' ? document.querySelector(panel) : panel;
-	    //CLD: 2026-10-23T23:45:00+03:00: + chatUrl, clearUrl, uid, messages (the kept conversation)
+	    //chatUrl, clearUrl, uid, messages (the kept conversation)
 	    this.o = Object.assign({ wfid: '', url: '', designer: null, chatUrl: '', clearUrl: '', uid: '', messages: [] }, options || {});
 	    this.state = { messages: [] };
 	    this.xhr = null;
@@ -84,7 +81,7 @@ window.app.WfAssistant = (function() {
 	}
 
 	/* ---------------- the panel ---------------- */
-	//CLD: 2026-10-19T20:10:00+03:00: as last time; the top-bar button toggles it, .wfa-close closes it
+	//as last time; the top-bar button toggles it, .wfa-close closes it
 	setupPanel() {
 	    let open = false;
 	    try {
@@ -123,17 +120,17 @@ window.app.WfAssistant = (function() {
 	}
 
 	/* ---------------- the conversation ---------------- */
-	//CLD: 2026-10-19T22:00:00+03:00: the designer it works on (options.designer, else the page's)
+	//the designer it works on (options.designer, else the page's)
 	designer() {
 	    return this.o.designer || app.Workflow.current;
 	}
 
-	//CLD: 2026-10-23T23:45:00+03:00: the conversation kept on the server (options.messages)
+	//the conversation kept on the server (options.messages)
 	load() {
 	    this.state = { messages: Array.isArray(this.o.messages) ? this.o.messages.slice(-MAX_KEPT) : [] };
 	}
 
-	//CLD: 2026-10-23T23:45:00+03:00: message m sent to the server (AssistantController::chat_add); only the last MAX_KEPT are kept here too
+	//message m sent to the server (AssistantController::chat_add); only the last MAX_KEPT are kept here too
 	store(m) {
 	    if (this.state.messages.length > MAX_KEPT)
 		this.state.messages = this.state.messages.slice(-MAX_KEPT);
@@ -143,17 +140,17 @@ window.app.WfAssistant = (function() {
 		url: this.o.chatUrl,
 		method: 'POST',
 		dataType: 'json',
-		headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content') },
+		headers: { 'X-Csrf-Token': app.utils.csrf() },
 		data: { message: JSON.stringify(m) },
 	    }).fail((x) => console.warn('Assistant: the message was not kept', x.status));
 	}
 
 	messageHtml(m) {
-	    //CLD: 2026-10-23T23:45:00+03:00: another person's request: their name above it
+	    //another person's request: their name above it
 	    if (m.role === 'user')
-		return `<div class="d-flex flex-column align-items-end mb-2">${m.uid && m.uid !== this.o.uid && m.by ? `<div class="text-muted" style="font-size: .75rem">${app.utils.escapeHtml(m.by)}</div>` : ''}<div class="wfa-msg wfa-user rounded-3 px-2 py-1 small">${format(m.text)}</div></div>`;
+		return `<div class="d-flex flex-column align-items-end mb-2">${m.uid && m.uid !== this.o.uid && m.by ? `<div class="text-muted" style="font-size: .75rem">${app.utils.escapeHtml(m.by)}</div>` : ''}<div class="wfa-msg wfa-user rounded-3 px-2 py-1 small">${app.formatter.richText(m.text)}</div></div>`;
 	    if (m.error)
-		return `<div class="mb-2"><div class="wfa-msg rounded-3 px-2 py-1 small text-danger-emphasis bg-danger-subtle"><i class="bi bi-exclamation-triangle me-1"></i>${format(m.text)}</div></div>`;
+		return `<div class="mb-2"><div class="wfa-msg rounded-3 px-2 py-1 small text-danger-emphasis bg-danger-subtle"><i class="bi bi-exclamation-triangle me-1"></i>${app.formatter.richText(m.text)}</div></div>`;
 	    let change = '';
 	    if (m.change) {
 		const c = m.change;
@@ -169,7 +166,7 @@ window.app.WfAssistant = (function() {
 			${issues.length ? `<span>(${issues.join(', ')})</span>` : ''}
 			${canUndo ? `<button type="button" class="btn btn-link btn-sm p-0 ms-auto wfa-undo" data-id="${app.utils.escapeHtml(m.id)}" title="Put back the steps as they were before this change"><i class="bi bi-arrow-counterclockwise me-1"></i>Undo</button>` : ''}
 		    </div>`;
-		//CLD: 2026-10-19T17:02:48+03:00: the settings still to fill in (the steps are applied anyway; saving needs them)
+		//the settings still to fill in (the steps are applied anyway; saving needs them)
 		if (c.toFix && c.toFix.length)
 		    change += `
 		    <div class="mt-1 small text-warning-emphasis">
@@ -177,14 +174,14 @@ window.app.WfAssistant = (function() {
 			<ul class="ps-3 mb-0">${c.toFix.map((t) => `<li>${app.utils.escapeHtml(t)}</li>`).join('')}</ul>
 		    </div>`;
 	    } else if (m.unchanged) {
-		//CLD: 2026-10-19T17:02:48+03:00: said plainly: the answer alone may read as if something was built
+		//said plainly: the answer alone may read as if something was built
 		change = `<div class="mt-1 pt-1 border-top small text-muted"><i class="bi bi-dash-circle me-1"></i>The canvas was not changed</div>`;
 	    }
-	    //CLD: 2026-10-22T15:00:00+03:00: System: the credits the answer used, and those left
+	    //System: the credits the answer used, and those left
 	    let credits = '';
 	    if (m.credits)
 		credits = `<div class="mt-1 text-muted" style="font-size: .75rem"><i class="bi bi-coin me-1"></i>&minus;${app.utils.escapeHtml(m.credits)} credit${m.credits === 1 ? '' : 's'}${m.creditsLeft != null ? ` &middot; ${app.utils.escapeHtml(m.creditsLeft)} left` : ''}</div>`;
-	    return `<div class="mb-2"><div class="wfa-msg wfa-bot rounded-3 px-2 py-1 small"><div>${format(m.text)}</div>${change}${credits}</div></div>`;
+	    return `<div class="mb-2"><div class="wfa-msg wfa-bot rounded-3 px-2 py-1 small"><div>${app.formatter.richText(m.text)}</div>${change}${credits}</div></div>`;
 	}
 
 	render() {
@@ -220,7 +217,7 @@ window.app.WfAssistant = (function() {
 	add(m) {
 	    m.id = m.id || newId();
 	    this.state.messages.push(m);
-	    //CLD: 2026-10-23T23:45:00+03:00: kept on the server (store(m))
+	    //kept on the server (store(m))
 	    this.store(m);
 	    this.render();
 	    return m;
@@ -255,7 +252,7 @@ window.app.WfAssistant = (function() {
 		url: this.o.url,
 		method: 'POST',
 		dataType: 'json',
-		headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content') },
+		headers: { 'X-Csrf-Token': app.utils.csrf() },
 		data: { message: text, history: JSON.stringify(turns), nodes: sent },
 	    });
 	    this.render();
@@ -264,7 +261,7 @@ window.app.WfAssistant = (function() {
 		if (this.xhr !== req)
 		    return;
 		const m = { role: 'assistant', text: resp.reply || '' };
-		//CLD: 2026-10-22T15:00:00+03:00: System: the credits used (AssistantController::ask)
+		//System: the credits used (AssistantController::ask)
 		if (resp.credits) {
 		    m.credits = resp.credits;
 		    m.creditsLeft = resp.credits_left;
@@ -282,12 +279,12 @@ window.app.WfAssistant = (function() {
 			    steps: resp.nodes.filter((n) => n && n.isNode).length,
 			    errors: problems.filter((p) => p.level === 'error').length,
 			    warnings: problems.filter((p) => p.level === 'warning').length,
-			    //CLD: 2026-10-19T17:02:48+03:00: settings still wrong (WorkflowAssistant: to_fix)
+			    //settings still wrong (WorkflowAssistant: to_fix)
 			    toFix: Array.isArray(resp.to_fix) ? resp.to_fix : [],
 			};
 		    }
 		}
-		//CLD: 2026-10-19T17:02:48+03:00: no steps came back: marked (messageHtml says so)
+		//no steps came back: marked (messageHtml says so)
 		if (!m.change)
 		    m.unchanged = true;
 		if (!m.text)
@@ -321,9 +318,9 @@ window.app.WfAssistant = (function() {
 		if (!this.state.messages.length || !confirm('Start a new conversation? The canvas is not changed.'))
 		    return;
 		this.state.messages = [];
-		//CLD: 2026-10-23T23:45:00+03:00: on the server too (AssistantController::chat_clear)
+		//on the server too (AssistantController::chat_clear)
 		if (this.o.clearUrl)
-		    $.ajax({ url: this.o.clearUrl, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content') } })
+		    $.ajax({ url: this.o.clearUrl, method: 'POST', dataType: 'json', headers: { 'X-Csrf-Token': app.utils.csrf() } })
 			.fail((x) => console.warn('Assistant: the conversation was not cleared', x.status));
 		this.render();
 	    });

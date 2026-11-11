@@ -11,18 +11,15 @@ if (!window.app)
  *     mode: 'date' | 'datetime',
  *     min: Date | null,
  *     max: Date | null,
- *     format: 'M j, Y',            // display format, PHP date() tokens (see formatDate); the hidden input
+ *     format: 'M j, Y',            // display format, PHP date() tokens (see app.formatter.formatDate); the hidden input
  *                                  // always carries 'Y-m-d' (date) or 'Y-m-dTH:i' (datetime)
  *     onChange: (date) => {}
  *   });
  *   picker.setValue('2026-10-06' | '2026-10-06T14:30' | Date | '');   // set from code, no onChange
  */
 window.app.DatePicker = (function() {
-    const DOW = [ 'Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    const MONTHS = [
-	    'January', 'February', 'March', 'April', 'May', 'June',
-	    'July', 'August', 'September', 'October', 'November', 'December'
-	];
+    const DOW = app.formatter.DAYS.map((d) => d.slice(0, 2));
+    const MONTHS = app.formatter.MONTHS;
 
     class DatePicker {
 
@@ -38,7 +35,7 @@ window.app.DatePicker = (function() {
 	    this.min = options.min || null;
 	    this.max = options.max || null;
 	    this.onChange = options.onChange || null;
-	    // Display format using PHP date()-style tokens — see DatePicker.formatDate()
+	    // Display format using PHP date()-style tokens — see app.formatter.formatDate()
 	    // for the full token list. Defaults to a sensible format per mode.
 	    this.format = options.format || (this.mode === 'datetime' ? 'M j, Y H:i' : 'M j, Y');
 
@@ -167,120 +164,11 @@ window.app.DatePicker = (function() {
 	    return false;
 	}
 
-	_pad(n) {
-	    return String(n).padStart(2, '0');
-	}
-
 	_formatDisplay(date) {
 	    const d = new Date(date);
 	    if (this.mode === 'datetime')
 		d.setHours(this.hour, this.minute, 0, 0);
-	    return DatePicker.formatDate(d, this.format);
-	}
-
-	/**
-	 * Format a Date using PHP date()-style single-character tokens.
-	 * Any character can be escaped with a backslash to output it literally
-	 * (as in PHP), e.g. 'Y-m-d\\TH:i:s' → "2026-09-12T14:30:00".
-	 *
-	 * Supported tokens (subset of PHP's date(), the ones meaningful for a
-	 * date/time picker — no timezone/epoch tokens since this is local-only):
-	 *
-	 *   d  Day, 2 digits, leading zeros      (01–31)
-	 *   j  Day, no leading zeros             (1–31)
-	 *   D  Day name, 3 letters               (Mon)
-	 *   l  Day name, full                    (Monday)   ["l" = lowercase L]
-	 *   N  ISO-8601 day of week              (1 = Mon ... 7 = Sun)
-	 *   w  Day of week                       (0 = Sun ... 6 = Sat)
-	 *   S  Ordinal suffix for the day        (st, nd, rd, th)
-	 *   z  Day of the year                   (0–365)
-	 *   F  Month name, full                  (January)
-	 *   M  Month name, 3 letters             (Jan)
-	 *   m  Month, 2 digits, leading zeros    (01–12)
-	 *   n  Month, no leading zeros           (1–12)
-	 *   t  Days in the month                 (28–31)
-	 *   Y  Year, 4 digits                    (2026)
-	 *   y  Year, 2 digits                    (26)
-	 *   L  Leap year                         (1 or 0)
-	 *   a  am/pm, lowercase
-	 *   A  AM/PM, uppercase
-	 *   g  Hour, 12-hour, no leading zeros   (1–12)
-	 *   G  Hour, 24-hour, no leading zeros   (0–23)
-	 *   h  Hour, 12-hour, leading zeros      (01–12)
-	 *   H  Hour, 24-hour, leading zeros      (00–23)
-	 *   i  Minutes, leading zeros            (00–59)
-	 *   s  Seconds, leading zeros            (00–59)
-	 *
-	 * Example: DatePicker.formatDate(new Date(), 'd/m/Y H:i')
-	 */
-	static formatDate(date, format) {
-	    const pad = (n) => String(n).padStart(2, '0');
-	    const dow = date.getDay();               // 0 (Sun) – 6 (Sat)
-	    const dom = date.getDate();
-	    const month = date.getMonth();
-	    const year = date.getFullYear();
-	    const h24 = date.getHours();
-	    const h12raw = h24 % 12;
-	    const h12 = h12raw === 0 ? 12 : h12raw;
-
-	    const isLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
-	    const daysInMonth = new Date(year, month + 1, 0).getDate();
-	    const startOfYear = new Date(year, 0, 1);
-	    const dayOfYear = Math.floor((date - startOfYear) / 86400000);
-
-	    const ordinalSuffix = (n) => {
-    		const v = n % 100;
-    		if (v >= 11 && v <= 13)
-    		    return 'th';
-    		switch (n % 10) {
-    		    case 1: return 'st';
-    		    case 2: return 'nd';
-    		    case 3: return 'rd';
-    		    default: return 'th';
-    		}
-	    };
-
-	    const tokenMap = {
-		d: () => pad(dom),
-		j: () => String(dom),
-		D: () => DOW[dow],
-		l: () => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dow],
-		N: () => String(dow === 0 ? 7 : dow),
-		w: () => String(dow),
-		S: () => ordinalSuffix(dom),
-		z: () => String(dayOfYear),
-		F: () => MONTHS[month],
-		M: () => MONTHS[month].slice(0, 3),
-		m: () => pad(month + 1),
-		n: () => String(month + 1),
-		t: () => String(daysInMonth),
-		Y: () => String(year),
-		y: () => String(year).slice(-2),
-		L: () => (isLeap(year) ? '1' : '0'),
-		a: () => (h24 < 12 ? 'am' : 'pm'),
-		A: () => (h24 < 12 ? 'AM' : 'PM'),
-		g: () => String(h12),
-		G: () => String(h24),
-		h: () => pad(h12),
-		H: () => pad(h24),
-		i: () => pad(date.getMinutes()),
-		s: () => pad(date.getSeconds()),
-	    };
-
-	    let result = '';
-	    for (let idx = 0; idx < format.length; idx++) {
-    		const ch = format[idx];
-    		if (ch === '\\') {
-    		    // PHP escape: output the following character literally.
-    		    idx++;
-    		    result += idx < format.length ? format[idx] : '';
-    		} else if (tokenMap[ch]) {
-    		    result += tokenMap[ch]();
-    		} else {
-    		    result += ch;
-    		}
-	    }
-	    return result;
+	    return app.formatter.formatDate(d, this.format);
 	}
 
 	_isoValue(date) {
@@ -290,9 +178,9 @@ window.app.DatePicker = (function() {
 	    else
 		d.setHours(0, 0, 0, 0);
 	    // Local ISO-like string (no timezone shift)
-	    const y = d.getFullYear(), m = this._pad(d.getMonth()+1), day = this._pad(d.getDate());
+	    const y = d.getFullYear(), m = app.formatter.pad(d.getMonth()+1), day = app.formatter.pad(d.getDate());
 	    if (this.mode === 'datetime') {
-    		return `${y}-${m}-${day}T${this._pad(this.hour)}:${this._pad(this.minute)}`;
+    		return `${y}-${m}-${day}T${app.formatter.pad(this.hour)}:${app.formatter.pad(this.minute)}`;
 	    }
 	    return `${y}-${m}-${day}`;
 	}
@@ -545,7 +433,7 @@ window.app.DatePicker = (function() {
 	    for (let h = 0; h < 24; h++) {
     		const opt = document.createElement('option');
     		opt.value = h;
-    		opt.textContent = this._pad(h);
+    		opt.textContent = app.formatter.pad(h);
     		if (h === this.hour)
     		    opt.selected = true;
     		hourSel.appendChild(opt);
@@ -565,7 +453,7 @@ window.app.DatePicker = (function() {
 	    [0, 15, 30, 45].forEach(m => {
     		const opt = document.createElement('option');
     		opt.value = m;
-    		opt.textContent = this._pad(m);
+    		opt.textContent = app.formatter.pad(m);
     		if (m === this.minute)
     		    opt.selected = true;
     		minSel.appendChild(opt);
