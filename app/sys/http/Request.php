@@ -8,12 +8,12 @@ class Request {
     public $cookie;
     public $files;
     public $method;
-    //CLD: 2026-11-08T12:00:00+02:00: the request headers: lower-case name => value (HTTP_* of $_SERVER, and content-type / content-length)
+    //the request headers: lower-case name => value (HTTP_* of $_SERVER, and content-type / content-length)
     public $headers = [];
     public $contentType;
-    //CLD: 2026-11-08T12:00:00+02:00: the content type without its parameters (application/json; charset=utf-8: application/json), lower case
+    //the content type without its parameters (application/json; charset=utf-8: application/json), lower case
     public $mediaType = '';
-    //CLD: 2026-11-08T12:00:00+02:00: a JSON body that does not parse (data is null)
+    //a JSON body that does not parse (data is null)
     public $bodyInvalid = false;
     public $userIP = '0.0.0.0';
 
@@ -44,14 +44,14 @@ class Request {
 		$this->headers[strtolower(str_replace('_', '-', $key))] = (string)$value;
 	}
 
-	//CLD: 2026-11-08T12:00:00+02:00: a form body of another method than POST (PHP parses POST's only), was PUT / DELETE whatever their content type
+	//a form body of another method than POST (PHP parses POST's only)
 	if ($this->method !== 'post' && $this->mediaType === 'application/x-www-form-urlencoded') {
 	    $result = [];
 	    mb_parse_str($this->body(), $result);
 	    $this->data = $result;
 	}
 
-	//CLD: 2026-11-08T12:00:00+02:00: a JSON body (its media type, was any content type naming application/json); one that does not parse: bodyInvalid
+	//a JSON body (by its media type); one that does not parse: bodyInvalid
 	if ($this->mediaType === 'application/json') {
 	    $this->data = $this->body() === '' ? null : json_decode($this->body(), true);
 	    $this->bodyInvalid = $this->body() !== '' && json_last_error() !== JSON_ERROR_NONE;
@@ -78,7 +78,7 @@ class Request {
 	$this->uri = parse_url($this->requestUri);
     }
 
-    //CLD: 2026-11-08T12:00:00+02:00: new: the request body as sent (php://input, read once)
+    //the request body as sent (php://input, read once)
     public function body() {
 	if ($this->body === null)
 	    $this->body = (string)file_get_contents('php://input');
@@ -162,7 +162,7 @@ class Request {
     public function removeDataParam($name) {
 	$this->removeParam('data', $name);
     }
-    //CLD: 2026-11-08T12:00:00+02:00: data that is not an array (a JSON body of one value: "text", 5) has no keys to remove (unset of a string offset is an error)
+    //data that is not an array (a JSON body of one value: "text", 5) has no keys to remove (unset of a string offset is an error)
     public function removeParam($type, $key) {
 	if ($type == 'query')
 	    unset($this->query[$key]);

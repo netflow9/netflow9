@@ -48,7 +48,7 @@ final class Parser
 
     private const MAX_DEPTH = 300;
 
-    //CLD: 2026-10-13T12:17:47+03:00: the parse modes (option `mode`): script (statements, the default), expression (one expression), reference (a variable or one of its fields:
+    //the parse modes (option `mode`): script (statements, the default), expression (one expression), reference (a variable or one of its fields:
     //name, name.field, name["field"], name[0]), template (text with {{ }} parts; option `inner`: expression | reference, the mode of the parts; option `whole`: the text
     //must be a single {{ }} with nothing around it)
     public const MODES = ['script', 'expression', 'reference', 'template'];
@@ -88,7 +88,7 @@ final class Parser
      */
     public static function parse(string $source, array $options = []): ParseResult
     {
-        //CLD: 2026-10-13T12:17:47+03:00: the mode switch
+        //the mode switch
         $mode = $options['mode'] ?? 'script';
         if (!in_array($mode, self::MODES, true)) {
             throw new \InvalidArgumentException("Unknown parse mode `{$mode}`");
@@ -1117,7 +1117,7 @@ final class Parser
             case Token::TPL:
                 $this->advance();
                 return $this->parseTemplate($t);
-            //CLD: 2026-10-20T22:10:00+03:00: a regular expression literal (ESTree: a Literal with `regex`)
+            //a regular expression literal (ESTree: a Literal with `regex`)
             case Token::REGEX:
                 $this->advance();
                 return $this->finish(['type' => 'Literal', 'value' => null, 'raw' => $t->raw, 'regex' => $t->value], $start);
@@ -1148,7 +1148,7 @@ final class Parser
                         return $this->errorExpression($start);
                     case 'new':
                         $this->advance();
-                        //CLD: 2026-10-20T21:01:44+03:00: says what to write instead (users write `new Date()`)
+                        //says what to write instead (users write `new Date()`)
                         $this->error("'new' is not allowed: call the function without it (Date(), Error('...'))", $t->start, $t->end);
                         $callee = $this->parseLeftHandSide();
                         return $this->finish(['type' => 'NewExpression', 'callee' => $callee, 'arguments' => []], $start);
@@ -1203,7 +1203,7 @@ final class Parser
         return $this->errorExpression($start);
     }
 
-    //CLD: 2026-10-13T12:17:47+03:00: modes expression / reference: a Program of one ExpressionStatement (no statements; for the interpreter as any program)
+    //modes expression / reference: a Program of one ExpressionStatement (no statements; for the interpreter as any program)
     private function parseSingleProgram(int $length, bool $reference): array
     {
         $start = $this->peek()->start;
@@ -1309,7 +1309,7 @@ final class Parser
         }
 
         if ($whole && trim($text) !== '') {
-            //CLD: 2026-10-13T12:43:20+03:00: a plain text in a whole expression field: write it between {{ }}
+            //a plain text in a whole expression field: write it between {{ }}
             $example = $reference ? '{{ mail.subject }}' : '{{ mail.attachments }}';
             $message = 'Only one {{ }} and nothing around it is allowed here, e.g. ' . $example;
             $seen = 0;

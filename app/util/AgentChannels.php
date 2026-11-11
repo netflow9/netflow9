@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T18:00:00+02:00: new: where an agent's answers go when the conversation is not on a chat page: an email (threaded: In-Reply-To, References, its address to reply to) or a Teams chat.
+    where an agent's answers go when the conversation is not on a chat page: an email (threaded: In-Reply-To, References, its address to reply to) or a Teams chat.
     The chat pages read the messages themselves (models\agent\AgentConversation).
     AgentChannels::$sink: the check suite takes what would be sent (fn(kind, data) => what the call answers), so nothing leaves and no job reaches a running daemon
 */

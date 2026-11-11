@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T18:00:00+02:00: new: the agents, in the app (a workflow that starts with a Chat trigger, published; models\node\NodeTriggerChat):
+    the agents, in the app (a workflow that starts with a Chat trigger, published; models\node\NodeTriggerChat):
 	/agent/list           the agents the user may talk to (Participants too: the project's membership is enough)
 	/agent/<token>        the chat page: the user's conversations with it (GET ?conversation=<id> opens one)
 	/agent/send           POST (JSON { agent, conversation, message, label }): a message: starts a run, queued for the daemon => { conversation, messages, status }; 409 while a run answers; 429 too many
@@ -24,7 +24,7 @@ class AgentController extends \sys\BaseController {
 		\V::app()->response->sendJSON([ 'ok' => false, 'error' => 'Log in first.' ], true, 401);
 	    $this->redirect(\V::app()->user->getLoginUrl());
 	}
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	//the request's account (rt.account, set at sign-in), for the actions
 	$this->account = \V::app()->config('rt.account');
     }
 
@@ -91,11 +91,11 @@ class AgentController extends \sys\BaseController {
 	$conv = null;
 	if (!empty($body['conversation'])) {
 	    $conv = AgentConversation::read((string)$body['conversation'], $wf->aid);
-	    //CLD: 2026-11-08T14:40:00+02:00: user ?? '': a conversation of another channel has none
+	    //user ?? '': a conversation of another channel has none
 	    if (!$conv || (string)$conv['wf'] !== (string)$wf->_id || (string)($conv['user'] ?? '') !== (string)$user->_id)
 		$resp->sendJSON([ 'ok' => false, 'error' => 'This conversation is not yours.' ], true, 404);
 	}
-	//CLD: 2026-11-08T14:40:00+02:00: a new conversation made here, through save() (the defaults and last_at: AgentConversation)
+	//a new conversation made here, through save() (the defaults and last_at: AgentConversation)
 	if (!$conv) {
 	    $new = \V::app()->om->create('AgentConversation', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => (string)$node['wfid'], 'channel' => 'app',
 		'user' => (string)$user->_id, 'user_name' => (string)$user->name, 'user_email' => (string)$user->email, 'who' => 'u:' . (string)$user->_id ]);
@@ -121,7 +121,7 @@ class AgentController extends \sys\BaseController {
     //the user's own conversation ?conversation / $id, else 404
     private function own($id, $resp) {
 	$conv = AgentConversation::read((string)$id, $this->account->_id ?? null);
-	//CLD: 2026-11-08T14:40:00+02:00: user ?? '': a conversation of another channel has none
+	//user ?? '': a conversation of another channel has none
 	if (!$conv || (string)($conv['user'] ?? '') !== (string)\V::app()->user->_id)
 	    $resp->sendJSON([ 'ok' => false, 'error' => 'This conversation is not yours.' ], true, 404);
 	return $conv;
@@ -166,7 +166,7 @@ class AgentController extends \sys\BaseController {
 	$this->render('conversations', [ 'list' => $list, 'retention' => (int)($this->account->execution_log_retention ?? 0) ]);
     }
 
-    //CLD: 2026-11-07T01:04:46+02:00: the name of the workflow of conversation $c ('' when it is gone)
+    //the name of the workflow of conversation $c ('' when it is gone)
     private function workflowName($c) {
 	return (string)(\V::app()->om->findOne('Workflow', [ '_id' => $c['wf'], 'aid' => $this->account->_id ?? null ])->name ?? '');
     }

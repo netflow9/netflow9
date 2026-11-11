@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new: the client of the Zabbix API (JSON-RPC 2.0, Zabbix 6.0 LTS and later), for the Zabbix credential, steps and problem trigger.
+    the client of the Zabbix API (JSON-RPC 2.0, Zabbix 6.0 LTS and later), for the Zabbix credential, steps and problem trigger.
     POST <server>/api_jsonrpc.php { jsonrpc: "2.0", method, params, id }; an API token (Users > API tokens): `Authorization: Bearer <token>` from Zabbix 6.4, the `auth` member before
     (removed in 7.2): the version is read first (apiinfo.version, without the token) and kept. Errors: { error: { code, message, data } } made a \RuntimeException with the message and
     the data. Public addresses only, unless the account allows private network addresses (a monitoring server is usually on the internal network); the certificate checked unless

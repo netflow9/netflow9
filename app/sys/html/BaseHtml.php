@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-07T22:35:31+02:00: the license notice of Lithium (li3), the framework this file is ported from (lithium\template\helper\Html)
+//the license notice of Lithium (li3), the framework this file is ported from (lithium\template\helper\Html)
 /*
  * Copyright (c) 2009, Union of RAD http://union-of-rad.org
  * All rights reserved.
@@ -256,7 +256,7 @@ class BaseHtml extends \sys\BaseObject {
 	if (is_array($value))
 	    return array_map(array($this, __FUNCTION__), $value);
 
-	//CLD: 2026-10-23T01:30:00+03:00: (string): null and numbers too (htmlspecialchars takes only a string: views wrapped it to cast)
+	//(string): null and numbers too (htmlspecialchars takes only a string: views wrapped it to cast)
 	return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
     }
 

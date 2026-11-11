@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new step: Proxmox API - any request of the Proxmox VE API (what the other Proxmox steps do not have: a guest's configuration changed, firewall,
+    Proxmox API - any request of the Proxmox VE API (what the other Proxmox steps do not have: a guest's configuration changed, firewall,
     replication, Ceph, ...): the method, the path (under /api2/json, e.g. /nodes/pve1/qemu/100/config), the parameters (a JSON object, or an expression giving one; Other parameters
     is not used here). A task it starts (its UPID) optionally waited for: its status. Its result: Proxmox's data as it is
 */
@@ -17,7 +17,7 @@ class NodeAppProxmoxApi extends NodeAppProxmox {
     public static $defaultVariable = 'proxmox';
 
     const OPERATIONS = [ 'request' => 'Send a request' ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'request' ];
     const METHODS = [ 'GET' => 'GET', 'POST' => 'POST', 'PUT' => 'PUT', 'DELETE' => 'DELETE' ];
 

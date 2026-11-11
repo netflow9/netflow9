@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new file: a fake FortiGate (FortiOS 7.4 REST API) for the check suite (CheckCommand::suiteFortigate), run by PHP's built-in server:
+    a fake FortiGate (FortiOS 7.4 REST API) for the check suite (CheckCommand::suiteFortigate), run by PHP's built-in server:
     FGT_STATE=<a folder> php -S 127.0.0.1:<port> FortiGateTestServer.php
 	token `fgtoken` (Authorization: Bearer); each request appended to <state>/requests.jsonl (method, path, query, body)
 	answers in FortiOS's form: { http_method, results, vdom, status: success | error, http_status, error (a number), version, build, serial }

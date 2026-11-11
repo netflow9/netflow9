@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-17T22:00:00+03:00: new view: the page of a project invitation link (SiteController::invite): the user's name and password; an expired / used link says so; an address
+//the page of a project invitation link (SiteController::invite): the user's name and password; an expired / used link says so; an address
 //that is already a user of the account was added to the project and signs in as usual
 $this->pageTitle = \V::t('Join a project');
 ?>

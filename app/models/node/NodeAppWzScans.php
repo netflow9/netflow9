@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new step: Wazuh Scans - file integrity (syscheck), rootcheck and security configuration assessment of an agent (the Server API). Operations:
+    Wazuh Scans - file integrity (syscheck), rootcheck and security configuration assessment of an agent (the Server API). Operations:
 	fim         the files syscheck knows of an agent (GET /syscheck/<id>): of a path, a hash
 	fimLast     when its last FIM scan started and ended (GET /syscheck/<id>/last_scan)
 	fimRun      FIM scans started (PUT /syscheck)
@@ -70,12 +70,12 @@ class NodeAppWzScans extends NodeAppWazuh {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:10:30+02:00: the setting Agent (an agent id)
+    //the setting Agent (an agent id)
     private function agentSetting() {
 	return self::agentId($this->settingOf('agent'));
     }
 
-    //CLD: 2026-11-07T01:10:30+02:00: the API's filter of the setting Search
+    //the API's filter of the setting Search
     private function searchFilter() {
 	return [ 'search' => $this->settingText('search') ];
     }

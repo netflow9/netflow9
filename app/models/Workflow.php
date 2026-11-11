@@ -102,7 +102,7 @@ class Workflow extends \sys\BaseModel {
 		'showInForms' => false,
 	    ],
 
-	    //CLD: 2026-10-11T13:51:42+03:00: the published version the triggers run while `status` is published (kept when unpublished: publishing again
+	    //the published version the triggers run while `status` is published (kept when unpublished: publishing again
 	    //reuses it when the draft has not changed); set by WorkflowController::publish
 	    [
 		'key' => 'version',
@@ -114,7 +114,7 @@ class Workflow extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-10-11T13:51:42+03:00: versions created so far (the next one is version_count + 1; incremented atomically by nextVersionNumber())
+	    //versions created so far (the next one is version_count + 1; incremented atomically by nextVersionNumber())
 	    [
 		'key' => 'version_count',
 		'type' => 'number',
@@ -126,7 +126,7 @@ class Workflow extends \sys\BaseModel {
 		'showInForms' => false,
 	    ],
 
-	    //CLD: 2026-11-02T15:46:06+02:00: Tests must pass to publish (util\AgentEval::gate; EvalController::required)
+	    //Tests must pass to publish (util\AgentEval::gate; EvalController::required)
 	    [
 		'key' => 'tests_required',
 		'type' => 'checkbox',
@@ -172,12 +172,12 @@ class Workflow extends \sys\BaseModel {
 	return null;
     }
 
-    //CLD: 2026-11-03T16:00:00+02:00: what the Share dialog says
+    //what the Share dialog says
     public function shareWarnings() {
 	return [ 'It runs in this project, with this project\'s credentials and tables. Who calls it chooses its inputs and gets its outputs and errors. They see its description, inputs, outputs and step names, not its settings or runs.' ];
     }
 
-    //CLD: 2026-11-04T15:00:00+02:00: a run in progress holds its project: it would go on with the old one's credentials and tables, and a waiting one's task would be left behind
+    //a run in progress holds its project: it would go on with the old one's credentials and tables, and a waiting one's task would be left behind
     public function moveProblem() {
 	if (\V::app()->om->count('WfExecution', [ 'wf' => $this->_id, 'aid' => $this->aid, 'state' => [ '$in' => [ 'new', 'run', 'sleep' ] ] ]) > 0)
 	    return 'It has runs in progress or waiting: let them finish or stop them first (Executions).';
@@ -192,7 +192,7 @@ class Workflow extends \sys\BaseModel {
 	    && (!$this->liveCopy() || $project->checkAccess($userId, 'Workflow::publish'));
     }
 
-    //CLD: 2026-11-04T15:00:00+02:00: any number of workflows may have the same name
+    //any number of workflows may have the same name
     public function moveNameProblem($project) {
 	return null;
     }
@@ -202,7 +202,7 @@ class Workflow extends \sys\BaseModel {
 	    \V::app()->om->updateMany($objectName, [ 'wf' => $this->_id, 'aid' => $this->aid ], [ '$set' => [ 'project' => $project->_id ] ]);
     }
 
-    //CLD: 2026-11-04T15:00:00+02:00: what the Move dialog warns of: what its steps use stays in this project; the files its runs saved too
+    //what the Move dialog warns of: what its steps use stays in this project; the files its runs saved too
     public function moveWarnings() {
 	$warnings = [];
 	$used = $this->moveUses();
@@ -264,7 +264,7 @@ class Workflow extends \sys\BaseModel {
     public function validateSteps($normalize = false) {
 	$issues = [];
 	$defs = \models\wf\WfNode::getAll();
-	//CLD: 2026-10-09T08:10:30+03:00: + each step's config as normalized by its config form (cast values, defaults) goes back into `nodes`
+	//each step's config as normalized by its config form (cast values, defaults) goes back into `nodes`
 	$nodes = is_array($this->nodes) ? $this->nodes : [];
 	foreach($nodes as $index => $data) {
 	    if (!is_array($data) || empty($data['isNode']))
@@ -276,7 +276,7 @@ class Workflow extends \sys\BaseModel {
 	    $node = \V::app()->om->create($def['objectName'], $data);
 	    $node->workflow = $this;
 	    $ok = $node->validates();
-	    //CLD: 2026-10-13T15:24:28+03:00: `vars` is the project variables ({{ vars.<name> }}): no step may set a variable of that name
+	    //`vars` is the project variables ({{ vars.<name> }}): no step may set a variable of that name
 	    $class = get_class($node);
 	    if (array_key_exists(\models\credential\CredentialVariable::EXPRESSION_NAME, $class::outputVariables($data['config'] ?? []) + $class::innerVariables($data['config'] ?? []))) {
 		$node->errors('config', '`' . \models\credential\CredentialVariable::EXPRESSION_NAME . '` is the name of the project variables ({{ vars.<name> }}): choose another variable name');
@@ -306,7 +306,7 @@ class Workflow extends \sys\BaseModel {
     //generic save hooks (the webhook token / index logic: plugins\Webhook\Plugin);
     //handlers receive the workflow and may change it in workflow:before-save
     public function beforeSave() {
-	//CLD: 2026-10-11T13:51:42+03:00: a version copy (forVersion) holds a version's steps: saving it would overwrite the draft
+	//a version copy (forVersion) holds a version's steps: saving it would overwrite the draft
 	if ($this->runVersion !== null)
 	    throw new \LogicException('a copy of a published version cannot be saved');
 	parent::beforeSave();
@@ -318,7 +318,7 @@ class Workflow extends \sys\BaseModel {
 	\V::app()->hooks->applyHook('workflow:after-save', [ $this ]);
     }
 
-    //CLD: 2026-10-11T14:05:19+03:00: deleting a workflow deletes its executions and published versions; plugins delete their own data in workflow:before-delete
+    //deleting a workflow deletes its executions and published versions; plugins delete their own data in workflow:before-delete
     //(e.g. the webhook index, the IMAP check state). Scheduler jobs queued before are skipped (Scheduler::run)
     public function beforeDelete() {
 	if ($this->runVersion !== null)
@@ -328,7 +328,7 @@ class Workflow extends \sys\BaseModel {
 	\V::app()->hooks->applyHook('workflow:before-delete', [ $this ]);
 
 	//through ObjectManager: each deleted with its model (only the ids are read; both are kept out of the logs)
-	//+ its test cases and test runs
+	//its test cases and test runs
 	foreach([ 'WfTestCase', 'WfTestRun', 'WfExecution', 'WfVersion' ] as $objectName) {
 	    foreach(\V::app()->om->find($objectName, [ 'wf' => $this->_id ], [ 'projection' => [ '_id' => 1, 'aid' => 1 ] ]) as $o)
 		$o->delete();
@@ -361,7 +361,7 @@ class Workflow extends \sys\BaseModel {
 	return $version ? $this->forVersion($version) : null;
     }
 
-    //CLD: 2026-10-11T17:35:22+03:00: the audit log gets a summary of the steps (titles; counts), not the steps: they are large and their
+    //the audit log gets a summary of the steps (titles; counts), not the steps: they are large and their
     //configs hold secrets (e.g. webhook authentication)
     public function auditValue($key, $value) {
 	if ($key !== 'nodes' || !is_array($value))
@@ -378,9 +378,8 @@ class Workflow extends \sys\BaseModel {
 	return count($titles) . ' steps (' . implode(', ', $titles) . '), ' . $edges . ' connections';
     }
 
-    //CLD: 2026-10-11T13:51:42+03:00: whether the saved draft has the same steps as $version (nothing new to publish)
+    //whether the saved draft has the same steps as $version (nothing new to publish)
     public function draftMatches($version) {
-	//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 	return \util\JSON::encode(is_array($this->nodes) ? $this->nodes : []) === \util\JSON::encode(is_array($version->nodes) ? $version->nodes : []);
     }
 
@@ -394,12 +393,11 @@ class Workflow extends \sys\BaseModel {
     //how many steps deep a variable's type is looked for through `from` (Set steps copying Set steps; variablesAt)
     const MAX_TYPE_DEPTH = 8;
 
-    //CLD: 2026-10-06T23:25:57+03:00: checks how the steps are connected; returns [ [ 'level' => error|warning, 'node' => wfid|null, 'message' => ... ], ... ]
+    //checks how the steps are connected; returns [ [ 'level' => error|warning, 'node' => wfid|null, 'message' => ... ], ... ]
     //errors: the workflow cannot run correctly; warnings: allowed, probably unintended
-    //CLD: 2026-10-11T22:38:36+03:00: the variables a step can use (expression help): those set by the steps that can run before it (following the connections back; in a loop, also
+    //the variables a step can use (expression help): those set by the steps that can run before it (following the connections back; in a loop, also
     //the steps before the loop) and, inside a loop, the loop's own (innerVariables). $nodes: the steps and connections (the designer's current state, a list or a
-    //map). [ name => [ type, info ] ]; info says where it comes from
-    //CLD: 2026-10-13T12:34:29+03:00: $depth: how deep the type of a `from` variable is being looked for (at most MAX_TYPE_DEPTH)
+    //map). [ name => [ type, info ] ]; info says where it comes from. $depth: how deep the type of a `from` variable is being looked for (at most MAX_TYPE_DEPTH)
     public static function variablesAt($nodes, $wfid, $depth = 0) {
 	$defs = \models\wf\WfNode::getAll();
 	$byId = [];
@@ -443,15 +441,14 @@ class Workflow extends \sys\BaseModel {
 	return $vars;
     }
 
-    //CLD: 2026-11-07T01:06:42+02:00: the class of step $n among the step definitions $defs (null: unknown)
+    //the class of step $n among the step definitions $defs (null: unknown)
     private static function nodeClassFrom($defs, $n) {
 	$def = $defs[$n['fqname'] ?? ''] ?? null;
 	return $def ? \V::app()->om->getObjectClass($def['objectName']) : null;
     }
 
-    //CLD: 2026-10-13T12:34:29+03:00: the whole type description (+ fields, items: util\Expression::typeAt); a variable with `from` (a value text, e.g. the
-    //Set step's) gets the type of that value among the variables at its step (util\Expression::typeOf; nested at most MAX_TYPE_DEPTH steps deep)
-    //CLD: 2026-11-07T01:06:42+02:00: the variables $list of step $n added to $vars (those not there yet): `from` / `itemsOf` resolved against the steps before $n, its title in their info
+    //the variables $list of step $n added to $vars (those not there yet), with the whole type description (+ fields, items: util\Expression::typeAt) and its title in their info;
+    //`from` (a value text, e.g. the Set step's) / `itemsOf` resolved against the variables at its step (util\Expression::typeOf; nested at most MAX_TYPE_DEPTH steps deep)
     private static function addVariables(array &$vars, array $list, $n, $nodes, $depth) {
 	$title = trim((string)($n['title'] ?? ''));
 	foreach($list as $name => $v) {
@@ -459,7 +456,7 @@ class Workflow extends \sys\BaseModel {
 		continue;
 	    if (isset($v['from']))
 		$v = array_merge($depth < self::MAX_TYPE_DEPTH ? \util\Expression::typeOf($v['from'], self::variablesAt($nodes, (string)$n['wfid'], $depth + 1)) : [ 'type' => 'any' ], array_intersect_key($v, [ 'info' => 1 ]));
-	    //CLD: 2026-10-13T12:43:20+03:00: `itemsOf` (a list's value text, e.g. the Loop's item): the type of that list's items (unknown: any)
+	    //`itemsOf` (a list's value text, e.g. the Loop's item): the type of that list's items (unknown: any)
 	    if (isset($v['itemsOf'])) {
 		$items = $depth < self::MAX_TYPE_DEPTH ? \util\Expression::typeOf($v['itemsOf'], self::variablesAt($nodes, (string)$n['wfid'], $depth + 1)) : [];
 		$v = array_merge(is_array($items['items'] ?? null) ? $items['items'] : [ 'type' => 'any' ], array_intersect_key($v, [ 'info' => 1 ]));
@@ -496,11 +493,11 @@ class Workflow extends \sys\BaseModel {
 	    //a step this server cannot run (WfNode::available: e.g. Email (inbound) without Haraka, a database without its PDO driver): the workflow cannot be published or run
 	    if (!\V::app()->om->getObjectClass($d['objectName'])::available())
 		self::addIssue($issues, 'error', $id, "{$d['label']} is not available on this server");
-	    //CLD: 2026-10-11T20:24:33+03:00: the step's own outputs when they follow its config (e.g. Switch cases; keep in sync with outPortsOf() in app.workflow.js)
+	    //the step's own outputs when they follow its config (e.g. Switch cases; keep in sync with outPortsOf() in app.workflow.js)
 	    if (!empty($d['outPorts'])) {
 		$class = \V::app()->om->getObjectClass($d['objectName']);
 		$d['outLabels'] = $class::outLabelsFor($n['config'] ?? null);
-		//CLD: 2026-10-12T08:26:57+03:00: outputCountFor (labels may be null: the class's own outputs)
+		//outputCountFor (labels may be null: the class's own outputs)
 		$d['outputs'] = $class::outputCountFor($n['config'] ?? null);
 	    }
 	    $def[$id] = $d;
@@ -513,12 +510,12 @@ class Workflow extends \sys\BaseModel {
 	    self::addIssue($issues, 'error', null, 'The workflow has no trigger');
 	foreach(array_slice($triggers, 1) as $id)
 	    self::addIssue($issues, 'error', $id, 'Only one trigger is allowed');
-	//CLD: 2026-10-14T21:06:38+03:00: a loop cannot be inside another loop (keep in sync with validateFlow() in app.workflow.js)
+	//a loop cannot be inside another loop (keep in sync with validateFlow() in app.workflow.js)
 	foreach($def as $id => $d) {
 	    if (!empty($d['isContainer']) && self::loopOf($nodes, $def, $id) !== null)
 		self::addIssue($issues, 'error', $id, 'A loop cannot be inside another loop');
 	}
-	//CLD: 2026-10-11T13:39:20+03:00: a trigger cannot be inside a loop (keep in sync with validateFlow() in app.workflow.js)
+	//a trigger cannot be inside a loop (keep in sync with validateFlow() in app.workflow.js)
 	foreach($triggers as $id) {
 	    $parent = $nodes[$id]['parentId'] ?? null;
 	    if (!empty($parent) && !empty($def[$parent]['isContainer']))
@@ -547,7 +544,7 @@ class Workflow extends \sys\BaseModel {
 		self::addIssue($issues, 'error', $to, 'This step cannot have incoming connections');
 		continue;
 	    }
-	    //CLD: 2026-10-11T13:46:00+03:00: connections stay on their level (a loop's own input / output belong to the level around it)
+	    //connections stay on their level (a loop's own input / output belong to the level around it)
 	    if (self::loopOf($nodes, $def, $from) !== self::loopOf($nodes, $def, $to)) {
 		self::addIssue($issues, 'error', $from, "A connection cannot cross a loop's border");
 		continue;
@@ -579,7 +576,7 @@ class Workflow extends \sys\BaseModel {
 	    $outputsUsed[$from][(int)$fromPort] = true;
 	}
 
-	//CLD: 2026-10-11T13:46:00+03:00: computed for every level
+	//computed for every level
 	$hasIncoming = [];
 	foreach($adjacent as $from => $tos)
 	    foreach($tos as $to)
@@ -598,9 +595,9 @@ class Workflow extends \sys\BaseModel {
 		    }
 		}
 	    }
-	    //CLD: 2026-10-07T08:01:20+03:00: flag only where a disconnected chain starts (no incoming connection), not every step after it;
-	    //steps of a disconnected cycle (all have incoming connections, none starts the chain) are flagged too
-	    //CLD: 2026-10-11T13:46:00+03:00: top-level steps only (the steps inside a loop are checked from the loop's starting step, below)
+	    //flag only where a disconnected chain starts (no incoming connection), not every step after it;
+	    //steps of a disconnected cycle (all have incoming connections, none starts the chain) are flagged too; top-level steps only (the steps inside a loop are
+	    //checked from the loop's starting step, below)
 	    $unreached = [];
 	    foreach($def as $id => $d) {
 		if (empty($d['isNote']) && self::loopOf($nodes, $def, $id) === null && !isset($reached[$id]))
@@ -625,7 +622,7 @@ class Workflow extends \sys\BaseModel {
 	    }
 	}
 
-	//CLD: 2026-10-11T13:46:00+03:00: the inside of each loop is a flow of its own: each pass starts at its one step without an incoming connection, every step inside
+	//the inside of each loop is a flow of its own: each pass starts at its one step without an incoming connection, every step inside
 	//must be reachable from it; notes and triggers (an error of their own) are left out
 	foreach($def as $loopId => $loopDef) {
 	    if (empty($loopDef['isContainer']))
@@ -662,7 +659,7 @@ class Workflow extends \sys\BaseModel {
 	    }
 	}
 
-	//CLD: 2026-11-02T18:00:00+02:00: a Chat trigger with no Reply to chat: the person would get no answer
+	//a Chat trigger with no Reply to chat: the person would get no answer
 	if (array_filter($def, fn($d) => ($d['type'] ?? '') === 'trigger' && ($d['name'] ?? '') === 'chat') && !array_filter($def, fn($d) => ($d['name'] ?? '') === 'chatreply'))
 	    self::addIssue($issues, 'warning', null, 'A Chat trigger needs a Reply to chat step to answer');
 
@@ -681,7 +678,7 @@ class Workflow extends \sys\BaseModel {
 		if ($used < $d['inputs'])
 		    self::addIssue($issues, 'warning', $id, "Only {$used} of {$d['inputs']} inputs are connected");
 	    }
-	    //CLD: 2026-11-02T23:00:00+02:00: an AI step whose spending cannot be counted (it may still run)
+	    //an AI step whose spending cannot be counted (it may still run)
 	    $class = \V::app()->om->getObjectClass($d['objectName']);
 	    if (is_subclass_of($class, \models\node\NodeAppAi::class) && ($warning = \util\AgentGuard::priceWarning($class::CAPABILITY, (array)($nodes[$id]['config'] ?? []), $this->aid)))
 		self::addIssue($issues, 'warning', $id, $warning);

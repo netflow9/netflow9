@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new step: GravityZone API - any method of the GravityZone Public API (the ones the other GravityZone steps do not have: accounts, companies,
+    GravityZone API - any method of the GravityZone Public API (the ones the other GravityZone steps do not have: accounts, companies,
     licensing, packages, patch management, maintenance windows, integrations, ...): the API (area, e.g. network, licensing, quarantine/computers), the method, the parameters
     (a JSON object, or an expression giving one: Other parameters is not used here) and the API version. Its result: GravityZone's `result` as it is
 */
@@ -17,7 +17,7 @@ class NodeAppGzApi extends NodeAppGravityZone {
     public static $defaultVariable = 'gz';
 
     const OPERATIONS = [ 'call' => 'Call a method' ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'call' ];
 
     protected static function operationFields() {

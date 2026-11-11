@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-13T18:25:21+03:00: new layout: a page without the app's sidebar (a public form of a Form trigger: controllers\FormController), with the app's scripts
+//a page without the app's sidebar (a public form of a Form trigger: controllers\FormController), with the app's scripts
 require(dirname(__FILE__) . '/_scripts.php');
 
 ob_start();

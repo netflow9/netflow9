@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-19T14:09:20+03:00: new view: the initial setup, step 2 (SetupController::server): the server's settings (models\setup\ServerForm; were on views/setup/index.php)
+//the initial setup, step 2 (SetupController::server): the server's settings (models\setup\ServerForm)
 $this->pageTitle = \V::t('Setup');
 //the field's options first: they override the defaults (`type` => password / select)
 ?>
@@ -31,8 +31,8 @@ $this->pageTitle = \V::t('Setup');
 		<div class="col-sm-6"><?= \V::app()->form->field('smtp_password', [ 'type' => 'password', 'input' => [ 'autocomplete' => 'new-password' ],
 		    'help' => $passwordKept ? \V::t('Empty: keep the one entered before') : false ] + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('Password') ]) ?></div>
 	    </div>
-	    <?php //CLD: 2026-10-19T14:18:52+03:00: no inbound email domain (the Email inbound trigger is set up later in app.env: MAIL_INBOUND_DOMAIN) ?>
-	    <?php //CLD: 2026-10-19T14:20:35+03:00: the default is filled in (noreply@<domain>, SetupController::server); empty still means noreply@ the public address's domain ?>
+	    <?php //no inbound email domain (the Email inbound trigger is set up later in app.env: MAIL_INBOUND_DOMAIN) ?>
+	    <?php //the default is filled in (noreply@<domain>, SetupController::server); empty still means noreply@ the public address's domain ?>
 	    <?= \V::app()->form->field('mail_from', [ 'help' => \V::t('The sender address of the emails the app sends') ] + [ 'dir' => 'v', 'type' => 'text', 'label' => \V::t('Emails come from') ]) ?>
 
 	    <div class="d-flex justify-content-between pt-3">

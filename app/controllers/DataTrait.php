@@ -11,7 +11,7 @@ trait DataTrait {
 	    return null;
 
 	$f = $o->schema[$key];
-	//CLD: 2026-10-10T09:14:41+03:00: an encrypted field's stored value is ciphertext: never searched, filtered or sorted on
+	//an encrypted field's stored value is ciphertext: never searched, filtered or sorted on
 	if (!empty($f->encrypt))
 	    return null;
 	return $f->checkAccess(\V::app()->user->_id, 'read') ? $f : null;

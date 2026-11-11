@@ -101,7 +101,7 @@ class EmailSend {
 
 	if (!defined('SMTP_FROM_DOMAIN'))
 	    define('SMTP_FROM_DOMAIN', gethostname());
-	//CLD: 2026-10-31T12:12:05+02:00: an empty SMTP_FROM_DOMAIN (app.env.example's placeholder) is as none: the host name
+	//an empty SMTP_FROM_DOMAIN (app.env.example's placeholder) is as none: the host name
 	$helo = SMTP_FROM_DOMAIN !== '' ? SMTP_FROM_DOMAIN : gethostname();
 
 	//try sending hello
@@ -162,7 +162,7 @@ class EmailSend {
         }
 
         // Only send the DATA command if we have viable recipients
-        //CLD: 2026-10-29T12:00:00+03:00: the headers come without a trailing CRLF (compose(), Job::reportError): CRLF CRLF ends the last header and adds the blank line
+        //the headers come without a trailing CRLF (compose(), Job::reportError): CRLF CRLF ends the last header and adds the blank line
         //before the body (was one CRLF: the body's first line, e.g. the MIME boundary, read as a header - Haraka: "Header did not look right")
         if( !$smtp->data(rtrim($data['headers'], "\r\n") . "\r\n\r\n" . $data['body'])) {
     	    \V::app()->log->debug('SMTP: error sending mail');
@@ -180,12 +180,12 @@ class EmailSend {
         return true;
     }
 
-    //CLD: 2026-11-07T01:03:21+02:00: a header value on one line: the line breaks (and the spaces around them) as one space; no header injection
+    //a header value on one line: the line breaks (and the spaces around them) as one space; no header injection
     public static function headerText($v) {
 	return trim(preg_replace('/[ \t]*[\r\n]+[ \t]*/', ' ', (string)$v));
     }
 
-    //CLD: 2026-11-07T01:03:21+02:00: a display name and a space: quoted when plain ASCII (it may hold , : ; ...), else encoded; '' when empty
+    //a display name and a space: quoted when plain ASCII (it may hold , : ; ...), else encoded; '' when empty
     public static function displayName($n) {
 	$n = self::headerText($n);
 	if ($n === '')
@@ -193,17 +193,17 @@ class EmailSend {
 	return (mb_check_encoding($n, 'ASCII') ? '"' . addcslashes($n, '"\\') . '"' : mb_encode_mimeheader($n, 'UTF-8', 'Q')) . ' ';
     }
 
-    //CLD: 2026-11-07T01:03:21+02:00: addresses $l (one or a list) as <a>, <b>
+    //addresses $l (one or a list) as <a>, <b>
     public static function addressList($l) {
 	return implode(', ', array_map(fn($a) => '<' . self::headerText($a) . '>', (array)$l));
     }
 
-    //CLD: 2026-11-07T01:03:21+02:00: a message id in angle brackets (Message-ID, In-Reply-To, References)
+    //a message id in angle brackets (Message-ID, In-Reply-To, References)
     public static function angleId($v) {
 	return '<' . trim(self::headerText($v), '<> ') . '>';
     }
 
-    //CLD: 2026-11-07T01:03:21+02:00: $s quoted-printable, with CRLF line ends
+    //$s quoted-printable, with CRLF line ends
     public static function quotedPrintable($s) {
 	return str_replace("\n", "\r\n", str_replace("\r\n", "\n", quoted_printable_encode(str_replace([ "\r\n", "\r" ], "\n", (string)$s))));
     }
@@ -226,7 +226,7 @@ class EmailSend {
     public static function compose(array $m) {
 	$id = bin2hex(random_bytes(8));
 	$domain = substr(strrchr((string)$m['from'], '@'), 1) ?: 'localhost';
-	//CLD: 2026-11-02T18:00:00+02:00: + message_id (its own Message-ID), in_reply_to, references, auto_submitted: an answer of an agent, threaded, marked so an auto-responder does not answer it
+	//message_id (its own Message-ID), in_reply_to, references, auto_submitted: an answer of an agent, threaded, marked so an auto-responder does not answer it
 	$headers = [
 	    'From: ' . self::displayName($m['from_name'] ?? '') . '<' . self::headerText($m['from']) . '>',
 	    'To: ' . self::addressList($m['to'] ?? []),

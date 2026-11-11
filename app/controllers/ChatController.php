@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T18:00:00+02:00: new: the embeddable page of a Chat trigger, /chat/<embed token> (setting Embeddable page): no sign-in, no session, no cookies (a page in another site's frame gets none):
+    the embeddable page of a Chat trigger, /chat/<embed token> (setting Embeddable page): no sign-in, no session, no cookies (a page in another site's frame gets none):
 	GET                   the page; framed by the sites of the setting Sites that may embed it (any when empty)
 	GET ?poll=1&conversation=&after=   what is new (the key in the header X-Chat-Key: an address ends up in access logs)
 	POST (JSON { conversation, key, message, label })   a message
@@ -50,7 +50,7 @@ class ChatController extends \sys\APIController {
 	$this->render('embed', [ 'token' => $token, 'title' => $title, 'greeting' => (string)($cfg['greeting'] ?? '') ]);
     }
 
-    //CLD: 2026-11-07T01:04:46+02:00: refused with $status: a JSON answer to a message or a poll, else the error page
+    //refused with $status: a JSON answer to a message or a poll, else the error page
     private function fail($status, $message) {
 	if (\V::app()->request->is('post') || isset(\V::app()->request->query['poll']))
 	    \V::app()->response->sendJSON([ 'ok' => false, 'error' => $message ], true, $status);
@@ -81,7 +81,7 @@ class ChatController extends \sys\APIController {
 		$this->fail(404, 'This conversation is gone.');
 	} else {
 	    $key = bin2hex(random_bytes(24));
-	    //CLD: 2026-11-08T14:40:00+02:00: a new conversation made here, through save() (the defaults and last_at: AgentConversation); the page keeps $key, the conversation its sha256
+	    //a new conversation made here, through save() (the defaults and last_at: AgentConversation); the page keeps $key, the conversation its sha256
 	    $new = \V::app()->om->create('AgentConversation', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => (string)$node['wfid'], 'channel' => 'embed',
 		'user_name' => 'Guest', 'guest_key' => hash('sha256', $key) ]);
 	    if (!$new->save())

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T10:00:00+02:00: new step: Sophos Firewall Web - the web filter's URL groups (WebFilterURLGroup: a name and its URLlist of domains). Operations (setting `operation`):
+    Sophos Firewall Web - the web filter's URL groups (WebFilterURLGroup: a name and its URLlist of domains). Operations (setting `operation`):
 	block     domains put in a URL group a web policy blocks (the group read, its list changed, sent back whole: an update replaces the list); already in it: fine
 	unblock   domains taken out of the group (not in it: fine)
 	groups    the URL groups (name containing a text)
@@ -24,7 +24,7 @@ class NodeAppSfosWeb extends NodeAppSophos {
 	'groups' => 'List URL groups',
 	'get' => 'Get a URL group',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'block', 'unblock' ];
     const LISTS = [ 'groups' ];
     const MAX_DOMAINS = 500;

@@ -221,14 +221,14 @@ class Markdown {
 	return $html . '</tbody></table>';
     }
 
-    //CLD: 2026-11-07T01:14:34+02:00: the cells of table line $line (\| is a | inside a cell)
+    //the cells of table line $line (\| is a | inside a cell)
     private static function cells($line) {
 	$line = trim($line);
 	$line = preg_replace('/^\||\|$/', '', $line);
 	return array_map(fn($c) => trim(str_replace('\\|', '|', $c)), preg_split('/(?<!\\\\)\|/', $line));
     }
 
-    //CLD: 2026-11-07T01:14:34+02:00: the align attribute of column $k ($align: the table's alignments); '' when none
+    //the align attribute of column $k ($align: the table's alignments); '' when none
     private static function alignAttr($align, $k) {
 	return !empty($align[$k]) ? ' align="' . $align[$k] . '"' : '';
     }
@@ -237,10 +237,10 @@ class Markdown {
     //inline
 
     //the inline marks of $text as HTML (the text escaped first; code spans and links kept apart so their content is not marked again)
-    //CLD: 2026-11-07T01:14:34+02:00: the HTML inline() has put aside (hold); inline() is not reentrant: it starts it again
+    //the HTML inline() has put aside (hold); inline() is not reentrant: it starts it again
     private static $held = [];
 
-    //CLD: 2026-11-07T01:14:34+02:00: $html put aside while inline() works on the text: its placeholder
+    //$html put aside while inline() works on the text: its placeholder
     private static function hold($html) {
 	self::$held[] = $html;
 	return "\u{E000}" . (count(self::$held) - 1) . "\u{E001}";

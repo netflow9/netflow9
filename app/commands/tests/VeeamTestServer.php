@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T04:00:00+02:00: new file: a fake Veeam Backup & Replication REST API (v13) for the check suite (CheckCommand::suiteVeeam), run by PHP's built-in server:
+    a fake Veeam Backup & Replication REST API (v13) for the check suite (CheckCommand::suiteVeeam), run by PHP's built-in server:
     VEEAM_STATE=<a folder> php -S 127.0.0.1:<port> VeeamTestServer.php
 	every request: an x-api-version of the release served (<state>/release.json; default VBR 13: 1.3-rev1) required (else 400); appended to <state>/requests.jsonl (method, path, query as sent, body, auth)
 	POST /api/oauth2/token          form: grant_type password (backup / secret) or refresh_token: access a<n> / refresh r<n> (<state>/tokens.json), expires_in 900
@@ -53,7 +53,7 @@ $match = function($name, $pattern) {
     return preg_match($re, $name) === 1;
 };
 
-//CLD: 2026-11-01T05:00:00+02:00: the release served: <state>/release.json { versions: [ x-api-version taken ], build } (default VBR 13: 1.3-rev1, 13.0.1.1071)
+//the release served: <state>/release.json { versions: [ x-api-version taken ], build } (default VBR 13: 1.3-rev1, 13.0.1.1071)
 $release = is_file("{$state}/release.json") ? json_decode(file_get_contents("{$state}/release.json"), true) : [ 'versions' => [ '1.3-rev1' ], 'build' => '13.0.1.1071' ];
 if (!in_array($headers['x-api-version'] ?? '', $release['versions'], true))
     $answer(400, [ 'errorCode' => 'BadRequest', 'message' => 'The x-api-version header is missing or not supported' ]);

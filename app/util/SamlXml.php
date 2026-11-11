@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-23T12:00:00+03:00: new: the XML security of SAML messages, with PHP's DOM and openssl only (no library):
+//the XML security of SAML messages, with PHP's DOM and openssl only (no library):
 //  load($xml)                    a document; no DOCTYPE / entities, no network, a size limit
 //  verify($element, $certs)      the enveloped signature of $element (its ds:Signature child, a single Reference to the element's ID, unique in the document), checked
 //                                with one of the IdP's certificates (PEM; the certificate in the message's KeyInfo is never used); the signature algorithm, else SamlException
@@ -191,7 +191,7 @@ class SamlXml {
 	return "\x30" . self::derLength(strlen($seq)) . $seq;
     }
 
-    //CLD: 2026-11-07T01:16:14+02:00: big-endian number $b as a DER INTEGER (leading zeros dropped, a 0 added when the top bit is set)
+    //big-endian number $b as a DER INTEGER (leading zeros dropped, a 0 added when the top bit is set)
     private static function derInteger($b) {
 	$b = ltrim($b, "\0");
 	if ($b === '' || ord($b[0]) > 0x7f)
@@ -226,7 +226,7 @@ class SamlXml {
 	return $sig;
     }
 
-    //CLD: 2026-11-07T01:16:14+02:00: a new ds:$name element of $doc (attributes $attrs, text $text) appended to $parent
+    //a new ds:$name element of $doc (attributes $attrs, text $text) appended to $parent
     private static function addDs(\DOMDocument $doc, \DOMNode $parent, $name, $attrs = [], $text = null) {
 	return $parent->appendChild(self::newElement($doc, self::DS, 'ds:' . $name, $attrs, $text));
     }
@@ -319,7 +319,7 @@ class SamlXml {
 	return $wrapper;
     }
 
-    //CLD: 2026-11-07T01:16:14+02:00: a new element $name of namespace $ns in $doc, with attributes $attrs and text $text
+    //a new element $name of namespace $ns in $doc, with attributes $attrs and text $text
     private static function newElement(\DOMDocument $doc, $ns, $name, $attrs = [], $text = null) {
 	$e = $doc->createElementNS($ns, $name);
 	foreach($attrs as $k => $v)

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-30T19:00:00+02:00: new trigger: Called by a workflow - the workflow is started by the Run a workflow step of another workflow of the project (NodeAppWorkflow).
+    Called by a workflow - the workflow is started by the Run a workflow step of another workflow of the project (NodeAppWorkflow).
     Its settings are the contract: the inputs (name, type, required, default value: each becomes a variable, checked and cast to its type) and the outputs (the variables handed back
     to the caller when the run ends). The caller (`caller` variable): { workflow, name, execution } of the calling run; null when started by Run in the designer
 */
@@ -54,7 +54,7 @@ class NodeTriggerCall extends \models\wf\WfNode {
 		],
 		'ui' => [ 'addLabel' => 'Add output', 'compact' => true, 'maxRows' => 50 ],
 	    ],
-	    //CLD: 2026-11-01T21:50:00+02:00: new: what the workflow does, for the AI steps that may use it as a tool (util\AgentTools: the tool's description)
+	    //what the workflow does, for the AI steps that may use it as a tool (util\AgentTools: the tool's description)
 	    [
 		'key' => 'agentDescription',
 		'type' => 'textarea',
@@ -95,11 +95,11 @@ class NodeTriggerCall extends \models\wf\WfNode {
     }
 
     //the input rows of a workflow's steps ($nodes): its Called by a workflow trigger's config, null when it has none
-    //(CLD: 2026-11-01T21:50:00+02:00: [ wfid, inputs, outputs, description ])
+    //([ wfid, inputs, outputs, description ])
     public static function contractOf($nodes) {
 	foreach((is_array($nodes) ? $nodes : []) as $n) {
 	    if (is_array($n) && !empty($n['isNode']) && ($n['fqname'] ?? '') === self::$type . '::' . self::$name)
-		//CLD: 2026-11-01T21:50:00+02:00: + description (Description for agents)
+		//description (Description for agents)
 		return [ 'wfid' => (string)$n['wfid'], 'inputs' => array_values((array)($n['config']['inputs'] ?? [])), 'outputs' => array_values(array_filter(array_map(fn($r) => (string)($r['name'] ?? ''),
 		    (array)($n['config']['outputs'] ?? [])), fn($v) => $v !== '')), 'description' => trim((string)($n['config']['agentDescription'] ?? '')) ];
 	}

@@ -1,17 +1,19 @@
 <?php
 
-//CLD: 2026-10-21T10:00:00+03:00: new: the sign-in with LDAP (hook identity:authenticate of sys\Identity::authenticate), by the accounts' settings (models\LdapSettings).
-//  1. The name typed is an LDAP user's (a user linked to the directory: models\LdapLink, by the user's email or the directory name) of an account with LDAP sign-in on: the
-//     directory decides (the person found by the user filter, else by the link's DN; the password checked by a bind as the person); refused there = refused, never the
-//     password stored here. The directory not answering refuses too ("try again later").
-//  2. Else the accounts whose directory may know the name: the account of a user with that email when Link existing users is on, the account whose Email domains has the
-//     name's domain, the account taking names without @domain (bareLogins). The person found and the password right: an existing user with the person's email is linked
-//     (linkExisting), else a user is created (provision), else refused. Not found in any of them (or a directory not answering): the local sign-in goes on (null).
-//  The user is refreshed from the directory at each sign-in: first / last name, email (when no other user of the account has it), the role from the groups (groupMap, else
-//  defaultRole: none = refused); the last Owner of an account keeps that role. The 2FA of the application still applies after this (SiteController::signIn).
-//  attempt($login, $password)          [ 'user' => User|null, 'reason' => text|null ], or null: not an LDAP sign-in (the local password applies)
-//  trial($settings, $login, $password) what a sign-in would do (the settings page's Try): [ 'ok' => bool, 'lines' => [ texts ] ] - nothing is saved
-//  passwordSource($user)               'LDAP' for an LDAP user (hook identity:password-source: no password reset / change here)
+/*
+    the sign-in with LDAP (hook identity:authenticate of sys\Identity::authenticate), by the accounts' settings (models\LdapSettings).
+      1. The name typed is an LDAP user's (a user linked to the directory: models\LdapLink, by the user's email or the directory name) of an account with LDAP sign-in on: the
+         directory decides (the person found by the user filter, else by the link's DN; the password checked by a bind as the person); refused there = refused, never the
+         password stored here. The directory not answering refuses too ("try again later").
+      2. Else the accounts whose directory may know the name: the account of a user with that email when Link existing users is on, the account whose Email domains has the
+         name's domain, the account taking names without @domain (bareLogins). The person found and the password right: an existing user with the person's email is linked
+         (linkExisting), else a user is created (provision), else refused. Not found in any of them (or a directory not answering): the local sign-in goes on (null).
+      The user is refreshed from the directory at each sign-in: first / last name, email (when no other user of the account has it), the role from the groups (groupMap, else
+      defaultRole: none = refused); the last Owner of an account keeps that role. The 2FA of the application still applies after this (SiteController::signIn).
+      attempt($login, $password)          [ 'user' => User|null, 'reason' => text|null ], or null: not an LDAP sign-in (the local password applies)
+      trial($settings, $login, $password) what a sign-in would do (the settings page's Try): [ 'ok' => bool, 'lines' => [ texts ] ] - nothing is saved
+      passwordSource($user)               'LDAP' for an LDAP user (hook identity:password-source: no password reset / change here)
+*/
 
 namespace util;
 
@@ -27,7 +29,7 @@ class LdapAuth {
     //hooks
 
     public static function onAuthenticate(\ArrayObject $ctx) {
-	//CLD: 2026-10-21T20:10:00+03:00: the sign-in looks at the users and directories of every account (ObjectManager account guard)
+	//the sign-in looks at the users and directories of every account (ObjectManager account guard)
 	$r = \V::app()->om->acrossAccounts(fn() => self::attempt((string)$ctx['login'], (string)$ctx['password']));
 	if ($r === null)
 	    return;

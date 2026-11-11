@@ -1,8 +1,7 @@
 <?php
 
-//CLD: 2026-10-08T14:34:02+03:00: new class: base of the Google OAuth credential types (Gmail, later Drive, ...): Google endpoints, offline access; subclasses
+//base of the Google OAuth credential types (Gmail, Drive, ...): Google endpoints, offline access, instance methods; subclasses
 //give the scopes. The OAuth client (web application) is created in Google Cloud Console > APIs & Services > Credentials
-//CLD: 2026-10-09T17:21:14+03:00: base of Google OAuth credential variants; instance methods
 
 namespace models\credential;
 

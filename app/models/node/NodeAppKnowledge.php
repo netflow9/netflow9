@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-30T23:30:00+02:00: new step: Knowledge base - documents a workflow adds to a knowledge base of the project (models\kb\KnowledgeBase), searched by meaning and by words.
+    Knowledge base - documents a workflow adds to a knowledge base of the project (models\kb\KnowledgeBase), searched by meaning and by words.
     Operations:
 	- Search: the chunks that best answer a query: { results: [ { text, score, match, document, title, page, meta } ], count, context } - context: the results as one text for a
 	  prompt ([n] title (page), then the text); a filter on the documents' metadata, a least similarity
@@ -13,8 +13,8 @@
 	- Remove a document: by its key or file id: { removed }
 	- List the documents: { documents: [ { key, title, source, file, url, chunks, chars, meta, updated_at } ], count }
     The knowledge base: one of the project's, or a new name - made by the first Add.
-    CLD: 2026-10-31T02:10:00+02:00: with the default chunk size / overlap (no longer settings of the step: a knowledge base's own, on the Knowledge bases page, under Advanced…)
-    CLD: 2026-10-31T01:00:00+02:00: the embedding model is the account's (Settings: Knowledge bases; models\kb\EmbeddingSettings): no Embedding credential / model here any more
+    With the default chunk size / overlap (a knowledge base's own, on the Knowledge bases page, under Advanced…) and the account's embedding model (Settings: Knowledge bases;
+    models\kb\EmbeddingSettings).
     On error: fail the step, or continue on the `error` output (the variable then { error }).
 */
 
@@ -246,8 +246,7 @@ class NodeAppKnowledge extends \models\wf\WfNode {
 	$project = $this->exec->project;
 
 	if (in_array($op, self::ADD, true)) {
-	    //CLD: 2026-10-31T01:00:00+02:00: made with the account's embedding model
-	    //CLD: 2026-10-31T02:10:00+02:00: and the default chunk size / overlap (changed on the Knowledge bases page only)
+	    //made with the account's embedding model and the default chunk size / overlap (changed on the Knowledge bases page only)
 	    [ $kb, $created ] = \models\kb\KnowledgeBase::open($kbName, $aid, $project);
 	    if ($created)
 		$this->exec->log($this->wfid, static::$label . ": made `{$kb->name}` ({$kb->model})");
@@ -301,7 +300,7 @@ class NodeAppKnowledge extends \models\wf\WfNode {
     }
 
     //the documents to add: [ [ key, title, text, source: [ type, file, url ] ] ]
-    //CLD: 2026-10-31T01:00:00+02:00: through models\kb\KnowledgeBase::textSource / urlSource / fileSource (the Knowledge bases page adds documents too)
+    //through models\kb\KnowledgeBase::textSource / urlSource / fileSource (the Knowledge bases page adds documents too)
     protected function sources($op, $timeout) {
 	if ($op === 'addText') {
 	    try {

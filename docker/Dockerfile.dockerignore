@@ -1,4 +1,4 @@
-# CLD: 2026-11-01T19:00:00+02:00: the build context is the repository's folder (the user's home on a server): only the app's files go in; never the installation's
+# the build context is the repository's folder (the user's home on a server): only the app's files go in; never the installation's
 # settings (app.env, plugins.json, mcp.json), its secrets (ssl/) or runtime data
 *
 !app

@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-11-01T11:55:18+02:00: new: a tool server's form (ToolserversController::edit): $values (id, label, description, url, headers and tools as lines, maxSessions,
+    a tool server's form (ToolserversController::edit): $values (id, label, description, url, headers and tools as lines, maxSessions,
     maxSessionsPerAccount), $isNew; two columns, as the other settings forms (one screen)
 */
 $this->pageTitle = $isNew ? 'Tool servers::Add' : 'Tool servers::' . $values['label'];

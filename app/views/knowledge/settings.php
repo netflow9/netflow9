@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-10-31T01:00:00+02:00: new: the account's embedding model (KnowledgeController::settings; models\kb\EmbeddingSettings): provider, Server URL, API key, then Connect
+    the account's embedding model (KnowledgeController::settings; models\kb\EmbeddingSettings): provider, Server URL, API key, then Connect
     (KnowledgeController::connect) lists the server's models (the embedding ones first) for Model; the saved model is shown until the next Connect (the page connects by itself
     when there is one). $stale: the knowledge bases indexed with another model (re-index them)
 */
@@ -50,7 +50,7 @@ $connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/knowledge/conn
 	});
     };
 
-    //CLD: 2026-10-31T20:00:00+02:00: the API key's "Stored" placeholder (sys\fields\Field_password) only while the provider and the server are the saved ones: otherwise the saved key
+    //the API key's "Stored" placeholder (sys\fields\Field_password) only while the provider and the server are the saved ones: otherwise the saved key
     //is not kept (KnowledgeController::settings)
     const keyInput = form.querySelector('[name=api_key]');
     const storedHint = keyInput.placeholder;

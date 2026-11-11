@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new class: the base of the Zabbix steps (Problems, Acknowledge & Maintenance, Hosts, API; not registered itself), through a Zabbix credential of the
+    the base of the Zabbix steps (Problems, Acknowledge & Maintenance, Hosts, API; not registered itself), through a Zabbix credential of the
     project (CredentialZabbix, provides `zabbix`; util\Zabbix: JSON-RPC). As NodeAppCheckmk:
 	- the shape: one input, `success` (+ `error` when On error is "Continue on the `error` output")
 	- the settings every Zabbix step has: credential, operation (static::OPERATIONS), the operation's own settings (operationFields(): each shown for its operations),
@@ -14,7 +14,7 @@
 namespace models\node;
 
 abstract class NodeAppZabbix extends \models\wf\WfNode {
-    //CLD: 2026-11-01T21:50:00+02:00: its operations can be an AI step's tools (util\AgentTools: settingValue, setResult)
+    //its operations can be an AI step's tools (util\AgentTools: settingValue, setResult)
     use AgentToolTrait;
 
     //static data/structure
@@ -167,7 +167,7 @@ abstract class NodeAppZabbix extends \models\wf\WfNode {
     //running
 
     public function execute($edgeId = null) {
-	//CLD: 2026-11-01T21:50:00+02:00: the settings through settingValue() (as they are when the step runs as a tool: AgentToolTrait)
+	//the settings through settingValue() (as they are when the step runs as a tool: AgentToolTrait)
 	$this->settingVars = $this->varsForSettings();
 	$operation = (string)$this->cfg('operation', static::$defaultOperation);
 	if (!isset(static::OPERATIONS[$operation]))
@@ -188,7 +188,7 @@ abstract class NodeAppZabbix extends \models\wf\WfNode {
 		return [ 1 ];
 	    throw new \ErrorException(static::$label . ": {$operation}: " . $e->getMessage());
 	}
-	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it)
+	//setResult() (a tool keeps it)
 	$this->setResult($name, $result);
 	$this->exec->log($this->wfid, static::$label . " {$operation}: {$summary} (" . (int)round((microtime(true) - $start) * 1000) . ' ms)');
 	return [ 0 ];

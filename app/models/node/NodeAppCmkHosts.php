@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T08:00:00+02:00: new step: Checkmk Hosts - the hosts Checkmk monitors (its configuration). Operations (setting `operation`):
+    Checkmk Hosts - the hosts Checkmk monitors (its configuration). Operations (setting `operation`):
 	list       the hosts (GET domain-types/host_config/collections/all): { items: [ { id, title, folder, attributes } ] }
 	get        a host's configuration (GET objects/host_config/<host>)
 	create     a host (POST domain-types/host_config/collections/all: folder, host name, IP address, alias; Other parameters: more attributes, e.g. tags)
@@ -30,7 +30,7 @@ class NodeAppCmkHosts extends NodeAppCheckmk {
 	'activate' => 'Activate pending changes',
 	'pending' => 'List pending changes',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'create', 'delete', 'discover', 'activate' ];
     const LISTS = [ 'list', 'pending' ];
     const MODES = [ 'fix_all' => 'Accept all (new and vanished services, labels)', 'new' => 'Add new services only', 'refresh' => 'Refresh (search again)', 'tabula_rasa' => 'Start over (remove all, then add)' ];

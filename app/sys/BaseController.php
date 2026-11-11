@@ -30,7 +30,7 @@ class BaseController extends \sys\BaseObject {
 	}
 	\V::app()->request->removeDataParam(\V::app()->csrf->getKey());
 
-	//CLD: 2026-10-05T20:20:40+03:00: constant-time, type-strict comparison in CSRF::validate
+	//constant-time, type-strict comparison in CSRF::validate
 	if (!\V::app()->csrf->validate($csrf_token))
 	    \V::app()->error(401, 'Unable to validate your request');
     }

@@ -13,7 +13,7 @@ foreach($projects as $id => $p)
     $rows .= \util\VString::insert('<tr><td class="align-middle">{:name}{:owner}</td><td class="text-end"><div class="form-check form-switch d-inline-block mb-0">'
 	. '<input class="form-check-input" type="checkbox" role="switch" name="mcp_projects[]" value="{:id}" id="mcp-{:id}" aria-label="MCP server of {:label}"{:checked}></div></td></tr>', [
 	'name' => \V::app()->html->escape((string)$p->name),
-	//CLD: 2026-11-01T03:30:00+02:00: a personal project: its owner's name ($owners: id => User), as every user's is named "Personal"
+	//a personal project: its owner's name ($owners: id => User), as every user's is named "Personal"
 	'owner' => $p->personal ? \util\VString::insert(' <span class="text-muted">({:who})</span>', [
 	    'who' => \V::app()->html->escape(isset($owners[(string)$p->owner]) ? trim((string)$owners[(string)$p->owner]) : 'a removed user') ]) : '',
 	'label' => \V::app()->html->escape((string)$p->name . ($p->personal ? ' (' . (isset($owners[(string)$p->owner]) ? trim((string)$owners[(string)$p->owner]) : 'a removed user') . ')' : '')),

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new step: FortiGate Addresses - the firewall's address objects and address groups (cmdb/firewall/address, addrgrp; IPv6: address6, addrgrp6).
+    FortiGate Addresses - the firewall's address objects and address groups (cmdb/firewall/address, addrgrp; IPv6: address6, addrgrp6).
     Operations (setting `operation`):
 	list      the addresses (name containing a text: filter name=@...)
 	get       one address
@@ -37,7 +37,7 @@ class NodeAppFgtAddresses extends NodeAppFortiGate {
 	'add' => 'Add an address to a group',
 	'remove' => 'Remove an address from a group',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'block', 'unblock', 'create', 'delete', 'add', 'remove' ];
     const LISTS = [ 'list', 'groups' ];
     const TYPES = [ 'ipmask' => 'Subnet / IP', 'fqdn' => 'FQDN', 'iprange' => 'IP range' ];
@@ -64,7 +64,7 @@ class NodeAppFgtAddresses extends NodeAppFortiGate {
 
     //"a.b.c.d mask" of an IPv4 address, CIDR or "ip mask"
     public static function subnet($v) {
-	//CLD: 2026-11-07T12:00:00+02:00: parsed by util\Ip::network (IPv4 only here)
+	//parsed by util\Ip::network (IPv4 only here)
 	$n = \util\Ip::network($v);
 	if ($n === null || $n['v6'])
 	    throw new \RuntimeException("Value: not a subnet: `" . mb_substr(trim((string)$v), 0, 64) . '`');
@@ -102,7 +102,7 @@ class NodeAppFgtAddresses extends NodeAppFortiGate {
 			throw new \RuntimeException("Value: not an FQDN: `" . mb_substr($val, 0, 64) . '`');
 		    $body['fqdn'] = $val;
 		} else {
-		    //CLD: 2026-11-07T12:00:00+02:00: parsed by util\Ip::range (IPv4 only here)
+		    //parsed by util\Ip::range (IPv4 only here)
 		    $range = \util\Ip::range($val);
 		    if ($range === null || str_contains($range[0], ':'))
 			throw new \RuntimeException("Value: not an IP range: `" . mb_substr($val, 0, 64) . '`');
@@ -168,7 +168,7 @@ class NodeAppFgtAddresses extends NodeAppFortiGate {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:08:03+02:00: the API's filter for the setting Contains (the names holding it); none when empty
+    //the API's filter for the setting Contains (the names holding it); none when empty
     private function nameFilter() {
 	return $this->settingText('contains') !== '' ? [ 'filter' => 'name=@' . $this->settingText('contains') ] : [];
     }

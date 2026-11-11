@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T12:00:00+02:00: new step: VMware VMs - the virtual machines of a vCenter Server (REST API). Operations (setting `operation`):
+    VMware VMs - the virtual machines of a vCenter Server (REST API). Operations (setting `operation`):
 	list        the VMs (GET /api/vcenter/vm: names, * patterns matched here; power state, host, cluster, folder, datacenter): { vm, name, power_state, cpu_count, memory_size_MiB }
 	get         one VM (GET /api/vcenter/vm/{vm}: hardware, disks, NICs, ...), its id added as `vm`
 	power       its power state (GET .../power): { vm, state }
@@ -38,7 +38,7 @@ class NodeAppVmwareVms extends NodeAppVmware {
 	'clone' => 'Clone a VM',
 	'delete' => 'Delete a VM',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'start', 'shutdown', 'reboot', 'stop', 'suspend', 'reset', 'clone', 'delete' ];
     const LISTS = [ 'list' ];
     const POWER = [ 'start' => 'POWERED_ON', 'stop' => 'POWERED_OFF', 'suspend' => 'SUSPENDED', 'reset' => 'POWERED_ON' ];

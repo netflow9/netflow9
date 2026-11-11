@@ -7,7 +7,7 @@ $this->pageTitle = 'Project: ' . $project->name;
     <?= (new \sys\html\BtnExpandSidebar())->render() ?>
     <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
-	//CLD: 2026-10-05T20:42:44+03:00: Breadcrumbs prints labels as HTML; escape the user-editable name
+	//Breadcrumbs prints labels as HTML; escape the user-editable name
 	[ 'label' => $project->schema['icon']->display() . ' ' . \V::app()->html->escape((string)$project->name) ],
     ]]))->render() ?>
 </div>
@@ -15,9 +15,9 @@ $this->pageTitle = 'Project: ' . $project->name;
 <div class="main-body p-4">
 
     <?php
-    //CLD: 2026-10-05T20:42:44+03:00: only known tabs (the value is used to build a require() path)
+    //only known tabs (the value is used to build a require() path)
     $tab = \V::app()->request->query['__tab'] ?? 'general';
-    //CLD: 2026-10-28T10:00:00+02:00: + transfer (Export / import), with Project::transfer
+    //transfer (Export / import), with Project::transfer
     $tabs = [ 'general', 'members' ];
     if (\V::app()->user->can('Project::transfer', [ 'object' => $project ]))
 	$tabs[] = 'transfer';

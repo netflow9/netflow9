@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new step: GravityZone Quarantine - the files GravityZone quarantined on endpoints (Quarantine API, computers). Operations:
+    GravityZone Quarantine - the files GravityZone quarantined on endpoints (Quarantine API, computers). Operations:
 	list      the quarantined items (getQuarantineItemsList; of one endpoint or all; all pages up to At most)
 	restore   items restored to their place or to a folder (createRestoreQuarantineItemTask), with an exclusion added to the policy or not
 	remove    items deleted (createRemoveQuarantineItemTask)
@@ -25,7 +25,7 @@ class NodeAppGzQuarantine extends NodeAppGravityZone {
 	'empty' => 'Empty the quarantine',
 	'add' => 'Quarantine a file',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'restore', 'remove', 'empty', 'add' ];
     const LISTS = [ 'list' ];
     const AREA = 'quarantine/computers';

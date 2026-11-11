@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T11:55:18+02:00: new: the installation's tool servers (util\ToolServers: mcp.json), at /toolservers/<action>, as the Services (ServicesController):
+    the installation's tool servers (util\ToolServers: mcp.json), at /toolservers/<action>, as the Services (ServicesController):
 	index      the servers (with the MultiTenant plugin its super-admins' page; without it a tab of the account's settings: AccountController::settings, views/account/_tools.php)
 	edit       GET ?id= (none: a new one): the form; POST: saves it (util\ToolServers::validate, put)
 	remove     POST id

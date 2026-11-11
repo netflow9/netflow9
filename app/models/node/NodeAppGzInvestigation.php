@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new step: GravityZone Investigation - live response on an endpoint (Investigation API; the key needs it enabled). Operations:
+    GravityZone Investigation - live response on an endpoint (Investigation API; the key needs it enabled). Operations:
 	command     a command run on the endpoint (startCommandExecutionOnEndpoint)
 	package     an investigation package collected from the endpoint (collectInvestigationPackage)
 	retrieve    a file of the endpoint retrieved (startRetrieveInvestigationFileFromEndpoint)
@@ -27,7 +27,7 @@ class NodeAppGzInvestigation extends NodeAppGravityZone {
 	'fileUrl' => 'Get a retrieved file\'s address',
 	'kill' => 'Kill a process',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'command', 'package', 'retrieve', 'kill' ];
     const AREA = 'investigation';
 
@@ -66,7 +66,7 @@ class NodeAppGzInvestigation extends NodeAppGravityZone {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: the endpoint of the setting Endpoint
+    //the endpoint of the setting Endpoint
     private function endpointRef() {
 	return [ 'endpointId' => self::id($this->settingOf('endpointId'), 'Endpoint') ];
     }

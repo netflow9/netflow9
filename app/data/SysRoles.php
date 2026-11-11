@@ -24,7 +24,7 @@ class SysRoles {
 		'Role::read' =>			[ 'enabled' => true, 'scope' => 'global', ],
 		'Role::update' =>		[ 'enabled' => true, 'scope' => 'global' ],
 		'Role::delete' =>		[ 'enabled' => true, 'scope' => 'global' ],
-		//CLD: 2026-10-08T14:36:10+03:00: credentials
+		//credentials
 		'Credential::create' =>		[ 'enabled' => true, 'scope' => 'global' ],
 		'Credential::read' =>		[ 'enabled' => true, 'scope' => 'global', ],
 		'Credential::update' =>		[ 'enabled' => true, 'scope' => 'global' ],
@@ -37,7 +37,7 @@ class SysRoles {
 		'Workflow::read' =>		[ 'enabled' => true, 'scope' => 'global', ],
 		'Workflow::update' =>		[ 'enabled' => true, 'scope' => 'global' ],
 		'Workflow::delete' =>		[ 'enabled' => true, 'scope' => 'global' ],
-		//CLD: 2026-10-11T19:47:51+03:00: publish / unpublish
+		//publish / unpublish
 		'Workflow::publish' =>		[ 'enabled' => true, 'scope' => 'global' ],
 		'DataTable::create' =>		[ 'enabled' => true, 'scope' => 'global' ],
 		'DataTable::read' =>		[ 'enabled' => true, 'scope' => 'global', ],
@@ -45,7 +45,7 @@ class SysRoles {
 		'DataTable::delete' =>		[ 'enabled' => true, 'scope' => 'global' ],
 		'DataTable::readData' =>	[ 'enabled' => true, 'scope' => 'global', ],
 		'DataTable::writeData' =>	[ 'enabled' => true, 'scope' => 'global', ],
-		//CLD: 2026-10-31T01:00:00+02:00: knowledge bases
+		//knowledge bases
 		'KnowledgeBase::create' =>	[ 'enabled' => true, 'scope' => 'global' ],
 		'KnowledgeBase::read' =>		[ 'enabled' => true, 'scope' => 'global' ],
 		'KnowledgeBase::update' =>	[ 'enabled' => true, 'scope' => 'global' ],
@@ -69,7 +69,7 @@ class SysRoles {
 		'Project::read' =>		[ 'enabled' => true, 'scope' => 'project', ],
 		'Project::update' =>		[ 'enabled' => false, ],
 		'Project::delete' =>		[ 'enabled' => false, ],
-		//CLD: 2026-10-08T14:36:10+03:00: credentials
+		//credentials
 		'Credential::create' =>		[ 'enabled' => true, 'scope' => 'project' ],
 		'Credential::read' =>		[ 'enabled' => true, 'scope' => 'project', ],
 		'Credential::update' =>		[ 'enabled' => true, 'scope' => 'project' ],
@@ -82,7 +82,7 @@ class SysRoles {
 		'Workflow::read' =>		[ 'enabled' => true, 'scope' => 'project', ],
 		'Workflow::update' =>		[ 'enabled' => true, 'scope' => 'project' ],
 		'Workflow::delete' =>		[ 'enabled' => true, 'scope' => 'project' ],
-		//CLD: 2026-10-11T19:47:51+03:00: publish / unpublish
+		//publish / unpublish
 		'Workflow::publish' =>		[ 'enabled' => true, 'scope' => 'project' ],
 		'DataTable::create' =>		[ 'enabled' => true, 'scope' => 'project' ],
 		'DataTable::read' =>		[ 'enabled' => true, 'scope' => 'project', ],
@@ -90,7 +90,7 @@ class SysRoles {
 		'DataTable::delete' =>		[ 'enabled' => true, 'scope' => 'project' ],
 		'DataTable::readData' =>	[ 'enabled' => true, 'scope' => 'project', ],
 		'DataTable::writeData' =>	[ 'enabled' => true, 'scope' => 'project', ],
-		//CLD: 2026-10-31T01:00:00+02:00: knowledge bases
+		//knowledge bases
 		'KnowledgeBase::create' =>	[ 'enabled' => true, 'scope' => 'project' ],
 		'KnowledgeBase::read' =>		[ 'enabled' => true, 'scope' => 'project' ],
 		'KnowledgeBase::update' =>	[ 'enabled' => true, 'scope' => 'project' ],
@@ -98,7 +98,7 @@ class SysRoles {
 	    ],
 	],
 
-	//CLD: 2026-10-13T21:12:34+03:00: Participant - participant (user's choice): fills in the project's forms and completes the tasks assigned to them; both need only the
+	//Participant - participant (user's choice): fills in the project's forms and completes the tasks assigned to them; both need only the
 	//project's membership (FormController / TaskController), so every permission is off but their own user account and seeing their projects
 	[
 	    'name' => 'Participant',
@@ -138,7 +138,7 @@ class SysRoles {
 		'DataTable::delete' =>		[ 'enabled' => false, ],
 		'DataTable::readData' =>	[ 'enabled' => false, ],
 		'DataTable::writeData' =>	[ 'enabled' => false, ],
-		//CLD: 2026-10-31T01:00:00+02:00: knowledge bases
+		//knowledge bases
 		'KnowledgeBase::create' =>	[ 'enabled' => false, ],
 		'KnowledgeBase::read' =>		[ 'enabled' => false, ],
 		'KnowledgeBase::update' =>	[ 'enabled' => false, ],

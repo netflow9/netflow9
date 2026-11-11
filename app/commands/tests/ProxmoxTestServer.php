@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new file: a fake Proxmox VE 8.2 cluster `lab` (nodes pve1, pve2) for the check suite (CheckCommand::suiteProxmox), run by PHP's built-in server:
+    a fake Proxmox VE 8.2 cluster `lab` (nodes pve1, pve2) for the check suite (CheckCommand::suiteProxmox), run by PHP's built-in server:
     PVE_STATE=<a folder> php -S 127.0.0.1:<port> ProxmoxTestServer.php
 	Authorization: PVEAPIToken=automation@pve!rail22=s3cret; errors as Proxmox gives them: the message in the status line's reason phrase, parameters' errors in { errors };
 	each request appended to <state>/requests.jsonl (method, path, params as sent, auth); the guests, snapshots, backups and tasks kept in <state>/state.json

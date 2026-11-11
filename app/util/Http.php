@@ -23,13 +23,13 @@
 	https           https:// only (redirects too)
 	public          the public-address guard
 	private         with `public`: addresses of a private network (10/8, 172.16/12, 192.168/16, 100.64/10, fc00::/7) are accepted too; never this machine (its own
-	                addresses, loopback), link-local or reserved ones (CLD: 2026-11-01T00:30:00+02:00: on-premises servers, e.g. a GravityZone console: the account's allow_private_addresses)
-	insecure        the server's TLS certificate is not checked (a self-signed one) (CLD: 2026-11-01T00:30:00+02:00)
+	                addresses, loopback), link-local or reserved ones on-premises servers, e.g. a GravityZone console: the account's allow_private_addresses)
+	insecure        the server's TLS certificate is not checked (a self-signed one)
 	auth            [ 'ntlm' | 'basic', user, password ]: curl signs in (NTLM: its challenge / response, e.g. Windows Remote Management); not sent to another host after a redirect
-	                (CLD: 2026-11-01T16:00:00+02:00)
+
 	compressed      accept gzip / deflate / br (decoded)
 
-    The answer: ok (no error, status 1..399), status, reason (the status line's text after the code; CLD: 2026-11-01T14:00:00+02:00), error (null when there is an answer), tooLarge, headers [ lower-case name => value ] (the last of a repeated one),
+    The answer: ok (no error, status 1..399), status, reason (the status line's text after the code; , error (null when there is an answer), tooLarge, headers [ lower-case name => value ] (the last of a repeated one),
     headerList [ [ name, value ] ] (all, in order), body, size, contentType (as sent), mime (lower case, no parameters), url (the last address, after redirects), time_ms
 */
 
@@ -74,10 +74,10 @@ class Http {
 		break;
 	    }
 	    $follow = $hop < $redirects && $upload === null;
-	    //CLD: 2026-11-01T00:30:00+02:00: + private, insecure
+	    //private, insecure
 	    $answer = self::once($method, $r['url'], $headers, $body, $upload, $sink, $maxBytes, $https, !empty($o['public']) ? (!empty($o['private']) ? 'private' : 'public') : false,
 		!empty($o['compressed']), $left, $connectTimeout, $follow, !empty($o['insecure']),
-		//CLD: 2026-11-01T16:00:00+02:00: + auth, for the first host only
+		//auth, for the first host only
 		isset($o['auth']) && $hop > 0 && parse_url($r['url'], PHP_URL_HOST) !== parse_url($url, PHP_URL_HOST) ? null : ($o['auth'] ?? null));
 	    $location = $answer['headers']['location'] ?? null;
 	    $r = array_merge($r, $answer);
@@ -129,7 +129,7 @@ class Http {
     }
 
     //the addresses $host resolves to, when all are public: [ ips, null ]; else [ [], the reason ]
-    //CLD: 2026-11-01T00:30:00+02:00: + $private: addresses of a private network accepted too (util\Ip::isPrivateNetwork)
+    //$private: addresses of a private network accepted too (util\Ip::isPrivateNetwork)
     public static function publicAddresses($host, $private = false) {
 	$host = trim((string)$host, '[]');
 	if ($host === '')
@@ -152,8 +152,7 @@ class Http {
     // ------------------------------------------------------------------------------------
 
     //one exchange (no redirect followed): the answer's status, error, tooLarge, headers, headerList, body, size, contentType, mime; $follow: a redirect's body is not kept (it is followed)
-    //CLD: 2026-11-01T00:30:00+02:00: $public: false, 'public' or 'private' (private network addresses accepted too); + $insecure: the certificate not checked
-    //CLD: 2026-11-01T16:00:00+02:00: + $auth: [ ntlm | basic, user, password ] or null
+    //$public: false, 'public' or 'private' (private network addresses accepted too); $insecure: the certificate not checked; $auth: [ ntlm | basic, user, password ] or null
     protected static function once($method, $url, array $headers, $body, $upload, $sink, $maxBytes, $https, $public, $compressed, $timeoutMs, $connectTimeout, $follow, $insecure = false, $auth = null) {
 	$r = [ 'status' => 0, 'reason' => '', 'error' => null, 'tooLarge' => false, 'headers' => [], 'headerList' => [], 'body' => '', 'size' => 0, 'contentType' => '', 'mime' => '' ];
 	$parts = parse_url($url);
@@ -189,7 +188,7 @@ class Http {
 	    $opts[CURLOPT_SSL_VERIFYPEER] = false;
 	    $opts[CURLOPT_SSL_VERIFYHOST] = 0;
 	}
-	//CLD: 2026-11-01T16:00:00+02:00: curl signs in
+	//curl signs in
 	if (is_array($auth) && count($auth) === 3) {
 	    $opts[CURLOPT_HTTPAUTH] = $auth[0] === 'ntlm' ? CURLAUTH_NTLM : CURLAUTH_BASIC;
 	    $opts[CURLOPT_USERPWD] = (string)$auth[1] . ':' . (string)$auth[2];
@@ -217,7 +216,7 @@ class Http {
 	    if (preg_match('~^HTTP/\S+\s+(\d+)(?:[ \t]+([^\r\n]*))?~', $line, $m)) {
 		//a new answer (e.g. after 100 Continue): its headers only
 		$r['status'] = (int)$m[1];
-		//CLD: 2026-11-01T14:00:00+02:00: + the reason phrase (Proxmox VE puts its error messages there; none in HTTP/2)
+		//the reason phrase (Proxmox VE puts its error messages there; none in HTTP/2)
 		$r['reason'] = trim((string)($m[2] ?? ''));
 		$r['headers'] = $r['headerList'] = [];
 	    } elseif (($p = strpos($line, ':')) !== false) {

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T16:00:00+02:00: new step: Hyper-V Host - the Hyper-V host itself (PowerShell). Operations (setting `operation`):
+    Hyper-V Host - the Hyper-V host itself (PowerShell). Operations (setting `operation`):
 	host         the host: { name, os, build, logicalProcessors, memoryTotal, memoryFree, memoryFreePercent, vmPath, vhdPath, vms, running, uptimeSeconds }
 	volumes      its local volumes (Win32_LogicalDisk, fixed disks): { drive, label, size, free, freePercent, lowOnSpace }
 	switches     its virtual switches (Get-VMSwitch): { name, id, type, adapter }
@@ -25,7 +25,7 @@ class NodeAppHyperVHost extends NodeAppHyperV {
 	'replication' => 'List VM replication',
 	'events' => 'List Hyper-V errors and warnings',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [];
     const LISTS = [ 'volumes', 'switches', 'replication', 'events' ];
     const LEVELS = [ 'errors' => 'Errors', 'warnings' => 'Errors and warnings' ];

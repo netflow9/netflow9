@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-23T15:00:00+03:00: new file: a local HTTP server for the check suite (CheckCommand::suiteHttp: util\Http and the HTTP steps), run by PHP's built-in server:
+    a local HTTP server for the check suite (CheckCommand::suiteHttp: util\Http and the HTTP steps), run by PHP's built-in server:
     php -S 127.0.0.1:<port> HttpTestServer.php
 	/echo                   JSON: { method, headers (lower-case names), body, query }
 	/redirect?status=&to=   that status with Location: to (default 302, /echo)
@@ -9,7 +9,7 @@
 	/bytes?n=               n bytes (x), text/plain
 	/status?code=           that status, a JSON error { error: { message } }
 	/file                   a small CSV with Content-Disposition: attachment; filename="report.csv"
-	/page                   a small HTML page (CLD: 2026-10-30T15:00:00+02:00: the Read a web page step)
+	/page                   a small HTML page (the Read a web page step)
 */
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -21,7 +21,7 @@ switch($path) {
 	header('Content-Type: application/json');
 	header('X-Check: one');
 	header('X-Check: two', false);
-	//CLD: 2026-10-28T08:30:00+02:00: + raw_query (the query string as sent: $_GET keeps one value per name)
+	//raw_query: the query string as sent ($_GET keeps one value per name)
 	echo json_encode([ 'method' => $_SERVER['REQUEST_METHOD'], 'headers' => $headers, 'body' => file_get_contents('php://input'), 'query' => $_GET,
 	    'raw_query' => $_SERVER['QUERY_STRING'] ?? '' ], JSON_UNESCAPED_SLASHES);
 	break;
@@ -48,7 +48,7 @@ switch($path) {
 	header('Content-Disposition: attachment; filename="report.csv"');
 	echo "a,b\n1,2\n";
 	break;
-    //CLD: 2026-10-30T15:00:00+02:00: a small HTML page (the Read a web page step)
+    //a small HTML page (the Read a web page step)
     case '/page':
 	header('Content-Type: text/html; charset=utf-8');
 	echo '<!doctype html><html><head><title>Check &amp; page</title><style>p { color: red }</style></head><body><h1>Hello</h1><p>First <b>line</b></p><script>x()</script></body></html>';

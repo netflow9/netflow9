@@ -1,9 +1,11 @@
 <?php
 
-//CLD: 2026-10-21T10:00:00+03:00: new: the LDAP client without PHP's ldap extension (LdapClient::open picks it when the extension is not loaded): LDAPv3 messages (RFC 4511) in
-//BER (LdapBer) over a TCP socket; LDAPS (ssl://) or StartTLS (the extended operation 1.3.6.1.4.1.1466.20037, then TLS on the same socket), certificates checked by
-//PHP's OpenSSL streams. Operations: simple bind, search (+ the paged results control), add, modify, delete, modify DN, password modify (RFC 3062), unbind.
-//Referrals and search references are not followed (left out: as the ext driver with LDAP_OPT_REFERRALS off).
+/*
+    the LDAP client without PHP's ldap extension (LdapClient::open picks it when the extension is not loaded): LDAPv3 messages (RFC 4511) in
+    BER (LdapBer) over a TCP socket; LDAPS (ssl://) or StartTLS (the extended operation 1.3.6.1.4.1.1466.20037, then TLS on the same socket), certificates checked by
+    PHP's OpenSSL streams. Operations: simple bind, search (+ the paged results control), add, modify, delete, modify DN, password modify (RFC 3062), unbind.
+    Referrals and search references are not followed (left out: as the ext driver with LDAP_OPT_REFERRALS off).
+*/
 
 namespace util;
 

@@ -1,4 +1,4 @@
-# CLD: 2026-11-01T19:00:00+02:00: Rail22 with Docker Compose (next to install.sh, the servers' way). From docker/: settings in .env (docker.sh setup, or copy env.example); then
+# Rail22 with Docker Compose (next to install.sh, the servers' way). From docker/: settings in .env (docker.sh setup, or copy env.example); then
 #   docker compose build && docker compose up -d       and open the site (/setup, unless NFN_SETUP_JSON set it up)
 # Profiles (COMPOSE_PROFILES in .env; both on in env.example and docker.sh setup): browser (the AI steps' web browser), mail (Haraka, inbound mail on port 25).
 # Upgrade: git pull && docker compose build && docker compose up -d (the app adds the new indexes at its start).
@@ -7,7 +7,7 @@
 
 name: ${COMPOSE_PROJECT_NAME:-rail22}
 
-# CLD: 2026-11-07T16:00:00+02:00: the images named after the project too: two installations on one host (each its own COMPOSE_PROJECT_NAME, NFN_UID) keep their own
+# the images named after the project too: two installations on one host (each its own COMPOSE_PROJECT_NAME, NFN_UID) keep their own
 
 x-app: &app
   image: ${COMPOSE_PROJECT_NAME:-rail22}-app:local
@@ -33,7 +33,7 @@ x-app: &app
     NFN_SETUP_SMTP_HOST: ${SMTP_HOST:-}
     NFN_SETUP_SMTP_PORT: ${SMTP_PORT:-}
     NFN_SETUP_BASE_URL: ${BASE_URL:-}
-  # CLD: 2026-11-07T17:00:00+02:00: the data in folders of DATA_DIR (docker.sh setup: the user's home, docker-volumes/), not in docker's named volumes
+  # the data in folders of DATA_DIR (docker.sh setup: the user's home, docker-volumes/), not in docker's named volumes
   volumes: &app-volumes
     - ${DATA_DIR:?DATA_DIR is not set (.env)}/config:/srv/rail22/config
     - ${DATA_DIR:?DATA_DIR is not set (.env)}/logs:/srv/rail22/logs
@@ -142,7 +142,7 @@ services:
     # port 25 as the image's user node
     sysctls:
       net.ipv4.ip_unprivileged_port_start: 25
-    # CLD: 2026-11-07T15:40:00+02:00: the published port from .env (MAIL_PORT, asked by setup): a host whose own MTA keeps 25 publishes another
+    # the published port from .env (MAIL_PORT, asked by setup): a host whose own MTA keeps 25 publishes another
     ports:
       - "${SMTP_BIND:-0.0.0.0}:${MAIL_PORT:-25}:25"
     volumes:

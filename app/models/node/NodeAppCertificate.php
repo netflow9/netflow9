@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-08T12:00:00+02:00: new step: Read a certificate - decodes an SSL / TLS certificate from an address:
+    Read a certificate - decodes an SSL / TLS certificate from an address:
 	- the server's certificate: a TLS connection to https://host[:port], host:port or another TLS address (ldaps, imaps, smtps, ...); the chain the server sends
 	- a certificate file: a GET of a URL answering a PEM (one or more certificates) or a DER certificate (.crt, .cer, .pem)
     Public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE (as the HTTP steps; the server's connection goes to the address checked).

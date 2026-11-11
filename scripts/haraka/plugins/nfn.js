@@ -80,7 +80,7 @@ exports.hook_rcpt = async function (next, connection, params) {
     const rcpt = params[0];
     const domain = String(cfg.nfn.domain || '').toLowerCase();
 
-    // CLD: 2026-10-15T14:04:51+03:00: an address of the domain that `aliases` rewrote to another domain: accepted, forwarded at queue time
+    //an address of the domain that `aliases` rewrote to another domain: accepted, forwarded at queue time
     const came = txn ? String(txn.notes.nfn_rcpt || '') : '';
     if (txn && domain && came.endsWith('@' + domain) && String(rcpt.host || '').toLowerCase() !== domain) {
         this.loginfo('nfn: accepted ' + came + ' (alias of ' + rcpt.address + ')');
@@ -90,8 +90,7 @@ exports.hook_rcpt = async function (next, connection, params) {
         return next();
 
     const address = String(rcpt.user || '').toLowerCase() + '@' + domain;
-    // CLD: 2026-10-18T09:40:00+03:00: postmaster (bounces from other servers): accepted, saved in bounce_dir at queue time
-    // CLD: 2026-10-18T09:55:00+03:00: only null-sender mail (bounces); other mail to postmaster is refused as before (unknown address)
+    // postmaster (bounces from other servers): only null-sender mail (bounces) accepted, saved in bounce_dir at queue time; other mail to postmaster is refused (unknown address)
     const nullSender = !txn.mail_from || !txn.mail_from.address;
     if (cfg.nfn.bounce_dir && nullSender && this.postmasters(domain).has(address)) {
         txn.notes.nfn_postmaster = (txn.notes.nfn_postmaster || []).concat(address);
@@ -106,7 +105,7 @@ exports.hook_rcpt = async function (next, connection, params) {
     if (!d)
         return next(DENYSOFT, 'temporarily unavailable');
     try {
-        // CLD: 2026-10-17T15:35:00+03:00: the step type is trigger::email
+        //the step type is trigger::email
         const entry = await d.collection('trigger_tokens').findOne({ type: 'trigger::email', token: m[2] });
         const account = entry ? await d.collection('accounts').findOne({ _id: entry.aid }) : null;
         const settings = entry ? await d.collection('inbound_mail_settings').findOne({ aid: entry.aid }) : null;
@@ -126,10 +125,10 @@ exports.hook_rcpt = async function (next, connection, params) {
 exports.hook_queue = function (next, connection) {
     const txn = connection.transaction;
     const targets = txn.notes.nfn || [];
-    // CLD: 2026-10-15T14:04:51+03:00: the recipients of another domain are alias targets (hook_rcpt accepted no other foreign recipient)
+    //the recipients of another domain are alias targets (hook_rcpt accepted no other foreign recipient)
     const domain = String(cfg.nfn.domain || '').toLowerCase();
     const forward = txn.rcpt_to.filter((a) => String(a.host || '').toLowerCase() !== domain);
-    // CLD: 2026-10-18T09:40:00+03:00: the postmaster recipients (hook_rcpt)
+    //the postmaster recipients (hook_rcpt)
     const postmaster = txn.notes.nfn_postmaster || [];
     if (!targets.length && !forward.length && !postmaster.length)
         return next();
@@ -146,30 +145,30 @@ exports.hook_queue = function (next, connection) {
             });
             if (!sent)
                 return next(DENYSOFT, 'temporarily unavailable');
-            // CLD: 2026-10-18T09:40:00+03:00: not done yet when there are postmaster recipients
+            //not done yet when there are postmaster recipients
             if (!targets.length && !postmaster.length)
                 return next(OK, 'forwarded');
         }
-        // CLD: 2026-10-18T09:40:00+03:00: mail to postmaster saved in bounce_dir
+        //mail to postmaster saved in bounce_dir
         if (postmaster.length) {
             if (!(await this.save_inbound_bounce(txn, raw, postmaster)))
                 return next(DENYSOFT, 'temporarily unavailable');
             if (!targets.length)
                 return next(OK, 'saved');
         }
-        // CLD: 2026-10-16T12:04:51+03:00: storing is store() (shared with hook_queue_outbound)
+        //storing is store() (shared with hook_queue_outbound)
         if (!(await this.store(txn, raw, targets)))
             return next(DENYSOFT, 'temporarily unavailable');
         return next(OK, 'queued for Rail22');
     });
 };
 
-// CLD: 2026-10-16T12:04:51+03:00: mail relayed by Haraka (e.g. sent by itself through 127.0.0.1: the Send Email step) skips the `queue` hook and goes to outbound, which
+//mail relayed by Haraka (e.g. sent by itself through 127.0.0.1: the Send Email step) skips the `queue` hook and goes to outbound, which
 // finds example.com's MX is this server and gives up ("MX is local"): its recipients are stored here and taken off the transaction; outbound delivers the others
 exports.hook_queue_outbound = function (next, connection) {
     const txn = connection.transaction;
     const targets = txn.notes.nfn || [];
-    // CLD: 2026-10-18T09:40:00+03:00: + the postmaster recipients (hook_rcpt): saved in bounce_dir, taken off the transaction too
+    //the postmaster recipients (hook_rcpt): saved in bounce_dir, taken off the transaction too
     const postmaster = txn.notes.nfn_postmaster || [];
     if (!targets.length && !postmaster.length)
         return next();
@@ -184,7 +183,7 @@ exports.hook_queue_outbound = function (next, connection) {
     });
 };
 
-// CLD: 2026-10-16T12:04:51+03:00: the message for each recipient: a project File, a job, the daemon woken; false when it could not be stored
+//the message for each recipient: a project File, a job, the daemon woken; false when it could not be stored
 exports.store = async function (txn, raw, targets) {
     const d = await this.db();
     if (!d)
@@ -218,9 +217,9 @@ exports.store = async function (txn, raw, targets) {
         return false;
     }
     // wake the daemon; when it does not run, it finds the jobs when it starts
-    // CLD: 2026-11-01T16:00:27+02:00: on 127.0.0.1:<job_port> (nfn.ini [nfn] job_port = Rail22's DAEMON_PORT, default 9000)
+    //on 127.0.0.1:<job_port> (nfn.ini [nfn] job_port = Rail22's DAEMON_PORT, default 9000)
     const port = parseInt(cfg.nfn.job_port, 10) || 9000;
-    // CLD: 2026-11-01T19:00:00+02:00: on nfn.ini [nfn] job_host (Rail22's DAEMON_HOST; Docker: daemon), default 127.0.0.1
+    //on nfn.ini [nfn] job_host (Rail22's DAEMON_HOST; Docker: daemon), default 127.0.0.1
     const s = net.createConnection({ host: String(cfg.nfn.job_host || '127.0.0.1'), port: port }, () => s.end('NEWJOB\n'));
     s.on('error', () => {});
     return true;

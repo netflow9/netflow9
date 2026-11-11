@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new step: Proxmox Cluster - the nodes, storage, tasks and state of a Proxmox VE cluster (or server). Operations (setting `operation`):
+    Proxmox Cluster - the nodes, storage, tasks and state of a Proxmox VE cluster (or server). Operations (setting `operation`):
 	nodes    the nodes (GET /nodes): { node, status, cpu, maxcpu, mem, maxmem, uptime, memPercent }
 	storage  the storages of each node (GET /cluster/resources?type=storage): { storage, node, plugintype, status, disk, maxdisk, shared, freePercent, lowOnSpace }
 	status   the cluster's state (GET /cluster/status): the cluster (name, quorate) and its nodes (online)
@@ -29,7 +29,7 @@ class NodeAppProxmoxCluster extends NodeAppProxmox {
 	'pools' => 'List pools',
 	'version' => 'Get the version',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [];
     const LISTS = [ 'nodes', 'storage', 'tasks', 'pools' ];
 

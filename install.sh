@@ -36,11 +36,11 @@ PHPV="85"
 PHP_ETC="/etc/opt/remi/php$PHPV"
 PHP_FPM="php$PHPV-php-fpm"
 #the PHP packages (Remi): the app's extensions (opcache is built in)
-#CLD: 2026-10-29T05:00:00+02:00: without php$PHPV-syspaths (/usr/bin/php): installed on its own, it may replace the distribution's PHP (asked)
+# without php$PHPV-syspaths (/usr/bin/php): installed on its own, it may replace the distribution's PHP (asked)
 PHP_PACKAGES="php$PHPV php$PHPV-runtime php$PHPV-php-cli php$PHPV-php-common php$PHPV-php-fpm php$PHPV-php-gd php$PHPV-php-gmp php$PHPV-php-mbstring
     php$PHPV-php-mysqlnd php$PHPV-php-pdo php$PHPV-php-process php$PHPV-php-sodium php$PHPV-php-tidy php$PHPV-php-xml php$PHPV-php-pecl-event php$PHPV-php-pecl-igbinary
     php$PHPV-php-pecl-imap php$PHPV-php-pecl-mailparse php$PHPV-php-pecl-mongodb2 php$PHPV-php-pecl-msgpack php$PHPV-php-pecl-redis6 php$PHPV-php-pecl-zip"
-#CLD: 2026-10-29T06:00:00+02:00: the Database step's drivers (recommended; installed when missing, an unavailable one skipped): PostgreSQL, SQL Server (pdo_dblib: FreeTDS;
+# the Database step's drivers (recommended; installed when missing, an unavailable one skipped): PostgreSQL, SQL Server (pdo_dblib: FreeTDS;
 #sqlsrv would need Microsoft's ODBC driver), Firebird, ODBC. Oracle's pdo_oci needs Oracle's Instant Client: not in these repositories
 PHP_DB_PACKAGES="php$PHPV-php-pgsql php$PHPV-php-pdo-dblib php$PHPV-php-pdo-firebird php$PHPV-php-odbc"
 MONGODB_VERSION="8.3"
@@ -147,7 +147,7 @@ mongo_auth_off() {
     mongosh --quiet "$LOCAL_MONGO/admin" --eval 'db.getUsers()' >/dev/null 2>&1
 }
 
-#CLD: 2026-10-29T07:00:00+02:00: the lines of $@ under security: in $MONGOD_CONF (as indented as its other keys), or a new security: section; $1: the copy it is made from
+# the lines of $@ under security: in $MONGOD_CONF (as indented as its other keys), or a new security: section; $1: the copy it is made from
 #(Percona's encryption at rest adds its keys there too)
 mongod_conf_security() {
     local from="$1"
@@ -195,7 +195,7 @@ step() {
     echo "=== $*"
 }
 
-#CLD: 2026-11-01T22:30:00+02:00: an installed app's code updated from git (asked): only a working tree without local changes, on its branch, fast-forward (never a
+# an installed app's code updated from git (asked): only a working tree without local changes, on its branch, fast-forward (never a
 #reset or a stash); then this installer starts again from the new code (bash reads a script as it runs), with the answers so far
 update_app() {
     local branch dirty behind
@@ -204,7 +204,7 @@ update_app() {
         echo "  The app's code is not on a branch (detached): not updated"
         return
     fi
-    #CLD: 2026-11-01T22:45:00+02:00: the files with local changes listed
+    # the files with local changes listed
     dirty=$(as_user git status --porcelain --untracked-files=no)
     if [ -n "$dirty" ]; then
         echo "  The app's code has local changes: not updated (commit or discard them in $BASE, then run this again):"
@@ -241,14 +241,14 @@ if ! command -v dnf >/dev/null 2>&1 || [ "${VERSION_ID%%.*}" != "9" ] || ! [[ " 
 fi
 echo "Rail22 installer (${PRETTY_NAME})"
 
-#CLD: 2026-10-29T05:15:00+02:00: an installed MongoDB server is kept (MongoDB's packages, Percona Server for MongoDB, ...: the package of /usr/bin/mongod); mongosh to match it
+# an installed MongoDB server is kept (MongoDB's packages, Percona Server for MongoDB, ...: the package of /usr/bin/mongod); mongosh to match it
 MONGOD_PKG=""
 if [ -x /usr/bin/mongod ]; then
     MONGOD_PKG=$(rpm -qf --qf '%{NAME}' /usr/bin/mongod 2>/dev/null || true)
     [[ $MONGOD_PKG == *" "* ]] && MONGOD_PKG="mongod"
 fi
 
-#CLD: 2026-10-29T05:30:00+02:00: what is installed, detected before the questions and shown in one line
+# what is installed, detected before the questions and shown in one line
 PHP_LABEL="${PHPV:0:1}.${PHPV:1}"
 #the distribution's PHP (php-common, ...): it conflicts with php$PHPV-syspaths (both are /usr/bin/php, which the app's console and daemon run)
 DISTRO_PHP=""
@@ -315,7 +315,7 @@ while true; do
     echo "  lowercase letters, digits, - and _ (not root)"
     NFN_INSTALL_USER=""
 done
-#CLD: 2026-10-29T04:30:00+02:00: || true: a new user is not found by getent (exit 2: with pipefail it stopped the script, silently)
+# || true: a new user is not found by getent (exit 2: with pipefail it stopped the script, silently)
 BASE=$(getent passwd "$APP_USER" | cut -d: -f6 || true)
 BASE="${BASE:-/home/$APP_USER}"
 ENV_FILE="$BASE/app.env"
@@ -358,7 +358,7 @@ if [ ! -e "$BASE/ssl/ssl.crt" ] || [ "$(readlink "$BASE/ssl/ssl.crt" 2>/dev/null
     [ "$OPT_LE" -eq 0 ] || ask LE_EMAIL "Email for Let's Encrypt's notices" ""
 fi
 
-#CLD: 2026-11-01T13:30:00+02:00: one question; scripts/playwright-mcp.sh install updates it when it is there
+# one question; scripts/playwright-mcp.sh install updates it when it is there
 ask_yes OPT_BROWSER "The web browser for the AI steps (Playwright MCP and its Chromium, about 500 MB)" y
 
 MAIL_DOMAIN=""
@@ -366,7 +366,7 @@ MAIL_DOMAIN=""
 ask_yes OPT_MAIL "Inbound email: workflows started by emails (Haraka on port 25)" "$([ -n "$MAIL_DOMAIN" ] || [ -d "$BASE/haraka/node_modules/haraka" ] && echo y || echo n)"
 [ "$OPT_MAIL" -eq 0 ] || ask MAIL_DOMAIN "The domain of its addresses (its MX record points to this server)" "${MAIL_DOMAIN:-$DOMAIN}"
 
-#CLD: 2026-10-29T08:00:00+02:00: an app set up before whose database is empty now (MongoDB's data folder emptied, e.g. to encrypt it; or no account in its database): set up
+# an app set up before whose database is empty now (MongoDB's data folder emptied, e.g. to encrypt it; or no account in its database): set up
 #again (asked; its app.env kept as app.env.bak-<time>). With the data folder, MongoDB's users went too: its sign-in is turned off
 #(authorization: disabled) until they are made again
 RESETUP=0
@@ -407,7 +407,7 @@ if [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
     fi
 fi
 
-#CLD: 2026-10-29T07:00:00+02:00: Percona Server for MongoDB on this server: its data encrypted at rest (WiredTiger's encryption, a key file), not asked. Only while its data
+# Percona Server for MongoDB on this server: its data encrypted at rest (WiredTiger's encryption, a key file), not asked. Only while its data
 #folder is empty: mongod does not start with encryption on files written without it (existing data: mongodump, an empty dbPath, encryption on, mongorestore)
 OPT_MONGO_ENCRYPT=0
 MONGO_ENCRYPT_NOTE=""
@@ -425,7 +425,7 @@ if [ "$OPT_LOCAL_MONGO" -eq 1 ] && [[ $MONGOD_PKG == percona-* ]]; then
     fi
 fi
 
-#CLD: 2026-10-29T05:00:00+02:00: the distribution's PHP (php-common, ...) conflicts with php$PHPV-syspaths (both are /usr/bin/php, which the app's console and daemon run): replaced
+# the distribution's PHP (php-common, ...) conflicts with php$PHPV-syspaths (both are /usr/bin/php, which the app's console and daemon run): replaced
 #only when allowed (dnf --allowerasing removes those packages and what needs them)
 OPT_REPLACE_PHP=0
 if [ -n "$DISTRO_PHP" ]; then
@@ -443,7 +443,7 @@ fi
 
 echo
 echo "It will:"
-#CLD: 2026-10-29T05:30:00+02:00: only what is missing and needed by the answers
+# only what is missing and needed by the answers
 to_install=()
 for m in "${missing[@]}"; do
     case $m in
@@ -496,7 +496,7 @@ fi
 #/usr/bin/php: PHP $PHPV's (in place of the distribution's, when allowed above)
 if ! rpm -q --quiet "php$PHPV-syspaths"; then
     if [ "$OPT_REPLACE_PHP" -eq 1 ]; then
-        #CLD: 2026-10-29T05:45:00+02:00: the distribution's PHP removed first (was dnf install --allowerasing: one transaction cannot turn its /etc/php.d folder into
+        #the distribution's PHP removed first (dnf install --allowerasing in one transaction cannot turn its /etc/php.d folder into
         #php$PHPV-syspaths' link, "file /etc/php.d ... conflicts"); what it leaves there (edited files kept by rpm) is moved aside, then php$PHPV-syspaths
         echo "+ dnf remove $DISTRO_PHP"
         # shellcheck disable=SC2086
@@ -513,7 +513,7 @@ if ! rpm -q --quiet "php$PHPV-syspaths"; then
         install_packages "php$PHPV-syspaths"
     fi
 fi
-#CLD: 2026-10-29T05:15:00+02:00: MongoDB's own server only when none is installed (Percona Server for MongoDB conflicts with mongodb-org: kept, with Percona's mongosh)
+# MongoDB's own server only when none is installed (Percona Server for MongoDB conflicts with mongodb-org: kept, with Percona's mongosh)
 mongodb_repo() {
     local repo="/etc/yum.repos.d/mongodb-org-$MONGODB_VERSION.repo"
     [ -f "$repo" ] && return 0
@@ -533,13 +533,13 @@ if [ "$OPT_LOCAL_MONGO" -eq 1 ] && [ -z "$MONGOD_PKG" ]; then
 elif [ -n "$MONGOD_PKG" ]; then
     echo "MongoDB: $MONGOD_PKG is installed: kept"
 fi
-#CLD: 2026-10-29T07:00:00+02:00: Percona's encryption at rest, before mongod's first start (it then writes its files encrypted): a key file (32 random bytes, base64), made
+# Percona's encryption at rest, before mongod's first start (it then writes its files encrypted): a key file (32 random bytes, base64), made
 #once per server, read by mongod only
 #SECURITY TODO: a static key, kept on the same server as the data: it protects the data files, backups of them and old disks taken away, not the data from root here,
 #and it is never rotated. Make it more secure: keep the key in a key manager (Percona: HashiCorp Vault, security.vault, or a KMIP server, security.kmip) instead of a file,
 #and rotate it regularly (Vault / KMIP: mongod --rotateMasterKey; a key file: each replica set member resynced with a new key). Keep a copy of the key away from this
 #server: without it the data cannot be read
-#CLD: 2026-10-29T08:00:00+02:00: an emptied data folder: no users to sign in with, so sign-in off until the step "MongoDB: users and sign-in" makes them again
+# an emptied data folder: no users to sign in with, so sign-in off until the step "MongoDB: users and sign-in" makes them again
 if [ "$MONGO_REAUTH" -eq 1 ]; then
     backup="$MONGOD_CONF.bak-$(date +%Y%m%dT%H%M%S)-auth"
     cp -p "$MONGOD_CONF" "$backup"
@@ -574,7 +574,7 @@ fi
 if [ "$OPT_BROWSER" -eq 1 ] || [ "$OPT_MAIL" -eq 1 ]; then
     if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
         #the newest Node.js stream of the distribution
-        #CLD: 2026-10-29T04:30:00+02:00: || true: no module streams (dnf fails) is not an error: the distribution's own nodejs then
+        # || true: no module streams (dnf fails) is not an error: the distribution's own nodejs then
         stream=$(dnf -q module list nodejs 2>/dev/null | awk '$1 == "nodejs" && $2 ~ /^[0-9]+$/ { print $2 }' | sort -n | tail -1 || true)
         if [ -n "$stream" ]; then
             dnf -y module reset nodejs
@@ -650,7 +650,7 @@ if [ ! -e "$BASE/ssl/ssl.crt" ]; then
     chown -h "$APP_USER:$APP_USER" "$BASE/ssl/selfsigned.key" "$BASE/ssl/selfsigned.crt" "$BASE/ssl/ssl.crt" "$BASE/ssl/ssl.key"
     echo "+ a self-signed certificate for $DOMAIN"
 fi
-#CLD: 2026-11-01T20:00:00+02:00: its install command: the site, nginx started at boot and now
+# its install command: the site, nginx started at boot and now
 "$SCRIPTS/nginx.sh" install --server-name="$DOMAIN"
 if [ "$OPT_LE" -eq 1 ]; then
     #http-01 through the site (port 80 redirects to https, which serves .well-known/acme-challenge from the web root)
@@ -671,7 +671,7 @@ fi
 # ---------------------------------------------------------------------------------------------------------------
 if [ "$SET_UP" -eq 0 ]; then
     step "The app"
-    #CLD: 2026-10-29T08:00:00+02:00: set up again: the old app.env aside (its APP_SECRET reads the credentials of a restored dump); the setup runs only without one
+    # set up again: the old app.env aside (its APP_SECRET reads the credentials of a restored dump); the setup runs only without one
     if [ "$RESETUP" -eq 1 ]; then
         RESETUP_BACKUP="$ENV_FILE.bak-$(date +%Y%m%dT%H%M%S)"
         mv "$ENV_FILE" "$RESETUP_BACKUP"
@@ -713,7 +713,7 @@ if [ "$SET_UP" -eq 0 ]; then
     #asked until the app's own checks accept the answers (Enter keeps the answer given before)
     while true; do
         echo
-        #CLD: 2026-10-29T05:15:00+02:00: MongoDB here that requires sign-in already (e.g. Percona's, set up before): its connection string with a user
+        # MongoDB here that requires sign-in already (e.g. Percona's, set up before): its connection string with a user
         if [ "$OPT_LOCAL_MONGO" -eq 1 ] && mongo_auth_off; then
             echo "The database: MongoDB on this server, $MONGO_URI"
         elif [ "$OPT_LOCAL_MONGO" -eq 1 ]; then
@@ -764,26 +764,26 @@ fi
 
 if [ "$OPT_MAIL" -eq 1 ]; then
     step "Inbound email (Haraka)"
-    #CLD: 2026-11-01T21:30:00+02:00: scripts/haraka.sh install: the files and its unit, started
+    # scripts/haraka.sh install: the files and its unit, started
     "$SCRIPTS/haraka.sh" install --domain="$MAIL_DOMAIN"
 fi
 
 MONGO_CHANGED=0
 if [ "$OPT_MONGO" -eq 1 ] && mongo_auth_off; then
     step "MongoDB: users and sign-in"
-    #CLD: 2026-11-01T20:30:00+02:00: scripts/mongo.sh secure: the users, authorization in mongod.conf, mongod restarted and checked
+    # scripts/mongo.sh secure: the users, authorization in mongod.conf, mongod restarted and checked
     "$SCRIPTS/mongo.sh" secure || echo "! MongoDB was not secured (above): sudo $SCRIPTS/mongo.sh status, then secure (or users, auth) once fixed"
     MONGO_CHANGED=1
 fi
 
 step "The background services"
-#CLD: 2026-11-01T22:00:00+02:00: the daemon's unit (nfn-daemon-<user>) and the polkit rule: scripts/daemon.sh install; Haraka's unit is
+# the daemon's unit (nfn-daemon-<user>) and the polkit rule: scripts/daemon.sh install; Haraka's unit is
 #haraka.sh's (above), the web browser's playwright-mcp.sh's (below)
 "$SCRIPTS/daemon.sh" install
 #the services running before reconnect with the new MongoDB users
 [ "$MONGO_CHANGED" -eq 0 ] || systemctl try-restart "nfn-daemon-$APP_USER.service" $([ "$OPT_MAIL" -eq 1 ] && echo nfn-haraka.service) || true
 
-#CLD: 2026-11-01T11:55:18+02:00: the web browser: its Chromium, its service, its server in mcp.json (scripts/playwright-mcp.sh install)
+# the web browser: its Chromium, its service, its server in mcp.json (scripts/playwright-mcp.sh install)
 if [ "$OPT_BROWSER" -eq 1 ]; then
     step "The web browser for the AI steps"
     "$SCRIPTS/playwright-mcp.sh" install || echo "! the web browser was not installed (above): sudo $SCRIPTS/playwright-mcp.sh install, once fixed"
@@ -799,7 +799,7 @@ if [ "$OPT_MONGO_ENCRYPT" -eq 1 ]; then
     echo "MongoDB's data is encrypted with the key in $MONGO_KEY_FILE: keep a copy of it away from this server (without it the data cannot be read); a static key: move it to a key manager (Vault / KMIP) and rotate it."
 fi
 [ -z "$MONGO_ENCRYPT_NOTE" ] || echo "$MONGO_ENCRYPT_NOTE"
-#CLD: 2026-10-29T08:00:00+02:00: set up again: the settings the setup does not ask are in the old app.env
+# set up again: the settings the setup does not ask are in the old app.env
 [ "$RESETUP" -eq 0 ] || echo "The app was set up again; the old app.env is $RESETUP_BACKUP: copy from it what the setup does not ask (System AI, sign-in with Microsoft / Google, ...), then delete it."
 [ "$MONGO_CHANGED" -eq 1 ] && echo "MongoDB's operators' account (nfn_admin) is in $BASE/.mongodb-admin (root's): move it to a password manager, then delete the file."
 if [ "$OPT_MAIL" -eq 1 ]; then

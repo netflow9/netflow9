@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-11-03T16:00:00+02:00: new: what a shared workflow offers (WorkflowController::shared): $wf, $live (its published version, null: not published now), $contract, $steps
+//what a shared workflow offers (WorkflowController::shared): $wf, $live (its published version, null: not published now), $contract, $steps
 $body = \util\VString::insert('<p class="small text-muted">From project <strong>{:project}</strong>. It runs there, with that project\'s credentials and tables.</p>', [ 'project' => \V::app()->html->escape((string)\V::app()->om->findById('Project', $wf->project)) ]);
 
 if (!$live || $contract === null) {

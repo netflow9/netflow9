@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-02T18:00:00+02:00: new: every conversation of the account, for its owners (AgentController::conversations)
+//every conversation of the account, for its owners (AgentController::conversations)
 
 $this->pageTitle = 'Conversations with agents';
 echo \util\VString::insert('

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new step: GravityZone Blocklist - the file hashes GravityZone blocks on every endpoint (Incidents API). Operations:
+    GravityZone Blocklist - the file hashes GravityZone blocks on every endpoint (Incidents API). Operations:
 	list      the blocklist (getBlocklistItems; all pages up to At most)
 	add       hashes added (addToBlocklist): SHA-256 or MD5, a list or one per line / separated by commas, with a note (the source); each checked as a hash of its kind
 	remove    an item removed (removeFromBlocklist: the item's id, from the list)
@@ -21,7 +21,7 @@ class NodeAppGzBlocklist extends NodeAppGravityZone {
 	'add' => 'Block hashes',
 	'remove' => 'Unblock an item',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'add', 'remove' ];
     const LISTS = [ 'list' ];
     //GravityZone's hashType => [ label, length ]

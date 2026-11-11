@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-06T21:29:27+03:00: new view: file page - details, image preview (images only), download
+//file page - details, image preview (images only), download
 
 $this->pageTitle = 'File: ' . $file->filename;
 
@@ -31,7 +31,7 @@ switch($extension) {
     <div class="spacer"></div>
     <div>
 	<!-- no-pjax: a download is not a page -->
-	<?php //CLD: 2026-10-19T22:19:24+03:00: the text in .btn-label (only the icon on phones) ?>
+	<?php //the text in .btn-label (only the icon on phones) ?>
 	<a href="<?= $downloadUrl ?>" class="btn btn-sm btn-primary" no-pjax><i class="bi bi-download me-1"></i><span class="btn-label">Download</span></a>
     </div>
 </div>

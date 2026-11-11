@@ -1,8 +1,6 @@
 <?php
-//CLD: 2026-10-14T16:01:34+03:00: util\FormSchema and WidgetsUtil::smartFormFields / formValues are util\SmartForm (::showIf, ::modelFields, ::modelValues, ...)
-//CLD: 2026-10-08T14:37:11+03:00: new view: create/update a credential (modal, app.smartform; same pattern as datatable/column_form.php): the name + the
-//fields of its type (models\CredentialType::fields); secrets are never sent to the browser (empty = keep)
-//CLD: 2026-10-09T17:21:14+03:00: the credential is a variant of models\Credential: its formFields() include the name
+//create/update a credential (modal, app.smartform; same pattern as datatable/column_form.php): the name + the fields of its type (the credential is a variant of
+//models\Credential: its formFields() include the name; util\SmartForm::modelFields); secrets are never sent to the browser (empty = keep)
 $class = get_class($cred);
 if ($cred->exists()) {
     $t_ok = 'Save';
@@ -24,8 +22,7 @@ $schema = [
     'fields' => $cred->formFields(),
 ];
 
-//CLD: 2026-10-10T18:35:28+03:00: WidgetsUtil::formValues; encrypted fields are empty
-//CLD: 2026-10-10T18:44:22+03:00: the fields with showInForms
+//util\SmartForm::modelValues of the fields with showInForms; encrypted fields are empty
 $values = \util\SmartForm::modelValues($cred);
 
 $errors = [];

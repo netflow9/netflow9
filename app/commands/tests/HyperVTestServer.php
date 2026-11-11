@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T16:00:00+02:00: new file: a fake Hyper-V host HV01 behind WinRM (WS-Management, the cmd shell) for the check suite (CheckCommand::suiteHyperV), run by PHP's built-in server:
+    a fake Hyper-V host HV01 behind WinRM (WS-Management, the cmd shell) for the check suite (CheckCommand::suiteHyperV), run by PHP's built-in server:
     HV_STATE=<a folder> php -S 127.0.0.1:<port> HyperVTestServer.php
 	POST /wsman only, Basic hv\automation : s3cret (curl's NTLM cannot be faked here); Create (a shell), Command (powershell.exe -EncodedCommand: the script decoded, kept), Receive (the
 	first one: the TimedOut fault, as WinRM after OperationTimeout without output; then the output in two parts, the second with Done and the exit code), Signal, Delete.

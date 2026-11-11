@@ -28,7 +28,7 @@ $script = "
     new app.GridView(container, {
 	create: `{$createBtn}`,
 	title: `<h5 class='h5 mb-0'>MCP server tokens</h5>`,
-	dataUrl: '/token/list?data=1', /* CLD: 2026-10-21T00:45:00+03:00: (was /token/data) */
+	dataUrl: '/token/list?data=1',
 
 	schema: {
 	    readonly: true,

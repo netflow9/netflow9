@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-05T13:00:00+02:00: new step: Namecheap DNS - the records, name servers and email forwarding of a domain on Namecheap's DNS. Operations (setting `operation`):
+    Namecheap DNS - the records, name servers and email forwarding of a domain on Namecheap's DNS. Operations (setting `operation`):
 	records         the records (namecheap.domains.dns.getHosts), of a host and type if given
 	add             a record added, unless the same one is there
 	set             the records of a host and type replaced by one (e.g. the A record of a dynamic address); unchanged when it is the only one already
@@ -105,7 +105,7 @@ class NodeAppNcDns extends NodeAppNamecheap {
 	return $rec;
     }
 
-    //CLD: 2026-11-07T01:09:58+02:00: the first of keys $keys that $r has as a non-empty value; null when none
+    //the first of keys $keys that $r has as a non-empty value; null when none
     private static function firstOf(array $r, array $keys) {
 	foreach($keys as $k) {
 	    if (isset($r[$k]) && !is_array($r[$k]) && trim((string)$r[$k]) !== '')
@@ -297,22 +297,22 @@ class NodeAppNcDns extends NodeAppNamecheap {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:09:58+02:00: the settings Host and Type of a record of $domain: [ host, type ]
+    //the settings Host and Type of a record of $domain: [ host, type ]
     private function namedRecord($domain) {
 	return [ self::host($this->settingOf('host'), $domain), self::type($this->settingOf('type')) ];
     }
 
-    //CLD: 2026-11-07T01:09:58+02:00: whether record $r is record $new, its TTL (and MX preference) too
+    //whether record $r is record $new, its TTL (and MX preference) too
     private static function sameAs($r, $new, $type) {
 	return self::sameRecord($r, $new) && (int)$r['TTL'] === $new['TTL'] && ($type !== 'MX' || (int)($r['MXPref'] ?? 10) === $new['MXPref']);
     }
 
-    //CLD: 2026-11-07T01:09:58+02:00: whether record $r is host $host's of type $type
+    //whether record $r is host $host's of type $type
     private static function isHostType($r, $host, $type) {
 	return strcasecmp($r['Name'], $host) === 0 && $r['Type'] === $type;
     }
 
-    //CLD: 2026-11-07T01:09:58+02:00: whether record $r is host $host's of type $type (and of address $address, when given)
+    //whether record $r is host $host's of type $type (and of address $address, when given)
     private static function matchesRecord($r, $host, $type, $address) {
 	return strcasecmp($r['Name'], $host) === 0 && $r['Type'] === $type && ($address === '' || self::sameRecord($r, [ 'Name' => $host, 'Type' => $type, 'Address' => $address ]));
     }

@@ -4,7 +4,7 @@ namespace data;
 
 class SysPermissions {
 
-    //CLD: 2026-10-20T23:40:00+03:00: the permissions plugins add: [ object name => [ permission, ... ] ] (as get()'s entries)
+    //the permissions plugins add: [ object name => [ permission, ... ] ] (as get()'s entries)
     private static $registered = [];
 
     //a plugin's permissions of object $objectName (the entries as in get(): name, scopes, desc, defaults, alias-of); call it from the plugin's constructor,
@@ -23,7 +23,7 @@ class SysPermissions {
 		'scopes' => [ 'global' ],
 		'desc' => 'Update account settings'
 	    ],
-	    //CLD: 2026-10-24T09:45:36+03:00: the usage page (AccountController::usage): what the account uses of its tier's limits, in all and per project; owners (also the roles already stored)
+	    //the usage page (AccountController::usage): what the account uses of its tier's limits, in all and per project; owners (also the roles already stored)
 	    [
 		'name' => 'Account::usage',
 		'scopes' => [ 'global' ],
@@ -95,7 +95,7 @@ class SysPermissions {
 		'scopes' => [ 'global' ],
 		'desc' => 'Delete projects'
 	    ],
-	    //CLD: 2026-10-28T10:00:00+02:00: export / import of the project's workflows, credentials (with their secrets, in a file sealed by a passphrase) and data tables
+	    //export / import of the project's workflows, credentials (with their secrets, in a file sealed by a passphrase) and data tables
 	    //(ProjectController::export / import, util\Transfer); owners (also the roles already stored)
 	    [
 		'name' => 'Project::transfer',
@@ -161,7 +161,7 @@ class SysPermissions {
 		'scopes' => [ 'global', 'project' ],
 		'desc' => 'Delete credentials'
 	    ],
-	    //CLD: 2026-11-03T18:00:00+02:00: sharing a credential with other projects of the account (ShareController), and allowing it any host; owners (also the roles already stored)
+	    //sharing a credential with other projects of the account (ShareController), and allowing it any host; owners (also the roles already stored)
 	    [
 		'name' => 'Credential::share',
 		'scopes' => [ 'global', 'project' ],
@@ -227,7 +227,7 @@ class SysPermissions {
 		'scopes' => [ 'global', 'project' ],
 		'desc' => 'Delete workflows'
 	    ],
-	    //CLD: 2026-10-11T19:47:51+03:00: publish / unpublish: who may make a version live; defaults as Workflow::update (also for the roles already stored)
+	    //publish / unpublish: who may make a version live; defaults as Workflow::update (also for the roles already stored)
 	    [
 		'name' => 'Workflow::publish',
 		'scopes' => [ 'global', 'project' ],
@@ -237,7 +237,7 @@ class SysPermissions {
 		    'member' => [ 'enabled' => true, 'scope' => 'project' ]
 		]
 	    ],
-	    //CLD: 2026-11-03T16:00:00+02:00: sharing a workflow with other projects of the account (ShareController); owners (also the roles already stored)
+	    //sharing a workflow with other projects of the account (ShareController); owners (also the roles already stored)
 	    [
 		'name' => 'Workflow::share',
 		'scopes' => [ 'global', 'project' ],
@@ -247,7 +247,7 @@ class SysPermissions {
 		    'member' => [ 'enabled' => false ]
 		]
 	    ],
-	    //CLD: 2026-11-03T16:00:00+02:00: what a shared workflow offers (WorkflowController::shared): its description, inputs, outputs and step names; not its settings or runs
+	    //what a shared workflow offers (WorkflowController::shared): its description, inputs, outputs and step names; not its settings or runs
 	    [
 		'name' => 'Workflow::viewShared',
 		'scopes' => [ 'global', 'project' ],
@@ -295,7 +295,7 @@ class SysPermissions {
 		'scopes' => [ 'global', 'project' ],
 		'desc' => 'Change data table data'
 	    ],
-	    //CLD: 2026-11-03T14:00:00+02:00: sharing a table with other projects of the account (ShareController); owners (also the roles already stored)
+	    //sharing a table with other projects of the account (ShareController); owners (also the roles already stored)
 	    [
 		'name' => 'DataTable::share',
 		'scopes' => [ 'global', 'project' ],
@@ -307,7 +307,7 @@ class SysPermissions {
 	    ],
 	];
 
-	//CLD: 2026-10-31T01:00:00+02:00: knowledge bases (models\kb\KnowledgeBase; controllers\KnowledgeController); defaults for the roles already stored, as the data tables'
+	//knowledge bases (models\kb\KnowledgeBase; controllers\KnowledgeController); defaults for the roles already stored, as the data tables'
 	$kbDefaults = [ 'owner' => [ 'enabled' => true, 'scope' => 'global' ], 'member' => [ 'enabled' => true, 'scope' => 'project' ] ];
 	$data['KnowledgeBase'] = [
 	    [
@@ -356,7 +356,7 @@ class SysPermissions {
 	    ],
 	];
 
-	//CLD: 2026-10-11T17:45:25+03:00: the execution log (models\ExecutionLog): as the audit log
+	//the execution log (models\ExecutionLog): as the audit log
 	$data['ExecutionLog'] = [
 	    [
 		'name' => 'ExecutionLog::read',
@@ -373,7 +373,7 @@ class SysPermissions {
 	    ],
 	];
 
-	//CLD: 2026-10-26T23:56:07+02:00: access tokens of the project's MCP server (a token acts as the user who made it, within that user's permissions);
+	//access tokens of the project's MCP server (a token acts as the user who made it, within that user's permissions);
 	//defaults: also for the roles already stored
 	$data['McpToken'] = [
 	    [
@@ -409,7 +409,7 @@ class SysPermissions {
 	    ],
 	];
 
-	//CLD: 2026-10-20T23:40:00+03:00: + the plugins' (register)
+	//and the plugins' (register)
 	$data += self::$registered;
 
 	return $data;

@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-02T18:00:00+02:00: new: one conversation, read only, for the account's owners (AgentController::conversations): the messages, what the tools did on each turn, a link to each run
+//one conversation, read only, for the account's owners (AgentController::conversations): the messages, what the tools did on each turn, a link to each run
 
 $this->pageTitle = (string)($conv['title'] ?: 'A conversation');
 $toolsOf = [];

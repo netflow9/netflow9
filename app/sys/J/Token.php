@@ -10,7 +10,7 @@ final class Token
     public const NUM = 'num';
     public const STR = 'str';
     public const TPL = 'tpl';
-    //CLD: 2026-10-20T22:10:00+03:00: a regular expression literal: value ['pattern' => ..., 'flags' => ...]
+    //a regular expression literal: value ['pattern' => ..., 'flags' => ...]
     public const REGEX = 'regex';
     public const IDENT = 'ident';
     public const KW = 'kw';

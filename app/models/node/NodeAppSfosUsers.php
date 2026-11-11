@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T10:00:00+02:00: new step: Sophos Firewall Users & VPN - the firewall's users and VPN connections. Operations (setting `operation`):
+    Sophos Firewall Users & VPN - the firewall's users and VPN connections. Operations (setting `operation`):
 	users     the users (User; user name containing a text)
 	get       a user, by user name
 	enable    a user made active (read, Status Active, sent back whole)
@@ -27,7 +27,7 @@ class NodeAppSfosUsers extends NodeAppSophos {
 	'ipsec' => 'List IPsec connections',
 	'sslvpn' => 'List SSL VPN policies',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'enable', 'disable' ];
     const LISTS = [ 'users', 'ipsec', 'sslvpn' ];
 

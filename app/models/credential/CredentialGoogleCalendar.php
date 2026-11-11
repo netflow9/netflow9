@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-20T13:00:00+03:00: new credential variant: Google Calendar (OAuth); the Google app needs the Google Calendar API enabled and the scope
+//Google Calendar (OAuth); the Google app needs the Google Calendar API enabled and the scope
 //https://www.googleapis.com/auth/calendar (the calendars the account can open). Provides `gcalendar` (the Google Calendar step) and `http` (HTTP Request: a bearer token)
 
 namespace models\credential;

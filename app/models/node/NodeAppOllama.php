@@ -1,12 +1,12 @@
 <?php
 
 /*
-    CLD: 2026-10-22T01:36:46+03:00: new step: Ollama - an AI step (NodeAppAi: prompt, tools, agent loop) on an Ollama server, through Ollama's own API (POST <URL>/api/chat,
+    Ollama - an AI step (NodeAppAi: prompt, tools, agent loop) on an Ollama server, through Ollama's own API (POST <URL>/api/chat,
     stream false), with an Ollama server credential (models\credential\CredentialOllama, provides `ollama`). The model is one the server has (Test on the credential lists
     them, e.g. qwen3:8b).
 	- tools: offered as functions; the model's tool_calls (arguments as an object) are answered by `tool` messages named after the tool (tool_name)
 	- images: base64 in the message's `images` (a vision model reads them); the images of tool results in a user message after them
-	  //CLD: 2026-10-27T23:11:38+02:00: files: images in `images`, text files (PDFs as their text and images, Office files) before the prompt
+	  //files: images in `images`, text files (PDFs as their text and images, Office files) before the prompt
 	- JSON answers: Ollama's structured outputs (format: the schema, or "json"), with the system prompt instruction too
 	- settings of the step: temperature, context length (options.num_ctx), thinking (think: the server's default, on, off; the reasoning is not part of the answer), how long
 	  the model stays loaded (keep_alive); Max tokens is options.num_predict
@@ -15,7 +15,7 @@
 namespace models\node;
 
 class NodeAppOllama extends NodeAppAi {
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step (a self-hosted server)
+    //the step picker: an advanced step (a self-hosted server)
     public static $audience = 'advanced';
     public static $name = 'ollama';
     public static $label = 'Ollama';
@@ -23,12 +23,12 @@ class NodeAppOllama extends NodeAppAi {
 
     const CAPABILITY = 'ollama';
     const PROVIDER = \data\AiProviders::DATA[self::CAPABILITY]['name'];
-    //CLD: 2026-10-29T22:44:26+02:00: a local server: a long prompt on a local model can take minutes
+    //a local server: a long prompt on a local model can take minutes
     const DEFAULT_TIMEOUT = 900;
     const MAX_TIMEOUT = 900;
 
     const THINK = [ '' => 'The model\'s default', 'on' => 'On', 'off' => 'Off' ];
-    //CLD: 2026-10-27T23:11:38+02:00: Ollama's API takes no PDFs: their text and images (PDFs as: no Documents)
+    //Ollama's API takes no PDFs: their text and images (PDFs as: no Documents)
     const PDF_PARTS = false;
     //the largest context length asked for (tokens)
     const MAX_CONTEXT = 1048576;
@@ -36,21 +36,19 @@ class NodeAppOllama extends NodeAppAi {
     protected static function providerSchema() {
 	return [
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide, not on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 2 wide, not on a new line
 		'key' => 'temperature',
 		'type' => 'text',
 		'label' => 'Temperature',
 		'default' => '',
-		//CLD: 2026-10-24T12:42:45+03:00: the four settings 3 wide on one line
+		//the four settings 3 wide on one line
 		'help' => '0 - 2; empty: default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
+		//placeholder: what an empty value means
 		'ui' => [ 'advanced' => true, 'width' => 2, 'placeholder' => 'Model default' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 2 wide
 		'key' => 'think',
 		'type' => 'select',
 		'label' => 'Thinking',
@@ -60,20 +58,18 @@ class NodeAppOllama extends NodeAppAi {
 		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 3 wide, on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide, on a new line
 		'key' => 'contextLength',
 		'type' => 'text',
 		'label' => 'Context length (tokens)',
 		'default' => '',
 		'help' => 'num_ctx; empty: the server\'s default',
 		'validate' => [ [ 'regex', 'pattern' => '^[1-9][0-9]{2,6}$', 'skipEmpty' => true, 'message' => 'A number of tokens, e.g. 8192' ] ],
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
+		//placeholder: what an empty value means
 		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'Server default' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'keepAlive',
 		'type' => 'text',
 		'label' => 'Keep the model loaded',
@@ -85,9 +81,9 @@ class NodeAppOllama extends NodeAppAi {
 	];
     }
 
-    //CLD: 2026-10-22T01:58:24+03:00: the Model field (a select of the credential's recorded models) is NodeAppAi's configSchema()
+    //the Model field (a select of the credential's recorded models) is NodeAppAi's configSchema()
 
-    //CLD: 2026-10-27T23:11:38+02:00: $files: the images in `images`, the text files before the prompt (no PDF parts: PDF_PARTS)
+    //$files: the images in `images`, the text files before the prompt (no PDF parts: PDF_PARTS)
     protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	if ($schema !== null)
 	    $system = trim($system . "\n\n" . self::jsonInstruction($schema));

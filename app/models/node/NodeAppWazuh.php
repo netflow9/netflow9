@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new class: the base of the Wazuh steps (Alerts, Vulnerabilities, Agents, Active Response, Scans, Inventory, Manager, API; not registered itself),
+    the base of the Wazuh steps (Alerts, Vulnerabilities, Agents, Active Response, Scans, Inventory, Manager, API; not registered itself),
     through a Wazuh credential of the project (CredentialWazuh, provides `wazuh`; util\Wazuh). As NodeAppCheckmk:
 	- the shape: one input, `success` (+ `error` when On error is "Continue on the `error` output")
 	- the settings every Wazuh step has: credential, operation (static::OPERATIONS), the operation's own settings (operationFields(): each shown for its operations),

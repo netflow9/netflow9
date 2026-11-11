@@ -9,7 +9,7 @@
 	    {date} {time} {n} (for several files).
 	Before: optionally gzip-compressed (.gz added), then encrypted (an Encryption key credential: PGP / GPG public key, passphrase, OpenSSL, S/MIME: its ending added,
 	    e.g. .gpg); an ending the name already has is not added again.
-	CLD: 2026-10-20T19:00:00+03:00: Signed (a Signing key credential: PGP, S/MIME / CMS, a plain private key signature): in the file (attached: signed, then encrypted;
+	Signed (a Signing key credential: PGP, S/MIME / CMS, a plain private key signature): in the file (attached: signed, then encrypted;
 	    PGP signing + PGP encryption: one signed and encrypted message) or as a separate signature file next to it (detached: `<name>.sig` / .asc / .p7s, a signature of
 	    the file as it is on the server; sent before it, so a receiver that waits for the file finds its signature there)
 	Safe upload: sent as `<name>.part`, renamed when complete (the receiver never picks up half a file). A file there already: replace it, leave it (skipped), add a
@@ -28,7 +28,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
     public static $label = 'FTP / SFTP Upload';
     public static $icon = 'bi-cloud-upload';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step, in Web & files
+    //the step picker: an advanced step, in Web & files
     public static $audience = 'advanced';
     public static $category = 'web';
     public static $inputs = 1;
@@ -37,7 +37,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 
     const SOURCES = [ 'files' => 'Project files', 'text' => 'A text (CSV, XML, ...)' ];
     const IF_EXISTS = [ 'overwrite' => 'Replace it', 'skip' => 'Leave it, do not send', 'unique' => 'Add a number to the name (report_1.csv)', 'fail' => 'An error' ];
-    //CLD: 2026-10-20T19:00:00+03:00: where the signature goes
+    //where the signature goes
     const SIGN_MODES = [ 'attached' => 'In the file (signed, then encrypted)', 'detached' => 'A separate signature file next to it (.sig, .asc, .p7s)' ];
 
     const MAX_FILES = 100;
@@ -50,7 +50,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
     const PART = '.part';
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	return [
 	    [
 		'key' => 'credential',
@@ -61,7 +61,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'help' => 'An FTP / SFTP server credential of the project (menu: Credentials)',
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'source',
 		'type' => 'select',
 		'label' => 'Send',
@@ -71,7 +71,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'ifExists',
 		'type' => 'select',
 		'label' => 'A file with that name is there',
@@ -81,7 +81,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -90,7 +90,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '/incoming', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'filename',
 		'type' => 'text',
 		'label' => 'Name on the server',
@@ -117,8 +117,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'text' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide, on a new line
 		'key' => 'createFolders',
 		'type' => 'switch',
 		'label' => 'Make missing folders',
@@ -126,8 +125,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'safeUpload',
 		'type' => 'switch',
 		'label' => 'Send as .part, rename when complete',
@@ -136,7 +134,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'compress',
 		'type' => 'switch',
 		'label' => 'Compress (gzip, .gz)',
@@ -144,8 +142,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'verify',
 		'type' => 'switch',
 		'label' => 'Check the size on the server',
@@ -153,7 +150,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'encrypt',
 		'type' => 'switch',
 		'label' => 'Encrypt',
@@ -162,7 +159,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 9 wide
+		//layout: 9 wide
 		'key' => 'encryptCredential',
 		'type' => 'select',
 		'label' => 'Encryption key',
@@ -172,9 +169,9 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'help' => 'An Encryption key credential: the recipient\'s PGP key, a passphrase, an OpenSSL password or S/MIME certificate',
 		'ui' => [ 'width' => 9, 'showIf' => [ 'key' => 'encrypt', 'operator' => 'eq', 'value' => true ] ],
 	    ],
-	    //CLD: 2026-10-20T19:00:00+03:00: signing
+	    //signing
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'sign',
 		'type' => 'switch',
 		'label' => 'Sign',
@@ -183,7 +180,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'signCredential',
 		'type' => 'select',
 		'label' => 'Signing key',
@@ -194,8 +191,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'sign', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'signMode',
 		'type' => 'select',
 		'label' => 'Signature',
@@ -236,7 +232,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	];
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: the credentials of the project with capability $capability, as choices (value => label)
+    //the credentials of the project with capability $capability, as choices (value => label)
     private static function credentialOptions($capability) {
 	return array_column(static::credentialChoices($capability), 'label', 'value');
     }
@@ -285,7 +281,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	    $this->errors('config', 'Encryption key: choose an Encryption key credential of this project');
 	    $valid = false;
 	}
-	//CLD: 2026-10-20T19:00:00+03:00: a signing key of the project; a plain signature cannot be in the file
+	//a signing key of the project; a plain signature cannot be in the file
 	$sig = (string)$this->cfg('signCredential', '');
 	if ($this->cfg('sign', false) && $sig !== '') {
 	    $signCred = $wf ? \models\Credential::findFor($wf, $sig, 'sign') : null;
@@ -350,7 +346,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	    if (empty($encCred))
 		throw new \ErrorException('FTP / SFTP Upload: the encryption key credential is no longer available');
 	}
-	//CLD: 2026-10-20T19:00:00+03:00: the signing key; the settings of each file in $opts
+	//the signing key; the settings of each file in $opts
 	$signCred = null;
 	if ($this->cfg('sign', false)) {
 	    $signCred = \models\Credential::findFor($this->exec, (string)$this->cfg('signCredential', ''), 'sign');
@@ -448,12 +444,12 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	return [ 0 ];
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: setting $key as text, trimmed, its {{ }} rendered against $vars
+    //setting $key as text, trimmed, its {{ }} rendered against $vars
     private function textSetting(array $vars, $key, $default = '') {
 	return trim(\util\Expression::toText(\util\Expression::render((string)$this->cfg($key, $default), $vars)));
     }
 
-    //CLD: 2026-10-20T19:00:00+03:00: the endings the name gets, in order: .gz, the attached signature's (unless PGP signs and encrypts in one message), the encryption's
+    //the endings the name gets, in order: .gz, the attached signature's (unless PGP signs and encrypts in one message), the encryption's
     public static function endings(array $opts) {
 	$endings = [];
 	if (!empty($opts['compress']))
@@ -473,9 +469,8 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	    && (string)$opts['signCred']->method === 'pgp' && (string)$opts['encCred']->method === 'pgp';
     }
 
-    //one file: made ready (compressed, signed, encrypted), the name chosen (if it exists), its detached signature sent, the file sent (as .part, renamed), checked:
-    //[ skipped, remoteName, path, size, replaced, signature ]
-    //CLD: 2026-10-20T19:00:00+03:00: + signing; the settings in $opts (see execute); sending in putFile()
+    //one file: made ready (compressed, signed, encrypted), the name chosen (if it exists), its detached signature sent, the file sent (as .part, renamed: putFile()), checked:
+    //[ skipped, remoteName, path, size, replaced, signature ]; the settings in $opts (see execute)
     protected function sendOne($client, $file, $content, $folder, $remote, array $opts, $work) {
 	//the local copy
 	$current = $work . '/src';
@@ -558,7 +553,7 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
 	}
     }
 
-    //CLD: 2026-10-20T19:00:00+03:00: local file $local sent to $path: as .part then renamed ($opts safe; a rename does not replace a file on every server,
+    //local file $local sent to $path: as .part then renamed ($opts safe; a rename does not replace a file on every server,
     //so one there ($replace) is deleted first), its size checked ($opts verify); $what names it in the errors ("signature ")
     protected function putFile($client, $local, $path, $replace, array $opts, $what = '') {
 	clearstatcache(true, $local);

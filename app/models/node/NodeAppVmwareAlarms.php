@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T12:00:00+02:00: new step: VMware Alarms - the triggered alarms of a vCenter Server (VI/JSON, vCenter 8.0 U1 and later). Operations (setting `operation`):
+    VMware Alarms - the triggered alarms of a vCenter Server (VI/JSON, vCenter 8.0 U1 and later). Operations (setting `operation`):
 	list         the alarms triggered now on any object (the root folder's triggeredAlarmState), red or yellow and red, of VMs / hosts / ... or any, acknowledged ones left out
 	             unless chosen; each named (the alarm's and the object's names): { key, alarm: { id, name }, entity: { type, id, name }, status, time, acknowledged,
 	             acknowledgedBy, acknowledgedTime }, red first, newest first
@@ -22,7 +22,7 @@ class NodeAppVmwareAlarms extends NodeAppVmware {
 	'list' => 'List triggered alarms',
 	'acknowledge' => 'Acknowledge an alarm',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'acknowledge' ];
     const LISTS = [ 'list' ];
     const STATUS = [ 'yellow' => 'Yellow (warning) and red', 'red' => 'Red (alert) only' ];
@@ -97,7 +97,7 @@ class NodeAppVmwareAlarms extends NodeAppVmware {
 	return $out;
     }
 
-    //CLD: 2026-11-07T01:10:30+02:00: the name of object $type/$id (read once: $names keeps them; property $path of it); its id when it is gone or not readable
+    //the name of object $type/$id (read once: $names keeps them; property $path of it); its id when it is gone or not readable
     private static function nameOf(\util\VSphere $vc, array &$names, $type, $id, $path) {
 	$k = "{$type}/{$id}";
 	if (!array_key_exists($k, $names)) {

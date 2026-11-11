@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new: a Proxmox VE cluster or server (PVE 7 and 8), for the Proxmox steps and the Proxmox task trigger (util\Proxmox): a node's address (port 8006),
+    a Proxmox VE cluster or server (PVE 7 and 8), for the Proxmox steps and the Proxmox task trigger (util\Proxmox): a node's address (port 8006),
     an API token (Datacenter > Permissions > API Tokens: user@realm!tokenid) and its secret (encrypted), the certificate trusted or not. A server on a private address needs the
     account's "Integrations may connect to private network addresses". Test: the version, the cluster and its nodes. Provides `proxmox`
 */

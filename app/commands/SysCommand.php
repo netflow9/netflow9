@@ -22,7 +22,7 @@ namespace commands;
 	../v sys::indexes     creates the indexes every model declares (static $indexes of its class, plugins' models included); creating an index that exists does nothing,
 			      so it can be run again (e.g. after an update); the indexes are made by ObjectManager::createIndexes (shared with util\Setup::install); exits
 			      with 1 when one fails
-	../v sys::migrate [--dry-run] [--list]     (CLD: 2026-11-05T16:00:00+02:00) the data migrations this version needs and this database has not had (util\Migrations: those of
+	../v sys::migrate [--dry-run] [--list]     the data migrations this version needs and this database has not had (util\Migrations: those of
 			      versions up to data\Version::NUMBER, without a record in models\Migration), oldest first, each recorded once done; --dry-run says what each
 			      would change and records nothing; --list shows every migration and when it ran. Stops at the first that fails (exit 1); run it again once
 			      fixed. scripts/deploy.sh runs it after sys::indexes
@@ -69,7 +69,7 @@ class SysCommand extends \sys\BaseController {
 	exit(0);
     }
 
-    //CLD: 2026-10-31T12:00:00+02:00: only once the app is set up (sys::install creates them itself)
+    //only once the app is set up (sys::install creates them itself)
     public function indexes($req = null, $resp = null) {
 	if (\V::app()->config('app.setup'))
 	    $this->fail('the app is not set up yet (app.env is missing): sys::install creates the indexes');
@@ -89,7 +89,7 @@ class SysCommand extends \sys\BaseController {
 	    exit(1);
     }
 
-    //CLD: 2026-11-05T16:00:00+02:00: the data migrations (util\Migrations), as sys::indexes only once the app is set up
+    //the data migrations (util\Migrations), as sys::indexes only once the app is set up
     public function migrate($req = null, $resp = null) {
 	if (\V::app()->config('app.setup'))
 	    $this->fail('the app is not set up yet (app.env is missing)');
@@ -209,8 +209,7 @@ class SysCommand extends \sys\BaseController {
 	$wf = $this->findOrExit('Workflow', $req->params['id'] ?? null);
 	$this->setAccount($wf->aid);
 
-	//CLD: 2026-10-06T23:25:57+03:00: do not run a workflow whose connections have errors (warnings are printed)
-	//CLD: 2026-10-19T17:10:00+03:00: issues(): + errors in the steps' settings (a draft may be saved with them)
+	//do not run a workflow whose connections or steps' settings have errors (warnings are printed; a draft may be saved with them)
 	$issues = $wf->issues();
 	foreach($issues as $i)
 	    echo $i['level'] . ': ' . $i['message'] . ($i['node'] ? " [{$i['node']}]" : '') . "\n";
@@ -219,7 +218,7 @@ class SysCommand extends \sys\BaseController {
 	    exit(1);
 	}
 
-	//CLD: 2026-10-11T17:45:25+03:00: started from the console
+	//started from the console
 	$exe = \models\wf\WfExecution::startFor($wf, 'console');
 	$exe->save();
 	echo "execution " . $exe->_id . " of workflow `" . $wf->name . "`\n";

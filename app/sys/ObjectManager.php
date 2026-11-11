@@ -307,7 +307,7 @@ class ObjectManager {
     }
 
     // $posts = $om->find('Posts', [ 'published' => true ], [ 'limit' => 10, 'skip' => 10, 'sort' => ... ]);
-    //CLD: 2026-11-07T10:15:41+02:00: option 'arrays' => true: the documents as a list of arrays, not models (no afterFind)
+    //option 'arrays' => true: the documents as a list of arrays, not models (no afterFind)
     public function find($objectName, $query = [], $options = []) {
 	$objDef = $this->getObjectDef($objectName);
 	if (empty($objDef))
@@ -354,7 +354,7 @@ class ObjectManager {
     }
 
     // $post = $om->findOne('Posts', [ 'published' => true ]);
-    //CLD: 2026-11-07T10:15:41+02:00: option 'arrays' => true: the document as an array, not a model (no afterFind)
+    //option 'arrays' => true: the document as an array, not a model (no afterFind)
     public function findOne($objectName, $query = [], $options = []) {
 	$objDef = $this->getObjectDef($objectName);
 	if (empty($objDef))
@@ -435,7 +435,7 @@ class ObjectManager {
 
     //changes every object of $objectName matching $query with the MongoDB update $update (operators, or an aggregation pipeline: a list); the objects
     //are not loaded, so no model hooks or checks run (e.g. re-dating immutable log entries). Returns the number of objects changed
-    //CLD: 2026-11-07T10:25:29+02:00: + $options (the driver's, e.g. writeConcern)
+    //$options (the driver's, e.g. writeConcern)
     public function updateMany($objectName, array $query, array $update, array $options = []) {
 	$objDef = $this->getObjectDef($objectName);
 	if (empty($objDef))
@@ -518,7 +518,7 @@ class ObjectManager {
 	return \V::app()->mongo->selectCollection($database, $collection)->deleteOne($query)->getDeletedCount();
     }
 
-    //CLD: 2026-11-07T10:15:41+02:00: new: deletes every object of $objectName matching $query, without loading them (no model hooks: no beforeDelete, no audit entry; e.g. a
+    //deletes every object of $objectName matching $query, without loading them (no model hooks: no beforeDelete, no audit entry; e.g. a
     //retention pass, the parts of a removed object); returns the number deleted. _id as in updateOne
     public function deleteMany($objectName, array $query) {
 	$objDef = $this->getObjectDef($objectName);
@@ -546,7 +546,7 @@ class ObjectManager {
     //changes ONE object of $objectName matching $query with the MongoDB update $update, atomically, and returns it as changed (or as it was, option
     //'returnDocument' => 'before'); null when none matches. For counters that must never repeat (e.g. Workflow::nextVersionNumber). Options: projection, sort,
     //upsert, returnDocument (after | before). No model hooks or checks run for the change
-    //CLD: 2026-11-07T10:15:41+02:00: option 'arrays' => true: the document as an array, not a model
+    //option 'arrays' => true: the document as an array, not a model
     public function findOneAndUpdate($objectName, array $query, array $update, array $options = []) {
 	$objDef = $this->getObjectDef($objectName);
 	if (empty($objDef))
@@ -590,7 +590,7 @@ class ObjectManager {
 	return $o;
     }
 
-    //CLD: 2026-11-07T10:37:49+02:00: new: replaces ONE object of $objectName matching $query by $model's data as save() stores it (storageDocument; no created_at
+    //replaces ONE object of $objectName matching $query by $model's data as save() stores it (storageDocument; no created_at
     //added); options: upsert. No model hooks run. Returns the number replaced or inserted (0 / 1). _id as in updateOne
     public function replaceOne($objectName, array $query, $model, array $options = []) {
 	$objDef = $this->getObjectDef($objectName);
@@ -619,7 +619,7 @@ class ObjectManager {
 	return $result->getModifiedCount() + (int)$result->getUpsertedCount();
     }
 
-    //CLD: 2026-11-07T10:15:41+02:00: new: stores new object $model (a model of $objectName) as insertMany does: its data as save() stores it (storageDocument), with
+    //stores new object $model (a model of $objectName) as insertMany does: its data as save() stores it (storageDocument), with
     //created_at; no model hooks run (no beforeSave, no audit entry). For writes too frequent for save() (e.g. a conversation's messages). Returns its _id (the model's own,
     //when it has one)
     public function insertOne($objectName, $model) {
@@ -671,7 +671,7 @@ class ObjectManager {
 	return \V::app()->mongo->selectCollection($database, $collection)->insertMany($docs)->getInsertedCount();
     }
 
-    //CLD: 2026-11-07T10:15:41+02:00: new: runs aggregation $pipeline on the objects of $objectName => the result documents, as arrays. The account guard and the variant apply to
+    //runs aggregation $pipeline on the objects of $objectName => the result documents, as arrays. The account guard and the variant apply to
     //a first $match stage (one is added when the pipeline starts otherwise); a stage that reads other collections ($lookup, $unionWith) is not guarded
     public function aggregate($objectName, array $pipeline, array $options = []) {
 	$objDef = $this->getObjectDef($objectName);

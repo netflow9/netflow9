@@ -88,7 +88,7 @@ class CredentialFtp extends \models\Credential {
 		'label' => 'Private key',
 		'encrypt' => true,
 		'help' => 'OpenSSH or PEM: -----BEGIN OPENSSH PRIVATE KEY----- ... (the whole text)',
-		//CLD: 2026-10-20T14:03:59+03:00: util\Validator key rules
+		//util\Validator key rules
 		'validate' => [
 		    [ 'notPublicKey', 'when' => [ 'protocol' => [ 'sftp' ], 'auth' => [ 'key' ] ], 'skipEmpty' => true, 'last' => true, 'message' => 'this is a public key: signing in needs the private one' ],
 		    [ 'sshPrivateKey', 'when' => [ 'protocol' => [ 'sftp' ], 'auth' => [ 'key' ] ], 'skipEmpty' => true, 'message' => 'not a private key (-----BEGIN OPENSSH PRIVATE KEY----- or PEM)' ],
@@ -128,7 +128,7 @@ class CredentialFtp extends \models\Credential {
 	$valid = parent::validates($options);
 	if ($this->protocol === 'sftp' && $this->auth === 'key') {
 	    $key = trim((string)$this->privateKey);
-	    //CLD: 2026-10-20T14:03:59+03:00: only required here; the format is the field's sshPrivateKey rule
+	    //only required here; the format is the field's sshPrivateKey rule
 	    if ($key === '') {
 		$this->errors('privateKey', 'required');
 		$valid = false;
@@ -205,7 +205,7 @@ class CredentialFtp extends \models\Credential {
 	$known = \util\FtpClient::isFingerprint($this->hostKey);
 	$entries = $this->withClient(fn($client) => $client->list(''), 20);
 	$names = array_map(fn($e) => $e['name'] . ($e['type'] === 'dir' ? '/' : ''), array_slice($entries, 0, 10));
-	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural
+	//util\Format::plural
 	return 'connected to ' . $this->host . ': ' . \util\Format::plural(count($entries), 'entry') . ($names ? ' (' . implode(', ', $names) . (count($entries) > count($names) ? ', ...' : '') . ')' : '')
 	    . (!$known && $this->protocol === 'sftp' ? '; server key saved: ' . $this->hostKey : '');
     }

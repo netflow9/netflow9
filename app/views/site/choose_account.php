@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-21T20:10:00+03:00: new view: the accounts a sign-in's name and password fit (SiteController::choose_account)
+//the accounts a sign-in's name and password fit (SiteController::choose_account)
     $this->pageTitle = \V::t('Choose an account');
 ?>
 

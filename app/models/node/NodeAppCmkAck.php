@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T08:00:00+02:00: new step: Checkmk Acknowledge & Downtime - acknowledgements of problems and scheduled downtimes. Operations (setting `operation`):
+    Checkmk Acknowledge & Downtime - acknowledgements of problems and scheduled downtimes. Operations (setting `operation`):
 	ackHost         a host's problem acknowledged (POST domain-types/acknowledge/collections/host)
 	ackService      services' problems acknowledged (POST .../acknowledge/collections/service, one per service)
 	downHost        a downtime of a host (POST domain-types/downtime/collections/host): from now (or Start) for Minutes
@@ -28,7 +28,7 @@ class NodeAppCmkAck extends NodeAppCheckmk {
 	'downtimes' => 'List downtimes',
 	'deleteDowntime' => 'Remove a downtime',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'ackHost', 'ackService', 'downHost', 'downService', 'deleteDowntime' ];
     const LISTS = [ 'downtimes' ];
     const MAX_MINUTES = 60 * 24 * 366;
@@ -89,7 +89,7 @@ class NodeAppCmkAck extends NodeAppCheckmk {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:08:03+02:00: the setting Comment (at most 1000 characters); refused when empty
+    //the setting Comment (at most 1000 characters); refused when empty
     private function ackComment() {
 	$c = mb_substr($this->settingText('comment'), 0, 1000);
 	if ($c === '')
@@ -97,12 +97,12 @@ class NodeAppCmkAck extends NodeAppCheckmk {
 	return $c;
     }
 
-    //CLD: 2026-11-07T01:08:03+02:00: the acknowledgement's options: sticky, notify, persistent
+    //the acknowledgement's options: sticky, notify, persistent
     private function ackOptions() {
 	return [ 'sticky' => (bool)$this->cfg('sticky', true), 'notify' => (bool)$this->cfg('notify', false), 'persistent' => (bool)$this->cfg('persistent', false) ];
     }
 
-    //CLD: 2026-11-07T01:08:03+02:00: the setting Services: one per line; refused when empty
+    //the setting Services: one per line; refused when empty
     private function servicesSetting() {
 	$list = self::lines($this->settingOf('services'));
 	if (!$list)
@@ -110,7 +110,7 @@ class NodeAppCmkAck extends NodeAppCheckmk {
 	return $list;
     }
 
-    //CLD: 2026-11-07T01:08:03+02:00: the downtime: [ start, end (ISO 8601, UTC), minutes ] from the settings Start (empty: now) and Minutes
+    //the downtime: [ start, end (ISO 8601, UTC), minutes ] from the settings Start (empty: now) and Minutes
     private function downtimeWindow() {
 	$start = $this->settingText('start') === '' ? time() : strtotime($this->settingText('start'));
 	if ($start === false)

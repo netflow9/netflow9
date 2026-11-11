@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T16:00:00+02:00: new: a Hyper-V host (Windows Server 2016 and later), for the Hyper-V steps and the Hyper-V VM state trigger (util\WinRM: PowerShell over WinRM HTTPS):
+    a Hyper-V host (Windows Server 2016 and later), for the Hyper-V steps and the Hyper-V VM state trigger (util\WinRM: PowerShell over WinRM HTTPS):
     the host's WinRM HTTPS address (port 5986), a user of the host's Hyper-V Administrators and Remote Management Users groups (or an administrator) and its password (encrypted),
     NTLM or Basic, the certificate trusted or not. A host on a private address needs the account's "Integrations may connect to private network addresses". Test: the host's
     name, Windows version and its VMs. Provides `hyperv`

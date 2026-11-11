@@ -1,23 +1,22 @@
 <?php
 
-//CLD: 2026-10-13T18:25:21+03:00: the app's scripts are registered by layouts/_scripts.php (shared with layouts/form.php; were listed here)
+//the app's scripts are registered by layouts/_scripts.php (shared with layouts/form.php)
 require(dirname(__FILE__) . '/_scripts.php');
 
 ob_start();
 ?>
 
-<?php //CLD: 2026-10-22T23:00:00+03:00: the plugins' notices over the page (outside the content pjax replaces; e.g. the MultiTenant plugin's "viewing as" bar) ?>
+<?php //the plugins' notices over the page (outside the content pjax replaces; e.g. the MultiTenant plugin's "viewing as" bar) ?>
 <?php \V::app()->hooks->applyHook('layout:page-top'); ?>
 <main class="app-shell">
     <!-- SIDEBAR -->
-    <?php //CLD: 2026-10-30T12:00:00+02:00: the width kept for the user (User prefs sidebar_width, set by the resize handle: app.sidebar) ?>
+    <?php //the width kept for the user (User prefs sidebar_width, set by the resize handle: app.sidebar) ?>
     <?php $sidebarW = (int)(\V::app()->var('rt.prefs')['sidebar_width'] ?? 0); ?>
-    <?php //CLD: 2026-10-30T13:00:00+02:00: + collapsed (User prefs sidebar_collapsed) ?>
-    <?php //CLD: 2026-11-08T12:00:00+02:00: + the width limits (data-min-width / data-max-width: data\Constants), for app.sidebar ?>
+    <?php //collapsed: User prefs sidebar_collapsed; the width limits (data-min-width / data-max-width: data\Constants) for app.sidebar ?>
     <aside class="sidebar<?= empty(\V::app()->var('rt.prefs')['sidebar_collapsed']) ? '' : ' collapsed' ?>" data-min-width="<?= \data\Constants::SIDEBAR_MIN_W ?>" data-max-width="<?= \data\Constants::SIDEBAR_MAX_W ?>"<?= $sidebarW ? ' style="--sidebar-w: ' . min(max($sidebarW, \data\Constants::SIDEBAR_MIN_W), \data\Constants::SIDEBAR_MAX_W) . 'px" data-width="' . $sidebarW . '"' : '' ?>>
 	<?php require(dirname(__FILE__) . '/main_aside.php') ?>
     </aside>
-    <?php //CLD: 2026-10-19T22:19:24+03:00: behind the sidebar when it is a drawer (small screens, theme rail22/_app.scss); a click closes it (app.sidebar) ?>
+    <?php //behind the sidebar when it is a drawer (small screens, theme rail22/_app.scss); a click closes it (app.sidebar) ?>
     <div class="sidebar-backdrop"></div>
 
     <!-- MAIN -->

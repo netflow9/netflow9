@@ -8,7 +8,7 @@
 	- documents / chunks: the counts (updated after each change)
     The documents: models\kb\KbDocument (one per key: a file, a web page, a text), the chunks: models\kb\KbChunk (written and read in bulk through ObjectManager: never saved one by one).
     Deleted with its documents and chunks (beforeDelete).
-    CLD: 2026-10-31T01:00:00+02:00: the embedding model is the account's (models\kb\EmbeddingSettings): `model` / dims are those it was
+    the embedding model is the account's (models\kb\EmbeddingSettings): `model` / dims are those it was
     indexed with; once the account uses another model it must be re-indexed (reindex(): a job re-embeds every chunk, then switches) before it is searched or added to again.
     Made on the Knowledge bases page (controllers\KnowledgeController) or by the Knowledge base step's first Add to a new name (open()). Documents added on the page are indexed
     by the daemon (queue(): a pending document, then indexJob); `state`: ready | reindexing, `state_message`: the last re-index's error. Permissions KnowledgeBase::* (checkAccess)
@@ -174,7 +174,7 @@ class KnowledgeBase extends \sys\BaseModel {
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)
 	    $permName = 'KnowledgeBase::' . $permName;
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the project decides
+	//the user's role in the project decides
 	return \V::app()->om->findById('Project', $this->project)?->checkAccess($userId, $permName) ?? false;
     }
 
@@ -337,7 +337,7 @@ class KnowledgeBase extends \sys\BaseModel {
 	    \V::app()->om->insertMany('KbChunk', $batch);
 	if ($old)
 	    \V::app()->om->updateOne('KbDocument', [ '_id' => $docId, 'aid' => $this->aid ], [ '$set' => $doc ]);
-	//CLD: 2026-11-08T14:10:00+02:00: save() (one write per document; no log entries: auditLog false in SysObjects); save() sets created_at
+	//save() (one write per document; no log entries: auditLog false in SysObjects); save() sets created_at
 	elseif (!\V::app()->om->create('KbDocument', [ '_id' => $docId ] + $doc)->save())
 	    throw new \ErrorException('the document was not saved');
 	$this->recount();
@@ -458,7 +458,7 @@ class KnowledgeBase extends \sys\BaseModel {
 	$old = \V::app()->om->findOne('KbDocument', [ 'kb' => $this->_id, 'aid' => $this->aid, 'key' => $key ], [ 'arrays' => true ]);
 	if ($old)
 	    \V::app()->om->updateOne('KbDocument', [ '_id' => $old['_id'], 'aid' => $this->aid ], [ '$set' => [ 'status' => 'pending', 'error' => null, 'updated_at' => $now ] ]);
-	//CLD: 2026-11-08T14:10:00+02:00: save() (one write per document added); save() sets created_at
+	//one write per document added; save() sets created_at
 	elseif (!\V::app()->om->create('KbDocument', [ 'aid' => $this->aid, 'kb' => $this->_id, 'key' => $key, 'title' => $title, 'source' => $type, 'file' => $extra['file'] ?? null, 'url' => $extra['url'] ?? null,
 	    'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'updated_at' => $now ])->save())
 	    throw new \ErrorException('the document was not saved');
@@ -562,7 +562,7 @@ class KnowledgeBase extends \sys\BaseModel {
 	}
     }
 
-    //CLD: 2026-11-07T01:06:55+02:00: fields $fields of knowledge base $kb saved as they are (no model hooks)
+    //fields $fields of knowledge base $kb saved as they are (no model hooks)
     private static function setFields($kb, array $fields) {
 	\V::app()->om->updateMany('KnowledgeBase', [ '_id' => $kb->_id ], [ '$set' => $fields ]);
     }

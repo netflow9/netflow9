@@ -10,7 +10,7 @@
 #Nothing that is there is overwritten (listed as kept), except Rail22's plugin code (plugins/nfn.js), replaced when it differs: run install again after an update of the app.
 #Then, as root: the unit (Haraka runs as root for port 25; it forks and writes run/haraka.pid), started at boot and now; the polkit rule again when the app's
 #services are installed (scripts/daemon.sh rule: the Services page controls it). uninstall removes the unit only: the files stay.
-#CLD: 2026-11-01T21:30:00+02:00: commands, as scripts/playwright-mcp.sh
+# commands, as scripts/playwright-mcp.sh
 #Run as root:
 #   sudo scripts/haraka.sh install [--version=<vX.Y.Z>] [--domain=<inbound domain>] [--dir=<folder>] [--dry-run]   install / update, start at boot, start now
 #   sudo scripts/haraka.sh start | stop | restart | status | uninstall
@@ -31,7 +31,7 @@ ARGS=("$@")
 TEMPLATES="$SELF_DIR/haraka"
 REPO="haraka/Haraka"
 MONGODB_DRIVER="mongodb@^3.5.5"
-#CLD: 2026-11-01T23:00:00+02:00: Haraka's default configuration files that Haraka's core and the plugins of config/plugins read; the others (of plugins not
+# Haraka's default configuration files that Haraka's core and the plugins of config/plugins read; the others (of plugins not
 #loaded: auth, delay_deny, rcpt_to.in_host_list, lmtp, smtp_forward / bridge / proxy, tarpit, watch, xclient) are not copied, and removed when unchanged
 HARAKA_DEFAULTS="aliases connection.ini http.ini log.ini outbound.ini outbound.bounce_message outbound.bounce_message_html outbound.bounce_message_image plugins smtp.ini tls.ini"
 SERVICE=nfn-haraka

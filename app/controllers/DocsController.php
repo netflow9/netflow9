@@ -94,7 +94,7 @@ class DocsController extends \sys\BaseController {
 
     //the page's HTML for the viewer: its links to other pages (/<section>/<page>[/<child>][#...]) are this viewer's URLs, its h2 / h3 get ids;
     //returns [ html, [ [ level, id, text ], ... ] ] (the headings: "On this page")
-    //CLD: 2026-11-01T09:00:00+02:00: the docs moved to example.com/docs (edited there): a link written as /docs/<section>/... is the same page; the images uploaded there (/docs/media/...,
+    //the docs are edited at example.com/docs: a link written as /docs/<section>/... is the same page; the images uploaded there (/docs/media/...,
     ///media/...) are shown from there (DOCS_SITE_URL)
     private function prepare($html) {
 	$site = rtrim((string)(defined('DOCS_SITE_URL') && DOCS_SITE_URL !== '' ? DOCS_SITE_URL : 'https://example.com'), '/');

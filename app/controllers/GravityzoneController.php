@@ -30,7 +30,7 @@ class GravityzoneController extends \sys\APIController {
 	    $this->refuse(413, 'Request body too large');
 	$this->requireBearer($cfg['secret'] ?? '');
 
-	//CLD: 2026-11-08T12:00:00+02:00: the body as sent (sys\http\Request), decoded whatever its content type; too large without a Content-Length (chunked): 413
+	//the body as sent (sys\http\Request), decoded whatever its content type; too large without a Content-Length (chunked): 413
 	if (strlen($req->body()) > self::MAX_BODY)
 	    $this->refuse(413, 'Request body too large');
 	$data = json_decode($req->body(), true);

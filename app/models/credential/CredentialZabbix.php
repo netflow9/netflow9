@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new: a Zabbix server (its API, Zabbix 6.0 LTS and later), for the Zabbix steps and the Zabbix problem trigger (util\Zabbix): the frontend's address
+    a Zabbix server (its API, Zabbix 6.0 LTS and later), for the Zabbix steps and the Zabbix problem trigger (util\Zabbix): the frontend's address
     (with its path when it has one, e.g. https://monitor.example/zabbix), an API token (Users > API tokens; encrypted), the server's certificate trusted or not. A server on a private
     address needs the account's "Integrations may connect to private network addresses". Test: the version and the hosts the token sees. Provides `zabbix`
 */

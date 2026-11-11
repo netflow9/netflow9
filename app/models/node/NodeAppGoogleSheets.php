@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T11:00:00+03:00: new step: Google Sheets - reads and writes the cells of a Google spreadsheet (Sheets API v4), through a Google Sheets or Google Drive (OAuth)
+    Google Sheets - reads and writes the cells of a Google spreadsheet (Sheets API v4), through a Google Sheets or Google Drive (OAuth)
     credential of the project (both provide `gsheets`). Inspired by sim.ai's Google Sheets block. Operations (setting `operation`):
 	read      the values of a sheet / a range; with "First row is the header": also a list of objects, one per row, keyed by the header (empty rows left out)
 	append    rows after the last row of the table of the sheet
@@ -21,7 +21,7 @@ namespace models\node;
 
 class NodeAppGoogleSheets extends NodeAppGoogle {
     //static data/structure
-    //CLD: 2026-10-20T14:00:00+03:00: the shape, the credential, the operation run and the API calls are NodeAppGoogle's
+    //the shape, the credential, the operation run and the API calls are NodeAppGoogle's
     public static $name = 'google-sheets';
     public static $label = 'Google Sheets';
     public static $icon = 'bi-table';
@@ -40,7 +40,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 	'create' => 'Create a spreadsheet',
 	'addSheet' => 'Add a sheet',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'append', 'update', 'clear', 'create', 'addSheet' ];
 
     //the operations on the cells of a sheet (sheet, range)
@@ -67,14 +67,14 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
     protected $firstSheet = null;
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$notCreate = [ 'read', 'append', 'update', 'clear', 'info', 'addSheet' ];
 
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'spreadsheetId',
 		'type' => 'text',
 		'label' => 'Spreadsheet',
@@ -84,7 +84,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://docs.google.com/spreadsheets/d/...', 'expression' => true, 'showIf' => static::operationIn($notCreate) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'sheet',
 		'type' => 'text',
 		'label' => 'Sheet',
@@ -94,7 +94,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'placeholder' => 'Sheet1', 'expression' => true, 'showIf' => static::operationIn(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'range',
 		'type' => 'text',
 		'label' => 'Cells',
@@ -106,7 +106,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 
 	    //read
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'header',
 		'type' => 'switch',
 		'label' => 'First row is the header',
@@ -115,8 +115,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'read' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'render',
 		'type' => 'select',
 		'label' => 'Read values',
@@ -127,7 +126,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 	    ],
 
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'input',
 		'type' => 'select',
 		'label' => 'Write values',
@@ -137,7 +136,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'append', 'update' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'addColumns',
 		'type' => 'switch',
 		'label' => 'Add the missing columns to the header',
@@ -158,7 +157,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 
 	    //create
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'title',
 		'type' => 'text',
 		'label' => 'Title',
@@ -168,7 +167,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'Report {{ date }}', 'expression' => true, 'showIf' => static::operationIn([ 'create' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'sheets',
 		'type' => 'text',
 		'label' => 'Sheets',
@@ -220,7 +219,7 @@ class NodeAppGoogleSheets extends NodeAppGoogle {
     // ------------------------------------------------------------------------------------
     //running
 
-    //CLD: 2026-10-20T14:00:00+03:00: the operation (NodeAppGoogle::execute runs it: the variable, the log, On error)
+    //the operation (NodeAppGoogle::execute runs it: the variable, the log, On error)
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	if ($operation !== 'create') {
 	    $this->spreadsheet = self::driveId($text('spreadsheetId'));

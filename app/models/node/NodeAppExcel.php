@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T00:41:28+03:00: new step: Excel - reads and writes the cells of an Excel workbook in OneDrive or SharePoint (Microsoft Graph workbook API), through a
+    Excel - reads and writes the cells of an Excel workbook in OneDrive or SharePoint (Microsoft Graph workbook API), through a
     OneDrive & SharePoint (Microsoft Graph) credential of the project (CredentialMicrosoftFiles, provides `msexcel`). As the Google Sheets step.
     Operations (setting `operation`):
 	read      the values of a worksheet (its used cells) / a range; with "First row is the header": also a list of objects, one per row, keyed by the header
@@ -40,7 +40,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 	'info' => 'Get workbook information',
 	'addSheet' => 'Add a worksheet',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'append', 'update', 'clear', 'addSheet' ];
 
     //the operations on the cells of a worksheet
@@ -58,12 +58,12 @@ class NodeAppExcel extends NodeAppMicrosoft {
     protected $firstSheet = null;
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'drive',
 		'type' => 'text',
 		'label' => 'Drive',
@@ -72,7 +72,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'https://contoso.sharepoint.com/sites/Team', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'workbook',
 		'type' => 'text',
 		'label' => 'Workbook',
@@ -82,7 +82,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'placeholder' => '/Reports/2026.xlsx', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'sheet',
 		'type' => 'text',
 		'label' => 'Worksheet',
@@ -92,7 +92,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => 'Sheet1', 'expression' => true, 'showIf' => static::operationIn(array_merge(self::ON_CELLS, [ 'addSheet' ])) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'range',
 		'type' => 'text',
 		'label' => 'Cells',
@@ -102,7 +102,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'placeholder' => 'A1:D100', 'expression' => true, 'showIf' => static::operationIn([ 'read', 'update', 'clear' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'table',
 		'type' => 'text',
 		'label' => 'Table',
@@ -113,7 +113,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 
 	    //read
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'header',
 		'type' => 'switch',
 		'label' => 'First row is the header',
@@ -122,8 +122,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'read' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'render',
 		'type' => 'select',
 		'label' => 'Read values',
@@ -134,7 +133,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 	    ],
 
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'addColumns',
 		'type' => 'switch',
 		'label' => 'Add the missing columns to the header',
@@ -397,7 +396,7 @@ class NodeAppExcel extends NodeAppMicrosoft {
 	return [ $c1, $r1, $c2, $r2 ];
     }
 
-    //CLD: 2026-11-07T01:08:03+02:00: cell address $c (A1) as [ column index, row ]
+    //cell address $c (A1) as [ column index, row ]
     private static function cellAt($c) {
 	if (!preg_match('/^([A-Z]{1,3})([0-9]{1,7})$/', $c, $m))
 	    throw new \RuntimeException('not a cell address: `' . mb_substr($c, 0, 20) . '`');

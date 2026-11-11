@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new step: Zabbix Hosts - the hosts Zabbix monitors and their latest values. Operations:
+    Zabbix Hosts - the hosts Zabbix monitors and their latest values. Operations:
 	list      hosts (host.get): a name containing a text, of host groups, enabled / disabled; with their interfaces' addresses and groups
 	get       a host by its technical name: with interfaces, groups, templates, tags, macros' names and its current problems' count (none: an error)
 	create    a host (host.create): technical and visible name, host groups and templates (by name), an agent or SNMP interface (address: an IP or a DNS name), tags
@@ -33,7 +33,7 @@ class NodeAppZbxHosts extends NodeAppZabbix {
 	'items' => 'Latest values of a host',
 	'groups' => 'List host groups',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'create', 'enable', 'disable', 'delete' ];
     const LISTS = [ 'list', 'items', 'groups' ];
     const STATUS = [ 'all' => 'All', 'enabled' => 'Enabled', 'disabled' => 'Disabled' ];

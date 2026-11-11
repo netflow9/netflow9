@@ -1,11 +1,11 @@
 <?php
 $this->pageTitle = 'Overview';
 
-//CLD: 2026-10-14T21:44:49+03:00: the placeholder figures ($dashboardCfg, all 0) are replaced by the dashboard (app.Overview, SiteController::overview)
+//the placeholder figures ($dashboardCfg, all 0) are replaced by the dashboard (app.Overview, SiteController::overview)
 ?>
 
 <div class="main-header py-2 px-3">
-    <?php //CLD: 2026-10-30T13:00:00+02:00: shown when the sidebar is kept collapsed (User prefs sidebar_collapsed) ?>
+    <?php //shown when the sidebar is kept collapsed (User prefs sidebar_collapsed) ?>
     <a href="#" class="btn-expand-sidebar<?= empty(\V::app()->var('rt.prefs')['sidebar_collapsed']) ? ' d-none' : '' ?>" title="Expand sidebar">
 	<i class="bi bi-layout-sidebar-inset"></i>
     </a>
@@ -25,13 +25,13 @@ $this->pageTitle = 'Overview';
     <div class="d-flex align-items-center w-100 align-items-top mb-3">
 	<div>
 	    <h5>Overview</h5>
-	    <?php //CLD: 2026-10-14T21:44:49+03:00: how the project's workflows run ?>
+	    <?php //how the project's workflows run ?>
 	    <span class="text-muted">How this project's workflows run</span>
 	</div>
 	<div class="flex-fill"></div>
     </div>
 
-    <?php //CLD: 2026-10-14T21:44:49+03:00: the dashboard (public_html/js/app.overview.js); chart colors as tokens: blue = completed, red = error (validated for color vision
+    <?php //the dashboard (public_html/js/app.overview.js); chart colors as tokens: blue = completed, red = error (validated for color vision
     //deficiency on the light / dark card surface), recessive grid, text in the text tokens ?>
     <style>
     .rail22-overview {

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T10:00:00+03:00: new step: Google Drive - works with the files of a Google Drive account (Drive API v3), through a Google Drive (OAuth) credential of the project
+    Google Drive - works with the files of a Google Drive account (Drive API v3), through a Google Drive (OAuth) credential of the project
     (\models\credential\CredentialGoogleDrive, provides `gdrive`). Inspired by sim.ai's Google Drive block. Operations (setting `operation`):
 	list          files of a folder / of the whole Drive, searched by name, by type, or with a Drive query (q); paged up to the largest number of results
 	get           the information of one file
@@ -21,7 +21,7 @@ namespace models\node;
 
 class NodeAppGoogleDrive extends NodeAppGoogle {
     //static data/structure
-    //CLD: 2026-10-20T14:00:00+03:00: the shape, the credential, the operation run and the API calls are NodeAppGoogle's
+    //the shape, the credential, the operation run and the API calls are NodeAppGoogle's
     public static $name = 'google-drive';
     public static $label = 'Google Drive';
     public static $capability = 'gdrive';
@@ -40,7 +40,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 	'share' => 'Share a file',
 	'delete' => 'Delete a file',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'download', 'upload', 'createFolder', 'move', 'share', 'delete' ];
 
     //the operations working on one existing file (fileId)
@@ -125,12 +125,12 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
     const MAX_TIMEOUT = 600;
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'fileId',
 		'type' => 'text',
 		'label' => 'File',
@@ -140,7 +140,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://drive.google.com/...', 'expression' => true, 'showIf' => static::operationIn(self::ON_FILE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'folderId',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -152,7 +152,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
 	    //list
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Name contains',
@@ -161,7 +161,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'fileType',
 		'type' => 'select',
 		'label' => 'Type',
@@ -171,8 +171,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'orderBy',
 		'type' => 'select',
 		'label' => 'Order',
@@ -190,7 +189,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'expression' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxResults',
 		'type' => 'number',
 		'label' => 'Largest number of results',
@@ -200,8 +199,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide, on a new line
 		'key' => 'includeTrashed',
 		'type' => 'switch',
 		'label' => 'Include files in the trash',
@@ -211,7 +209,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
 	    //download
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'exportFormat',
 		'type' => 'select',
 		'label' => 'Google files as',
@@ -222,7 +220,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'showIf' => static::operationIn([ 'download' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'filename',
 		'type' => 'text',
 		'label' => 'Save as',
@@ -233,7 +231,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
 	    //upload
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'source',
 		'type' => 'select',
 		'label' => 'Upload',
@@ -243,8 +241,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'upload' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'convert',
 		'type' => 'switch',
 		'label' => 'Convert to a Google file',
@@ -253,7 +250,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => static::operationIn([ 'upload' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'name',
 		'type' => 'text',
 		'label' => 'Name',
@@ -279,7 +276,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'rows' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'upload' ]), 'hideIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'file' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest size (MB)',
@@ -291,7 +288,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
 	    //share
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'shareWith',
 		'type' => 'select',
 		'label' => 'Share with',
@@ -301,7 +298,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'share' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'role',
 		'type' => 'select',
 		'label' => 'As',
@@ -311,7 +308,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'share' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'email',
 		'type' => 'text',
 		'label' => 'Address',
@@ -320,7 +317,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'placeholder' => 'someone@example.com', 'expression' => true, 'showIf' => static::operationIn([ 'share' ]), 'hideIf' => [ 'key' => 'shareWith', 'operator' => 'in', 'value' => [ 'domain', 'anyone' ] ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'domain',
 		'type' => 'text',
 		'label' => 'Domain',
@@ -329,7 +326,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 		    'hideIf' => [ 'key' => 'operation', 'operator' => 'ne', 'value' => 'share' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'notify',
 		'type' => 'switch',
 		'label' => 'Send a notification email',
@@ -347,7 +344,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
 	    //delete
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'permanent',
 		'type' => 'switch',
 		'label' => 'Delete permanently (not to the trash)',
@@ -434,7 +431,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
     // ------------------------------------------------------------------------------------
     //running
 
-    //CLD: 2026-10-20T14:00:00+03:00: the operation (NodeAppGoogle::execute runs it: the variable, the log, On error)
+    //the operation (NodeAppGoogle::execute runs it: the variable, the log, On error)
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	return match($operation) {
 	    'list' => $this->opList($text),
@@ -671,7 +668,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 	return max(1, min(self::MAX_SIZE_MB, (int)$this->cfg('maxSize', 25))) * 1024 * 1024;
     }
 
-    //CLD: 2026-10-20T14:00:00+03:00: NodeAppGoogle::api, shared drives included
+    //NodeAppGoogle::api, shared drives included
     protected function api($method, $path, array $query = [], $json = null, $maxBytes = self::MAX_ANSWER) {
 	return parent::api($method, $path, $query + [ 'supportsAllDrives' => 'true' ], $json, $maxBytes);
     }
@@ -679,7 +676,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
     //GET $url into a temporary stream (not kept in memory): [ stream, size, content type ]
     protected function fetch($url, $maxBytes) {
 	$stream = fopen('php://temp/maxmemory:' . (2 * 1024 * 1024), 'w+b');
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http
+	//through util\Http
 	$r = \util\Http::request('GET', $url, [ 'headers' => $this->authHeaders(), 'timeout' => max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120))), 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5, 'https' => true ]);
 	[ $status, $size, $contentType, $tooLarge, $curlError ] = [ $r['status'], $r['size'], $r['mime'], $r['tooLarge'], $r['tooLarge'] ? '' : (string)$r['error'] ];
 
@@ -696,7 +693,7 @@ class NodeAppGoogleDrive extends NodeAppGoogle {
 
     //PUT the $size bytes of $stream to the upload session $url: the decoded answer (the file)
     protected function put($url, $stream, $size, $contentType) {
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http
+	//through util\Http
 	$r = \util\Http::request('PUT', $url, [ 'headers' => [ "Content-Type: {$contentType}" ], 'upload' => [ $stream, $size ], 'timeout' => max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120))), 'https' => true ]);
 	[ $answer, $status, $curlError ] = [ $r['body'], $r['status'], (string)$r['error'] ];
 	$data = json_decode((string)$answer, true);

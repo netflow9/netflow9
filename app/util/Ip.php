@@ -33,7 +33,7 @@ class Ip {
 	return $ips;
     }
 
-    //CLD: 2026-11-07T12:00:00+02:00: new: an IP or a network: 10.1.2.3, a CIDR (10.1.2.0/24, 2001:db8::/64) or IPv4's "address mask" (10.1.2.0 255.255.255.0):
+    //an IP or a network: 10.1.2.3, a CIDR (10.1.2.0/24, 2001:db8::/64) or IPv4's "address mask" (10.1.2.0 255.255.255.0):
     //[ ip, bits (the CIDR's prefix length, else null), mask (IPv4: the dotted mask of a CIDR or the one given, else null), v6 ]; null when it is none of these
     public static function network($v) {
 	$v = trim((string)$v);
@@ -50,7 +50,7 @@ class Ip {
 	return null;
     }
 
-    //CLD: 2026-11-07T12:00:00+02:00: new: "start-end" of two addresses of one family: [ start, end ]; null when it is not
+    //"start-end" of two addresses of one family: [ start, end ]; null when it is not
     public static function range($v) {
 	$range = array_map('trim', explode('-', (string)$v));
 	if (count($range) !== 2 || !filter_var($range[0], FILTER_VALIDATE_IP) || !filter_var($range[1], FILTER_VALIDATE_IP) || str_contains($range[0], ':') !== str_contains($range[1], ':'))
@@ -58,7 +58,7 @@ class Ip {
 	return $range;
     }
 
-    //CLD: 2026-11-01T00:30:00+02:00: an address of a private network (RFC 1918, shared 100.64/10, IPv6 unique local fc00::/7), not one of this machine's own (its interfaces), not loopback,
+    //an address of a private network (RFC 1918, shared 100.64/10, IPv6 unique local fc00::/7), not one of this machine's own (its interfaces), not loopback,
     //link-local or reserved; IPv4-mapped IPv6 by its IPv4 address
     public static function isPrivateNetwork($ip) {
 	$bin = @inet_pton((string)$ip);
@@ -73,7 +73,7 @@ class Ip {
 	return !in_array(inet_ntop($bin), self::ownAddresses(), true);
     }
 
-    //CLD: 2026-11-07T01:14:34+02:00: whether address $bin (inet_pton) is in network $cidr
+    //whether address $bin (inet_pton) is in network $cidr
     private static function inNetwork($bin, $cidr) {
 	[ $net, $bits ] = explode('/', $cidr);
 	$n = inet_pton($net);
@@ -86,7 +86,7 @@ class Ip {
 	return $rest === 0 || ((ord($n[$bytes]) ^ ord($bin[$bytes])) & (0xff << (8 - $rest)) & 0xff) === 0;
     }
 
-    //CLD: 2026-11-01T00:30:00+02:00: this machine's addresses (its interfaces), normalized (inet_ntop)
+    //this machine's addresses (its interfaces), normalized (inet_ntop)
     public static function ownAddresses() {
 	static $own = null;
 	if ($own === null) {

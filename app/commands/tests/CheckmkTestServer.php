@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T08:00:00+02:00: new file: a fake Checkmk site `mysite` (REST API 1.0, Checkmk 2.3) for the check suite (CheckCommand::suiteCheckmk), run by PHP's built-in server:
+    a fake Checkmk site `mysite` (REST API 1.0, Checkmk 2.3) for the check suite (CheckCommand::suiteCheckmk), run by PHP's built-in server:
     CMK_STATE=<a folder> php -S 127.0.0.1:<port> CheckmkTestServer.php
 	Authorization: Bearer automation s3cret; each request appended to <state>/requests.jsonl (method, path, query as sent, body, if-match)
 	GET  /version

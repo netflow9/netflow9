@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-05T13:00:00+02:00: new: the client of the Namecheap API, for the Namecheap credential and steps. One address (https://api.namecheap.com/xml.response, or the
+    the client of the Namecheap API, for the Namecheap credential and steps. One address (https://api.namecheap.com/xml.response, or the
     sandbox's), one request per command: the form fields ApiUser, ApiKey, UserName, ClientIp, Command and the command's own; sent as a POST (the key stays out of the address,
     and setHosts can carry many records). The answer is XML: <ApiResponse Status="OK|ERROR"> <Errors><Error Number="…">…</Error></Errors> <CommandResponse>…</CommandResponse>.
     Namecheap answers only requests from an address whitelisted for the API user (Profile > Tools > API Access): ClientIp must be it.

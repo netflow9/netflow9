@@ -12,10 +12,9 @@ namespace models\node;
 
 use models\InboundMailSettings;
 
-//CLD: 2026-10-17T15:20:00+03:00: renamed NodeTriggerInbound -> NodeTriggerEmail
 class NodeTriggerEmail extends \models\wf\WfNode {
     public static $type = 'trigger';
-    //CLD: 2026-10-17T15:35:00+03:00: trigger::email; runs started by it have trigger `email`
+    //trigger::email; runs started by it have trigger `email`
     public static $name = 'email';
     public static $label = 'Email (inbound)';
     public static $icon = 'bi-envelope-arrow-down';
@@ -23,17 +22,17 @@ class NodeTriggerEmail extends \models\wf\WfNode {
     public static $inputs = 0;
     public static $outputs = 1;
 
-    //CLD: 2026-10-21T11:30:00+03:00: its token format for the token index (TriggerToken::syncForWorkflow; without it, `hex`: the Email inbound steps were never indexed)
+    //its token format for the token index (TriggerToken::syncForWorkflow; without it, `hex`)
     const TOKEN_FORMAT = 'code';
-    //CLD: 2026-11-02T18:00:00+02:00: the messages of one conversation accepted in an hour (Keep conversations)
+    //the messages of one conversation accepted in an hour (Keep conversations)
     const MAX_THREAD_RATE = 20;
 
-    //CLD: 2026-11-01T16:11:37+02:00: only where Haraka is installed with Rail22's plugin (util\InboundMail::found): else not in the palette, and a workflow with it cannot run (Workflow::validateFlow)
+    //only where Haraka is installed with Rail22's plugin (util\InboundMail::found): else not in the palette, and a workflow with it cannot run (Workflow::validateFlow)
     public static function available() {
 	return \util\InboundMail::found();
     }
 
-    //CLD: 2026-11-01T16:11:37+02:00: new: the address of the step's code, from its account's current prefix ('' without a domain or a prefix)
+    //the address of the step's code, from its account's current prefix ('' without a domain or a prefix)
     public static function addressFor($aid, $token) {
 	$prefix = InboundMailSettings::prefixOf($aid);
 	$domain = \util\InboundMail::domain();
@@ -46,11 +45,11 @@ class NodeTriggerEmail extends \models\wf\WfNode {
     }
 
     //a new step gets its code and address when it is added (mail is accepted once the workflow is published)
-    //CLD: 2026-10-18T14:40:00+03:00: TriggerToken::newToken
+    //TriggerToken::newToken
     public static function initConfig() {
 	$token = \models\TriggerToken::newToken('code');
 
-	//CLD: 2026-11-01T16:11:37+02:00: addressFor
+	//addressFor
 	return [ 'token' => $token, 'address' => self::addressFor(\V::app()->config('rt.account')->_id, $token) ];
     }
 
@@ -61,8 +60,7 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 		'type' => 'text',
 		'label' => 'Address',
 		'perm:update' => 'nobody',
-		//CLD: 2026-10-19T21:10:00+03:00: the prefix is in Inbound mail settings
-		//CLD: 2026-11-01T16:11:37+02:00: the prefix is on the Inbound mail tab of Account settings
+		//the prefix is on the Inbound mail tab of Account settings
 		'help' => 'Mail sent here starts the workflow once it is published (the start is your account\'s email prefix: Account settings, Inbound mail)',
 		'ui' => [ 'placeholder' => 'Set the email prefix in Account settings, Inbound mail' ],
 	    ],
@@ -90,7 +88,7 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 		'validate' => [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ],
 		'ui' => [ 'variableName' => 'write' ],
 	    ],
-	    //CLD: 2026-11-02T18:00:00+02:00: new: an agent's conversation by email: replies thread into the same conversation; Reply to chat answers the sender
+	    //an agent's conversation by email: replies thread into the same conversation; Reply to chat answers the sender
 	    [
 		'key' => 'conversation',
 		'type' => 'switch',
@@ -106,10 +104,10 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 	$valid = parent::validates($options);
 	$config = is_array($this->config) ? $this->config : [];
 	$token = $config['token'] ?? null;
-	//CLD: 2026-10-18T14:40:00+03:00: the token checks are TriggerToken::checkToken; no address without a valid code
+	//the token checks are TriggerToken::checkToken; no address without a valid code
 	$valid = \models\TriggerToken::checkToken($this, 'code') && $valid;
 
-	//CLD: 2026-11-01T16:11:37+02:00: the address again from the account's current prefix
+	//the address again from the account's current prefix
 	$wf = $this->workflow;
 	if ($wf && !empty($config['token']))
 	    $config['address'] = self::addressFor($wf->aid, $config['token']);
@@ -123,7 +121,7 @@ class NodeTriggerEmail extends \models\wf\WfNode {
     }
 
     //the IMAP trigger's message variable, without the mailbox fields (account, folder, uid), with the address it was sent to
-    //CLD: 2026-10-17T14:20:00+03:00: the message type of the Read emails step (NodeAppReadEmail::messageType), named by `variable` (default `mail`)
+    //the message type of the Read emails step (NodeAppReadEmail::messageType), named by `variable` (default `mail`)
     public static function outputVariables($config) {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'mail') : 'mail';
 	$vars = \util\Validator::isIdentifier($name) ? [ $name => \models\node\NodeAppReadEmail::messageType() ] : [];
@@ -134,13 +132,13 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 		. 'headers (lower-case name => value, or a list when repeated), attachments ([ { filename, contentType, size, disposition, file } ]), attachment_count, attachment_files }';
 	    $vars[$name] = $v;
 	}
-	//CLD: 2026-11-02T18:00:00+02:00: + the variables of a conversation
+	//the variables of a conversation
 	if (is_array($config) && !empty($config['conversation']))
 	    $vars += NodeTriggerChat::conversationVariables();
 	return $vars;
     }
 
-    //CLD: 2026-11-01T16:11:37+02:00: the job is \models\node\NodeTriggerEmail::deliver (haraka/plugins/nfn.js JOB_SPEC)
+    //the job is \models\node\NodeTriggerEmail::deliver (haraka/plugins/nfn.js JOB_SPEC)
     //a message Haraka received (a daemon job submitted by haraka/plugins/nfn.js): { file (the raw message, a project File), token, rcpt, mail_from }; starts and runs the
     //workflow's published version. Failing here fails the job (the File stays, as for a failed run); a sender the step does not accept: logged, the File deleted
     public static function deliver($data) {
@@ -173,7 +171,7 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 	    return;
 	}
 
-	//CLD: 2026-11-02T18:00:00+02:00: Keep conversations: an automatic message (or a bounce) is not answered: agents would write to each other without end
+	//Keep conversations: an automatic message (or a bounce) is not answered: agents would write to each other without end
 	if (!empty($cfg['conversation']) && self::automatic($file->getContents(), $from)) {
 	    \models\ExecutionLog::record('inbound.refused', $wf, "an automatic message to {$data['rcpt']} was not answered", [], null, $wf->aid);
 	    $file->delete();
@@ -184,7 +182,7 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 	    'mail' => [ 'recipient' => (string)($data['rcpt'] ?? '') ],
 	    'input' => [ 'recipient' => (string)($data['rcpt'] ?? ''), 'mail_from' => $from, 'raw_file' => (string)$file->_id ],
 	    'log' => 'message to ' . ($data['rcpt'] ?? '') ]);
-	//CLD: 2026-11-02T18:00:00+02:00: Keep conversations: the run takes its place in the conversation; refused when too many came too fast
+	//Keep conversations: the run takes its place in the conversation; refused when too many came too fast
 	if (!empty($cfg['conversation']) && !self::threadEmail($exe, $live, $node, (string)($data['rcpt'] ?? ''))) {
 	    \models\ExecutionLog::record('inbound.refused', $wf, "too many messages in a conversation of {$data['rcpt']}", [], null, $wf->aid);
 	    $exe->delete();
@@ -194,7 +192,7 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 	$exe->run();
     }
 
-    //CLD: 2026-11-02T18:00:00+02:00: new: whether raw message $raw is an automatic one: a bounce (no envelope sender, $from), Auto-Submitted other than no, Precedence bulk / list / junk / auto_reply, an auto-responder's own headers
+    //whether raw message $raw is an automatic one: a bounce (no envelope sender, $from), Auto-Submitted other than no, Precedence bulk / list / junk / auto_reply, an auto-responder's own headers
     public static function automatic($raw, $from) {
 	if ($from === '' || preg_match('/^(mailer-daemon|postmaster)@/i', $from))
 	    return true;
@@ -203,13 +201,13 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 	return ($auto !== '' && $auto !== 'no') || in_array(self::headerValue($h, 'precedence'), [ 'bulk', 'list', 'junk', 'auto_reply' ], true) || self::headerValue($h, 'x-autoreply') !== '' || self::headerValue($h, 'x-autorespond') !== '';
     }
 
-    //CLD: 2026-11-07T01:11:11+02:00: header $name of headers $h (its first value), lower case, trimmed; '' when absent
+    //header $name of headers $h (its first value), lower case, trimmed; '' when absent
     private static function headerValue($h, $name) {
 	$v = $h[$name] ?? '';
 	return strtolower(trim((string)(is_array($v) ? ($v[0] ?? '') : $v)));
     }
 
-    //CLD: 2026-11-02T18:00:00+02:00: new: run $exe of an email (MailPoll::startMessage: its variable has the message) in its conversation: the one whose messages it replies to, when it comes from the same sender (an address that knows a
+    //run $exe of an email (MailPoll::startMessage: its variable has the message) in its conversation: the one whose messages it replies to, when it comes from the same sender (an address that knows a
     //Message-ID does not get into someone else's conversation), else a new one. Sets its variables. False: more than MAX_THREAD_RATE messages of that conversation in the last hour (a loop)
     public static function threadEmail($exe, $live, array $node, $rcpt) {
 	$name = \util\Validator::isIdentifier((string)($node['config']['variable'] ?? '')) ? (string)$node['config']['variable'] : 'mail';
@@ -225,7 +223,7 @@ class NodeTriggerEmail extends \models\wf\WfNode {
 		return false;
 	}
 	$mail = [ 'to' => $from, 'subject' => (string)($msg['subject'] ?? ''), 'reply_to' => (string)$rcpt ];
-	//CLD: 2026-11-08T14:40:00+02:00: a new conversation made here, through save() (the defaults and last_at: AgentConversation)
+	//a new conversation made here, through save() (the defaults and last_at: AgentConversation)
 	if (!$conv) {
 	    $new = \V::app()->om->create('AgentConversation', [ 'aid' => $live->aid, 'project' => $live->project, 'wf' => $live->_id, 'node' => (string)$node['wfid'], 'channel' => 'email',
 		'user_name' => (string)($msg['from_name'] ?? ''), 'user_email' => $from, 'who' => 'm:' . $from, 'refs' => [], 'mail' => $mail ]);

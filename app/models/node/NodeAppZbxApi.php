@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new step: Zabbix API - any method of the Zabbix API (what the other Zabbix steps do not have: triggers, templates, users, actions, history,
+    Zabbix API - any method of the Zabbix API (what the other Zabbix steps do not have: triggers, templates, users, actions, history,
     SLA, services, ...): the method (e.g. trigger.get) and its parameters (a JSON object or list, or an expression giving one; Other parameters is not used here). The token is
     sent as the other steps send it. Its result: Zabbix's `result`
 */
@@ -17,7 +17,7 @@ class NodeAppZbxApi extends NodeAppZabbix {
     public static $defaultVariable = 'zbx';
 
     const OPERATIONS = [ 'call' => 'Call a method' ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'call' ];
 
     protected static function operationFields() {

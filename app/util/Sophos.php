@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T10:00:00+02:00: new: the client of the Sophos Firewall XML API (SFOS 18 to 22 and later), for the Sophos Firewall credential and steps.
+    the client of the Sophos Firewall XML API (SFOS 18 to 22 and later), for the Sophos Firewall credential and steps.
     POST https://<firewall>:4444/webconsole/APIController, the form field `reqxml`: <Request><Login><Username/><Password/></Login> <Get> | <Set operation="add|update"> | <Remove> </Request>
     (the API turned on, and Rail22's address allowed, under Backup & firmware > API). The answer: <Response APIVersion="..."> <Login><status>…</status></Login> <Status code="…"> (a
     request refused) and an element per entity: its fields, or <Status code="2xx|5xx">text</Status> (a change), or <Status>Number of records Zero.</Status> (an empty read).

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T12:00:00+02:00: new file: a fake vCenter Server 8.0 U3 (the REST API and VI/JSON 8.0.1.0) for the check suite (CheckCommand::suiteVmware), run by PHP's built-in server:
+    a fake vCenter Server 8.0 U3 (the REST API and VI/JSON 8.0.1.0) for the check suite (CheckCommand::suiteVmware), run by PHP's built-in server:
     VC_STATE=<a folder> php -S 127.0.0.1:<port> VmwareTestServer.php
 	user automation@vsphere.local, password s3cret; the sessions kept in <state>/state.json (a test may drop them: a 401, then a new sign-in); each request appended to
 	<state>/requests.jsonl (api, method, path, query as sent, body, session)

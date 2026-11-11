@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new step: FortiGate System - the firewall's state, and its configuration backed up into the project's Files. Operations (setting `operation`):
+    FortiGate System - the firewall's state, and its configuration backed up into the project's Files. Operations (setting `operation`):
 	status      hostname, model, serial, FortiOS version (monitor/system/status)
 	resources   CPU, memory, sessions (monitor/system/resource/usage)
 	interfaces  the interfaces and their state (monitor/system/interface)
@@ -28,7 +28,7 @@ class NodeAppFgtSystem extends NodeAppFortiGate {
 	'licenses' => 'Get licenses',
 	'backup' => 'Back up the configuration into Files',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'backup' ];
     const MAX_BACKUP = 50 * 1024 * 1024;
 

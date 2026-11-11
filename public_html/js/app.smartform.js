@@ -20,17 +20,17 @@ if (!window.app)
  * Every field node supports:
  *   type          - "text" | "email" | "url" | "textarea" | "select" | "checkbox" | "switch" |
  *                   "date" | "datetime" | "number" | "editgrid" | "password" | "nested"
- *                   (CLD: 2026-10-18T10:20:00+03:00: "nested": one object, its fields in `components`, scope 'row' of their conditions = the object)
+ *                   ("nested": one object, its fields in `components`, scope 'row' of their conditions = the object)
  *   key           - unique data key (required for real fields)
  *   label         - visible label text
  *   editable      - true/false (false renders the field disabled/read-only)
  *   required      - true/false
- *   requiredIf    - JS expression string, evaluated with (data, row, index) in scope, or a condition (CLD: 2026-10-14T20:17:14+03:00):
+ *   requiredIf    - JS expression string, evaluated with (data, row, index) in scope, or a condition:
  *                   { key, operator, value, scope: 'row' (the editgrid row) | data } with the fields' operators (as util\Conditions on the server)
  *   showIf        - JS expression string, or a condition
  *   hideIf        - JS expression string, or a condition (wins over showIf when both are true)
  *   width         - bootstrap column width 1-12 (default 12) used for simple 2/3/4-col layouts
- *   newRow        - (with width) the field starts a new line instead of following the narrow fields before it (CLD: 2026-10-24T12:41:49+03:00)
+ *   newRow        - (with width) the field starts a new line instead of following the narrow fields before it
  *   direction     - per-field override of "vertical" | "horizontal"
  *   default       - initial value
  *   helpText      - small muted helper text under the field
@@ -39,23 +39,23 @@ if (!window.app)
  *   choices       - (select) [ {value,label}, ... ] | [ 'a', 'b' ] | { value: label }; rendered with app.SelectPlus when loaded
  *   variableName  - (text) 'read' | 'write': the value is a variable name; the form's `expression` server suggests the available variables (app.ExprInput
  *                   mode `name`; 'read' also warns about a name no step before sets)
- *   code          - (textarea) CLD: 2026-10-13T15:33:17+03:00: the language of a code editor in place of the textarea (app.CodeEditor; 'j'); live help in the `expression` syntax
- *                   CLD: 2026-10-23T12:30:00+03:00: the editor's language follows the syntax (app.CodeEditor LANGUAGES); `code`: true is enough
- *   syntaxBy      - (textarea with `code`) CLD: 2026-10-23T12:30:00+03:00: the syntax follows other fields: [ { syntax, if: condition | [ conditions, all true ] } ], the first
+ *   code          - (textarea) a code editor in place of the textarea (app.CodeEditor), live help in the `expression` syntax; the editor's language follows the
+ *                   syntax (app.CodeEditor LANGUAGES); `code`: true is enough (or the language, e.g. 'j')
+ *   syntaxBy      - (textarea with `code`) the syntax follows other fields: [ { syntax, if: condition | [ conditions, all true ] } ], the first
  *                   that holds wins, else the `expression` syntax; e.g. JSON / JSON-RPC by the body type of the HTTP Request step
- *   propose       - (checkbox, switch) CLD: 2026-10-23T12:30:00+03:00: checking it proposes a value for another (top-level) field: { key, value, confirm }; set when that
+ *   propose       - (checkbox, switch) checking it proposes a value for another (top-level) field: { key, value, confirm }; set when that
  *                   field is empty, else when the user agrees to `confirm` (no `confirm`: only when empty)
  *   expression    - (text, textarea) the value may hold expressions between {{ and }}: checked and completed live on the server (app.ExprInput),
  *                   when the form has the `expression` option
- *                   CLD: 2026-10-13T12:17:47+03:00: true = syntax `text` (text with any {{ }} parts), or the syntax name: 'reference' (only {{ variable }} /
- *                   {{ variable.field }}), 'value' (CLD: 2026-10-13T12:43:20+03:00: one {{ expression }}); the server checks and suggests in that syntax (util\Expression::SYNTAX)
+ *                   true = syntax `text` (text with any {{ }} parts), or the syntax name: 'reference' (only {{ variable }} /
+ *                   {{ variable.field }}), 'value' (one {{ expression }}); the server checks and suggests in that syntax (util\Expression::SYNTAX)
  *   ajaxUrl       - (select) the choices are searched on the server as the user types (app.SelectPlus ajax: GET ?q=&page=, answer
  *                   { results: [ {id, text} ], pagination: { more } }); `choices` then holds only the current value (its label)
- *   choicesBy     - (select) CLD: 2026-10-22T01:58:24+03:00: the choices follow another field's value: { key, choices: { <its value>: choices (as `choices`) }, empty: text }; rebuilt
+ *   choicesBy     - (select) the choices follow another field's value: { key, choices: { <its value>: choices (as `choices`) }, empty: text }; rebuilt
  *                   when that field changes (switching from one value to another clears a value the new choices do not have; a value set with no value before,
  *                   e.g. by setData, is kept and listed);
  *                   `empty`: the placeholder when that value has no choices
- *   allowCustom   - (select) CLD: 2026-10-22T01:58:24+03:00: a value that is not among the choices can be typed in (app.SelectPlus `create`)
+ *   allowCustom   - (select) a value that is not among the choices can be typed in (app.SelectPlus `create`)
  *   pattern       - regular expression (string) a non-empty string value must match, as a whole (anchored, as the HTML pattern attribute)
  *   patternMessage- error shown when `pattern` does not match
  *   stored        - (password) a value is stored on the server: the input stays empty and an empty input keeps it
@@ -73,13 +73,13 @@ if (!window.app)
  *
  * Layout helper node:
  *   { "type": "columns", "columns": [ { "width": 6, "fields": [...] }, { "width": 6, "fields": [...] } ] }
- * CLD: 2026-10-29T10:00:00+02:00: a collapsible section (closed unless collapsed: false; hidden when none of its fields is shown; opened when one of them is invalid,
+ * A collapsible section (closed unless collapsed: false; hidden when none of its fields is shown; opened when one of them is invalid,
  * and with openIfChanged when one of them is not at its default):
  *   { "type": "section", "label": "Advanced…", "collapsed": true, "openIfChanged": true, "fields": [...] }
  *
- * CLD: 2026-10-13T18:20:23+03:00: design nodes (no data; showIf / hideIf apply): { "type": "paragraph", "text": "..." } (line breaks kept), { "type": "divider" }; and the field
+ * Design nodes (no data; showIf / hideIf apply): { "type": "paragraph", "text": "..." } (line breaks kept), { "type": "divider" }; and the field
  * type "formdesigner": its value is a form schema ({ direction, fields }) edited with app.FormDesigner (forms of the Form trigger / Human task steps)
- * CLD: 2026-10-16T12:01:59+03:00: type "emaildesigner": its value is an email of blocks ({ preheader, blocks }, models\EmailBlocks) edited with app.EmailDesigner (Send Email step)
+ * Type "emaildesigner": its value is an email of blocks ({ preheader, blocks }, models\EmailBlocks) edited with app.EmailDesigner (Send Email step)
  */
 
 window.app.smartform = (function() {
@@ -128,14 +128,14 @@ window.app.smartform = (function() {
 	    return this.api.size ? cls + ' ' + cls + '-' + this.api.size : cls;
 	}
 
-	//CLD: 2026-10-11T22:38:36+03:00: an `expression` field of a form with the `expression` option gets the live help (app.ExprInput: problems below it, suggestions)
+	//an `expression` field of a form with the `expression` option gets the live help (app.ExprInput: problems below it, suggestions)
 	_expression(input) {
 	    if (!this.api.expression || !window.app.ExprInput)
 		return;
-	    //CLD: 2026-10-13T12:17:47+03:00: + the field's syntax (expression: true = text, or its name)
+	    //the field's syntax (expression: true = text, or its name)
 	    if (this.schema.expression)
 		this.exprInput = new window.app.ExprInput(input, Object.assign({}, this.api.expression, { syntax: typeof this.schema.expression === 'string' ? this.schema.expression : 'text' }));
-	    //CLD: 2026-10-11T23:02:07+03:00: + variable name fields (suggestions of the variables)
+	    //variable name fields (suggestions of the variables)
 	    else if (this.schema.variableName)
 		this.exprInput = new window.app.ExprInput(input, Object.assign({}, this.api.expression, { mode: 'name', usage: this.schema.variableName }));
 	}
@@ -150,7 +150,7 @@ window.app.smartform = (function() {
     	    this.el = wrapper;
 
     	    const label = document.createElement('label');
-	    //CLD: 2026-10-11T17:02:49+03:00: sized label (form-level `size`)
+	    //sized label (form-level `size`)
     	    label.className = horizontal ? 'col-sm-3 ' + this.sized('col-form-label') : 'form-label';
     	    label.setAttribute('for', this.id);
     	    label.textContent = this.label();
@@ -162,7 +162,7 @@ window.app.smartform = (function() {
 
     	    const control = this.renderInput();
     	    this.inputEl = control;
-	    //CLD: 2026-10-05T21:39:55+03:00: named input, so the form can be submitted (FormData / app.pjax)
+	    //named input, so the form can be submitted (FormData / app.pjax)
 	    this._applyName(control);
     	    inputHolder.appendChild(control);
 
@@ -250,7 +250,7 @@ window.app.smartform = (function() {
     	    return this.currentValue;
 	}
 
-	//CLD: 2026-10-05T21:39:55+03:00: name the submitted control after the field key (`key[]` for multiple values)
+	//name the submitted control after the field key (`key[]` for multiple values)
 	_applyName(control) {
     	    if (this.key && control)
     		control.name = this.schema.multiple ? this.key + '[]' : this.key;
@@ -290,7 +290,7 @@ window.app.smartform = (function() {
     	    this._visible = visible;
     	    if (this.el)
     		this.el.classList.toggle(this._hiddenDisplayClass, !visible);
-	    //CLD: 2026-10-24T12:48:19+03:00: its column too, in a row of narrow fields (the fields after it on the line move up)
+	    //its column too, in a row of narrow fields (the fields after it on the line move up)
 	    flowColVisible(this.el, visible);
 
     	    const required = !!this.schema.required || evalExpr(this.schema.requiredIf, context, false);
@@ -336,12 +336,12 @@ window.app.smartform = (function() {
 		this.setInvalid('This field is required.');
 		return false;
 	    }
-	    //CLD: 2026-10-14T14:54:31+03:00: the whole value must match (anchored, as the HTML pattern attribute and the server: util\FormSchema, the Validator's regex rule)
+	    //the whole value must match (anchored, as the HTML pattern attribute and the server: util\FormSchema, the Validator's regex rule)
 	    if (this.schema.pattern && typeof value === 'string' && value !== '' && !new RegExp('^(?:' + this.schema.pattern + ')$').test(value)) {
 		this.setInvalid(this.schema.patternMessage || 'Invalid format.');
 		return false;
 	    }
-	    //CLD: 2026-10-20T14:07:31+03:00: the server's key / certificate rules (`rules`, util\SmartForm::modelFields), in order: the first failing one is the error
+	    //the server's key / certificate rules (`rules`, util\SmartForm::modelFields), in order: the first failing one is the error
 	    const failed = checkRules(this.schema.rules, value, context);
 	    if (failed) {
 		this.setInvalid(failed.message || 'Invalid format.');
@@ -375,8 +375,7 @@ window.app.smartform = (function() {
     	    input.id = this.id;
     	    input.className = 'form-check-input';
     	    input.checked = !!this.currentValue;
-	    //CLD: 2026-10-05T21:39:55+03:00: submitted as key=1 when checked (absent when unchecked)
-	    //CLD: 2026-10-06T08:33:42+03:00: ...and key=0 when unchecked, through the hidden input added below
+	    //submitted as key=1 when checked, key=0 when unchecked (through the hidden input added below)
     	    input.value = '1';
     	    this._applyName(input);
     	    input.addEventListener('change', () => this.handleInput(input.checked));
@@ -389,7 +388,7 @@ window.app.smartform = (function() {
     	    this.labelEl = label;
     	    this._appendRequiredMark();
 
-	    //CLD: 2026-10-06T08:33:42+03:00: hidden "0" with the same name, before the checkbox: an unchecked box still submits key=0;
+	    //hidden "0" with the same name, before the checkbox: an unchecked box still submits key=0;
 	    //a checked one also sends key=1, which wins (last value). "0" (not "false"): reads false both for the
 	    //fields' boolean cast and for !empty() on the server
     	    if (input.name) {
@@ -436,7 +435,7 @@ window.app.smartform = (function() {
     	    return '';
 	}
 
-	//CLD: 2026-10-23T12:30:00+03:00: checked: the `propose` value for its field
+	//checked: the `propose` value for its field
 	handleInput(value) {
 	    super.handleInput(value);
 	    const p = this.schema.propose;
@@ -450,7 +449,7 @@ window.app.smartform = (function() {
 	    this.api.setValue(p.key, p.value);
 	}
 
-	//CLD: 2026-10-06T08:33:42+03:00: a non-editable checkbox must not submit its hidden "0" either
+	//a non-editable checkbox must not submit its hidden "0" either
 	_applyEditableState() {
     	    super._applyEditableState();
     	    if (this.hiddenEl)
@@ -516,7 +515,7 @@ window.app.smartform = (function() {
     	    const input = document.createElement('input');
     	    input.type = this.schema.inputType || 'text';
     	    input.id = this.id;
-    	    input.className = this.sized('form-control'); //CLD: 2026-10-11T17:02:49+03:00: form-level `size`
+    	    input.className = this.sized('form-control'); //form-level `size`
     	    if (this.schema.placeholder)
     		input.placeholder = this.schema.placeholder;
     	    if (this.schema.maxLength)
@@ -528,7 +527,7 @@ window.app.smartform = (function() {
 	}
     }
 
-    //CLD: 2026-10-13T20:41:25+03:00: new field type `email` (the Rail22 field type sys\fields\Field_email): an e-mail input, checked as an address
+    //new field type `email` (the Rail22 field type sys\fields\Field_email): an e-mail input, checked as an address
     class EmailField extends TextField {
 	renderInput() {
 	    const input = super.renderInput();
@@ -549,7 +548,7 @@ window.app.smartform = (function() {
 	}
     }
 
-    //CLD: 2026-10-14T19:54:21+03:00: new field type `url` (the Rail22 field type sys\fields\Field_url): a web-address input, checked as an http:// or https:// address (the browser's URL parser)
+    //new field type `url` (the Rail22 field type sys\fields\Field_url): a web-address input, checked as an http:// or https:// address (the browser's URL parser)
     class UrlField extends TextField {
 	renderInput() {
 	    const input = super.renderInput();
@@ -562,7 +561,7 @@ window.app.smartform = (function() {
 	    if (!super.validate(context))
 		return false;
 	    const value = String(this.getValue() ?? '').trim();
-	    //CLD: 2026-10-14T19:59:06+03:00: a valid address, as the server's url rule (no http(s) restriction)
+	    //a valid address, as the server's url rule (no http(s) restriction)
 	    if (this.isVisible() && value !== '' && !URL.canParse(value)) {
 		this.setInvalid('Enter a web address.');
 		return false;
@@ -571,14 +570,14 @@ window.app.smartform = (function() {
 	}
     }
 
-    //CLD: 2026-10-10T18:27:49+03:00: new field type `password`: a password input with a show/hide button (input-group); autocomplete new-password by default (a
+    //new field type `password`: a password input with a show/hide button (input-group); autocomplete new-password by default (a
     //saved login is never filled into e.g. a credential form); `stored`: a value is kept on the server (the input stays empty, empty = keep it)
     class PasswordField extends FieldBase {
 	renderInput() {
 	    const input = document.createElement('input');
 	    input.type = 'password';
 	    input.id = this.id;
-	    input.className = this.sized('form-control'); //CLD: 2026-10-11T17:02:49+03:00: form-level `size`
+	    input.className = this.sized('form-control'); //form-level `size`
 	    input.autocomplete = this.schema.autocomplete || 'new-password';
 	    input.spellcheck = false;
 	    if (this.schema.placeholder)
@@ -595,7 +594,7 @@ window.app.smartform = (function() {
 		return input;
 
 	    const group = document.createElement('div');
-	    group.className = this.sized('input-group') + ' has-validation'; //CLD: 2026-10-11T17:02:49+03:00: form-level `size` (sizes the button too)
+	    group.className = this.sized('input-group') + ' has-validation'; //form-level `size` (sizes the button too)
 	    const btn = document.createElement('button');
 	    btn.type = 'button';
 	    btn.className = 'btn btn-outline-secondary';
@@ -654,22 +653,21 @@ window.app.smartform = (function() {
 	renderInput() {
     	    const input = document.createElement('textarea');
     	    input.id = this.id;
-    	    input.className = this.sized('form-control'); //CLD: 2026-10-11T17:02:49+03:00: form-level `size`
+    	    input.className = this.sized('form-control'); //form-level `size`
     	    input.rows = this.schema.rows || 3;
     	    if (this.schema.placeholder)
     		input.placeholder = this.schema.placeholder;
-	    //CLD: 2026-10-20T16:00:00+03:00: a write-only encrypted textarea (e.g. a private key): `stored` says a value is kept (empty = keep it); no spell check
+	    //a write-only encrypted textarea (e.g. a private key): `stored` says a value is kept (empty = keep it); no spell check
 	    else if (this.schema.stored)
 		input.placeholder = 'Stored; leave empty to keep it';
 	    if (this.schema.spellcheck === false)
 		input.spellcheck = false;
     	    input.value = this.currentValue || '';
     	    input.addEventListener('input', () => this.handleInput(input.value));
-	    //CLD: 2026-10-20T14:07:31+03:00: a pasted key / certificate is checked on leaving the field (not only on submit)
+	    //a pasted key / certificate is checked on leaving the field (not only on submit)
 	    if (Array.isArray(this.schema.rules) && this.schema.rules.length)
 		input.addEventListener('blur', () => this.validate(this.api.getContext()));
-	    //CLD: 2026-10-13T15:33:17+03:00: `code` (e.g. 'j'): a code editor (app.CodeEditor: CodeMirror, with the server's live help in the field's expression syntax) in place of the textarea
-	    //CLD: 2026-10-23T12:30:00+03:00: the syntax by syntaxBy (_syntax)
+	    //`code` (e.g. 'j'): a code editor (app.CodeEditor: CodeMirror, with the server's live help in the field's expression syntax, by syntaxBy: _syntax) in place of the textarea
 	    if (this.schema.code && window.app.CodeEditor && this.api.expression)
 		this.codeEditor = new window.app.CodeEditor(input, Object.assign({}, this.api.expression, { syntax: this._syntax(this.api.getContext()) }));
 	    else
@@ -677,20 +675,20 @@ window.app.smartform = (function() {
     	    return input;
 	}
 
-	//CLD: 2026-10-23T12:30:00+03:00: the code editor's syntax: the first of syntaxBy that holds, else the `expression` syntax (default script)
+	//the code editor's syntax: the first of syntaxBy that holds, else the `expression` syntax (default script)
 	_syntax(context) {
 	    const by = (Array.isArray(this.schema.syntaxBy) ? this.schema.syntaxBy : []).find((s) => (Array.isArray(s.if) ? s.if : [ s.if ]).every((c) => evalExpr(c, context, false)));
 	    return by ? by.syntax : (typeof this.schema.expression === 'string' ? this.schema.expression : 'script');
 	}
 
-	//CLD: 2026-10-23T12:30:00+03:00: the syntax follows the other fields (applyConditions runs on every change of the form)
+	//the syntax follows the other fields (applyConditions runs on every change of the form)
 	applyConditions(context) {
 	    super.applyConditions(context);
 	    if (this.codeEditor && this.schema.syntaxBy)
 		this.codeEditor.setSyntax(this._syntax(context));
 	}
 
-	//CLD: 2026-10-23T12:30:00+03:00: a value set from outside (setData, `propose`) shown by the code editor too
+	//a value set from outside (setData, `propose`) shown by the code editor too
 	_reflectValue() {
 	    super._reflectValue();
 	    if (this.codeEditor)
@@ -707,7 +705,7 @@ window.app.smartform = (function() {
     	    const input = document.createElement('input');
     	    input.type = 'number';
     	    input.id = this.id;
-    	    input.className = this.sized('form-control'); //CLD: 2026-10-11T17:02:49+03:00: form-level `size`
+    	    input.className = this.sized('form-control'); //form-level `size`
     	    if (this.schema.min !== undefined)
     		input.min = this.schema.min;
     	    if (this.schema.max !== undefined)
@@ -742,7 +740,7 @@ window.app.smartform = (function() {
 	}
     }
 
-    //CLD: 2026-10-05T22:32:08+03:00: uses app.DatePicker (when loaded) instead of the native date/datetime-local input; `format` = display
+    //uses app.DatePicker (when loaded) instead of the native date/datetime-local input; `format` = display
     //format (PHP date() tokens); the value (and what is submitted) stays 'Y-m-d' / 'Y-m-dTH:i' local time
     class DateField extends FieldBase {
 	_isDateTime() {
@@ -752,7 +750,7 @@ window.app.smartform = (function() {
 	renderInput() {
     	    const input = document.createElement('input');
     	    input.id = this.id;
-    	    input.className = this.sized('form-control'); //CLD: 2026-10-11T17:02:49+03:00: form-level `size`
+    	    input.className = this.sized('form-control'); //form-level `size`
 
     	    if (window.app.DatePicker) {
     		//display only: the picker writes the value; typing would not reach it
@@ -822,7 +820,7 @@ window.app.smartform = (function() {
 	}
     }
 
-    //CLD: 2026-10-05T22:32:08+03:00: 'Y-m-d' or 'Y-m-dTH:i' as a local Date (new Date('Y-m-d') would be UTC midnight); null if not parsable
+    //'Y-m-d' or 'Y-m-dTH:i' as a local Date (new Date('Y-m-d') would be UTC midnight); null if not parsable
     function parseLocalDate(value) {
 	if (value instanceof Date)
     	    return value;
@@ -838,7 +836,7 @@ window.app.smartform = (function() {
 	renderInput() {
     	    const select = document.createElement('select');
     	    select.id = this.id;
-    	    select.className = this.sized('form-select'); //CLD: 2026-10-11T17:02:49+03:00: form-level `size` (SelectPlus copies form-select-sm)
+    	    select.className = this.sized('form-select'); //form-level `size` (SelectPlus copies form-select-sm)
     	    select.multiple = !!this.schema.multiple;
 
     	    if (!this.schema.multiple) {
@@ -885,13 +883,12 @@ window.app.smartform = (function() {
 
 	_enhance() {
     	    if (window.app.SelectPlus && this.inputEl)
-    		//CLD: 2026-10-11T22:16:09+03:00: + ajaxUrl: the choices come from the server (search as you type)
-    		//CLD: 2026-10-22T01:58:24+03:00: + allowCustom (create: a typed value becomes the value)
+    		//ajaxUrl: the choices come from the server (search as you type); allowCustom (create: a typed value becomes the value)
     		this.selectPlus = new window.app.SelectPlus(this.inputEl, { placeholder: this.schema.placeholder || null, ajax: this.schema.ajaxUrl ? { url: this.schema.ajaxUrl } : null,
     		    create: !!this.schema.allowCustom });
 	}
 
-	//CLD: 2026-10-22T01:58:24+03:00: choicesBy: the options of the other field's value, rebuilt when it changes (applyConditions runs on every change of the form)
+	//choicesBy: the options of the other field's value, rebuilt when it changes (applyConditions runs on every change of the form)
 	applyConditions(context) {
     	    super.applyConditions(context);
     	    const by = this.schema.choicesBy;
@@ -900,7 +897,7 @@ window.app.smartform = (function() {
     	    const dep = String(((context || {}).data || {})[by.key] ?? '');
     	    if (this._choicesFor === dep)
     		return;
-    	    //CLD: 2026-10-22T02:10:00+03:00: cleared only when switching from one value to another
+    	    //cleared only when switching from one value to another
     	    const switched = !!this._choicesFor && dep !== '';
     	    this._choicesFor = dep;
     	    const list = normalizeChoices((by.choices || {})[dep] || []);
@@ -986,7 +983,7 @@ window.app.smartform = (function() {
 	}
     }
 
-    //CLD: 2026-10-29T10:00:00+02:00: a collapsible group of fields (a step's "Advanced…" settings): { type: 'section', label, collapsed, openIfChanged, fields }; its fields are
+    //a collapsible group of fields (a step's "Advanced…" settings): { type: 'section', label, collapsed, openIfChanged, fields }; its fields are
     //the form's own (data, conditions and validation as the others); hidden when none of them is shown; opened when one of them is invalid (validate()) and, with
     //openIfChanged, when one of them holds another value than its default (setData())
     class SectionLayout {
@@ -1092,7 +1089,7 @@ window.app.smartform = (function() {
      *   "maxRows": null,
      *   "addLabel": "Add row",
      *   "compact": false,              // narrow # and actions columns, no "Actions" heading (e.g. a narrow panel)
-     *   "layout": "table",             // CLD: 2026-10-13T09:52:24+03:00: "rows": as the data grid filter: one line of fields per row (no headings, the
+     *   "layout": "table",             //"rows": as the data grid filter: one line of fields per row (no headings, the
      *                                  //   placeholders say what they are), an x to remove it, a green + below to add one; "emptyText", the help under the rows
      *   "default": [ { ...rowData, "__readOnly": true }, ... ]
      * }
@@ -1193,7 +1190,7 @@ window.app.smartform = (function() {
     	    return wrapper;
 	}
 
-	//CLD: 2026-10-13T09:52:24+03:00: layout `rows` (as the data grid filter): label, the rows, the help, a green + at the right
+	//layout `rows` (as the data grid filter): label, the rows, the help, a green + at the right
 	_renderRowsLayout() {
     	    const wrapper = document.createElement('div');
     	    wrapper.className = 'field-wrapper edit-grid edit-grid-rows mb-3';
@@ -1246,7 +1243,7 @@ window.app.smartform = (function() {
     	    const tr = document.createElement('tr');
     	    const indexTh = document.createElement('th');
     	    indexTh.className = 'text-muted small fw-normal';
-    	    //CLD: 2026-10-11T20:24:33+03:00: compact: narrow columns (# and actions)
+    	    //compact: narrow columns (# and actions)
     	    indexTh.style.width = this.schema.compact ? '1.5rem' : '3rem';
     	    indexTh.textContent = '#';
     	    tr.appendChild(indexTh);
@@ -1278,7 +1275,7 @@ window.app.smartform = (function() {
     	    const tbody = this.tbodyEl;
     	    tbody.innerHTML = '';
 
-    	    //CLD: 2026-10-13T09:52:24+03:00: layout `rows`: a line of text when there are none
+    	    //layout `rows`: a line of text when there are none
     	    if (this.rows.length === 0 && this.schema.layout === 'rows') {
     		const hint = document.createElement('div');
     		hint.className = 'text-muted small text-center p-2';
@@ -1372,7 +1369,7 @@ window.app.smartform = (function() {
     	    return tr;
 	}
 
-	//CLD: 2026-10-13T09:52:24+03:00: layout `rows`: one line: the fields (sized by their width, 1-12) and an x (disabled at minRows)
+	//layout `rows`: one line: the fields (sized by their width, 1-12) and an x (disabled at minRows)
 	_buildFlatRow(row) {
     	    const line = document.createElement('div');
     	    line.className = 'edit-grid-row d-flex align-items-start gap-2 mb-1';
@@ -1422,9 +1419,9 @@ window.app.smartform = (function() {
 	_buildRowApi(row) {
     	    return {
     		direction: this.schema.rowDirection || 'vertical',
-		//CLD: 2026-10-11T17:02:49+03:00: the form's size, also in the rows
+		//the form's size, also in the rows
 		size: this.api.size,
-		//CLD: 2026-10-11T22:38:36+03:00: the form's expression help, also in the rows
+		//the form's expression help, also in the rows
 		expression: this.api.expression,
     		onChange: (key, value) => {
         	    row.data[key] = value;
@@ -1526,7 +1523,7 @@ window.app.smartform = (function() {
 	}
     }
 
-    //CLD: 2026-10-18T10:20:00+03:00: one nested object (sys\fields\Field_nested, not multiple; a list of them is an editgrid): the fields of `components` in a group,
+    //one nested object (sys\fields\Field_nested, not multiple; a list of them is an editgrid): the fields of `components` in a group,
     //the value an object { key: value }; its fields' conditions see the object as `row` (scope 'row'), the form's data as `data` (as an editgrid row)
     class NestedField extends FieldBase {
 	getEmptyValue() {
@@ -1678,7 +1675,7 @@ window.app.smartform = (function() {
     	    input.type = 'hidden';
     	    input.id = this.id;
     	    input.dataset.key = this.key || '';
-	    //CLD: 2026-10-05T21:39:55+03:00: submitted with the form
+	    //submitted with the form
     	    this._applyName(input);
     	    input.value = this.currentValue === undefined || this.currentValue === null ? '' : this.currentValue;
     	    this.inputEl = input;
@@ -1761,7 +1758,7 @@ window.app.smartform = (function() {
 
 
 
-    //CLD: 2026-10-13T18:20:23+03:00: design nodes: a paragraph of text (textContent; line breaks kept) and a divider line; no data, conditions apply (as TitleField)
+    //design nodes: a paragraph of text (textContent; line breaks kept) and a divider line; no data, conditions apply (as TitleField)
     class ParagraphField extends TitleField {
 	render() {
     	    const wrapper = document.createElement('div');
@@ -1785,8 +1782,7 @@ window.app.smartform = (function() {
 	}
     }
 
-    //CLD: 2026-10-13T18:20:23+03:00: a form designer (app.FormDesigner): the value is a form schema { direction, fields }; a hidden input carries it as JSON when the form is submitted
-    //CLD: 2026-10-16T12:01:48+03:00: a designer field (renamed from FormDesignerField): `formdesigner` (app.FormDesigner, the form of the Form / Human task steps) or `emaildesigner`
+    //a designer field: `formdesigner` (app.FormDesigner, the form of the Form / Human task steps: { direction, fields }) or `emaildesigner`
     //(app.EmailDesigner, an email of blocks: the Send Email step); the designer edits the value (a hidden input holds it as JSON)
     class DesignerField extends FieldBase {
 	get isEmail() {
@@ -1831,9 +1827,9 @@ window.app.smartform = (function() {
     	    this.designer = new Designer(holder, {
     		value: this.currentValue,
     		readonly: !this.isEditable(),
-		//CLD: 2026-10-14T20:17:14+03:00: the operators of each field type, for conditions (util\SmartForm::modelFields)
+		//the operators of each field type, for conditions (util\SmartForm::modelFields)
 		operators: this.schema.operators || {},
-		//CLD: 2026-10-16T12:01:48+03:00: the email designer's "Insert variable": the expression help of the form (the step's variables)
+		//the email designer's "Insert variable": the expression help of the form (the step's variables)
 		expression: this.api.expression || null,
     		onChange: (value) => {
     		    this.handleInput(value);
@@ -1887,7 +1883,7 @@ window.app.smartform = (function() {
     	    this.direction = this.schema.direction === 'horizontal' ? 'horizontal' : 'vertical';
     	    this.data = {};
     	    this.fields = []; // flat list of every top-level field instance (for recompute/validate)
-	    this.sections = []; //CLD: 2026-10-29T10:00:00+02:00: the collapsible sections (SectionLayout)
+	    this.sections = []; //the collapsible sections (SectionLayout)
     	    this.formEl = null;
 
 	    container._smartForm = this;
@@ -1905,7 +1901,7 @@ window.app.smartform = (function() {
     	    form.noValidate = true;
     	    form.id = this.schema.id || window.app.utils.uid('form');
     	    form.action = this.schema.action || '';
-	    //CLD: 2026-10-05T21:39:55+03:00: method attribute (app.pjax reads it), and no submit of an invalid form: an invalid submit stops here,
+	    //method attribute (app.pjax reads it), and no submit of an invalid form: an invalid submit stops here,
 	    //a valid one bubbles on to app.pjax's global submit handler (or submits natively without app.pjax)
     	    form.setAttribute('method', this.schema.method || 'post');
     	    form.addEventListener('submit', (e) => {
@@ -1945,7 +1941,7 @@ window.app.smartform = (function() {
         	    targetEl.appendChild(layout.render());
         	    return;
     		}
-		//CLD: 2026-10-29T10:00:00+02:00: a collapsible section (SectionLayout)
+		//a collapsible section (SectionLayout)
 		if (node.type === 'section') {
 		    const section = new SectionLayout(node, this);
 		    this.sections.push(section);
@@ -1955,16 +1951,16 @@ window.app.smartform = (function() {
 
     		const api = {
         	    direction: node.direction || this.direction,
-		    //CLD: 2026-10-11T17:02:49+03:00: form-level size (FieldBase.sized)
+		    //form-level size (FieldBase.sized)
 		    size: this.schema.size || null,
-		    //CLD: 2026-10-11T22:38:36+03:00: form-level expression help (FieldBase._expression)
+		    //form-level expression help (FieldBase._expression)
 		    expression: this.schema.expression || null,
         	    onChange: (key, value) => {
         		this.data[key] = value;
         		this.recomputeVisibility();
         	    },
         	    getContext: () => ({ data: this.data, row: null, index: null }),
-		    //CLD: 2026-10-23T12:30:00+03:00: another field's value set by a field (`propose`)
+		    //another field's value set by a field (`propose`)
 		    setValue: (key, value) => {
 			const field = this.fields.find((f) => f.key === key);
 			if (field)
@@ -1979,7 +1975,7 @@ window.app.smartform = (function() {
     		if (node.width && node.width < 12) {
         	    // Simple 2/3/4-column helper: give the field's own row a width and
         	    // let sibling fields with widths flow onto the same line.
-		    //CLD: 2026-10-24T12:41:42+03:00: + newRow: the field starts a new line
+		    //newRow: the field starts a new line
         	    this._appendToFlowRow(targetEl, colWrap(el, node.width), !!node.newRow);
     		} else {
         	    targetEl.appendChild(el);
@@ -1991,7 +1987,7 @@ window.app.smartform = (function() {
 	_appendToFlowRow(targetEl, colEl, newRow) {
     	    let lastRow = targetEl.lastElementChild;
     	    const isFlowRow = lastRow && lastRow.dataset && lastRow.dataset.flowRow === '1';
-	    //CLD: 2026-10-24T12:50:33+03:00: a new line in the same row: a line break (Bootstrap's w-100 column; a new .row g-3 overlapped the line above by its negative margin)
+	    //a new line in the same row: a line break (Bootstrap's w-100 column; a new .row g-3 overlapped the line above by its negative margin)
 	    //no gutter of its own; shown / hidden with the field's column (flowColVisible)
 	    if (isFlowRow && newRow) {
 		const br = document.createElement('div');
@@ -2001,7 +1997,7 @@ window.app.smartform = (function() {
 	    }
     	    if (!isFlowRow) {
     		lastRow = document.createElement('div');
-    		//CLD: 2026-10-24T12:52:25+03:00: no vertical gutter (gy-0): the fields' own bottom margin spaces the lines, as it spaces the fields one under the other (the lines were twice as far apart)
+    		//no vertical gutter (gy-0): the fields' own bottom margin spaces the lines, as it spaces the fields one under the other
     		lastRow.className = 'row gx-3 gy-0';
     		lastRow.dataset.flowRow = '1';
     		targetEl.appendChild(lastRow);
@@ -2017,7 +2013,7 @@ window.app.smartform = (function() {
 
 	/** Re-run show-if/hide-if/required-if across every top-level field. */
 	recomputeVisibility() {
-	    //CLD: 2026-10-24T12:50:55+03:00: in their order, a hidden field's value is empty for the conditions of the fields after it (a field shown by a hidden one's value is hidden too: e.g.
+	    //in their order, a hidden field's value is empty for the conditions of the fields after it (a field shown by a hidden one's value is hidden too: e.g.
 	    //the link's scope when the share settings are hidden)
 	    const data = Object.assign({}, this.data);
     	    const context = { data: data, row: null, index: null };
@@ -2026,7 +2022,7 @@ window.app.smartform = (function() {
 		if (f.key && f._visible === false)
 		    data[f.key] = undefined;
 	    });
-	    //CLD: 2026-10-29T10:00:00+02:00: a section without a shown field is hidden
+	    //a section without a shown field is hidden
 	    this.sections.forEach((s) => s.updateVisibility());
         }
 
@@ -2034,7 +2030,7 @@ window.app.smartform = (function() {
 	validate() {
     	    const context = { data: this.data, row: null, index: null };
     	    let valid = true;
-	    //CLD: 2026-10-29T10:00:00+02:00: a section holding an invalid field opens
+	    //a section holding an invalid field opens
 	    const invalid = [];
     	    this.fields.forEach((f) => {
     		if (!f.validate(context)) {
@@ -2059,18 +2055,18 @@ window.app.smartform = (function() {
     		    this.data[key] = values[key];
     	    });
     	    this.recomputeVisibility();
-	    //CLD: 2026-10-29T10:00:00+02:00: a section `openIfChanged` opens when one of its fields holds another value than its default
+	    //a section `openIfChanged` opens when one of its fields holds another value than its default
 	    this.sections.forEach((s) => { if (s.schema.openIfChanged && s.isChanged()) s.open(); });
 	}
     }
 
     var registry = {
 	'text': TextField,
-	//CLD: 2026-10-13T20:41:25+03:00: e-mail (EmailField)
+	//e-mail (EmailField)
 	'email': EmailField,
-	//CLD: 2026-10-14T19:54:21+03:00: web address (UrlField)
+	//web address (UrlField)
 	'url': UrlField,
-	//CLD: 2026-10-10T18:27:49+03:00: password input with show/hide (PasswordField)
+	//password input with show/hide (PasswordField)
 	'password': PasswordField,
 	'textarea': TextareaField,
 	'select': SelectField,
@@ -2080,16 +2076,16 @@ window.app.smartform = (function() {
 	'checkbox': CheckboxField,
 	'switch': SwitchField,
 	'editgrid': EditGridField,
-	//CLD: 2026-10-18T10:20:00+03:00: one nested object (NestedField)
+	//one nested object (NestedField)
 	'nested': NestedField,
 
 	'title': TitleField,
 	'hidden': HiddenField,
-	//CLD: 2026-10-13T18:20:23+03:00: design nodes, the form designer
+	//design nodes, the form designer
 	'paragraph': ParagraphField,
 	'divider': DividerField,
 	'formdesigner': DesignerField,
-	//CLD: 2026-10-16T12:01:48+03:00: the email designer (Send Email step)
+	//the email designer (Send Email step)
 	'emaildesigner': DesignerField,
     };
 
@@ -2123,7 +2119,7 @@ window.app.smartform = (function() {
      * (the current edit-grid row's data, or null) and `index` (row index, or null).
      * Returns `defaultValue` (false) if the expression is empty or throws.
      */
-    //CLD: 2026-10-14T20:17:14+03:00: a condition { key, operator, value, scope } (scope 'row': the field's editgrid row, else the form's data): evaluated as util\Conditions::holds on
+    //a condition { key, operator, value, scope } (scope 'row': the field's editgrid row, else the form's data): evaluated as util\Conditions::holds on
     //the server (the fields' operators eq ne gt gte lt lte contains startsWith in empty notEmpty; numbers when both sides are numeric, else text; contains / startsWith
     //ignore case; `in` takes a list or comma-separated text); conditions need no JS written by the server
     const toText = (v) => v === undefined || v === null ? '' : (typeof v === 'boolean' ? (v ? 'true' : 'false') : (typeof v === 'object' ? JSON.stringify(v) : String(v)));
@@ -2154,7 +2150,7 @@ window.app.smartform = (function() {
 	return false;
     }
 
-    //CLD: 2026-10-20T14:07:31+03:00: the key / certificate rules of util\Validator (same names, options `when` and `multiple`), as structure checks: the armored / PEM blocks,
+    //the key / certificate rules of util\Validator (same names, options `when` and `multiple`), as structure checks: the armored / PEM blocks,
     //their base64 bodies, the first OpenPGP packet (5 = secret key, 6 = public key), the OpenSSH marker, a DER SEQUENCE; whether OpenSSL reads them is checked by the server.
     //A blank value passes (required-ness is required / requiredIf's)
     function pemBlocks(text, label) {
@@ -2229,7 +2225,7 @@ window.app.smartform = (function() {
 	return null;
     }
 
-    //CLD: 2026-10-24T12:48:19+03:00: shows / hides the column of a field shown in a row of narrow fields (app.smartform _appendToFlowRow), with the field
+    //shows / hides the column of a field shown in a row of narrow fields (app.smartform _appendToFlowRow), with the field
     function flowColVisible(el, visible) {
 	const col = el && el.parentElement;
 	if (col && col.parentElement && col.parentElement.dataset && col.parentElement.dataset.flowRow === '1' && col.children.length === 1) {

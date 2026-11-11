@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new step: GravityZone Incidents - the EDR / XDR incidents of a GravityZone console (Incidents API) and endpoint isolation. Operations:
+    GravityZone Incidents - the EDR / XDR incidents of a GravityZone console (Incidents API) and endpoint isolation. Operations:
 	list            the incidents (getIncidentsList; all pages up to At most)
 	get             one incident (getIncident)
 	status          an incident's status (changeIncidentStatus)
@@ -32,7 +32,7 @@ class NodeAppGzIncidents extends NodeAppGravityZone {
 	'isolate' => 'Isolate an endpoint',
 	'restore' => 'Restore an endpoint from isolation',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'status', 'priority', 'assign', 'note', 'isolate', 'restore' ];
     const LISTS = [ 'list' ];
     const KINDS = [ 'incidents' => 'Incidents', 'extendedIncidents' => 'Extended incidents (XDR)' ];
@@ -77,7 +77,7 @@ class NodeAppGzIncidents extends NodeAppGravityZone {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: the incident of the setting Incident, of kind $kind (incidents / extendedIncidents)
+    //the incident of the setting Incident, of kind $kind (incidents / extendedIncidents)
     private function incidentRef($kind) {
 	return [ 'type' => $kind, 'incidentId' => self::id($this->settingOf('incidentId'), 'Incident') ];
     }

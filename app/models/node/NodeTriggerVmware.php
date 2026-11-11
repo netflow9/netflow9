@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T12:00:00+02:00: new trigger: VMware alarm - starts the workflow when an alarm of a vCenter Server is triggered (red, or yellow and red) on a VM, host, datastore, ...
+    VMware alarm - starts the workflow when an alarm of a vCenter Server is triggered (red, or yellow and red) on a VM, host, datastore, ...
     or any object; optionally also when one clears. vCenter calls no webhook: the step checks it on its schedule (models\wf\WfSchedule, every 2 minutes by default; util\Scheduler runs
     runScheduled), reading the alarms triggered now (NodeAppVmwareAlarms::alarms, VI/JSON: vCenter 8.0 U1 and later; acknowledged ones too, so they are not taken as cleared) and
     comparing them with the last check's (models\TriggerState: key alarm|entity => { status, fired, quiet }), as the Checkmk problem trigger: an alarm starts a run when it is new

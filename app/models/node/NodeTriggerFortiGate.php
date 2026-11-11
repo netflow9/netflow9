@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new trigger: FortiGate event - starts the workflow when a FortiGate automation stitch calls it: the stitch's trigger (an event log ID, an IOC, an HA
+    FortiGate event - starts the workflow when a FortiGate automation stitch calls it: the stitch's trigger (an event log ID, an IOC, an HA
     failover, a configuration change, high CPU, ...) chosen on the FortiGate, its webhook action sending the log (%%log%%) to the step's address /fortigate/<token>
     (FortigateController::receive) with `Authorization: Bearer <secret>`. Both are made when the step is added; the step shows the FortiOS CLI that creates the webhook action
     (`setup`, read-only). The variable: the JSON body as sent (the log's fields: logid, type, subtype, level, devname, srcip, ...), plus received_at; a body that is not JSON:

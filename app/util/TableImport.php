@@ -64,7 +64,7 @@ class TableImport {
 
     //the rows of the file (sheet $sheet of an xlsx, default the first): lists of scalar values, empty rows removed, trailing empty columns removed,
     //every row as long as the longest; \RuntimeException with a message for the user when the file cannot be read
-    //CLD: 2026-10-27T23:10:00+02:00: + $limits: false: no error over MAX_ROWS / MAX_COLS (util\OfficeText: the rows read, at most MAX_ROWS + 1, are given)
+    //$limits: false: no error over MAX_ROWS / MAX_COLS (util\OfficeText: the rows read, at most MAX_ROWS + 1, are given)
     public function rows($sheet = null, $limits = true) {
 	$rows = $this->ext === 'xlsx' ? $this->xlsxRows($sheet) : $this->csvRows();
 
@@ -181,7 +181,7 @@ class TableImport {
 	return [ 'type' => 'text', 'format' => null ];
     }
 
-    //CLD: 2026-11-07T01:16:14+02:00: whether every value of $values passes $test
+    //whether every value of $values passes $test
     private static function allAre(array $values, callable $test) {
 	foreach($values as $v) {
 	    if (!$test($v))

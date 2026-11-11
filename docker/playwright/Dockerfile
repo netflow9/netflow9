@@ -1,4 +1,4 @@
-# CLD: 2026-11-01T19:00:00+02:00: the web browser of the AI steps (the browser profile of compose.yaml): @playwright/mcp and the Chromium its Playwright was built for (as
+# the web browser of the AI steps (the browser profile of compose.yaml): @playwright/mcp and the Chromium its Playwright was built for (as
 # scripts/playwright-mcp.sh installs them on a server), run by the user pwmcp; its entrypoint first loads a firewall table (nftables, as the server's unit's ExecStartPre)
 # refusing the browser's connections to private, loopback and link-local addresses: the other containers, the host, the cloud metadata. Needs CAP_NET_ADMIN (compose.yaml)
 FROM node:24-bookworm-slim

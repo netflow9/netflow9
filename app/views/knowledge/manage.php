@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-10-31T01:00:00+02:00: new: one knowledge base (KnowledgeController::manage): its documents (status: indexed, pending - the daemon indexes it -, error), adding them
+    one knowledge base (KnowledgeController::manage): its documents (status: indexed, pending - the daemon indexes it -, error), adding them
     (uploaded files, project files, a web page, a text: KnowledgeController::upload / add), removing them, a test search (KnowledgeController::search), re-index (when the account's
     embedding model is another), its settings and delete. The documents come from KnowledgeController::documents, polled every 3 s while some are pending or it is re-indexing
 */
@@ -192,7 +192,7 @@ JS . "}({$opts});");
 	<div class="col-lg-8">
 	    <?php if ($canUpdate): ?>
 	    <div class="card mb-3">
-		<?php //CLD: 2026-10-31T01:30:00+02:00: nav-underline in a header without vertical padding, the underline on its border (as the Administration tabs; were card-header-tabs in a header without bottom padding and border: hanging below it, misaligned) ?>
+		<?php //nav-underline in a header without vertical padding, the underline on its border (as the Administration tabs) ?>
 		<div class="card-header py-0">
 		    <ul class="nav nav-underline" role="tablist">
 			<?php if ($canUpload): ?>
@@ -250,7 +250,7 @@ JS . "}({$opts});");
 	    <div class="card">
 		<div class="card-header"><b>Documents</b></div>
 		<div class="table-responsive">
-		    <?php //CLD: 2026-10-31T01:45:00+02:00: the first and last columns indented as the card's header (ps-3 / pe-3; were at the card's edges) ?>
+		    <?php //the first and last columns indented as the card's header (ps-3 / pe-3) ?>
 		    <table class="table table-sm table-hover mb-0 align-middle kb-docs">
 			<thead><tr><th class="ps-3">Document</th><th class="text-end">Chunks</th><th>Status</th><th>Updated</th><th class="pe-3"></th></tr></thead>
 			<tbody><tr><td colspan="5" class="small text-muted ps-3"><span class="spinner-border spinner-border-sm me-1"></span>Loading&hellip;</td></tr></tbody>

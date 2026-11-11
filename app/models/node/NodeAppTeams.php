@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T00:41:28+03:00: new step: Microsoft Teams - posts messages to channels and chats over Microsoft Graph, through a Microsoft Teams (Microsoft Graph) credential
+    Microsoft Teams - posts messages to channels and chats over Microsoft Graph, through a Microsoft Teams (Microsoft Graph) credential
     of the project (CredentialMicrosoftTeams, provides `msteams`; work / school accounts). Messages are sent as the signed-in account. Operations (setting `operation`):
 	sendChannel  a message in a channel of a team (text or HTML, an optional subject, importance)
 	reply        a reply to a channel message (its thread)
@@ -34,7 +34,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 	'channels' => 'List the channels of a team',
 	'chats' => 'List my chats',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'sendChannel', 'reply', 'sendChat' ];
 
     //the operations sending a message, the ones in a channel
@@ -48,12 +48,12 @@ class NodeAppTeams extends NodeAppMicrosoft {
     const MAX_RESULTS = 500;
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'team',
 		'type' => 'text',
 		'label' => 'Team',
@@ -63,7 +63,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'sendChannel', 'reply', 'channels' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'channel',
 		'type' => 'text',
 		'label' => 'Channel',
@@ -73,7 +73,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn(self::IN_CHANNEL) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'messageId',
 		'type' => 'text',
 		'label' => 'Message',
@@ -83,7 +83,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'reply' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'chat',
 		'type' => 'text',
 		'label' => 'Chat',
@@ -93,7 +93,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'sendChat' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'subject',
 		'type' => 'text',
 		'label' => 'Subject',
@@ -102,7 +102,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'sendChannel' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Message as',
@@ -112,8 +112,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::SEND) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'importance',
 		'type' => 'select',
 		'label' => 'Importance',
@@ -161,7 +160,7 @@ class NodeAppTeams extends NodeAppMicrosoft {
 	} ];
     }
 
-    //CLD: 2026-11-07T01:10:30+02:00: the type of a list of objects with fields $fields
+    //the type of a list of objects with fields $fields
     private static function listOfObjects($fields, $info) {
 	return [ 'type' => 'array', 'info' => $info, 'items' => [ 'type' => 'object', 'fields' => $fields ] ];
     }

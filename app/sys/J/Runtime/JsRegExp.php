@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-20T22:10:00+03:00: regular expressions (literals /a+/g, RegExp(); methods in Builtins::regexpMethod, string methods match / matchAll / search / replace / replaceAll / split)
+//regular expressions (literals /a+/g, RegExp(); methods in Builtins::regexpMethod, string methods match / matchAll / search / replace / replaceAll / split)
 
 declare(strict_types=1);
 
@@ -231,7 +231,7 @@ final class JsRegExp
     private static function escape(string $src, int $i, bool $unicode, bool $inClass = false): array
     {
         $d = $src[$i + 1];
-        //CLD: 2026-10-20T22:10:00+03:00: \d \w \b are ASCII in JS; PCRE's u makes them Unicode (UCP, no way to turn it off in PCRE 10.40), so they are spelled out
+        //\d \w \b are ASCII in JS; PCRE's u makes them Unicode (UCP, no way to turn it off in PCRE 10.40), so they are spelled out
         if (isset(self::ASCII_CLASSES[$d])) {
             return [self::ASCII_CLASSES[$d][$inClass ? 1 : 0], $i + 2];
         }

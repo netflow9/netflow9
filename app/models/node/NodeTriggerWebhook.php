@@ -8,7 +8,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
     public static $label = 'Webhook';
     public static $icon = 'bi-broadcast';
     public static $color = 'var(--wf-color-trigger)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step
+    //the step picker: an advanced step
     public static $audience = 'advanced';
     public static $inputs = 0;
     public static $outputs = 1;
@@ -72,15 +72,14 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 	return [ 'token' => $token, 'url' => \V::app()->createAbsoluteUrl('/hook/' . $token) ];
     }
 
-    //CLD: 2026-10-08T08:19:49+03:00: the step's own checks (called by Workflow::validates): a well-formed token, not used by another workflow
+    //the step's own checks (called by Workflow::validates; TriggerToken::checkToken): a well-formed token, not used by another workflow
     //(else saving it would take over that workflow's webhook) and not shared with another step of this workflow
-    //CLD: 2026-10-18T14:40:00+03:00: the checks are TriggerToken::checkToken
     public function validates($options = []) {
 	$valid = parent::validates($options);
 	return \models\TriggerToken::checkToken($this, 'hex') && $valid;
     }
 
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel); the token is not a field (set by
+    //model field definitions with rules (WfNode::configForm(), a sys\NestedModel); the token is not a field (set by
     //initConfig, checked in validates()); the URL is shown read-only (perm:update nobody: a posted URL is ignored)
     public static function configSchema() {
 	return [
@@ -90,11 +89,11 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'label' => 'URL',
 		'perm:update' => 'nobody',
 		'help' => 'Unique to this step, active once the workflow is saved; keep it secret: anyone who has it can start the workflow',
-		//CLD: 2026-10-08T08:10:24+03:00: generated when the step is added (initConfig); it works once the workflow is saved
+		//generated when the step is added (initConfig); it works once the workflow is saved
 		'ui' => [ 'placeholder' => 'Generating…' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'method',
 		'type' => 'select',
 		'label' => 'HTTP method',
@@ -104,8 +103,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'contentType',
 		'type' => 'select',
 		'label' => 'Content type',
@@ -116,8 +114,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 6 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 6 wide
 		'key' => 'respond',
 		'type' => 'select',
 		'label' => 'Respond',
@@ -126,9 +123,9 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'choices' => self::RESPONDS,
 		'ui' => [ 'advanced' => true, 'width' => 6 ],
 	    ],
-	    //CLD: 2026-10-07T11:36:11+03:00: request authentication
+	    //request authentication
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'auth',
 		'type' => 'select',
 		'label' => 'Authentication',
@@ -138,13 +135,13 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'authHeader',
 		'type' => 'text',
 		'label' => 'Header name',
 		'default' => '',
 		'help' => 'HMAC: the header carries the hex signature (or sha256=<hex>)',
-		//CLD: 2026-10-14T15:30:03+03:00: a field property (Field adds the rule)
+		//a field property (Field adds the rule)
 		'requiredIf' => [ 'if' => 'auth', 'in' => [ 'header', 'hmac' ] ],
 		'validate' => [
 		    [ 'regex', 'pattern' => '^[A-Za-z0-9-]+$', 'skipEmpty' => true, 'message' => 'Letters, digits and dashes' ],
@@ -154,9 +151,9 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		    'showIf' => [ 'key' => 'auth', 'operator' => 'in', 'value' => [ 'header', 'hmac' ] ] ],
 	    ],
 	    //a text field shown as a password input: the step's config is edited in the designer, so the secret is part of it
-	    //CLD: 2026-10-10T18:32:31+03:00: app.smartform `password` field (show/hide button, no autofill of saved logins)
+	    //app.smartform `password` field (show/hide button, no autofill of saved logins)
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'authSecret',
 		'type' => 'text',
 		'label' => 'Secret',
@@ -165,7 +162,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'type' => 'password', 'showIf' => [ 'key' => 'auth', 'operator' => 'in', 'value' => [ 'header', 'bearer', 'hmac' ] ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'authUser',
 		'type' => 'text',
 		'label' => 'Username',
@@ -174,7 +171,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'auth', 'operator' => 'eq', 'value' => 'basic' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:48+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'authPassword',
 		'type' => 'text',
 		'label' => 'Password',
@@ -182,7 +179,7 @@ class NodeTriggerWebhook extends \models\wf\WfNode {
 		'requiredIf' => [ 'if' => 'auth', 'in' => [ 'basic' ] ],
 		'ui' => [ 'width' => 3, 'type' => 'password', 'showIf' => [ 'key' => 'auth', 'operator' => 'eq', 'value' => 'basic' ] ],
 	    ],
-	    //CLD: 2026-10-17T10:46:42+03:00: the variable the request goes into (one object, see outputVariables)
+	    //the variable the request goes into (one object, see outputVariables)
 	    [
 		'key' => 'variable',
 		'type' => 'text',

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T16:00:00+02:00: new step: Hyper-V PowerShell - a PowerShell script run on the Hyper-V host (Windows PowerShell 5.1, the Hyper-V module there), for what the other
+    Hyper-V PowerShell - a PowerShell script run on the Hyper-V host (Windows PowerShell 5.1, the Hyper-V module there), for what the other
     Hyper-V steps do not do (new VMs, exports, VM settings, failover clusters, ...): its value written as JSON is the result (ConvertTo-Json, depth 8). The parameters (a JSON
     object, or an expression giving one) are $P in the script: values of the workflow go there, never into the script's text. Errors stop the script; r22find and r22vm are there
 */
@@ -17,7 +17,7 @@ class NodeAppHyperVPowerShell extends NodeAppHyperV {
     public static $defaultVariable = 'result';
 
     const OPERATIONS = [ 'run' => 'Run a script' ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any script); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something (any script); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'run' ];
 
     protected static function operationFields() {

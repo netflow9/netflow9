@@ -43,7 +43,7 @@ class McpClient {
 	$result = $this->request('initialize', [
 	    'protocolVersion' => self::PROTOCOL_VERSION,
 	    'capabilities' => (object)[],
-	    'clientInfo' => [ 'name' => 'rail22', 'title' => 'Rail22 workflows', 'version' => \data\Version::NUMBER ], //CLD: 2026-11-02T21:30:00+02:00: the app's version
+	    'clientInfo' => [ 'name' => 'rail22', 'title' => 'Rail22 workflows', 'version' => \data\Version::NUMBER ], //the app's version
 	]);
 	$this->protocolVersion = (string)($result['protocolVersion'] ?? self::PROTOCOL_VERSION);
 	$this->serverInfo = is_array($result['serverInfo'] ?? null) ? $result['serverInfo'] : [];
@@ -53,7 +53,7 @@ class McpClient {
     }
 
     //all the server's tools (every page): [ { name, description, inputSchema, ... } ]
-    //CLD: 2026-10-12T22:16:44+03:00: inputSchema is kept as decoded JSON objects (stdClass): sent on to a model as it came (an empty `properties` stays {}, not [])
+    //inputSchema is kept as decoded JSON objects (stdClass): sent on to a model as it came (an empty `properties` stays {}, not [])
     public function listTools() {
 	$tools = [];
 	$cursor = null;
@@ -63,7 +63,7 @@ class McpClient {
 		if (is_object($t) && isset($t->name) && is_string($t->name))
 		    $tools[] = [ 'name' => $t->name, 'title' => isset($t->title) ? (string)$t->title : null, 'description' => isset($t->description) ? (string)$t->description : '',
 			'inputSchema' => is_object($t->inputSchema ?? null) ? $t->inputSchema : (object)[ 'type' => 'object', 'properties' => (object)[] ],
-			//CLD: 2026-11-02T10:00:00+02:00: + annotations (readOnlyHint: util\AgentGuard, a tool not marked read-only counts as one that changes something)
+			//annotations (readOnlyHint: util\AgentGuard, a tool not marked read-only counts as one that changes something)
 			'annotations' => is_object($t->annotations ?? null) ? (array)$t->annotations : [] ];
 	    }
 	    $cursor = $result->nextCursor ?? null;
@@ -87,7 +87,7 @@ class McpClient {
     }
 
     //a request: its result, or \Exception (the server's JSON-RPC error)
-    //CLD: 2026-10-12T22:16:44+03:00: $assoc = false: the result as decoded JSON objects (stdClass), as json_decode without assoc
+    //$assoc = false: the result as decoded JSON objects (stdClass), as json_decode without assoc
     public function request($method, $params = null, $assoc = true) {
 	$id = $this->nextId++;
 	$msg = [ 'jsonrpc' => '2.0', 'id' => $id, 'method' => $method ];
@@ -162,7 +162,7 @@ class McpClient {
 	foreach($this->headers as $name => $value)
 	    $lines[] = $name . ': ' . str_replace([ "\r", "\n" ], ' ', (string)$value);
 
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http
+	//through util\Http
 	$o = [ 'headers' => $lines, 'timeout' => $this->timeout, 'maxBytes' => self::MAX_RESPONSE ];
 	if ($msg !== null)
 	    $o['json'] = $msg;
@@ -172,8 +172,8 @@ class McpClient {
 	if ($r['error'] !== null)
 	    throw new \Exception('no answer from ' . Http::shown($this->url) . ": {$r['error']}");
 	[ $status, $body, $respHeaders ] = [ $r['status'], $r['body'], $r['headers'] ];
-	//CLD: 2026-10-23T00:20:00+03:00: the credential named only when one was sent (an Authorization or another header given); the server's reason added (was always "refused the
-	//credential", also for a server that refuses the Host header, e.g. Playwright MCP: "Access is only allowed at localhost:8931")
+	//the credential named only when one was sent (an Authorization or another header given); the server's reason added (e.g. a server that refuses the Host header,
+	//Playwright MCP: "Access is only allowed at localhost:8931")
 	if ($status === 401 || $status === 403) {
 	    $reason = trim(mb_substr(preg_replace('/\s+/', ' ', strip_tags((string)$body)), 0, 200));
 	    throw new \Exception('the MCP server refused ' . ($this->headers ? 'the credential' : 'the request') . " (HTTP status {$status})" . ($reason !== '' ? ": {$reason}" : ''));

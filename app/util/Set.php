@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-07T22:40:15+02:00: the license notices of Lithium (li3) and Yii 2: append, diff, merge and flatten are ported from lithium\util\Set, map and getValue from yii\helpers\ArrayHelper
+//the license notices of Lithium (li3) and Yii 2: append, diff, merge and flatten are ported from lithium\util\Set, map and getValue from yii\helpers\ArrayHelper
 /*
  * Copyright (c) 2009, Union of RAD http://union-of-rad.org
  * All rights reserved.

@@ -32,7 +32,7 @@ class NodeCoreLoop extends \models\wf\WfNode {
 
     public static function configSchema() {
 	$identifier = [ [ 'identifier', 'skipEmpty' => true, 'message' => 'Use letters, digits or underscore, not starting with a digit' ] ];
-	//CLD: 2026-10-14T14:27:53+03:00: pattern from the validate rule (util\WidgetsUtil)
+	//pattern from the validate rule (util\WidgetsUtil)
 	$nameUi = [ 'width' => 6, 'variableName' => 'write' ];
 	return [
 	    [
@@ -54,7 +54,7 @@ class NodeCoreLoop extends \models\wf\WfNode {
 		'ui' => $nameUi,
 	    ],
 	    [
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'indexVariable',
 		'type' => 'text',
 		'label' => 'Position variable',
@@ -66,7 +66,7 @@ class NodeCoreLoop extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'collect',
 		'type' => 'text',
 		'label' => 'Collect',
@@ -134,7 +134,7 @@ class NodeCoreLoop extends \models\wf\WfNode {
 
     //a token arrives: the list is evaluated and kept; the passes start (WfExecution::stepLoops calls next() while the loop is active and nothing runs inside it)
     public function execute($edgeId = null) {
-	//CLD: 2026-10-13T15:24:28+03:00: + the project variables (vars)
+	//the project variables (vars)
 	$items = \util\Expression::render((string)$this->cfg('list', ''), $this->exec->expressionVariables(), 'value');
 	if (!is_array($items) || !array_is_list($items))
 	    throw new \ErrorException('Loop: List does not give a list (it gives ' . (is_array($items) ? 'an object' : get_debug_type($items)) . ')');

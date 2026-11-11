@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new trigger: Proxmox task - starts the workflow when tasks of a Proxmox VE cluster end: failed ones (a backup, a migration, a replication, ...)
+    Proxmox task - starts the workflow when tasks of a Proxmox VE cluster end: failed ones (a backup, a migration, a replication, ...)
     or every one, of the types chosen (vzdump, ...) and of a node or any. Proxmox calls no webhook: the step checks it on its schedule (models\wf\WfSchedule, every 5 minutes by default;
     util\Scheduler runs runScheduled), reading the cluster's recent tasks (GET /cluster/tasks) that ended since its last check. What it has read is kept in models\TriggerState
     (the last end time, and the tasks that ended at that time), locked during a check, as the Veeam event trigger. Its first check only notes the time. Runs: one per task (the

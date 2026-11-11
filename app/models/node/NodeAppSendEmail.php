@@ -17,7 +17,7 @@ class NodeAppSendEmail extends \models\wf\WfNode {
     public static $label = 'Send email';
     public static $icon = 'bi-envelope-paper';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: in Email
+    //the step picker: in Email
     public static $category = 'email';
     public static $inputs = 1;
     public static $outputs = 1;
@@ -103,7 +103,7 @@ class NodeAppSendEmail extends \models\wf\WfNode {
 		$this->errors('config', 'Message: block ' . ($i + 1) . ': the image is not a file of this project');
 		$valid = false;
 	    } elseif ($file && !in_array($file->imageMimeType(), self::IMAGE_TYPES, true)) {
-		//CLD: 2026-10-16T12:02:12+03:00: only the image types every email client shows (Outlook shows no WebP)
+		//only the image types every email client shows (Outlook shows no WebP)
 		$this->errors('config', 'Message: block ' . ($i + 1) . ': use a PNG, JPEG or GIF image');
 		$valid = false;
 	    }

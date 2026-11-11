@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T10:00:00+02:00: new: a Sophos Firewall (SFOS, the XML API), for the Sophos Firewall steps (util\Sophos): the firewall's address (its administration port, 4444 by
+    a Sophos Firewall (SFOS, the XML API), for the Sophos Firewall steps (util\Sophos): the firewall's address (its administration port, 4444 by
     default), an administrator's user name and password (encrypted; its profile sets what the steps may do), the firewall's certificate trusted or not (its own is self-signed).
     On the firewall: Backup & firmware > API, the API configuration on and Rail22's address in Allowed IP address. A firewall on a private address needs the account's
     "Integrations may connect to private network addresses". Test: the hostname and the API version. Provides `sophos`

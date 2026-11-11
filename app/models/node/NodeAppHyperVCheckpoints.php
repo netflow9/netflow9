@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T16:00:00+02:00: new step: Hyper-V Checkpoints - the checkpoints (snapshots) of a Hyper-V VM (PowerShell: the Hyper-V module). Operations (setting `operation`):
+    Hyper-V Checkpoints - the checkpoints (snapshots) of a Hyper-V VM (PowerShell: the Hyper-V module). Operations (setting `operation`):
 	list       its checkpoints, oldest first (Get-VMSnapshot): { name, id, created (ISO 8601), parent, type, current }; current: the one the VM runs from
 	create     a checkpoint (Checkpoint-VM; Production or Standard as the VM is set): the checkpoint
 	restore    the VM restored to a checkpoint (Restore-VMSnapshot)
@@ -28,7 +28,7 @@ class NodeAppHyperVCheckpoints extends NodeAppHyperV {
 	'removeAll' => 'Remove all checkpoints',
 	'prune' => 'Remove old checkpoints',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'create', 'restore', 'remove', 'removeAll', 'prune' ];
     const LISTS = [ 'list' ];
 
@@ -114,7 +114,7 @@ PS, [ 'days' => $days, 'pattern' => $text('pattern') ]);
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: PowerShell $script (after HELPERS) for operation $operation on VM $vm, with parameters $p
+    //PowerShell $script (after HELPERS) for operation $operation on VM $vm, with parameters $p
     private function psOn($operation, $vm, $script, array $p = []) {
 	return $this->ps($operation, self::HELPERS . $script, [ 'vm' => $vm ] + $p);
     }

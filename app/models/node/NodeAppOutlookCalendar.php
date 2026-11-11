@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T00:41:28+03:00: new step: Outlook Calendar - lists, creates, changes and deletes the events of an Outlook / Microsoft 365 calendar over Microsoft Graph, through
+    Outlook Calendar - lists, creates, changes and deletes the events of an Outlook / Microsoft 365 calendar over Microsoft Graph, through
     an Outlook Calendar (Microsoft Graph) credential of the project (CredentialMicrosoftCalendar, provides `mscalendar`). As the Google Calendar step.
     Operations (setting `operation`):
 	list       the events between two times (default: from now, 7 days), searched by text; recurring events as their single occurrences, by start time
@@ -38,7 +38,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 	'freeBusy' => 'Find busy times',
 	'calendars' => 'List the calendars',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'create', 'update', 'delete' ];
 
     //the operations on an existing event, the ones writing an event's settings, the ones on a period
@@ -56,12 +56,12 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 	. 'seriesMasterId,type,createdDateTime,lastModifiedDateTime,categories';
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'calendarId',
 		'type' => 'text',
 		'label' => 'Calendar',
@@ -70,7 +70,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'list', 'create' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'eventId',
 		'type' => 'text',
 		'label' => 'Event',
@@ -82,7 +82,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 
 	    //list / freeBusy
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'timeMin',
 		'type' => 'text',
 		'label' => 'From',
@@ -91,7 +91,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'showIf' => static::operationIn(self::PERIOD) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'timeMax',
 		'type' => 'text',
 		'label' => 'Until',
@@ -100,7 +100,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'showIf' => static::operationIn(self::PERIOD) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Search',
@@ -109,7 +109,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxResults',
 		'type' => 'number',
 		'label' => 'Largest number of events',
@@ -119,7 +119,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'people',
 		'type' => 'text',
 		'label' => 'People / rooms',
@@ -130,7 +130,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 
 	    //create / update
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'subject',
 		'type' => 'text',
 		'label' => 'Title',
@@ -139,7 +139,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'location',
 		'type' => 'text',
 		'label' => 'Location',
@@ -147,7 +147,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'start',
 		'type' => 'text',
 		'label' => 'Start',
@@ -157,7 +157,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'end',
 		'type' => 'text',
 		'label' => 'End',
@@ -166,7 +166,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'duration',
 		'type' => 'number',
 		'label' => 'Duration (minutes)',
@@ -176,7 +176,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'step' => 5, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'allDay',
 		'type' => 'switch',
 		'label' => 'All day',
@@ -184,8 +184,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide, on a new line
 		'key' => 'showAs',
 		'type' => 'select',
 		'label' => 'Show as',
@@ -194,7 +193,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Description as',
@@ -204,7 +203,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'teams',
 		'type' => 'switch',
 		'label' => 'Add a Teams meeting',
@@ -213,13 +212,12 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'timeZone',
 		'type' => 'text',
 		'label' => 'Time zone',
 		'default' => '',
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
+		//placeholder: what an empty value means
 		'help' => 'e.g. Europe/Bucharest',
 		'ui' => [ 'advanced' => true, 'width' => 3, 'placeholder' => 'App\'s time zone', 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
 	    ],
@@ -489,7 +487,7 @@ class NodeAppOutlookCalendar extends NodeAppMicrosoft {
 	return [ self::graphTime($s, $tz), self::graphTime($e, $tz) ];
     }
 
-    //CLD: 2026-11-07T01:09:58+02:00: time $d as Graph's dateTimeTimeZone, in time zone $tz
+    //time $d as Graph's dateTimeTimeZone, in time zone $tz
     private static function graphTime(\DateTimeImmutable $d, \DateTimeZone $tz) {
 	return [ 'dateTime' => $d->format('Y-m-d\TH:i:s'), 'timeZone' => $tz->getName() ];
     }

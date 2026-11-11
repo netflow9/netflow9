@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-20T21:01:44+03:00: Date values (made by Builtins::dateCtor, methods in Builtins::dateMethod)
+//Date values (made by Builtins::dateCtor, methods in Builtins::dateMethod)
 
 declare(strict_types=1);
 
@@ -209,7 +209,7 @@ final class JsDate
         return self::clip((float) $dt->format('U') * 1000 + (int) $dt->format('v'));
     }
 
-    //CLD: 2026-11-07T01:12:07+02:00: match $m's group $i as a number, else $default
+    //match $m's group $i as a number, else $default
     private static function intAt(array $m, int $i, int $default): int
     {
         return isset($m[$i]) && $m[$i] !== '' ? (int) $m[$i] : $default;
@@ -231,7 +231,7 @@ final class JsDate
         return sprintf('%s-%02d-%02dT%02d:%02d:%02d.%03dZ', $year, $f['month'] + 1, $f['date'], $f['hours'], $f['minutes'], $f['seconds'], $f['ms']);
     }
 
-    //CLD: 2026-10-20T21:40:00+03:00: for hosts that want their own text (Interpreter option dateFormat)
+    //for hosts that want their own text (Interpreter option dateFormat)
     /** The date in a PHP date() format, in local time (PHP's default timezone); null for an Invalid Date. */
     public function formatPhp(string $format): ?string
     {

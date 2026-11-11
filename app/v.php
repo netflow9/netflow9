@@ -5,13 +5,13 @@ error_reporting(E_ALL & ~E_DEPRECATED);
 $__base = dirname(__FILE__, 2);
 require("$__base/app/sys/V.php");
 require("$__base/app/config.php");
-//CLD: 2026-11-01T19:00:00+02:00: app.env in V::configDir() (NFN_CONFIG_DIR, else the app's folder)
+//app.env in V::configDir() (NFN_CONFIG_DIR, else the app's folder)
 $__env = V::configDir() . '/app.env';
 
-//CLD: 2026-10-29T02:00:00+02:00: no app.env yet: the setup's console (get_setup_console_config), as public_html/index.php does for the browser; ../v sys::install sets the app up
+//no app.env yet: the setup's console (get_setup_console_config), as public_html/index.php does for the browser; ../v sys::install sets the app up
 if (!is_file($__env)) {
     //only the setup's commands: the others need the app's settings
-    //CLD: 2026-11-01T15:00:00+02:00: sys::checks / validate / install / indexes
+    //sys::checks / validate / install / indexes
     if (!in_array((string)($argv[1] ?? ''), [ 'sys::checks', 'sys::validate', 'sys::install', 'sys::indexes' ], true)) {
 	fwrite(STDERR, "the app is not set up yet (no app.env): sudo $__base/install.sh, or open the site in a browser\n");
 	exit(1);

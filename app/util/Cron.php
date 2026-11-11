@@ -1,18 +1,22 @@
 <?php
 
-//CLD: 2026-10-08T22:47:34+03:00: new utility: 5-field cron expressions (minute hour day-of-month month day-of-week), used by the Schedule
-//trigger's advanced mode. Each field: *, a value, a-b, */n, a-b/n, lists (1,15,30); months jan..dec, weekdays sun..sat (0 and 7 = Sunday).
-//As in cron, when both day-of-month and day-of-week are restricted, a day matching either one matches.
-//
-//  $cron = new \util\Cron('*/15 8-18 * * mon-fri');
-//  $cron->matches(new \DateTimeImmutable());     //true on 08:00, 08:15, ... 18:45, Monday to Friday
-//  \util\Cron::isValid('61 * * * *');            //false
+/*
+    5-field cron expressions (minute hour day-of-month month day-of-week), for the Schedule trigger's advanced mode
+	(models\wf\WfSchedule `cron`) and the `cron` validation rule (util\Validator).
+    Each field: *, a value, a-b, lists (1,15,30), and a step /n after * or a range (every n-th: 0-59/15); months jan..dec,
+	weekdays sun..sat (0 and 7 = Sunday).
+    As in cron, when both day-of-month and day-of-week are restricted, a day matching either one matches.
+
+	$cron = new \util\Cron('0-59/15 8-18 * * mon-fri');  \InvalidArgumentException when it is not valid
+	$cron->matches(new \DateTimeImmutable());          true on 08:00, 08:15, ... 18:45, Monday to Friday
+	\util\Cron::isValid('61 * * * *');                 false
+*/
 
 namespace util;
 
 class Cron {
+    //the fields in their order: name => [ min, max ]
     const FIELDS = [
-	//name => [ min, max ]
 	'minute' => [ 0, 59 ],
 	'hour' => [ 0, 23 ],
 	'day' => [ 1, 31 ],
@@ -20,6 +24,7 @@ class Cron {
 	'weekday' => [ 0, 7 ],
     ];
 
+    //the names a field may use instead of numbers
     const NAMES = [
 	'month' => [ 'jan' => 1, 'feb' => 2, 'mar' => 3, 'apr' => 4, 'may' => 5, 'jun' => 6, 'jul' => 7, 'aug' => 8, 'sep' => 9, 'oct' => 10, 'nov' => 11, 'dec' => 12 ],
 	'weekday' => [ 'sun' => 0, 'mon' => 1, 'tue' => 2, 'wed' => 3, 'thu' => 4, 'fri' => 5, 'sat' => 6 ],
@@ -48,6 +53,7 @@ class Cron {
 	$this->weekdayRestricted = $parts[4] !== '*';
     }
 
+    //whether $expression is a valid cron expression
     public static function isValid($expression) {
 	try {
 	    new self($expression);
@@ -69,6 +75,7 @@ class Cron {
 	return $day && $weekday;
     }
 
+    //the values item list $text of $field allows ($min-$max): [ value => true ]; \InvalidArgumentException when it is not valid
     protected function parseField($field, $text, $min, $max) {
 	$set = [];
 	foreach(explode(',', $text) as $item) {
@@ -102,6 +109,7 @@ class Cron {
 	return $set;
     }
 
+    //one value of $field: a number in $min-$max or a name (NAMES); \InvalidArgumentException otherwise
     protected function value($field, $text, $min, $max) {
 	if (isset(self::NAMES[$field][$text]))
 	    return self::NAMES[$field][$text];

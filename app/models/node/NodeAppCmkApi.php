@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T08:00:00+02:00: new step: Checkmk API - any request of the Checkmk REST API (what the other Checkmk steps do not have: folders, rules, users, contact groups,
+    Checkmk API - any request of the Checkmk REST API (what the other Checkmk steps do not have: folders, rules, users, contact groups,
     BI, the agent bakery, ...): the method, the path after /check_mk/api/1.0 (e.g. /domain-types/folder_config/collections/all), the query and the body (JSON objects, or
     expressions giving them; Other parameters is not used here) and an If-Match (the ETag Checkmk asks for when changing an object; * for any). Its result: Checkmk's answer
 */
@@ -17,7 +17,7 @@ class NodeAppCmkApi extends NodeAppCheckmk {
     public static $defaultVariable = 'cmk';
 
     const OPERATIONS = [ 'request' => 'Send a request' ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'request' ];
     const METHODS = [ 'GET' => 'GET', 'POST' => 'POST', 'PUT' => 'PUT', 'DELETE' => 'DELETE' ];
 

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new step: Zabbix Acknowledge & Maintenance - updates of problems (event.acknowledge) and maintenance periods. Operations (setting `operation`):
+    Zabbix Acknowledge & Maintenance - updates of problems (event.acknowledge) and maintenance periods. Operations (setting `operation`):
 	acknowledge         events acknowledged (action 2), with a message (4), closed (1, when the trigger allows manual close), their severity changed (8), as chosen
 	unacknowledge       events unacknowledged (16), with a message when given
 	message             a message added to events (4)
@@ -31,7 +31,7 @@ class NodeAppZbxAck extends NodeAppZabbix {
 	'maintenances' => 'List maintenances',
 	'maintenanceDelete' => 'Remove maintenances',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'acknowledge', 'unacknowledge', 'message', 'maintenanceCreate', 'maintenanceDelete' ];
     const LISTS = [ 'maintenances' ];
     //by name: a select keeps no '0'

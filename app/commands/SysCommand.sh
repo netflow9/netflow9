@@ -4,7 +4,7 @@
 #  ./SysCommand.sh run <workflow id>         run a workflow's draft
 #  ./SysCommand.sh resume <execution id>     run a sleeping execution again
 #  ./SysCommand.sh indexes                   create the database indexes
-#  ./SysCommand.sh migrate [--dry-run|--list] the data migrations this version needs (CLD: 2026-11-05T16:00:00+02:00)
+#  ./SysCommand.sh migrate [--dry-run|--list] the data migrations this version needs ()
 
 case "$1" in
     audit)   if [ -n "$2" ]; then ../v sys::audit --account="$2"; else ../v sys::audit; fi ;;

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new step: FortiGate API - any request of the FortiOS REST API (what the other FortiGate steps do not have: services, schedules, VIPs, routes,
+    FortiGate API - any request of the FortiOS REST API (what the other FortiGate steps do not have: services, schedules, VIPs, routes,
     web filter, logs, ...): the method, the path (/api/v2/cmdb/..., /api/v2/monitor/..., /api/v2/log/...), the query and the body (JSON objects, or expressions giving them; Other
     parameters is not used here). Its result: FortiOS's whole answer ({ results, status, http_status, vdom, ... })
 */
@@ -17,7 +17,7 @@ class NodeAppFgtApi extends NodeAppFortiGate {
     public static $defaultVariable = 'fgt';
 
     const OPERATIONS = [ 'request' => 'Send a request' ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'request' ];
     const METHODS = [ 'GET' => 'GET', 'POST' => 'POST', 'PUT' => 'PUT', 'DELETE' => 'DELETE' ];
 

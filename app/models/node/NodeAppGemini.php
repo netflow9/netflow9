@@ -1,12 +1,12 @@
 <?php
 
-//CLD: 2026-10-22T12:00:00+03:00: new step: Gemini (Google) - an AI step (NodeAppAi: prompt, tools, agent loop) on the Gemini API (POST <base URL>/models/<model>:generateContent, raw
+//Gemini (Google) - an AI step (NodeAppAi: prompt, tools, agent loop) on the Gemini API (POST <base URL>/models/<model>:generateContent, raw
 //HTTP: no SDK), with a Google Gemini credential (models\credential\CredentialGemini). Model default gemini-flash-latest (Google's alias of its latest Flash model); optional
 //thinking level (Gemini 3 and later: generationConfig.thinkingConfig.thinkingLevel) and temperature. The model's turns go back unchanged (their thought signatures included:
 //Gemini 3 requires them with function calls). Tools are function declarations (parametersJsonSchema); the results go back as functionResponse parts in one user turn, the images
 //of tool results after them as inlineData parts. JSON answers: structured output (responseMimeType, responseJsonSchema with a schema) when no tools are offered, else a system
 //prompt instruction. A blocked prompt (promptFeedback.blockReason) or answer (finishReason SAFETY, PROHIBITED_CONTENT, ...) is an error
-//CLD: 2026-10-27T23:11:38+02:00: files: images and PDFs as inlineData parts (PDFs as Auto: documents), text files as text parts
+//Files: images and PDFs as inlineData parts (PDFs as Auto: documents), text files as text parts
 
 namespace models\node;
 
@@ -29,42 +29,40 @@ class NodeAppGemini extends NodeAppAi {
     protected static function providerSchema() {
 	return [
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide, not on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 2 wide, not on a new line
 		'key' => 'thinking',
 		'type' => 'select',
 		'label' => 'Thinking',
 		'default' => '',
 		'choices' => self::THINKING,
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line
+		//3 wide on a new line
 		'help' => 'Gemini 3+',
 		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 2 wide
 		'key' => 'temperature',
 		'type' => 'text',
 		'label' => 'Temperature',
 		'default' => '',
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide
+		//3 wide
 		'help' => '0 - 2; empty: default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means, as the Thinking choice
+		//placeholder: what an empty value means, as the Thinking choice
 		'ui' => [ 'advanced' => true, 'width' => 2, 'placeholder' => 'Model default' ],
 	    ],
 	];
     }
 
     //the system prompt apart (systemInstruction); the images before the prompt's text
-    //CLD: 2026-10-27T23:11:38+02:00: $files: their parts before the prompt's text (filePart)
+    //$files: their parts before the prompt's text (filePart)
     protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	$parts = array_map([ self::class, 'filePart' ], $files);
 	$parts[] = [ 'text' => $prompt ];
 	return [ 'system' => $system, 'contents' => [ [ 'role' => 'user', 'parts' => $parts ] ], 'calls' => [] ];
     }
 
-    //CLD: 2026-11-02T18:00:00+02:00: new: the earlier turns before the prompt, in Gemini's form (contents; roles user, model)
+    //the earlier turns before the prompt, in Gemini's form (contents; roles user, model)
     protected function addHistory(array &$state, array $turns) {
 	$prompt = array_pop($state['contents']);
 	foreach($turns as [ $role, $text ])
@@ -72,12 +70,12 @@ class NodeAppGemini extends NodeAppAi {
 	$state['contents'][] = $prompt;
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: new: Gemini reads PDFs (inlineData)
+    //Gemini reads PDFs (inlineData)
     protected function pdfAsDocuments($cred) {
 	return true;
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: new: a file part as a part: an image or a PDF as inlineData, text
+    //a file part as a part: an image or a PDF as inlineData, text
     protected static function filePart(array $part) {
 	return match($part['type']) {
 	    'image' => self::imagePart([ $part['mime'], $part['data'] ]),

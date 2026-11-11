@@ -25,7 +25,7 @@ $this->pageTitle = 'Settings::Personal';
 		    <?= \V::app()->user->avatar('lg') ?>
 		</div>
 		<div class="flex-grow-1" style="min-width:0;">
-		    <?php //CLD: 2026-10-05T20:30:32+03:00: escape user-editable user and role names ?>
+		    <?php //escape user-editable user and role names ?>
 		    <div class="text-truncate"><?= \V::app()->html->escape((string)\V::app()->user->name) ?></div>
 		    <div class="text-muted small"><?= \V::app()->html->escape((string)\V::app()->om->findById('Role', \V::app()->user->role)->name) ?></div>
 		</div>
@@ -42,7 +42,7 @@ $this->pageTitle = 'Settings::Personal';
 	<div class="pt-4 w-50">
 	    <h6>Security</h6>
 
-	    <?php //CLD: 2026-10-21T16:30:00+03:00: the account enforces MFA (sys\Boot::enforce_mfa sends the user here until 2FA is set up) ?>
+	    <?php //the account enforces MFA (sys\Boot::enforce_mfa sends the user here until 2FA is set up) ?>
 	    <?php $mfaEnforced = !empty(\V::app()->config('rt.account')->enforce_mfa); ?>
 	    <?php if ($mfaEnforced && empty($user->tfa_secret)): ?>
 	    <div class="alert alert-warning"><i class="bi bi-shield-lock me-1"></i>Your account requires two-factor authentication: activate it below to continue.</div>
@@ -51,7 +51,7 @@ $this->pageTitle = 'Settings::Personal';
 	    <div class="form-group row mb-2">
 		<label for="field-password" class="col-sm-3 col-form-label">Password</label>
 		<div class="col-sm-9">
-		    <?php //CLD: 2026-10-21T10:00:00+03:00: a password kept elsewhere (e.g. an LDAP user's) is changed there ?>
+		    <?php //a password kept elsewhere (e.g. an LDAP user's) is changed there ?>
 		    <?php if (($pwSource = \sys\Identity::passwordSource($user)) !== null): ?>
 		    <div class="form-control-plaintext text-muted"><i class="bi bi-diagram-3 me-1"></i>Your <?= \V::app()->html->escape($pwSource) ?> password: change it in your directory</div>
 		    <?php else: ?>
@@ -72,7 +72,7 @@ $this->pageTitle = 'Settings::Personal';
 	    <div class="form-group row mb-2">
 		<label for="field-2fa" class="col-sm-3 col-form-label">Two factor Auth</label>
 		<div class="col-sm-9">
-		    <?php //CLD: 2026-10-21T16:30:00+03:00: no Deactivate while the account enforces MFA ?>
+		    <?php //no Deactivate while the account enforces MFA ?>
 		    <?php if ($mfaEnforced && !empty($user->tfa_secret)): ?>
 		    <div class="form-control-plaintext text-muted"><i class="bi bi-shield-check me-1"></i>Active (required by your account)</div>
 		    <?php else: ?>

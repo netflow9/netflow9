@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T08:36:38+02:00: new step: LM Studio - an AI step (NodeAppAi: prompt, tools, agent loop) on an LM Studio server (local models), through its OpenAI-compatible API: the
+    LM Studio - an AI step (NodeAppAi: prompt, tools, agent loop) on an LM Studio server (local models), through its OpenAI-compatible API: the
     OpenAI step's requests (NodeAppOpenAI), with an LM Studio server credential (models\credential\CredentialLmStudio, provides `lmstudio`). The model is one the server has (Test on the
     credential lists them)
 */

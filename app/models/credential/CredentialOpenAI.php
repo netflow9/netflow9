@@ -1,6 +1,5 @@
 <?php
 
-//CLD: 2026-10-18T12:00:00+03:00: was CredentialLemonade; now any OpenAI-compatible API
 //an OpenAI-compatible API: the API's base URL (default https://api.openai.com/v1)
 //and an API key (optional: servers that do not ask for one), sent as `Authorization: Bearer`.
 //Provides `openai` (steps calling an OpenAI-compatible API: baseUrl + httpAuth) and `http` (the HTTP Request step). Test: GET <base URL>/models
@@ -22,7 +21,7 @@ class CredentialOpenAI extends \models\Credential {
 		'label' => 'API base URL',
 		'required' => true,
 		'default' => \data\AiProviders::DATA['openai']['url'],
-		//CLD: 2026-10-22T01:53:07+03:00: without the Lemonade example (it has its own credential)
+		//without the Lemonade example (it has its own credential)
 		'help' => 'The OpenAI API (https://api.openai.com/v1) or another OpenAI-compatible API, up to the version (requests go to <URL>/chat/completions, <URL>/models, ...)',
 		'validate' => [
 		    [ 'url', 'skipEmpty' => true, 'message' => 'An http:// or https:// URL, without ? or #' ]
@@ -33,7 +32,7 @@ class CredentialOpenAI extends \models\Credential {
 		'type' => 'password',
 		'label' => 'API key',
 		'encrypt' => true,
-		//CLD: 2026-10-22T01:53:07+03:00: without the LEMONADE_API_KEY example
+		//without the LEMONADE_API_KEY example
 		'help' => 'Required by OpenAI; for another server only when it asks for one',
 	    ],
 	]);
@@ -47,10 +46,10 @@ class CredentialOpenAI extends \models\Credential {
     public function test() {
 	$data = static::getJson(rtrim((string)$this->baseUrl, '/') . '/models', $this->httpAuth()['headers']);
 	$ids = array_values(array_filter(array_map(fn($m) => is_array($m) ? (string)($m['id'] ?? '') : '', (array)($data['data'] ?? []))));
-	//CLD: 2026-10-22T01:58:24+03:00: recorded: the choices of the AI steps' Model
+	//recorded: the choices of the AI steps' Model
 	$this->recordModels($ids);
 	$shown = array_slice($ids, 0, 10);
-	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural
+	//util\Format::plural
 	return \util\Format::plural(count($ids), 'model') . ($shown ? ': ' . implode(', ', $shown) . (count($ids) > count($shown) ? ', ...' : '') : '');
     }
 }

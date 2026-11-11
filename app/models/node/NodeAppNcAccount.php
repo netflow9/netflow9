@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-05T13:00:00+02:00: new step: Namecheap Account - the account's balance, Namecheap's prices and the SSL certificates. Operations (setting `operation`):
+    Namecheap Account - the account's balance, Namecheap's prices and the SSL certificates. Operations (setting `operation`):
 	balances    the balances (namecheap.users.getBalances): available, account, earned, withdrawable, needed for the auto-renewals
 	pricing     the prices of a TLD (namecheap.users.getPricing, ProductType DOMAIN): to register, renew, transfer or reactivate, per number of years
 	ssl         the SSL certificates (namecheap.ssl.getList): of a status, containing a text

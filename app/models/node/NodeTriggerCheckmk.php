@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T08:00:00+02:00: new trigger: Checkmk problem - starts the workflow when Checkmk reports a new problem: a host DOWN / UNREACH, a service WARN / CRIT / UNKNOWN
+    Checkmk problem - starts the workflow when Checkmk reports a new problem: a host DOWN / UNREACH, a service WARN / CRIT / UNKNOWN
     (or CRIT only), of one host or every host; optionally also when one clears. It checks the site on its schedule (models\wf\WfSchedule, every 2 minutes by default; util\Scheduler
     runs runScheduled): every current problem is read (acknowledged ones and those in a downtime too, so they are not taken as cleared) and compared with the last check's
     (models\TriggerState: key host|service => { state, fired }): a problem starts a run when it is new or its state changed, unless it is acknowledged or in a downtime and those

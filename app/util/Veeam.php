@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T04:00:00+02:00: new: the client of the Veeam Backup & Replication REST API (v13: x-api-version 1.3-rev1), for the Veeam credential, steps and event trigger.
+    the client of the Veeam Backup & Replication REST API (v13: x-api-version 1.3-rev1), for the Veeam credential, steps and event trigger.
     https://<server>:9419/api/v1/...; signed in with OAuth2 (POST /api/oauth2/token, form: grant_type=password, username, password; then refresh_token), the access token as
     Bearer. Every request carries x-api-version (the credential's). The token is kept in this process (per credential, user and password) until shortly before it expires,
     renewed with the refresh token, and the user signs in again once when a request is answered 401. Public addresses only, unless the account allows private network addresses
@@ -18,7 +18,7 @@ namespace util;
 
 class Veeam {
     const DEFAULT_VERSION = '1.3-rev1';
-    //CLD: 2026-11-01T05:00:00+02:00: + VBR 12: the REST API version of each release (x-api-version; Veeam's versioning page), newest first; the paths are the same (/api/v1)
+    //VBR 12: the REST API version of each release (x-api-version; Veeam's versioning page), newest first; the paths are the same (/api/v1)
     const VERSIONS = [
 	'1.3-rev1' => [ 'label' => 'Veeam Backup & Replication 13', 'build' => '13.0' ],
 	'1.2-rev1' => [ 'label' => 'Veeam Backup & Replication 12.3.1 or later 12.3', 'build' => '12.3.1' ],
@@ -59,7 +59,7 @@ class Veeam {
 	return preg_match('/^\d+\.\d+-rev\d+$/', $v) ? $v : self::DEFAULT_VERSION;
     }
 
-    //CLD: 2026-11-01T05:00:00+02:00: the API version of a server build (e.g. 12.2.0.334 -> 1.1-rev2): the newest release the build is at least; null for an older build
+    //the API version of a server build (e.g. 12.2.0.334 -> 1.1-rev2): the newest release the build is at least; null for an older build
     public static function versionForBuild($build) {
 	$build = trim((string)$build);
 	if ($build === '')
@@ -159,7 +159,7 @@ class Veeam {
 	    throw new \RuntimeException($r['tooLarge'] ? 'the answer is larger than ' . (self::MAX_ANSWER >> 20) . ' MB' : 'no answer from ' . Http::shown(self::baseUrl($this->cred->serverUrl)) . ": {$r['error']}");
 	if ($r['status'] >= 400) {
 	    $m = self::message($r['data']);
-	    //CLD: 2026-11-01T05:00:00+02:00: + a 404 / 400 that may come from an older release (VBR 12) without this request
+	    //a 404 / 400 that may come from an older release (VBR 12) without this request
 	    $hint = in_array($r['status'], [ 400, 404 ], true) && version_compare(explode('-', $this->version())[0], explode('-', self::DEFAULT_VERSION)[0], '<')
 		? ' (with API version ' . $this->version() . ': the server\'s release may not have this request)' : '';
 	    throw new \RuntimeException("HTTP status {$r['status']}" . ($m !== '' ? ": {$m}" : ($r['status'] === 403 ? ': the user\'s role may not do this' : '')) . $hint);

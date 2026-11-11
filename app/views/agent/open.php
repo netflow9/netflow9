@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-02T18:00:00+02:00: new: the chat page of an agent (AgentController::open): the user's conversations on the left, the conversation (public_html/js/app.agentchat.js)
+//the chat page of an agent (AgentController::open): the user's conversations on the left, the conversation (public_html/js/app.agentchat.js)
 
 $this->pageTitle = $title;
 $id = 'agent-chat-' . bin2hex(random_bytes(4));

@@ -25,7 +25,7 @@ class CheckCommand extends \sys\BaseController {
     private $project = null;
     //workflows created (deleted at the end)
     private $created = [];
-    //CLD: 2026-10-31T22:00:00+02:00: the plugins' suites (hook check:suites): name => closure
+    //the plugins' suites (hook check:suites): name => closure
     private $pluginSuites = [];
 
     public function run($req = null, $resp = null) {
@@ -33,7 +33,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->verbose = isset($params['verbose']);
 	//the fake models of the suites: priced as they were by their steps' fields
 	\util\AiPrices::$test = [ 'claude-check' => [ 2, 10, 0.2 ], 'check-model' => [ 2, 10, 0.2 ] ];
-	//CLD: 2026-10-31T22:00:00+02:00: + the plugins' suites (hook check:suites ($suites: \ArrayObject): name => a closure, run as a method of this class: $this->check(), the helpers),
+	//the plugins' suites (hook check:suites ($suites: \ArrayObject): name => a closure, run as a method of this class: $this->check(), the helpers),
 	//so a plugin kept apart (e.g. MultiTenant: systemai, registration) brings its own checks
 	$plugins = new \ArrayObject();
 	\V::app()->hooks->applyHook('check:suites', [ $plugins ]);
@@ -55,7 +55,7 @@ class CheckCommand extends \sys\BaseController {
 	}
 	$this->account = \V::app()->om->findById('Account', $this->project->aid);
 	\V::app()->var('rt.account', $this->account);
-	//CLD: 2026-11-02T10:00:00+02:00: the agents' tool calls of the suites are not written in this real account's sealed audit log (entries cannot be taken out); agentguard checks them on its own account
+	//the agents' tool calls of the suites are not written in this real account's sealed audit log (entries cannot be taken out); agentguard checks them on its own account
 	\models\AuditLog::$recordAgentCalls = false;
 
 	try {
@@ -81,12 +81,12 @@ class CheckCommand extends \sys\BaseController {
     // ------------------------------------------------------------------------------------
     //helpers
 
-    //CLD: 2026-10-20T23:40:00+03:00: the class of the MCP server's tools
+    //the class of the MCP server's tools
     private static function mcpTools() {
 	return \util\McpServerTools::class;
     }
 
-    //CLD: 2026-11-02T10:00:00+02:00: new: the workflows created so far, deleted with their executions (agentguard: before its account goes)
+    //the workflows created so far, deleted with their executions (agentguard: before its account goes)
     private function cleanCreated() {
 	foreach($this->created as $id) {
 	    foreach(\V::app()->om->find('WfExecution', [ 'wf' => $id ]) as $e)
@@ -118,7 +118,7 @@ class CheckCommand extends \sys\BaseController {
 	return [ 'wfid' => $id, 'isNode' => true, 'parentId' => $parent, 'fqname' => $fq, 'title' => $id, 'geometry' => [ 'x' => 0, 'y' => 0, 'w' => 120, 'h' => 120 ], 'config' => $config ];
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: a one-page PDF drawing $content (Helvetica as /F1); $encrypted: an /Encrypt in its trailer (its text cannot be read)
+    //a one-page PDF drawing $content (Helvetica as /F1); $encrypted: an /Encrypt in its trailer (its text cannot be read)
     private static function miniPdf($content, $encrypted = false) {
 	$objs = [ '<</Type/Catalog/Pages 2 0 R>>', '<</Type/Pages/Kids[3 0 R]/Count 1>>',
 	    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>', '<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>',
@@ -239,7 +239,7 @@ class CheckCommand extends \sys\BaseController {
 	    }
 	}
 
-	//CLD: 2026-10-20T21:40:00+03:00: Mongo dates are J Dates; what an expression gives back is ISO 8601 text in local time (as before); the methods offered come from J
+	//Mongo dates are J Dates; what an expression gives back is ISO 8601 text in local time (as before); the methods offered come from J
 	$d = new \MongoDB\BSON\UTCDateTime(1792469103000);
 	$atom = $d->toDateTime()->setTimezone(new \DateTimeZone(date_default_timezone_get()))->format(DATE_ATOM);
 	$this->check('date: a Date in J', [ 2026, true ], [ $E::render('{{ d.getFullYear() }}', [ 'd' => $d ]), $E::render('{{ d > Date(0) }}', [ 'd' => $d ]) ]);
@@ -252,11 +252,10 @@ class CheckCommand extends \sys\BaseController {
 
     //variable types: the steps' declared fields, Set / Loop inference, suggestions along paths
     private function suiteTypes() {
-	//CLD: 2026-11-01T16:11:37+02:00: built on the Email (inbound) step's message: the step is in the core, always registered
+	//built on the Email (inbound) step's message: the step is in the core, always registered
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
-	//CLD: 2026-10-17T15:35:00+03:00: trigger::email
-	//CLD: 2026-10-17T14:20:00+03:00: the message object comes from the Email inbound trigger (the IMAP trigger is the Read emails step, a list)
+	//trigger::email: the message object comes from the Email inbound trigger (the IMAP trigger is the Read emails step, a list)
 	$nodes = [ $n('t', 'trigger::email', [ 'variable' => 'mail' ]), $n('s1', 'app::set', [ 'variable' => 'atts', 'value' => '{{ mail.attachments }}' ]),
 	    $n('s2', 'app::set', [ 'variable' => 'first', 'value' => '{{ atts[0] }}' ]), $n('s3', 'app::set', [ 'variable' => 'label', 'value' => 'Hi {{ mail.subject }}' ]),
 	    $n('s4', 'app::set', [ 'variable' => 'big', 'value' => '{{ mail.attachments.filter(a => a.size > 10) }}' ]), $n('s5', 'app::set', [ 'variable' => 'cnt', 'value' => '{{ 3 }}' ]),
@@ -312,12 +311,12 @@ class CheckCommand extends \sys\BaseController {
 	    [ 'no conditions', [], [ 'i: Conditions: add at least one' ] ],
 	    [ 'plain left', [ $c('mail.subject', 'eq', 'x') ], [ 'i: Condition 1: Test: Write the variable between {{ and }}, e.g. {{ mail.subject }} (column 1)' ] ],
 	    [ 'a call on the left', [ $c('{{ mail.subject.trim() }}', 'eq', 'x') ], [ 'i: Condition 1: Test: ' . \sys\J\Parser::REFERENCE_ONLY . ' (column 21)' ] ],
-	    //CLD: 2026-10-18T11:05:00+03:00: a value not among the choices is dropped by the select field's cast (sys\fields\Field_select): the operator is then missing
+	    //a value not among the choices is dropped by the select field's cast (sys\fields\Field_select): the operator is then missing
 	    [ 'bad operator', [ $c('{{ mail.subject }}', 'zz', 'x') ], [ 'i: Condition 1: Operator: This field is required' ] ],
 	    [ 'empty left', [ $c('', 'eq', 'x') ], [ 'i: Condition 1: Test: This field is required' ] ],
 	] as [ $name, $conditions, $want ])
 	    $this->check("If refused: {$name}", $want, $this->errorsOf("if {$name}", $flow('all', $conditions)));
-	//CLD: 2026-10-18T10:20:00+03:00: the conditions are a nested field: the designer's editgrid made from conditionSchema(), the rows normalized on save, the n-th row named
+	//the conditions are a nested field: the designer's editgrid made from conditionSchema(), the rows normalized on save, the n-th row named
 	$grid = array_column(\util\SmartForm::modelFields(\models\node\NodeCoreIf::configForm()), null, 'key')['conditions'] ?? [];
 	$this->check('If: the conditions editgrid (rows layout, the condition fields, 1 - 20 rows)', [ 'editgrid', 'rows', [ 'left', 'operator', 'value' ], 1, 20 ],
 	    [ $grid['type'] ?? null, $grid['layout'] ?? null, array_column($grid['components'] ?? [], 'key'), $grid['minRows'] ?? null, $grid['maxRows'] ?? null ]);
@@ -353,7 +352,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check("Switch refused: " . json_encode($variable), true, count($errors) == 1 && str_contains($errors[0], $want));
 	}
 
-	//CLD: 2026-10-18T10:45:00+03:00: the cases are a nested field: the editgrid made from caseSchema(), labels trimmed, errors of the n-th case, labels used twice
+	//the cases are a nested field: the editgrid made from caseSchema(), labels trimmed, errors of the n-th case, labels used twice
 	$grid = array_column(\util\SmartForm::modelFields(\models\node\NodeCoreSwitch::configForm()), null, 'key')['cases'] ?? [];
 	$this->check('Switch: the cases editgrid (the case fields, 1 - 20 rows)', [ 'editgrid', [ 'label', 'operator', 'value' ], 1, 20 ],
 	    [ $grid['type'] ?? null, array_column($grid['components'] ?? [], 'key'), $grid['minRows'] ?? null, $grid['maxRows'] ?? null ]);
@@ -367,7 +366,7 @@ class CheckCommand extends \sys\BaseController {
 	    (function($r) { ksort($r); return $r; })((array)($wf->nodes['w']['config']['cases'][0] ?? [])));
     }
 
-    //CLD: 2026-10-25T11:40:00+02:00: the Merge step's modes: all (the default: waits for every branch) and first (goes on at the first branch, the later ones end there);
+    //the Merge step's modes: all (the default: waits for every branch) and first (goes on at the first branch, the later ones end there);
     //a fast branch (a) and a slow one (b, then a 1 s Wait, then c): the run sleeps in between, then is resumed
     private function suiteMerge() {
 	$n = [ self::class, 'node' ];
@@ -425,7 +424,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('simple: result', [ 'count' => 3, 'results' => [ 2, 4, 6 ], 'errors' => [] ], $var($exe, 'loop'));
 	$this->check('simple: last pass, after, item/index removed', [ '2:3', 3, false ], [ $var($exe, 'last'), $var($exe, 'after'), array_key_exists('item', (array)$exe?->variables) ]);
 
-	//CLD: 2026-10-14T21:06:38+03:00: a loop inside another loop is refused
+	//a loop inside another loop is refused
 	$nested = $this->workflow('loop nested', [ $n('m', 'trigger::manual'),
 	    $n('O', 'core::loop', [ 'list' => '{{ rows }}', 'itemVariable' => 'row', 'indexVariable' => 'i', 'collect' => '{{ inner.results }}', 'variable' => 'outer' ]),
 	    $n('I', 'core::loop', [ 'list' => '{{ row.cells }}', 'itemVariable' => 'cell', 'indexVariable' => 'j', 'collect' => '{{ i }}.{{ j }}={{ cell }}', 'variable' => 'inner' ], 'O'),
@@ -478,11 +477,11 @@ class CheckCommand extends \sys\BaseController {
 		$n('s', 'app::set', [ 'variable' => 'in', 'value' => 'x' ], 'L'), $e('e1', 'm', 'L') ]));
     }
 
-    //CLD: 2026-10-13T15:17:12+03:00: the MCP tools that build workflows (called as an AI step does: no user permissions; util\McpServerTools::call): step types, create / get / update, layout, refusals
+    //the MCP tools that build workflows (called as an AI step does: no user permissions; util\McpServerTools::call): step types, create / get / update, layout, refusals
     private function suiteMcp() {
-	//CLD: 2026-11-02T10:00:00+02:00: the refused workflows already there (leftovers of older runs)
+	//the refused workflows already there (leftovers of older runs)
 	$refusedBefore = \V::app()->om->count('Workflow', [ 'name' => 'Check: mcp refused' ]);
-	//CLD: 2026-10-26T23:56:07+02:00: util\McpServerTools: always checked
+	//util\McpServerTools: always checked
 	$tools = self::mcpTools();
 	$call = fn($name, $args) => $tools::call($name, $args, $this->project, false);
 	$refused = function($name, $args) use ($call) {
@@ -498,8 +497,7 @@ class CheckCommand extends \sys\BaseController {
 	$listSetting = array_column($types['core::loop']['settings'] ?? [], null, 'key')['list'] ?? [];
 	$this->check('step types: a setting\'s syntax', [ 'value', true ], [ $listSetting['syntax'] ?? null, $listSetting['required'] ?? null ]);
 	$this->check('step types: Switch outputs follow its cases', true, str_contains($types['core::switch']['outputs_from'] ?? '', 'cases'));
-	//CLD: 2026-10-17T14:20:00+03:00: the Read emails step
-	//CLD: 2026-10-17T15:00:00+03:00: app::read-email
+	//the Read emails step (app::read-email)
 	$this->check('step types: Read emails variables', 'mails', $types['app::read-email']['variables'][0]['name'] ?? null);
 
 	$steps = [
@@ -551,13 +549,13 @@ class CheckCommand extends \sys\BaseController {
 	//refusals
 	$one = fn($extra = [], $conn = []) => [ 'name' => 'Check: mcp refused', 'steps' => array_merge([ [ 'id' => 'start', 'type' => 'trigger::manual' ] ], $extra), 'connections' => $conn ];
 	$this->check('refused: unknown type', 'steps[1]: unknown type `app::nope` (list_step_types)', $refused('create_workflow', $one([ [ 'id' => 'x', 'type' => 'app::nope' ] ])));
-	//CLD: 2026-10-14T21:17:55+03:00: a loop inside another loop
+	//a loop inside another loop
 	$this->check('refused: a loop inside a loop', 'step `B`: a loop cannot be inside another loop', $refused('create_workflow', $one([ [ 'id' => 'A', 'type' => 'core::loop', 'config' => [ 'list' => '{{ [1] }}' ] ],
 	    [ 'id' => 'B', 'type' => 'core::loop', 'config' => [ 'list' => '{{ [1] }}' ], 'parent' => 'A' ] ], [ [ 'from' => 'start', 'to' => 'A' ] ])));
 	$this->check('refused: a missing output', true, str_starts_with($refused('create_workflow', $one([ [ 'id' => 'i', 'type' => 'core::if', 'config' => [ 'conditions' => [ [ 'left' => '{{ a }}', 'operator' => 'empty' ] ] ] ],
 	    [ 'id' => 's', 'type' => 'app::set', 'config' => [ 'variable' => 'x', 'value' => '1' ] ] ], [ [ 'from' => 'start', 'to' => 'i' ], [ 'from' => 'i', 'to' => 's', 'output' => 'maybe' ] ])),
 	    'connections[1]: step `i` has no output `maybe` (outputs: true, false)'));
-	//CLD: 2026-10-19T17:25:00+03:00: wrong settings are saved, the reason in `problems`; such a draft is not run (Workflow::issues)
+	//wrong settings are saved, the reason in `problems`; such a draft is not run (Workflow::issues)
 	$wrong = $call('create_workflow', [ 'name' => 'Check: mcp wrong settings' ] + $one([ [ 'id' => 'i', 'type' => 'core::if', 'config' => [ 'conditions' => [ [ 'left' => 'a', 'operator' => 'eq', 'value' => '1' ] ] ] ] ],
 	    [ [ 'from' => 'start', 'to' => 'i' ] ]));
 	if (!empty($wrong['id']))
@@ -568,16 +566,16 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('refused: parent not a loop', 'step `s`: parent `start` is not a loop of this workflow', $refused('create_workflow', $one([ [ 'id' => 's', 'type' => 'app::set', 'parent' => 'start', 'config' => [ 'variable' => 'x' ] ] ])));
 	$this->check('refused: duplicate id', 'steps[1]: the id `start` is used twice', $refused('create_workflow', $one([ [ 'id' => 'start', 'type' => 'app::set' ] ])));
 	$this->check('refused: steps without connections on update', 'give both steps and connections (the whole new draft), or neither', $refused('update_workflow', [ 'workflow' => $made['id'], 'steps' => [] ]));
-	//CLD: 2026-11-02T10:00:00+02:00: none added by this run
+	//none added by this run
 	$this->check('nothing saved when refused', $refusedBefore, \V::app()->om->count('Workflow', [ 'name' => 'Check: mcp refused' ]));
 	$saved = $call('create_workflow', $one([ [ 'id' => 's', 'type' => 'app::set', 'config' => [ 'variable' => 'x', 'value' => '1' ] ] ]));
 	$this->created[] = \V::app()->om->to_oid($saved['id']);
 	$this->check('connection problems are saved and returned', true, (bool)array_filter($saved['problems'], fn($p) => $p['level'] === 'error'));
-	//CLD: 2026-10-22T01:11:17+03:00: + the structure of the data tables
+	//the structure of the data tables
 	$this->mcpTableChecks($tools, $call, $refused);
     }
 
-    //CLD: 2026-10-22T01:11:17+03:00: the data table structure tools of the MCP server (create_table, update_table, add_column, update_column, delete_column): made, refused (nothing saved),
+    //the data table structure tools of the MCP server (create_table, update_table, add_column, update_column, delete_column): made, refused (nothing saved),
     //used by the row tools right away, a column's values gone with it (the permissions are not checked here: the console has no auth, user->can allows); the tables made are
     //deleted at the end
     private function mcpTableChecks($tools, \Closure $call, \Closure $refused) {
@@ -639,14 +637,14 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-13T15:24:28+03:00: the project variables as {{ vars.<name> }}: at run time (Set, If, Loop; not saved with the execution), the editors' help, the reserved name
+    //the project variables as {{ vars.<name> }}: at run time (Set, If, Loop; not saved with the execution), the editors' help, the reserved name
     private function suiteVars() {
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
 	$made = [];
 	try {
 	    foreach([ 'check_greeting' => [ 'Hello', 'how to greet' ], 'check_limit' => [ '2', '' ] ] as $name => [ $value, $description ]) {
-		//CLD: 2026-10-22T00:28:13+03:00: a credential of type Variable
+		//a credential of type Variable
 		$v = \V::app()->om->create('CredentialVariable', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => $name, 'value' => $value, 'description' => $description ]);
 		if (!$v->validates()) {
 		    $this->fail("variable {$name}: " . json_encode($v->errors()));
@@ -685,7 +683,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-13T15:34:38+03:00: the Code step: variables read / set / created, locals, in-place changes, console, vars read-only, errors (fail / error output), time limit, saving
+    //the Code step: variables read / set / created, locals, in-place changes, console, vars read-only, errors (fail / error output), time limit, saving
     //checks, the variables it gives later steps, inside a loop
     private function suiteCode() {
 	$n = [ self::class, 'node' ];
@@ -719,17 +717,17 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('inside a loop', [ 'end', [ 1, 4, 9 ] ], [ $exe?->state, $exe?->getVariable('loop')['results'] ?? null ]);
 	$this->check('a script\'s assigned names are not unknown (help)', [], \util\Expression::check("total = 1;\ntotal += 2;", [], 'script'));
 
-	//CLD: 2026-10-20T21:40:00+03:00: a Mongo date is a J Date; an unchanged one is not set again, a new one is set as ISO 8601 local text
+	//a Mongo date is a J Date; an unchanged one is not set again, a new one is set as ISO 8601 local text
 	$exe = $this->runFlow('code dates', $flow("year = when.getFullYear();\nlater = Date(when.getTime() + 86400000);"), [ 'when' => new \MongoDB\BSON\UTCDateTime(1792469103000) ]);
 	$this->check('dates: a Date in the script, given back as text', [ 'end', 2026, date(DATE_ATOM, 1792469103 + 86400), 'code: set year, later' ],
 	    [ $exe?->state, $exe?->getVariable('year'), $exe?->getVariable('later'), self::logLine($exe, 'code:') ]);
     }
 
-    //CLD: 2026-10-13T18:34:40+03:00: forms (util\FormSchema), the Form trigger's answers in a run, the Human task (waits, completed -> resumes; expired -> timeout output)
+    //forms (util\FormSchema), the Form trigger's answers in a run, the Human task (waits, completed -> resumes; expired -> timeout output)
     private function suiteForms() {
 	$F = \util\SmartForm::class;
 	$form = $F::normalize([ 'direction' => 'sideways', 'fields' => [
-	    //CLD: 2026-10-14T20:17:14+03:00: the condition is the node's showIf (an array); a showIf / hideIf / requiredIf with JS is dropped
+	    //the condition is the node's showIf (an array); a showIf / hideIf / requiredIf with JS is dropped
 	    [ 'type' => 'title', 'label' => 'T', 'onclick' => 'x', 'showIf' => 'alert(1)' ],
 	    [ 'type' => 'number', 'key' => 'amount', 'label' => 'Amount', 'required' => true, 'min' => 1, 'ajaxUrl' => '/evil' ],
 	    [ 'type' => 'select', 'key' => 'cat', 'required' => true, 'choices' => [ [ 'value' => 'a', 'label' => 'A' ], 'b', [ 'value' => '' ] ] ],
@@ -759,12 +757,12 @@ class CheckCommand extends \sys\BaseController {
 	    [ $errors, $answers['amount'], $answers['why'], $answers['ok'], $answers['tags'], $answers['src'] ]);
 	$this->check('type: suggestions of the answers', [ 'number', 'string', 'boolean', 'array' ],
 	    array_map(fn($k) => $F::type($form)['fields'][$k]['type'], [ 'amount', 'cat', 'ok', 'tags' ]));
-	//CLD: 2026-10-14T14:08:12+03:00: the `in` operator (a list: blanks / repeats dropped; required only when the value is one of them) and the row scope of showIf()
+	//the `in` operator (a list: blanks / repeats dropped; required only when the value is one of them) and the row scope of showIf()
 	$inForm = $F::normalize([ 'fields' => [ [ 'type' => 'select', 'key' => 'cat', 'choices' => [ 'a', 'b', 'c' ] ],
 	    [ 'type' => 'text', 'key' => 'why', 'required' => true, 'showIf' => [ 'key' => 'cat', 'operator' => 'in', 'value' => [ 'a', 'b', '', 'a' ] ] ] ] ]);
 	$this->check('in: the value is a list, the field required only for one of them', [ [ 'a', 'b' ], [ 'why' ], [] ],
 	    [ $inForm['fields'][1]['showIf']['value'], array_keys($F::answers($inForm, [ 'cat' => 'b' ])[1]), $F::answers($inForm, [ 'cat' => 'c' ])[1] ]);
-	//CLD: 2026-10-14T20:17:14+03:00: util\Conditions (the fields' operators): one comparison, a set tested against values, a set as a MongoDB query
+	//util\Conditions (the fields' operators): one comparison, a set tested against values, a set as a MongoDB query
 	$C = \util\Conditions::class;
 	$this->check('conditions: holds (numbers, case, lists, empty)', [ true, false, true, true, true, true, false, true, true, true ],
 	    [ $C::holds('10', 'gt', '9'), $C::holds('abc', 'gt', 'b'), $C::holds('Abc', 'contains', 'B'), $C::holds('Abc', 'startsWith', 'a'), $C::holds('b', 'in', 'a, b'),
@@ -773,7 +771,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ $C::test([ [ 'key' => 'a', 'operator' => 'eq', 'value' => '1' ], [ 'key' => 'b', 'operator' => 'notEmpty' ] ], 'all', [ 'a' => 1, 'b' => 'x' ]),
 		$C::test([ [ 'key' => 'a', 'operator' => 'eq', 'value' => '2' ], [ 'key' => 'b', 'operator' => 'empty' ] ], 'all', [ 'a' => 2, 'b' => 'x' ]),
 		$C::test([ [ 'key' => 'a', 'operator' => 'eq', 'value' => '2' ], [ 'key' => 'b', 'operator' => 'empty' ] ], 'any', [ 'a' => 2, 'b' => 'x' ]) ]);
-	//CLD: 2026-10-18T11:10:00+03:00: `s` has choices: a select keeps only values among them (sys\fields\Field_select::cast; without choices `a` / `b` were cast to null)
+	//`s` has choices: a select keeps only values among them (sys\fields\Field_select::cast)
 	$fields = [ 'n' => \sys\fields\Field::create([ 'type' => 'number', 'key' => 'n' ]), 's' => \sys\fields\Field::create([ 'type' => 'select', 'key' => 's', 'choices' => [ 'a' => 'A', 'b' => 'B' ] ]) ];
 	$query = $C::query([ [ 'key' => 'n', 'operator' => 'gte', 'value' => '5' ], [ 'key' => 's', 'operator' => 'in', 'value' => 'a, b' ] ], 'any', fn($k) => $fields[$k] ?? null);
 	$refused = null;
@@ -781,13 +779,13 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('conditions: query (cast by the field, `in` from text, the field\'s operators only)', [ [ '$or' => [ [ 'n' => [ '$gte' => 5 ] ], [ 's' => [ '$in' => [ 'a', 'b' ] ] ] ] ], 'Conditions: `gt` is not an operator of `s`' ],
 	    [ $query, $refused ]);
 
-	//CLD: 2026-10-14T19:54:21+03:00: the url type (sys\fields\Field_url's check); no inputType on text fields any more
+	//the url type (sys\fields\Field_url's check); no inputType on text fields any more
 	$urlForm = $F::normalize([ 'fields' => [ [ 'type' => 'url', 'key' => 'site', 'placeholder' => 'https://' ], [ 'type' => 'text', 'key' => 'phone', 'inputType' => 'tel' ] ] ]);
-	//CLD: 2026-10-14T19:59:06+03:00: the url rule only (any scheme it accepts)
+	//the url rule only (any scheme it accepts)
 	$this->check('url: its own type; text loses inputType; addresses only', [ 'url', false, [], [], [ 'site' ] ],
 	    [ $urlForm['fields'][0]['type'], isset($urlForm['fields'][1]['inputType']), $F::answers($urlForm, [ 'site' => 'https://example.com/x' ])[1],
 		$F::answers($urlForm, [ 'site' => 'ftp://example.com' ])[1], array_keys($F::answers($urlForm, [ 'site' => 'example.com' ])[1]) ]);
-	//CLD: 2026-10-18T14:00:00+03:00: answers checked and cast by a sys\NestedModel (util\SmartForm::fieldDef): the form's messages first, real dates only, a required checkbox
+	//answers checked and cast by a sys\NestedModel (util\SmartForm::fieldDef): the form's messages first, real dates only, a required checkbox
 	//checked, the pattern anchored, an unknown single choice refused, blank text null, dates cast
 	$more = $F::normalize([ 'fields' => [ [ 'type' => 'number', 'key' => 'n', 'min' => 1 ], [ 'type' => 'date', 'key' => 'd' ], [ 'type' => 'datetime', 'key' => 'dt' ],
 	    [ 'type' => 'checkbox', 'key' => 'agree', 'required' => true ], [ 'type' => 'text', 'key' => 'code', 'pattern' => '[A-Z]{3}', 'patternMessage' => 'Three capitals' ],
@@ -798,7 +796,7 @@ class CheckCommand extends \sys\BaseController {
 	[ $answers, $errors ] = $F::answers($more, [ 'n' => ' 3 ', 'd' => '2026-10-18', 'dt' => '2026-10-18T09:30:15', 'agree' => 'on', 'code' => 'ABC', 'one' => 'b', 'note' => '  ' ]);
 	$this->check('answers: cast (number, dates, checkbox, choice, blank text -> null)', [ [], 3, true, true, true, 'b', null ],
 	    [ $errors, $answers['n'], $answers['d'] instanceof \MongoDB\BSON\UTCDateTime, $answers['dt'] instanceof \MongoDB\BSON\UTCDateTime, $answers['agree'], $answers['one'], $answers['note'] ]);
-	//CLD: 2026-10-18T14:40:00+03:00: the token steps' shared methods (models\TriggerToken): newToken in the step's format, checkToken (well formed, not shared with another step)
+	//the token steps' shared methods (models\TriggerToken): newToken in the step's format, checkToken (well formed, not shared with another step)
 	$T = \models\TriggerToken::class;
 	$tokenErrors = function($tokens) {
 	    $wf = \V::app()->om->create('Workflow', [ 'nodes' => [] ]);
@@ -808,20 +806,20 @@ class CheckCommand extends \sys\BaseController {
 	    $wf->nodes = $nodes;
 	    $node = \V::app()->om->create('NodeTriggerWebhook', $nodes['h0']);
 	    $node->workflow = $wf;
-	    //CLD: 2026-10-18T23:45:00+03:00: checkToken takes the format
+	    //checkToken takes the format
 	    return \models\TriggerToken::checkToken($node, 'hex') ? [] : (array)$node->errors()['config'];
 	};
 	$hookToken = $T::newToken('hex');
 	$this->check('trigger tokens: each step\'s format (32 hex, 8 letters / digits), checkToken: valid, invalid, shared', [ true, true, [],
-	    //CLD: 2026-10-18T23:45:00+03:00: the messages do not name the step (checkToken)
+	    //the messages do not name the step (checkToken)
 	    [ 'missing or invalid token (remove the step and add it again)' ], [ 'shared with another step' ] ],
 	    [ $T::isToken($hookToken, 'hex'), $T::isToken($T::newToken('code'), 'code'),
 		$tokenErrors([ $hookToken ]), $tokenErrors([ 'nope' ]), $tokenErrors([ $hookToken, $hookToken ]) ]);
-	//CLD: 2026-10-18T15:40:00+03:00: a prefix before the token; the account mail prefix in the `code` format
+	//a prefix before the token; the account mail prefix in the `code` format
 	$prefixed = $T::newToken('hex', 'wh_');
 	$this->check('trigger tokens: with a prefix (kept, checked)', [ true, true, false, false ],
 	    [ str_starts_with($prefixed, 'wh_'), $T::isToken($prefixed, 'hex', 'wh_'), $T::isToken($prefixed, 'hex'), $T::isToken($prefixed, 'hex', 'xx_') ]);
-	//CLD: 2026-11-01T16:11:37+02:00: the account's inbound mail prefix (InboundMailSettings: prefix; default `inbound`, lower-cased, letters / digits, at most 30)
+	//the account's inbound mail prefix (InboundMailSettings: prefix; default `inbound`, lower-cased, letters / digits, at most 30)
 	$prefixError = function($prefix) {
 	    //set as the settings form does (assign: the field's transform), the default when not set
 	    $a = \V::app()->om->create('InboundMailSettings', [ 'aid' => $this->account->_id ]);
@@ -833,7 +831,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('mail prefix: the default, lower-cased, refused (not letters / digits, too long)', [ [ 'inbound', false ], [ 'sales2', false ], true, true ],
 	    [ $prefixError(null), $prefixError('Sales2'), $prefixError('sales-2')[1], $prefixError(str_repeat('a', 31))[1] ]);
 
-	//CLD: 2026-11-01T16:11:37+02:00: Email (inbound) in the core: available only where Haraka is found (util\InboundMail::found): else unavailable in the designer, an error of the workflow
+	//Email (inbound) in the core: available only where Haraka is found (util\InboundMail::found): else unavailable in the designer, an error of the workflow
 	//(cannot be published); its address follows the account's current prefix
 	$found = new \ReflectionProperty(\util\InboundMail::class, 'found');
 	$wasFound = $found->getValue();
@@ -852,7 +850,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ false, true, true ], [ true, false, false ], \models\node\NodeTriggerEmail::addressFor($this->account->_id, 'abcd1234'), \util\InboundMail::domain() !== '' ],
 	    [ $results[0], $results[1], $step->config['address'] ?? null, str_ends_with((string)($step->config['address'] ?? ''), '-abcd1234@' . \util\InboundMail::domain()) ]);
 	$urlModel = \sys\NestedModel::create([], [ 'objectName' => 'NestedModel', 'nestedSchema' => [ [ 'key' => 'site', 'type' => 'url', 'label' => 'Site' ] ] ]);
-	//CLD: 2026-10-14T19:59:06+03:00: refuses what is not an address
+	//refuses what is not an address
 	$urlModel->assign([ 'site' => 'example.com' ]);
 	$this->check('url: the model field refuses a non-address, its form field is url', [ false, 'url' ],
 	    [ $urlModel->validates(), $F::modelFields($urlModel)[0]['type'] ]);
@@ -903,7 +901,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('a deleted workflow takes its tasks with it', 0, \V::app()->om->count('WfTask', [ 'wf' => $id ]));
     }
 
-    //CLD: 2026-10-17T20:40:00+03:00: the File upload trigger: an upload queues one job per published workflow of the project whose step accepts the file's type; the job starts the run
+    //the File upload trigger: an upload queues one job per published workflow of the project whose step accepts the file's type; the job starts the run
     private function suiteFile() {
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
@@ -922,8 +920,7 @@ class CheckCommand extends \sys\BaseController {
 	    $wf->save();
 	    $wfs[$name] = $wf;
 	}
-	//CLD: 2026-10-18T13:30:00+03:00: refused by the select field's `choices` rule; the message is checked too
-	//CLD: 2026-10-18T15:00:00+03:00: dropped by the select field's cast (the step then takes any file)
+	//dropped by the select field's cast (the step then takes any file)
 	$bad = $this->workflow('file bad type', [ $n('f', 'trigger::file', [ 'types' => [ 'EXE', 'PDF' ], 'variable' => 'up' ]) ]);
 	$this->check('a type not in the list is dropped', [ true, [ 'PDF' ] ], [ $bad->validates(), $bad->nodes['f']['config']['types'] ?? null ]);
 
@@ -934,7 +931,7 @@ class CheckCommand extends \sys\BaseController {
 	    foreach([ 'check.pdf' => [ 'any', 'pdf' ], 'check.txt' => [ 'any' ] ] as $filename => $expected) {
 		$fid = \models\File::createFromString($filename, 'hello', [ 'metadata' => [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'owner' => null, 'source' => 'check' ] ]);
 		$files[] = $fid;
-		//CLD: 2026-10-17T21:00:54+03:00: the steps found and run here, as uploaded() / the job would (the jobs uploaded() queues are taken by a running daemon first)
+		//the steps found and run here, as uploaded() / the job would (the jobs uploaded() queues are taken by a running daemon first)
 		$file = $om->findOne('File', [ '_id' => $fid ]);
 		$steps = new \ReflectionMethod(\models\node\NodeTriggerFile::class, 'stepsFor');
 		$steps->setAccessible(true);
@@ -967,8 +964,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-17T21:00:54+03:00: images for the AI steps: read_image (Rail22 tool), the step's Images setting, the requests of Claude and OpenAI (no model is called)
-    //CLD: 2026-10-18T12:30:00+03:00: NodeAppOpenAI
+    //images for the AI steps: read_image (Rail22 tool), the step's Images setting, the requests of Claude and OpenAI (no model is called)
     private function suiteImages() {
 	$n = [ self::class, 'node' ];
 	$om = \V::app()->om;
@@ -976,7 +972,7 @@ class CheckCommand extends \sys\BaseController {
 	$png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
 	$files = [ \models\File::createFromString('check-a.png', $png, $meta), \models\File::createFromString('check-b.png', $png, $meta), \models\File::createFromString('check.txt', 'hi', $meta) ];
 	[ $a, $b, $txt ] = array_map('strval', $files);
-	//CLD: 2026-10-27T23:11:38+02:00: files for the AI steps' Files: a PDF with text, an encrypted one, one without text, a Word document, a CSV, a zip
+	//files for the AI steps' Files: a PDF with text, an encrypted one, one without text, a Word document, a CSV, a zip
 	$docx = tempnam(sys_get_temp_dir(), 'rail22-check-');
 	$zip = new \ZipArchive();
 	$zip->open($docx, \ZipArchive::OVERWRITE);
@@ -991,7 +987,7 @@ class CheckCommand extends \sys\BaseController {
 	array_push($files, ...$more);
 	[ $pdf, $locked, $scan, $word, $csv, $zipped ] = array_map('strval', $more);
 	try {
-	    //CLD: 2026-10-20T23:40:00+03:00: read_image: through util\MCPTools, as the AI steps call it
+	    //read_image: through util\MCPTools, as the AI steps call it
 	    if ($readImage = \util\MCPTools::all()['read_image'] ?? null) {
 		[ $result, $images ] = ($readImage['run'])([ 'id' => $a ], $this->project);
 		$this->check('read_image: the image apart from the result', [ 'check-a.png', false, [ [ 'image/png', base64_encode($png) ] ] ],
@@ -1006,7 +1002,7 @@ class CheckCommand extends \sys\BaseController {
 	    }
 
 	    //the Images setting: a list with an id and an attachment object, ids in text
-	    //CLD: 2026-10-27T23:11:38+02:00: the Files setting (promptFiles): the parts made of each file, by step and PDFs as ($cred: the OpenAI step's base URL)
+	    //the Files setting (promptFiles): the parts made of each file, by step and PDFs as ($cred: the OpenAI step's base URL)
 	    $parts = function($value, $vars, $step = 'app::claude', $config = [], $cred = null) use ($n) {
 		$wf = $this->workflow('files', [ $n('m', 'trigger::manual'), $n('c', $step, $config + [ 'files' => $value ]) ]);
 		$exe = \models\wf\WfExecution::startFor($wf, 'console', [ 'vars' => $vars ]);
@@ -1053,7 +1049,7 @@ class CheckCommand extends \sys\BaseController {
 	    }
 
 	    //the requests
-	    //CLD: 2026-10-27T23:11:38+02:00: the files as parts; + a PDF and a text file for each provider
+	    //the files as parts; + a PDF and a text file for each provider
 	    $img = [ 'type' => 'image', 'mime' => 'image/png', 'data' => 'QUJD', 'name' => 'a.png' ];
 	    $pdfPart = [ 'type' => 'pdf', 'data' => 'JVBE', 'name' => 'a.pdf' ];
 	    $textPart = [ 'type' => 'text', 'text' => 'a,b', 'name' => 'a.csv' ];
@@ -1095,7 +1091,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('OpenAI: the tool result, then its image in a user message', [ [ 'tool', 'user' ], 'data:image/png;base64,QUJD' ],
 		[ array_column($state['messages'], 'role'), $state['messages'][1]['content'][1]['image_url']['url'] ?? null ]);
 
-	    //CLD: 2026-10-22T12:00:00+03:00: Gemini: the prompt's images, a tool call and its result (the model's turn sent back as it came, the call's id and name), JSON mode, a blocked answer;
+	    //Gemini: the prompt's images, a tool call and its result (the model's turn sent back as it came, the call's id and name), JSON mode, a blocked answer;
 	    //the HTTP call replaced (the requests it got, the answers it gives)
 	    $state = $call(\models\node\NodeAppGemini::class, 'startConversation', null, 'sys', 'what is it?', null, [ $img ]);
 	    $this->check('Gemini: the prompt with its image, the system prompt apart', [ [ [ 'inlineData' => [ 'mimeType' => 'image/png', 'data' => 'QUJD' ] ], [ 'text' => 'what is it?' ] ], 'sys' ],
@@ -1157,7 +1153,7 @@ class CheckCommand extends \sys\BaseController {
 	    }
 	    $this->check('Gemini: a blocked answer is an error', 'Gemini declined the answer (SAFETY)', $blocked);
 
-	    //CLD: 2026-10-17T21:08:58+03:00: Download File: data: URLs, the image info of the variable
+	    //Download File: data: URLs, the image info of the variable
 	    $e = [ self::class, 'edge' ];
 	    $download = function($name, $url, $config = []) use ($n, $e, $om, &$files) {
 		$exe = $this->runFlow('download ' . $name, [ $n('m', 'trigger::manual'), $n('d', 'app::download', [ 'url' => '{{ src }}', 'variable' => 'file', 'onError' => 'output' ] + $config),
@@ -1184,7 +1180,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-20T10:00:00+03:00: the Google Drive step: outputs, ids from links, settings refused, variable types, file objects; a run with a credential Google refuses
+    //the Google Drive step: outputs, ids from links, settings refused, variable types, file objects; a run with a credential Google refuses
     //(a made-up token: the `error` output, whether Drive answers 401 or cannot be reached)
     private function suiteGdrive() {
 	$n = [ self::class, 'node' ];
@@ -1245,7 +1241,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-20T11:00:00+03:00: the Google Sheets step: rows to write (lists, objects, one row), objects matched to the header, rows read as objects, cells, ranges,
+    //the Google Sheets step: rows to write (lists, objects, one row), objects matched to the header, rows read as objects, cells, ranges,
     //settings refused, variable types; a run with a credential Google refuses (the `error` output); a Drive credential is accepted
     private function suiteGsheets() {
 	$n = [ self::class, 'node' ];
@@ -1321,7 +1317,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-20T12:00:00+03:00: the Gmail step: the message composed (read back by util\MailParser: headers, reply headers, Bcc, text + HTML, an attachment), addresses, file
+    //the Gmail step: the message composed (read back by util\MailParser: headers, reply headers, Bcc, text + HTML, an attachment), addresses, file
     //ids, labels, the query string, settings refused, variable types; a run with a credential Google refuses (the `error` output)
     private function suiteGmail() {
 	$n = [ self::class, 'node' ];
@@ -1397,7 +1393,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-20T13:00:00+03:00: the Google Calendar step: times read (offsets, the time zone, dates), event start / end (duration, all day), periods, event objects, settings
+    //the Google Calendar step: times read (offsets, the time zone, dates), event start / end (duration, all day), periods, event objects, settings
     //refused, variable types; a run with a credential Google refuses (the `error` output)
     private function suiteGcalendar() {
 	$n = [ self::class, 'node' ];
@@ -1474,7 +1470,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-20T15:00:00+03:00: the Google Docs step: Markdown -> text, paragraphs and spans (UTF-16 indexes), the batchUpdate requests (append / an empty document),
+    //the Google Docs step: Markdown -> text, paragraphs and spans (UTF-16 indexes), the batchUpdate requests (append / an empty document),
     //a document read as text and Markdown, settings refused, variable types; a run with a credential Google refuses (the `error` output); the Google steps share NodeAppGoogle
     private function suiteGdocs() {
 	$n = [ self::class, 'node' ];
@@ -1549,7 +1545,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-22T00:41:28+03:00: the Microsoft steps: the steps and credentials registered, the helpers (Graph queries and errors, addresses, ids, drives
+    //the Microsoft steps: the steps and credentials registered, the helpers (Graph queries and errors, addresses, ids, drives
     //and items, times, cells), the settings refused, and a call of each step with a made-up token (Graph refuses it: the `error` output, the variable null, the error logged)
     private function suiteMicrosoft() {
 	$n = [ self::class, 'node' ];
@@ -1687,7 +1683,7 @@ class CheckCommand extends \sys\BaseController {
     }
 
 
-    //CLD: 2026-10-22T01:36:46+03:00: the Lemonade AI and Ollama steps and their credentials, against a fake server (commands/tests/AiTestServer.php, PHP's built-in server on a free port, an API key
+    //the Lemonade AI and Ollama steps and their credentials, against a fake server (commands/tests/AiTestServer.php, PHP's built-in server on a free port, an API key
     //asked for): the credentials' tests, a run with a tool call (the tool's result sent back as each API wants it, the answer without <think>, the usage added up), the step's
     //settings in the request, a JSON answer with a schema (Ollama's format), an unknown model (the `error` output, the server's message), the prompt's images
     private function suiteLocalAi() {
@@ -1699,12 +1695,12 @@ class CheckCommand extends \sys\BaseController {
 	    isset($all['app::ollama']), \models\credential\CredentialLemonade::$provides, \models\credential\CredentialOllama::$provides,
 	    \models\node\NodeAppOllama::outLabelsFor([ 'onError' => 'output' ]) ]);
 	$ollamaKeys = array_column(\models\node\NodeAppOllama::configSchema(), 'key');
-	//CLD: 2026-10-24T13:06:54+03:00: temperature and thinking first (on the dialog's line 2, with the credential and the model)
+	//temperature and thinking first (on the dialog's line 2, with the credential and the model)
 	$this->check('local AI: Ollama\'s own settings after the model; Lemonade has the OpenAI step\'s', [ [ 'model', 'temperature', 'think', 'contextLength', 'keepAlive' ], true ],
 	    [ array_slice($ollamaKeys, 1, 5), in_array('temperature', array_column(\models\node\NodeAppLemonade::configSchema(), 'key'), true) ]);
 
 	//the fake server
-	//CLD: 2026-10-23T10:00:00+03:00: startAiServer() (the systemai suite uses it too)
+	//startAiServer() (the systemai suite uses it too)
 	$server = $this->startAiServer('local AI');
 	if (!$server)
 	    return;
@@ -1732,7 +1728,7 @@ class CheckCommand extends \sys\BaseController {
 	    };
 	    $this->check('local AI: the credentials\' tests (the models; Ollama: its version, the URL without /api); a wrong key refused', [ '2 models: Qwen3-8B-GGUF, Gemma-3-4b-it-GGUF',
 		'Ollama 0.0-check: 2 models: qwen3:8b, gemma3:4b', "http://127.0.0.1:{$port}", true ], [ $refused($lem), $refused($oll), $oll->apiBase(), str_contains($refused($bad), '401') ]);
-	    //CLD: 2026-10-22T01:58:24+03:00: the Test records the models (saved; the AI steps' Model choices): sorted, the embedding / speech / image ones left out
+	    //the Test records the models (saved; the AI steps' Model choices): sorted, the embedding / speech / image ones left out
 	    $saved = fn($c) => $om->findOne('Credential', [ '_id' => $c->_id ])?->models;
 	    $this->check('local AI: the Test records the models on the credential (sorted)', [ [ 'Gemma-3-4b-it-GGUF', 'Qwen3-8B-GGUF' ], [ 'gemma3:4b', 'qwen3:8b' ] ], [ $saved($lem), $saved($oll) ]);
 	    $this->check('local AI: the chat models (embeddings, speech, images, moderation out; doubles once)', [ 'gpt-5', 'gpt-5-mini', 'llama3.2:3b' ],
@@ -1743,7 +1739,7 @@ class CheckCommand extends \sys\BaseController {
 		array_column(array_column(\util\WorkflowSpec::stepTypes(), null, 'type')['app::ollama']['settings'] ?? [], 'type', 'key')['model'] ?? null ]);
 
 	    $withTool = \util\MCPTools::all()['list_tables'] ?? null;
-	    //CLD: 2026-11-02T10:00:00+02:00: a sent text without its untrusted marks (a {{ }} value of the prompt is between them: suite agentguard)
+	    //a sent text without its untrusted marks (a {{ }} value of the prompt is between them: suite agentguard)
 	    $unmark = fn($t) => preg_replace('~<untrusted_[0-9a-f]+ source="[^"]*">\n|\n</untrusted_[0-9a-f]+>~', '', (string)$t);
 	    $flow = fn($name, $type, $config, $cred) => $this->runFlow("local ai {$name}", [ $n('m', 'trigger::manual'), $n('s', $type, $config + [ 'credential' => (string)$cred->_id,
 		'prompt' => 'Hi {{ who }}', 'tools' => $withTool ? [ 'list_tables' ] : [], 'mcp' => [], 'onError' => 'output', 'timeout' => 15 ]),
@@ -1764,14 +1760,14 @@ class CheckCommand extends \sys\BaseController {
 		$this->check('Lemonade AI: the answer without <think>', [ 'success', 'Hello from Qwen3-8B-GGUF' ], [ $exe?->getVariable('route'), $ai['text'] ?? null ]);
 	    }
 	    $this->check('Lemonade AI: the request (the model, the prompt, the temperature)', [ 'Qwen3-8B-GGUF', 'Hi Ana', 0.3 ],
-		[ $sent[0]['model'] ?? null, $unmark($sent[0]['messages'][1]['content'] ?? ''), $sent[0]['temperature'] ?? null ]); //CLD: 2026-11-02T10:00:00+02:00: [1]: a system message (util\AgentGuard::rules) is first
-	    //CLD: 2026-10-27T23:11:38+02:00: a run with a PDF in Files: Lemonade (PDFs as Auto) gets its text, before the prompt
+		[ $sent[0]['model'] ?? null, $unmark($sent[0]['messages'][1]['content'] ?? ''), $sent[0]['temperature'] ?? null ]); //[1]: a system message (util\AgentGuard::rules) is first
+	    //a run with a PDF in Files: Lemonade (PDFs as Auto) gets its text, before the prompt
 	    $pdf = \models\File::createFromString('check-run.pdf', self::miniPdf('BT /F1 12 Tf 72 700 Td (Invoice 42) Tj ET'),
 		[ 'metadata' => [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'owner' => null, 'source' => 'check' ] ]);
 	    try {
 		@unlink($log);
 		$exe = $flow('lemonade files', 'app::lemonade', [ 'model' => 'Qwen3-8B-GGUF', 'files' => (string)$pdf ], $lem);
-		//CLD: 2026-11-02T10:00:00+02:00: [1]: a system message first; the file between untrusted marks
+		//[1]: a system message first; the file between untrusted marks
 		$content = $requests('/api/v1/chat/completions')[0]['messages'][1]['content'] ?? null;
 		$this->check('Lemonade AI: a run with a PDF in Files: its text sent before the prompt', [ 'success', [ 'text', 'text' ], true, 'Hi Ana',
 		    true ], [ $exe?->getVariable('route'), array_column((array)$content, 'type'), str_contains((string)($content[0]['text'] ?? ''), "<file name=\"check-run.pdf\">\n--- page 1 ---\nInvoice 42\n</file>"), $unmark($content[1]['text'] ?? ''),
@@ -1780,7 +1776,7 @@ class CheckCommand extends \sys\BaseController {
 		$om->findOne('File', [ '_id' => $pdf ])?->delete();
 	    }
 
-	    //CLD: 2026-11-03T08:36:38+02:00: LM Studio: the OpenAI requests, at its own default address, a local provider
+	    //LM Studio: the OpenAI requests, at its own default address, a local provider
 	    $lms = $make('CredentialLmStudio', "http://127.0.0.1:{$port}/api/v1", 'check-key');
 	    $this->check('LM Studio: the step type; the credential: what it provides, its default address, its Test; the Assistant\'s address; local', [ true, [ 'lmstudio', 'http' ], 'http://localhost:1234/v1', '2 models: Qwen3-8B-GGUF, Gemma-3-4b-it-GGUF', 'http://localhost:1234/v1', true, 900 ],
 		[ isset($all['app::lmstudio']), \models\credential\CredentialLmStudio::$provides, $om->create('CredentialLmStudio', [ 'aid' => $this->account->_id ])->baseUrl, $refused($lms),
@@ -1823,7 +1819,7 @@ class CheckCommand extends \sys\BaseController {
 		$m->setAccessible(true);
 		return $m->invokeArgs($obj, $args);
 	    };
-	    //CLD: 2026-10-27T23:11:38+02:00: the files as parts; + a text file, before the prompt
+	    //the files as parts; + a text file, before the prompt
 	    $state = $call(\models\node\NodeAppOllama::class, 'startConversation', null, '', 'what is it?', null, [ [ 'type' => 'image', 'mime' => 'image/png', 'data' => 'QUJD', 'name' => 'a.png' ],
 		[ 'type' => 'text', 'text' => 'a,b', 'name' => 'a.csv' ] ]);
 	    $this->check('Ollama: the prompt\'s images (base64, in the message), a text file before the prompt', [ "<file name=\"a.csv\">\na,b\n</file>\n\nwhat is it?", [ 'QUJD' ] ],
@@ -1837,11 +1833,11 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-30T23:30:00+02:00: new: the knowledge bases (models\kb\KnowledgeBase, the Knowledge base step, the AI steps' search_knowledge_base tool) against the fake AI server's
+    //the knowledge bases (models\kb\KnowledgeBase, the Knowledge base step, the AI steps' search_knowledge_base tool) against the fake AI server's
     //embeddings: the text cut into chunks (pages, overlap), a new knowledge base made by Add (its embedding model, dims), unchanged documents left as they are, files / web page /
-    //text, search by meaning and by words (merged), the metadata filter, remove, list, another vector length refused, Ollama's /api/embed, the model's prefixes, the AI tool
-    //CLD: 2026-10-31T01:00:00+02:00: the account's embedding model (models\kb\EmbeddingSettings; the check account's put back after: was a credential of the step), Connect's list, the
-    //documents queued for the daemon (queue, indexJob), re-index after another model (reindex, reindexJob), the permissions' defaults
+    //text, search by meaning and by words (merged), the metadata filter, remove, list, another vector length refused, Ollama's /api/embed, the model's prefixes, the AI tool;
+    //the account's embedding model (models\kb\EmbeddingSettings; the check account's put back after), Connect's list, the documents queued for the daemon (queue, indexJob),
+    //re-index after another model (reindex, reindexJob), the permissions' defaults
     private function suiteKb() {
 	$n = [ self::class, 'node' ];
 	$e = [ self::class, 'edge' ];
@@ -2041,7 +2037,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('kb: the tool\'s answer: the best passage (Search results at most), with its title', [ false, 1, 'Holidays', 'Employees get 21 days of paid holiday every year.' ],
 		[ $isError, count($found), $found[0]['title'] ?? null, $found[0]['text'] ?? null ]);
 
-	    //CLD: 2026-11-01T22:35:00+02:00: the MCP server's tools: list_knowledge_bases, query_knowledge_base (by name or id; a limit; errors)
+	    //the MCP server's tools: list_knowledge_bases, query_knowledge_base (by name or id; a limit; errors)
 	    $M = \util\McpServerTools::class;
 	    $mcp = function($tool, array $args) use ($M) {
 		try {
@@ -2094,17 +2090,17 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-31T22:00:00+02:00: suiteSystemAi (the AI steps on the System AI) is the MultiTenant plugin's (its suite systemai: hook check:suites)
+    //suiteSystemAi (the AI steps on the System AI) is the MultiTenant plugin's (its suite systemai: hook check:suites)
 
-    //CLD: 2026-10-23T15:00:00+03:00: new: util\Http against a local server (commands/tests/HttpTestServer.php): headers, JSON / form bodies, redirects (the method kept or changed,
+    //util\Http against a local server (commands/tests/HttpTestServer.php): headers, JSON / form bodies, redirects (the method kept or changed,
     //the limit), the largest answer, an answer to a stream, an upload from a stream, https only, the public-address guard; the HTTP Request and Download File steps refused
     //a private address unless http.steps.allow_private (app.env HTTP_STEPS_ALLOW_PRIVATE)
     private function suiteHttp() {
 	$H = \util\Http::class;
-	//CLD: 2026-10-30T15:00:00+02:00: the step picker's presentation (WfNode audience / category): every step in a known group; HTTP Request advanced, its basic variants not
+	//the step picker's presentation (WfNode audience / category): every step in a known group; HTTP Request advanced, its basic variants not
 	$defs = \models\wf\WfNode::getAll();
 	$this->check('steps: every step in a group of the picker', [], array_keys(array_filter($defs, fn($d) => !isset(\models\wf\WfNode::CATEGORIES[$d['category']]))));
-	//CLD: 2026-11-04T08:10:00+02:00: the definitions hold no forms (they cost ~1.8 s on each opening of the designer); what the canvas needs from the forms comes with the designer's copy
+	//the definitions hold no forms (they cost ~1.8 s on each opening of the designer); what the canvas needs from the forms comes with the designer's copy
 	$hints = \models\wf\WfNode::withCanvasHints($defs);
 	$this->check('steps: no forms in the definitions; the canvas hints (the variable a step sets, the default of the setting its outputs follow)', [ [], 'variable', 'response', true ],
 	    [ array_keys(array_filter($defs, fn($d) => isset($d['configSchema']))), $hints['app::http']['writeVariable']['key'] ?? null, $hints['app::http']['writeVariable']['default'] ?? null, is_array($hints['core::switch']['portDefault'] ?? null) ]);
@@ -2176,7 +2172,7 @@ class CheckCommand extends \sys\BaseController {
 	    //the HTTP steps: a private address only when allowed
 	    $n = [ self::class, 'node' ];
 	    $e = [ self::class, 'edge' ];
-	    //CLD: 2026-10-28T08:30:00+02:00: + $cfg (more settings of the step)
+	    //$cfg: more settings of the step
 	    $step = function($type, $url, $variable, $cfg = []) use ($n, $e, $om, &$files) {
 		$exe = $this->runFlow("http {$type}", [ $n('m', 'trigger::manual'), $n('h', "app::{$type}", $cfg + [ 'method' => 'GET', 'url' => $url, 'variable' => $variable, 'onError' => 'output', 'timeout' => 10 ]),
 		    $n('ok', 'app::set', [ 'variable' => 'route', 'value' => 'success' ]), $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]),
@@ -2195,7 +2191,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ $route, $v ] = $step('http', "{$base}/redirect", 'response');
 	    $this->check('HTTP Request: allowed: redirects followed, the headers (a list when repeated), the JSON body', [ 'success', 200, [ 'one', 'two' ], 'GET', true ],
 		[ $route, $v['status'] ?? null, $v['headers']['x-check'] ?? null, $v['body']['method'] ?? null, is_int($v['time_ms'] ?? null) ]);
-	    //CLD: 2026-10-28T08:30:00+02:00: a repeated query parameter sent once per row, after the URL's own
+	    //a repeated query parameter sent once per row, after the URL's own
 	    [ $route, $v ] = $step('http', "{$base}/echo?a=1", 'response', [ 'query' => [ [ 'name' => 'columns', 'value' => 'state' ], [ 'name' => 'columns', 'value' => 'plugin output' ],
 		[ 'name' => 'q', 'value' => '{"op":"!="}' ] ] ]);
 	    $this->check('HTTP Request: a repeated query parameter (each row sent, encoded)', [ 'success', 'a=1&columns=state&columns=plugin%20output&q=%7B%22op%22%3A%22%21%3D%22%7D' ],
@@ -2204,7 +2200,7 @@ class CheckCommand extends \sys\BaseController {
 		\models\node\NodeAppHttp::withQuery('https://x.io/a', [ [ 'key', 'mine' ], [ 'b', '1' ], [ 'key', 'two' ], [ 'b', '2' ] ], [ 'key' => 'k' ]));
 	    [ $route, $v ] = $step('download', "{$base}/file", 'file');
 	    $this->check('Download File: allowed: the name from Content-Disposition, the size', [ 'success', 'report.csv', 8 ], [ $route, $v['filename'] ?? null, $v['size'] ?? null ]);
-	    //CLD: 2026-10-30T15:00:00+02:00: Read a web page: the title, the readable text (no head / script), or the HTML as it is; an error status on the error output
+	    //Read a web page: the title, the readable text (no head / script), or the HTML as it is; an error status on the error output
 	    [ $route, $v ] = $step('webpage', "{$base}/page", 'page', [ 'keep' => 'text' ]);
 	    $this->check('Read a web page: the title and the text of the page', [ 'success', 200, 'Check & page', "Hello\n\nFirst line", 'text/html; charset=utf-8' ],
 		[ $route, $v['status'] ?? null, $v['title'] ?? null, $v['content'] ?? null, $v['contentType'] ?? null ]);
@@ -2222,9 +2218,8 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-23T10:00:00+03:00: new: the fake AI server (commands/tests/AiTestServer.php, PHP's built-in server on a free port, API key check-key) =>
+    //the fake AI server (commands/tests/AiTestServer.php, PHP's built-in server on a free port, API key check-key), started by startServer() (shared with the http suite) =>
     //{ port, log (the requests' file), requests: fn($path) => the bodies sent to $path, proc, dir }; null when it did not start (a failure named $what)
-    //CLD: 2026-10-23T15:00:00+03:00: the server started by startServer() (shared with the http suite)
     private function startAiServer($what) {
 	$dir = sys_get_temp_dir() . '/rail22-check-ai-' . uniqid();
 	@mkdir($dir, 0700, true);
@@ -2245,7 +2240,7 @@ class CheckCommand extends \sys\BaseController {
 	return [ 'port' => $port, 'log' => $log, 'requests' => $requests, 'proc' => $proc, 'dir' => $dir ];
     }
 
-    //CLD: 2026-10-23T15:00:00+03:00: new: a test server of commands/tests ($script, PHP's built-in server on a free port of 127.0.0.1, its errors in $dir/server.err,
+    //a test server of commands/tests ($script, PHP's built-in server on a free port of 127.0.0.1, its errors in $dir/server.err,
     //$env added to the environment) => [ port, proc ]; null when it did not start (a failure named $what)
     private function startServer($what, $script, $dir, array $env = []) {
 	$port = 0;
@@ -2285,9 +2280,7 @@ class CheckCommand extends \sys\BaseController {
     }
 
 
-    //slow: the step limits (steps inside loops count per pass, not per run)
-    //CLD: 2026-10-16T12:02:51+03:00: emails of blocks: cleaning, conversion (escaping, links, Outlook, text), the MIME message read back, the Send Email step (queues the job)
-    //CLD: 2026-10-20T16:00:00+03:00: the FTP / SFTP step: listings (MLSD, Unix, Windows), name patterns, times, saved names, decryption (gpg, openssl enc, CMS: made here
+    //the FTP / SFTP step: listings (MLSD, Unix, Windows), name patterns, times, saved names, decryption (gpg, openssl enc, CMS: made here
     //with the system's tools), settings refused, the variable; with CHECK_FTP_SERVERS=<a JSON file> also runs against real servers: [ { protocol, host, port, username,
     //password | privateKeyFile + passphrase, folder (on the server), local (the same folder on this machine: the files are made there) } ]
     private function suiteFtp() {
@@ -2398,7 +2391,7 @@ class CheckCommand extends \sys\BaseController {
 		'privateKey' => "-----BEGIN PGP PUBLIC KEY BLOCK-----\nx\n-----END PGP PUBLIC KEY BLOCK-----" ]);
 	    $this->check('FTP: a public key refused as a decryption key', [ false, true ], [ $badKey->validates(), str_contains(json_encode($badKey->errors()), 'public key') ]);
 
-	    //CLD: 2026-10-20T18:00:00+03:00: the Upload step: names, endings, encryption (decrypted again with the keys above), the Encryption key credentials
+	    //the Upload step: names, endings, encryption (decrypted again with the keys above), the Encryption key credentials
 	    $U = \models\node\NodeAppFtpUpload::class;
 	    $E = \util\FileEncrypt::class;
 	    $noon = mktime(12, 0, 0, 10, 20, 2026);
@@ -2433,7 +2426,7 @@ class CheckCommand extends \sys\BaseController {
 	    $this->check('FTP upload: the Encryption key test, a private key refused as a public one', [ true, true, false ],
 		[ str_contains($pgpPub->test(), 'check@example.com'), str_contains($cmsEnc->test(), 'check'), $privAsPub->validates() ]);
 
-	    //CLD: 2026-10-20T19:00:00+03:00: signing: each kind checked by the tool that verifies it (gpg --verify, openssl cms -verify, dgst / pkeyutl -verify)
+	    //signing: each kind checked by the tool that verifies it (gpg --verify, openssl cms -verify, dgst / pkeyutl -verify)
 	    $made = $sh('openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -aes256 -pass pass:rp -out ' . escapeshellarg("{$work}/rsa.pem"))
 		&& $sh('openssl pkey -in ' . escapeshellarg("{$work}/rsa.pem") . ' -passin pass:rp -pubout -out ' . escapeshellarg("{$work}/rsapub.pem"))
 		&& $sh('openssl genpkey -algorithm ED25519 -out ' . escapeshellarg("{$work}/ed.pem"))
@@ -2496,7 +2489,7 @@ class CheckCommand extends \sys\BaseController {
 		[ $signError($wrongSign, 'detached'), $signError($rawRsa, 'attached') ]);
 	    $this->check('FTP sign: the Signing key test (PGP, CMS, RSA, Ed25519)', [ true, true, 'RSA key of 2048 bits', 'Ed25519 key' ],
 		[ str_contains($pgpSign->test(), 'signs as Check'), str_contains($cmsSign->test(), 'signs as check'), $rawRsa->test(), preg_replace('/ of \d+ bits$/', '', $rawEd->test()) ]);
-	    //CLD: 2026-10-20T20:00:00+03:00: signature checks (util\FileVerify) on the files signed above: valid, changed, by a key not trusted, not signed
+	    //signature checks (util\FileVerify) on the files signed above: valid, changed, by a key not trusted, not signed
 	    $other = "{$work}/otherhome";
 	    mkdir($other, 0700);
 	    $go = 'gpg --homedir ' . escapeshellarg($other) . ' --batch --quiet --pinentry-mode loopback --passphrase ""';
@@ -2732,7 +2725,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ $exe, $v ] = $run("{$label} not decrypted", [ 'folder' => $remote . '/sub', 'pattern' => '*.gpg', 'decrypt' => 'ext', 'decryptCredential' => (string)$keys['pgp']->_id ]);
 	    $this->check("{$label}: a file that cannot be decrypted -> an error, nothing saved", [ 0, true, true ],
 		[ $v['count'] ?? null, str_contains((string)($v['error'] ?? ''), 'bad.csv.gpg: gpg: '), self::logLine($exe, 'ftp download ') !== null ]);
-	    //CLD: 2026-10-20T18:00:00+03:00: the Upload step: compressed + encrypted into a folder made for it, the name there already (skip, a number, an error, replace),
+	    //the Upload step: compressed + encrypted into a folder made for it, the name there already (skip, a number, an error, replace),
 	    //a text, without .part; then downloaded back by the FTP / SFTP step (decrypted, decompressed)
 	    $fid = (string)\models\File::createFromString('orders.csv', $plain, [ 'metadata' => [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'source' => 'check' ] ]);
 	    $up = function($name, array $config) use ($n, $e, $c, $remote) {
@@ -2788,7 +2781,7 @@ class CheckCommand extends \sys\BaseController {
 		    [ $se['files'][0]['remoteName'] ?? null, array_key_exists('signature', $se['files'][0] ?? []) ? $se['files'][0]['signature'] : 'unset', $sv['files'][0]['filename'] ?? null,
 			isset($sv['files'][0]['id']) ? \V::app()->om->findById('File', $sv['files'][0]['id'])?->getContents() : null ]);
 
-		//CLD: 2026-10-20T20:00:00+03:00: signatures checked by the FTP / SFTP step: a separate one (the other files wait for theirs, the .sig is not a file), a changed
+		//signatures checked by the FTP / SFTP step: a separate one (the other files wait for theirs, the .sig is not a file), a changed
 		//file refused, moved with its signature; signed + encrypted by a trusted key, by a key not trusted
 		$newDir = $remote . '/out/new';
 		$vdet = [ 'folder' => $newDir, 'verifySignature' => 'detached', 'verifyCredential' => (string)$keys['verEd']->_id ];
@@ -2865,7 +2858,7 @@ class CheckCommand extends \sys\BaseController {
 	    $e = [ self::class, 'edge' ];
 	    $cfg = [ 'to' => '{{ who }}', 'cc' => '', 'bcc' => '', 'subject' => 'Hi {{ name }}', 'fromName' => 'Rail22', 'replyTo' => '', 'email' => $email ];
 	    $before = \V::app()->om->count('Job', [ 'job_spec' => '\util\EmailSend::deliver' ]);
-	    //CLD: 2026-10-17T15:10:00+03:00: the Send email step is app::send-email
+	    //the Send email step is app::send-email
 	    $exe = $this->runFlow('email sent', [ $n('m', 'trigger::manual'), $n('s', 'app::send-email', $cfg), $e('e1', 'm', 's') ], [ 'who' => 'x@example.com, y@example.com', 'name' => 'Ana', 'order' => 'A-1', 'bad' => '', 'good' => 'https://q.ro' ]);
 	    $job = \V::app()->om->findOne('Job', [ 'job_spec' => '\util\EmailSend::deliver' ], [ 'sort' => [ '_id' => -1 ] ]);
 	    $data = $job ? json_decode(\util\JSON::encode($job->job_data), true) : [];
@@ -2882,17 +2875,16 @@ class CheckCommand extends \sys\BaseController {
 	    foreach([ $fid, $webp ] as $id)
 		\V::app()->om->findById('File', $id)?->delete();
 	}
-	//CLD: 2026-10-31T22:00:00+02:00: the sign-up's checks are the MultiTenant plugin's (its suite registration: hook check:suites)
-	//CLD: 2026-10-16T13:22:53+03:00: forgot username or password: a reset link's token finds it (only its hash stored), a new link replaces the old one, an expired one is refused, the email holds the
-	//username and the link
-	//CLD: 2026-10-24T08:20:00+03:00: the link is the user's (User::startPasswordReset / findByResetToken / clearPasswordReset)
+	//the sign-up's checks are the MultiTenant plugin's (its suite registration: hook check:suites)
+	//forgot username or password: the user's reset link (User::startPasswordReset / findByResetToken / clearPasswordReset): its token finds it (only its hash stored),
+	//a new link replaces the old one, an expired one is refused, the email holds the username and the link
 	$user = \V::app()->om->findOne('User', [ 'state' => 'active' ]);
 	$oldToken = $user->startPasswordReset();
 	$token = $user->startPasswordReset('203.0.113.9');
 	$found = \models\User::findByResetToken($token);
 	$raw = \V::app()->mongo->selectCollection(\models\User::_database(), \models\User::_collection())->findOne([ '_id' => $user->_id ]);
 
-	//CLD: 2026-10-18T23:35:30+03:00: the link as SiteController builds it (V::createAbsoluteUrl)
+	//the link as SiteController builds it (V::createAbsoluteUrl)
 	$job = \util\EmailSend::system('password_reset', 'zz-check@example.com', [ 'username' => 'zz-user', 'email' => 'zz-check@example.com', 'account' => 'Co',
 	    'link' => \V::app()->createAbsoluteUrl('/site/reset', [ 't' => $token ]) ]);
 	$jobDoc = \V::app()->om->findById('Job', (string)$job);
@@ -2909,7 +2901,7 @@ class CheckCommand extends \sys\BaseController {
 	$jobDoc?->delete();
     }
 
-    //CLD: 2026-10-17T22:00:00+03:00: project invitations: a link's token finds it (only its hash stored), a new one replaces the address's older one, pending lists it, the email has the link
+    //project invitations: a link's token finds it (only its hash stored), a new one replaces the address's older one, pending lists it, the email has the link
     //and the project's name escaped, accepting adds the user with the invitation's role (to each project invited to) and uses the invitations up, the form's password rules
     private function suiteInvite() {
 	$om = \V::app()->om;
@@ -2931,7 +2923,7 @@ class CheckCommand extends \sys\BaseController {
 		count(iterator_to_array(\models\user\ProjectInvite::pending($projects['a']), false)), $invite->email ]);
 
 	    $job = \util\EmailSend::system('project_invite', 'zz-invite@example.com', [ 'inviter' => 'A B', 'project' => (string)$projects['a']->name, 'account' => 'Co',
-		//CLD: 2026-10-18T23:35:30+03:00: the link as ProjectController builds it (V::createAbsoluteUrl)
+		//the link as ProjectController builds it (V::createAbsoluteUrl)
 		'link' => \V::app()->createAbsoluteUrl('/site/invite', [ 't' => $token ]), 'days' => 7 ]);
 	    $jobDoc = $om->findById('Job', (string)$job);
 	    $html = (string)($jobDoc->job_data['html'] ?? '');
@@ -2960,7 +2952,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-18T23:35:30+03:00: V::createAbsoluteUrl: the base is app.base_url (app.env BASE_URL), else the request host; always https:// (an http:// or bare base too); the links built with it
+    //V::createAbsoluteUrl: the base is app.base_url (app.env BASE_URL), else the request host; always https:// (an http:// or bare base too); the links built with it
     private function suiteUrls() {
 	$app = \V::app();
 	$keep = [ $app->config('app.base_url'), $app->request->httpHost ];
@@ -2992,7 +2984,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-18T12:00:00+03:00: sys\fields\Field_select: a value not among the choices is not kept (single) / refused (multiple; choices as text, as value => label, as a plain list)
+    //sys\fields\Field_select: a value not among the choices is not kept (single) / refused (multiple; choices as text, as value => label, as a plain list)
     private function suiteSelect() {
 	$model = \sys\NestedModel::create([], [ 'objectName' => 'NestedModel', 'nestedSchema' => [
 	    [ 'key' => 'text', 'type' => 'select', 'label' => 'Text', 'choices' => "a\nb\n" ],
@@ -3014,12 +3006,11 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('select: empty is null', [ null, null ], [ $cast('text', ''), $cast('text', null) ]);
 
 	$this->check('select multiple: choices kept, blanks and repeats dropped', [ 'a', 'c' ], $cast('many', [ 'a', '', 'c', 'a' ]));
-	//CLD: 2026-10-18T15:00:00+03:00: values not among the choices are dropped
+	//values not among the choices are dropped
 	$this->check('select multiple: values not among the choices are dropped', [ 'b' ], $cast('many', [ 'b', 'zz', 'B' ]));
 	$this->check('select multiple: from JSON text', [ 'a', 'b' ], $cast('many', '["a","zz","b"]'));
 
-	//CLD: 2026-10-18T13:10:00+03:00: a value not among the choices is refused by validation (multiple: kept by the cast, so a filter is not widened)
-	//CLD: 2026-10-18T15:00:00+03:00: the cast drops them: validation refuses values not cast (e.g. given to create())
+	//the cast drops values not among the choices (multiple: so a filter is not widened); validation refuses values not cast (e.g. given to create())
 	$errorsFor = function($values) use ($model) {
 	    $model->assign([ 'text' => 'a', 'map' => 'x', 'list' => 'p', 'many' => [ 'a' ] ]);
 	    $model->assign($values);
@@ -3033,20 +3024,19 @@ class CheckCommand extends \sys\BaseController {
 	$dynamic = \sys\NestedModel::create([], [ 'objectName' => 'NestedModel', 'nestedSchema' => [ [ 'key' => 'who', 'type' => 'select', 'label' => 'Who', 'multiple' => true, 'choices' => fn() => [] ] ] ]);
 	$dynamic->assign([ 'who' => [ 'u1' ] ]);
 	$dynamic->validates();
-	//CLD: 2026-10-18T14:40:00+03:00: `choicesOn`: the choices checked on these events only (models\datatable\FieldForm's `object`: on create)
+	//`choicesOn`: the choices checked on these events only (models\datatable\FieldForm's `object`: on create)
 	$locked = fn($exists) => \sys\NestedModel::create([ 'k' => 'gone' ], [ 'objectName' => 'NestedModel', 'exists' => $exists,
 	    'nestedSchema' => [ [ 'key' => 'k', 'type' => 'select', 'label' => 'K', 'choices' => [ 'a' => 'A' ], 'choicesOn' => 'create' ] ] ]);
 	$this->check('select: choicesOn create: refused on create, not on update', [ false, true ], [ $locked(false)->validates(), $locked(true)->validates() ]);
 	$this->check('select: no choices (e.g. depending on the user): not checked', [ [ 'u1' ], false ], [ $dynamic->who, isset($dynamic->errors()['who']) ]);
-	//CLD: 2026-10-18T11:20:00+03:00: a single select keeps its value too when there are no choices (as the multiple select)
+	//a single select keeps its value too when there are no choices (as the multiple select)
 	$single = \sys\NestedModel::create([], [ 'objectName' => 'NestedModel', 'nestedSchema' => [ [ 'key' => 'who', 'type' => 'select', 'label' => 'Who', 'choices' => fn() => [] ] ] ]);
 	$single->assign([ 'who' => 'u1' ]);
 	$this->check('select single: no choices: the value kept, not checked', [ 'u1', true ], [ $single->who, $single->validates() ]);
     }
 
-    //CLD: 2026-10-18T09:42:21+03:00: sys\fields\Field_nested: one object and a list of them, cast by the nested fields (unknown keys dropped, defaults set), the
-    //nested objects validated by the model's validates() (errors keyed by path), nested in nested, values that are not objects refused
-    //CLD: 2026-10-18T09:58:40+03:00: + `object`: the nested fields are that object's schema
+    //sys\fields\Field_nested: one object and a list of them, cast by the nested fields (unknown keys dropped, defaults set), the
+    //nested objects validated by the model's validates() (errors keyed by path), nested in nested, values that are not objects refused; `object`: the nested fields are that object's schema
     private function suiteNested() {
 	$address = [
 	    [ 'key' => 'city', 'type' => 'text', 'label' => 'City', 'required' => true ],
@@ -3091,7 +3081,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ [ 'main' => [ 'This value is not an object' ] ], [ 'others.0' => [ 'This value is not an object' ] ], [ 'others' => [ 'This value is not a list of objects' ] ] ],
 	    [ $errorsOf([ 'main' => '{bad' ])[1], $errorsOf([ 'others' => [ 'x' ] ])[1], $errorsOf([ 'others' => [ 'a' => [ 'city' => 'c' ] ] ])[1] ]);
 
-	//CLD: 2026-10-18T10:20:00+03:00: the labels of error paths (BaseModel::errorLabel: WfNode::validateConfig's messages); the app.smartform fields (SmartForm::modelFields)
+	//the labels of error paths (BaseModel::errorLabel: WfNode::validateConfig's messages); the app.smartform fields (SmartForm::modelFields)
 	$m = $model();
 	$this->check('nested: error labels (a list item numbered from 1, nested in nested, a whole item, a plain field)',
 	    [ 'Other addresses 2: City', 'Deep: Where: City', 'Other addresses 1', 'Name', 'nope' ],
@@ -3127,7 +3117,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('nested object: an unknown object is refused', 'Field `x`: unknown object `NoSuchObject`', $unknown());
     }
 
-    //CLD: 2026-10-18T10:45:00+03:00: the steps whose lists are nested fields: HTTP (query / headers / form: header names, names trimmed), Data Table (filter / data: validated
+    //the steps whose lists are nested fields: HTTP (query / headers / form: header names, names trimmed), Data Table (filter / data: validated
     //when the operation uses them, columns trimmed); errors named "<itemLabel> <n>: <field>: <message>"
     private function nestedSteps() {
 	$n = [ self::class, 'node' ];
@@ -3159,7 +3149,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ $wf->nodes['t']['config']['filter'][0]['column'] ?? null, array_map($sorted, (array)($wf->nodes['t']['config']['data'] ?? [])) ]);
     }
 
-    //CLD: 2026-10-18T14:00:00+03:00: util\JSON::json_decode: strict JSON, the tolerated typos (keys without quotes, single quotes, trailing commas, comments, True / None), the refusals
+    //util\JSON::json_decode: strict JSON, the tolerated typos (keys without quotes, single quotes, trailing commas, comments, True / None), the refusals
     private function suiteJson() {
 	$J = \util\JSON::class;
 	$this->check('json: strict JSON', [ 'a' => 1, 'b' => [ true, null, 'x' ] ], $J::json_decode('{"a": 1, "b": [true, null, "x"]}'));
@@ -3172,7 +3162,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('json: quotes and commas inside strings are kept', [ 'a' => "x, ]", 'b' => "it's // not a comment", 'c' => 'ă' ],
 	    $J::json_decode("{a: 'x, ]', b: \"it's // not a comment\", c: 'ă'}"));
 	$this->check('json: a list', [ 1, 'two' ], $J::json_decode("[1, 'two',]"));
-	//CLD: 2026-10-18T14:20:00+03:00: the parser of its own: escapes, numbers, nesting, empty containers, the same results as PHP's json_decode on strict JSON
+	//the parser of its own: escapes, numbers, nesting, empty containers, the same results as PHP's json_decode on strict JSON
 	$this->check('json: escapes (\n \t \" \\\\ \/ é, a surrogate pair)', [ "a\n\tb\"\\/é😀" ], $J::json_decode('["a\n\tb\"\\\\\/é😀"]'));
 	$this->check('json: 128 levels deep', 128, (function($v) { $d = 0; while (is_array($v)) { $d++; $v = $v[0] ?? null; } return $d; })($J::json_decode(str_repeat('[', 128) . str_repeat(']', 128))));
 	$this->check('json: numbers (int, negative, float, exponent, big)', [ 0, -12, 1.5, 1000.0, -0.025, 1.0E+30 ], $J::json_decode('[0, -12, 1.5, 1e3, -2.5E-2, 1000000000000000000000000000000]'));
@@ -3203,7 +3193,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ $refused('["a\x41"]'), $refused('["\ud83d"]'), $refused(str_repeat('[', 129) . str_repeat(']', 129)), $refused("[\"\xff\"]") ]);
     }
 
-    //CLD: 2026-10-23T01:10:00+03:00: Markdown (util\Markdown): the blocks and marks as HTML, nothing of the text as HTML (escaped), links only http(s) / mailto, images as links,
+    //Markdown (util\Markdown): the blocks and marks as HTML, nothing of the text as HTML (escaped), links only http(s) / mailto, images as links,
     //the plain text; markdown2html() in expressions; in an email {{ markdown2html(x) }} alone is HTML, anything else escaped; the AI steps' `html`
     private function suiteMarkdown() {
 	$M = \util\Markdown::class;
@@ -3231,11 +3221,11 @@ class CheckCommand extends \sys\BaseController {
 	    \util\Expression::render('{{ markdown2html(t) }}', [ 't' => '*x*' ]), \util\Expression::render('{{ markdown2html }}', [ 'markdown2html' => 'mine' ]) ]);
 
 	$fill = fn($html, $vars = []) => \util\EmailHtml::fill($html, $vars + [ 'ai' => [ 'text' => '**b** <i>', 'html' => '<p><b>x</b></p>' ] ]);
-	//CLD: 2026-10-23T02:30:00+03:00: {{ ai.html }} is HTML too, cleaned
+	//{{ ai.html }} is HTML too, cleaned
 	$this->check('email: {{ markdown2html(x) }} and {{ x.html }} alone are HTML; other expressions and markdown2html(..) + text are escaped', [ '<p><strong>b</strong> &lt;i&gt;</p>',
 	    '**b** &lt;i&gt;', '<p><b>x</b></p>', '&lt;p&gt;&lt;strong&gt;b&lt;/strong&gt; &amp;lt;i&amp;gt;&lt;/p&gt;!', '&lt;b&gt;&lt;p&gt;&lt;b&gt;x&lt;/b&gt;&lt;/p&gt;' ],
 	    [ $fill('{{ markdown2html(ai.text) }}'), $fill('{{ ai.text }}'), $fill('{{ ai.html }}'), $fill('{{ markdown2html(ai.text) + "!" }}'), $fill('{{ "<b>" + ai.html }}') ]);
-	//CLD: 2026-11-05T15:00:00+02:00: {{ html(x) }} alone is HTML, cleaned; html() elsewhere gives the cleaned text (escaped in an email); a variable named html wins
+	//{{ html(x) }} alone is HTML, cleaned; html() elsewhere gives the cleaned text (escaped in an email); a variable named html wins
 	$this->check('email: {{ html(x) }} alone is HTML, cleaned; html(..) + text escaped; html() known in expressions; a variable of that name wins', [
 	    '<h2>R</h2><table><tr><td>ok</td></tr></table>', '&lt;h2&gt;R&lt;/h2&gt;!', [], '<b>x</b>', '&lt;h2 style=&quot;c&quot;&gt;R&lt;/h2&gt;' ], [
 	    $fill('{{ html(r) }}', [ 'r' => '<h2 style="c">R</h2><table><tr><td onclick="x">ok</td></tr></table><script>alert(1)</script>' ]), $fill('{{ html(r) + "!" }}', [ 'r' => '<h2 style="c">R</h2>' ]),
@@ -3253,9 +3243,7 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('AI steps: `html` among the variable\'s fields', true, isset(\models\node\NodeAppClaude::outputVariables([])['ai']['fields']['html']));
     }
 
-    //CLD: 2026-10-22T23:00:00+03:00: a suspended account (state `disabled`, set by a super-admin: the MultiTenant plugin): its users cannot sign in (unless a super-admin views it), it
-    //starts no execution, the daemon leaves its jobs queued; reactivated, all of it works again. In an account made for it (removed after)
-    //CLD: 2026-10-30T19:00:00+02:00: new: Run a workflow / Called by a workflow: the inputs (cast, defaults, required), the outputs, the checks of the step, a workflow that pauses
+    //Run a workflow / Called by a workflow: the inputs (cast, defaults, required), the outputs, the checks of the step, a workflow that pauses
     //(the caller pauses, is queued when it ends, reads its outputs), the time limit (cancelled), no loops, cancelling the caller cancels the workflow it waits for
     private function suiteCall() {
 	$om = \V::app()->om;
@@ -3371,7 +3359,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ $exe->state, str_contains((string)($exe->getVariable('result')['error'] ?? ''), 'already running in this chain of workflows') ]);
     }
 
-    //CLD: 2026-11-01T21:50:00+02:00: Rail22's own steps and workflows as an AI step's tools (util\AgentTools): the families, the tools' names, read / write, the input schemas, the arguments
+    //Rail22's own steps and workflows as an AI step's tools (util\AgentTools): the families, the tools' names, read / write, the input schemas, the arguments
     //checked; the AI step's settings; a Lemonade AI step against the fake AI server (a scripted chat) using a GravityZone tool that reads, a FortiGate tool that changes (their fake
     //servers) and a workflow tool with typed inputs and outputs; wrong arguments, a tool not chosen, a workflow's bad input: tool errors, the step goes on
     private function suiteAgenttools() {
@@ -3473,7 +3461,7 @@ class CheckCommand extends \sys\BaseController {
 	    ];
 	    $config = [ 'credential' => (string)$lem->_id, 'model' => 'Qwen3-8B-GGUF', 'prompt' => "Investigate the incident\nSCRIPT: " . json_encode($script), 'tools' => [], 'mcp' => [],
 		'gravityzoneCredential' => (string)$gzCred->_id, 'gravityzoneTools' => [ 'gz_endpoints_list' ], 'fortigateCredential' => (string)$fgtCred->_id,
-		//CLD: 2026-11-01T23:30:00+02:00: the write tool without approval (asked by default: suiteAgentapproval)
+		//the write tool without approval (asked by default: suiteAgentapproval)
 		'fortigateTools' => [ 'fgt_addresses_block' ], 'fortigateApprovalMode' => 'none', 'workflows' => [ (string)$child->_id ], 'maxRounds' => 5, 'onError' => 'output', 'timeout' => 20 ];
 	    $flow = fn($cfg) => [ $n('m', 'trigger::manual'), $n('s', 'app::lemonade', $cfg), $n('ok', 'app::set', [ 'variable' => 'route', 'value' => 'success' ]),
 		$n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'ok', 0), $e('e3', 's', 'err', 1) ];
@@ -3585,7 +3573,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T23:30:00+02:00: an AI step's tool calls waiting for a person's approval (models\node\NodeAppAi::askApproval / decided, util\AgentTools): against the fake AI server (a scripted
+    //an AI step's tool calls waiting for a person's approval (models\node\NodeAppAi::askApproval / decided, util\AgentTools): against the fake AI server (a scripted
     //chat, in each provider's API) and the fake FortiGate: approved (every provider resumes its saved conversation, also after a "restart": a fresh execution from the
     //database, the caches reset), rejected, not decided in time, several calls in one task, killed while waiting; the System AI's credits charged before the wait and reserved
     //again after; the decisions in the execution log
@@ -3806,7 +3794,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-02T10:00:00+02:00: new: the guardrails of the AI steps' agents (util\AgentGuard, models\agent\AgentPolicy, util\PersonalData, AuditLog::agentCall), with the fake AI server. On an account of its
+    //the guardrails of the AI steps' agents (util\AgentGuard, models\agent\AgentPolicy, util\PersonalData, AuditLog::agentCall), with the fake AI server. On an account of its
     //own (its policy would apply to the real account's runs, its audit entries are sealed): removed at the end, with what it wrote
     private function suiteAgentguard() {
 	$om = \V::app()->om;
@@ -4061,7 +4049,7 @@ class CheckCommand extends \sys\BaseController {
 	    $exe = $start('lemonade', [ [ [ 'chk_click', [] ] ] ], [ 'servers' => [ 'chk' ], 'fortigateCredential' => '', 'toolsApprovalMode' => 'none' ]);
 	    $policy([]);
 	    $this->check('agent guard: policy: tools of a tool server: marked read-only: reads; not marked: writes, none / those chosen apply', [ [ [ 'look' ], 'error' ], [ 'click' ] ], [ $none, $mcp->calls ]);
-	    //CLD: 2026-11-02T11:00:00+02:00: by default the project's and MCP tools that change something ask; read-only ones run; None: as before
+	    //by default the project's and MCP tools that change something ask; read-only ones run; None: as before
 	    $mcp->calls = [];
 	    $exe = $start('lemonade', [ [ [ 'chk_look', [] ], [ 'chk_click', [ 'reason' => 'needed' ] ] ] ], [ 'servers' => [ 'chk' ], 'fortigateCredential' => '' ]);
 	    $task = $taskOf($exe);
@@ -4257,7 +4245,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-02T14:00:00+02:00: new: the trace of an AI step's visit (util\AgentTracer, models\agent\AgentTrace): a run of several rounds with read and write tools and an approval against the fake AI server, a
+    //the trace of an AI step's visit (util\AgentTracer, models\agent\AgentTrace): a run of several rounds with read and write tools and an approval against the fake AI server, a
     //rejection, the cuts, secrets, the cost and the price table, Run again, retention. On its own account, as agentguard: a run with prices counts in the account's monthly usage
     private function suiteAgenttrace() {
 	$om = \V::app()->om;
@@ -4504,7 +4492,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-02T18:00:00+02:00: new: talking to an agent: a three-turn conversation against the fake AI server with its memory carried over, every provider's history, summarizing, Remember / Recall on a table and a knowledge
+    //talking to an agent: a three-turn conversation against the fake AI server with its memory carried over, every provider's history, summarizing, Remember / Recall on a table and a knowledge
     //base, a reply with buttons, who may talk, approvals and limits inside a conversation, the retention, email threading, Teams. On its own account (the agents' audit entries are sealed); nothing is queued: runs here
     private function suiteAgentchat() {
 	$om = \V::app()->om;
@@ -4587,7 +4575,7 @@ class CheckCommand extends \sys\BaseController {
 	    [ $wf, $link ] = $publish('agent', $agentNodes());
 	    [ , $live, $node ] = \models\node\NodeTriggerChat::live($link);
 	    $person = fn($u) => [ 'user' => (string)$u->_id, 'user_name' => (string)$u, 'user_email' => (string)$u->email, 'who' => 'u:' . (string)$u->_id ];
-	    //CLD: 2026-11-08T14:40:00+02:00: a new conversation as the chat pages and triggers make one: create, save(), its data
+	    //a new conversation as the chat pages and triggers make one: create, save(), its data
 	    $newConv = function(array $doc) use ($om) {
 		$conv = $om->create('AgentConversation', $doc);
 		$conv->save();
@@ -4918,7 +4906,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-02T15:46:06+02:00: new: testing AI steps (util\AgentEval, util\AgentEvalContext): a case saved from an execution, recorded tool results, real read tools, steps that do not run, each check type, the judge against the
+    //testing AI steps (util\AgentEval, util\AgentEvalContext): a case saved from an execution, recorded tool results, real read tools, steps that do not run, each check type, the judge against the
     //fake AI server, the difference between runs, the publish gate, the MCP tools. On its own account, as agenttrace: a run with prices counts in the account's monthly usage. AgentEval::$inline: nothing is queued
     private function suiteAgenteval() {
 	$om = \V::app()->om;
@@ -5323,7 +5311,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-28T10:00:00+02:00: new: util\Transfer: a project's table (with rows), credential and workflow exported (plain: no secrets; sealed: by the passphrase only) and
+    //util\Transfer: a project's table (with rows), credential and workflow exported (plain: no secrets; sealed: by the passphrase only) and
     //imported in another project (new ids in the steps, the secret, the rows, a taken webhook token replaced, its URL); again: matched by name, replaced, no duplicates; a copy
     private function suiteTransfer() {
 	$om = \V::app()->om;
@@ -5430,7 +5418,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-24T16:30:00+03:00: new: util\Format (numbers, plurals, sizes, dates in the account's formats or the app's, timeago against a fixed now, durations)
+    //util\Format (numbers, plurals, sizes, dates in the account's formats or the app's, timeago against a fixed now, durations)
     private function suiteFormat() {
 	$F = \util\Format::class;
 	$this->check('numbers: number / compact / percent / ordinal / plural; empty -> ""', [ '1,234,568', '1,234,567.89', '', '999', '1.2K', '3.4M', '1M', '45.7%', '50%',
@@ -5480,10 +5468,10 @@ class CheckCommand extends \sys\BaseController {
 	    [ $F::duration(850), $F::duration(12400), $F::duration(1000), $F::duration(133000), $F::duration(3900000), $F::duration((3 * 86400 + 4 * 3600) * 1000), $F::duration(-5), $F::duration(null) ]);
     }
 
-    //CLD: 2026-10-24T09:45:36+03:00: new: the accounts' tiers (util\Tiers), on an account made for the checks: its tier (the default, set, the account's own changes), the limits refused at the
+    //the accounts' tiers (util\Tiers), on an account made for the checks: its tier (the default, set, the account's own changes), the limits refused at the
     //limit (data tables, rows of a table: one and many, files: a file that does not fit is not kept), SAML / LDAP off without the feature, the System AI allowance, the usage
     private function suiteTiers() {
-	//CLD: 2026-10-31T11:53:38+02:00: the tiers are the MultiTenant plugin's (hook tiers:table): without it, none (no limits, every feature)
+	//the tiers are the MultiTenant plugin's (hook tiers:table): without it, none (no limits, every feature)
 	if (!\util\Tiers::enabled()) {
 	    $this->check('no MultiTenant plugin: no tiers, no limits, every feature', [ [], null, true ], [ \util\Tiers::names(), \util\Tiers::limit(\V::app()->config('rt.account'), 'datatables'), \util\Tiers::has(\V::app()->config('rt.account'), 'chk_a') ]);
 	    return;
@@ -5573,18 +5561,16 @@ class CheckCommand extends \sys\BaseController {
 	    $set('free');
 	    $this->check('SAML / LDAP: no plan feature; the LDAP step and its credential on free', [ false, false, true, true ],
 		[ isset($T::features()['saml']), isset($T::features()['ldap']), $T::allows($account, 'NodeAppLdap'), $T::allows($account, 'CredentialLdap') ]);
-	    //CLD: 2026-10-25T18:30:00+02:00: Database: on enterprise only (as LDAP); its credentials and step follow; the step does not run without it
-	    //CLD: 2026-10-25T20:00:00+02:00: core: its credentials and step on every tier
+	    //Database (core): its credentials and step on every tier
 	    $on = [];
 	    foreach([ 'free', 'team', 'enterprise' ] as $tier) {
 		$set($tier);
-		//CLD: 2026-10-31T23:30:00+02:00: the PostgreSQL step
+		//the PostgreSQL step
 		$on[] = [ $T::allows($account, 'CredentialPostgres'), $T::allows($account, 'NodeAppPostgres') ];
 	    }
 	    $this->check('database: its credentials and its step on every tier (core, no plan feature)', [ [ true, true ], [ true, true ], [ true, true ] ], $on);
 
-	    //CLD: 2026-10-24T10:28:12+03:00: Google / Microsoft: on team and enterprise, off on free; their credentials and steps follow; a step does not run without it
-	    //CLD: 2026-10-26T23:39:49+02:00: their credentials and steps on every tier
+	    //Google / Microsoft: their credentials and steps on every tier
 	    foreach([ 'google' => [ 'CredentialGoogleMail', 'NodeAppGoogleDrive' ], 'microsoft' => [ 'CredentialMicrosoftMail', 'NodeAppOneDrive' ] ] as $feature => [ $cred, $step ]) {
 		$on = [];
 		foreach([ 'free', 'team', 'enterprise' ] as $tier) {
@@ -5594,7 +5580,7 @@ class CheckCommand extends \sys\BaseController {
 		$this->check("{$feature}: its credentials and its steps on every tier (core, no plan feature)", [ [ true, true ], [ true, true ], [ true, true ] ], $on);
 	    }
 
-	    //CLD: 2026-10-31T22:00:00+02:00: the System AI's allowance (the account's plan, else the tier's) is checked by the MultiTenant plugin (suite systemai)
+	    //the System AI's allowance (the account's plan, else the tier's) is checked by the MultiTenant plugin (suite systemai)
 
 	    $u = $T::usage($account);
 	    $this->check('usage: tables, the largest table\'s rows, files; per project', [ 2, 3, 60, 2 ],
@@ -5611,9 +5597,9 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-24T00:20:00+03:00: new: a 2FA code is accepted once (User::useTfaCode: the same code again, an older window's code, a wrong one refused; the next window's accepted);
-    //the "forgot password" limits (LoginThrottle reset_email: 3, reset_ip: 10 in an hour, then locked)
-    //CLD: 2026-10-25T11:20:00+02:00: users made by an administrator: the welcome email's link (UserController::sendPasswordLink: 7 days, it sets the password through /site/reset, not for a
+    //a 2FA code is accepted once (User::useTfaCode: the same code again, an older window's code, a wrong one refused; the next window's accepted);
+    //the "forgot password" limits (LoginThrottle reset_email: 3, reset_ip: 10 in an hour, then locked);
+    //users made by an administrator: the welcome email's link (UserController::sendPasswordLink: 7 days, it sets the password through /site/reset, not for a
     //disabled user), and the edit's guard: the account keeps an active Owner (UserController::isActiveOwner / activeOwners)
     private function suiteUsers() {
 	$om = \V::app()->om;
@@ -5643,7 +5629,7 @@ class CheckCommand extends \sys\BaseController {
 		[ str_contains($html, 'Zz O'), !empty($m[1]) && (string)(\models\User::findByResetToken($m[1])->_id ?? '') === (string)$users['a']->_id, $days ]);
 
 	    $ctl = (new \ReflectionClass('\\controllers\\UserController'))->newInstanceWithoutConstructor();
-	    //CLD: 2026-11-07T10:40:00+02:00: the account _init would set (not run here)
+	    //the account _init would set (not run here)
 	    $ctl->account = $this->account;
 	    $call = fn($method, ...$args) => (new \ReflectionMethod($ctl, $method))->invoke($ctl, ...$args);
 	    $this->check('users: an active Owner is one; a disabled Owner or a Member is not', [ true, false, false ],
@@ -5724,7 +5710,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T11:55:18+02:00: toolservers: the core's tool servers (util\ToolServers): mcp.json (a check file in its place: the entries checked, written and removed,
+    //toolservers: the core's tool servers (util\ToolServers): mcp.json (a check file in its place: the entries checked, written and removed,
     //the other keys kept, an invalid file), the accounts enabled, the sessions' limits, the AI step's tools; the web browser's entry (scripts/playwright/mcp-server.json) and, when it
     //is in the installation's mcp.json and runs, a page opened, a private address refused
     private function suiteToolservers() {
@@ -5888,15 +5874,15 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-19T15:26:28+03:00: the designer's Assistant with a scripted model (util\WorkflowAssistant::$transport): the request it sends, set_workflow refused then fixed,
+    //the designer's Assistant with a scripted model (util\WorkflowAssistant::$transport): the request it sends, set_workflow refused then fixed,
     //the steps that keep their place, the conversation sent back, failures
     private function suiteAssistant() {
-	//CLD: 2026-10-20T10:00:00+03:00: the Assistant's settings (its server, key and model)
+	//the Assistant's settings (its server, key and model)
 	$cred = (object)[ 'provider' => 'anthropic', 'url' => 'https://api.invalid', 'api_key' => 'test', 'model' => 'claude-opus-5-5' ];
 	//a model answering $turns in order (each: [ stop_reason, content blocks ]); the requests are kept in $sent
 	$scripted = function(array $turns, &$sent) {
 	    $sent = [];
-	    //CLD: 2026-10-19T16:05:12+03:00: + the path
+	    //the transport, with the path
 	    return function($headers, $body, $path = '') use (&$turns, &$sent) {
 		$sent[] = [ $headers, json_decode(\util\JSON::encode($body), true), $path ];
 		[ $stop, $content ] = array_shift($turns) ?? [ 'end_turn', [ [ 'type' => 'text', 'text' => '(no more turns)' ] ] ];
@@ -5936,14 +5922,13 @@ class CheckCommand extends \sys\BaseController {
 	    [ array_column($body['messages'], 'role'), str_contains($body['messages'][2]['content'], '"id": "old"') ]);
 	$second = $sent[1][1]['messages'];
 	$result = end($second)['content'][0];
-	//CLD: 2026-10-19T17:02:48+03:00: wrong settings: applied, returned as to_fix
+	//wrong settings: applied, returned as to_fix
 	$this->check('wrong settings: applied, returned as to_fix with the reason', [ 't1', false, true ],
 	    [ $result['tool_use_id'], $result['is_error'], str_contains($result['content'], 'Write the variable between {{ and }}') && str_contains($result['content'], '"to_fix"') ]);
 	$this->check('fixed by the next call: nothing left to fix', [], $r['to_fix']);
 	$this->check('the assistant turn goes back as it came', 'Building.', $second[count($second) - 2]['content'][0]['text'] ?? null);
 
-	//CLD: 2026-10-19T15:48:10+03:00: the model and effort of the account settings; an unknown effort: the default
-	//CLD: 2026-10-19T20:40:00+03:00: the Assistant's settings given (models\assistant\AssistantSettings fields)
+	//the Assistant's settings given (models\assistant\AssistantSettings fields): their model and effort; an unknown effort: the default
 	$b = new \util\WorkflowAssistant($wf, $this->project, (object)[ 'model' => 'claude-sonnet-5-5', 'effort' => 'low' ]);
 	$c = new \util\WorkflowAssistant($wf, $this->project, (object)[ 'model' => 'claude-sonnet-5-5', 'effort' => 'extreme' ]);
 	$b->transport = $scripted([ [ 'end_turn', [ [ 'type' => 'text', 'text' => 'ok' ] ] ] ], $sentB);
@@ -5958,10 +5943,8 @@ class CheckCommand extends \sys\BaseController {
 	$r = $a->ask([], 'read my mail', $existing);
 	$this->check('an answer without set_workflow leaves the canvas', [ null, 'Which mailbox?' ], [ $r['nodes'], $r['reply'] ]);
 
-	//CLD: 2026-10-19T16:05:12+03:00: an OpenAI-compatible model (e.g. local): the model from the server when the account has none, tools as functions, arguments that are not
+	//an OpenAI-compatible model (e.g. local), the server in the settings: the model from the server when the settings have none, tools as functions, arguments that are not
 	//JSON refused, results as `tool` messages, <think> left out
-	//CLD: 2026-10-19T20:40:00+03:00: settings without a model
-	//CLD: 2026-10-20T10:00:00+03:00: the server in the settings
 	$o = new \util\WorkflowAssistant($wf, $this->project, (object)[ 'provider' => 'openai', 'url' => 'http://localhost:8000/api/v1', 'model' => '' ]);
 	$call = fn($id, $args) => [ 'id' => $id, 'type' => 'function', 'function' => [ 'name' => 'set_workflow', 'arguments' => $args ] ];
 	$oaSent = [];
@@ -5987,13 +5970,12 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('openai: the canvas built, the answer without <think>, the usage', [ 'Built it.', 3, 7 ],
 	    [ $r['reply'], count(array_filter($r['nodes'] ?? [], fn($n) => !empty($n['isNode']))), $r['usage']['input_tokens'] ]);
 
-	//CLD: 2026-10-19T16:24:37+03:00: the provider of the account settings (the designer offers its credentials only); missing or unknown: Anthropic
-	//CLD: 2026-10-22T14:00:00+03:00: gemini is a provider now
+	//the provider of the settings; missing or unknown: Anthropic
 	$this->check('account provider: openai, gemini; unknown and missing are anthropic', [ 'openai', 'gemini', 'anthropic', 'anthropic' ], [ \util\WorkflowAssistant::providerOf((object)[ 'provider' => 'openai' ]),
 	    \util\WorkflowAssistant::providerOf((object)[ 'provider' => 'gemini' ]), \util\WorkflowAssistant::providerOf((object)[ 'provider' => 'nope' ]),
 	    \util\WorkflowAssistant::providerOf(null) ]);
 
-	//CLD: 2026-10-20T10:00:00+03:00: the server of the settings (credentialOf): its URL or the provider's, the key as the provider
+	//the server of the settings (credentialOf): its URL or the provider's, the key as the provider
 	//wants it; ready with a model; the models it lists (Connect)
 	$WA = \util\WorkflowAssistant::class;
 	$srv = $WA::credentialOf((object)[ 'provider' => 'openai', 'url' => ' http://localhost:8000/api/v1 ', 'api_key' => 'k1' ]);
@@ -6014,9 +5996,8 @@ class CheckCommand extends \sys\BaseController {
 	$WA::models((object)[ 'provider' => 'openai' ], function($headers, $body, $path) use (&$listed) { $listed = $path; return (object)[ 'data' => [] ]; });
 	$this->check('models: OpenAI-compatible: GET /models', '/models', $listed);
 
-	//CLD: 2026-10-22T14:00:00+03:00: bring your own key: Gemini, Ollama, Lemonade speak OpenAI chat completions at their own URLs (Bearer key); Gemini's model ids without models/;
-	//System is the installation's server (config assistant.system), refused when there is none; the prices, the budget (the loop stops once it is spent)
-	//CLD: 2026-10-23T10:00:00+03:00: the System AI (config ai.system, plugins\MultiTenant)
+	//bring your own key: Gemini, Ollama, Lemonade speak OpenAI chat completions at their own URLs (Bearer key); Gemini's model ids without models/;
+	//the System AI (config ai.system, plugins\MultiTenant), refused when there is none; the prices, the budget (the loop stops once it is spent)
 	$AS = \models\assistant\AssistantSettings::class;
 	$gem = $WA::credentialOf((object)[ 'provider' => 'gemini', 'api_key' => 'g1' ]);
 	$this->check('gemini, ollama, lemonade: their own URLs, Bearer key', [ 'https://generativelanguage.googleapis.com/v1beta/openai', [ 'Authorization' => 'Bearer g1' ], 'http://localhost:11434/v1', 'http://localhost:8000/api/v1', [] ],
@@ -6027,7 +6008,7 @@ class CheckCommand extends \sys\BaseController {
 	    return json_decode(\util\JSON::encode([ 'data' => [ [ 'id' => 'models/gemini-x' ] ] ]));
 	});
 	$this->check('models: gemini: GET /models, ids without models/', [ '/models', 'gemini-x' ], [ $listed, $models[0]['id'] ?? null ]);
-	//CLD: 2026-10-31T22:00:00+02:00: the System provider is a plugin's (util\AssistantSystem): checked with providers of the check's own (AssistantSystem::$override), so the core is
+	//the System provider is a plugin's (util\AssistantSystem): checked with providers of the check's own (AssistantSystem::$override), so the core is
 	//checked without the MultiTenant plugin; the provider's own checks: the plugin's (suite systemai)
 	$fakeSystem = fn($config) => new class($config) {
 	    public function __construct(private $c) {}
@@ -6049,7 +6030,7 @@ class CheckCommand extends \sys\BaseController {
 	$sysCred = $WA::credentialOf((object)[ 'provider' => 'system', 'api_key' => 'mine', 'url' => 'http://evil.invalid' ]);
 	$this->check('system: none: not ready, refused; else the installation\'s server and key (not the account\'s)', [ false, false, true, true, 'https://api.anthropic.com', 'sys-key' ],
 	    array_merge($noSystem, [ $WA::isReady((object)[ 'provider' => 'system' ]), $sysCred->baseUrl, $sysCred->httpAuth()['headers']['x-api-key'] ?? null ]));
-	//CLD: 2026-10-22T15:00:00+03:00: System: no USD budget (credits instead)
+	//System: no USD budget (credits instead)
 	$this->check('budget: the account\'s; none with system (credits); 0 none', [ 10.0, null, null ],
 	    [ $AS::budgetOf((object)[ 'provider' => 'anthropic', 'budget' => 10 ]), $AS::budgetOf((object)[ 'provider' => 'system', 'budget' => 10 ]),
 	    $AS::budgetOf((object)[ 'provider' => 'anthropic', 'budget' => 0 ]) ]);
@@ -6057,7 +6038,7 @@ class CheckCommand extends \sys\BaseController {
 	$s->transport = $scripted([ [ 'end_turn', [ [ 'type' => 'text', 'text' => 'ok' ] ] ] ], $sentS);
 	$s->ask([], 'x', $existing);
 	$this->check('system: the installation\'s model and effort', [ 'claude-sonnet-5-5', 'low', 'sys-key' ], [ $sentS[0][1]['model'], $sentS[0][1]['output_config']['effort'], $sentS[0][0]['x-api-key'] ?? null ]);
-	//CLD: 2026-10-26T23:49:50+02:00: the System provider is a plugin's: none without it (the Assistant itself is core)
+	//the System provider is a plugin's: none without it (the Assistant itself is core)
 	$AYS::$override = null;
 	$this->check('system: none without a plugin\'s provider (not offered, not ready)', [ null, false, false, false ],
 	    [ $AS::system(), $AS::systemAvailable(), $AS::systemEnabled(), $WA::isReady((object)[ 'provider' => 'system' ]) ]);
@@ -6074,9 +6055,9 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('budget spent: stopped after 2 turns, the canvas kept, said, the cost', [ 2, 2, true, 'the monthly budget of the Assistant is spent', true, 0.00028 ],
 	    [ count($sent), $r['rounds'], $r['nodes'] !== null, $r['stopped'], str_contains($r['reply'], 'Stopped before finishing'), $r['cost'] ]);
 
-	//CLD: 2026-10-31T22:00:00+02:00: the System AI's credits (SystemAiWallet: rates, the wallet, reserve and settle) are checked by the MultiTenant plugin (its suite systemai)
-	//the loop limited by the reserved credits: 10 + 5 tokens a turn at 500 / 2500 credits per 1M = 0.0175 credits; 0.03 reserved: 2 turns
-	//CLD: 2026-10-31T22:00:00+02:00: the credits counted by the System provider (here the check's own: util\AssistantSystem::$override)
+	//the System AI's credits (SystemAiWallet: rates, the wallet, reserve and settle) are checked by the MultiTenant plugin (its suite systemai)
+	//the loop limited by the reserved credits: 10 + 5 tokens a turn at 500 / 2500 credits per 1M = 0.0175 credits; 0.03 reserved: 2 turns;
+	//the credits counted by the System provider (here the check's own: util\AssistantSystem::$override)
 	$AYS::$override = $fakeSystem($sysConfig);
 	$a->rates = [ 500, 2500, 25 ];
 	$a->budget = 0.03;
@@ -6088,7 +6069,7 @@ class CheckCommand extends \sys\BaseController {
 	$AYS::$override = false;
 	$this->check('credits reserved used up: stopped after 2 turns, the credits counted', [ 2, 'the credits reserved for this request are used up', 0.035 ], [ count($sent), $r['stopped'], round($credits, 6) ]);
 
-	//CLD: 2026-10-19T17:02:48+03:00: a setting the model leaves wrong: the steps are applied, the setting is for the person; a refusal every time: said in the answer
+	//a setting the model leaves wrong: the steps are applied, the setting is for the person; a refusal every time: said in the answer
 	$a->transport = $scripted([ [ 'tool_use', [ $tool('t1', [ 'steps' => $steps, 'connections' => $conn ]) ] ], [ 'end_turn', [ [ 'type' => 'text', 'text' => 'Built it.' ] ] ] ], $sent);
 	$r = $a->ask([], 'x', $existing);
 	$this->check('settings left wrong: applied, listed for the person', [ 3, 1, true ],
@@ -6097,7 +6078,7 @@ class CheckCommand extends \sys\BaseController {
 	$r = $a->ask([], 'x', $existing);
 	$this->check('refused every time: the answer says the canvas was not changed', [ null, true ],
 	    [ $r['nodes'], str_ends_with($r['reply'], '(The canvas was not changed: steps[0]: unknown type `app::nope` (list_step_types))') ]);
-	//CLD: 2026-10-19T17:14:20+03:00: stopping with connection errors on the canvas: reminded with the errors, then the fixed steps
+	//stopping with connection errors on the canvas: reminded with the errors, then the fixed steps
 	$loose = [ 'steps' => $fixed, 'connections' => [ [ 'from' => 'start', 'to' => 'check' ] ] ];
 	$a->transport = $scripted([ [ 'tool_use', [ $tool('t1', $loose) ] ], [ 'end_turn', [ [ 'type' => 'text', 'text' => 'Fixed everything.' ] ] ],
 	    [ 'tool_use', [ $tool('t2', [ 'steps' => $fixed, 'connections' => $conn ]) ] ], [ 'end_turn', [ [ 'type' => 'text', 'text' => 'Connected.' ] ] ] ], $sent);
@@ -6125,10 +6106,10 @@ class CheckCommand extends \sys\BaseController {
 	$this->check('too many rounds', true, str_starts_with($fails(array_fill(0, 20, [ 'tool_use', [ $tool('t', [ 'steps' => [], 'connections' => 'no' ]) ] ])), 'the assistant did not finish'));
     }
 
-    //CLD: 2026-10-21T10:00:00+03:00: LDAP: BER and filters, the clients (each driver PHP has here: the built-in one, and the ldap extension's
+    //LDAP: BER and filters, the clients (each driver PHP has here: the built-in one, and the ldap extension's
     //when it is loaded) against the test server (app/commands/tests/LdapTestServer.php: plain + StartTLS, LDAPS; a certificate made here with openssl), the LDAP
-    //sign-in (in an account made for the checks, removed afterwards) and the LDAP step
-    //CLD: 2026-10-21T20:10:00+03:00: the account guard of sys\ObjectManager (web requests: an account's objects only, a query for another account refused, acrossAccounts,
+    //sign-in (in an account made for the checks, removed afterwards) and the LDAP step;
+    //the account guard of sys\ObjectManager (web requests: an account's objects only, a query for another account refused, acrossAccounts,
     //global models and the console not limited) and the sign-in of a name used in two accounts (sys\Identity::authenticate: the password picks the user, several fit: choices).
     //Account B and the users are written directly (no model hooks) and removed at the end
     private function suiteTenant() {
@@ -6209,7 +6190,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-22T00:00:00+03:00: the audit log's seal (models\AuditLog: numbers, MAC, verify, the retention's 1 year floor and its record of what it removed) and the
+    //the audit log's seal (models\AuditLog: numbers, MAC, verify, the retention's 1 year floor and its record of what it removed) and the
     //client's address (sys\http\Request: X-Forwarded-For only from a trusted proxy). Entries are written for an account id made up here (removed at the end, with its seal)
     private function suiteAudit() {
 	$A = \models\AuditLog::class;
@@ -6296,7 +6277,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T00:30:00+02:00: the Bitdefender GravityZone integration against a fake console (commands/tests/GravityZoneTestServer.php; util\GravityZone::$testing: http, no address guard):
+    //the Bitdefender GravityZone integration against a fake console (commands/tests/GravityZoneTestServer.php; util\GravityZone::$testing: http, no address guard):
     //util\Http's private network addresses, the client (both keys, errors, 429, pages, the access URL), the credential's test, the steps' calls (their parameters as sent, Other
     //parameters, the `error` output, a report saved in Files), the event trigger (publishing sets the push service, unpublishing turns it off; the events received by its address)
     private function suiteGravityzone() {
@@ -6517,7 +6498,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T04:00:00+02:00: Veeam Backup & Replication against a fake server (commands/tests/VeeamTestServer.php; util\Veeam::$testing: http, no address guard): the sign-in (x-api-version,
+    //Veeam Backup & Replication against a fake server (commands/tests/VeeamTestServer.php; util\Veeam::$testing: http, no address guard): the sign-in (x-api-version,
     //the token kept, renewed after a 401), the credential's test, the steps' requests (a job by name, repeated filters, waiting for a session, the latest restore point, the
     //repositories low on space, Instant Recovery), the event trigger (its first check notes the time; the sessions ended since then start runs, once; Run: the newest one)
     private function suiteVeeam() {
@@ -6572,7 +6553,7 @@ class CheckCommand extends \sys\BaseController {
 	    };
 	    $bad = $om->create('CredentialVeeam', [ 'name' => 'x', 'serverUrl' => 'https://vbr:9419/api/v1', 'username' => 'u', 'password' => 'p', 'apiVersion' => '13' ]);
 	    $bad->validates();
-	    //CLD: 2026-11-01T05:00:00+02:00: the Veeam version: one of the releases (VBR 13, 12.0 to 12.3)
+	    //the Veeam version: one of the releases (VBR 13, 12.0 to 12.3)
 	    $this->check('veeam: the form: an https:// address without a path, a Veeam version of the list; VBR 13 (1.3-rev1) by default', [ [ 'serverUrl', 'apiVersion' ], '1.3-rev1' ],
 		[ array_values(array_intersect([ 'serverUrl', 'apiVersion' ], array_keys((array)$bad->errors()))), (string)$om->create('CredentialVeeam', [])->apiVersion ]);
 
@@ -6591,7 +6572,7 @@ class CheckCommand extends \sys\BaseController {
 	    $cred->client($this->account->_id)->request('GET', '/api/v1/serverInfo');
 	    $this->check('veeam: the token kept between requests; a 401: signed in again once', [ [ 'GET /api/v1/serverInfo', 'GET /api/v1/serverInfo', 'POST /api/oauth2/token', 'GET /api/v1/serverInfo' ], 'Bearer a2' ],
 		[ array_map(fn($r) => $r['method'] . ' ' . $r['path'], $sent = $requests()), end($sent)['auth'] ?? null ]);
-	    //CLD: 2026-11-01T05:00:00+02:00: VBR 12: the API version of each build; a 12.2 server: the version chosen sent, Test names the right one when it differs,
+	    //VBR 12: the API version of each build; a 12.2 server: the version chosen sent, Test names the right one when it differs,
 	    //a request the release does not have: said so
 	    $this->check('veeam: the API version of a build (12.0 to 13; older: none)', [ '1.3-rev1', '1.2-rev1', '1.2-rev0', '1.1-rev2', '1.1-rev1', '1.1-rev0', null ],
 		array_map([ $V, 'versionForBuild' ], [ '13.0.1.1071', '12.3.2.3617', '12.3.0.310', '12.2.0.334', '12.1.0.2131', '12.0.0.1420', '11.0.1.1261' ]));
@@ -6719,7 +6700,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T06:00:00+02:00: FortiGate against a fake FortiOS (commands/tests/FortiGateTestServer.php; util\FortiGate::$testing: http, no address guard): the client (the token, the VDOM, FortiOS's
+    //FortiGate against a fake FortiOS (commands/tests/FortiGateTestServer.php; util\FortiGate::$testing: http, no address guard): the client (the token, the VDOM, FortiOS's
     //errors named), the credential's test, the steps' requests (blocking and unblocking IPs: done already is fine; a subnet from a CIDR; bans with their expiry; a policy
     //disabled; the configuration backup in Files), the event trigger (its FortiOS CLI; a stitch's webhook starts a run, a wrong secret does not)
     private function suiteFortigate() {
@@ -6891,7 +6872,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T10:00:00+02:00: Sophos Firewall against a fake firewall (commands/tests/SophosTestServer.php; util\Sophos::$testing: http, no address guard): the client (entities to and from
+    //Sophos Firewall against a fake firewall (commands/tests/SophosTestServer.php; util\Sophos::$testing: http, no address guard): the client (entities to and from
     //XML, a repeated element a list, the login, the codes said with what to do), the credential's test, the steps' requests (blocking and unblocking IPs: a host per IP, the group's
     //HostList sent back whole, IPv6 in its own group, done already is fine; a network from a CIDR; a rule disabled; a user made inactive; domains in a URL group), the API step
     private function suiteSophos() {
@@ -7024,7 +7005,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T08:00:00+02:00: Checkmk against a fake site (commands/tests/CheckmkTestServer.php; util\Checkmk::$testing: http, no address guard): the client (the API's address, the automation
+    //Checkmk against a fake site (commands/tests/CheckmkTestServer.php; util\Checkmk::$testing: http, no address guard): the client (the API's address, the automation
     //user's Bearer, Livestatus queries, Checkmk's problems with their fields), the credential's test, the steps (current problems without the acknowledged / in downtime ones,
     //a host's state, acknowledgements of several services, a downtime's window, a host created and the changes activated with If-Match, nothing pending is fine), the problem
     //trigger (its first check notes the problems; new ones and state changes start runs, once; acknowledged ones do not; a recovery when chosen)
@@ -7178,7 +7159,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T12:00:00+02:00: VMware vCenter against a fake vCenter 8.0 U3 (commands/tests/VmwareTestServer.php; util\VSphere::$testing: http, no address guard): the client (the address,
+    //VMware vCenter against a fake vCenter 8.0 U3 (commands/tests/VmwareTestServer.php; util\VSphere::$testing: http, no address guard): the client (the address,
     //the ids' types, vCenter's messages, a new sign-in after a 401), the credential's test (both APIs), the steps (VMs by name, * patterns, filters by name; power already so; a guest
     //shutdown waited for, powered off when stuck; clone into a folder; snapshots: the tree, create, a failed task, remove, prune; datastores low on space; maintenance mode;
     //alarms named, acknowledged; the API), the alarm trigger (its first check notes the alarms; new ones and status changes start runs, once; acknowledged ones do not; a recovery)
@@ -7406,7 +7387,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T14:00:00+02:00: Proxmox VE against a fake cluster (commands/tests/ProxmoxTestServer.php; util\Proxmox::$testing: http, no address guard): the client (the address, parameters,
+    //Proxmox VE against a fake cluster (commands/tests/ProxmoxTestServer.php; util\Proxmox::$testing: http, no address guard): the client (the address, parameters,
     //Proxmox's messages from the reason phrase, tasks' nodes), the credential's test, the steps (guests by name or VMID on their own node, filters; start when running is done; shutdown
     //with its timeout; clone to the next free VMID; delete refused while running; snapshots: list without `current`, a name Proxmox refuses, rollback, delete, prune; backups: vzdump to a
     //storage, a failed task with its log, the latest backup's age; storage low on space; the API), the task trigger (its first check notes the time; failed backups start runs, once)
@@ -7607,7 +7588,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T16:00:00+02:00: Hyper-V against a fake host behind WinRM (commands/tests/HyperVTestServer.php; util\WinRM::$testing: http, no address guard): the client (the WS-Management
+    //Hyper-V against a fake host behind WinRM (commands/tests/HyperVTestServer.php; util\WinRM::$testing: http, no address guard): the client (the WS-Management
     //address, PowerShell quoting, the script's wrapper with $P as data, PowerShell's errors from CLIXML; a shell made, the command run without cmd.exe, a Receive that timed out received
     //again, the output in parts, the shell deleted), the credential's test, the steps (VMs by name, * patterns; start when running is done; a shutdown that does not end: an error, or
     //turned off; delete refused while running; checkpoints: list, create, restore, remove, prune; volumes low on space; events; PowerShell with parameters, its error), the VM state
@@ -7794,7 +7775,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T14:00:00+02:00: Zabbix against a fake server (commands/tests/ZabbixTestServer.php; util\Zabbix::$testing: http, no address guard): the client (the API's address,
+    //Zabbix against a fake server (commands/tests/ZabbixTestServer.php; util\Zabbix::$testing: http, no address guard): the client (the API's address,
     //apiinfo.version without the token, the token as Bearer from 6.4 and as `auth` before, Zabbix's errors), the credential's test, the steps (current problems without the
     //acknowledged / suppressed ones, by host / tags, with their hosts; an event with its acknowledgements; acknowledgements with a message and a severity change; a maintenance's
     //window (6.0: hostids, 7.0: hosts); hosts created, disabled, deleted; latest values; any method), the problem trigger (its first check notes the problems; new ones and
@@ -8016,7 +7997,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-03T10:00:00+02:00: Wazuh against a fake one (commands/tests/WazuhTestServer.php: the Server API refuses a parameter its spec does not have; the indexer; util\Wazuh::$testing:
+    //Wazuh against a fake one (commands/tests/WazuhTestServer.php: the Server API refuses a parameter its spec does not have; the indexer; util\Wazuh::$testing:
     //http, no address guard): the client (sign-in, the token kept, signed in again after a 401, Wazuh's errors, pages), the credential's test, every step (an empty agents_list is never
     //sent: to Wazuh it means every agent; Wazuh's 200 with everything failed is an error), the alert trigger (the first check only notes the time; late alerts; seen; MAX_RUNS)
     private function suiteWazuh() {
@@ -8308,7 +8289,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-05T13:00:00+02:00: Namecheap against a fake one (commands/tests/NamecheapTestServer.php; util\Namecheap::$testUrl: http, no address guard): the values (domains, hosts,
+    //Namecheap against a fake one (commands/tests/NamecheapTestServer.php; util\Namecheap::$testUrl: http, no address guard): the values (domains, hosts,
     //records, the email type), the client (POST with the caller's fields, Namecheap's errors with what they mean), the credential's form and test, every step; the DNS changes keep
     //the records they do not name (setHosts replaces them all) and send EmailType MX with MX records; unchanged records are not written
     private function suiteNamecheap() {
@@ -8514,10 +8495,10 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-01T02:00:00+02:00: the account's Data access: the MCP server per project (Account::mcpEnabled; /mcp refuses the tokens of a project whose server is off: a POST to this installation's
+    //the account's Data access: the MCP server per project (Account::mcpEnabled; /mcp refuses the tokens of a project whose server is off: a POST to this installation's
     //web server, skipped when it cannot be reached), what the designer's Assistant may read (structure only: the structure tools, a data tool refused, the variables without values,
-    //the system prompt says so; structure and data: every tool)
-    //CLD: 2026-11-03T12:00:00+02:00: the user's role in a project decides what they may do there (models\Project::checkAccess): the account role's project scope gives nothing by itself, global scope passes
+    //the system prompt says so; structure and data: every tool);
+    //the user's role in a project decides what they may do there (models\Project::checkAccess): the account role's project scope gives nothing by itself, global scope passes
     //everywhere, a permission asked without an object is asked of the current project. Run with the web rules (the console passes every check); the role is set on sys\AAA
     private function suiteRoles() {
 	$om = \V::app()->om;
@@ -8596,7 +8577,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-03T14:00:00+02:00: a table of another project shared with this one (models\share\ShareableTrait): found at the level given, by the Data Table step, the MCP tools; taken back: gone at the next run;
+    //a table of another project shared with this one (models\share\ShareableTrait): found at the level given, by the Data Table step, the MCP tools; taken back: gone at the next run;
     //who may do what through a share (web rules); what is kept and what the logs say
     private function suiteSharing() {
 	$om = \V::app()->om;
@@ -8714,7 +8695,7 @@ class CheckCommand extends \sys\BaseController {
 		}
 	    }
 
-	    //CLD: 2026-11-03T16:00:00+02:00: a workflow of the other project: called from here, run there
+	    //a workflow of the other project: called from here, run there
 	    $homeSecret = $om->create('CredentialVariable', [ 'aid' => $aid, 'project' => $home->_id, 'name' => 'chk_where', 'value' => 'home-value' ]);
 	    $homeSecret->save();
 	    $varHere = $om->create('CredentialVariable', [ 'aid' => $aid, 'project' => $here->_id, 'name' => 'chk_where', 'value' => 'caller-value' ]);
@@ -8795,7 +8776,7 @@ class CheckCommand extends \sys\BaseController {
 	    $homeSecret->delete();
 	    $varHere->delete();
 
-	    //CLD: 2026-11-03T18:00:00+02:00: a credential of the other project: used from here, for the hosts it is shared for
+	    //a credential of the other project: used from here, for the hosts it is shared for
 	    $bearer = $om->create('CredentialBearer', [ 'aid' => $aid, 'project' => $home->_id, 'name' => 'Check shared token', 'token' => 'sh4red-s3cret' ]);
 	    $bearer->save();
 	    $cid = (string)$bearer->_id;
@@ -8888,7 +8869,7 @@ class CheckCommand extends \sys\BaseController {
 	$om = \V::app()->om;
 	$A = \models\Account::class;
 	$account = $om->findById('Account', (string)$this->account->_id);
-	//CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read is its settings' (AssistantSettings data_access): the account's, made for the check when it has none
+	//what the Assistant may read is its settings' (AssistantSettings data_access): the account's, made for the check when it has none
 	$mcpBefore = (array)($account->mcp_projects ?? []);
 	$assistant = $om->findOne('AssistantSettings', [ 'aid' => $account->_id ]);
 	$madeSettings = $assistant === null;
@@ -9001,7 +8982,7 @@ class CheckCommand extends \sys\BaseController {
 	$bind = $B::tlv(0x60, $B::int(3) . $B::str('cn=x') . $B::str('y', 0x80));
 	$this->check('LDAP BER: a bind request (cn=x / y), the length of a partial / a complete message', [ '600c0201030404636e3d78800179', null, 14 ],
 	    [ bin2hex($bind), $B::messageLength(substr($bind, 0, 10)), $B::messageLength($bind . 'more') ]);
-	//CLD: 2026-10-21T11:00:00+03:00: Active Directory's lengths: always 0x84 + 4 bytes (leading zeros), nested ones too: a bind response { 1, [APPLICATION 1] { success, '', '' } }
+	//Active Directory's lengths: always 0x84 + 4 bytes (leading zeros), nested ones too: a bind response { 1, [APPLICATION 1] { success, '', '' } }
 	$ad = "\x30\x84\x00\x00\x00\x18" . "\x02\x84\x00\x00\x00\x01\x01" . "\x61\x84\x00\x00\x00\x0b" . "\x0a\x01\x00" . "\x04\x00" . "\x04\x84\x00\x00\x00\x00";
 	$o = 0;
 	[ $adTag, $adContent ] = $B::read($ad, $o);
@@ -9061,7 +9042,7 @@ class CheckCommand extends \sys\BaseController {
 	    $servers['plain'] = self::ldapServer($work, $tls ? [ "--cert={$work}/cert.pem", "--key={$work}/key.pem" ] : []);
 	    if ($tls)
 		$servers['ldaps'] = self::ldapServer($work, [ "--cert={$work}/cert.pem", "--key={$work}/key.pem", '--ldaps' ]);
-	    //CLD: 2026-10-21T11:00:00+03:00: answers with Active Directory's 4-byte lengths
+	    //answers with Active Directory's 4-byte lengths
 	    $servers['long'] = self::ldapServer($work, array_merge($tls ? [ "--cert={$work}/cert.pem", "--key={$work}/key.pem" ] : [], [ '--long-lengths' ]));
 	    if (!$tls)
 		echo "  (no openssl: StartTLS and LDAPS not checked)\n";
@@ -9074,7 +9055,7 @@ class CheckCommand extends \sys\BaseController {
 	    else
 		echo "  (PHP's ldap extension is not loaded: its driver is not checked)\n";
 	    foreach($drivers as $driver) {
-		//CLD: 2026-10-21T11:00:00+03:00: + the server answering with 4-byte lengths (label `AD lengths`)
+		//and the server answering with 4-byte lengths (label `AD lengths`)
 		$modes = [ [ 'none', $port, false, '', '' ], [ 'none', $servers['long'][1], false, '', ' AD lengths' ] ];
 		if ($tls) {
 		    $modes[] = [ 'starttls', $port, true, $ca, '' ];
@@ -9224,7 +9205,7 @@ class CheckCommand extends \sys\BaseController {
 	$settings = null;
 	try {
 	    $roles = $account->setupRoles();
-	    //CLD: 2026-10-21T11:30:00+03:00: om->create (a new account has no settings)
+	    //om->create (a new account has no settings)
 	    $settings = $om->create('LdapSettings', [ 'aid' => $account->_id ]);
 	    $settings->assign([ 'enabled' => true, 'directory' => 'ad', 'hosts' => "127.0.0.1:{$port}", 'encryption' => $ca !== null ? 'starttls' : 'none', 'caCert' => (string)$ca,
 		'bindDn' => 'cn=svc,dc=example,dc=com', 'bindPassword' => 'svcpw', 'baseDn' => 'DC=example,DC=com', 'groupSource' => 'nested', 'groupMap' => [
@@ -9398,12 +9379,12 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-25T17:40:00+02:00: the Database step: the types offered by driver, the DSNs of each type and the values refused in them, the setup's checks,
+    //the Database step: the types offered by driver, the DSNs of each type and the values refused in them, the setup's checks,
     //the SQL's parameters, the step's operations on an SQLite database in memory (the same PDO code as the servers'), a run against a closed port (the `error` output)
     private function suiteDatabase() {
 	$om = \V::app()->om;
 	$D = \util\SqlDb::class;
-	//CLD: 2026-10-31T23:30:00+02:00: one step per type (NodeAppDatabase their base): the MySQL one for the checks of a step
+	//one step per type (NodeAppDatabase their base): the MySQL one for the checks of a step
 	$S = \models\node\NodeAppMysql::class;
 	$steps = [ 'CredentialMysql' => 'NodeAppMysql', 'CredentialPostgres' => 'NodeAppPostgres', 'CredentialMssql' => 'NodeAppMssql', 'CredentialOracle' => 'NodeAppOracle',
 	    'CredentialFirebird' => 'NodeAppFirebird', 'CredentialOdbc' => 'NodeAppOdbc' ];
@@ -9416,10 +9397,10 @@ class CheckCommand extends \sys\BaseController {
 	    $expected[$name] = (bool)array_intersect(array_keys($D::TYPES[$class::TYPE]['drivers']), $loaded);
 	    $actual[$name] = $class::available();
 	}
-	//CLD: 2026-10-31T23:30:00+02:00: each type's step offered as its credential
+	//each type's step offered as its credential
 	$this->check('Database: the types offered are those whose PDO driver is loaded; the step of each with it; all in the Database group', [ $expected, $expected, [ 'Database' ] ],
 	    [ $actual, array_map(fn($step) => $om->getObjectClass($step)::available(), $steps), array_values(array_unique(array_map(fn($n) => $om->getObjectClass($n)::$group, \models\credential\CredentialDatabase::CREDENTIALS))) ]);
-	//CLD: 2026-10-31T23:30:00+02:00: the six steps, in the Databases group; a step's credentials are those of its type only
+	//the six steps, in the Databases group; a step's credentials are those of its type only
 	$defs = \models\wf\WfNode::getAll();
 	$this->check('Database: the steps (one per type, in Databases, advanced); each step takes the credentials of its type only', [
 	    [ 'app::mysql', 'app::postgres', 'app::mssql', 'app::oracle', 'app::firebird', 'app::odbc' ], [ 'database' ], [ 'advanced' ], [ 'CredentialMysql' ], [ 'CredentialOdbc' ], false ], [
@@ -9554,7 +9535,7 @@ class CheckCommand extends \sys\BaseController {
 	}
 	try {
 	    $this->check('Database: the step refused without a credential; valid with one', [ true, [] ], [
-		//CLD: 2026-10-31T23:30:00+02:00: the MySQL step; its messages name it
+		//the MySQL step; its messages name it
 		str_contains(implode(' ', $this->errorsOf('db nocred', [ $n('m', 'trigger::manual'), $n('d', 'app::mysql', [ 'sql' => 'SELECT 1' ]), $e('e1', 'm', 'd') ])), 'MySQL / MariaDB'),
 		$this->errorsOf('db cred', [ $n('m', 'trigger::manual'), $n('d', 'app::mysql', [ 'sql' => 'SELECT 1', 'credential' => (string)$c->_id ]), $e('e1', 'm', 'd') ]) ]);
 	    $this->check('Database: the credential\'s test fails on a closed port', true, str_contains($thrown(fn() => $c->test()), 'SQLSTATE'));
@@ -9570,7 +9551,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-10-23T12:00:00+03:00: the Saml plugin (skipped without it), in an account made for the checks (removed afterwards), with a test IdP made here (its key pair):
+    //the Saml plugin (skipped without it), in an account made for the checks (removed afterwards), with a test IdP made here (its key pair):
     //the request and the metadata of the SP, the IdP metadata read, the responses checked (signed response / assertion, encrypted with RSA-OAEP SHA-1 / SHA-256) and refused
     //(not signed, changed, another key, signature wrapping, audience, recipient, times, InResponseTo, issuer, status, DOCTYPE, encryption required), a comment in the NameID,
     //the sign-in (provisioning, roles from groups, linking existing users, the last owner, the password of an SSO user refused), replays, the request's browser token
@@ -9851,7 +9832,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-04T10:00:00+02:00: util\TableExport: the file is read back with util\TableImport; the XML of its parts is well-formed, text never becomes a formula
+    //util\TableExport: the file is read back with util\TableImport; the XML of its parts is well-formed, text never becomes a formula
     private function suiteTableexport() {
 	$X = \util\TableExport::class;
 	$this->check('column names', [ 'A', 'Z', 'AA', 'XFD' ], [ $X::colName(0), $X::colName(25), $X::colName(26), $X::colName(16383) ]);
@@ -9893,7 +9874,7 @@ class CheckCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-04T12:00:00+02:00: a data table and a credential moved to another project (models\share\MovableTrait): what goes with them, what the old project loses
+    //a data table and a credential moved to another project (models\share\MovableTrait): what goes with them, what the old project loses
     private function suiteMove() {
 	$om = \V::app()->om;
 	$aid = $this->account->_id;

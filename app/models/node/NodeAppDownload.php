@@ -1,16 +1,16 @@
 <?php
 
-//CLD: 2026-10-12T08:46:28+03:00: new step: Download File - downloads a file over HTTP (GET) and saves it in the project's Files (models\File, GridFS; metadata: project, aid,
+//Download File - downloads a file over HTTP (GET) and saves it in the project's Files (models\File, GridFS; metadata: project, aid,
 //source `download`, workflow). Settings as the HTTP Request step it extends (URL, credential, query parameters, headers, timeout, on error) + the file name
 //(an expression; empty: from the response's Content-Disposition, else from the URL; an extension from the content type when it has none) and the
-//largest size. CLD: 2026-10-12T08:55:21+03:00: only file types that may be uploaded (File::$extensions), else an error. The variable (default `file`) gets { id, filename, size, contentType }. The download goes to a temporary stream (not kept in memory)
+//largest size; only file types that may be uploaded (File::$extensions), else an error. The variable (default `file`) gets { id, filename, size, contentType }. The download goes to a temporary stream (not kept in memory)
 
-//CLD: 2026-10-17T21:08:58+03:00: images: the URL may be a data: URL (data:image/png;base64,...: e.g. an image an API or another step returned; no request is made); the variable says whether the
+//images: the URL may be a data: URL (data:image/png;base64,...: e.g. an image an API or another step returned; no request is made); the variable says whether the
 //file is an image, read from its content (not its name): isImage, width, height, imageType (the real type, e.g. image/png; SVG: no size)
 namespace models\node;
 
 class NodeAppDownload extends NodeAppHttp {
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: a basic step, in Web & files (the HTTP Request it extends: advanced, Developer)
+    //the step picker: a basic step, in Web & files (the HTTP Request it extends: advanced, Developer)
     public static $audience = 'basic';
     public static $category = 'web';
     public static $name = 'download';
@@ -19,7 +19,7 @@ class NodeAppDownload extends NodeAppHttp {
 
     //the largest size that can be chosen (MB)
     const MAX_SIZE_MB = 200;
-    //CLD: 2026-10-17T21:08:58+03:00: the start of the file read to recognize an image and its size
+    //the start of the file read to recognize an image and its size
     const IMAGE_SNIFF = 524288;
 
     //an extension for a name without one, from the content type
@@ -47,9 +47,7 @@ class NodeAppDownload extends NodeAppHttp {
 	$http = [];
 	foreach(parent::configSchema() as $f)
 	    $http[$f['key']] = $f;
-
-	//CLD: 2026-10-17T21:08:58+03:00: + data: URLs
-	//CLD: 2026-10-24T12:55:47+03:00: 8 wide, next to the
+	//http(s) or data: URLs; 8 wide, next to the
 	//credential (HTTP's: 4), on line 2; the query parameters on a new line
 	$http['url']['help'] = 'The file (GET): http(s):// or a data: URL';
 	$http['url']['ui']['width'] = 8;
@@ -78,8 +76,7 @@ class NodeAppDownload extends NodeAppHttp {
 		'required' => true,
 		'default' => 25,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_SIZE_MB, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_SIZE_MB ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
-		//CLD: 2026-10-24T12:55:47+03:00: a limit: the designer puts it on the last line
+		//a limit: the designer puts it on the last line (min / max from the validate rule: util\WidgetsUtil)
 		'ui' => [ 'limit' => true ],
 	    ],
 	    $http['timeout'],
@@ -90,8 +87,7 @@ class NodeAppDownload extends NodeAppHttp {
 
     public static function outputVariables($config) {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'file') : 'file';
-	//CLD: 2026-10-13T12:34:29+03:00: + the fields and their types (suggested after `file.`)
-	//CLD: 2026-10-17T21:08:58+03:00: + isImage, width, height, imageType
+	//the fields and their types (suggested after `file.`)
 	return \util\Validator::isIdentifier($name) ? [ $name => [ 'type' => 'object', 'info' => 'the saved file: { id, filename, size, contentType, isImage, width, height, imageType }',
 	    'fields' => [ 'id' => [ 'type' => 'string' ], 'filename' => [ 'type' => 'string' ], 'size' => [ 'type' => 'number', 'info' => 'bytes' ], 'contentType' => [ 'type' => 'string' ],
 		'isImage' => [ 'type' => 'boolean', 'info' => 'an image, by its content' ], 'width' => [ 'type' => 'number', 'info' => 'pixels (images; null for SVG)' ],
@@ -99,19 +95,19 @@ class NodeAppDownload extends NodeAppHttp {
     }
 
     public function execute($edgeId = null) {
-	//CLD: 2026-10-13T15:24:28+03:00: + the project variables (vars)
+	//with the project variables (vars)
 	$vars = $this->exec->expressionVariables();
 	$this->textVars = $vars;
 
 	$url = trim($this->textOf($this->cfg('url', '')));
-	//CLD: 2026-10-17T21:08:58+03:00: a data: URL: no request
+	//a data: URL: no request
 	if (stripos($url, 'data:') === 0)
 	    return $this->saveDataUrl($url);
 	if (!preg_match('~^https?://[^\s/?#]+~i', $url))
 	    throw new \ErrorException('Download File: the URL must start with http:// or https:// or be a data: URL (got `' . mb_substr($url, 0, 100) . '`)');
 	$shownUrl = preg_replace('/[?#].*$/', '', $url);
 
-	//CLD: 2026-10-28T08:30:00+02:00: query parameters as [ name, value ] pairs: a repeated name sends each row
+	//query parameters as [ name, value ] pairs: a repeated name sends each row
 	$query = [];
 	foreach((array)$this->cfg('query', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
@@ -127,20 +123,20 @@ class NodeAppDownload extends NodeAppHttp {
 	    $cred = \models\Credential::findFor($this->exec, $credId, 'http');
 	    if (empty($cred))
 		throw new \ErrorException('Download File: the credential is no longer available');
-	    //CLD: 2026-11-03T18:00:00+02:00: a credential shared for some hosts: only there, no redirects
+	    //a credential shared for some hosts: only there, no redirects
 	    if (!$cred->allowsUrlIn($this->exec->project, $url))
 		throw new \ErrorException('Download File: the credential `' . $cred->name . '` is shared with this project for other hosts');
 	    $auth = $cred->httpAuth();
 	    foreach((array)($auth['headers'] ?? []) as $name => $value)
 		$headers[strtolower($name)] = $name . ': ' . $value;
 	}
-	//CLD: 2026-10-28T08:30:00+02:00: NodeAppHttp::withQuery
+	//NodeAppHttp::withQuery
 	$url = NodeAppHttp::withQuery($url, $query, (array)($auth['query'] ?? []));
 
 	$maxBytes = max(1, min(self::MAX_SIZE_MB, (int)$this->cfg('maxSize', 25))) * 1024 * 1024;
 	$timeout = max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 120)));
 	$stream = fopen('php://temp/maxmemory:' . (2 * 1024 * 1024), 'w+b');
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http; public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE
+	//through util\Http; public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE
 	$r = \util\Http::request('GET', $url, (!empty($cred) && $cred->hostLockedIn($this->exec->project) ? [ 'redirects' => 0 ] : []) + self::guard() + [ 'headers' => array_values($headers), 'timeout' => $timeout, 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5 ]);
 	[ $status, $size, $contentType, $effective, $respHeaders, $ms ] = [ $r['status'], $r['size'], $r['mime'], $r['url'], $r['headers'], $r['time_ms'] ];
 
@@ -152,7 +148,7 @@ class NodeAppDownload extends NodeAppHttp {
 	elseif ($status >= 400)
 	    $error = "HTTP status {$status}";
 
-	//CLD: 2026-10-12T08:55:21+03:00: only the file types that may be uploaded (File::$extensions)
+	//only the file types that may be uploaded (File::$extensions)
 	$filename = self::filename($this->textOf($this->cfg('filename', '')), $respHeaders['content-disposition'] ?? '', $effective ?: $shownUrl, $contentType);
 	if ($error === null && !\models\File::isAllowedName($filename))
 	    $error = "file type not allowed: `{$filename}` (allowed: " . implode(', ', array_keys(\models\File::$extensions)) . ')';
@@ -168,13 +164,13 @@ class NodeAppDownload extends NodeAppHttp {
 	    throw new \ErrorException("Download File: {$shownUrl}: {$error}");
 	}
 
-	//CLD: 2026-10-17T21:08:58+03:00: saved by saveFile() (+ the image info)
+	//saved by saveFile() (+ the image info)
 	$file = $this->saveFile($stream, $filename, $size, $contentType);
 	$this->exec->log($this->wfid, "download {$shownUrl} -> {$status}: saved `{$filename}` ({$size} bytes, {$ms} ms" . ($file['isImage'] ? ', image' . ($file['width'] ? " {$file['width']}x{$file['height']}" : '') : '') . ')');
 	return [ 0 ];
     }
 
-    //CLD: 2026-10-17T21:08:58+03:00: the file of $stream saved in the project's Files (the stream closed); the variable set: { id, filename, size, contentType, isImage, width, height, imageType }
+    //the file of $stream saved in the project's Files (the stream closed); the variable set: { id, filename, size, contentType, isImage, width, height, imageType }
     protected function saveFile($stream, $filename, $size, $contentType) {
 	rewind($stream);
 	$image = self::imageInfo((string)fread($stream, self::IMAGE_SNIFF));
@@ -196,7 +192,7 @@ class NodeAppDownload extends NodeAppHttp {
 	return $file;
     }
 
-    //CLD: 2026-10-17T21:08:58+03:00: whether $head (the start of a file) is an image: [ isImage, width, height, imageType ] (getimagesize: PNG, JPEG, GIF, WebP, BMP, TIFF, ...; SVG by its root element, no size)
+    //whether $head (the start of a file) is an image: [ isImage, width, height, imageType ] (getimagesize: PNG, JPEG, GIF, WebP, BMP, TIFF, ...; SVG by its root element, no size)
     public static function imageInfo($head) {
 	$info = $head !== '' ? @getimagesizefromstring($head) : false;
 	if (is_array($info) && !empty($info['mime']) && str_starts_with($info['mime'], 'image/'))
@@ -206,7 +202,7 @@ class NodeAppDownload extends NodeAppHttp {
 	return [ 'isImage' => false, 'width' => null, 'height' => null, 'imageType' => null ];
     }
 
-    //CLD: 2026-10-17T21:08:58+03:00: a data: URL (data:[<type>][;charset=...][;base64],<data>) saved as the file: the name as for a download (no Content-Disposition, no URL name: `download` + the
+    //a data: URL (data:[<type>][;charset=...][;base64],<data>) saved as the file: the name as for a download (no Content-Disposition, no URL name: `download` + the
     //type's extension), the same limits (largest size, allowed types) and On error
     protected function saveDataUrl($url) {
 	$error = null;

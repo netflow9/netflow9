@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T04:00:00+02:00: new: what a polling trigger remembers between its checks (e.g. the Veeam event trigger: how far it has read the sessions), per workflow + step:
+    what a polling trigger remembers between its checks (e.g. the Veeam event trigger: how far it has read the sessions), per workflow + step:
 	`data` (the trigger's own), the last check, and a lock (`locked_until`) so two checks of the step never run at once (as models\RemoteFileState, models\MailPoll).
 	Kept outside the workflow document: saving the workflow in the designer must not reset it. Removed with its workflow (hook workflow:before-delete)
 

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T00:41:28+03:00: new step: OneDrive / SharePoint - works with the files of a OneDrive or of a SharePoint document library over Microsoft Graph, through a
+    OneDrive / SharePoint - works with the files of a OneDrive or of a SharePoint document library over Microsoft Graph, through a
     OneDrive & SharePoint (Microsoft Graph) credential of the project (CredentialMicrosoftFiles, provides `msfiles`). As the Google Drive step.
     Operations (setting `operation`):
 	list          the files of a folder, or the files found by a search (names and contents) in the whole drive; up to the largest number of results
@@ -44,7 +44,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	'share' => 'Share a file',
 	'delete' => 'Delete a file',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'download', 'upload', 'createFolder', 'move', 'share', 'delete' ];
 
     //the operations working on one existing item (itemId), the ones in a folder
@@ -70,7 +70,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'drive',
 		'type' => 'text',
 		'label' => 'Drive',
@@ -79,7 +79,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'https://contoso.sharepoint.com/sites/Team', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'itemId',
 		'type' => 'text',
 		'label' => 'File',
@@ -89,7 +89,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'placeholder' => '/Reports/2026.xlsx', 'expression' => true, 'showIf' => static::operationIn(self::ON_ITEM) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -100,7 +100,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 
 	    //list
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Search',
@@ -109,7 +109,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxResults',
 		'type' => 'number',
 		'label' => 'Largest number of files',
@@ -121,7 +121,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 
 	    //download / upload
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'filename',
 		'type' => 'text',
 		'label' => 'Save as',
@@ -130,7 +130,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'download' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'source',
 		'type' => 'select',
 		'label' => 'Upload',
@@ -140,7 +140,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'upload' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'name',
 		'type' => 'text',
 		'label' => 'Name',
@@ -150,8 +150,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'upload', 'createFolder', 'move' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'conflict',
 		'type' => 'select',
 		'label' => 'When the name exists',
@@ -177,7 +176,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'rows' => 4, 'expression' => true, 'showIf' => [ 'key' => 'source', 'operator' => 'eq', 'value' => 'text' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest size (MB)',
@@ -189,7 +188,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 
 	    //share
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'shareWith',
 		'type' => 'select',
 		'label' => 'Share with',
@@ -199,7 +198,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'share' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'linkType',
 		'type' => 'select',
 		'label' => 'Access',
@@ -209,7 +208,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'share' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'linkScope',
 		'type' => 'select',
 		'label' => 'Who can use the link',
@@ -220,7 +219,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'link' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'people',
 		'type' => 'text',
 		'label' => 'People',
@@ -229,7 +228,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'people' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'notify',
 		'type' => 'switch',
 		'label' => 'Send them an email',
@@ -237,7 +236,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => [ 'key' => 'shareWith', 'operator' => 'eq', 'value' => 'people' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'message',
 		'type' => 'text',
 		'label' => 'Message',
@@ -247,7 +246,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 
 	    //delete
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'permanent',
 		'type' => 'switch',
 		'label' => 'Delete permanently',
@@ -523,7 +522,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
     //GET of a signed download address into a temporary stream: [ stream, size, content type ]; \RuntimeException when larger than $maxBytes or refused
     protected function fetch($url, $maxBytes) {
 	$stream = fopen('php://temp/maxmemory:' . (2 * 1024 * 1024), 'w+b');
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http
+	//through util\Http
 	$r = \util\Http::request('GET', $url, [ 'headers' => [], 'timeout' => $this->transferTimeout(), 'maxBytes' => $maxBytes, 'sink' => $stream, 'redirects' => 5, 'https' => true ]);
 	[ $status, $size, $contentType, $tooLarge, $curlError ] = [ $r['status'], $r['size'], $r['mime'], $r['tooLarge'], $r['tooLarge'] ? '' : (string)$r['error'] ];
 
@@ -553,7 +552,7 @@ class NodeAppOneDrive extends NodeAppMicrosoft {
 	    if ($chunk === '')
 		throw new \RuntimeException('the file could not be read');
 	    $end = $offset + strlen($chunk) - 1;
-	    //CLD: 2026-10-23T15:00:00+03:00: through util\Http
+	    //through util\Http
 	    $r = \util\Http::request('PUT', $url, [ 'headers' => [ 'Content-Length: ' . strlen($chunk), "Content-Range: bytes {$offset}-{$end}/{$size}" ], 'body' => $chunk, 'timeout' => $this->transferTimeout(), 'https' => true ]);
 	    [ $answer, $status, $curlError ] = [ $r['body'], $r['status'], (string)$r['error'] ];
 	    $data = json_decode((string)$answer, true);

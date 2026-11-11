@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-22T00:41:28+03:00: new class: base of the Microsoft Graph credentials (Outlook Mail, Outlook Calendar, OneDrive & SharePoint, Teams; not registered itself): the Graph delegated
+//base of the Microsoft Graph credentials (Outlook Mail, Outlook Calendar, OneDrive & SharePoint, Teams; not registered itself): the Graph delegated
 //permissions of the subclass (static::$permissions) + User.Read; the test reads the signed-in account. The Entra app (App registrations, platform: Web) needs these delegated
 //Microsoft Graph permissions; work / school accounts may need an admin's consent for some of them
 

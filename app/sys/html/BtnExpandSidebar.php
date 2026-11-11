@@ -13,7 +13,7 @@ class BtnExpandSidebar extends \sys\BaseObject {
 	return \V::app()->html->link(
 	    '<i class="bi bi-layout-sidebar-inset"></i>',
 	    '#',
-	    //CLD: 2026-10-30T13:00:00+02:00: shown when the sidebar is kept collapsed (User prefs sidebar_collapsed)
+	    //shown when the sidebar is kept collapsed (User prefs sidebar_collapsed)
 	    [ 'class' => 'btn-expand-sidebar' . (empty(\V::app()->var('rt.prefs')['sidebar_collapsed']) ? ' d-none' : ''), 'title' => 'Expand Sidebar', 'escape' => false ]
 	);
     }

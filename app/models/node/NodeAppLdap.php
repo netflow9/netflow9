@@ -1,8 +1,8 @@
 <?php
 
-//CLD: 2026-10-25T19:30:00+02:00: registered in data\SysObjects, for every account (no plan feature)
+//registered in data\SysObjects, for every account (no plan feature)
 
-//CLD: 2026-10-21T10:00:00+03:00: new step: LDAP - reads and changes a directory (Active Directory, OpenLDAP, ...) through an LDAP server credential of the project (CredentialLdap,
+//LDAP - reads and changes a directory (Active Directory, OpenLDAP, ...) through an LDAP server credential of the project (CredentialLdap,
 //provides `ldap`). Operations (setting `operation`):
 //	search          the entries of a filter under a base (default: the credential's Base DN): { entries: [ { dn, <attribute>: value or list } ], count, truncated }
 //	get             one entry by DN (null when there is none)
@@ -30,7 +30,7 @@ class NodeAppLdap extends \models\wf\WfNode {
     public static $label = 'LDAP';
     public static $icon = 'bi-diagram-3';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step, in Developer
+    //the step picker: an advanced step, in Developer
     public static $audience = 'advanced';
     public static $category = 'developer';
     public static $inputs = 1;
@@ -60,7 +60,7 @@ class NodeAppLdap extends \models\wf\WfNode {
     const LOGIN_FILTERS = [ 'ad' => '(&(objectClass=user)(|(sAMAccountName={login})(userPrincipalName={login})(mail={login})))', 'openldap' => '(&(objectClass=person)(|(uid={login})(mail={login})))' ];
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	$choices = [];
 	foreach(self::credentialChoices() as $c)
 	    $choices[$c['value']] = $c['label'];
@@ -87,11 +87,11 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'label' => 'Base DN',
 		'default' => '',
 		'help' => 'Empty: the credential\'s Base DN',
-		//CLD: 2026-10-29T10:30:00+02:00: full width
+		//full width
 		'ui' => [ 'placeholder' => 'OU=People,DC=example,DC=com', 'expression' => true, 'width' => 12, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'scope',
 		'type' => 'select',
 		'label' => 'Scope',
@@ -110,17 +110,17 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'ui' => [ 'expression' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'attributes',
 		'type' => 'text',
 		'label' => 'Attributes',
 		'default' => '',
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
+		//placeholder: what an empty value means
 		'help' => 'The attributes to read, separated by commas, e.g. cn, mail, memberOf',
 		'ui' => [ 'advanced' => true, 'placeholder' => 'All', 'width' => 8, 'showIf' => static::operationIn([ 'search', 'get' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-29T10:30:00+02:00: a limit: under "Advanced…", in its last row
+		//a limit: under "Advanced…", in its last row
 		'key' => 'sizeLimit',
 		'type' => 'number',
 		'label' => 'At most',
@@ -199,11 +199,11 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'default' => '',
 		'help' => 'A DN (member, uniqueMember) or a name (memberUid)',
 		'requiredIf' => [ 'if' => 'operation', 'in' => self::ON_GROUP ],
-		//CLD: 2026-10-29T10:30:00+02:00: full width
+		//full width
 		'ui' => [ 'expression' => true, 'width' => 12, 'placeholder' => '{{ entry.dn }}', 'showIf' => static::operationIn(self::ON_GROUP) ],
 	    ],
 	    [
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'memberAttribute',
 		'type' => 'select',
 		'label' => 'Member attribute',
@@ -231,7 +231,7 @@ class NodeAppLdap extends \models\wf\WfNode {
 		'ui' => [ 'expression' => true, 'width' => 6, 'placeholder' => '{{ form.password }}', 'showIf' => static::operationIn([ 'checkPassword' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'userFilter',
 		'type' => 'text',
 		'label' => 'User filter',
@@ -503,10 +503,10 @@ class NodeAppLdap extends \models\wf\WfNode {
 	throw new \ErrorException("LDAP: unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:09:58+02:00: the variables of ldapText(), set by run()
+    //the variables of ldapText(), set by run()
     private $ldapVars = [];
 
-    //CLD: 2026-11-07T01:09:58+02:00: setting $key rendered against the run's variables, each value escaped by $escape (render())
+    //setting $key rendered against the run's variables, each value escaped by $escape (render())
     private function ldapText($key, $escape = null) {
 	return self::render($this->cfg($key, ''), $this->ldapVars, $escape);
     }

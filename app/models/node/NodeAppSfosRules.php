@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T10:00:00+02:00: new step: Sophos Firewall Rules - the firewall rules (FirewallRule). Operations (setting `operation`):
+    Sophos Firewall Rules - the firewall rules (FirewallRule). Operations (setting `operation`):
 	list      the rules (name containing a text)
 	get       a rule, by its name
 	enable    a rule turned on (read, Status Enable, sent back whole)
@@ -23,7 +23,7 @@ class NodeAppSfosRules extends NodeAppSophos {
 	'enable' => 'Enable a rule',
 	'disable' => 'Disable a rule',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'enable', 'disable' ];
     const LISTS = [ 'list' ];
 

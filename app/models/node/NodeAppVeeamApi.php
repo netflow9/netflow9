@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T04:00:00+02:00: new step: Veeam API - any request of the Veeam Backup & Replication REST API (what the other Veeam steps do not have: entire machine and file
+    Veeam API - any request of the Veeam Backup & Replication REST API (what the other Veeam steps do not have: entire machine and file
     restores, other platforms, credentials, malware detection, configuration backup, ...): the method, the path (/api/v1/...), the query and the body (JSON objects, or expressions
     giving them; Other parameters is not used here). Its result: Veeam's answer as it is
 */
@@ -17,7 +17,7 @@ class NodeAppVeeamApi extends NodeAppVeeam {
     public static $defaultVariable = 'veeam';
 
     const OPERATIONS = [ 'request' => 'Send a request' ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'request' ];
     const METHODS = [ 'GET' => 'GET', 'POST' => 'POST', 'PUT' => 'PUT', 'DELETE' => 'DELETE' ];
 

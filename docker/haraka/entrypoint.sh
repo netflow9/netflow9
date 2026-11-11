@@ -1,5 +1,5 @@
 #!/bin/bash
-# CLD: 2026-11-01T19:00:00+02:00: Haraka's start in Docker: config/ from config.nfn/ (the image's) with Rail22's settings filled from the environment (compose.yaml):
+# Haraka's start in Docker: config/ from config.nfn/ (the image's) with Rail22's settings filled from the environment (compose.yaml):
 #   MAIL_INBOUND_DOMAIN   the inbound addresses' domain (nfn.ini domain and forward_from, me)
 #   MONGO_DB, NFN_HARAKA_PW   the database and the password of its user nfn_haraka (scripts/mongo_users.js), on the mongo container
 #   DAEMON_HOST, DAEMON_PORT  where the daemon takes NEWJOB (nfn.ini job_host / job_port)

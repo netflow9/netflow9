@@ -103,7 +103,7 @@ class DemoCommand extends \sys\BaseController {
 	$members = [];
 	foreach($u as $k => $user)
 	    $members[(string)$user->_id] = [ 'role' => $roles[self::PEOPLE[$k][2]]->_id ];
-	//CLD: 2026-11-01T12:30:00+02:00: "Finance"
+	//"Finance"
 	$project = $om->create('Project', [ 'aid' => $account->_id, 'name' => 'Finance', 'owner' => $u['maria']->_id, 'members' => $members ]);
 	if (!$project->validates() || !$project->save())
 	    $this->fail('project: ' . json_encode($project->errors()));
@@ -307,12 +307,12 @@ class DemoCommand extends \sys\BaseController {
 	return $nodes;
     }
 
-    //CLD: 2026-11-07T01:04:46+02:00: an email of the Send Email step: one HTML block
+    //an email of the Send Email step: one HTML block
     private static function emailOf($html) {
 	return [ 'preheader' => '', 'blocks' => [ [ 'type' => 'html', 'html' => $html ] ] ];
     }
 
-    //CLD: 2026-11-07T01:04:46+02:00: the choices of a select field from $list (value => label)
+    //the choices of a select field from $list (value => label)
     private static function choicesOf(array $list) {
 	return array_map(fn($v, $l) => [ 'value' => $v, 'label' => $l ], array_keys($list), array_values($list));
     }
@@ -345,7 +345,7 @@ class DemoCommand extends \sys\BaseController {
 	}
     }
 
-    //CLD: 2026-11-07T01:05:06+02:00: $v with its dates (also inside arrays) $seconds earlier
+    //$v with its dates (also inside arrays) $seconds earlier
     private static function shiftDates($v, $seconds) {
 	if ($v instanceof UTCDateTime)
 	    return new UTCDateTime((int)(string)$v - $seconds * 1000);
@@ -365,7 +365,7 @@ class DemoCommand extends \sys\BaseController {
 	foreach(self::POLICY as $title => $text) {
 	    $s = \models\kb\KnowledgeBase::textSource($title, $title . "\n\n" . $text, '');
 	    $now = new UTCDateTime();
-	    //CLD: 2026-11-08T14:10:00+02:00: save(), as KnowledgeBase::addDocument does; save() sets created_at
+	    //save(), as KnowledgeBase::addDocument does; save() sets created_at
 	    $doc = \V::app()->om->create('KbDocument', [ 'aid' => $kb->aid, 'kb' => $kb->_id, 'key' => $s['key'], 'title' => $s['title'], 'source' => 'text', 'file' => null, 'url' => null,
 		'meta' => (object)[], 'hash' => '', 'chunks' => 0, 'chars' => 0, 'status' => 'pending', 'error' => null, 'updated_at' => $now ]);
 	    if (!$doc->save())

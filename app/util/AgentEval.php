@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T15:46:06+02:00: new class: testing AI steps and agent workflows: the test cases of a workflow (models\wf\WfTestCase), their runs on its draft (models\wf\WfTestRun; job() in the daemon), the checks, the publish gate.
+    testing AI steps and agent workflows: the test cases of a workflow (models\wf\WfTestCase), their runs on its draft (models\wf\WfTestRun; job() in the daemon), the checks, the publish gate.
 	A case runs as an execution of the draft, trigger `test`, test_run set (kept out of the Executions list and the Overview), with util\AgentEvalContext: no write tool and no step with an effect outside the run runs.
 	The model-judged check goes to the account's chosen provider (Assistant settings; paid as the Assistant: its budget, or System AI credits). It sees the rubric, the answer between marks with a random name (data, not
 	    instructions: an answer cannot grade itself) and the tools' names; masked when the step masks personal data. Only { "pass": true } passes: an answer it cannot read is a failed check.
@@ -178,7 +178,7 @@ class AgentEval {
 	$now = new \MongoDB\BSON\UTCDateTime();
 	$run = [ '_id' => $id, 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'state' => 'queued', 'by' => (string)$by, 'draft_hash' => self::draftHash($wf->nodes), 'cases_hash' => self::casesHash($wf),
 	    'cases' => [], 'totals' => self::emptyTotals(), 'updated_at' => $now ];
-	//CLD: 2026-11-08T13:50:00+02:00: save() (one write per test run); save() sets created_at
+	//save() (one write per test run); save() sets created_at
 	if (!\V::app()->om->create('WfTestRun', $run)->save())
 	    throw new \ErrorException('the test run was not saved');
 	if (self::$inline) {
@@ -367,7 +367,7 @@ class AgentEval {
 	return $text;
     }
 
-    //CLD: 2026-11-07T01:13:30+02:00: condition $c of a check as text: path, operator, value
+    //condition $c of a check as text: path, operator, value
     private static function conditionText($c) {
 	return trim($c['path'] . ' ' . (WfTestCase::OPERATORS[$c['op']] ?? $c['op']) . (in_array($c['op'], [ 'exists', 'absent' ], true) ? '' : ' ' . $c['value']));
     }
@@ -548,7 +548,7 @@ class AgentEval {
 	return [ 'pass' => $verdict['pass'], 'detail' => trim(Expression::toText($verdict['reason'] ?? '')), 'spent' => $spent ];
     }
 
-    //CLD: 2026-11-07T01:13:30+02:00: a check that did not pass: why ($detail), and what the judge spent
+    //a check that did not pass: why ($detail), and what the judge spent
     private static function failedCheck($detail, $spent = null) {
 	return [ 'pass' => false, 'detail' => $detail ] + ($spent ? [ 'spent' => $spent ] : []);
     }
@@ -587,7 +587,7 @@ class AgentEval {
 		'answer_changed' => (string)($c['answer'] ?? '') !== (string)($was['answer'] ?? ''), 'checks' => $changed ];
 	}
 	$out['cases'] = (object)$cases;
-	//CLD: 2026-11-02T16:54:09+02:00: only of a run that has ended: while one runs, the cases not reached yet are not gone
+	//only of a run that has ended: while one runs, the cases not reached yet are not gone
 	$out['removed'] = in_array((string)($run['state'] ?? ''), WfTestRun::ACTIVE, true) ? [] : array_values(array_map(fn($c) => (string)$c['name'], $before));
 	return $out;
     }
@@ -598,7 +598,7 @@ class AgentEval {
 	    'created' => self::timeText($run['created_at'] ?? null), 'started' => self::timeText($run['started_at'] ?? null), 'ended' => self::timeText($run['ended_at'] ?? null) ];
     }
 
-    //CLD: 2026-11-07T01:13:30+02:00: a date of a run as Y-m-d H:i:s (util\Format::datetime)
+    //a date of a run as Y-m-d H:i:s (util\Format::datetime)
     private static function timeText($v) {
 	return Format::datetime($v, 'Y-m-d H:i:s');
     }

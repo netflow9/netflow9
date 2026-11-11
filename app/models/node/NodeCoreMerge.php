@@ -35,7 +35,7 @@ class NodeCoreMerge extends \models\wf\WfNode {
 
     //continues once a token arrived on every incoming edge;
     // WfExecution calls release() when nothing else can arrive (e.g. only one branch of an If reaches the Merge)
-    //CLD: 2026-10-25T11:40:00+02:00: + mode first: the first token of a round continues, the others are taken; `arrived` holds the round's edges (not empty: the round
+    //mode first: the first token of a round continues, the others are taken; `arrived` holds the round's edges (not empty: the round
     //already continued); the round ends when every edge arrived, or at release()
     public function execute($edgeId = null) {
 	$arrived = is_array($this->arrived) ? $this->arrived : [];
@@ -61,7 +61,7 @@ class NodeCoreMerge extends \models\wf\WfNode {
 	return null;
     }
 
-    //CLD: 2026-10-25T11:40:00+02:00: mode first: after continuing, the step keeps waiting for the round's other branches (release() then ends the round, so a next pass of a
+    //mode first: after continuing, the step keeps waiting for the round's other branches (release() then ends the round, so a next pass of a
     //loop starts a new one)
     public function receive($edgeId = null) {
 	$result = parent::receive($edgeId);
@@ -74,7 +74,7 @@ class NodeCoreMerge extends \models\wf\WfNode {
 	if (empty($this->arrived))
 	    return null;
 
-	//CLD: 2026-10-25T11:40:00+02:00: mode first: it continued at the first branch; the round ends, nothing continues
+	//mode first: it continued at the first branch; the round ends, nothing continues
 	if ($this->cfg('mode', 'all') === 'first') {
 	    $this->exec->log($this->wfid, 'merge: continued at the first input; ' . count($this->arrived) . ' of ' . count($this->exec->incomingEdges($this->wfid)) . ' inputs arrived');
 	    $this->arrived = [];

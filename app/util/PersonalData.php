@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T10:00:00+02:00: new class: the personal data of an AI step's run, hidden from a cloud provider (util\AgentGuard, setting Mask personal data): email addresses, phone numbers and
+    the personal data of an AI step's run, hidden from a cloud provider (util\AgentGuard, setting Mask personal data): email addresses, phone numbers and
     IBANs in a text become placeholders ([EMAIL_ab12_1], the same value always the same one, ab12 random per run: a text from outside cannot name one); restore() puts the values back in
     what the model answers and in a tool's arguments. By pattern, so best effort: a number without a prefix or separators (40721234567) is not known to be a phone; IBANs are checked (mod 97).
     Tool results are mostly JSON: a value right after an escaped line break (\n) still counts as a value's start. A text the patterns cannot be run on is not sent (masked whole)

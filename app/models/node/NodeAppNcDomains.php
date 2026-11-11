@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-05T13:00:00+02:00: new step: Namecheap Domains - the domains of the account. Operations (setting `operation`):
+    Namecheap Domains - the domains of the account. Operations (setting `operation`):
 	list        the domains (namecheap.domains.getList): all, expiring or expired, containing a text, sorted
 	expiring    the domains that expire within some days (getList, all of them, sorted by expiry): each with daysLeft; expired ones too unless left out
 	get         a domain's details (namecheap.domains.getInfo)

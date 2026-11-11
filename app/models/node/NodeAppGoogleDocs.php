@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T15:00:00+03:00: new step: Google Docs - reads, creates and fills Google documents (Docs API v1), through a Google Docs or Google Drive (OAuth) credential of
+    Google Docs - reads, creates and fills Google documents (Docs API v1), through a Google Docs or Google Drive (OAuth) credential of
     the project (both provide `gdocs`); a NodeAppGoogle step. Inspired by sim.ai's Google Docs block. Operations (setting `operation`):
 	read     the document's text, also as Markdown (headings, lists, bold / italic, links, tables)
 	create   a document with a title, and optionally a first content
@@ -33,7 +33,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 	'replace' => 'Replace texts (fill a template)',
 	'copy' => 'Copy a document (a template)',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'create', 'append', 'replace', 'copy' ];
 
     //the operations on an existing document, the ones writing content
@@ -50,12 +50,12 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
     const MAX_REPLACE = 100;
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'documentId',
 		'type' => 'text',
 		'label' => 'Document',
@@ -65,7 +65,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '1AbC... or https://docs.google.com/document/d/...', 'expression' => true, 'showIf' => static::operationIn(self::ON_DOCUMENT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'title',
 		'type' => 'text',
 		'label' => 'Title',
@@ -75,7 +75,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'placeholder' => 'Offer {{ client.name }}', 'expression' => true, 'showIf' => static::operationIn([ 'create', 'copy' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'format',
 		'type' => 'select',
 		'label' => 'Content is',
@@ -104,19 +104,18 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 		'ui' => [ 'addLabel' => 'Add replacement', 'compact' => true, 'maxRows' => self::MAX_REPLACE, 'showIf' => static::operationIn([ 'replace' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 9 wide, on a new line
+		//layout: 9 wide, on a new line
 		'key' => 'placeholders',
 		'type' => 'text',
 		'label' => 'Placeholders',
 		'default' => '',
 		'help' => 'Optional: {{ ... }} giving an object: each {{key}} in the document gets its value',
-		//CLD: 2026-11-01T21:50:00+02:00: + agent: as an AI step's tool, an object (util\AgentTools)
+		//agent: as an AI step's tool, an object (util\AgentTools)
 		'ui' => [ 'width' => 9, 'newRow' => true, 'placeholder' => '{{ row }}', 'expression' => true, 'showIf' => static::operationIn([ 'replace' ]),
 		    'agent' => [ 'type' => 'object', 'help' => 'Optional: each {{key}} in the document gets its value' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'matchCase',
 		'type' => 'switch',
 		'label' => 'Match case',
@@ -137,7 +136,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 	];
     }
 
-    //+ replace needs something to replace
+    //replace needs something to replace
     public function validates($options = []) {
 	$valid = parent::validates($options);
 	if ($this->cfg('operation', 'read') === 'replace' && empty($this->cfg('replacements', [])) && trim((string)$this->cfg('placeholders', '')) === '') {
@@ -212,7 +211,7 @@ class NodeAppGoogleDocs extends NodeAppGoogle {
 	    $find = (string)($row['find'] ?? '');
 	    if ($find === '')
 		continue;
-	    //CLD: 2026-11-01T21:50:00+02:00: settingValue() (as it is when the step runs as an AI step's tool)
+	    //settingValue() (as it is when the step runs as an AI step's tool)
 	    $replace = $this->settingValue($row['replace'] ?? '', $this->varsForSettings());
 	    $pairs[$find] = self::cellText($replace);
 	}

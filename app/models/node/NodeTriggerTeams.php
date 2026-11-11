@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T18:00:00+02:00: new trigger: Teams message - a conversation with an agent in Microsoft Teams: a message in a chat of the credential's account starts a run (variables message, conversation, user,
+    Teams message - a conversation with an agent in Microsoft Teams: a message in a chat of the credential's account starts a run (variables message, conversation, user,
 	teams: { chat, message_id }); Reply to chat answers in that chat as that account. One conversation per chat. It checks on its schedule (models\wf\WfSchedule, every minute by default; util\Scheduler runs
 	runScheduled; models\TriggerState: how far it has read): one chat, or the account's latest MAX_CHATS. The first check only notes where it starts. Not read: the account's own messages (use an account for the
 	agent, else it would answer itself), apps' and system messages.
@@ -159,7 +159,7 @@ class NodeTriggerTeams extends \models\wf\WfNode {
 	$from = (array)($m['from']['user'] ?? []);
 	$person = [ 'id' => (string)($from['id'] ?? ''), 'name' => (string)($from['displayName'] ?? ''), 'email' => '' ];
 	$conv = \V::app()->om->findOne('AgentConversation', [ 'aid' => $wf->aid, 'wf' => $wf->_id, 'thread' => (string)$chat ], [ 'arrays' => true ]);
-	//CLD: 2026-11-08T14:40:00+02:00: a new conversation made here, through save() (the defaults and last_at: AgentConversation)
+	//a new conversation made here, through save() (the defaults and last_at: AgentConversation)
 	if (!$conv) {
 	    $new = \V::app()->om->create('AgentConversation', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'node' => (string)$node['wfid'], 'channel' => 'teams',
 		'user_name' => $person['name'], 'who' => 't:' . $person['id'], 'thread' => (string)$chat, 'credential' => (string)($node['config']['credential'] ?? '') ]);

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-30T15:00:00+02:00: new step: Read a web page - the basic HTTP Request (its requests: NodeAppHttp::request, public addresses only unless app.env
+    Read a web page - the basic HTTP Request (its requests: NodeAppHttp::request, public addresses only unless app.env
     HTTP_STEPS_ALLOW_PRIVATE): a GET of a URL, no credential / parameters / headers / body. Settings: URL (may hold {{ }} expressions), what to keep (the page's readable
     text, or its HTML as it is), the variable (default `page`), on error (fail the step, or continue on a second output `error`).
     The variable gets { ok, status, url, title, content, contentType, error } - content: the text / the HTML (a JSON answer: the data parsed).

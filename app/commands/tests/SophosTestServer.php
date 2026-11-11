@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T10:00:00+02:00: new file: a fake Sophos Firewall (the XML API of SFOS 20) for the check suite (CheckCommand::suiteSophos), run by PHP's built-in server:
+    a fake Sophos Firewall (the XML API of SFOS 20) for the check suite (CheckCommand::suiteSophos), run by PHP's built-in server:
     SFOS_STATE=<a folder> php -S 127.0.0.1:<port> SophosTestServer.php
 	POST /webconsole/APIController, the form field reqxml; the login admin / sfpass (else <Login><status>Authentication Failure</status></Login>)
 	each request appended to <state>/requests.jsonl ([ operation, entity, name ] of each element, the password left out)

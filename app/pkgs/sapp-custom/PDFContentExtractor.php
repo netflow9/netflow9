@@ -1411,7 +1411,7 @@ class PDFContentExtractor {
             $this->warn("{$label}: {$bpc} bits per component are not supported, left out");
             return null;
         }
-        //CLD: 2026-10-27T23:40:00+02:00: $final ?? '' (null as an array offset is deprecated since PHP 8.5)
+        //$final ?? '' (null as an array offset is deprecated since PHP 8.5)
         [ $rec['mime'], $rec['ext'] ] = [ 'DCTDecode' => [ 'image/jpeg', 'jpg' ], 'JPXDecode' => [ 'image/jp2', 'jp2' ] ][$final ?? ''] ?? [ 'image/png', 'png' ];
 
         if ($o['with_data']) {

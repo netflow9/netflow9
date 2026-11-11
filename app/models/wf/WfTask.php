@@ -6,7 +6,7 @@
 	the run waiting for it (execution + step), its state (open, done, expired) and, when done, the answers and who gave them.
 
     Completed in "My tasks" (controllers\TaskController); completing resumes the run
-    CLD: 2026-11-01T23:30:00+02:00: + kind: `ai-approval` (an AI step's tool calls waiting for approval: models\node\NodeAppAi::askApproval), calls (the calls it decides: [ { tool, label,
+    kind: `ai-approval` (an AI step's tool calls waiting for approval: models\node\NodeAppAi::askApproval), calls (the calls it decides: [ { tool, label,
     arguments } ]); state `cancelled`: its run was killed (WfExecution::kill)
 */
 
@@ -106,7 +106,7 @@ class WfTask extends \sys\BaseModel {
 		'type' => 'text',
 		'label' => 'Step'
 	    ],
-	    //new: what the task is for (empty: a Human task; ai-approval: an AI step's tool calls), the calls it decides
+	    //what the task is for (empty: a Human task; ai-approval: an AI step's tool calls), the calls it decides
 	    [
 		'key' => 'kind',
 		'type' => 'text',

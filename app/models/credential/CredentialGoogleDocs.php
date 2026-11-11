@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-20T15:00:00+03:00: new credential variant: Google Docs (OAuth); the Google app needs the Google Docs API enabled and the scope
+//Google Docs (OAuth); the Google app needs the Google Docs API enabled and the scope
 //https://www.googleapis.com/auth/documents (the documents the account can open). Provides `gdocs` (the Google Docs step) and `http` (HTTP Request: a bearer token).
 //A Google Drive credential works for the Google Docs step too (the Docs API accepts the Drive scope) and is needed to copy a document (a template: the Drive API)
 

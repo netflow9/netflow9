@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T08:00:00+02:00: new: a Checkmk site (REST API, Checkmk 2.2 and later), for the Checkmk steps and the Checkmk problem trigger (util\Checkmk): the server's address,
+    a Checkmk site (REST API, Checkmk 2.2 and later), for the Checkmk steps and the Checkmk problem trigger (util\Checkmk): the server's address,
     the site, an automation user (Setup > Users: Automation secret for machine accounts) and its secret (encrypted), the server's certificate trusted or not. A server on a private
     address needs the account's "Integrations may connect to private network addresses". Test: the site and its Checkmk version and edition. Provides `checkmk`
 */

@@ -41,7 +41,7 @@ class DaemonCommand extends \sys\BaseController {
     //for alerting
     public $prev_jobs_count = 0;
 
-    //the job listener (a TCP stream server on 127.0.0.1, CLD: 2026-11-01T16:00:27+02:00: was a unix socket) and its connections (id => [ stream, buffer ])
+    //the job listener (a TCP stream server on 127.0.0.1) and its connections (id => [ stream, buffer ])
     public $job_listener = null;
     public $job_conns = [];
 
@@ -231,8 +231,7 @@ class DaemonCommand extends \sys\BaseController {
 		$per_project[$w['project']] = ($per_project[$w['project']] ?? 0) + 1;
 	}
 
-	//$nin also matches events without aid / project (system work: not limited)
-	//CLD: 2026-10-22T23:00:00+03:00: + the suspended accounts (models\Account::isSuspended): their jobs wait in the queue
+	//$nin also matches events without aid / project (system work: not limited); the suspended accounts' jobs (models\Account::isSuspended) wait in the queue
 	$aids = array_merge(self::fullIds($per_aid, (int)$this->config['max-per-account']), array_map(fn($id) => \V::app()->om->to_oid($id), array_keys(\models\Account::suspendedIds())));
 	if ($aids)
 	    $query['aid'] = [ '$nin' => $aids ];
@@ -242,7 +241,7 @@ class DaemonCommand extends \sys\BaseController {
 	return $query;
     }
 
-    //CLD: 2026-11-07T01:04:46+02:00: the ids of $counts (id => running jobs) that reached $limit, as ObjectIds; none without a limit (0)
+    //the ids of $counts (id => running jobs) that reached $limit, as ObjectIds; none without a limit (0)
     private static function fullIds($counts, $limit) {
 	return $limit > 0 ? array_map(fn($id) => \V::app()->om->to_oid($id), array_keys(array_filter($counts, fn($n) => $n >= $limit))) : [];
     }
@@ -398,7 +397,7 @@ class DaemonCommand extends \sys\BaseController {
 	if (!empty($this->job_listener))
 	    return;
 
-	//CLD: 2026-11-01T19:00:00+02:00: its listening address (app.daemon_listen: 127.0.0.1 unless set; Docker: 0.0.0.0)
+	//its listening address (app.daemon_listen: 127.0.0.1 unless set; Docker: 0.0.0.0)
 	$address = \models\Job::daemonAddress(true);
 	$server = @stream_socket_server($address, $errno, $errstr);
 	if (!$server) {
@@ -560,7 +559,7 @@ class DaemonCommand extends \sys\BaseController {
 	$this->loop = \React\EventLoop\Loop::get();
 
 	//setup signal handlers
-	//CLD: 2026-11-07T01:05:06+02:00: one handler for both signals, kept: removeSignal() finds it by identity
+	//one handler for both signals, kept: removeSignal() finds it by identity
 	$this->stopHandler = $this->stopMaster(...);
 
 	$this->loop->addSignal(SIGINT, $this->stopHandler);
@@ -613,7 +612,7 @@ class DaemonCommand extends \sys\BaseController {
 		[ '$set' => [ 'state' => 'new', 'worker_pid' => null ] ],
 		[ 'writeConcern' => new \MongoDB\Driver\WriteConcern(\MongoDB\Driver\WriteConcern::MAJORITY) ]
 	    );
-	    //CLD: 2026-11-02T21:50:00+02:00: logged only when there are some
+	    //logged only when there are some
 	    if ($rerun > 0) {
 		\V::app()->log->info("re-run failed jobs count: " . $rerun);
 		$this->dispatch_jobs();
@@ -674,7 +673,7 @@ class DaemonCommand extends \sys\BaseController {
 	\V::app()->log->info("WMGR: exiting.");
     }
 
-    //CLD: 2026-11-07T01:05:06+02:00: SIGINT / SIGTERM: the loop stops, both signals no longer handled
+    //SIGINT / SIGTERM: the loop stops; both signals are then no longer handled
     public function stopMaster($signo) {
 	\V::app()->log->info("WMGR: got signal $signo. Stopping....");
 	$this->loop->removeSignal(SIGINT, $this->stopHandler);
@@ -900,7 +899,7 @@ class DaemonCommand extends \sys\BaseController {
 	$this->loop = \React\EventLoop\Loop::get();
 
 	//setup signal handlers
-	//CLD: 2026-11-07T01:05:06+02:00: one handler for both signals, kept: removeSignal() finds it by identity
+	//one handler for both signals, kept: removeSignal() finds it by identity
 	$this->stopHandler = $this->stopWorker(...);
 
 	$this->loop->addSignal(SIGINT, $this->stopHandler);
@@ -955,7 +954,7 @@ class DaemonCommand extends \sys\BaseController {
 	\V::app()->log->info("Worker[{$this->pid}]: exiting....");
     }
 
-    //CLD: 2026-11-07T01:05:06+02:00: SIGINT / SIGTERM: the loop stops, both signals no longer handled
+    //SIGINT / SIGTERM: the loop stops; both signals are then no longer handled
     public function stopWorker($signo) {
 	\V::app()->log->info("Worker[{$this->pid}]: got signal $signo. Stopping....");
 	$this->loop->removeSignal(SIGINT, $this->stopHandler);

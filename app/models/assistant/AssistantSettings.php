@@ -143,7 +143,7 @@ class AssistantSettings extends \sys\BaseModel {
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //CLD: 2026-10-22T14:00:00+03:00: + the checks across fields: System only when the installation provides it; a key for the providers that need one; a budget needs prices
+    //the checks across fields: System only when the installation provides it; a key for the providers that need one; a budget needs prices
     public function validates($options = []) {
 	$ok = parent::validates($options);
 	$provider = (string)$this->provider;
@@ -162,8 +162,7 @@ class AssistantSettings extends \sys\BaseModel {
 	return $ok;
     }
 
-    //CLD: 2026-10-22T14:00:00+03:00: the server the installation provides (config assistant.system); null when there is none (no provider or model)
-    //CLD: 2026-10-31T22:00:00+02:00: the provider a plugin offers (util\AssistantSystem, hook assistant:system-provider)
+    //the server the installation provides (the provider a plugin offers: util\AssistantSystem, hook assistant:system-provider); null when there is none (no provider or model)
     public static function system() {
 	$p = \util\AssistantSystem::provider();
 	return $p ? $p->config() : null;
@@ -173,13 +172,12 @@ class AssistantSettings extends \sys\BaseModel {
 	return self::system() !== null;
     }
 
-    //CLD: 2026-10-26T23:49:50+02:00: new: whether a plugin offers the System provider
+    //whether a plugin offers the System provider
     public static function systemEnabled() {
 	return \util\AssistantSystem::provider() !== null;
     }
 
-    //CLD: 2026-10-22T14:00:00+03:00: the monthly limit (USD) for the account's settings $settings; null: no limit
-    //CLD: 2026-10-22T15:00:00+03:00: none with System: its credits limit it (AssistantWallet)
+    //the monthly limit (USD) for the account's settings $settings; null: no limit (and none with System: its credits limit it, AssistantWallet)
     public static function budgetOf($settings) {
 	if ((string)($settings->provider ?? '') === 'system')
 	    return null;

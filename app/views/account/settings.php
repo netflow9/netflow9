@@ -21,7 +21,7 @@ $this->pageTitle = 'Account::Settings';
 	<div class="flex-fill"></div>
     </div>
     <?php
-    //CLD: 2026-11-02T10:00:00+02:00: the tabs besides Settings and Usage: Services (_services.php: $services) and Tool servers (_tools.php: $servers, $open, $enabled)
+    //the tabs besides Settings and Usage: Services (_services.php: $services) and Tool servers (_tools.php: $servers, $open, $enabled)
     //without the MultiTenant plugin; Data access (_access.php: $projects); Inbound mail (_inbound.php: $settings, $domain; where Haraka is found); AI (_ai.php:
     //$policy, $spent; the owners)
     $labels = [

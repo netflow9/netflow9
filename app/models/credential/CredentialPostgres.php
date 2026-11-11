@@ -1,13 +1,13 @@
 <?php
 
 
-//CLD: 2026-10-25T17:40:00+02:00: new: a PostgreSQL server (pdo_pgsql), for the Database step. TLS: libpq's sslmode. Statement time limit: statement_timeout
+//a PostgreSQL server (pdo_pgsql), for the Database step. TLS: libpq's sslmode. Statement time limit: statement_timeout
 
 namespace models\credential;
 
 class CredentialPostgres extends CredentialDatabase {
     public static $label = 'PostgreSQL';
-    //CLD: 2026-10-31T23:30:00+02:00: + database:pgsql: the credentials of the Postgres step (models\node\NodeAppPostgres)
+    //database:pgsql: the credentials of the Postgres step (models\node\NodeAppPostgres)
     public static $provides = [ 'database', 'database:pgsql' ];
 
     const TYPE = 'pgsql';

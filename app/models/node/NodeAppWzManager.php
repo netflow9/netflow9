@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new step: Wazuh Manager - the manager and its ruleset (the Server API). Operations (setting `operation`):
+    Wazuh Manager - the manager and its ruleset (the Server API). Operations (setting `operation`):
 	status    its daemons (GET /manager/status)
 	info      its version, type and paths (GET /manager/info)
 	cluster   whether the cluster is on (GET /cluster/status)

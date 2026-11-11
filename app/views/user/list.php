@@ -2,7 +2,7 @@
 $this->pageTitle = 'User list';
 
 $createBtn = '';
-//CLD: 2026-10-25T11:20:00+02:00: User::create
+//User::create
 if (\V::app()->user->can('User::create')) {
     $createBtn = \V::app()->html->link(
 	'Create',
@@ -12,14 +12,12 @@ if (\V::app()->user->can('User::create')) {
 }
 
 //schema and filtering
-//CLD: 2026-10-22T00:28:13+03:00: the users' schema
+//the users' schema
 $sf = \util\WidgetsUtil::getSchema('User');
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $schema = \util\JSON::encode($sf['schema']);
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $filter = \util\JSON::encode($sf['filter']);
 
-//CLD: 2026-10-25T11:20:00+02:00: app.formatter.timeAgoHtml (the date and time in the account's format as a tooltip; from _iso: DataTrait, ISO 8601); the row menu:
+//app.formatter.timeAgoHtml (the date and time in the account's format as a tooltip; from _iso: DataTrait, ISO 8601); the row menu:
 //Edit (UserController::update)
 $script = "
 +function(){

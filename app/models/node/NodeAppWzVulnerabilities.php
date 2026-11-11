@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new step: Wazuh Vulnerabilities - what the vulnerability detector found, read from the Wazuh indexer (wazuh-states-vulnerabilities-*, Wazuh 4.8 and
+    Wazuh Vulnerabilities - what the vulnerability detector found, read from the Wazuh indexer (wazuh-states-vulnerabilities-*, Wazuh 4.8 and
     later). Operations (setting `operation`):
 	list      the vulnerabilities of agents, severities, a CVE, a package; the highest score first
 	summary   how many, per severity

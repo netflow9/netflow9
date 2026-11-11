@@ -1,8 +1,7 @@
 #!/bin/bash
-#CLD: 2026-10-08T09:19:59+03:00: try the IMAP client against a mailbox: ./ImapCommand.sh [--preset=gmail|outlook] [--user=..] [--password=..|--token=..] [--folder=INBOX] [--count=5] [--debug]
-#with no options it uses the placeholders at the top of ImapCommand.php
-#CLD: 2026-10-23T15:00:00+03:00: no account or password in this file (an app password was committed here): the mailbox from IMAP_USER, the password from IMAP_PASSWORD
-#or asked (not shown); the options given are passed on (e.g. --preset=outlook, --folder=, --count=, --debug; the default preset is gmail)
+#try the IMAP client against a mailbox: ./ImapCommand.sh [--preset=gmail|outlook] [--user=..] [--password=..|--token=..] [--folder=INBOX] [--count=5] [--debug]
+#the mailbox from IMAP_USER, the password from IMAP_PASSWORD or asked (not shown; none in this file); the options given are passed on
+#(e.g. --preset=outlook, --folder=, --count=, --debug; the default preset is gmail)
 #  IMAP_USER=me@gmail.com ./ImapCommand.sh --count=3
 
 set -euo pipefail

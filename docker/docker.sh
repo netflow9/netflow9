@@ -1,13 +1,13 @@
 #!/bin/bash
 
 #Rail22 with Docker Compose (docker/: the compose files, the images, the settings in docker/.env): the settings, the images, the containers.
-#CLD: 2026-11-01T23:30:00+02:00: one script for the compose setup, as the other scripts (a command first); docker compose itself works as well,
+#one script for the compose setup, as the other scripts (a command first); docker compose itself works as well,
 #the files to use are in .env (COMPOSE_FILE), so `docker compose ps` etc. (from docker/) see the same setup
 #Run as a user of the docker group (or root):
 #   docker/docker.sh setup [--dev] [--tls] [--no-browser] [--no-mail]   .env written (random passwords, the folder owner's uid / gid), the submodules checked out;
 #                                                                   an existing .env: its values kept, the passwords never changed
-#CLD: 2026-11-01T23:50:00+02:00: the web browser (playwright) and inbound mail (haraka) by default; --no-browser / --no-mail leave them out
-#CLD: 2026-11-07T15:40:00+02:00: setup asks (on a terminal) what an option did not say: development, TLS, the profiles, the ports, the mail domain,
+#the web browser (playwright) and inbound mail (haraka) by default; --no-browser / --no-mail leave them out.
+#Setup asks (on a terminal) what an option did not say: development, TLS, the profiles, the ports, the mail domain,
 #the public address, the containers' user; the defaults are an existing .env's values. Without a terminal: the options, .env's values, the defaults
 #   docker/docker.sh build [service...]                           the images (all of the setup's, or the ones named)
 #   docker/docker.sh install [setup's options]                    setup (asks, as above), build, start
@@ -33,7 +33,7 @@ usage() {
 
 command="${1:-}"
 [ -n "$command" ] && shift || true
-#CLD: 2026-11-07T15:40:00+02:00: empty: not given, setup asks (or takes .env's value, or the default)
+# empty: not given, setup asks (or takes .env's value, or the default)
 DEV=
 TLS=
 BROWSER=
@@ -91,7 +91,7 @@ get_env() {
     sed -n "s/^$1=//p" "$ENV_FILE" | tail -n1
 }
 
-#CLD: 2026-11-07T15:40:00+02:00: the questions: only on a terminal; read's prompt goes to stderr, the answer to stdout
+# the questions: only on a terminal; read's prompt goes to stderr, the answer to stdout
 INTERACTIVE=0
 [ -t 0 ] && INTERACTIVE=1
 
@@ -147,7 +147,7 @@ in_list() {
 
 EXISTING=0
 
-#CLD: 2026-11-07T17:00:00+02:00: the folders of compose.yaml's mounts in $1: the app's (config, logs, var, tmp, assets) the containers' user's, the database's mongo's own
+# the folders of compose.yaml's mounts in $1: the app's (config, logs, var, tmp, assets) the containers' user's, the database's mongo's own
 #(its entrypoint changes their owner), Haraka's the image's user node's (1000); bounces: Haraka writes, the app reads and removes (both)
 DATA_DIRS=(config logs var tmp assets bounces mongo-data haraka-queue haraka-dkim)
 make_data() {
@@ -178,7 +178,7 @@ setup() {
     fi
     [ -f "$BASE/app/pkgs/mongo-php-library/composer.json" ] || { echo "app/pkgs is empty: the submodules are needed (git submodule update --init)"; exit 1; }
 
-    #CLD: 2026-11-07T15:40:00+02:00: an existing .env gives the defaults: its compose files, its profiles, its values
+    # an existing .env gives the defaults: its compose files, its profiles, its values
     if [ -f "$ENV_FILE" ]; then
         EXISTING=1
         files=$(get_env COMPOSE_FILE)
@@ -212,16 +212,16 @@ setup() {
     set_env COMPOSE_FILE "$files"
     set_env COMPOSE_PROFILES "$profiles"
 
-    #CLD: 2026-11-07T16:00:00+02:00: the project's name (containers, volumes, images): the folder's, so two installations on one host (/home/dev, /home/app) stay apart
+    # the project's name (containers, volumes, images): the folder's, so two installations on one host (/home/dev, /home/app) stay apart
     pick_env COMPOSE_PROJECT_NAME "rail22-$(basename "$BASE" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9_\n-' '-')" "The compose project's name (its containers, volumes, images)"
 
-    #CLD: 2026-11-07T15:40:00+02:00: the containers' user: the folder's owner (root setting up another user's home: that user, not root)
+    # the containers' user: the folder's owner (root setting up another user's home: that user, not root)
     owner_uid=$(stat -c %u "$BASE")
     owner_gid=$(stat -c %g "$BASE")
     pick_env NFN_UID "$owner_uid" "The containers' user id (the files' owner)"
     pick_env NFN_GID "$owner_gid" "The containers' group id"
 
-    #CLD: 2026-11-07T17:00:00+02:00: the data (database, config, logs, mail) in folders of the user's home, made here with their owners (docker would make them root's)
+    # the data (database, config, logs, mail) in folders of the user's home, made here with their owners (docker would make them root's)
     local home data
     home=$(getent passwd "$(get_env NFN_UID)" | cut -d: -f6 || true)
     pick_env DATA_DIR "${home:-$BASE}/docker-volumes" "The data's folder (the database, the config, the logs)"
@@ -231,7 +231,7 @@ setup() {
         *) data="$BASE/$data"; set_env DATA_DIR "$data" ;;
     esac
     make_data "$data"
-    #CLD: 2026-11-07T17:30:00+02:00: development mounts public_html read-only: the assets mount's point must be there already (public_html/assets is not in git)
+    # development mounts public_html read-only: the assets mount's point must be there already (public_html/assets is not in git)
     if [ "$DEV" -eq 1 ] && [ ! -d "$BASE/public_html/assets" ]; then
         mkdir -p "$BASE/public_html/assets"
         [ "$(id -u)" -ne 0 ] || chown "$owner_uid:$owner_gid" "$BASE/public_html/assets"
@@ -281,7 +281,7 @@ setup() {
         set_env HARAKA_HOST ""
     fi
 
-    #CLD: 2026-11-07T15:40:00+02:00: root setting up another user's folder: .env stays that user's (mode 600)
+    # root setting up another user's folder: .env stays that user's (mode 600)
     if [ "$(id -u)" -eq 0 ] && [ "$owner_uid" -ne 0 ]; then
         chown "$owner_uid:$owner_gid" "$ENV_FILE"
     fi
@@ -316,7 +316,7 @@ case "$command" in
         ;;
     install)
         need_docker
-        #CLD: 2026-11-07T15:40:00+02:00: setup each time (an existing .env: its values offered, kept on enter)
+        # setup each time (an existing .env: its values offered, kept on enter)
         setup
         docker compose build
         docker compose up -d
@@ -364,7 +364,7 @@ case "$command" in
         read -r -p "remove the containers and every volume, the data's folders too ($(get_env DATA_DIR): the database, app.env with APP_SECRET, logs)? type yes: " answer
         [ "$answer" = "yes" ] || { echo "nothing removed"; exit 1; }
         docker compose down --remove-orphans -v
-        #CLD: 2026-11-07T17:00:00+02:00: the data's folders too (the database's files are mongo's user's: removed from a container, as root there)
+        # the data's folders too (the database's files are mongo's user's: removed from a container, as root there)
         data=$(get_env DATA_DIR)
         if [ -n "$data" ] && [ -d "$data" ]; then
             docker run --rm -u 0 --entrypoint rm -v "$data:/data" mongo:8.3 -rf "${DATA_DIRS[@]/#//data/}"

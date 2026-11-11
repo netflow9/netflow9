@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T04:00:00+02:00: new step: Veeam Jobs - the jobs of a Veeam Backup & Replication server. Operations (setting `operation`):
+    Veeam Jobs - the jobs of a Veeam Backup & Replication server. Operations (setting `operation`):
 	list      the jobs (GET /api/v1/jobs: name pattern, type; all pages up to At most)
 	states    the jobs' states (GET /api/v1/jobs/states: status, last result, last and next run)
 	get       one job (GET /api/v1/jobs/{id})
@@ -31,7 +31,7 @@ class NodeAppVeeamJobs extends NodeAppVeeam {
 	'enable' => 'Enable a job',
 	'disable' => 'Disable a job',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'start', 'stop', 'retry', 'enable', 'disable' ];
     const LISTS = [ 'list', 'states' ];
     const ON_JOB = [ 'get', 'start', 'stop', 'retry', 'enable', 'disable' ];
@@ -74,7 +74,7 @@ class NodeAppVeeamJobs extends NodeAppVeeam {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:10:30+02:00: the API's filter of the setting Name contains; none when empty
+    //the API's filter of the setting Name contains; none when empty
     private function nameFilter() {
 	return array_filter([ 'nameFilter' => $this->settingText('nameFilter') ]);
     }

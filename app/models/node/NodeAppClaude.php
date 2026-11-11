@@ -1,12 +1,12 @@
 <?php
 
-//CLD: 2026-10-12T22:16:44+03:00: new step: Claude (Anthropic) - an AI step (NodeAppAi: prompt, tools, agent loop) on the Anthropic Messages API (POST <base URL>/v1/messages, raw
+//Claude (Anthropic) - an AI step (NodeAppAi: prompt, tools, agent loop) on the Anthropic Messages API (POST <base URL>/v1/messages, raw
 //HTTP: the project uses no Composer, so no SDK), with an Anthropic credential (models\credential\CredentialAnthropic). Model default claude-opus-5-5; thinking is left to the
 //model (adaptive by default on the current models: no `thinking` parameter), its depth set by Effort (output_config.effort). The assistant turns go back unchanged (thinking
 //blocks included). JSON answers use structured outputs when a schema is given (output_config.format json_schema), else a system prompt instruction. A declined request
 //(stop_reason refusal) is an error; Fallback on refusal (default on) lets the API retry it on the model Anthropic recommends (fallbacks: "default",
 //beta server-side-fallback-2026-07-01; for the models that support it)
-//CLD: 2026-10-27T23:11:38+02:00: files: images as image blocks, PDFs as document blocks (PDFs as Auto: documents), text files as text blocks
+//Files: images as image blocks, PDFs as document blocks (PDFs as Auto: documents), text files as text blocks
 
 namespace models\node;
 
@@ -25,34 +25,30 @@ class NodeAppClaude extends NodeAppAi {
     protected static function providerSchema() {
 	return [
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide, not on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 2 wide, not on a new line
 		'key' => 'effort',
 		'type' => 'select',
 		'label' => 'Effort',
 		'required' => true,
 		'default' => \data\AiProviders::DEFAULT_EFFORT,
 		'choices' => \data\AiProviders::EFFORT,
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line
+		//3 wide on a new line
 		'help' => 'Higher: harder tasks',
 		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 2 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 2 wide
 		'key' => 'fallback',
 		'type' => 'switch',
 		'label' => 'Fallback on refusal',
 		'default' => true,
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide
+		//3 wide
 		'help' => false,
 		'ui' => [ 'advanced' => true, 'width' => 2 ],
 	    ],
 	];
     }
-
-    //CLD: 2026-10-17T21:00:54+03:00: + $images: image blocks before the prompt's text
-    //CLD: 2026-10-27T23:11:38+02:00: $files: their blocks before the prompt's text (fileBlock)
+    //$files: their blocks before the prompt's text (fileBlock)
     protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	if ($schema === true)
 	    $system = trim($system . "\n\n" . self::jsonInstruction(true));
@@ -64,12 +60,12 @@ class NodeAppClaude extends NodeAppAi {
 	return [ 'system' => $system, 'messages' => [ [ 'role' => 'user', 'content' => $content ] ] ];
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: new: Claude reads PDFs (document blocks)
+    //Claude reads PDFs (document blocks)
     protected function pdfAsDocuments($cred) {
 	return true;
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: new: a file part as a content block: an image, a PDF (a document block, its name as the title), text
+    //a file part as a content block: an image, a PDF (a document block, its name as the title), text
     protected static function fileBlock(array $part) {
 	return match($part['type']) {
 	    'image' => self::imageBlock([ $part['mime'], $part['data'] ]),
@@ -78,7 +74,7 @@ class NodeAppClaude extends NodeAppAi {
 	};
     }
 
-    //CLD: 2026-10-17T21:00:54+03:00: an image as a content block
+    //an image as a content block
     protected static function imageBlock(array $image) {
 	return [ 'type' => 'image', 'source' => [ 'type' => 'base64', 'media_type' => $image[0], 'data' => $image[1] ] ];
     }
@@ -123,7 +119,6 @@ class NodeAppClaude extends NodeAppAi {
 	    if (($block->type ?? '') === 'text')
 		$text[] = (string)$block->text;
 	    elseif (($block->type ?? '') === 'tool_use')
-		//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 		$calls[] = [ (string)$block->id, (string)$block->name, is_object($block->input ?? null) ? json_decode(\util\JSON::encode($block->input), true) ?: [] : null ];
 	}
 	if ($stop === 'max_tokens')
@@ -133,7 +128,7 @@ class NodeAppClaude extends NodeAppAi {
     }
 
     //all the results in one user turn
-    //CLD: 2026-10-17T21:00:54+03:00: a result with images: its text and image blocks
+    //a result with images: its text and image blocks
     protected function addToolResults(array &$state, array $results) {
 	$content = [];
 	foreach($results as $r) {

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new step: Wazuh Active Response - runs a response on agents (PUT /active-response). Operations (setting `operation`):
+    Wazuh Active Response - runs a response on agents (PUT /active-response). Operations (setting `operation`):
 	block  an IP blocked on agents: a built-in script (`!` + its name) with the address as the alert's data.srcip
 	run    a command defined in the manager's ossec.conf, or `!script` from the agents' active-response/bin, with arguments and the alert's data
     Wazuh answers when the command is sent, not when it has run; it has no request that undoes a block. An empty Agents is an error (Wazuh would take it as every agent); `all` is asked for

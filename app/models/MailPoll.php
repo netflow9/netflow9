@@ -7,7 +7,7 @@
 
     Kept outside the workflow document: saving the workflow in the designer must not reset it
 
-    //CLD: 2026-10-18T10:00:00+03:00: also the check itself and the message helpers: read() for the Read emails step, startMessage() / messageVars()
+    //also the check itself and the message helpers: read() for the Read emails step, startMessage() / messageVars()
     //for the mail triggers
 */
 
@@ -94,13 +94,12 @@ class MailPoll extends \sys\BaseModel {
 	];
     }
 
-    //lock the state of step $nodeId of $wf (created when missing); null when another poller holds it
-    //CLD: 2026-10-12T14:14:59+03:00: through ObjectManager (om->findOneAndUpdate): created when missing (upsert), then locked atomically
-    //CLD: 2026-10-17T14:20:00+03:00: by the workflow's id, account and project (the Read emails step has the execution, not the workflow)
+    //lock the state of step $nodeId of $wf, by the workflow's id, account and project (the Read emails step has the execution, not the workflow), through
+    //ObjectManager (om->findOneAndUpdate): created when missing (upsert), then locked atomically; null when another poller holds it
     public static function acquire($wfId, $nodeId, $aid, $project) {
 	$now = new \MongoDB\BSON\UTCDateTime();
 
-	//CLD: 2026-10-18T10:00:00+03:00: a concurrent first check inserted the state first (duplicate key on the unique index): it exists now, go on to the lock
+	//a concurrent first check inserted the state first (duplicate key on the unique index): it exists now, go on to the lock
 	try {
 	    \V::app()->om->findOneAndUpdate('MailPoll',
 		[ 'wf' => $wfId, 'node' => (string)$nodeId ],
@@ -119,7 +118,7 @@ class MailPoll extends \sys\BaseModel {
     }
 
     //save the state fields (not the lock)
-    //CLD: 2026-10-12T14:14:59+03:00: om->updateMany on this state's id
+    //om->updateMany on this state's id
     public function store() {
 	\V::app()->om->updateMany('MailPoll',
 	    [ '_id' => $this->_id ],
@@ -140,25 +139,25 @@ class MailPoll extends \sys\BaseModel {
 	\V::app()->om->updateMany('MailPoll', [ '_id' => $this->_id ], [ '$set' => [ 'locked_until' => null ] ]);
     }
 
-    //CLD: 2026-10-17T13:24:18+03:00: hook workflow:before-delete (sys\Boot): a deleted workflow's IMAP check state (last UID, lock) goes with it
+    //hook workflow:before-delete (sys\Boot): a deleted workflow's IMAP check state (last UID, lock) goes with it
     public static function beforeWorkflowDelete($wf) {
 	foreach(\V::app()->om->find('MailPoll', [ 'wf' => $wf->_id ]) as $state)
 	    $state->delete();
     }
 
-    //CLD: 2026-10-17T14:20:00+03:00: one check of the mailbox for the Read emails step (models\node\NodeAppReadEmail, a regular step):
-    //$exec the running execution, $wfid the step, $cfg its config; returns [ status (ok / baseline / busy / error), message, mails => [ message objects ] ]
-    //CLD: 2026-10-18T10:00:00+03:00: static, + $out: optional callable($message) for progress output (the run's log)
+    //one check of the mailbox for the Read emails step (models\node\NodeAppReadEmail, a regular step):
+    //$exec the running execution, $wfid the step, $cfg its config, $out: optional callable($message) for progress output (the run's log);
+    //returns [ status (ok / baseline / busy / error), message, mails => [ message objects ] ]
     public static function read($exec, $wfid, array $cfg, $out = null) {
 	$wfid = (string)$wfid;
 
-	//CLD: 2026-10-17T14:20:00+03:00: the state is the workflow's (exec->wf), not the execution's
+	//the state is the workflow's (exec->wf), not the execution's
 	$state = self::acquire($exec->wf, $wfid, $exec->aid, $exec->project);
 	if (empty($state))
 	    return self::result($out, 'busy', 'another check of this step is running');
 
 	$mails = [];
-	//CLD: 2026-10-18T10:30:00+03:00: \Throwable: a PHP error (e.g. TypeError) also ends as status `error`, the state saved and the lock released
+	//\Throwable: a PHP error (e.g. TypeError) also ends as status `error`, the state saved and the lock released
 	try {
 	    $result = $state->check($exec, $wfid, $cfg, $mails, $out);
 	    $state->error = null;
@@ -174,10 +173,9 @@ class MailPoll extends \sys\BaseModel {
 	return $result;
     }
 
-    //CLD: 2026-10-17T14:20:00+03:00: fetch and read: the message objects are added to $mails
-    //CLD: 2026-10-18T10:00:00+03:00: a method of the (locked) state
+    //a method of the (locked) state: fetch and read; the message objects are added to $mails
     protected function check($exec, $wfid, array $cfg, array &$mails, $out) {
-	//CLD: 2026-10-08T14:37:58+03:00: a credential providing `imap`; its type opens the connection
+	//a credential providing `imap`; its type opens the connection
 	$cred = \models\Credential::findFor($exec, $cfg['credential'] ?? '', 'imap');
 	if (empty($cred))
 	    throw new \Exception('the mail credential of the step is missing');
@@ -191,7 +189,7 @@ class MailPoll extends \sys\BaseModel {
 	$maxSize = max(1, min(\models\node\NodeAppReadEmail::MAX_SIZE_MB, (int)($cfg['maxSize'] ?? 25))) * 1024 * 1024;
 	$saveAttachments = filter_var($cfg['saveAttachments'] ?? true, FILTER_VALIDATE_BOOLEAN);
 
-	//CLD: 2026-10-09T17:21:14+03:00: the credential (a variant of models\Credential) opens the connection
+	//the credential (a variant of models\Credential) opens the connection
 	$imap = $cred->openImap();
 	try {
 	    $box = $imap->select($folder);
@@ -204,7 +202,7 @@ class MailPoll extends \sys\BaseModel {
 		$this->last_uid = null;
 		$this->skipped = [];
 	    }
-	    //CLD: 2026-10-08T09:03:43+03:00: UIDs skipped earlier (too large) are not picked again
+	    //UIDs skipped earlier (too large) are not picked again
 	    $skippedBefore = is_array($this->skipped) ? array_map('intval', $this->skipped) : [];
 
 	    if ($which === 'new') {
@@ -212,7 +210,7 @@ class MailPoll extends \sys\BaseModel {
 		    //first check: remember where the folder is, start nothing
 		    $this->last_uid = !empty($box['uidnext']) ? (int)$box['uidnext'] - 1 : (int)max(array_merge([ 0 ], $imap->uidSearch('ALL')));
 		    $imap->logout();
-		    //CLD: 2026-10-17T14:20:00+03:00: wording (messages are read by the next runs)
+		    //wording (messages are read by the next runs)
 		    return self::result($out, 'baseline', "watching {$folder} from UID " . ($this->last_uid + 1) . '; messages arriving from now on are read by the next runs');
 		}
 		$last = (int)$this->last_uid;
@@ -236,7 +234,7 @@ class MailPoll extends \sys\BaseModel {
 		    $skipped++;
 		    self::say($out, "UID {$uid}: skipped, " . round($size / 1048576, 1) . ' MB is over the limit');
 		    $this->advance($which, $uid);
-		    //CLD: 2026-10-08T09:03:43+03:00: remembered (the last 1000), so unread / all do not pick it at every check
+		    //remembered (the last 1000), so unread / all do not pick it at every check
 		    if ($which !== 'new')
 			$this->skipped = array_slice(array_merge($skippedBefore, [ (int)$uid ]), -1000);
 		    $skippedBefore = is_array($this->skipped) ? array_map('intval', $this->skipped) : [];
@@ -250,8 +248,8 @@ class MailPoll extends \sys\BaseModel {
 		    continue;
 		}
 
-		//CLD: 2026-10-15T11:37:34+03:00: startMessage() (shared with the Email inbound trigger), with the mailbox's fields
-		//CLD: 2026-10-17T14:20:00+03:00: the message object (messageVars(), shared with startMessage()) is added to the list; bodies kept shorter (the list is stored in the execution)
+		//the message object (messageVars(), shared with startMessage() of the Email inbound trigger), with the mailbox's fields, is added to the list; bodies kept shorter
+		//(the list is stored in the execution)
 		[ $msg ] = self::messageVars($raw, [ 'saveAttachments' => $saveAttachments, 'maxBody' => \models\node\NodeAppReadEmail::MAX_BODY,
 		    'mail' => [ 'account' => (string)$cred->name, 'folder' => $folder, 'uid' => (int)$uid ],
 		    'meta' => [ 'project' => $exec->project, 'aid' => $exec->aid, 'wf' => $exec->wf ] ]);
@@ -275,14 +273,14 @@ class MailPoll extends \sys\BaseModel {
 		$this->store();
 	    }
 	    $imap->logout();
-	//CLD: 2026-10-18T10:30:00+03:00: \Throwable: the connection is closed on a PHP error too
+	//\Throwable: the connection is closed on a PHP error too
 	} catch (\Throwable $e) {
 	    $imap->close();
 	    throw $e;
 	}
 
 	$message = count($mails) . " message(s) read in {$folder}";
-	//CLD: 2026-10-08T09:03:43+03:00: + skipped count
+	//the skipped count
 	if ($skipped > 0)
 	    $message .= ", {$skipped} skipped (too large)";
 	if ($found > count($uids))
@@ -297,11 +295,11 @@ class MailPoll extends \sys\BaseModel {
     }
 
     //a saved execution for message $raw
-    //CLD: 2026-10-15T11:37:34+03:00: message $raw as one variable, an object; public and shared by the mail triggers (IMAP, Email inbound): trigger $trigger, $o: saveAttachments, variable,
+    //message $raw as one variable, an object; public and shared by the mail triggers (IMAP, Email inbound): trigger $trigger, $o: saveAttachments, variable,
     //mail (the trigger's own fields of the variable, first), input (its own fields of the execution input), log (how the message is named in the run's log)
     public static function startMessage($wf, $wfid, $trigger, $raw, array $o = []) {
 	$variable = (string)($o['variable'] ?? 'mail');
-	//CLD: 2026-10-17T14:20:00+03:00: the variable and the input from messageVars() (shared with the Read emails step)
+	//the variable and the input from messageVars() (shared with the Read emails step)
 	[ $msg, $input ] = self::messageVars($raw, $o + [ 'meta' => [ 'project' => $wf->project, 'aid' => $wf->aid, 'wf' => $wf->_id ] ]);
 	$input['vars'] = [ $variable => $msg ];
 
@@ -311,7 +309,7 @@ class MailPoll extends \sys\BaseModel {
 	return $exe;
     }
 
-    //CLD: 2026-10-17T14:20:00+03:00: message $raw as [ the variable's object, the execution input (without vars) ]; $o: saveAttachments,
+    //message $raw as [ the variable's object, the execution input (without vars) ]; $o: saveAttachments,
     //mail (fields first in the object), input (fields first in the input), meta (project, aid, wf of the saved attachment files), maxBody (text / html kept, default MAX_BODY)
     public static function messageVars($raw, array $o = []) {
 	$saveAttachments = !empty($o['saveAttachments']);
@@ -323,7 +321,7 @@ class MailPoll extends \sys\BaseModel {
 	$files = [];
 	foreach($mail->attachments() as $att) {
 	    $entry = [ 'filename' => $att['filename'], 'contentType' => $att['contentType'], 'size' => $att['size'], 'disposition' => $att['disposition'] ];
-	    //CLD: 2026-10-24T09:45:36+03:00: an attachment over the tier's limit of files (util\Tiers) is not saved (`file` null, `error`: why); the message still starts its run
+	    //an attachment over the tier's limit of files (util\Tiers) is not saved (`file` null, `error`: why); the message still starts its run
 	    if ($saveAttachments) {
 		try {
 		    $entry['file'] = (string)\models\File::createFromString($att['filename'], $att['content'], [ 'metadata' => [
@@ -343,7 +341,7 @@ class MailPoll extends \sys\BaseModel {
 	}
 
 	$from = $mail->from();
-	//CLD: 2026-10-11T22:58:51+03:00: several values are lists: addresses, references, attachment files; + every header and the attachments
+	//several values are lists: addresses, references, attachment files; + every header and the attachments
 	$date = $mail->date();
 	$text = self::cut($mail->text(), $maxBody);
 	$html = self::cut($mail->html(), $maxBody);
@@ -388,13 +386,13 @@ class MailPoll extends \sys\BaseModel {
 	return [ $msg, $input ];
     }
 
-    //CLD: 2026-11-07T01:05:52+02:00: the addresses of a list of parsed addresses ([ email, name ]), the empty ones left out
+    //the addresses of a list of parsed addresses ([ email, name ]), the empty ones left out
     private static function emailsOf($list) {
 	return array_values(array_filter(array_map(fn($a) => (string)($a['email'] ?? ''), $list), 'strlen'));
     }
 
     //at most MAX_BODY bytes, cut on a UTF-8 boundary
-    //CLD: 2026-10-11T22:58:51+03:00: the headers as a variable: lower-case name => its value, or a list of values when the header appears several times (e.g. received); at
+    //the headers as a variable: lower-case name => its value, or a list of values when the header appears several times (e.g. received); at
     //most MAX_HEADERS names and MAX_HEADER characters per value; names a database field cannot have (`.`, leading `$`) are left out
     const MAX_HEADERS = 200;
     const MAX_HEADER = 2000;
@@ -412,14 +410,14 @@ class MailPoll extends \sys\BaseModel {
 	return $vars;
     }
 
-    //CLD: 2026-10-17T14:20:00+03:00: + $max (default MAX_BODY)
+    //$max: default MAX_BODY
     protected static function cut($s, $max = self::MAX_BODY) {
 	if (strlen($s) <= $max)
 	    return $s;
 	return mb_strcut($s, 0, $max, 'UTF-8');
     }
 
-    //CLD: 2026-10-18T10:00:00+03:00: static, + $out
+    //static, + $out
     protected static function result($out, $status, $message) {
 	self::say($out, $message);
 	return [ 'status' => $status, 'message' => $message ];

@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-28T10:00:00+02:00: new view: Import, step 3 (ProjectController::import): what was done (util\Transfer::apply), what was not and why; workflows come as drafts
+//Import, step 3 (ProjectController::import): what was done (util\Transfer::apply), what was not and why; workflows come as drafts
 $this->pageTitle = 'Imported: ' . $project->name;
 $settingsUrl = \V::app()->createUrl('/project/settings', [ 'id' => $project->_id, '__tab' => 'transfer' ]);
 ?>

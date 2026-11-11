@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-24T16:30:00+03:00: new: formatters for views and messages (static; '' for no value):
+    formatters for views and messages (static; '' for no value):
 	numbers     number(), compact() (1.2K), percent(), ordinal() (2nd), plural() (3 rows)
 	sizes       bytes() (1.5 MB), toBytes() ("2M" -> 2097152)
 	dates       toDateTime() (UTCDateTime / DateTimeInterface / ObjectId / seconds / text -> the app timezone), date(), datetime() in the account's formats
@@ -22,7 +22,7 @@ class Format {
 	return number_format((float)$n, $decimals, $point, $thousands);
     }
 
-    //CLD: 2026-11-07T01:17:49+02:00: at most $max decimals, trailing zeros dropped, no thousands separator: 1.50 -> "1.5", 3.0 -> "3", 0.125 -> "0.13"
+    //at most $max decimals, trailing zeros dropped, no thousands separator: 1.50 -> "1.5", 3.0 -> "3", 0.125 -> "0.13"
     public static function decimal($n, int $max = 2): string {
 	if ($n === null || $n === '')
 	    return '';

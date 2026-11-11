@@ -43,12 +43,12 @@ final class Interpreter
     private int $maxStringLength;
     private int $maxArrayLength;
     private bool $wrapHostExceptions;
-    //CLD: 2026-10-13T15:30:33+03:00: host names the script may change (writable; except readOnly), assignments to undeclared names create top-level ones (implicitGlobals); globals() after a run
+    //host names the script may change (writable; except readOnly), assignments to undeclared names create top-level ones (implicitGlobals); globals() after a run
     private bool $writable;
     /** @var array<string, true> */
     private array $readOnly;
     private bool $implicitGlobals;
-    //CLD: 2026-10-20T21:40:00+03:00: dates given to PHP (toPhp) and put in {{ }} text: a PHP date() format in local time, or null for the ISO text of toJSON()
+    //dates given to PHP (toPhp) and put in {{ }} text: a PHP date() format in local time, or null for the ISO text of toJSON()
     private ?string $dateFormat;
     private ?Scope $globalScope = null;
 
@@ -90,7 +90,7 @@ final class Interpreter
     }
 
     /**
-     * CLD: 2026-10-13T15:30:33+03:00: the top-level names after the last run (the context's and, with implicitGlobals, those the script created by assignment), as PHP values;
+     * the top-level names after the last run (the context's and, with implicitGlobals, those the script created by assignment), as PHP values;
      * the script's own declarations (let, const, var, functions) are not among them
      *
      * @return array<string, mixed>
@@ -136,7 +136,7 @@ final class Interpreter
                 $parsed->diagnostics,
             );
         }
-        //CLD: 2026-10-13T12:17:47+03:00: also a Template (Parser::parse mode `template`)
+        //also a Template (Parser::parse mode `template`)
         if (!in_array($ast['type'] ?? null, ['Program', 'Template'], true)) {
             throw new \InvalidArgumentException('Expected a Program or Template AST node');
         }
@@ -184,7 +184,7 @@ final class Interpreter
         }
     }
 
-    //CLD: 2026-10-13T12:17:47+03:00: a template's value: a single {{ }} with only blanks around it gives the expression's value as it is (number, list, object, ...); else the text with each
+    //a template's value: a single {{ }} with only blanks around it gives the expression's value as it is (number, list, object, ...); else the text with each
     //part's value as text (lists and objects as JSON, null / undefined as nothing)
     private function evalTemplate(array $ast, Scope $scope): mixed
     {
@@ -207,17 +207,17 @@ final class Interpreter
             if ($value instanceof Undefined || $value === null) {
                 continue;
             }
-            //CLD: 2026-10-20T21:01:44+03:00: a date as its ISO text (as in JSON)
+            //a date as its ISO text (as in JSON)
             $out .= $value instanceof JsDate ? (string) $this->toPhp($value)
                 : ($value instanceof JsArray || $value instanceof JsObject
-                ? Values::json($this->toPhp($value)) //CLD: 2026-10-20T22:45:00+03:00: util\JSON
+                ? Values::json($this->toPhp($value)) //util\JSON
                 : Values::toString($value));
             $this->checkString($out);
         }
         return $out;
     }
 
-    //CLD: 2026-10-20T22:10:00+03:00: for long native work (a regular expression): the time limit, checked now
+    //for long native work (a regular expression): the time limit, checked at once
     /** @throws LimitExceeded */
     public function checkTime(): void
     {
@@ -367,7 +367,7 @@ final class Interpreter
         if ($v instanceof \JsonSerializable) {
             return $this->toJs($v->jsonSerialize(), $depth + 1);
         }
-        //CLD: 2026-10-20T21:01:44+03:00: a JS Date
+        //a JS Date
         if ($v instanceof \DateTimeInterface) {
             return new JsDate(JsDate::clip((float) $v->format('U') * 1000 + (int) $v->format('v')));
         }
@@ -386,13 +386,12 @@ final class Interpreter
         if ($v instanceof Undefined) {
             return null;
         }
-        //CLD: 2026-10-20T21:01:44+03:00: a date as its ISO text (toJSON(): `2026-10-20T18:05:03.000Z`; null for an Invalid Date)
-        //CLD: 2026-10-20T22:10:00+03:00: a regular expression as its literal text (/a+/g)
+        //a date as its ISO text (toJSON(): `2026-10-20T18:05:03.000Z`; null for an Invalid Date), a regular expression as its literal text (/a+/g)
         if ($v instanceof JsRegExp) {
             return $v->toString();
         }
         if ($v instanceof JsDate) {
-            return $this->dateFormat === null ? $v->toIso() : $v->formatPhp($this->dateFormat); //CLD: 2026-10-20T21:40:00+03:00: or in the dateFormat
+            return $this->dateFormat === null ? $v->toIso() : $v->formatPhp($this->dateFormat); //or in the dateFormat
         }
         if ($v instanceof JsArray) {
             return array_map(fn ($x) => $this->toPhp($x, $depth + 1), $v->items);
@@ -657,7 +656,7 @@ final class Interpreter
         return self::NORMAL;
     }
 
-    //CLD: 2026-11-07T01:12:07+02:00: one pass of a for-in / for-of loop $n: the loop variable set to $value (in a scope of its own, var: in $scope), then the body
+    //one pass of a for-in / for-of loop $n: the loop variable set to $value (in a scope of its own, var: in $scope), then the body
     private function forBody(array $n, Scope $scope, mixed $value): int
     {
         $iter = new Scope($scope);
@@ -757,7 +756,7 @@ final class Interpreter
     {
         switch ($n['type']) {
             case 'Literal':
-                //CLD: 2026-10-20T22:10:00+03:00: a regular expression literal: a new RegExp each time it is evaluated (as in JS)
+                //a regular expression literal: a new RegExp each time it is evaluated (as in JS)
                 if (isset($n['regex'])) {
                     try {
                         return new JsRegExp($n['regex']['pattern'], $n['regex']['flags']);
@@ -891,7 +890,7 @@ final class Interpreter
                 return;
             }
         }
-        //CLD: 2026-10-13T15:30:33+03:00: implicitGlobals: a new top-level name
+        //implicitGlobals: a new top-level name
         if ($this->implicitGlobals && $this->globalScope !== null) {
             $this->globalScope->vars[$name] = $value;
             return;
@@ -1212,7 +1211,7 @@ final class Interpreter
             if ($k === 'length') {
                 return count($obj->items);
             }
-            //CLD: 2026-10-20T22:10:00+03:00: its named properties (a match's index, input, groups)
+            //its named properties (a match's index, input, groups)
             if (array_key_exists($k, $obj->props)) {
                 return $obj->props[$k];
             }
@@ -1230,11 +1229,11 @@ final class Interpreter
             }
             return Builtins::stringMethod($k, $obj) ?? Undefined::value();
         }
-        //CLD: 2026-10-20T21:01:44+03:00: date methods (no own properties)
+        //date methods (no own properties)
         if ($obj instanceof JsDate) {
             return Builtins::dateMethod(Values::toPropertyKey($key), $obj) ?? Undefined::value();
         }
-        //CLD: 2026-10-20T22:10:00+03:00: a regular expression's properties and methods
+        //a regular expression's properties and methods
         if ($obj instanceof JsRegExp) {
             $k = Values::toPropertyKey($key);
             return match ($k) {
@@ -1279,7 +1278,7 @@ final class Interpreter
             $obj->props[Values::toPropertyKey($key)] = $value;
             return;
         }
-        //CLD: 2026-10-20T22:10:00+03:00: a regular expression's lastIndex can be set
+        //a regular expression's lastIndex can be set
         if ($obj instanceof JsRegExp && Values::toPropertyKey($key) === 'lastIndex') {
             $obj->lastIndex = Values::toNumber($value);
             return;

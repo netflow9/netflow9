@@ -277,7 +277,7 @@ class PDFUtilFnc {
         $xref_table = [];
 
         while (($xref_line = strtok($separator)) !== false) {
-            //CLD: 2026-10-27T23:55:00+02:00: from upstream commit 2e02c7a: lines with trailing spaces, empty lines
+            //from upstream commit 2e02c7a: lines with trailing spaces, empty lines
             $xref_line = trim($xref_line);
             if ($xref_line === '') continue;
 
@@ -347,7 +347,7 @@ class PDFUtilFnc {
 
         // Get the trailer object
         $trailer_obj = PDFUtilFnc::get_trailer($_buffer, $trailer_pos);
-        //CLD: 2026-10-27T23:55:00+02:00: from upstream commit 7cdc652: hybrid files (XRefStm in the trailer): the objects only in the cross-reference stream
+        //from upstream commit 7cdc652: hybrid files (XRefStm in the trailer): the objects only in the cross-reference stream
         //(+ no merge when that stream cannot be read)
         if (isset($trailer_obj['XRefStm'])) {
             $xrefstm_pos = $trailer_obj['XRefStm']->get_int();

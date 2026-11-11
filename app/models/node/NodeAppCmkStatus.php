@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T08:00:00+02:00: new step: Checkmk Status - what Checkmk monitors, now (Livestatus through the REST API: domain-types/host | service/collections/all). Operations:
+    Checkmk Status - what Checkmk monitors, now (Livestatus through the REST API: domain-types/host | service/collections/all). Operations:
 	problems   the current problems: hosts DOWN / UNREACH and services WARN / CRIT / UNKNOWN (CRIT only: at least CRIT), of a host or all; acknowledged ones and those in a
 	           downtime left out unless chosen: { items: [ { kind, host_name, service, state, stateText, output, since, acknowledged, inDowntime } ], ... }
 	host       a host's state and its services: { host: { ... }, services: [ ... ] } (none: an error)
@@ -26,7 +26,7 @@ class NodeAppCmkStatus extends NodeAppCheckmk {
 	'services' => 'List services',
 	'query' => 'Livestatus query',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [];
     const LISTS = [ 'problems', 'services', 'query' ];
     const SERVICE_STATES = [ 0 => 'OK', 1 => 'WARN', 2 => 'CRIT', 3 => 'UNKNOWN' ];
@@ -76,7 +76,7 @@ class NodeAppCmkStatus extends NodeAppCheckmk {
 	return [ array_slice($all, 0, $max), $t1 || $t2 || count($all) > $max ];
     }
 
-    //CLD: 2026-11-07T01:08:03+02:00: the filters of problems() on column $hostColumn: host $host (null: any), without the acknowledged ones and those in a downtime unless asked
+    //the filters of problems() on column $hostColumn: host $host (null: any), without the acknowledged ones and those in a downtime unless asked
     private static function problemFilter($hostColumn, $host, $withAck, $withDowntime) {
 	return Checkmk::all([
 	    $host !== null ? Checkmk::eq($hostColumn, $host) : null,
@@ -127,7 +127,7 @@ class NodeAppCmkStatus extends NodeAppCheckmk {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:08:03+02:00: the setting Host; null when empty (all the hosts)
+    //the setting Host; null when empty (all the hosts)
     private function hostSetting() {
 	return $this->settingText('host') !== '' ? self::host($this->settingOf('host')) : null;
     }

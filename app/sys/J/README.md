@@ -2,7 +2,7 @@
 
 A tolerant parser (for IDE use) that produces an ESTree-style AST, plus a tree-walking VM that executes that AST against a context supplied by the calling PHP code.
 
-Requires PHP 8.1+ with `mbstring`, `json`, `ctype`, and the app's `util\JSON` <!-- CLD: 2026-10-20T22:45:00+03:00: --> (JSON text and `JSON.parse`; the tests and the example load it themselves). PCRE 10.30+ with Unicode for regular expressions. <!-- CLD: 2026-10-20T23:05:00+03:00: --> The app's setup checks these in the web and the console PHP (`util\Setup::J_EXTENSIONS`, `PCRE_MIN`).
+Requires PHP 8.1+ with `mbstring`, `json`, `ctype`, and the app's `util\JSON` (JSON text and `JSON.parse`; the tests and the example load it themselves). PCRE 10.30+ with Unicode for regular expressions. The app's setup checks these in the web and the console PHP (`util\Setup::J_EXTENSIONS`, `PCRE_MIN`).
 
 ```php
 use sys\J\Parser;
@@ -31,7 +31,6 @@ Built-ins: `Math`, `JSON`, `Date`, `RegExp` (see below), `Object.keys/values/ent
 
 `class`, `import` / `export` / dynamic `import()`, `new`, `this`, `super`, `async`/`await`, generators/`yield`, `with`, getters/setters, `instanceof`. Programs with parse errors are refused by the VM (`ScriptError`). Also not implemented: destructuring, labels, tagged templates.
 
-<!-- CLD: 2026-10-20T21:01:44+03:00: Date -->
 ## Date
 
 `Date` is called without `new` (like `Error`) and always gives a Date object: `Date()` is now, `Date(ms)`, `Date("2026-10-20T10:00")`, `Date(otherDate)` (a copy), `Date(year, month, day?, hours?, minutes?, seconds?, ms?)` in local time (months 0-11, years 0-99 mean 1900-1999, values overflow as in JS: month 12 is January of the next year). Also `Date.now()`, `Date.parse(text)`, `Date.UTC(...)`.
@@ -41,12 +40,10 @@ Built-ins: `Math`, `JSON`, `Date`, `RegExp` (see below), `Object.keys/values/ent
 - Text accepted by `Date(text)` / `Date.parse`: the ISO 8601 forms (a date alone is UTC midnight, a date and time without an offset is local time, a space may stand for the `T`), and the usual forms like `Oct 20 2026 10:00`, `2026/10/20` and what `toString` / `toUTCString` give. Relative text (`tomorrow`, `+1 day`) and anything else give an Invalid Date (`NaN` time, `"Invalid Date"` as text, `toISOString` throws a `RangeError`).
 - Operators as in JS: `b - a` is the difference in ms, `<` / `>` compare the times, `+` joins the `toString()` text. `===` compares identity.
 - `typeof` is `"object"`; `JSON.stringify` and `console.log` give the ISO text (`2026-10-20T18:05:03.000Z`, `null` for an Invalid Date). Host `DateTimeInterface` values become Dates.
-- <!-- CLD: 2026-10-20T21:40:00+03:00: dateFormat --> `run()` (to PHP) and `{{ }}` templates give the ISO text too, or, with the option `dateFormat` (a PHP `date()` format, e.g. `DATE_ATOM`), the date in that format in local time.
+- `run()` (to PHP) and `{{ }}` templates give the ISO text too, or, with the option `dateFormat` (a PHP `date()` format, e.g. `DATE_ATOM`), the date in that format in local time.
 
-<!-- CLD: 2026-10-20T21:40:00+03:00: METHODS -->
 `Builtins::METHODS` lists the methods of each kind of value (`object`, `array`, `string`, `number`, `date`); a method is found only if it is listed there, so hosts can read the list (e.g. for suggestions in an editor) and add one to J by implementing it and listing it.
 
-<!-- CLD: 2026-10-20T22:10:00+03:00: RegExp -->
 ## Regular expressions
 
 Literals (`/(\d+)-(\d+)/g`) and `RegExp(pattern, flags?)` (called without `new`; a RegExp as pattern is copied). Flags `d g i m s u y` (`v` is refused).
@@ -76,7 +73,6 @@ The parser recovers instead of stopping: missing tokens are reported and assumed
 
 ## Parse modes and templates
 
-<!-- CLD: 2026-10-13T12:17:47+03:00: the parse modes -->
 `Parser::parse($source, ['mode' => ...])` takes one of `Parser::MODES`:
 
 - `script` (default): statements, as above.
@@ -92,7 +88,7 @@ The parser recovers instead of stopping: missing tokens are reported and assumed
 - Numbers are PHP `int|float`; results are JS-compatible for normal use, but `toFixed` uses PHP rounding and `toString(radix)` only handles integers.
 - No prototypes: methods like `hasOwnProperty` exist only as a fallback on plain objects; functions have `name`/`length` but no `call`/`apply`/`bind`.
 - Object key order is insertion order (JS puts integer-like keys first).
-- <!-- CLD: 2026-10-20T22:45:00+03:00: util\JSON --> JSON text (`JSON.stringify`, objects in `{{ }}` text, `console.log`) uses the app's escaping: `<`, `>`, `&`, `'` and `"` inside strings are written as `\u003C`… (safe in HTML; the same JSON), invalid UTF-8 is dropped. `JSON.parse` is the app's tolerant parser: it also takes comments, single quotes, keys without quotes, a comma after the last item and `True` / `False` / `None`, and nests 128 levels at most.
+- JSON text (`JSON.stringify`, objects in `{{ }}` text, `console.log`) uses the app's escaping: `<`, `>`, `&`, `'` and `"` inside strings are written as `\u003C`… (safe in HTML; the same JSON), invalid UTF-8 is dropped. `JSON.parse` is the app's tolerant parser: it also takes comments, single quotes, keys without quotes, a comma after the last item and `True` / `False` / `None`, and nests 128 levels at most.
 - Regular expressions match code points (`.` sees an emoji as one character even without `u`); `\d`, `\w`, `\b` are ASCII-only as in JS (spelled out for PCRE), `\s` is Unicode white space (JS adds U+FEFF); lookbehinds must have a bounded length (PCRE); `matchAll` gives an array.
 - `Date(...)` without `new` gives a Date object (JS gives a string); `toString()` has no timezone name (`GMT+0300`, not `GMT+0300 (Eastern European Summer Time)`); the `toLocale*` methods ignore their arguments and always format like `en-US`.
 

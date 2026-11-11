@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T16:00:00+02:00: new step: Hyper-V VMs - the virtual machines of a Hyper-V host (PowerShell: the Hyper-V module). Operations (setting `operation`):
+    Hyper-V VMs - the virtual machines of a Hyper-V host (PowerShell: the Hyper-V module). Operations (setting `operation`):
 	list       the VMs (Get-VM: names, * patterns; a state): NodeAppHyperV r22vm { name, id, state, status, cpuUsage, memoryAssigned, uptimeSeconds, heartbeat, replicationHealth, ... }
 	get        one VM
 	start      Start-VM (running already: done); resume: Resume-VM of a paused VM; save: Save-VM; pause: Suspend-VM; turnOff: Stop-VM -TurnOff; so already: done (already: true)
@@ -36,7 +36,7 @@ class NodeAppHyperVVms extends NodeAppHyperV {
 	'network' => 'Get its network adapters',
 	'delete' => 'Delete',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'start', 'shutdown', 'reboot', 'turnOff', 'save', 'pause', 'resume', 'reset', 'delete' ];
     const LISTS = [ 'list' ];
     const STATES = [ 'any' => 'Any', 'Running' => 'Running', 'Off' => 'Off', 'Saved' => 'Saved', 'Paused' => 'Paused' ];

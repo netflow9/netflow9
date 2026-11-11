@@ -18,7 +18,7 @@ class Role extends \sys\BaseModel {
 		$this->permissions[$permName] = $permData;
 	}
 
-	//CLD: 2026-10-08T08:55:11+03:00: defaults of plugin permissions for the system roles (owner, member) that do not have them stored
+	//defaults of plugin permissions for the system roles (owner, member) that do not have them stored
 	if (!empty($this->iname)) {
 	    foreach(\data\SysPermissions::get() as $permissions) {
 		foreach($permissions as $p) {

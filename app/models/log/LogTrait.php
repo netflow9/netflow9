@@ -117,8 +117,7 @@ trait LogTrait {
 	if (strpos($permName, '::') === false)
 	    $permName = $this->getObjectName() . '::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the entry's project decides; an entry without a project: global scope only
-	//CLD: 2026-11-07T12:00:00+02:00: that global scope is sys\AAA's (asked before the entry): here an entry without a project gives nothing
+	//the user's role in the entry's project decides; an entry without a project gives nothing here (global scope is sys\AAA's, asked before the entry)
 	return !empty($this->project) && (\V::app()->om->findById('Project', $this->project)?->checkAccess($userId, $permName) ?? false);
     }
 
@@ -146,7 +145,7 @@ trait LogTrait {
 	    if (isset($fields['details']))
 		$fields['details'] = mb_substr((string)$fields['details'], 0, self::MAX_VALUE);
 
-	    //CLD: 2026-10-22T00:00:00+03:00: a sealed log (SEALED, e.g. AuditLog): the account's next number before saving, the MAC of the stored entry after
+	    //a sealed log (SEALED, e.g. AuditLog): the account's next number before saving, the MAC of the stored entry after
 	    $sealed = defined(static::class . '::SEALED') && static::SEALED && !empty($fields['aid']);
 	    if ($sealed)
 		$fields['seq'] = static::nextSeq($fields['aid']);

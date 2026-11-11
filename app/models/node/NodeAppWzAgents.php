@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new step: Wazuh Agents - the agents and their groups (the Server API). Operations (setting `operation`):
+    Wazuh Agents - the agents and their groups (the Server API). Operations (setting `operation`):
 	list          the agents (GET /agents): of statuses, a group, a text
 	get           an agent (GET /agents?agents_list=<id>)
 	summary       how many per status (GET /agents/summary/status)
@@ -116,12 +116,12 @@ class NodeAppWzAgents extends NodeAppWazuh {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:10:30+02:00: the setting Group (a group name)
+    //the setting Group (a group name)
     private function groupSetting() {
 	return self::group($this->settingOf('group'));
     }
 
-    //CLD: 2026-11-07T01:10:30+02:00: the API's filters of the settings Search and Status
+    //the API's filters of the settings Search and Status
     private function agentFilter() {
 	return [ 'search' => $this->settingText('search'), 'status' => array_values(array_intersect(array_map('strval', (array)$this->cfg('status', [])), array_keys(self::STATUSES))) ];
     }

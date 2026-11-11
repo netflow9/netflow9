@@ -11,14 +11,14 @@ if (!window.app)
  *
  *   new app.CodeEditor(textarea, { url, params: () => ({ ... }), syntax: 'script' })
  *
- * CLD: 2026-10-23T12:30:00+03:00: the language follows the syntax (LANGUAGES: script - JavaScript, json / jsonrpc - JSON (CodeMirror6.json when the bundle has it, else JavaScript),
+ * the language follows the syntax (LANGUAGES: script - JavaScript, json / jsonrpc - JSON (CodeMirror6.json when the bundle has it, else JavaScript),
  * other - plain text); setSyntax() changes it (and the server's checks), setValue() the text without an `input` event
  */
 window.app.CodeEditor = (function() {
 
     const KINDS = { variable: 'variable', global: 'namespace', method: 'method', property: 'property', literal: 'keyword' };
 
-    //CLD: 2026-10-23T12:30:00+03:00: the CodeMirror language of a syntax (none: plain text)
+    //the CodeMirror language of a syntax (none: plain text)
     const LANGUAGES = {
 	script: (cm) => cm.javascript.javascript(),
 	json: (cm) => cm.json ? cm.json.json() : cm.javascript.javascript(),
@@ -44,7 +44,7 @@ window.app.CodeEditor = (function() {
 	    this.completeController = null;
 	    this.cm = null;
 	    this.language = null;
-	    //CLD: 2026-10-23T12:30:00+03:00: a change made by setValue(): no `input` event
+	    //a change made by setValue(): no `input` event
 	    this.silent = false;
 
 	    textarea.classList.add('font-monospace');
@@ -155,12 +155,12 @@ window.app.CodeEditor = (function() {
 	    };
 	}
 
-	//CLD: 2026-10-23T12:30:00+03:00: the language extension of $syntax
+	//the language extension of $syntax
 	languageFor(syntax) {
 	    return LANGUAGES[syntax] ? LANGUAGES[syntax](this.cm) : [];
 	}
 
-	//CLD: 2026-10-23T12:30:00+03:00: another syntax: its language, checked again by the server
+	//another syntax: its language, checked again by the server
 	setSyntax(syntax) {
 	    if (!syntax || syntax === this.syntax)
 		return;
@@ -173,7 +173,7 @@ window.app.CodeEditor = (function() {
 	    this.cm.lint.forceLinting(this.view);
 	}
 
-	//CLD: 2026-10-23T12:30:00+03:00: the text set from outside (the textarea already has it)
+	//the text set from outside (the textarea already has it)
 	setValue(text) {
 	    text = text === undefined || text === null ? '' : String(text);
 	    if (!this.view || this.view.state.doc.toString() === text)

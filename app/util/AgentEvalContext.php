@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T15:46:06+02:00: new: one test case running (util\AgentEval): held by its execution ($exe->__test), never saved. What keeps a test from acting on the world:
+    one test case running (util\AgentEval): held by its execution ($exe->__test), never saved. What keeps a test from acting on the world:
 	Steps: only the steps of RUNS, those with no effect outside the run, and the AI steps. Any other step (Send email, HTTP Request, Data table, a Wait, a Human task, Run a workflow, a new step type: nothing is
 	    allowed by default) does not run: what it gave in the source execution (the case's `steps`) stands in for it, its variables and the outputs it took; nothing recorded: its first output, no variables.
 	Tools: the case's mode. mock: answered from the recordings, no tool runs. real: a tool that only reads and asks for no approval runs; the others are answered from the recordings, or refused.

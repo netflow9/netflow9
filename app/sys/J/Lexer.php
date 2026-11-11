@@ -29,7 +29,7 @@ final class Lexer
               '^', '!', '~', '?', ':', '=', '.'],
     ];
 
-    //CLD: 2026-10-20T22:10:00+03:00: a `/` after these words starts a regular expression (after other names it divides)
+    //a `/` after these words starts a regular expression (after other names it divides)
     public const REGEX_AFTER = ['return', 'typeof', 'case', 'do', 'else', 'in', 'of', 'void', 'delete', 'throw', 'instanceof', 'new', 'yield', 'await'];
 
     /** @var array<string, true> */
@@ -69,7 +69,7 @@ final class Lexer
                 $tokens[] = new Token(Token::EOF, null, $end, $end, $nl);
                 return $tokens;
             }
-            //CLD: 2026-10-20T22:10:00+03:00: a `/` where a value can start is a regular expression (decided by the token before it)
+            //a `/` where a value can start is a regular expression (decided by the token before it)
             $tokens[] = $prev = $this->src[$this->pos] === '/' && self::regexAfter($prev) ? $this->scanRegex($nl) : $this->scanToken($nl);
         }
     }
@@ -184,7 +184,7 @@ final class Lexer
         return $this->make(Token::INVALID, substr($this->src, $start, $width), $start, $nl);
     }
 
-    //CLD: 2026-10-20T22:10:00+03:00: whether a `/` after token $prev starts a regular expression: not after a value (a name, literal, `)`, `]`, `}`, postfix ++ / --)
+    //whether a `/` after token $prev starts a regular expression: not after a value (a name, literal, `)`, `]`, `}`, postfix ++ / --)
     private static function regexAfter(?Token $prev): bool
     {
         if ($prev === null) {
@@ -527,7 +527,7 @@ final class Lexer
                 $p = $this->skipTemplateRaw($p);
             } elseif ($c === '/' && !in_array($src[$p + 1] ?? '', ['/', '*'], true) && self::regexAllowedAt($src, 0, $p)
                 && ($e = self::regexEnd($src, $p, $this->len)) !== null) {
-                $p = $e; //CLD: 2026-10-20T22:10:00+03:00: a regular expression (its } and quotes are not code)
+                $p = $e; //a regular expression (its } and quotes are not code)
             } elseif ($c === '/' && ($src[$p + 1] ?? '') === '/') {
                 $e = strpos($src, "\n", $p);
                 $p = $e === false ? $this->len : $e;

@@ -134,7 +134,7 @@ trait LdapServerTrait {
 	];
     }
 
-    //CLD: 2026-11-07T01:06:42+02:00: a field's showIf: shown when the setting `encryption` is one of $values
+    //a field's showIf: shown when the setting `encryption` is one of $values
     protected static function encryptionIn(array $values) {
 	return [ 'key' => 'encryption', 'operator' => 'in', 'value' => $values ];
     }

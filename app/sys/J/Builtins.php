@@ -32,9 +32,9 @@ final class Builtins
         self::define($scope, 'Object', self::objectCtor());
         self::define($scope, 'Array', self::arrayCtor());
         self::define($scope, 'console', self::console());
-        //CLD: 2026-10-20T21:01:44+03:00: Date (called without `new`, like the Error functions)
+        //Date (called without `new`, like the Error functions)
         self::define($scope, 'Date', self::dateCtor());
-        //CLD: 2026-10-20T22:10:00+03:00: RegExp (called without `new`; literals /a+/g too)
+        //RegExp (called without `new`; literals /a+/g too)
         self::define($scope, 'RegExp', self::regexpCtor());
 
         self::define($scope, 'String', self::fn('String', fn (array $a) => array_key_exists(0, $a) ? Values::toString($a[0]) : '', [
@@ -72,14 +72,14 @@ final class Builtins
         }
     }
 
-    //CLD: 2026-11-07T01:12:48+02:00: global $name of $scope, a constant
+    //global $name of $scope, a constant
     private static function define(Scope $scope, string $name, mixed $value): void
     {
         $scope->vars[$name] = $value;
         $scope->consts[$name] = true;
     }
 
-    //CLD: 2026-10-20T21:40:00+03:00: the methods of each kind of value, by name: the *Method functions answer only these (so the lists stay complete);
+    //the methods of each kind of value, by name: the *Method functions answer only these (so the lists stay complete);
     //hosts read them too (util\Expression offers them as suggestions)
     public const METHODS = [
         'object' => ['hasOwnProperty', 'toString'],
@@ -149,7 +149,7 @@ final class Builtins
         ]);
     }
 
-    //CLD: 2026-11-07T01:12:48+02:00: a console method: its arguments logged after $prefix
+    //a console method: its arguments logged after $prefix
     private static function logFn(string $prefix): NativeFunction
     {
         return self::fn('log', function (array $a, Interpreter $vm) use ($prefix) {
@@ -229,7 +229,7 @@ final class Builtins
             }),
             'parse' => self::fn('parse', function (array $a, Interpreter $vm) {
                 $text = Values::toString(self::arg($a, 0));
-                //CLD: 2026-10-20T22:45:00+03:00: util\JSON (the app's tolerant parser: comments, single quotes, keys without quotes, a last comma)
+                //util\JSON (the app's tolerant parser: comments, single quotes, keys without quotes, a last comma)
                 try {
                     $decoded = \util\JSON::json_decode($text, true, true);
                 } catch (\ErrorException $e) {
@@ -264,11 +264,11 @@ final class Builtins
         if ($v === null) {
             return 'null';
         }
-        //CLD: 2026-10-20T21:01:44+03:00: a date as its toJSON() (the ISO text; null for an Invalid Date)
+        //a date as its toJSON() (the ISO text; null for an Invalid Date)
         if ($v instanceof JsDate) {
             return $v->isValid() ? '"' . $v->toIso() . '"' : 'null';
         }
-        //CLD: 2026-10-20T22:10:00+03:00: a regular expression has no own enumerable properties
+        //a regular expression has no own enumerable properties
         if ($v instanceof JsRegExp) {
             return '{}';
         }
@@ -282,7 +282,7 @@ final class Builtins
             return is_finite($v) ? Values::numberToString($v) : 'null';
         }
         if (is_string($v)) {
-            //CLD: 2026-10-20T22:45:00+03:00: util\JSON (the app's escaping: < > & ' " as \u00XX, safe in HTML; invalid UTF-8 dropped)
+            //util\JSON (the app's escaping: < > & ' " as \u00XX, safe in HTML; invalid UTF-8 dropped)
             return Values::json($v);
         }
 
@@ -304,7 +304,7 @@ final class Builtins
             foreach ($v->props as $k => $item) {
                 $enc = self::jsonEncode($item, $indent, $inner, $stack, $vm);
                 if ($enc !== null) {
-                    $key = Values::json((string) $k); //CLD: 2026-10-20T22:45:00+03:00: util\JSON
+                    $key = Values::json((string) $k); //util\JSON
                     $parts[] = $inner . $key . ($indent === '' ? ':' : ': ') . $enc;
                 }
             }
@@ -365,7 +365,7 @@ final class Builtins
         ]);
     }
 
-    //CLD: 2026-11-07T01:12:48+02:00: the keys of $o (an object's, an array's indexes, a string's positions) as strings
+    //the keys of $o (an object's, an array's indexes, a string's positions) as strings
     private static function keysOf(mixed $o): array
     {
         return match (true) {
@@ -376,7 +376,7 @@ final class Builtins
         };
     }
 
-    //CLD: 2026-11-07T01:12:48+02:00: the values of $o (an object's, an array's items, a string's characters)
+    //the values of $o (an object's, an array's items, a string's characters)
     private static function valuesOf(mixed $o): array
     {
         return match (true) {
@@ -390,7 +390,7 @@ final class Builtins
     /** Fallback "prototype" methods for plain objects (own properties take precedence). */
     public static function objectMethod(string $name, JsObject $obj): ?NativeFunction
     {
-        //CLD: 2026-10-20T21:40:00+03:00: only the listed methods (METHODS)
+        //only the listed methods (METHODS)
         if (!self::isMethod('object', $name)) {
             return null;
         }
@@ -443,7 +443,7 @@ final class Builtins
 
     public static function arrayMethod(string $name, JsArray $arr): ?NativeFunction
     {
-        //CLD: 2026-10-20T21:40:00+03:00: only the listed methods (METHODS)
+        //only the listed methods (METHODS)
         if (!self::isMethod('array', $name)) {
             return null;
         }
@@ -670,7 +670,7 @@ final class Builtins
 
     public static function stringMethod(string $name, string $s): ?NativeFunction
     {
-        //CLD: 2026-10-20T21:40:00+03:00: only the listed methods (METHODS)
+        //only the listed methods (METHODS)
         if (!self::isMethod('string', $name)) {
             return null;
         }
@@ -737,7 +737,7 @@ final class Builtins
             'split' => function (array $a, Interpreter $vm) use ($s) {
                 $sep = self::arg($a, 0);
                 $limit = self::arg($a, 1) instanceof Undefined ? PHP_INT_MAX : max(0, Values::toInteger($a[1]));
-                //CLD: 2026-10-20T22:10:00+03:00: by a regular expression
+                //by a regular expression
                 if ($sep instanceof JsRegExp) {
                     return self::regexpSplit($sep, $s, $limit, $vm);
                 }
@@ -752,7 +752,7 @@ final class Builtins
                 return new JsArray($parts);
             },
             'replace', 'replaceAll' => function (array $a, Interpreter $vm) use ($s, $name) {
-                //CLD: 2026-10-20T22:10:00+03:00: by a regular expression; a replacement text may use $& $1 $<name> $` $' $$ (self::substitute)
+                //by a regular expression; a replacement text may use $& $1 $<name> $` $' $$ (self::substitute)
                 if (self::arg($a, 0) instanceof JsRegExp) {
                     return self::regexpReplace($a[0], $s, self::arg($a, 1), $name === 'replaceAll', $vm);
                 }
@@ -785,7 +785,7 @@ final class Builtins
                 }
                 return $pos <= strlen($s) ? $out . substr($s, $pos) : $out;
             },
-            //CLD: 2026-10-20T22:10:00+03:00: match, matchAll, search (a text is taken as a pattern, as in JS)
+            //match, matchAll, search (a text is taken as a pattern, as in JS)
             'match' => function (array $a, Interpreter $vm) use ($s) {
                 $re = self::toRegExp(self::arg($a, 0), '', $vm);
                 if (!$re->has('g')) {
@@ -841,7 +841,7 @@ final class Builtins
 
     public static function numberMethod(string $name, int|float $n): ?NativeFunction
     {
-        //CLD: 2026-10-20T21:40:00+03:00: only the listed methods (METHODS)
+        //only the listed methods (METHODS)
         if (!self::isMethod('number', $name)) {
             return null;
         }
@@ -875,7 +875,7 @@ final class Builtins
 
     // =================================================================== Date
 
-    //CLD: 2026-10-20T21:01:44+03:00: Date: Date() is now, Date(ms), Date("2026-10-20T10:00"), Date(date) a copy, Date(y, m, d?, h?, mi?, s?, ms?) in local time
+    //Date: Date() is the current time, Date(ms), Date("2026-10-20T10:00"), Date(date) a copy, Date(y, m, d?, h?, mi?, s?, ms?) in local time
     //(months 0-11, years 0-99 are 1900-1999); always a Date object (JS's Date() without `new` gives a string)
     private static function dateCtor(): NativeFunction
     {
@@ -900,13 +900,13 @@ final class Builtins
         ]);
     }
 
-    //CLD: 2026-11-07T01:12:48+02:00: argument $i of $a as a number, else $default
+    //argument $i of $a as a number, else $default
     private static function dateArg(array $a, int $i, float $default): float
     {
         return array_key_exists($i, $a) ? (float) Values::toNumber($a[$i]) : $default;
     }
 
-    //CLD: 2026-11-07T01:12:48+02:00: the time of the fields $a (year, month, date, hours, minutes, seconds, ms), local; years 0-99 are 1900-1999
+    //the time of the fields $a (year, month, date, hours, minutes, seconds, ms), local; years 0-99 are 1900-1999
     private static function fromFields(array $a): float
     {
         $y = self::dateArg($a, 0, NAN);
@@ -932,7 +932,7 @@ final class Builtins
     /** Date methods: getters, setters (they change the date and return its new time) and the string forms. */
     public static function dateMethod(string $name, JsDate $date): ?NativeFunction
     {
-        //CLD: 2026-10-20T21:40:00+03:00: only the listed methods (METHODS)
+        //only the listed methods (METHODS)
         if (!self::isMethod('date', $name)) {
             return null;
         }
@@ -993,7 +993,7 @@ final class Builtins
 
     // ================================================================= RegExp
 
-    //CLD: 2026-10-20T22:10:00+03:00: RegExp(pattern, flags?): pattern is a text or a RegExp (copied, with its flags unless flags are given)
+    //RegExp(pattern, flags?): pattern is a text or a RegExp (copied, with its flags unless flags are given)
     private static function regexpCtor(): NativeFunction
     {
         return self::fn('RegExp', function (array $a, Interpreter $vm) {

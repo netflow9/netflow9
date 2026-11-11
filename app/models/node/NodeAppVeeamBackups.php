@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T04:00:00+02:00: new step: Veeam Backups - the backups and restore points of a Veeam Backup & Replication server. Operations (setting `operation`):
+    Veeam Backups - the backups and restore points of a Veeam Backup & Replication server. Operations (setting `operation`):
 	backups   the backups (GET /api/v1/backups; all pages up to At most)
 	points    the restore points (GET /api/v1/restorePoints; newest first): of machines whose name matches, created since
 	latest    a machine's newest restore point: { found, restorePoint, ageHours, recent } (recent: not older than Max age); found false is not an error
@@ -21,7 +21,7 @@ class NodeAppVeeamBackups extends NodeAppVeeam {
 	'points' => 'List restore points',
 	'latest' => 'Check a machine\'s latest restore point',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [];
     const LISTS = [ 'backups', 'points' ];
 

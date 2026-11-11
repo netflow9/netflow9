@@ -36,7 +36,7 @@ class Credential extends \sys\BaseModel {
     public static $provides = [];
     public static $testable = false;
 
-    //CLD: 2026-10-09T17:21:14+03:00: the fields of every credential + the system fields; variants add theirs (parent::getSchema() + fields)
+    //the fields of every credential + the system fields; variants add theirs (parent::getSchema() + fields)
     public function getSchema() {
 	return array_merge($this->commonSchema(), $this->getSystemSchema());
     }
@@ -119,7 +119,7 @@ class Credential extends \sys\BaseModel {
 		'perm:update' => 'permission',
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-10-22T01:58:24+03:00: the models of an AI server, recorded by its Test (recordModels): the choices of the AI steps' Model; not in the list, not in forms
+	    //the models of an AI server, recorded by its Test (recordModels): the choices of the AI steps' Model; not in the list, not in forms
 	    [
 		'key' => 'models',
 		'type' => 'array',
@@ -162,7 +162,7 @@ class Credential extends \sys\BaseModel {
 	return $this->provides('http');
     }
 
-    //CLD: 2026-11-03T18:00:00+02:00: the hosts it may be sent to, or any host when the owner says so: [ options, error ]. A host: name or *.name
+    //the hosts it may be sent to, or any host when the owner says so: [ options, error ]. A host: name or *.name
     public function shareOptions(array $data) {
 	if (!$this->shareUsesHosts())
 	    return [ [], null ];
@@ -189,14 +189,14 @@ class Credential extends \sys\BaseModel {
 	return $warnings;
     }
 
-    //CLD: 2026-11-03T18:00:00+02:00: whether a share with project $projectId limits it to hosts: such a request follows no redirect (only Authorization and Cookie are dropped on the way to another host, not an API key)
+    //whether a share with project $projectId limits it to hosts: such a request follows no redirect (only Authorization and Cookie are dropped on the way to another host, not an API key)
     public function hostLockedIn($projectId) {
 	if ($this->isHome($projectId) || !$this->shareUsesHosts())
 	    return false;
 	return empty($this->shareOf($projectId)['any_host']);
     }
 
-    //CLD: 2026-11-03T18:00:00+02:00: whether a request of project $projectId may carry it to $url: its own project, a share with any host, a host on the share's list
+    //whether a request of project $projectId may carry it to $url: its own project, a share with any host, a host on the share's list
     public function allowsUrlIn($projectId, $url) {
 	if (!$this->hostLockedIn($projectId))
 	    return true;
@@ -214,14 +214,14 @@ class Credential extends \sys\BaseModel {
 	return false;
     }
 
-    //CLD: 2026-10-22T01:58:24+03:00: the chat models among $ids (NOT_CHAT left out), sorted, each once
+    //the chat models among $ids (NOT_CHAT left out), sorted, each once
     public static function chatModels(array $ids) {
 	$list = array_values(array_unique(array_filter(array_map(fn($id) => trim((string)$id), $ids), fn($id) => $id !== '' && !preg_match(\data\Constants::NOT_CHAT, $id))));
 	natcasesort($list);
 	return array_values($list);
     }
 
-    //CLD: 2026-10-22T01:58:24+03:00: the models the server offers, recorded on the credential (only that field is saved: the object may hold unsaved form data, as setStatus); the AI steps offer them
+    //the models the server offers, recorded on the credential (only that field is saved: the object may hold unsaved form data, as setStatus); the AI steps offer them
     public function recordModels(array $ids) {
 	$this->models = self::chatModels($ids);
 	if ($this->exists())
@@ -229,12 +229,12 @@ class Credential extends \sys\BaseModel {
 	return $this->models;
     }
 
-    //CLD: 2026-10-09T17:21:14+03:00: permissions are the family's (Credential::update, ...) for every variant
+    //permissions are the family's (Credential::update, ...) for every variant
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)
 	    $permName = 'Credential::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the credential's project decides
+	//the user's role in the credential's project decides
 	return \V::app()->om->findById('Project', $this->project)?->checkAccess($userId, $permName) ?? false;
     }
 
@@ -260,7 +260,7 @@ class Credential extends \sys\BaseModel {
 	return in_array($capability, static::$provides, true);
     }
 
-    //CLD: 2026-10-25T17:40:00+02:00: whether this PHP can use the type (e.g. a database type: its PDO driver is loaded); not available, it is not offered for new credentials
+    //whether this PHP can use the type (e.g. a database type: its PDO driver is loaded); not available, it is not offered for new credentials
     public static function available() {
 	return true;
     }
@@ -274,9 +274,8 @@ class Credential extends \sys\BaseModel {
 	throw new \Exception('this credential type has no connection test');
     }
 
-    //CLD: 2026-10-12T21:15:28+03:00: for the connection tests of HTTP API credentials (AI servers): GET $url with $headers (name => value), the decoded JSON
+    //for the connection tests of HTTP API credentials (AI servers): GET $url with $headers (name => value) through util\Http, the decoded JSON
     //answer; an exception when there is no answer, the status is 400 or more (with the server's error message when it gives one) or the answer is not JSON
-    //CLD: 2026-10-23T15:00:00+03:00: through util\Http
     protected static function getJson($url, array $headers = [], $timeout = 15) {
 	$r = \util\Http::json('GET', $url, [ 'headers' => $headers, 'timeout' => $timeout ]);
 	if ($r['error'] !== null)
@@ -293,9 +292,9 @@ class Credential extends \sys\BaseModel {
     }
 
     //the form's app.smartform fields
-    //CLD: 2026-10-10T09:14:41+03:00: util\WidgetsUtil handles the encrypted fields (write-only inputs, "leave empty to keep")
+    //util\WidgetsUtil handles the encrypted fields (write-only inputs, "leave empty to keep")
     public function formFields() {
-	//CLD: 2026-10-10T18:44:22+03:00: the fields with showInForms
+	//the fields with showInForms
 	return \util\SmartForm::modelFields($this);
     }
 
@@ -311,13 +310,12 @@ class Credential extends \sys\BaseModel {
 		[ '$set' => [ 'status' => $this->status, 'status_message' => $this->status_message, 'checked_at' => $this->checked_at ] ]);
     }
 
-    //credentials of project $projectId that provide $capability: app.smartform choices for node configs
-    //CLD: 2026-11-03T18:00:00+02:00: + those shared with it, named with their project (only its name and type)
+    //credentials of project $projectId that provide $capability, and those shared with it, named with their project (only its name and type): app.smartform choices for node configs
     public static function choicesFor($capability, $aid, $projectId) {
 	$variants = static::variantsProviding($capability);
 	if (empty($variants) || empty($projectId))
 	    return [];
-	//CLD: 2026-11-04T08:10:00+02:00: read once per request (each AI step's form asks the same ones)
+	//read once per request (each AI step's form asks the same ones)
 	return \models\wf\WfNode::rememberedChoices("credentials:{$aid}:{$projectId}:{$capability}", function() use ($variants, $aid, $projectId) {
 	    $choices = [];
 	    foreach(\V::app()->om->find(self::FAMILY, [ 'aid' => $aid, '__variant' => [ '$in' => $variants ] ] + self::visibleInQuery($projectId)) as $c) {
@@ -333,7 +331,7 @@ class Credential extends \sys\BaseModel {
     }
 
     //credential $id of the workflow's project, if it provides $capability
-    //CLD: 2026-11-03T18:00:00+02:00: or shared with that project; asked at each use, so a share taken back is gone at the next step that uses it
+    //or shared with that project; asked at each use, so a share taken back is gone at the next step that uses it
     public static function findFor($wf, $id, $capability) {
 	if (!\util\Validator::rule('oid', (string)$id))
 	    return null;

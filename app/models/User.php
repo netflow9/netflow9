@@ -89,7 +89,7 @@ class User extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-10-24T08:20:00+03:00: the pending "forgot password" link: the SHA-256 hash of its token (the
+	    //the pending "forgot password" link: the SHA-256 hash of its token (the
 	    //token is only in the email), when it stops working, the address that asked. Written by startPasswordReset / clearPasswordReset only (not save(): no audit entry)
 	    [
 		'key' => 'reset_token_hash',
@@ -144,7 +144,7 @@ class User extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-11-08T12:00:00+02:00: the user's preferences, one nested object (a field per preference: a new one is one more entry in `fields`): the project last
+	    //the user's preferences, one nested object (a field per preference: a new one is one more entry in `fields`): the project last
 	    //opened (the next session starts on it, Boot), the sidebar's width (px, its resize handle) and collapsed state (its buttons: app.sidebar), the designer's step picker
 	    //listing the basic steps only (its "Advanced steps" switch: app.workflow.js; the advanced ones still found by its search). Written by rememberPrefs only (not
 	    //save(): no audit entry); read from rt.prefs (Boot: the defaults + what is stored)
@@ -187,7 +187,7 @@ class User extends \sys\BaseModel {
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //CLD: 2026-11-08T12:00:00+02:00: new: the preferences in $set kept: only keys of `prefs`' fields, cast and validated by them. Written directly (not save(): no
+    //the preferences in $set kept: only keys of `prefs`' fields, cast and validated by them. Written directly (not save(): no
     //audit entry), merged into the stored ones in the database (an update pipeline): the others, and another tab's changes, are kept; a missing or empty `prefs` is
     //started. Returns the errors ([ key => [ messages ] ]), [] when kept
     public function rememberPrefs(array $set) {
@@ -214,9 +214,8 @@ class User extends \sys\BaseModel {
 	return $this->firstname . ' ' . $this->lastname;
     }
 
-    //CLD: 2026-10-24T08:20:00+03:00: new: a new "forgot password" link for this user, valid Constants::RESET_VALID seconds, asked from $ip; replaces the user's earlier one.
-    //Returns the token (for the email; only its hash is kept)
-    //CLD: 2026-10-25T11:20:00+02:00: + $valid: seconds the link works (default Constants::RESET_VALID; a new user's first password: Constants::WELCOME_VALID)
+    //a new "forgot password" link for this user, valid $valid seconds (default Constants::RESET_VALID; a new user's first password: Constants::WELCOME_VALID), asked from $ip;
+    //replaces the user's earlier one. Returns the token (for the email; only its hash is kept)
     public function startPasswordReset($ip = null, $valid = null) {
 	$token = bin2hex(random_bytes(24));
 	\V::app()->om->updateOne('User', [ '_id' => $this->_id ], [ '$set' => [
@@ -252,7 +251,7 @@ class User extends \sys\BaseModel {
 
 
     public function checkAccess($userId, $permName, $params = []) {
-	//CLD: 2026-11-07T12:00:00+02:00: $userId's account role, not the signed-in user's
+	//$userId's account role, not the signed-in user's
 	$role = \V::app()->auth->getUserRole($userId);
 	if (empty($role))
 	    return false;

@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-25T17:40:00+02:00: new step: Database - runs SQL on a database through a database credential of the project (CredentialMysql, CredentialPostgres, CredentialMssql,
+//Database - runs SQL on a database through a database credential of the project (CredentialMysql, CredentialPostgres, CredentialMssql,
 //CredentialOracle, CredentialFirebird, CredentialOdbc; provide `database`). Operations (setting `operation`):
 //	query       a SELECT (or anything giving rows): { rows: [ { column: value } ], count, columns, truncated }, at most `maxRows` rows
 //	execute     an INSERT / UPDATE / DELETE / DDL / procedure call: { affected, lastInsertId } (lastInsertId: null where the database has none)
@@ -9,7 +9,7 @@
 //  Values read: large objects as their content, binary as base64. One statement per step.
 //  On error (the database's, no connection, the driver missing in this PHP): fail the step, or continue on the `error` output ({ error: the message } in the variable)
 
-//CLD: 2026-10-31T23:30:00+02:00: split into one step per database type (NodeAppMysql, NodeAppPostgres, NodeAppMssql, NodeAppOracle, NodeAppFirebird, NodeAppOdbc): this class is
+//split into one step per database type (NodeAppMysql, NodeAppPostgres, NodeAppMssql, NodeAppOracle, NodeAppFirebird, NodeAppOdbc): this class is
 //their base (abstract, not registered). Each subclass names its util\SqlDb type (TYPE): its credentials are those providing `database:<TYPE>` (one credential class
 //each), it is offered when this PHP has that type's PDO driver; settings, operations and running are the same for all (here)
 
@@ -18,15 +18,14 @@ namespace models\node;
 use util\SqlDb;
 
 abstract class NodeAppDatabase extends \models\wf\WfNode {
-    //CLD: 2026-11-01T21:50:00+02:00: its operations can be an AI step's tools (util\AgentTools: varsForSettings, setResult)
+    //its operations can be an AI step's tools (util\AgentTools: varsForSettings, setResult)
     use AgentToolTrait;
 
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-database';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step, in Developer
-    //CLD: 2026-10-31T23:30:00+02:00: in their own group, Databases
+    //the step picker: an advanced step, in its own group, Databases
     public static $audience = 'advanced';
     public static $category = 'database';
     public static $inputs = 1;
@@ -38,21 +37,21 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 	'execute' => 'Execute a statement',
 	'insert' => 'Insert rows',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (a query too: its SQL may change data); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something (a query too: its SQL may change data); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'query', 'execute', 'insert' ];
     const MAX_ROWS = 10000;
     const MAX_INSERT = 10000;
     const MAX_TIMEOUT = 600;
 
-    //CLD: 2026-10-31T23:30:00+02:00: the key of util\SqlDb::TYPES; the subclass's
+    //the key of util\SqlDb::TYPES; the subclass's
     const TYPE = '';
 
-    //CLD: 2026-10-31T23:30:00+02:00: what the step's credentials provide (models\credential\CredentialDatabase::provides)
+    //what the step's credentials provide (models\credential\CredentialDatabase::provides)
     public static function capability() {
 	return 'database:' . static::TYPE;
     }
 
-    //CLD: 2026-10-31T23:30:00+02:00: this PHP has the PDO driver of the step's type
+    //this PHP has the PDO driver of the step's type
     public static function available() {
 	return SqlDb::driver(static::TYPE) !== null;
     }
@@ -65,7 +64,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 	    [
 		'key' => 'credential',
 		'type' => 'select',
-		//CLD: 2026-10-31T23:30:00+02:00: the credentials of the step's type
+		//the credentials of the step's type
 		'label' => static::$label . ' credential',
 		'choices' => $choices,
 		'help' => 'A ' . static::$label . ' credential of the project (menu: Credentials)',
@@ -105,7 +104,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 		'default' => '',
 		'help' => 'An expression giving a list of objects keyed by column, e.g. {{ response.body.items }}',
 		'requiredIf' => [ 'if' => 'operation', 'in' => [ 'insert' ] ],
-		//CLD: 2026-11-01T21:50:00+02:00: + agent: as an AI step's tool, a list (util\AgentTools)
+		//agent: as an AI step's tool, a list (util\AgentTools)
 		'ui' => [ 'rows' => 3, 'width' => 8, 'expression' => true, 'showIf' => static::operationIn([ 'insert' ]), 'agent' => [ 'type' => 'list', 'help' => 'A list of objects keyed by column' ] ],
 	    ],
 	    [
@@ -161,7 +160,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
     public function validates($options = []) {
 	$valid = parent::validates($options);
 	$cred = (string)$this->cfg('credential', '');
-	//CLD: 2026-10-31T23:30:00+02:00: a credential of the step's type
+	//a credential of the step's type
 	if ($cred !== '' && (!$this->workflow || empty(\models\Credential::findFor($this->workflow, $cred, static::capability())))) {
 	    $this->errors('config', static::$label . ': choose a ' . static::$label . ' credential of this project');
 	    $valid = false;
@@ -194,7 +193,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 	$operation = (string)$this->cfg('operation', 'query');
 	if (!isset(self::OPERATIONS[$operation]))
 	    throw new \ErrorException(static::$label . ": unknown operation `{$operation}`");
-	//CLD: 2026-10-31T23:30:00+02:00: a credential of the step's type; the messages and the log name the step's type
+	//a credential of the step's type; the messages and the log name the step's type
 	$cred = \models\Credential::findFor($this->exec, (string)$this->cfg('credential', ''), static::capability());
 	if (empty($cred))
 	    throw new \ErrorException(static::$label . ': the credential is no longer available');
@@ -203,7 +202,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 	try {
 	    $start = microtime(true);
 	    $pdo = $cred->connect(max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 60))));
-	    //CLD: 2026-11-01T21:50:00+02:00: varsForSettings() (none when the step runs as a tool: a {{ }} in the model's SQL reaches no variable)
+	    //varsForSettings() (none when the step runs as a tool: a {{ }} in the model's SQL reaches no variable)
 	    [ $result, $summary ] = self::run($operation, $pdo, $cred->driver(), (array)$this->config, $this->varsForSettings());
 	} catch (\RuntimeException $e) {
 	    //PDOException is one; the message in the variable (for the `error` output)
@@ -215,7 +214,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 	} finally {
 	    $pdo = null;
 	}
-	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it)
+	//setResult() (a tool keeps it)
 	$this->setResult($name, $result);
 	$this->exec->log($this->wfid, static::$label . " {$operation} on " . $cred->describe() . ": {$summary} (" . (int)round((microtime(true) - $start) * 1000) . ' ms)');
 	return [ 0 ];
@@ -274,7 +273,7 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
 		$table = trim((string)($cfg['table'] ?? ''));
 		if (!SqlDb::isIdentifier($table, 3))
 		    throw new \RuntimeException("not a table name: `{$table}`");
-		//CLD: 2026-11-01T21:50:00+02:00: a list as it is (an AI step's tool: the model's argument); the setting's text rendered
+		//a list as it is (an AI step's tool: the model's argument); the setting's text rendered
 		$list = is_array($cfg['rows'] ?? null) ? $cfg['rows'] : \util\Expression::render((string)($cfg['rows'] ?? ''), $vars);
 		if ($list === null || $list === '' || $list === [])
 		    return [ [ 'affected' => 0 ], 'no rows to insert' ];

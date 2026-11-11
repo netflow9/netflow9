@@ -29,7 +29,7 @@ class ImapConnect {
     }
 
     //OAuth types: XOAUTH2 with the credential's access token and account
-    //CLD: 2026-10-09T17:21:14+03:00: the account is the credential's `email` field, the token from its accessToken()
+    //the account is the credential's `email` field, the token from its accessToken()
     public static function openXoauth2($cred, $host) {
 	return self::open($cred, $host, 993, 'ssl', function($imap) use ($cred) {
 	    if ((string)$cred->email === '')

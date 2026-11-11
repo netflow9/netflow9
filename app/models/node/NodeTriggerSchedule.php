@@ -14,9 +14,8 @@ class NodeTriggerSchedule extends \models\wf\WfNode {
 
     public static $scheduled = true;
 
-    //CLD: 2026-10-08T22:57:28+03:00: the schedule fields, matching and checks are in models\wf\WfSchedule (shared with the other scheduled steps, e.g. the Email
-    //(IMAP) trigger); this step has nothing else
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfSchedule::schema)
+    //the schedule fields (model field definitions with rules), matching and checks are in models\wf\WfSchedule (WfSchedule::schema; shared with the other scheduled steps);
+    //this step has nothing else
     public static function configSchema() {
 	return \models\wf\WfSchedule::schema();
     }
@@ -25,7 +24,7 @@ class NodeTriggerSchedule extends \models\wf\WfNode {
 	return \models\wf\WfSchedule::matches($cfg, $t);
     }
 
-    //CLD: 2026-10-09T08:10:30+03:00: the config is checked by its schema's rules (parent::validates); here only the weekdays (a list)
+    //the config is checked by its schema's rules (parent::validates); here only the weekdays (a list)
     public function validates($options = []) {
 	$valid = parent::validates($options);
 	$error = \models\wf\WfSchedule::validate(is_array($this->config) ? $this->config : []);
@@ -36,8 +35,7 @@ class NodeTriggerSchedule extends \models\wf\WfNode {
 	return $valid;
     }
 
-    //CLD: 2026-10-08T22:57:28+03:00: on schedule: start the workflow at this step
-    //CLD: 2026-10-11T22:38:36+03:00: the variable a scheduled run starts with (runScheduled)
+    //on schedule: start the workflow at this step; the variable a scheduled run starts with (runScheduled)
     public static function outputVariables($config) {
 	return [
 	    'schedule_time' => [
@@ -58,13 +56,13 @@ class NodeTriggerSchedule extends \models\wf\WfNode {
 	], $node['wfid']);
 	$exe->log($node['wfid'], 'scheduled run ' . $at);
 	$exe->save();
-	//CLD: 2026-10-23T12:00:00+03:00: log the start too
+	//log the start too
 	\V::app()->log->info("Scheduler: workflow `{$wf->name}`: execution {$exe->_id}: start");
 	$state = $exe->run();
 	\V::app()->log->info("Scheduler: workflow `{$wf->name}`: execution {$exe->_id}: {$state}");
     }
 
-    //CLD: 2026-10-12T20:33:47+03:00: Run: one execution now, as a scheduled run of the current minute (schedule_time = now; the schedule itself is not changed)
+    //Run: one execution now, as a scheduled run of the current minute (schedule_time = now; the schedule itself is not changed)
     public static function startNow($wf, array $node) {
 	$at = (new \DateTimeImmutable('now'))->format('Y-m-d\TH:i:00P');
 	$exe = \models\wf\WfExecution::startFor($wf, 'schedule', [

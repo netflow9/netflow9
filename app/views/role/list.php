@@ -7,7 +7,7 @@ if (\V::app()->user->can('Role::create')) {
     $createBtn = \V::app()->html->link(
 	'Create',
 	\V::app()->createUrl('/role/create'),
-	//CLD: 2026-10-13T21:12:34+03:00: a POST link (RoleController::create creates the role)
+	//a POST link (RoleController::create creates the role)
 	[ 'class' => 'btn btn-primary btn-sm', 'escape' => false, 'data-method' => 'post' ]
     );
 }

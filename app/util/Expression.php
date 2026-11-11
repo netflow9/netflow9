@@ -3,30 +3,37 @@
 /*
     expressions in texts, written between {{ and }} (e.g. "Hello {{ name.toUpperCase() }}"),
 	in the J language (sys\J: a sandboxed JavaScript subset).
-    For the live help of expression fields (WorkflowController::expression):
-	check($text, $vars)                  problems: unclosed {{, J syntax errors, unknown names (warnings) - positions in characters of $text
-	complete($text, $before, $vars)      suggestions at the cursor ($before = the text before it): variables, J built-ins, members after `name.`
-//$vars: the variables available there, [ name => [ type => string|number|boolean|array|object|any, info => where it comes from ] ]
-//CLD: 2026-10-13T12:34:29+03:00: a variable's type description may go deeper: fields => [ name => description ] (an object's fields), items => description (a list's items), e.g.
-//mail: { type: object, fields: { subject: { type: string }, attachments: { type: array, items: { type: object, fields: { filename: ... } } } } }; typeAt() follows a path
-//through it (suggestions after `mail.attachments[0].`, warnings for a field an object does not have)
-//CLD: 2026-10-13T12:17:47+03:00: one parser for all: sys\J\Parser in mode `template` (the {{ }} parts found and parsed by J, each with offsets in the whole text), with the field's syntax
-//(SYNTAX): `text` - text with any {{ expression }} parts (e.g. "INVOICE-{{ mail.date }}"); `reference` - only {{ variable }} or {{ variable.field }}, nothing around it
-//(e.g. a condition's variable). check / complete / render take the same syntax, so the live help and the run agree
 
+    One parser for all: sys\J\Parser in mode `template` (the {{ }} parts found and parsed by J, each with offsets in the whole text), in the field's syntax (SYNTAX):
+	`text` - text with any {{ expression }} parts (e.g. "INVOICE-{{ mail.date }}"); `reference` - only {{ variable }} or {{ variable.field }}, nothing around it
+	(e.g. a condition's variable); `value`, `script`, `json`, `jsonrpc`. check / complete / render take the same syntax, so the live help and the run agree.
+
+    Running:
+	render($text, $vars, $syntax)       the text with its {{ }} parts evaluated (a single expression: its value as it is)
+	hostValue($v), toText($v)           an execution's value as J takes it; a value as text
+    For the live help of expression fields (WorkflowController::expression):
+	check($text, $vars)                 problems: unclosed {{, J syntax errors, unknown names (warnings) - positions in characters of $text
+	complete($text, $before, $vars)     suggestions at the cursor ($before = the text before it): variables, J built-ins (globals()), members after `name.`
+	                                    (the methods come from J: sys\J\Builtins::METHODS)
+	completeName, checkName             the same for a variable name field
+    Types:
+	$vars: the variables available there, [ name => [ type => string|number|boolean|array|object|any, info => where it comes from ] ]; a type description
+	may go deeper: fields => [ name => description ] (an object's fields), items => description (a list's items), e.g.
+	mail: { type: object, fields: { subject: { type: string }, attachments: { type: array, items: { type: object, fields: { filename: ... } } } } };
+	typeAt() follows a path through it (suggestions after `mail.attachments[0].`, warnings for a field an object does not have), typeOf() gives a text's type
 */
 namespace util;
 
 class Expression {
-    //CLD: 2026-10-13T12:17:47+03:00: the syntaxes of an expression field (smartform `expression`: true = text, or the name) -> J parse options
+    //the syntaxes of an expression field (smartform `expression`: true = text, or the name) -> J parse options
     const SYNTAX = [
 	'text' => [ 'mode' => 'template', 'inner' => 'expression' ],
 	'reference' => [ 'mode' => 'template', 'inner' => 'reference', 'whole' => true ],
-	//CLD: 2026-10-13T12:43:20+03:00: one {{ expression }} and nothing around it (e.g. the Loop's list: {{ found.rows.filter(r => r.amount > 100) }})
+	//one {{ expression }} and nothing around it (e.g. the Loop's list: {{ found.rows.filter(r => r.amount > 100) }})
 	'value' => [ 'mode' => 'template', 'inner' => 'expression', 'whole' => true ],
-	//CLD: 2026-10-13T15:30:33+03:00: a J script (the Code step: statements, no {{ }}; names it assigns become workflow variables)
+	//a J script (the Code step: statements, no {{ }}; names it assigns become workflow variables)
 	'script' => [ 'mode' => 'script' ],
-	//CLD: 2026-10-23T12:30:00+03:00: a JSON text with any {{ }} parts (the HTTP Request's body), its JSON syntax checked too (util\JsonCheck); jsonrpc: also a JSON-RPC 2.0 request
+	//a JSON text with any {{ }} parts (the HTTP Request's body), its JSON syntax checked too (util\JsonCheck); jsonrpc: also a JSON-RPC 2.0 request
 	'json' => [ 'mode' => 'template', 'inner' => 'expression' ],
 	'jsonrpc' => [ 'mode' => 'template', 'inner' => 'expression' ],
     ];
@@ -34,31 +41,28 @@ class Expression {
     //suggestions returned at most
     const MAX_ITEMS = 50;
 
-    //CLD: 2026-10-20T21:40:00+03:00: the methods offered after `x.` come from J (sys\J\Builtins::METHODS)
-
     const LITERALS = [ 'true', 'false', 'null', 'undefined' ];
 
-    //CLD: 2026-10-23T01:00:00+03:00: the app's own functions in every expression (functions()), with their help: name => text. A variable of the same name hides one
+    //the app's own functions in every expression (functions()), with their help: name => text. A variable of the same name hides one
     const FUNCTIONS = [
 	'markdown2html' => 'markdown2html(text): Markdown as safe HTML; in an email, {{ markdown2html(...) }} alone in its {{ }} shows it formatted (an AI step\'s answer: also {{ ai.html }})',
-	//CLD: 2026-11-05T15:00:00+02:00: HTML from elsewhere (an AI step asked for HTML, a web page) into an email
+	//HTML from elsewhere (an AI step asked for HTML, a web page) into an email
 	'html' => 'html(text): HTML cleaned to formatting only (no styles, scripts or images); in an email, {{ html(...) }} alone in its {{ }} shows it formatted (e.g. an AI step that answers in HTML)',
     ];
 
     //J's global names (built-ins) and their members, computed once per process
     private static $globals = null;
 
-    //CLD: 2026-10-25T21:00:00+02:00: the parse results kept in the process (parse()): syntax + "\0" + text => \sys\J\ParseResult (immutable: shared by its users); at most
-    //PARSED_MAX, the oldest dropped first. A request checks each text once (validateSteps parsed a Code step's code 2-3 times), a step in a loop parses its texts once per run
-    //(were parsed at each item: ~60% of render()'s time), a daemon worker keeps them between its jobs
+    //the parse results kept in the process (parse()): syntax + "\0" + text => \sys\J\ParseResult (immutable: shared by its users); at most
+    //PARSED_MAX, the oldest dropped first. A request parses each text once, a step in a loop parses its texts once per run (not at each item), a daemon worker
+    //keeps them between its jobs
     const PARSED_MAX = 500;
     private static $parsed = [];
 
-    //CLD: 2026-10-26T22:34:16+02:00: the names each parse result uses (usedNames()): \WeakMap \sys\J\ParseResult => [ name => true ]; dropped with the parse result
+    //the names each parse result uses (usedNames()): \WeakMap \sys\J\ParseResult => [ name => true ]; dropped with the parse result
     private static $used = null;
 
-    //CLD: 2026-10-13T12:17:47+03:00: $text parsed with the J parse options of $syntax (a key of SYNTAX; else text)
-    //CLD: 2026-10-25T21:00:00+02:00: kept in the process ($parsed)
+    //$text parsed with the J parse options of $syntax (a key of SYNTAX; else text), kept in the process ($parsed)
     public static function parse($text, $syntax = 'text') {
 	$syntax = isset(self::SYNTAX[$syntax]) ? $syntax : 'text';
 	$key = $syntax . "\0" . (string)$text;
@@ -71,7 +75,7 @@ class Expression {
     }
 
     //limits of one expression (J interpreter)
-    //CLD: 2026-10-20T21:40:00+03:00: + dateFormat: the dates an expression gives (and those in {{ }} text) as ISO 8601 text in local time, as hostValue gave them before they became J Dates
+    //dateFormat: the dates an expression gives (and those in {{ }} text) as ISO 8601 text in local time (as hostValue gives them)
     const LIMITS = [
 	'maxSteps' => 100000,
 	'timeLimit' => 1.0,
@@ -81,7 +85,7 @@ class Expression {
     //$text with its {{ }} parts evaluated against $vars (the execution's variables, the expressions' names): a text that is a single expression
     //(`{{ x }}`, spaces around allowed) gives its value as it is (number, list, object, ...); else the parts become text (lists and objects as JSON, null /
     //undefined as nothing) inside the text. A text without {{ is returned unchanged. \ErrorException for a broken or failing expression
-    //CLD: 2026-10-13T12:17:47+03:00: parsed and run by J as a template (Parser mode `template`, Interpreter::evalTemplate), in the syntax of
+    //parsed and run by J as a template (Parser mode `template`, Interpreter::evalTemplate), in the syntax of
     //the field ($syntax, SYNTAX): a reference field refuses anything but {{ variable(.field) }}
     public static function render($text, array $vars, $syntax = 'text') {
 	if (!is_string($text) || ($syntax === 'text' && !str_contains($text, \sys\J\Template::OPEN)))
@@ -93,9 +97,8 @@ class Expression {
 	    throw new \ErrorException("Expression {$label}: {$e['message']} (column {$e['column']})");
 	}
 
-	//CLD: 2026-10-23T01:00:00+03:00: the app's functions first (a variable of the same name wins)
-	//CLD: 2026-10-26T22:34:16+02:00: only the variables the expression names (usedNames) are converted and given to J (was all of them, at each render: ~60 ms with 1 MB of
-	//variables; a Data Table upsert of 10 values in a loop of 800 items spent ~8 min on it). J reaches a variable only by its name (no globalThis / eval)
+	//the app's functions first (a variable of the same name wins); only the variables the expression names (usedNames) are converted and given to J (all of them
+	//at each render took ~60 ms with 1 MB of variables). J reaches a variable only by its name (no globalThis / eval)
 	$context = self::functions();
 	$used = self::usedNames($parsed);
 	foreach($vars as $name => $value) {
@@ -111,7 +114,7 @@ class Expression {
     }
 
     //an execution variable as J may take it: database values as plain ones (dates as ISO 8601 text, ids as text, BSON documents / arrays as arrays)
-    //CLD: 2026-10-20T21:40:00+03:00: $dates: dates stay dates (PHP DateTimeImmutable: a Date in J; for the J context); else ISO 8601 text (JSON output: MCP tools, data table rows)
+    //$dates: dates stay dates (PHP DateTimeImmutable: a Date in J; for the J context); else ISO 8601 text (JSON output: MCP tools, data table rows)
     public static function hostValue($v, $dates = false) {
 	if ($v instanceof \MongoDB\BSON\UTCDateTime) {
 	    $d = \DateTimeImmutable::createFromInterface($v->toDateTime())->setTimezone(new \DateTimeZone(date_default_timezone_get()));
@@ -145,7 +148,7 @@ class Expression {
     //checking
 
     //the problems of $text: [ [ severity error|warning, message, start, end (characters), line, column (1-based) ] ]
-    //CLD: 2026-10-13T12:17:47+03:00: J's diagnostics of $text in the field's syntax ($syntax: SYNTAX; the parser reports unclosed / empty {{ }}, statements, and for a reference anything but a
+    //J's diagnostics of $text in the field's syntax ($syntax: SYNTAX; the parser reports unclosed / empty {{ }}, statements, and for a reference anything but a
     //variable or its fields), the first at a place only; then the unknown names (warnings)
     public static function check($text, array $vars = [], $syntax = 'text') {
 	$text = (string)$text;
@@ -160,19 +163,19 @@ class Expression {
 	}
 	if ($parsed->hasErrors())
 	    return $problems;
-	//CLD: 2026-10-23T12:30:00+03:00: json / jsonrpc: the JSON syntax (and the JSON-RPC request)
+	//json / jsonrpc: the JSON syntax (and the JSON-RPC request)
 	if ($syntax === 'json' || $syntax === 'jsonrpc')
 	    $problems = array_merge($problems, self::checkJson($text, $syntax === 'jsonrpc'));
 
 	//names that are neither variables nor built-ins nor declared in the expressions
-	//CLD: 2026-10-23T01:00:00+03:00: + the app's functions
+	//the app's functions
 	$known = array_merge(array_keys($vars), array_keys(self::globals()), array_keys(self::FUNCTIONS), self::LITERALS);
-	//CLD: 2026-10-13T15:30:33+03:00: a script: the names it assigns (they become workflow variables) are known
+	//a script: the names it assigns (they become workflow variables) are known
 	if ($syntax === 'script')
 	    $known = array_merge($known, self::assignedNames($parsed->ast));
 	foreach(self::unknownNames($parsed->ast, $known) as [ $name, $start, $end ])
 	    $problems[] = self::problem($text, 'warning', "Unknown variable `{$name}`", $start, $end);
-	//CLD: 2026-10-13T12:34:29+03:00: a field an object (of declared fields) does not have
+	//a field an object (of declared fields) does not have
 	self::walk($parsed->ast, function($node) use (&$problems, $text, $vars) {
 	    if (($node['type'] ?? '') !== 'MemberExpression' || !empty($node['computed']) || ($node['property']['name'] ?? '') === '')
 		return;
@@ -186,7 +189,7 @@ class Expression {
 	return $problems;
     }
 
-    //CLD: 2026-10-23T12:30:00+03:00: the JSON problems of $text (util\JsonCheck; $rpc: a JSON-RPC 2.0 request), as check() gives them
+    //the JSON problems of $text (util\JsonCheck; $rpc: a JSON-RPC 2.0 request), as check() gives them
     public static function checkJson($text, $rpc = false) {
 	$text = (string)$text;
 	return array_map(fn($p) => self::problem($text, $p['severity'], $p['message'], $p['start'], max($p['end'], $p['start'] + 1)), \util\JsonCheck::problems($text, $rpc));
@@ -233,7 +236,7 @@ class Expression {
 	return $unknown;
     }
 
-    //CLD: 2026-10-13T15:30:33+03:00: the names a script assigns that it does not declare (`total = 1`, `count++`, `x += 2`): the workflow variables it sets (in the order first assigned)
+    //the names a script assigns that it does not declare (`total = 1`, `count++`, `x += 2`): the workflow variables it sets (in the order first assigned)
     public static function assignedNames(array $ast) {
 	$declared = [];
 	self::walk($ast, function($node) use (&$declared) {
@@ -253,14 +256,14 @@ class Expression {
 	return array_keys($names);
     }
 
-    //CLD: 2026-10-26T22:34:16+02:00: [ name => true ] of the names $parsed refers to (property names are not; names it declares itself may be: a superset is enough for render()),
-    //computed once per parse result
-    //CLD: 2026-11-02T10:00:00+02:00: new: the names template $text uses (util\AgentGuard: which values come from the workflow's variables); none when it does not parse
+    //the names template $text uses (util\AgentGuard: which values come from the workflow's variables); none when it does not parse
     public static function namesIn($text) {
 	$parsed = self::parse($text);
 	return $parsed->hasErrors() ? [] : array_map('strval', array_keys(self::usedNames($parsed)));
     }
 
+    //[ name => true ] of the names $parsed refers to (property names are not; names it declares itself may be: a superset is enough for render()),
+    //computed once per parse result
     private static function usedNames(\sys\J\ParseResult $parsed) {
 	self::$used ??= new \WeakMap();
 	if (!isset(self::$used[$parsed])) {
@@ -328,7 +331,7 @@ class Expression {
 
     //the suggestions at the cursor of $text ($before: the text up to the cursor): [ replace => characters before the cursor the chosen item replaces,
     //items => [ [ label, kind variable|global|method|property|literal, detail ] ] ]; none outside {{ }} and inside strings or comments
-    //CLD: 2026-10-13T12:17:47+03:00: $syntax (SYNTAX) as check(): a reference gets the variables and their fields only (no built-ins, literals or methods); the {{ }} parts found by J
+    //$syntax (SYNTAX) as check(): a reference gets the variables and their fields only (no built-ins, literals or methods); the {{ }} parts found by J
     //(sys\J\Template)
     public static function complete($text, $before, array $vars = [], $syntax = 'text') {
 	$reference = $syntax === 'reference';
@@ -337,7 +340,7 @@ class Expression {
 	$cursor = strlen($before);
 
 	//the expression the cursor is in
-	//CLD: 2026-10-13T15:30:33+03:00: a script: all of it
+	//a script: all of it
 	$part = null;
 	foreach($syntax === 'script' ? [ [ 'start' => 0 ] ] : \sys\J\Template::parts($before . substr((string)$text, $cursor)) as $p) {
 	    if ($p['start'] <= $cursor && (!isset($p['closed']) || !$p['closed'] || $p['end'] >= $cursor))
@@ -352,7 +355,7 @@ class Expression {
 	$code = substr($before, $part['start']);
 
 	//after `name.` (or `name?.`): its members
-	//CLD: 2026-10-13T12:34:29+03:00: after a path (`mail.attachments[0].`): the members of the type found there (typeAt)
+	//after a path (`mail.attachments[0].`): the members of the type found there (typeAt)
 	if (preg_match('/(?<![\w$.\])])(' . self::PATH . ')\s*\??\.\s*([A-Za-z_$][\w$]*)?$/', $code, $m)) {
 	    $prefix = $m[2] ?? '';
 	    $path = self::path($m[1]);
@@ -384,7 +387,7 @@ class Expression {
 	    return [ 'replace' => mb_strlen($prefix, 'UTF-8'), 'items' => self::filter($items, $prefix) ];
 	foreach(self::globals() as $name => $members)
 	    $items[] = [ 'label' => $name, 'kind' => 'global', 'detail' => $members ? 'built-in object' : 'built-in' ];
-	//CLD: 2026-10-23T01:00:00+03:00: the app's functions
+	//the app's functions
 	foreach(self::FUNCTIONS as $name => $help)
 	    if (!isset($vars[$name]))
 		$items[] = [ 'label' => $name, 'kind' => 'global', 'detail' => $help ];
@@ -393,7 +396,7 @@ class Expression {
 	return [ 'replace' => mb_strlen($prefix, 'UTF-8'), 'items' => self::filter($items, $prefix) ];
     }
 
-    //CLD: 2026-10-11T23:02:07+03:00: a variable name field (not an expression): the variables starting with / containing the name typed before the cursor
+    //a variable name field (not an expression): the variables starting with / containing the name typed before the cursor
     public static function completeName($before, array $vars) {
 	preg_match('/([A-Za-z_][\w]*)$/', (string)$before, $m);
 	$prefix = $m[1] ?? '';
@@ -403,7 +406,7 @@ class Expression {
 	return [ 'replace' => mb_strlen($prefix, 'UTF-8'), 'items' => self::filter($items, $prefix) ];
     }
 
-    //CLD: 2026-10-11T23:02:07+03:00: the problems of a variable name field that reads a variable (If, Switch): a name no step before sets (a warning: it may come from the caller,
+    //the problems of a variable name field that reads a variable (If, Switch): a name no step before sets (a warning: it may come from the caller,
     //e.g. a variable set by a step it cannot see)
     public static function checkName($name, array $vars) {
 	$name = trim((string)$name);
@@ -412,7 +415,7 @@ class Expression {
 	return [ self::problem($name, 'warning', "No step before this one sets `{$name}`", 0, strlen($name)) ];
     }
 
-    //CLD: 2026-10-13T12:34:29+03:00: the members of a value of type $t (a description, see typeAt; null: unknown, none): an object's declared fields, a list's methods and length, a number's
+    //the members of a value of type $t (a description, see typeAt; null: unknown, none): an object's declared fields, a list's methods and length, a number's
     //methods, else (text, any) the text methods and length (the values set by steps are mostly texts)
     private static function members($t) {
 	if (!is_array($t))
@@ -426,7 +429,7 @@ class Expression {
 	}
 	if ($type === 'boolean')
 	    return [];
-	//CLD: 2026-10-20T21:40:00+03:00: the methods J has for the type (sys\J\Builtins::METHODS); + date
+	//the methods J has for the type (sys\J\Builtins::METHODS); + date
 	$kind = in_array($type, [ 'array', 'number', 'date' ], true) ? $type : 'string';
 	if ($kind === 'array' || $kind === 'string')
 	    $items[] = [ 'label' => 'length', 'kind' => 'property', 'detail' => $kind === 'array' ? 'number of items' : 'number of characters' ];
@@ -435,14 +438,14 @@ class Expression {
 	return $items;
     }
 
-    //CLD: 2026-10-13T12:34:29+03:00: a type description as a short text: string, array of object, ...
+    //a type description as a short text: string, array of object, ...
     public static function typeLabel($t) {
 	$type = is_array($t) ? (string)($t['type'] ?? 'any') : 'any';
 	return $type === 'array' && is_array($t['items'] ?? null) ? 'array of ' . ($t['items']['type'] ?? 'any') : $type;
     }
 
     // ------------------------------------------------------------------------------------
-    //CLD: 2026-10-13T12:34:29+03:00: types
+    //types
 
     //a path in code: a name, then .field, ["field"] or [0]
     const PATH = '[A-Za-z_$][\w$]*(?:\s*\??\.\s*[A-Za-z_$][\w$]*|\s*\[\s*(?:\d+|"(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')\s*\])*';
@@ -526,16 +529,16 @@ class Expression {
 	return self::nodeType($expressions[0]['expression'], $vars) ?? [ 'type' => 'any' ];
     }
 
-    //CLD: 2026-10-13T12:47:09+03:00: the list methods by what they give: the same list (filter, slice, ...), one item (find, at, ...), else a type
+    //the list methods by what they give: the same list (filter, slice, ...), one item (find, at, ...), else a type
     const LIST_SAME = [ 'filter', 'slice', 'concat', 'reverse', 'sort', 'toSorted', 'toReversed', 'splice' ];
     const LIST_ITEM = [ 'find', 'findLast', 'at', 'pop', 'shift' ];
     const METHOD_TYPES = [ 'join' => 'string', 'toString' => 'string', 'includes' => 'boolean', 'some' => 'boolean', 'every' => 'boolean', 'indexOf' => 'number',
 	'lastIndexOf' => 'number', 'findIndex' => 'number', 'findLastIndex' => 'number', 'push' => 'number', 'unshift' => 'number', 'map' => 'array', 'flatMap' => 'array',
 	'flat' => 'array', 'keys' => 'array', 'values' => 'array', 'entries' => 'array', 'split' => 'array', 'toFixed' => 'string', 'toPrecision' => 'string',
-	//CLD: 2026-10-20T22:10:00+03:00: the regular expression methods of texts
+	//the regular expression methods of texts
 	'match' => 'array', 'matchAll' => 'array', 'search' => 'number' ];
 
-    //CLD: 2026-10-13T12:47:09+03:00: the type of a J expression node among $vars (null: unknown): a path, a literal, or a method call on a list / text
+    //the type of a J expression node among $vars (null: unknown): a path, a literal, or a method call on a list / text
     private static function nodeType(array $e, array $vars) {
 	if (($path = self::nodePath($e)) !== null)
 	    return self::typeAt($vars, $path);
@@ -589,11 +592,10 @@ class Expression {
 	return array_slice(array_column($scored, 3), 0, self::MAX_ITEMS);
     }
 
-    //CLD: 2026-10-23T01:00:00+03:00: the app's functions (FUNCTIONS) as J may call them: name => \Closure
+    //the app's functions (FUNCTIONS) as J may call them: name => \Closure
     public static function functions() {
 	return [
 	    'markdown2html' => fn($text = '') => \util\Markdown::toHtml($text),
-	    //CLD: 2026-11-05T15:00:00+02:00
 	    'html' => fn($text = '') => \util\HtmlSafe::clean($text),
 	];
     }

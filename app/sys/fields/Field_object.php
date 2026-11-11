@@ -85,7 +85,7 @@ class Field_object extends Field {
     public function getSchema() {
 	$schema = parent::getSchema();
 
-	//CLD: 2026-10-06T08:51:09+03:00: a select of the user-selectable objects, as `choices` in Field_select
+	//a select of the user-selectable objects, as `choices` in Field_select
 	$schema['object'] = [
 	    'key' => 'object',
 	    'help' => false,
@@ -110,7 +110,7 @@ class Field_object extends Field {
 
     public function afterAttachSchema() {
 	parent::afterAttachSchema();
-	//CLD: 2026-10-10T19:00:56+03:00: perm:update (perm:edit is read by nothing)
+	//perm:update (perm:edit is read by nothing)
 	$this->schema['object']->{'perm:update'} = ($this->exists() ? 'nobody' : 'everybody');
 	$this->schema['multiple']->{'perm:update'} = ($this->exists() ? 'nobody' : 'everybody');
     }

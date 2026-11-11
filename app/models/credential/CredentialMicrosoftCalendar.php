@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-22T00:41:28+03:00: new credential variant: Outlook Calendar over Microsoft Graph (OAuth); delegated permission Calendars.ReadWrite (+ Calendars.Read.Shared: the free / busy times of
+//Outlook Calendar over Microsoft Graph (OAuth); delegated permission Calendars.ReadWrite (+ Calendars.Read.Shared: the free / busy times of
 //others). Provides `mscalendar` (the Outlook Calendar step) and `http`
 
 namespace models\credential;

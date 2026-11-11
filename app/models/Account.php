@@ -51,14 +51,13 @@ class Account extends \sys\BaseModel {
 		'choices' => [
 		    'incomplete' => 'Incomplete',
 		    'active' => 'Active',
-		    //CLD: 2026-10-22T23:00:00+03:00: suspended by a super-admin (the MultiTenant plugin): no sign-in, no new executions, its queued jobs wait (isSuspended)
+		    //suspended by a super-admin (the MultiTenant plugin): no sign-in, no new executions, its queued jobs wait (isSuspended)
 		    'disabled' => 'Suspended',
 		],
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-10-24T09:45:36+03:00: the account's tier (util\Tiers, app/tiers.php; empty: the default) and its own changes of the tier's limits / features ({ limits, features });
-	    //set by a super-admin only (the MultiTenant plugin, ./v MultiTenant::tiers::set)
-	    //CLD: 2026-10-31T11:53:38+02:00: the tiers are the MultiTenant plugin's (plugins.json: tiers); without it, none
+	    //the account's tier (util\Tiers, app/tiers.php; empty: the default) and its own changes of the tier's limits / features ({ limits, features });
+	    //set by a super-admin only; the tiers are the MultiTenant plugin's (plugins.json: tiers, ./v MultiTenant::tiers::set); without it, none
 	    [
 		'key' => 'tier',
 		'type' => 'select',
@@ -89,7 +88,7 @@ class Account extends \sys\BaseModel {
 		'perm:update' => 'everybody',
 		'default' => false,
 	    ],
-	    //CLD: 2026-10-21T23:00:00+03:00: the session limits (sys\Boot::after_user_login): sign out after this many minutes without a request, and this many hours after signing in
+	    //the session limits (sys\Boot::after_user_login): sign out after this many minutes without a request, and this many hours after signing in
 	    [
 		'key' => 'session_idle',
 		'type' => 'select',
@@ -122,10 +121,8 @@ class Account extends \sys\BaseModel {
 		    '720' => '30 days'
 		],
 	    ],
-	    //CLD: 2026-10-11T17:45:25+03:00: how long the audit log / execution log keep entries (days, 0 = forever; models\log\LogTrait::RETENTION); a change applies to the
-	    //entries already written too (Account::afterSave)
-	    //CLD: 2026-10-22T00:00:00+03:00: the audit log: 1 year at least (models\AuditLog::MIN_RETENTION_DAYS, also for a shorter value already saved; SOC2.md gap 6), applied by
-	    //the daemon (AuditLog::prune; there is no Account::afterSave)
+	    //how long the audit log / execution log keep entries (days, 0 = forever; models\log\LogTrait::RETENTION), applied by the daemon to the entries already written too;
+	    //the audit log: 1 year at least (models\AuditLog::MIN_RETENTION_DAYS, also for a shorter value already saved; SOC2.md gap 6; AuditLog::prune)
 	    [
 		'key' => 'audit_log_retention',
 		'type' => 'select',
@@ -156,7 +153,7 @@ class Account extends \sys\BaseModel {
 		    '365' => '1 year'
 		],
 	    ],
-	    //CLD: 2026-11-01T02:00:00+02:00: the projects whose MCP server is on (ids; McpController, TokenController, the project menu: Account::mcpEnabled); none by default. Set by the owners
+	    //the projects whose MCP server is on (ids; McpController, TokenController, the project menu: Account::mcpEnabled); none by default. Set by the owners
 	    //in the account settings' Data access tab (Account::update)
 	    [
 		'key' => 'mcp_projects',
@@ -168,8 +165,7 @@ class Account extends \sys\BaseModel {
 		'default' => [],
 		'showInForms' => false,
 	    ],
-	    //CLD: 2026-11-01T03:00:00+02:00: assistant_data moved to the Assistant's settings (AssistantSettings data_access)
-	    //CLD: 2026-11-01T00:30:00+02:00: the integration steps whose servers may be on-premises (the GravityZone steps: util\GravityZone) may connect to addresses of a private network
+	    //the integration steps whose servers may be on-premises (the GravityZone steps: util\GravityZone) may connect to addresses of a private network
 	    //(util\Http `private`: never this server itself, loopback, link-local); off: public addresses only
 	    [
 		'key' => 'allow_private_addresses',
@@ -180,7 +176,7 @@ class Account extends \sys\BaseModel {
 		'perm:update' => 'everybody',
 		'default' => false,
 	    ],
-	    //CLD: 2026-10-24T16:30:00+03:00: how dates are shown (util\Format::date / datetime, the date fields, the date pickers): date() tokens; empty: the app's
+	    //how dates are shown (util\Format::date / datetime, the date fields, the date pickers): date() tokens; empty: the app's
 	    //(app.format.date / app.format.datetime)
 	    [
 		'key' => 'date_format',
@@ -206,12 +202,12 @@ class Account extends \sys\BaseModel {
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //CLD: 2026-11-01T02:00:00+02:00: whether the MCP server of project $projectId is on in this account
+    //whether the MCP server of project $projectId is on in this account
     public function mcpEnabled($projectId) {
 	return $projectId && in_array((string)$projectId, array_map('strval', (array)($this->mcp_projects ?? [])), true);
     }
 
-    //CLD: 2026-10-24T16:30:00+03:00: date formats as choices, labeled with an example (a fixed date); '' -> "Default", with the app's format ($config)
+    //date formats as choices, labeled with an example (a fixed date); '' -> "Default", with the app's format ($config)
     private static function formatChoices(array $formats, string $config) {
 	$sample = new \DateTimeImmutable('2026-12-31 15:45:30');
 	$choices = [];
@@ -220,9 +216,7 @@ class Account extends \sys\BaseModel {
 	return $choices;
     }
 
-    //CLD: 2026-10-16T12:14:57+03:00: the system roles of a new account (data\SysRoles: Owner, Member, Participant); [ iname => Role ] (also used by
-    //the sign-up)
-    //CLD: 2026-10-22T23:00:00+03:00: the ids of the suspended accounts (state `disabled`), read again after 30 s (the daemon runs for days; $fresh: now): [ id => true ]
+    //the ids of the suspended accounts (state `disabled`), read again after 30 s (the daemon runs for days; $fresh: now): [ id => true ]
     public static function suspendedIds($fresh = false) {
 	static $ids = null, $at = 0;
 	if ($fresh || $ids === null || time() - $at >= 30) {
@@ -234,7 +228,7 @@ class Account extends \sys\BaseModel {
 	return $ids;
     }
 
-    //CLD: 2026-10-22T23:00:00+03:00: whether account $aid is suspended
+    //whether account $aid is suspended
     public static function isSuspended($aid) {
 	return !empty($aid) && isset(self::suspendedIds()[(string)$aid]);
     }

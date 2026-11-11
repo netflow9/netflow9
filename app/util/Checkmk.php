@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T08:00:00+02:00: new: the client of the Checkmk REST API (2.2 and later), for the Checkmk credential, steps and problem trigger.
+    the client of the Checkmk REST API (2.2 and later), for the Checkmk credential, steps and problem trigger.
     https://<server>/<site>/check_mk/api/1.0/...; `Authorization: Bearer <automation user> <its secret>`. Answers: JSON (collections: { value: [ { id, title, extensions } ] });
     errors: application/problem+json { title, status, detail, fields } made a \RuntimeException with the title, the detail and the fields' messages. Monitoring status is read
     with Livestatus queries (query: a JSON filter, columns repeated). Public addresses only, unless the account allows private network addresses (a monitoring server is usually

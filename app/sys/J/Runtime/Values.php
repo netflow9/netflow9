@@ -33,7 +33,7 @@ final class Values
         return $r;
     }
 
-    //CLD: 2026-10-20T22:45:00+03:00: J's JSON text of a PHP value (strings, keys, numbers): util\JSON, the app's escaping (< > & ' " as \u00XX, invalid UTF-8 dropped),
+    //J's JSON text of a PHP value (strings, keys, numbers): util\JSON, the app's escaping (< > & ' " as \u00XX, invalid UTF-8 dropped),
     //with non-ASCII characters and / as they are
     public static function json(mixed $v): string
     {
@@ -113,7 +113,7 @@ final class Values
         if ($v instanceof JsArray) {
             return self::stringToNumber(self::toString($v));
         }
-        //CLD: 2026-10-20T21:01:44+03:00: a date is its time in ms
+        //a date is its time in ms
         if ($v instanceof JsDate) {
             return self::num($v->time);
         }
@@ -207,7 +207,7 @@ final class Values
             return sprintf('%.0f', $n);
         }
         // Shortest round-trip representation (uses serialize_precision = -1).
-        $s = self::json($n); //CLD: 2026-10-20T22:45:00+03:00: util\JSON
+        $s = self::json($n); //util\JSON
         if ($s === false) {
             return (string) $n;
         }
@@ -252,8 +252,8 @@ final class Values
             $v === true => 'true',
             $v === false => 'false',
             $v instanceof JsArray => self::join($v, ','),
-            $v instanceof JsRegExp => $v->toString(), //CLD: 2026-10-20T22:10:00+03:00: /source/flags
-            $v instanceof JsDate => $v->format(), //CLD: 2026-10-20T21:01:44+03:00: the date's toString()
+            $v instanceof JsRegExp => $v->toString(), ///source/flags
+            $v instanceof JsDate => $v->format(), //the date's toString()
             $v instanceof JsFunction => 'function ' . $v->name . '() { [code] }',
             $v instanceof NativeFunction => 'function ' . $v->name . '() { [native code] }',
             default => '[object Object]',
@@ -305,9 +305,9 @@ final class Values
 
     public static function toPrimitive(mixed $v): mixed
     {
-        //CLD: 2026-10-20T21:01:44+03:00: a date too (its default hint is string, so `date + 1` is text, as in JS)
+        //a date too (its default hint is string, so `date + 1` is text, as in JS)
         if ($v instanceof JsArray || $v instanceof JsObject || $v instanceof JsFunction || $v instanceof NativeFunction || $v instanceof JsDate
-            || $v instanceof JsRegExp) { //CLD: 2026-10-20T22:10:00+03:00: + a regular expression
+            || $v instanceof JsRegExp) {
             return self::toString($v);
         }
         return $v;
@@ -365,7 +365,7 @@ final class Values
     /** Abstract relational comparison: true / false / null (= undefined, i.e. NaN involved). */
     public static function lessThan(mixed $a, mixed $b): ?bool
     {
-        //CLD: 2026-10-20T21:01:44+03:00: dates compare as numbers (hint number), not as their text
+        //dates compare as numbers (hint number), not as their text
         $a = $a instanceof JsDate ? self::toNumber($a) : self::toPrimitive($a);
         $b = $b instanceof JsDate ? self::toNumber($b) : self::toPrimitive($b);
         if (is_string($a) && is_string($b)) {
@@ -383,16 +383,16 @@ final class Values
     public static function inspect(mixed $v, int $depth = 0, bool $top = true): string
     {
         if (is_string($v)) {
-            return $top ? $v : self::json($v); //CLD: 2026-10-20T22:45:00+03:00: util\JSON
+            return $top ? $v : self::json($v); //util\JSON
         }
         if ($v instanceof JsFunction || $v instanceof NativeFunction) {
             return '[Function' . ($v->name !== '' ? ': ' . $v->name : ' (anonymous)') . ']';
         }
-        //CLD: 2026-10-20T21:01:44+03:00: a date as node prints it (the ISO text)
+        //a date as node prints it (the ISO text)
         if ($v instanceof JsDate) {
             return $v->format('iso');
         }
-        //CLD: 2026-10-20T22:10:00+03:00: a regular expression as its literal
+        //a regular expression as its literal
         if ($v instanceof JsRegExp) {
             return $v->toString();
         }
@@ -413,7 +413,7 @@ final class Values
             $parts = [];
             foreach ($v->props as $k => $x) {
                 $k = (string) $k;
-                $key = preg_match('/^[A-Za-z_$][\w$]*$/', $k) ? $k : self::json($k); //CLD: 2026-10-20T22:45:00+03:00: util\JSON
+                $key = preg_match('/^[A-Za-z_$][\w$]*$/', $k) ? $k : self::json($k); //util\JSON
                 $parts[] = $key . ': ' . self::inspect($x, $depth + 1, false);
             }
             return '{ ' . implode(', ', $parts) . ' }';

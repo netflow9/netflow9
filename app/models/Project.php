@@ -78,7 +78,7 @@ class Project extends \sys\BaseModel {
     }
 
     //true if $userId is a member of the project $projectId of account $aid
-    //CLD: 2026-11-03T12:00:00+02:00: only for what needs just the membership (forms); permissions: checkAccess()
+    //only for what needs just the membership (forms); permissions: checkAccess()
     public static function isMember($projectId, $aid, $userId) {
 	if (empty($projectId) || empty($aid) || empty($userId))
 	    return false;
@@ -87,7 +87,7 @@ class Project extends \sys\BaseModel {
 	return !empty($project) && isset($project->members[(string)$userId]);
     }
 
-    //CLD: 2026-11-07T12:00:00+02:00: the access rule of everything that belongs to a project: `global` scope in $userId's account role (of this project's account) passes;
+    //the access rule of everything that belongs to a project: `global` scope in $userId's account role (of this project's account) passes;
     //else $userId's role in this project decides (it must be of the project's account and have the permission on). The account role's `project` scope gives nothing by itself
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new trigger: Wazuh alert - starts the workflow on new alerts of a rule level and worse, of agents, rules, groups, MITRE techniques, a query. It reads
+    Wazuh alert - starts the workflow on new alerts of a rule level and worse, of agents, rules, groups, MITRE techniques, a query. It reads
     the Wazuh indexer on its schedule (models\wf\WfSchedule, every 2 minutes by default; util\Scheduler runs runScheduled), oldest first; nothing has to be set up in Wazuh.
     What it has read is kept in models\TriggerState, locked during a check: { floor, since (ms), seen: [ [ _id, ms ] ] }:
 	floor   the first check's time: the newest alert of the indexer (Wazuh's own clock), else now. Older alerts never start runs

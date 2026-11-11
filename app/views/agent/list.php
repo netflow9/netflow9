@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-02T18:00:00+02:00: new: the agents the user may talk to (AgentController::list)
+//the agents the user may talk to (AgentController::list)
 
 $this->pageTitle = 'Agents';
 echo \util\VString::insert('<div class="p-3"><div class="d-flex align-items-center mb-3"><h4 class="mb-0 flex-fill"><i class="bi bi-chat-dots me-2"></i>Agents</h4>{:all}</div>', [

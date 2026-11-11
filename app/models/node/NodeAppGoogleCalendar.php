@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T13:00:00+03:00: new step: Google Calendar - lists, creates, changes and deletes the events of a Google calendar (Calendar API v3), through a Google Calendar (OAuth)
+    Google Calendar - lists, creates, changes and deletes the events of a Google calendar (Calendar API v3), through a Google Calendar (OAuth)
     credential of the project (\models\credential\CredentialGoogleCalendar, provides `gcalendar`). Inspired by sim.ai's Google Calendar block. Operations (setting `operation`):
 	list       the events between two times (default: from now, 7 days), searched by text; recurring events as their single occurrences, by start time
 	get        one event
@@ -20,7 +20,7 @@ namespace models\node;
 
 class NodeAppGoogleCalendar extends NodeAppGoogle {
     //static data/structure
-    //CLD: 2026-10-20T14:00:00+03:00: the shape, the credential, the operation run and the API calls are NodeAppGoogle's
+    //the shape, the credential, the operation run and the API calls are NodeAppGoogle's
     public static $name = 'google-calendar';
     public static $label = 'Google Calendar';
     public static $icon = 'bi-calendar-event';
@@ -40,7 +40,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 	'freeBusy' => 'Find busy times',
 	'calendars' => 'List the calendars',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'create', 'update', 'delete', 'quickAdd' ];
 
     //the operations on an existing event, the ones writing an event's settings, the ones on a period
@@ -56,12 +56,12 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
     const MAX_DURATION = 60 * 24 * 31;
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	return [
 	    static::credentialField(),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'calendarId',
 		'type' => 'text',
 		'label' => 'Calendar',
@@ -70,7 +70,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'hideIf' => [ 'key' => 'operation', 'operator' => 'eq', 'value' => 'calendars' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'eventId',
 		'type' => 'text',
 		'label' => 'Event',
@@ -82,7 +82,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 
 	    //list / freeBusy
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'timeMin',
 		'type' => 'text',
 		'label' => 'From',
@@ -91,7 +91,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 00:00', 'expression' => true, 'showIf' => static::operationIn(self::PERIOD) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'timeMax',
 		'type' => 'text',
 		'label' => 'Until',
@@ -100,7 +100,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-28 00:00', 'expression' => true, 'showIf' => static::operationIn(self::PERIOD) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'search',
 		'type' => 'text',
 		'label' => 'Search',
@@ -109,7 +109,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'list' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxResults',
 		'type' => 'number',
 		'label' => 'Largest number of events',
@@ -121,7 +121,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 
 	    //create / update
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'summary',
 		'type' => 'text',
 		'label' => 'Title',
@@ -131,7 +131,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'Meeting with {{ mail.from_name }}', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'location',
 		'type' => 'text',
 		'label' => 'Location',
@@ -139,7 +139,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'start',
 		'type' => 'text',
 		'label' => 'Start',
@@ -149,7 +149,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '2026-10-21 14:00', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'end',
 		'type' => 'text',
 		'label' => 'End',
@@ -158,7 +158,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'placeholder' => '2026-10-21 15:00', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'duration',
 		'type' => 'number',
 		'label' => 'Duration (minutes)',
@@ -169,7 +169,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'step' => 5, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'allDay',
 		'type' => 'switch',
 		'label' => 'All day',
@@ -178,18 +178,17 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide, on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide, on a new line
 		'key' => 'timeZone',
 		'type' => 'text',
 		'label' => 'Time zone',
 		'default' => '',
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means (util timeZone(): the app's, config app.timezone)
+		//placeholder: what an empty value means (util timeZone(): the app's, config app.timezone)
 		'help' => 'Of times without an offset, e.g. Europe/Bucharest',
 		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true, 'placeholder' => 'App\'s time zone', 'expression' => true, 'showIf' => static::operationIn(array_merge(self::EDIT, self::PERIOD)) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'recurrence',
 		'type' => 'text',
 		'label' => 'Repeat (RRULE)',
@@ -199,7 +198,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'placeholder' => 'RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'meet',
 		'type' => 'switch',
 		'label' => 'Add a Google Meet link',
@@ -215,7 +214,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'rows' => 4, 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'attendees',
 		'type' => 'text',
 		'label' => 'Guests',
@@ -224,8 +223,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => static::operationIn(self::EDIT) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:07+03:00: layout: 6 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 6 wide
 		'key' => 'sendUpdates',
 		'type' => 'select',
 		'label' => 'Notify guests',
@@ -321,7 +319,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
     // ------------------------------------------------------------------------------------
     //running
 
-    //CLD: 2026-10-20T14:00:00+03:00: the operation (NodeAppGoogle::execute runs it: the variable, the log, On error)
+    //the operation (NodeAppGoogle::execute runs it: the variable, the log, On error)
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	return match($operation) {
 	    'list' => $this->opList($text),
@@ -467,7 +465,7 @@ class NodeAppGoogleCalendar extends NodeAppGoogle {
 
     //the calendar of the step in a path: /calendars/<id>
     protected function calendarPath() {
-	//CLD: 2026-11-01T21:50:00+02:00: settingValue() (as it is when the step runs as an AI step's tool)
+	//settingValue() (as it is when the step runs as an AI step's tool)
 	$id = trim(\util\Expression::toText($this->settingValue($this->cfg('calendarId', 'primary'), $this->varsForSettings())));
 	return '/calendars/' . rawurlencode($id !== '' ? $id : 'primary');
     }

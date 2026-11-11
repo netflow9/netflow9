@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T04:00:00+02:00: new trigger: Veeam event - starts the workflow when job sessions of a Veeam Backup & Replication server end with the results chosen (Failed, Warning,
+    Veeam event - starts the workflow when job sessions of a Veeam Backup & Replication server end with the results chosen (Failed, Warning,
     Success), of a job or of every job. Veeam does not call other systems: the step checks the server on its schedule (models\wf\WfSchedule, every 5 minutes by default; util\Scheduler
     runs runScheduled), reading the sessions ended since its last check (GET /api/v1/sessions: endedAfterFilter, stateFilter Stopped, resultFilter, jobIdFilter; oldest first).
     What it has read is kept in models\TriggerState (the last end time, and the sessions already started at that time), locked during a check. Its first check only notes the

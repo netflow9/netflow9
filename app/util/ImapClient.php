@@ -116,7 +116,7 @@ class ImapClient {
 
     //plain LOGIN (username / password or app password)
     public function login($user, $password) {
-	//CLD: 2026-10-09T13:11:44+03:00: say why: over TLS the server refuses passwords altogether (e.g. Outlook.com / Microsoft 365: OAuth only); the message
+	//say why: over TLS the server refuses passwords altogether (e.g. Outlook.com / Microsoft 365: OAuth only); the message
 	//said "use TLS" even on TLS connections
 	if ($this->hasCapability('LOGINDISABLED')) {
 	    if (!$this->secure)

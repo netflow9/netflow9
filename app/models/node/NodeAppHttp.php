@@ -20,7 +20,7 @@ class NodeAppHttp extends \models\wf\WfNode {
     public static $label = 'HTTP Request';
     public static $icon = 'bi-globe2';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step, in Developer
+    //the step picker: an advanced step, in Developer
     public static $audience = 'advanced';
     public static $category = 'developer';
     public static $inputs = 1;
@@ -37,7 +37,7 @@ class NodeAppHttp extends \models\wf\WfNode {
     ];
     const BODY_TYPES = [ 'none' => 'None', 'json' => 'JSON', 'form' => 'Form (urlencoded)', 'text' => 'Text' ];
 
-    //CLD: 2026-10-23T12:30:00+03:00: the JSON-RPC request proposed when JSON-RPC is switched on
+    //the JSON-RPC request proposed when JSON-RPC is switched on
     const JSON_RPC_TEMPLATE = "{\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"\",\n    \"params\": {},\n    \"id\": 1\n}";
 
     //the largest response body kept, and the timeout limits (seconds)
@@ -48,16 +48,14 @@ class NodeAppHttp extends \models\wf\WfNode {
     const HEADER_NAME = '^[!#$%&\'*+.^_`|~0-9A-Za-z-]+$';
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	//no credential: the select's empty choice (ui placeholder)
 	$credentials = [];
 	foreach(static::credentialChoices() as $c)
 	    $credentials[$c['value']] = $c['label'];
 
-	//CLD: 2026-10-24T12:38:06+03:00: the designer places the step name / response variable / on error (row 1), the credential (row 2, here 4 wide: method and URL next to it) and the timeout
-	//(last); method 2 + URL 6
-	//CLD: 2026-10-24T12:07:28+03:00: laid out for the wide dialog ($editor: xl, the step name 6 wide), less scrolling: step name / response variable / on error; method / URL /
-	//timeout; query parameters | headers side by side; credential / body / JSON-RPC; the content (or the form fields) full width
+	//laid out for the wide dialog ($editor: xl, the step name 6 wide), less scrolling: the designer places the step name / response variable / on error (row 1), the credential
+	//(row 2, here 4 wide: method 2 + URL 6 next to it) and the timeout (last); query parameters | headers side by side; body / JSON-RPC; the content (or the form fields) full width
 	return [
 	    [
 		'key' => 'variable',
@@ -102,12 +100,12 @@ class NodeAppHttp extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 30,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_TIMEOUT, 'skipEmpty' => true, 'message' => 'from 1 to ' . self::MAX_TIMEOUT ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
+		//min / max from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'width' => 2 ],
 	    ],
-	    //CLD: 2026-10-24T12:19:00+03:00: query parameters | headers before the credential / body row: the body type and JSON-RPC stay next to the content
+	    //query parameters | headers before the credential / body row: the body type and JSON-RPC stay next to the content
 	    self::pairsField('query', 'Query parameters', 'Query parameter', 'Add parameter', [ 'width' => 6 ]),
-	    //CLD: 2026-10-29T10:30:00+02:00: the headers under "Advanced…" (the designer's closed section of the technical settings; the Download step's too)
+	    //the headers under "Advanced…" (the designer's closed section of the technical settings; the Download step's too)
 	    self::pairsField('headers', 'Headers', 'Header', 'Add header', [ 'width' => 6, 'advanced' => true ]),
 	    [
 		'key' => 'credential',
@@ -130,9 +128,9 @@ class NodeAppHttp extends \models\wf\WfNode {
 		    'width' => 3,
 		],
 	    ],
-	    //CLD: 2026-10-23T12:30:00+03:00: JSON-RPC 2.0: the content is checked as a request; switching it on proposes one (ui propose: when the content is empty, else asked)
+	    //JSON-RPC 2.0: the content is checked as a request; switching it on proposes one (ui propose: when the content is empty, else asked)
 	    [
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings)
 		'key' => 'jsonRpc',
 		'type' => 'switch',
 		'label' => 'JSON-RPC 2.0',
@@ -146,7 +144,7 @@ class NodeAppHttp extends \models\wf\WfNode {
 		    'width' => 3,
 		],
 	    ],
-	    //CLD: 2026-10-23T12:30:00+03:00: a code editor (app.CodeEditor); its syntax follows the body type (syntaxBy: JSON / JSON-RPC checked live, util\JsonCheck; text: the {{ }} only)
+	    //a code editor (app.CodeEditor); its syntax follows the body type (syntaxBy: JSON / JSON-RPC checked live, util\JsonCheck; text: the {{ }} only)
 	    [
 		'key' => 'body',
 		'type' => 'textarea',
@@ -163,9 +161,8 @@ class NodeAppHttp extends \models\wf\WfNode {
 	];
     }
 
-    //CLD: 2026-11-07T01:08:03+02:00: a list of name / value pairs (query parameters, headers, form fields): setting $key
-    //CLD: 2026-10-18T10:45:00+03:00: nested lists (sys\fields\Field_nested): each row cast and validated by pairSchema() (headers:
-    //a valid name), its expressions checked, errors as "<itemLabel> <n>: <field>: <message>"; the edit grid's columns come from pairSchema()
+    //a list of name / value pairs (query parameters, headers, form fields): setting $key, a nested list (sys\fields\Field_nested): each row cast and validated by pairSchema()
+    //(headers: a valid name), its expressions checked, errors as "<itemLabel> <n>: <field>: <message>"; the edit grid's columns come from pairSchema()
     private static function pairsField($key, $label, $itemLabel, $addLabel, $extra = []) {
 	return [
 	    'key' => $key,
@@ -179,8 +176,7 @@ class NodeAppHttp extends \models\wf\WfNode {
 	];
     }
 
-    //one row of query parameters / headers / form fields
-    //CLD: 2026-10-18T10:45:00+03:00: + $header: the name must be a header name; the name is trimmed by the field
+    //one row of query parameters / headers / form fields; $header: the name must be a header name; the name is trimmed by the field
     public static function pairSchema($header = false) {
 	return [
 	    [ 'key' => 'name', 'type' => 'text', 'label' => 'Name', 'required' => true, 'transform' => 'trim', 'ui' => [ 'width' => 5 ] ]
@@ -198,14 +194,14 @@ class NodeAppHttp extends \models\wf\WfNode {
 
     public static function outputVariables($config) {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'response') : 'response';
-	//CLD: 2026-10-13T12:34:29+03:00: + the fields and their types (suggested after `response.`)
+	//the fields and their types (suggested after `response.`)
 	return \util\Validator::isIdentifier($name) ? [ $name => [ 'type' => 'object', 'info' => 'the HTTP response: { ok, status, headers, body, error, time_ms }', 'fields' => [
 	    'ok' => [ 'type' => 'boolean' ], 'status' => [ 'type' => 'number' ], 'headers' => [ 'type' => 'object', 'info' => 'lower-case name => value (a list when repeated)' ], 'body' => [ 'type' => 'any', 'info' => 'JSON decoded, else text' ],
 	    'error' => [ 'type' => 'string' ], 'time_ms' => [ 'type' => 'number' ] ] ] ] : [];
     }
 
     //the config, each row of the lists through the row form, header names, a credential of the workflow's project
-    //CLD: 2026-10-18T10:45:00+03:00: the rows of the lists (names, header names, expressions) are checked and normalized by parent::validates (nested fields); here the credential
+    //the rows of the lists (names, header names, expressions) are checked and normalized by parent::validates (nested fields); here the credential
     public function validates($options = []) {
 	$valid = parent::validates($options);
 
@@ -214,7 +210,7 @@ class NodeAppHttp extends \models\wf\WfNode {
 	    $this->errors('config', 'Credential: choose an HTTP credential of this project');
 	    $valid = false;
 	}
-	//CLD: 2026-10-23T12:30:00+03:00: a JSON body must be JSON (a JSON-RPC request when switched on); the {{ }} parts are checked by parent::validates
+	//a JSON body must be JSON (a JSON-RPC request when switched on); the {{ }} parts are checked by parent::validates
 	if (!in_array($this->cfg('method', 'GET'), [ 'GET', 'HEAD' ], true) && $this->cfg('bodyType', 'none') === 'json') {
 	    foreach(\util\Expression::checkJson((string)$this->cfg('body', ''), !empty($this->cfg('jsonRpc', false))) as $p) {
 		if ($p['severity'] !== 'error')
@@ -229,16 +225,16 @@ class NodeAppHttp extends \models\wf\WfNode {
     // ------------------------------------------------------------------------------------
     //running
 
-    //CLD: 2026-11-07T01:08:18+02:00: the variables of textOf(), set by execute()
+    //the variables of textOf(), set by execute()
     protected $textVars = [];
 
-    //CLD: 2026-11-07T01:08:18+02:00: text $v with its {{ }} rendered against the execution's variables (textVars)
+    //text $v with its {{ }} rendered against the execution's variables (textVars)
     protected function textOf($v) {
 	return \util\Expression::toText(\util\Expression::render((string)$v, $this->textVars));
     }
 
     public function execute($edgeId = null) {
-	//CLD: 2026-10-13T15:24:28+03:00: + the project variables (vars)
+	//the project variables (vars)
 	$vars = $this->exec->expressionVariables();
 	$this->textVars = $vars;
 	$method = (string)$this->cfg('method', 'GET');
@@ -251,7 +247,7 @@ class NodeAppHttp extends \models\wf\WfNode {
 	$shownUrl = preg_replace('/[?#].*$/', '', $url);
 
 	//query parameters, headers (the credential's added after them: it wins)
-	//CLD: 2026-10-28T08:30:00+02:00: query parameters as [ name, value ] pairs: a repeated name sends each row (e.g. CheckMK's columns=a&columns=b)
+	//query parameters as [ name, value ] pairs: a repeated name sends each row (e.g. CheckMK's columns=a&columns=b)
 	$query = [];
 	foreach((array)$this->cfg('query', []) as $row) {
 	    if (($row['name'] ?? '') !== '')
@@ -267,14 +263,14 @@ class NodeAppHttp extends \models\wf\WfNode {
 	    $cred = \models\Credential::findFor($this->exec, $credId, 'http');
 	    if (empty($cred))
 		throw new \ErrorException('HTTP Request: the credential is no longer available');
-	    //CLD: 2026-11-03T18:00:00+02:00: a credential shared for some hosts: only there, no redirects
+	    //a credential shared for some hosts: only there, no redirects
 	    if (!$cred->allowsUrlIn($this->exec->project, $url))
 		throw new \ErrorException('HTTP Request: the credential `' . $cred->name . '` is shared with this project for other hosts');
 	    $auth = $cred->httpAuth();
 	    foreach((array)($auth['headers'] ?? []) as $name => $value)
 		$headers[strtolower($name)] = [ $name, (string)$value ];
 	}
-	//CLD: 2026-10-28T08:30:00+02:00: self::withQuery
+	//self::withQuery
 	$url = self::withQuery($url, $query, (array)($auth['query'] ?? []));
 
 	//body
@@ -302,9 +298,9 @@ class NodeAppHttp extends \models\wf\WfNode {
 	    }
 	}
 
-	//CLD: 2026-10-23T15:00:00+03:00: public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE
+	//public addresses only unless app.env HTTP_STEPS_ALLOW_PRIVATE
 	$response = self::request($method, $url, array_map(fn($h) => $h[0] . ': ' . $h[1], array_values($headers)), $body, (int)$this->cfg('timeout', 30),
-	    //CLD: 2026-11-03T18:00:00+02:00: a credential shared for some hosts: no redirects
+	    //a credential shared for some hosts: no redirects
 	    (!empty($cred) && $cred->hostLockedIn($this->exec->project) ? [ 'redirects' => 0 ] : []) + self::guard());
 	$name = (string)$this->cfg('variable', 'response');
 	if (\util\Validator::isIdentifier($name))
@@ -318,14 +314,14 @@ class NodeAppHttp extends \models\wf\WfNode {
 	throw new \ErrorException("HTTP Request: {$method} {$shownUrl}: " . $response['error']);
     }
 
-    //CLD: 2026-10-23T15:00:00+03:00: the util\Http options of the HTTP steps' requests (HTTP Request, Download File): public addresses only, unless app.env HTTP_STEPS_ALLOW_PRIVATE
+    //the util\Http options of the HTTP steps' requests (HTTP Request, Download File): public addresses only, unless app.env HTTP_STEPS_ALLOW_PRIVATE
     public static function guard() {
 	return [ 'public' => !\V::app()->config('http.steps.allow_private') ];
     }
 
-    //one request (redirects followed, http / https only): [ ok, status, headers, body, error, time_ms ]
-    //CLD: 2026-10-23T15:00:00+03:00: through util\Http; + $opts: more util\Http options (the step: `public` unless app.env HTTP_STEPS_ALLOW_PRIVATE)
-    //CLD: 2026-10-28T08:30:00+02:00: new: $url with the query parameters added - $pairs: [ name, value ] (a repeated name sent once per pair), $override: name => value
+    //one request through util\Http (redirects followed, http / https only; $opts: more util\Http options, the step: `public` unless app.env HTTP_STEPS_ALLOW_PRIVATE):
+    //[ ok, status, headers, body, error, time_ms ]
+    //$url with the query parameters added - $pairs: [ name, value ] (a repeated name sent once per pair), $override: name => value
     //(the credential's: replaces the pairs of its name); also used by Download File
     public static function withQuery($url, array $pairs, array $override = []) {
 	foreach($override as $name => $value) {

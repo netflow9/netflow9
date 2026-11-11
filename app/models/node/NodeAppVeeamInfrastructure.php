@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T04:00:00+02:00: new step: Veeam Infrastructure - the backup infrastructure of a Veeam Backup & Replication server. Operations (setting `operation`):
+    Veeam Infrastructure - the backup infrastructure of a Veeam Backup & Replication server. Operations (setting `operation`):
 	repositories   the repositories' states (GET /api/v1/backupInfrastructure/repositories/states: capacityGB, freeGB, usedSpaceGB, isOnline), each with freePercent added;
 	               Low on space: only those with less free space than the percentage
 	proxies        the backup proxies (GET .../proxies)
@@ -26,7 +26,7 @@ class NodeAppVeeamInfrastructure extends NodeAppVeeam {
 	'license' => 'Get the license',
 	'server' => 'Get the backup server',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [];
     const LISTS = [ 'repositories', 'proxies', 'servers' ];
 

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 //loads the sys\J classes (the app's autoloader does it inside the app)
-//CLD: 2026-10-20T22:45:00+03:00: and util\JSON (J's JSON text and JSON.parse)
+//and util\JSON (J's JSON text and JSON.parse)
 spl_autoload_register(function (string $class): void {
     if (str_starts_with($class, 'sys\\J\\')) {
         $file = __DIR__ . '/../' . str_replace('\\', '/', substr($class, 6)) . '.php';

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new step: FortiGate Users & VPN - the firewall's local users, signed-in users and VPN tunnels. Operations (setting `operation`):
+    FortiGate Users & VPN - the firewall's local users, signed-in users and VPN tunnels. Operations (setting `operation`):
 	users       the local users (cmdb/user/local)
 	enable      a local user enabled (PUT status enable)
 	disable     a local user disabled (PUT status disable)
@@ -31,7 +31,7 @@ class NodeAppFgtUsers extends NodeAppFortiGate {
 	'sslvpn' => 'List SSL VPN sessions',
 	'ipsec' => 'List IPsec tunnels',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'enable', 'disable', 'deauth' ];
     const LISTS = [ 'users', 'signedIn', 'sslvpn', 'ipsec' ];
 

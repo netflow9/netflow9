@@ -97,10 +97,8 @@ class NodeCoreIf extends \models\wf\WfNode {
     }
 
 
-    //CLD: 2026-10-13T09:52:24+03:00: at least one condition; each through its form (required, operator), its expressions checked; the left side must be an expression (a plain text
-    //would always compare the same)
-    //CLD: 2026-10-13T12:17:47+03:00: the left side's syntax is checked by expressionErrors (field syntax `reference`: plain text is refused by the parser)
-    //CLD: 2026-10-18T10:20:00+03:00: each condition (required fields, operator, expressions) is checked by parent::validates (the nested field); here only how many there are
+    //at least one condition; each condition (required fields, operator, expressions) is checked by parent::validates (the nested field; the left side must be an expression:
+    //field syntax `reference`, plain text is refused by the parser); here only how many there are
     public function validates($options = []) {
 	$valid = parent::validates($options);
 	$conditions = $this->cfg('conditions', []);
@@ -116,25 +114,24 @@ class NodeCoreIf extends \models\wf\WfNode {
 	return $valid;
     }
 
-    //CLD: 2026-10-13T09:52:24+03:00: the conditions evaluated in order (any: up to the first that holds; all: up to the first that does not); output 0 = true, 1 = false
+    //the conditions evaluated in order (any: up to the first that holds; all: up to the first that does not); output 0 = true, 1 = false
     public function execute($edgeId = null) {
 	$any = $this->cfg('match', 'all') === 'any';
 	$conditions = $this->cfg('conditions', []);
 	$conditions = is_array($conditions) ? array_values($conditions) : [];
 	if (!$conditions)
 	    throw new \ErrorException('If: no conditions');
-
-	//CLD: 2026-10-13T15:24:28+03:00: + the project variables (vars)
+	//the project variables (vars)
 	$vars = $this->exec->expressionVariables();
 	$result = !$any;
 	$log = [];
 	foreach($conditions as $i => $c) {
 	    $operator = (string)($c['operator'] ?? 'eq');
-	    //CLD: 2026-10-14T20:17:14+03:00: the fields' operators, compared by util\Conditions::holds
+	    //the fields' operators, compared by util\Conditions::holds
 	    if (!array_key_exists($operator, \util\Conditions::operators()))
 		throw new \ErrorException('If: condition ' . ($i + 1) . ": unknown operator `{$operator}`");
 	    //the left side keeps its type (a list for contains / is empty); the value is text
-	    //CLD: 2026-10-13T12:17:47+03:00: in the syntax of its field (reference)
+	    //in the syntax of its field (reference)
 	    $left = \util\Expression::render((string)($c['left'] ?? ''), $vars, 'reference');
 	    $right = in_array($operator, [ 'empty', 'notEmpty' ], true) ? '' : \util\Expression::toText(\util\Expression::render((string)($c['value'] ?? ''), $vars));
 	    $holds = \util\Conditions::holds($left, $operator, $right);

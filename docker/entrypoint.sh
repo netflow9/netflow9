@@ -1,5 +1,5 @@
 #!/bin/bash
-# CLD: 2026-11-01T19:00:00+02:00: the start of Rail22's containers (docker/Dockerfile), as the image's user nfn:
+# the start of Rail22's containers (docker/Dockerfile), as the image's user nfn:
 #   php-fpm   (app)     the setup from NFN_SETUP_JSON when there is no app.env yet (else the browser's /setup), the indexes (sys::indexes: an update's new ones), the web browser's
 #                       entry in mcp.json (NFN_BROWSER_URL, the browser profile), then PHP-FPM on :9000
 #   daemon    (daemon)  waits for app.env (the setup), then the workflow daemon (app/v.php daemon::run)

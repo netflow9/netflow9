@@ -12,7 +12,7 @@ namespace controllers;
 
 class McpController extends \sys\APIController {
 
-    //CLD: 2026-11-01T02:00:00+02:00: the account's owners turn the server on per project (Account::mcpEnabled; account settings, Data access)
+    //the account's owners turn the server on per project (Account::mcpEnabled; account settings, Data access)
 
     //supported protocol versions, newest first (initialize answers the client's when supported, else the newest)
     const PROTOCOL_VERSIONS = [ '2025-06-18', '2025-03-26', '2024-11-05' ];
@@ -20,9 +20,8 @@ class McpController extends \sys\APIController {
     //last_used_at is written at most this often (seconds)
     const TOUCH_EVERY = 60;
 
-    //called by MCP clients: no CSRF token, the bearer token is the credential
-    //CLD: 2026-10-21T00:25:00+03:00: the answers are sent with $resp->sendJSON (JSON, no-store; ends the request), slashes and Unicode as they are
-    //CLD: 2026-10-21T00:35:00+03:00: the error answers made by fail()
+    //called by MCP clients: no CSRF token, the bearer token is the credential; the answers are sent with $resp->sendJSON (JSON, no-store; ends the request),
+    //slashes and Unicode as they are; the error answers made by fail()
     public function serve($req, $resp) {
 	$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 	if ($method !== 'POST') {
@@ -43,7 +42,7 @@ class McpController extends \sys\APIController {
 	    $resp->addHeader('WWW-Authenticate', 'Bearer realm="Rail22 MCP", error="invalid_token"');
 	    $resp->sendJSON($this->fail(null, -32000, 'A valid token is required (Authorization: Bearer <token>)'), true, 401, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	}
-	//CLD: 2026-11-01T02:00:00+02:00: only for a project whose MCP server is on (Account::mcpEnabled)
+	//only for a project whose MCP server is on (Account::mcpEnabled)
 	//checked before the sign-in (its hooks, the session's start): the token's account, read here
 	$account = \V::app()->om->findById('Account', (string)$token->aid);
 	if (!$account || !$account->mcpEnabled($project->_id))
@@ -62,7 +61,7 @@ class McpController extends \sys\APIController {
 
 	if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > \data\Constants::MAX_REQUEST_BODY)
 	    $resp->sendJSON($this->fail(null, -32600, 'Request too large'), true, 413, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-	//CLD: 2026-11-08T12:00:00+02:00: the body as sent (sys\http\Request), decoded whatever its content type; too large without a Content-Length (chunked): 413
+	//the body as sent (sys\http\Request), decoded whatever its content type; too large without a Content-Length (chunked): 413
 	if (strlen($req->body()) > \data\Constants::MAX_REQUEST_BODY)
 	    $resp->sendJSON($this->fail(null, -32600, 'Request too large'), true, 413, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	$body = json_decode($req->body(), true);
@@ -93,7 +92,7 @@ class McpController extends \sys\APIController {
 	}
 	$id = $msg['id'];
 	$params = is_array($msg['params'] ?? null) ? $msg['params'] : [];
-	//CLD: 2026-10-21T00:35:00+03:00: the answers are made by ok() / fail()
+	//the answers are made by ok() / fail()
 
 	switch((string)$msg['method']) {
 	    case 'initialize':
@@ -101,7 +100,7 @@ class McpController extends \sys\APIController {
 		return $this->ok($id, [
 		    'protocolVersion' => in_array($asked, self::PROTOCOL_VERSIONS, true) ? $asked : self::PROTOCOL_VERSIONS[0],
 		    'capabilities' => [ 'tools' => [ 'listChanged' => false ] ],
-		    'serverInfo' => [ 'name' => 'rail22', 'title' => 'Rail22 workflows', 'version' => \data\Version::NUMBER ], //CLD: 2026-11-02T21:30:00+02:00: the app's version
+		    'serverInfo' => [ 'name' => 'rail22', 'title' => 'Rail22 workflows', 'version' => \data\Version::NUMBER ], //the app's version
 		    'instructions' => "Tools of the Rail22 project `{$project->name}`: its data tables (list, query, insert / update / delete rows), workflows (list, run, executions), files (list, read) and variables. Use list_tables / list_workflows first to learn the names.",
 		]);
 

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T00:41:28+03:00: new class: the base of the Microsoft Graph steps (Outlook Mail, Outlook Calendar, OneDrive / SharePoint, Excel, Teams; not registered
+    the base of the Microsoft Graph steps (Outlook Mail, Outlook Calendar, OneDrive / SharePoint, Excel, Teams; not registered
     itself), as NodeAppGoogle is the Google steps'.
 	- the step's shape: one input, the `success` output (+ `error` when On error is "Continue on the `error` output": $outPorts)
 	- the settings every Microsoft step has: credential (of the project, providing static::$capability), operation (static::OPERATIONS), timeout, result variable, on error
@@ -17,14 +17,14 @@
 namespace models\node;
 
 abstract class NodeAppMicrosoft extends \models\wf\WfNode {
-    //CLD: 2026-11-01T21:50:00+02:00: its operations can be an AI step's tools (util\AgentTools: settingValue, setResult)
+    //its operations can be an AI step's tools (util\AgentTools: settingValue, setResult)
     use AgentToolTrait;
 
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-microsoft';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: the Microsoft steps in Microsoft
+    //the step picker: the Microsoft steps in Microsoft
     public static $category = 'microsoft';
     public static $inputs = 1;
     public static $outputs = 1;
@@ -70,7 +70,7 @@ abstract class NodeAppMicrosoft extends \models\wf\WfNode {
 	    'type' => 'select',
 	    'label' => static::$credentialLabel,
 	    'choices' => $choices,
-	    //CLD: 2026-10-24T12:59:05+03:00: without "(menu: Credentials)" (one line in the wide dialog's half column)
+	    //without "(menu: Credentials)" (one line in the wide dialog's half column)
 	    'help' => $help ?? ucfirst(self::article(static::$credentialKinds)) . ' (Microsoft Graph) credential of the project',
 	    'required' => true,
 	];
@@ -144,7 +144,7 @@ abstract class NodeAppMicrosoft extends \models\wf\WfNode {
     //running
 
     public function execute($edgeId = null) {
-	//CLD: 2026-11-01T21:50:00+02:00: the settings through settingValue() (as they are when the step runs as a tool: AgentToolTrait)
+	//the settings through settingValue() (as they are when the step runs as a tool: AgentToolTrait)
 	$this->settingVars = $this->varsForSettings();
 	$operation = (string)$this->cfg('operation', static::$defaultOperation);
 	if (!isset(static::OPERATIONS[$operation]))
@@ -165,7 +165,7 @@ abstract class NodeAppMicrosoft extends \models\wf\WfNode {
 		return [ 1 ];
 	    throw new \ErrorException(static::$label . ": {$operation}: " . $e->getMessage());
 	}
-	//CLD: 2026-11-01T21:50:00+02:00: setResult() (a tool keeps it)
+	//setResult() (a tool keeps it)
 	$this->setResult($name, $result);
 	$this->exec->log($this->wfid, static::$label . " {$operation}: {$summary} (" . (int)round((microtime(true) - $start) * 1000) . ' ms)');
 	return [ 0 ];
@@ -219,7 +219,7 @@ abstract class NodeAppMicrosoft extends \models\wf\WfNode {
 
     //one request (https): the answer decoded as JSON ([] when it is not, e.g. 202 / 204), kept up to $maxBytes; \RuntimeException on no answer or a status of 400 or more
     protected function call($method, $url, array $headers, $body, $maxBytes = self::MAX_ANSWER) {
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http
+	//through util\Http
 	$r = \util\Http::request($method, $url, [ 'headers' => $headers, 'body' => $body, 'timeout' => $this->apiTimeout(), 'maxBytes' => $maxBytes, 'https' => true, 'compressed' => true ]);
 	if ($r['tooLarge'])
 	    throw new \RuntimeException('the answer is larger than ' . (int)($maxBytes / 1048576) . ' MB');

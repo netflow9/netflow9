@@ -176,7 +176,7 @@ class FileSign extends FileDecrypt {
 	    $c = Certificate::decode($cert, false, false);
 	    if ($c['expired'])
 		throw new \RuntimeException('the certificate has expired');
-	    //CLD: 2026-10-24T16:30:00+03:00: the account's date format (Format::date)
+	    //the account's date format (Format::date)
 	    return 'signs as ' . (string)($c['commonName'] ?? '?') . ' (until ' . Format::date(strtotime($c['validTo'])) . ')';
 	}
 	$k = Certificate::keyInfo(Certificate::privateKey($cred->privateKey, $cred->passphrase));

@@ -1,14 +1,14 @@
 <?php
 
 /*
-    CLD: 2026-10-20T16:00:00+03:00: new class: a client for FTP, FTPS (explicit: AUTH TLS on port 21, implicit: TLS from the start, port 990) and SFTP (SSH), over PHP's curl
+    a client for FTP, FTPS (explicit: AUTH TLS on port 21, implicit: TLS from the start, port 990) and SFTP (SSH), over PHP's curl
     (libcurl with libssh for SFTP; no ssh2 / ftp extension needed). One curl handle per client: the connection is reused between the calls.
 	- list($folder): the entries of a folder: [ { name, path, type (file / dir / link), size, modified (Unix time, UTC, or null), exact (whether `modified` is to the
 	    second) } ]. FTP: MLSD (exact, UTC), else LIST (Unix or Windows style: minutes at best, the server's time); SFTP: the server's `ls -l` lines (minutes at best)
 	- stat($path): [ size, modified ] of a file, to the second (FTP: SIZE / MDTM, SFTP: stat)
 	- download($path, $stream, $maxBytes): the file written to $stream; an error when it is larger than $maxBytes
 	- rename($from, $to), delete($path), mkdir($path)
-	- upload($path, $stream, $size, $createFolders), exists($path) (CLD: 2026-10-20T18:00:00+03:00: for the FTP / SFTP Upload step)
+	- upload($path, $stream, $size, $createFolders), exists($path) for the FTP / SFTP Upload step)
 	Paths: `/x/y` from the server's root, `x/y` from the folder the user starts in (the home folder; FTP: the login folder)
 	SFTP: the server's key is checked against the MD5 fingerprint given (`hostKey`); without one the first connection is refused by libcurl and the fingerprint the server
 	showed is in hostKeySeen (CredentialFtp learns it: trust on first use)
@@ -190,7 +190,7 @@ class FtpClient {
 	return self::parseList($this->readListing($folder), $folder);
     }
 
-    //CLD: 2026-11-07T01:14:34+02:00: the listing of $folder ($command: MLSD; null: LIST), at most MAX_LISTING bytes
+    //the listing of $folder ($command: MLSD; null: LIST), at most MAX_LISTING bytes
     private function readListing($folder, $command = null) {
 	$data = '';
 	$opts = [ CURLOPT_RETURNTRANSFER => false, CURLOPT_WRITEFUNCTION => function($ch, $chunk) use (&$data) {
@@ -232,7 +232,7 @@ class FtpClient {
 	return $size;
     }
 
-    //CLD: 2026-10-20T18:00:00+03:00: $stream ($size bytes) written to file $path (replaced when it exists); $createFolders: its missing folders made (FTP and SFTP)
+    //$stream ($size bytes) written to file $path (replaced when it exists); $createFolders: its missing folders made (FTP and SFTP)
     public function upload($path, $stream, $size, $createFolders = false) {
 	rewind($stream);
 	$this->request($this->url($path), [
@@ -244,7 +244,7 @@ class FtpClient {
 	]);
     }
 
-    //CLD: 2026-10-20T18:00:00+03:00: whether file $path exists: [ size, modified ] when it does, null when the server says there is no such file; other errors are thrown
+    //whether file $path exists: [ size, modified ] when it does, null when the server says there is no such file; other errors are thrown
     public function exists($path) {
 	try {
 	    return $this->stat($path);

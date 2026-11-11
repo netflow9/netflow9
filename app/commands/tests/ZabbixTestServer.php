@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new file: a fake Zabbix server (JSON-RPC API) for the check suite (CheckCommand::suiteZabbix), run by PHP's built-in server:
+    a fake Zabbix server (JSON-RPC API) for the check suite (CheckCommand::suiteZabbix), run by PHP's built-in server:
     ZBX_STATE=<a folder> ZBX_VERSION=7.0.5 php -S 127.0.0.1:<port> ZabbixTestServer.php
 	POST /zabbix/api_jsonrpc.php; the token `tok3n`: from 6.4 as `Authorization: Bearer`, before as the `auth` member (each refused where the version does not take it);
 	apiinfo.version must come without either. Each call appended to <state>/requests.jsonl (method, params, auth member, authorization header)

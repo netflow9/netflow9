@@ -1,23 +1,25 @@
 <?php
 
-//CLD: 2026-10-21T10:00:00+03:00: new: a connection to an LDAP server (v3, simple bind), through PHP's ldap extension when it is loaded (LdapExtClient), else the
-//plugin's own client (LdapPhpClient: BER over a socket). Both give the same answers and throw LdapException.
-//  $client = LdapClient::open([
-//	'hosts' => 'dc1.example.com, dc2.example.com:3269',     servers tried in order until one answers (host, host:port, [v6]:port)
-//	'encryption' => 'starttls',                              ldaps (TLS from the start, port 636) | starttls (port 389, then TLS) | none (port 389, unencrypted)
-//	'port' => null,                                          the hosts' port when they give none (empty: the encryption's)
-//	'verifyTls' => true, 'caCert' => '-----BEGIN ...',      check the server's certificate (against the system's CAs + caCert when given)
-//	'timeout' => 15,                                         seconds: to connect, and for each operation
-//	'driver' => 'auto',                                      auto | ext | php (the check suite runs both)
-//  ]);
-//  $client->bind($dn, $password);                         \LdapException 49 when refused; an empty password is refused here (RFC 4513: it would be an
-//                                                          "unauthenticated" bind that servers accept)
-//  $r = $client->search($base, '(uid=a*)', 'sub', [ 'cn', 'mail' ], $sizeLimit, $pageSize);   [ 'entries' => [ [ 'dn' => .., 'attributes' => [ name => [ values ] ] ] ], 'truncated' => bool ]
-//  $entry = $client->read($dn, [ 'cn' ]);                  null when there is no such entry
-//  $client->add($dn, [ 'objectClass' => [ 'top', 'person' ], 'cn' => [ 'x' ] ]); modify($dn, [ [ 'op' => 'replace'|'add'|'delete', 'attr' => .., 'values' => [ .. ] ] ]);
-//  delete($dn); rename($dn, $newRdn, $newParent = null, $deleteOld = true); passwordModify($dn, $old, $new) (RFC 3062: the generated one when $new is null)
-//  $client->close();
-//  helpers: escapeFilter(), escapeDn(), normalizeDn(), dnEquals(), rdnValue(), values() (an attribute of an entry, its name in any case), plain() (an entry for workflows)
+/*
+    a connection to an LDAP server (v3, simple bind), through PHP's ldap extension when it is loaded (LdapExtClient), else the
+    app's own client (LdapPhpClient: BER over a socket). Both give the same answers and throw LdapException.
+      $client = LdapClient::open([
+          'hosts' => 'dc1.example.com, dc2.example.com:3269',     servers tried in order until one answers (host, host:port, [v6]:port)
+          'encryption' => 'starttls',                              ldaps (TLS from the start, port 636) | starttls (port 389, then TLS) | none (port 389, unencrypted)
+          'port' => null,                                          the hosts' port when they give none (empty: the encryption's)
+          'verifyTls' => true, 'caCert' => '-----BEGIN ...',      check the server's certificate (against the system's CAs + caCert when given)
+          'timeout' => 15,                                         seconds: to connect, and for each operation
+          'driver' => 'auto',                                      auto | ext | php (the check suite runs both)
+      ]);
+      $client->bind($dn, $password);                         \LdapException 49 when refused; an empty password is refused here (RFC 4513: it would be an
+                                                              "unauthenticated" bind that servers accept)
+      $r = $client->search($base, '(uid=a*)', 'sub', [ 'cn', 'mail' ], $sizeLimit, $pageSize);   [ 'entries' => [ [ 'dn' => .., 'attributes' => [ name => [ values ] ] ] ], 'truncated' => bool ]
+      $entry = $client->read($dn, [ 'cn' ]);                  null when there is no such entry
+      $client->add($dn, [ 'objectClass' => [ 'top', 'person' ], 'cn' => [ 'x' ] ]); modify($dn, [ [ 'op' => 'replace'|'add'|'delete', 'attr' => .., 'values' => [ .. ] ] ]);
+      delete($dn); rename($dn, $newRdn, $newParent = null, $deleteOld = true); passwordModify($dn, $old, $new) (RFC 3062: the generated one when $new is null)
+      $client->close();
+      helpers: escapeFilter(), escapeDn(), normalizeDn(), dnEquals(), rdnValue(), values() (an attribute of an entry, its name in any case), plain() (an entry for workflows)
+*/
 
 namespace util;
 
@@ -281,7 +283,7 @@ abstract class LdapClient {
 	return $value;
     }
 
-    //CLD: 2026-11-07T01:14:34+02:00: hex text $s with its bytes in reverse order (a GUID's little-endian parts)
+    //hex text $s with its bytes in reverse order (a GUID's little-endian parts)
     private static function swapPairs($s) {
 	return implode('', array_reverse(str_split($s, 2)));
     }

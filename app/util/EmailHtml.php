@@ -141,7 +141,7 @@ HTML;
 	    if (!$p['closed'])
 		break;
 	    $code = html_entity_decode(substr($html, $p['start'], $p['end'] - $p['start']), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-	    //CLD: 2026-10-23T01:00:00+03:00: {{ markdown2html(x) }}: x as HTML (util\Markdown makes it safe), not escaped
+	    //{{ markdown2html(x) }}: x as HTML (util\Markdown makes it safe), not escaped
 	    $md = array_key_exists('markdown2html', $vars) ? null : self::callArgument($code, 'markdown2html');
 	    if ($md !== null) {
 		$value = \util\Expression::render(\sys\J\Template::OPEN . $md . \sys\J\Template::CLOSE, $vars);
@@ -149,7 +149,7 @@ HTML;
 		$at = $p['end'] + strlen(\sys\J\Template::CLOSE);
 		continue;
 	    }
-	    //CLD: 2026-11-05T15:00:00+02:00: {{ html(x) }}: x as HTML, cleaned (util\HtmlSafe), not escaped
+	    //{{ html(x) }}: x as HTML, cleaned (util\HtmlSafe), not escaped
 	    $raw = array_key_exists('html', $vars) ? null : self::callArgument($code, 'html');
 	    if ($raw !== null) {
 		$value = \util\Expression::render(\sys\J\Template::OPEN . $raw . \sys\J\Template::CLOSE, $vars);
@@ -158,7 +158,7 @@ HTML;
 		continue;
 	    }
 	    $value = \util\Expression::render(\sys\J\Template::OPEN . $code . \sys\J\Template::CLOSE, $vars);
-	    //CLD: 2026-10-23T02:30:00+03:00: {{ x.html }}: HTML, cleaned (util\HtmlSafe), not escaped
+	    //{{ x.html }}: HTML, cleaned (util\HtmlSafe), not escaped
 	    if (self::isHtmlField($code)) {
 		$out .= substr($html, $at, $p['open'] - $at) . \util\HtmlSafe::clean($value);
 		$at = $p['end'] + strlen(\sys\J\Template::CLOSE);
@@ -170,9 +170,8 @@ HTML;
 	return $out . substr($html, $at);
     }
 
-    //CLD: 2026-10-23T01:00:00+03:00: when expression $code is only a call of markdown2html() with one argument (the parsed expression, not the text: `markdown2html(a) + b` is not),
+    //when expression $code is only a call of function $name (markdown2html, html) with one argument (the parsed expression, not the text: `markdown2html(a) + b` is not),
     //the argument's code; else null (fill() does not ask when a variable of that name hides the function)
-    //CLD: 2026-11-05T15:00:00+02:00: of any function $name (markdown2html, html)
     public static function callArgument($code, $name) {
 	if (!str_contains($code, $name))
 	    return null;
@@ -186,7 +185,7 @@ HTML;
 	return substr($code, (int)$arg['start'], (int)$arg['end'] - (int)$arg['start']);
     }
 
-    //CLD: 2026-10-23T02:30:00+03:00: whether expression $code is only a field named html (`ai.html`, `page.result.html`, `x?.html`; not a call, not `"<b>" + x.html`)
+    //whether expression $code is only a field named html (`ai.html`, `page.result.html`, `x?.html`; not a call, not `"<b>" + x.html`)
     public static function isHtmlField($code) {
 	if (!str_contains($code, 'html'))
 	    return false;
@@ -230,11 +229,11 @@ HTML;
 	    }
 	    if (isset(self::TAG_STYLES[$tag]))
 		$el->setAttribute('style', trim(self::TAG_STYLES[$tag] . ' ' . $el->getAttribute('style')));
-	    //CLD: 2026-10-23T01:00:00+03:00: a table's cells: padding as an attribute too (Outlook)
+	    //a table's cells: padding as an attribute too (Outlook)
 	    if ($tag === 'table')
 		$el->setAttribute('cellpadding', '6');
 	}
-	//CLD: 2026-10-23T01:00:00+03:00: paragraphs left empty (the editor's <p> around a {{ markdown2html(...) }}: its headings / lists end the paragraph) are dropped
+	//paragraphs left empty (the editor's <p> around a {{ markdown2html(...) }}: its headings / lists end the paragraph) are dropped
 	foreach(iterator_to_array($root->getElementsByTagName('p')) as $el) {
 	    if (trim($el->textContent) === '' && !$el->getElementsByTagName('img')->length && !$el->getElementsByTagName('br')->length)
 		$el->parentNode->removeChild($el);
@@ -254,7 +253,7 @@ HTML;
 	}, $html);
 	$html = preg_replace('~<li\b[^>]*>~i', "\n- ", $html);
 	$html = preg_replace('~<br\s*/?>~i', "\n", $html);
-	//CLD: 2026-10-23T01:00:00+03:00: + rules, table cells / rows, h4-h6, pre, table (markdown2html(...))
+	//rules, table cells / rows, h4-h6, pre, table (markdown2html(...))
 	$html = preg_replace('~<hr\b[^>]*>~i', "\n----\n", $html);
 	$html = preg_replace('~</t[hd]>\s*<t[hd]\b[^>]*>~i', ' | ', $html);
 	$html = preg_replace('~</tr>~i', "\n", $html);

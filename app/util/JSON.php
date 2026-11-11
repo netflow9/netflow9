@@ -15,7 +15,7 @@ class JSON {
 
     //$text (JSON written by people) as a PHP array (an object or a list); tolerates keys without quotes, strings in single
     //quotes, a comma after the last item, // and /* */ comments, True / False / None; anything else that is not JSON, or not an object / list, throws \ErrorException
-    //CLD: 2026-10-20T22:45:00+03:00: $objects: objects as \stdClass (else arrays: `{}` and `[]` are the same); $any: any value at the top (a number, text, true / false / null;
+    //$objects: objects as \stdClass (else arrays: `{}` and `[]` are the same); $any: any value at the top (a number, text, true / false / null;
     //else an object or a list only) - for J's JSON.parse
     public static function json_decode($text, $objects = false, $any = false) {
 	if (!is_string($text) || trim($text) === '')

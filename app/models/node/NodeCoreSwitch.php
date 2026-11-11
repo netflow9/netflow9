@@ -37,7 +37,7 @@ class NodeCoreSwitch extends \models\wf\WfNode {
 		    'expression' => 'reference'
 		],
 	    ],
-	    //CLD: 2026-10-18T10:45:00+03:00: a nested list (sys\fields\Field_nested): each case cast and validated by caseSchema(),
+	    //a nested list (sys\fields\Field_nested): each case cast and validated by caseSchema(),
 	    //its expressions checked, errors as "Case <n>: <field>: <message>"; the edit grid's columns come from caseSchema()
 	    [
 		'key' => 'cases',
@@ -67,7 +67,7 @@ class NodeCoreSwitch extends \models\wf\WfNode {
 		'type' => 'text',
 		'label' => 'Output',
 		'required' => true,
-		//CLD: 2026-10-18T10:45:00+03:00: trimmed by the field
+		//trimmed by the field
 		'transform' => 'trim',
 		'validate' => [ [ 'regex', 'pattern' => '^[A-Za-z0-9_ .-]{1,30}$', 'skipEmpty' => true, 'message' => 'Up to 30 letters, digits, spaces or _ . -' ] ],
 		'ui' => [ 'width' => 4, 'placeholder' => 'name' ],
@@ -86,13 +86,13 @@ class NodeCoreSwitch extends \models\wf\WfNode {
 		'type' => 'text',
 		'label' => 'Value',
 		'help' => false,
-		//CLD: 2026-10-14T20:17:14+03:00: may hold expressions ({{ }}: live help in the designer); hidden by a condition array (app.smartform evaluates it)
+		//may hold expressions ({{ }}: live help in the designer); hidden by a condition array (app.smartform evaluates it)
 		'ui' => [ 'width' => 3, 'hideIf' => [ 'key' => 'operator', 'operator' => 'in', 'value' => [ 'empty', 'notEmpty' ], 'scope' => 'row' ], 'expression' => true ],
 	    ],
 	];
     }
 
-    //CLD: 2026-10-18T10:45:00+03:00: each case (required fields, operator, label format, expressions) is checked and normalized by parent::validates (the nested field); here
+    //each case (required fields, operator, label format, expressions) is checked and normalized by parent::validates (the nested field); here
     //how many there are and the output labels used twice
     public function validates($options = []) {
 	$valid = parent::validates($options);
@@ -117,18 +117,18 @@ class NodeCoreSwitch extends \models\wf\WfNode {
 	return $valid;
     }
 
-    //CLD: 2026-10-13T12:25:23+03:00: the variable is a reference ({{ mail.subject }}): its value, typed (a list for contains / is empty), by util\Expression::render
+    //the variable is a reference ({{ mail.subject }}): its value, typed (a list for contains / is empty), by util\Expression::render
     public function execute($edgeId = null) {
 	$name = trim((string)$this->cfg('variable', ''));
 	$cases = array_values(is_array($this->cfg('cases')) ? $this->cfg('cases') : []);
-	//CLD: 2026-10-13T15:24:28+03:00: + the project variables (vars)
+	//the project variables (vars)
 	$left = \util\Expression::render($name, $this->exec->expressionVariables(), 'reference');
 	foreach($cases as $i => $case) {
 	    $operator = (string)($case['operator'] ?? 'eq');
-	    //CLD: 2026-10-14T20:17:14+03:00: the fields' operators, compared by util\Conditions::holds
+	    //the fields' operators, compared by util\Conditions::holds
 	    if (!array_key_exists($operator, \util\Conditions::operators()))
 		throw new \ErrorException("Switch: unknown operator `{$operator}`");
-	    //CLD: 2026-10-11T22:53:04+03:00: {{ }} expressions evaluated, compared as text (or as numbers)
+	    //{{ }} expressions evaluated, compared as text (or as numbers)
 	    $right = \util\Expression::toText(\util\Expression::render((string)($case['value'] ?? ''), $this->exec->expressionVariables()));
 	    if (\util\Conditions::holds($left, $operator, $right)) {
 		$this->exec->log($this->wfid, "switch {$name}: case `" . ($case['label'] ?? $i + 1) . '`');

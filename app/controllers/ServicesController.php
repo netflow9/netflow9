@@ -1,10 +1,10 @@
 <?php
 
 /*
-    CLD: 2026-10-31T11:05:39+02:00: new: the installation's services, at /services/<action>:
+    the installation's services, at /services/<action>:
 	index      their status and health (util\Services::services, status)
 	control    POST id, verb: start / stop / restart one (util\Services::control); in the audit log
-    CLD: 2026-10-31T19:30:00+02:00: without the MultiTenant plugin the services are a tab of the account's settings (AccountController::settings, views/account/_services.php): index goes there,
+    without the MultiTenant plugin the services are a tab of the account's settings (AccountController::settings, views/account/_services.php): index goes there,
     control returns there (util\Services::pageUrl)
     Who may: with the MultiTenant plugin, its super-admins with 2FA (plugins\MultiTenant\Plugin::require, as before); without it, the account's owners (util\Services::ownerSignedIn)
 */
@@ -20,7 +20,7 @@ class ServicesController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-10-31T22:00:00+02:00: the administration's own check (util\Services::admin, hook services:admin)
+	//the administration's own check (util\Services::admin, hook services:admin)
 	if (($admin = Services::admin()) !== null)
 	    ($admin['require'])();
 	elseif (!Services::ownerSignedIn())
@@ -28,7 +28,7 @@ class ServicesController extends \sys\BaseController {
     }
 
     public function index($req, $resp) {
-	//CLD: 2026-10-31T19:30:00+02:00: without the MultiTenant plugin: the account settings' tab
+	//without the MultiTenant plugin: the account settings' tab
 	if (!Services::adminPlugin()) {
 	    \V::app()->response->redirect(Services::pageUrl());
 	    return;
@@ -50,7 +50,7 @@ class ServicesController extends \sys\BaseController {
 	\V::app()->log->info("Services: {$verb} {$id} by {$who} " . \V::app()->user->name . ': ' . ($ok ? 'ok' : $message));
 	\models\AuditLog::record('service_' . $verb, null, "{$who}: {$verb} {$s['label']} (" . ($ok ? 'done' : 'failed: ' . mb_substr($message, 0, 200)) . ')');
 	$this->addToast($ok ? 'success' : 'error', $ok ? 'Done' : 'Failed', $message);
-	//CLD: 2026-10-31T19:30:00+02:00: back where the services are (the account settings' tab without the MultiTenant plugin)
+	//back where the services are (the account settings' tab without the MultiTenant plugin)
 	\V::app()->response->redirect(Services::pageUrl());
     }
 }

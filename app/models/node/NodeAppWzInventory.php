@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new step: Wazuh Inventory - what syscollector knows of an agent (GET /syscollector/<id>/...): its operating system and hardware (one item), its
+    Wazuh Inventory - what syscollector knows of an agent (GET /syscollector/<id>/...): its operating system and hardware (one item), its
     packages, processes, open ports, network addresses and Windows hotfixes (lists)
 */
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# CLD: 2026-11-01T19:00:00+02:00: as root: the firewall table (the user pwmcp's new connections to private / loopback / link-local addresses refused; Docker's DNS, 127.0.0.11,
+# as root: the firewall table (the user pwmcp's new connections to private / loopback / link-local addresses refused; Docker's DNS, 127.0.0.11,
 # allowed), then the MCP server as pwmcp without capabilities (it cannot change the table). No table, no browser: it does not start without it
 set -euo pipefail
 

@@ -2,10 +2,10 @@
 
 #the workflow daemon (app/v.php daemon::run: queued jobs, schedules, timers) as a system service, nfn-daemon-<the app's user>.service, as the app's user,
 #logging to logs/daemon.log; one per installation (several on one server: e.g. /home/app live, /home/dev development).
-#+ the polkit rule of the installation, 49-rail22-services-<user>.rules: the app's user (the web server's PHP: the Services page) may start / stop / restart
+#the polkit rule of the installation, 49-rail22-services-<user>.rules: the app's user (the web server's PHP: the Services page) may start / stop / restart
 #its units, nfn-<name>-<user>.service (the daemon, the web browser's nfn-playwright-<user>, ...), and nfn-haraka.service when the installation has it.
 #The other services write their own units (scripts/haraka.sh, scripts/playwright-mcp.sh install) and the rule again (rule).
-#CLD: 2026-11-01T22:00:00+02:00: commands, as the other scripts
+# commands, as the other scripts
 #Run as root:
 #   sudo scripts/daemon.sh install                          the unit and the rule, start at boot, start now (a daemon started by hand: stopped first)
 #   sudo scripts/daemon.sh start | stop | restart | uninstall

@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-23T12:00:00+03:00: new: the SAML 2.0 Web Browser SSO profile of an account's service provider (models\saml\SamlSettings):
+//the SAML 2.0 Web Browser SSO profile of an account's service provider (models\saml\SamlSettings):
 //  requestUrl($s, $id)                 the IdP's URL with an AuthnRequest of ID $id (HTTP-Redirect binding; signed with the SP's key when signRequests)
 //  metadata($s)                        the SP's metadata (XML): entity ID, ACS (HTTP-POST), its certificate for signing and encryption, the NameID format
 //  inResponseTo($b64)                  the request a SAMLResponse (as posted) says it answers, before it is checked (to find the request); '' for none
@@ -89,7 +89,7 @@ class SamlSp {
 	return $doc->saveXML();
     }
 
-    //CLD: 2026-11-07T01:16:14+02:00: a new md:$name element of $doc (SAML metadata)
+    //a new md:$name element of $doc (SAML metadata)
     private static function mdElement(\DOMDocument $doc, $name) {
 	return $doc->createElementNS(SamlXml::MD, 'md:' . $name);
     }
@@ -185,7 +185,7 @@ class SamlSp {
 	return self::assertion($s, $assertion, $expected, $now) + [ 'encrypted' => (bool)$encrypted, 'signedBy' => $signedBy ];
     }
 
-    //CLD: 2026-11-07T01:16:14+02:00: a SAML status code without its urn:oasis:names:tc:SAML:2.0:status: prefix
+    //a SAML status code without its urn:oasis:names:tc:SAML:2.0:status: prefix
     private static function statusName($v) {
 	return preg_replace('/^urn:oasis:names:tc:SAML:2.0:status:/', '', (string)$v);
     }
@@ -346,7 +346,7 @@ class SamlSp {
 	if (!filter_var($url, FILTER_VALIDATE_URL) || strtolower($parts['scheme'] ?? '') !== 'https' || empty($parts['host']))
 	    throw new SamlException('not an https:// address');
 	//a public address only (not this machine, nor its network), the one connected to
-	//CLD: 2026-10-23T15:00:00+03:00: through util\Http (its `public` guard)
+	//through util\Http (its `public` guard)
 	$r = \util\Http::request('GET', $url, [ 'headers' => [ 'Accept: application/samlmetadata+xml, application/xml, text/xml' ], 'timeout' => 15, 'maxBytes' => self::MAX_METADATA, 'https' => true, 'public' => true ]);
 	if ($r['tooLarge'])
 	    throw new SamlException('the metadata is too large');

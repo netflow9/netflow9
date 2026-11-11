@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new step: Zabbix Problems - what Zabbix reports now. Operations:
+    Zabbix Problems - what Zabbix reports now. Operations:
 	problems   the current problems (problem.get: unresolved), of a severity and worse, of hosts / host groups (by name), with tags; acknowledged and suppressed ones left out
 	           unless chosen; newest first; each with its hosts (event.get): { items: [ problem() ], ... }
 	event      one event (event.get by id): problem() + acknowledges (who, when, message, action)
@@ -22,7 +22,7 @@ class NodeAppZbxProblems extends NodeAppZabbix {
 	'problems' => 'List current problems',
 	'event' => 'Get an event',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [];
     const LISTS = [ 'problems' ];
     //not 0: a select keeps no '0' (and keys 0..5 would be a list, read as labels)

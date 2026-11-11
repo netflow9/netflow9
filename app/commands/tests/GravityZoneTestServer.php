@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new file: a fake GravityZone console for the check suite (CheckCommand::suiteGravityzone), run by PHP's built-in server:
+    a fake GravityZone console for the check suite (CheckCommand::suiteGravityzone), run by PHP's built-in server:
     GZ_STATE=<a folder> php -S 127.0.0.1:<port> GravityZoneTestServer.php
 	POST /api/v<version>/jsonrpc/<area>     JSON-RPC 2.0; keys: personal `pkey` (Basic pkey:), service `skey` (X-API-Key); each request appended to <state>/requests.jsonl
 	    general.getApiKeyDetails            { enabledApis }

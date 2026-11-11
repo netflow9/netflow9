@@ -97,7 +97,7 @@ class NodeTriggerForm extends \models\wf\WfNode {
 	    $this->errors('config', 'Form: add at least one field');
 	    $valid = false;
 	}
-	//CLD: 2026-10-18T14:40:00+03:00: the token checks are TriggerToken::checkToken
+	//the token checks are TriggerToken::checkToken
 	return \models\TriggerToken::checkToken($this, 'hex') && $valid;
     }
 

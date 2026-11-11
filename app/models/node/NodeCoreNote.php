@@ -17,7 +17,7 @@ class NodeCoreNote extends \models\wf\WfNode {
     public static $minWidth = 220; //px
     public static $minHeight = 150; //px
 
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions (WfNode::configForm(), a sys\NestedModel; were app.smartform fields)
+    //model field definitions (WfNode::configForm(), a sys\NestedModel)
     public static function configSchema() {
 	return [
 	    [

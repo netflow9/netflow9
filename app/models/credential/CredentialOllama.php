@@ -59,10 +59,10 @@ class CredentialOllama extends \models\Credential {
 	}
 	$data = static::getJson($this->apiBase() . '/api/tags', $headers);
 	$names = array_values(array_filter(array_map(fn($m) => is_array($m) ? (string)($m['name'] ?? $m['model'] ?? '') : '', (array)($data['models'] ?? []))));
-	//CLD: 2026-10-22T01:58:24+03:00: recorded: the choices of the AI steps' Model
+	//recorded: the choices of the AI steps' Model
 	$this->recordModels($names);
 	$shown = array_slice($names, 0, 10);
-	//CLD: 2026-10-24T16:30:00+03:00: util\Format::plural
+	//util\Format::plural
 	return ($version !== '' ? "Ollama {$version}: " : '') . \util\Format::plural(count($names), 'model') . ($shown ? ': ' . implode(', ', $shown) . (count($names) > count($shown) ? ', ...' : '') : '');
     }
 }

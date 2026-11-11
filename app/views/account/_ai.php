@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-11-02T10:00:00+02:00: new: the AI tab of the account's settings (AccountController::settings, the owners): what the agents may do (models\agent\AgentPolicy: $policy), the month's spending ($spent, models\agent\AgentUsage)
+//the AI tab of the account's settings (AccountController::settings, the owners): what the agents may do (models\agent\AgentPolicy: $policy), the month's spending ($spent, models\agent\AgentUsage)
 $families = '';
 foreach(\util\AgentTools::families() as $key => $fam) {
     if (!\util\AgentTools::operations($key))

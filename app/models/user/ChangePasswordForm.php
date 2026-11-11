@@ -37,8 +37,8 @@ class ChangePasswordForm extends \sys\BaseModel {
 	    return \V::app()->security->validatePasswordHash($value, $user->password);
 	});
 
-	//CLD: 2026-10-19T12:52:41+03:00: added to the rules of the schema (parent::_init: `required`, `validate` of the fields); they were replaced, so the forms built on this one
-	//(RegisterForm, InviteForm, setup\AccountForm) did not check their own fields' rules
+	//added to the rules of the schema (parent::_init: `required`, `validate` of the fields), not replacing them: the forms built on this one
+	//(RegisterForm, InviteForm, setup\AccountForm) check their own fields' rules too
 	$this->validates['new_password'][] = [ 'isComplex', 'message' => 'Password should contain: letter, capitals, digits and special chars' ];
 	$this->validates['cfm_password'][] = [ 'matchConfirm', 'message'=> 'Passwords dont match', ];
 	

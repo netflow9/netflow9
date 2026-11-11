@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-07T22:40:15+02:00: the license notice of Lithium (li3), the framework this file is ported from (lithium\util\Validator)
+//the license notice of Lithium (li3), the framework this file is ported from (lithium\util\Validator)
 /*
  * Copyright (c) 2009, Union of RAD http://union-of-rad.org
  * All rights reserved.
@@ -188,7 +188,7 @@ class Validator {
 	    },
 
 
-	    //CLD: 2026-10-06T09:23:42+03:00: custom rules, registered as ChangePasswordForm does; `values` = all form values
+	    //custom rules, registered as ChangePasswordForm does; `values` = all form values
 	    'fieldKeyNotReserved' => function($value) {
 		$RESERVED_KEYS = [ '_id', 'aid', 'created_at', 'updated_at' ];
 		return !in_array($value, $RESERVED_KEYS, true);
@@ -205,7 +205,7 @@ class Validator {
 			return (boolean) filter_var($value, FILTER_VALIDATE_IP, $options);
 	    },
 
-	    //CLD: 2026-10-09T08:35:15+03:00: missing = null, '', false or []; 0 and '0' are values
+	    //missing = null, '', false or []; 0 and '0' are values
 	    'notEmpty' => function($value) {
 		return !($value === null || $value === '' || $value === false || $value === []);
 	    },
@@ -237,7 +237,7 @@ class Validator {
 	    },
 
 	    'lengthBetween' => function($value, $format, $options) {
-			//CLD: 2026-10-14T14:54:31+03:00: characters (mb_strlen)
+			//characters (mb_strlen)
 			$length = mb_strlen((string)$value);
 			$options += array('min' => 1, 'max' => 255);
 			return ($length >= $options['min'] && $length <= $options['max']);
@@ -299,7 +299,7 @@ class Validator {
 		return false;
 	    },
 
-	    //CLD: 2026-10-06T21:09:08+03:00: `uniqueInObject`: value unique among the records with the same `objectName` (e.g. field keys of one
+	    //`uniqueInObject`: value unique among the records with the same `objectName` (e.g. field keys of one
 	    //object / data table); options: `collection`; the record itself (values._id) does not count
 	    'uniqueInObject' => function($value, $format, $options) {
 		$coll = \V::app()->mongo->selectCollection(\V::app()->mongo->database, $options['collection']);
@@ -319,19 +319,19 @@ class Validator {
 		return false;
 	    },
 
-	    //CLD: 2026-10-06T21:22:22+03:00: `requiredIf`: required (non-empty, not only whitespace) when the field `if` has one of the values `in`;
+	    //`requiredIf`: required (non-empty, not only whitespace) when the field `if` has one of the values `in`;
 	    //e.g. [ 'requiredIf', 'if' => 'type', 'in' => [ 'select' ] ]
 	    'requiredIf' => function($value, $format, $options) {
 		$other = $options['values'][$options['if'] ?? ''] ?? null;
 		if (!in_array($other, (array)($options['in'] ?? []), true))
 		    return true;
-		//CLD: 2026-10-14T14:18:23+03:00: a list is given when it is not empty (Validator::check runs this rule on lists and on missing values)
+		//a list is given when it is not empty (Validator::check runs this rule on lists and on missing values)
 		if (is_array($value))
 		    return !empty($value);
 		return is_scalar($value) && trim((string)$value) !== '';
 	    },
 
-	    //CLD: 2026-10-18T13:10:00+03:00: `choices`: the value, or each value of a list, is a key of the `choices` (an array or a callable returning one;
+	    //`choices`: the value, or each value of a list, is a key of the `choices` (an array or a callable returning one;
 	    //sys\fields\Field_select); no choices (e.g. depending on a user, outside a web request): not checked
 	    'choices' => function($value, $format, $options) {
 		$choices = $options['choices'] ?? [];
@@ -346,7 +346,7 @@ class Validator {
 		return true;
 	    },
 
-	    //CLD: 2026-10-09T08:05:11+03:00: `regex`: the value matches the PCRE `pattern` (without delimiters, unicode), e.g. [ 'regex', 'pattern' => '^[A-Za-z0-9-]+$',
+	    //`regex`: the value matches the PCRE `pattern` (without delimiters, unicode), e.g. [ 'regex', 'pattern' => '^[A-Za-z0-9-]+$',
 	    //'skipEmpty' => true ]
 	    'regex' => function($value, $format, $options) {
 		if (!is_scalar($value) || empty($options['pattern']))
@@ -354,7 +354,7 @@ class Validator {
 		return @preg_match('/' . str_replace('/', '\/', (string)$options['pattern']) . '/u', (string)$value) === 1;
 	    },
 
-	    //CLD: 2026-10-18T14:00:00+03:00: `dateFormat`: a text that is a real date in the `format` (DateTime::createFromFormat, e.g. 'Y-m-d'; 2026-02-30 is not one),
+	    //`dateFormat`: a text that is a real date in the `format` (DateTime::createFromFormat, e.g. 'Y-m-d'; 2026-02-30 is not one),
 	    //e.g. [ 'dateFormat', 'format' => 'Y-m-d', 'skipEmpty' => true ] (util\SmartForm: the dates of the form answers)
 	    'dateFormat' => function($value, $format, $options) {
 		if (!is_string($value) || empty($options['format']))
@@ -363,7 +363,7 @@ class Validator {
 		return $d !== false && $d->format($options['format']) === $value;
 	    },
 
-	    //CLD: 2026-10-09T08:10:30+03:00: `cron`: a 5-field cron expression (util\Cron)
+	    //`cron`: a 5-field cron expression (util\Cron)
 	    'cron' => function($value) {
 		return is_string($value) && \util\Cron::isValid($value);
 	    },
@@ -391,7 +391,7 @@ class Validator {
 		return \V::app()->om->to_oid($value) !== null;
 	    },
 
-	    //CLD: 2026-10-20T14:03:59+03:00: keys and certificates (credentials: Encryption, Decryption, FTP). Each takes `when` => [ <field> => [ values ] ]: checked only
+	    //keys and certificates (credentials: Encryption, Decryption, FTP). Each takes `when` => [ <field> => [ values ] ]: checked only
 	    //when every listed field has one of its values (e.g. [ 'method' => [ 'pgp' ] ]); a blank text passes (use with 'skipEmpty' => true; required-ness is requiredIf's)
 
 	    //`pgpPublicKey`: armored PGP public key block(s) (gpg --armor --export), each a public key packet
@@ -407,7 +407,7 @@ class Validator {
 	    },
 
 	    //`pgpPrivateKey`: one armored PGP private key block (gpg --armor --export-secret-keys), a secret key packet
-	    //CLD: 2026-10-20T14:07:31+03:00: 'multiple' => true: one or more blocks (e.g. signing: the key is chosen by its id)
+	    //'multiple' => true: one or more blocks (e.g. signing: the key is chosen by its id)
 	    'pgpPrivateKey' => function($value, $format, $options) {
 		if (!static::_when($options) || static::_blank($value))
 		    return true;
@@ -421,7 +421,7 @@ class Validator {
 		return true;
 	    },
 
-	    //CLD: 2026-10-20T14:07:31+03:00: `pemPublicKey`: one PEM public key (-----BEGIN PUBLIC KEY----- or RSA PUBLIC KEY: RSA, EC, Ed25519), readable by OpenSSL
+	    //`pemPublicKey`: one PEM public key (-----BEGIN PUBLIC KEY----- or RSA PUBLIC KEY: RSA, EC, Ed25519), readable by OpenSSL
 	    'pemPublicKey' => function($value, $format, $options) {
 		if (!static::_when($options) || static::_blank($value))
 		    return true;
@@ -429,7 +429,7 @@ class Validator {
 		return count($blocks) === 1 && $blocks[0]['data'] !== null && @openssl_pkey_get_public($blocks[0]['pem']) !== false;
 	    },
 
-	    //CLD: 2026-11-10T13:09:10+02:00: `pemCertificate`: PEM certificate(s) (-----BEGIN CERTIFICATE-----; X509 / TRUSTED CERTIFICATE too, as util\Certificate reads them), each readable by OpenSSL; 'multiple' => false: exactly one
+	    //`pemCertificate`: PEM certificate(s) (-----BEGIN CERTIFICATE-----; X509 / TRUSTED CERTIFICATE too, as util\Certificate reads them), each readable by OpenSSL; 'multiple' => false: exactly one
 	    'pemCertificate' => function($value, $format, $options) {
 		if (!static::_when($options) || static::_blank($value))
 		    return true;
@@ -472,7 +472,7 @@ class Validator {
 
     }
 
-    //CLD: 2026-10-20T14:03:59+03:00: the `when` option of a rule: every field listed has one of its values (no `when`: true)
+    //the `when` option of a rule: every field listed has one of its values (no `when`: true)
     protected static function _when($options) {
 	foreach((array)($options['when'] ?? []) as $field => $in) {
 	    if (!in_array($options['values'][$field] ?? null, (array)$in, true))
@@ -481,12 +481,12 @@ class Validator {
 	return true;
     }
 
-    //CLD: 2026-10-20T14:03:59+03:00: not a text, or only whitespace
+    //not a text, or only whitespace
     protected static function _blank($value) {
 	return !is_scalar($value) || trim((string)$value) === '';
     }
 
-    //CLD: 2026-10-20T14:03:59+03:00: the tag of the first OpenPGP packet of $data (RFC 4880 4.2: old and new formats; 5 = secret key, 6 = public key); null: not a packet
+    //the tag of the first OpenPGP packet of $data (RFC 4880 4.2: old and new formats; 5 = secret key, 6 = public key); null: not a packet
     public static function pgpPacketTag($data) {
 	if (!is_string($data) || $data === '')
 	    return null;
@@ -496,7 +496,7 @@ class Validator {
 	return ($b & 0x40) ? ($b & 0x3F) : (($b >> 2) & 0x0F);
     }
 
-    //CLD: 2026-10-20T14:03:59+03:00: $text is one PEM private key; an unencrypted one is read by OpenSSL
+    //$text is one PEM private key; an unencrypted one is read by OpenSSL
     public static function isPemPrivateKey($text) {
 	$blocks = [];
 	foreach([ 'PRIVATE KEY', 'ENCRYPTED PRIVATE KEY', 'RSA PRIVATE KEY', 'EC PRIVATE KEY', 'DSA PRIVATE KEY' ] as $label)
@@ -652,7 +652,7 @@ class Validator {
 			'message' => null,
 			'required' => true,
 			'skipEmpty' => false,
-			//CLD: 2026-10-09T08:29:52+03:00: skipEmpty does not skip 0 / '0'
+			//skipEmpty does not skip 0 / '0'
 			'format' => 'any',
 			'on' => null,
 			'last' => false,
@@ -694,15 +694,14 @@ class Validator {
 			}
 
 			//SC: 2020-05-23: moved empty check before checking key existence
-			//CLD: 2026-10-09T08:29:52+03:00: only blank values are skipped (missing, null, '', [], false); 0 and '0' are values (were skipped through empty(), so
-			//e.g. a range rule never saw 0)
+			//only blank values are skipped (missing, null, '', [], false); 0 and '0' are values (e.g. a range rule sees 0)
 			$__blank = array_key_exists($field, $o_values) ? $o_values[$field] : ($values[$field] ?? null);
 			if ($rule['skipEmpty'] && ($__blank === null || $__blank === '' || $__blank === [] || $__blank === false)) {
 			    //\V::app()->log->debug("has skipEmpty, ignore rule");
 			    continue;
 			}
 
-			//CLD: 2026-10-14T14:18:23+03:00: `requiredIf` runs on any value: a missing one (empty) and a list
+			//`requiredIf` runs on any value: a missing one (empty) and a list
 			$__anyValue = $name === 'requiredIf';
 
 			//SC: 2022-03-17: check flatten and original values for key existence
@@ -720,7 +719,7 @@ class Validator {
 			$__value = $__anyValue ? $__blank : ( (strpos($field, '.') === false) ? $o_values[$field] : $values[$field] );
 			//do not run rules on array
 			//SC: 2024-03-04: except: empty arrays & required
-			//CLD: 2026-10-18T13:10:00+03:00: except `choices` (checks each value of a list)
+			//except `choices` (checks each value of a list)
 			if (!$__anyValue && $name !== 'choices' && is_array($__value)) {
 			    if ($rule['required'] && empty($__value)) {
 				$errors[$field][] = $rule['message'] ?: $key;

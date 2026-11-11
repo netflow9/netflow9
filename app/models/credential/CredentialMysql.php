@@ -1,13 +1,13 @@
 <?php
 
-//CLD: 2026-10-25T17:40:00+02:00: new: a MySQL or MariaDB server (pdo_mysql), for the Database step. TLS: none, encrypted (the certificate not checked) or checked against the
+//a MySQL or MariaDB server (pdo_mysql), for the Database step. TLS: none, encrypted (the certificate not checked) or checked against the
 //system's CAs. LOAD DATA LOCAL is off (it would read this server's files). Statement time limit: max_execution_time (MySQL, SELECT only) / max_statement_time (MariaDB)
 
 namespace models\credential;
 
 class CredentialMysql extends CredentialDatabase {
     public static $label = 'MySQL / MariaDB';
-    //CLD: 2026-10-31T23:30:00+02:00: + database:mysql: the credentials of the Mysql step (models\node\NodeAppMysql)
+    //database:mysql: the credentials of the Mysql step (models\node\NodeAppMysql)
     public static $provides = [ 'database', 'database:mysql' ];
 
     const TYPE = 'mysql';

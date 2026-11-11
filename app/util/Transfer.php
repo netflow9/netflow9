@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-28T10:00:00+02:00: new: moves a project's workflows, credentials and data tables to another installation (e.g. development -> pre-production) as one
+    moves a project's workflows, credentials and data tables to another installation (e.g. development -> pre-production) as one
     JSON file (ProjectController::export / import, project settings: Export / import).
 
     The file: { format: rail22-transfer, version, exported_at, source: { url, project }, secrets, workflows, credentials, datatables, refs }
@@ -112,13 +112,13 @@ class Transfer {
 	}
 	$oids = array_map(fn($id) => $om->to_oid($id), $ids);
 	$inProject = [ 'aid' => $project->aid, 'project' => $project->_id ];
-	//CLD: 2026-11-03T18:00:00+02:00: also those shared with the project (as the tables)
+	//also those shared with the project (as the tables)
 	foreach($om->find('Credential', [ '_id' => [ '$in' => $oids ], 'aid' => $project->aid ] + \models\Credential::visibleInQuery($project->_id)) as $c)
 	    $bundle['refs']['credentials'][(string)$c->_id] = [ 'name' => (string)$c->name, 'type' => $c->getObjectName() ];
-	//CLD: 2026-11-03T14:00:00+02:00: also the tables shared with the project: named in the file, so importing them says they are missing (they are not exported: they stay with their project)
+	//also the tables shared with the project: named in the file, so importing them says they are missing (they are not exported: they stay with their project)
 	foreach($om->find('DataTableDef', [ '$or' => [ [ '_id' => [ '$in' => $oids ] ], [ 'iname' => [ '$in' => $inames ] ] ], 'aid' => $project->aid, '$and' => [ \models\datatable\DataTableDef::visibleInQuery($project->_id) ] ]) as $t)
 	    $bundle['refs']['datatables'][(string)$t->_id] = [ 'name' => (string)$t->name, 'iname' => (string)$t->iname ];
-	//CLD: 2026-11-03T16:00:00+02:00: also those shared with the project (as the tables)
+	//also those shared with the project (as the tables)
 	foreach($om->find('Workflow', [ '_id' => [ '$in' => $oids ], 'aid' => $project->aid ] + \models\Workflow::visibleInQuery($project->_id)) as $w)
 	    $bundle['refs']['workflows'][(string)$w->_id] = [ 'name' => (string)$w->name ];
 
@@ -159,7 +159,7 @@ class Transfer {
 	return array_map('strval', array_keys($texts));
     }
 
-    //CLD: 2026-11-03T14:00:00+02:00: whether a step of workflow $wf (its draft or its published version) names id $id
+    //whether a step of workflow $wf (its draft or its published version) names id $id
     public static function references($wf, $id) {
 	$texts = [];
 	self::collectTexts(self::configsOf($wf->nodes), $texts);
@@ -265,7 +265,7 @@ class Transfer {
     ];
 
     //for each item of $bundle: [ 'workflows' | 'credentials' | 'datatables' => [ index => [ name, label, existing (model|null), actions [ key => label ], default, notes [ ] ] ] ],
-    //+ 'warnings': what the steps point to and is found neither in the file nor in $project; $can($list, $action, $existing): whether the user may (else not offered)
+    //'warnings': what the steps point to and is found neither in the file nor in $project; $can($list, $action, $existing): whether the user may (else not offered)
     public static function plan(array $bundle, $project, ?\Closure $can = null) {
 	$om = \V::app()->om;
 	$inProject = [ 'aid' => $project->aid, 'project' => $project->_id ];
@@ -348,7 +348,7 @@ class Transfer {
 	return $plan;
     }
 
-    //CLD: 2026-11-07T01:16:14+02:00: the actions $keys, with their labels (ACTIONS)
+    //the actions $keys, with their labels (ACTIONS)
     private static function actionsOf(array $keys) {
 	return array_intersect_key(self::ACTIONS, array_flip($keys));
     }
@@ -572,7 +572,7 @@ class Transfer {
 	return [ 'done' => $done, 'warnings' => $warnings ];
     }
 
-    //CLD: 2026-11-07T01:16:14+02:00: the action chosen for item $i of list $list ($choices), when the plan offers it; else the plan's default
+    //the action chosen for item $i of list $list ($choices), when the plan offers it; else the plan's default
     private static function chosenAction(array $plan, array $choices, $list, $i) {
 	$a = (string)($choices[$list][$i] ?? '');
 	return isset($plan[$list][$i]['actions'][$a]) ? $a : $plan[$list][$i]['default'];
@@ -629,7 +629,7 @@ class Transfer {
 		$config[$key] = str_replace($new, $keep, $value);
 	}
 	$tokens[$keep][$wfId] = true;
-	//CLD: 2026-11-02T18:00:00+02:00: what else a trigger changes when it is brought in (Chat: a new embed token)
+	//what else a trigger changes when it is brought in (Chat: a new embed token)
 	if (method_exists($class, 'forTransfer'))
 	    $config = $class::forTransfer($config);
 	return $config;

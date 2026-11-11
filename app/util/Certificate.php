@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-10T13:09:10+02:00: new: X.509 certificates and their keys (openssl), one place for what the Certificate step, SAML, the file signing / encryption steps,
+    X.509 certificates and their keys (openssl), one place for what the Certificate step, SAML, the file signing / encryption steps,
     the validation and the TLS clients each did their own way:
 	pemBlocks($text, $label)            the PEM / armored blocks of a text (any label: certificates, keys, PGP)
 	certificates($text, $loose)         the certificates of a text, as PEM (CERTIFICATE, X509 CERTIFICATE, TRUSTED CERTIFICATE); $loose: else a bare base64 body or DER
@@ -21,7 +21,7 @@ namespace util;
 
 class Certificate {
 
-    //CLD: 2026-10-20T14:03:59+03:00: the armored / PEM blocks of $text labelled $label (e.g. 'CERTIFICATE'), in order: [ 'label', 'pem' (the whole block),
+    //the armored / PEM blocks of $text labelled $label (e.g. 'CERTIFICATE'), in order: [ 'label', 'pem' (the whole block),
     //'data' (the decoded body; null when it is not base64) ]; headers (Version:, Proc-Type:, DEK-Info:, ...) and the PGP checksum line are not part of the body
     public static function pemBlocks($text, $label) {
 	$q = preg_quote($label, '/');

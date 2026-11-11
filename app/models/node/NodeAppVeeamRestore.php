@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T04:00:00+02:00: new step: Veeam Restore - Instant Recovery of VMware vSphere machines (an advanced step: it starts machines). Operations (setting `operation`):
+    Veeam Restore - Instant Recovery of VMware vSphere machines (an advanced step: it starts machines). Operations (setting `operation`):
 	instant   a machine started from a restore point (POST /api/v1/restore/instantRecovery/vSphere/vm: to its original place, powered on or not, with a reason): the mount;
 	          to another place, network or name: Other parameters (the body's other fields, e.g. "type": "Customized", "destination": {...})
 	mounts    the Instant Recovery mounts (GET .../vSphere/vm)
@@ -24,7 +24,7 @@ class NodeAppVeeamRestore extends NodeAppVeeam {
 	'mounts' => 'List Instant Recovery mounts',
 	'unmount' => 'Stop an Instant Recovery',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'instant', 'unmount' ];
     const LISTS = [ 'mounts' ];
     const PATH = '/api/v1/restore/instantRecovery/vSphere/vm';

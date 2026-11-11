@@ -10,7 +10,7 @@
 	Download: each file saved in the project's Files (models\File; only the types that may be uploaded: the name after decryption / decompression counts), optionally
 	    decrypted first (a Decryption key credential: PGP / GPG, OpenSSL enc, S/MIME; all files, or only those with the method's ending, e.g. .gpg) and decompressed
 	    (.gz / .bz2); afterwards the remote file is left, deleted or moved to a folder (only when it was saved).
-	CLD: 2026-10-20T20:00:00+03:00: Check signature (a Verification key credential: the sender's PGP public key, trusted S/MIME certificates, a plain public key): in the file
+	Check signature (a Verification key credential: the sender's PGP public key, trusted S/MIME certificates, a plain public key): in the file
 	    (PGP signed / signed + encrypted, S/MIME .p7m: checked while or after decrypting, the content kept) or a separate signature file next to it (<name>.sig / .asc /
 	    .p7s: of the file as it is on the server; not downloaded as a file itself; none yet: the file waits for the next run, or an error). A bad signature, or one made
 	    by another key: the file is not saved (an error). Afterwards, the signature file is deleted / moved with its file
@@ -101,7 +101,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -110,7 +110,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '/outgoing', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'pattern',
 		'type' => 'text',
 		'label' => 'File names',
@@ -119,8 +119,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'placeholder' => '*.csv, *.csv.gpg', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide, on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 6 wide, on a new line
 		'key' => 'exclude',
 		'type' => 'text',
 		'label' => 'Leave out',
@@ -129,7 +128,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 6, 'newRow' => true, 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'subfolders',
 		'type' => 'switch',
 		'label' => 'Include subfolders',
@@ -137,8 +136,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'depth',
 		'type' => 'number',
 		'label' => 'Levels of subfolders',
@@ -147,7 +145,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'step' => 1, 'showIf' => [ 'key' => 'subfolders', 'operator' => 'eq', 'value' => true ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'modifiedAfter',
 		'type' => 'text',
 		'label' => 'Modified after',
@@ -156,7 +154,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'placeholder' => '-24 hours', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'modifiedBefore',
 		'type' => 'text',
 		'label' => 'Modified before',
@@ -165,8 +163,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'placeholder' => 'today', 'expression' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'minAge',
 		'type' => 'number',
 		'label' => 'Unchanged for at least (minutes)',
@@ -176,7 +173,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'step' => 1 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'onlyNew',
 		'type' => 'switch',
 		'label' => 'Only new files',
@@ -185,8 +182,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide, on a new line
 		'key' => 'order',
 		'type' => 'select',
 		'label' => 'Order',
@@ -196,8 +192,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'minSizeKb',
 		'type' => 'number',
 		'label' => 'Smallest size (KB)',
@@ -207,7 +202,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest size (MB)',
@@ -218,7 +213,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'limit' => true, 'width' => 6 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxFiles',
 		'type' => 'number',
 		'label' => 'Files per run',
@@ -229,7 +224,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'limit' => true, 'width' => 6, 'step' => 1 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'decrypt',
 		'type' => 'select',
 		'label' => 'Decrypt',
@@ -240,7 +235,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $download ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'decryptCredential',
 		'type' => 'select',
 		'label' => 'Decryption key',
@@ -251,7 +246,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'decrypt', 'operator' => 'ne', 'value' => 'none' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'decompress',
 		'type' => 'switch',
 		'label' => 'Decompress .gz / .bz2 files',
@@ -259,9 +254,9 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'help' => 'After decrypting: report.csv.gz -> report.csv',
 		'ui' => [ 'width' => 3, 'showIf' => $download ],
 	    ],
-	    //CLD: 2026-10-20T20:00:00+03:00: signature checks
+	    //signature checks
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'verifySignature',
 		'type' => 'select',
 		'label' => 'Check signature',
@@ -272,7 +267,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $download ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'verifyCredential',
 		'type' => 'select',
 		'label' => 'Verification key',
@@ -283,8 +278,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'showIf' => [ 'key' => 'verifySignature', 'operator' => 'ne', 'value' => 'none' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'missingSignature',
 		'type' => 'select',
 		'label' => 'No signature file',
@@ -294,7 +288,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => [ 'key' => 'verifySignature', 'operator' => 'eq', 'value' => 'detached' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'after',
 		'type' => 'select',
 		'label' => 'Afterwards',
@@ -305,7 +299,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => $download ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:54:43+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'moveTo',
 		'type' => 'text',
 		'label' => 'Move to folder',
@@ -397,7 +391,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 	    $this->errors('config', 'Decryption key: choose a Decryption key credential of this project');
 	    $valid = false;
 	}
-	//CLD: 2026-10-20T20:00:00+03:00: a verification key of the project; a plain signature is never in the file
+	//a verification key of the project; a plain signature is never in the file
 	$ver = (string)$this->cfg('verifyCredential', '');
 	if ($this->cfg('operation', 'download') === 'download' && $this->cfg('verifySignature', 'none') !== 'none' && $ver !== '') {
 	    $verCred = $wf ? \models\Credential::findFor($wf, $ver, 'verify') : null;
@@ -513,7 +507,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		throw new \ErrorException('FTP / SFTP: the decryption key credential is no longer available');
 	}
 	$decompress = $operation === 'download' && $this->cfg('decompress', false);
-	//CLD: 2026-10-20T20:00:00+03:00: the verification key
+	//the verification key
 	$verifyMode = $operation === 'download' ? (string)$this->cfg('verifySignature', 'none') : 'none';
 	$verCred = null;
 	if ($verifyMode !== 'none') {
@@ -573,7 +567,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 		    }
 		}
 		$stats['listed'] = count($entries);
-		//CLD: 2026-10-20T20:00:00+03:00: separate signatures: a file's signature is `<path><ending>`; signature files of a listed file are not files to take
+		//separate signatures: a file's signature is `<path><ending>`; signature files of a listed file are not files to take
 		$paths = array_flip(array_column($entries, 'path'));
 		$sigEndings = $verifyMode === 'detached' ? \util\FileVerify::signatureEndings((string)$verCred->method) : [];
 
@@ -671,7 +665,7 @@ class NodeAppFtp extends \models\wf\WfNode {
 
 		    //afterwards (the file is saved: a failure here is an error, the file stays taken)
 		    try {
-			//CLD: 2026-10-20T20:00:00+03:00: with its signature file
+			//with its signature file
 			foreach(array_filter([ $entry['path'], $sigPath ]) as $p) {
 			    if ($afterAction === 'delete') {
 				$client->delete($p);
@@ -712,20 +706,20 @@ class NodeAppFtp extends \models\wf\WfNode {
 	return [ 0 ];
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: setting $key as text, trimmed, its {{ }} rendered against $vars
+    //setting $key as text, trimmed, its {{ }} rendered against $vars
     private function textSetting(array $vars, $key, $default = '') {
 	return trim(\util\Expression::toText(\util\Expression::render((string)$this->cfg($key, $default), $vars)));
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: setting $key as a time (a date, or relative to $now); null when empty
+    //setting $key as a time (a date, or relative to $now); null when empty
     //a single expression keeps its type: a number (Unix time) as it is, anything else (e.g. a date) as text
     private function timeSetting($key, $now) {
 	$v = $this->expr($key, '');
 	return self::parseTime(is_int($v) || is_float($v) ? $v : \util\Expression::toText($v), $now);
     }
 
-    //the name a file is saved under: decrypted (the method's ending removed), decompressed (.gz / .bz2 removed)
-    //CLD: 2026-10-20T20:00:00+03:00: + $unwrapMethod: an attached signature's ending removed after decrypting (.gpg, .p7m)
+    //the name a file is saved under: decrypted (the method's ending removed), decompressed (.gz / .bz2 removed), and $unwrapMethod: an attached signature's ending
+    //removed after decrypting (.gpg, .p7m)
     public static function savedName($name, $decryptMethod, $decompress, $unwrapMethod = null) {
 	if ($decryptMethod !== null)
 	    $name = \util\FileDecrypt::decryptedName($name, $decryptMethod);
@@ -750,9 +744,9 @@ class NodeAppFtp extends \models\wf\WfNode {
 	return $entry;
     }
 
-    //one file: downloaded, decrypted, decompressed, saved in the project's Files: [ id, filename, size, decompressed, contentType, signer ]
-    //CLD: 2026-10-20T20:00:00+03:00: + its signature checked ($verCred, $verifyMode; detached: $sigPath, of the file as downloaded, before decrypting; attached: while
-    //decrypting with PGP, else after it, the content unwrapped); a bad / untrusted signature: an error, nothing saved
+    //one file: downloaded, its signature checked ($verCred, $verifyMode; detached: $sigPath, of the file as downloaded, before decrypting; attached: while
+    //decrypting with PGP, else after it, the content unwrapped; a bad / untrusted signature: an error, nothing saved), decrypted, decompressed, saved in the project's Files:
+    //[ id, filename, size, decompressed, contentType, signer ]
     protected function take($client, array $entry, $work, $filename, $decCred, $decompress, $maxBytes, $verCred = null, $verifyMode = 'none', $sigPath = null) {
 	$raw = $work . '/raw';
 	$fh = fopen($raw, 'w+b');

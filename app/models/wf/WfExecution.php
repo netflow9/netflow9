@@ -16,19 +16,19 @@ class WfExecution extends \sys\BaseModel {
 	[ [ 'state' => 1, 'wake_at' => 1 ], [] ],
 	//the workflows a run started and waits for (Run a workflow; kill cancels them)
 	[ [ 'input.caller.execution' => 1 ], [ 'sparse' => true ] ],
-	//CLD: 2026-11-02T18:00:00+02:00: the runs of the conversations with agents, past the retention (models\agent\AgentConversation::prune)
+	//the runs of the conversations with agents, past the retention (models\agent\AgentConversation::prune)
 	[ [ 'aid' => 1, 'input.conversation' => 1, 'end_at' => 1 ], [ 'sparse' => true ] ],
     ];
 
 
     //node executions allowed per run() call (protects against endless loops)
     const MAX_STEPS = 10000;
-    //CLD: 2026-10-23T00:40:00+03:00: a running execution is saved after a pass at most this often (s), so its progress shows (run())
+    //a running execution is saved after a pass at most this often (s), so its progress shows (run())
     const SAVE_EVERY = 2;
-    //CLD: 2026-10-29T22:05:00+02:00: and before a pass whose steps are not the ones saved (the designer shows the step running, not the one before it during a long step), at most this many
+    //and before a pass whose steps are not the ones saved (the designer shows the step running, not the one before it during a long step), at most this many
     //times a second (a loop of quick steps)
     const SAVE_RATE = 5;
-    //CLD: 2026-10-30T15:00:00+02:00: a web request waiting for the result of a queued execution (waitFor): at most WAIT_RESULT s, checked every WAIT_POLL ms
+    //a web request waiting for the result of a queued execution (waitFor): at most WAIT_RESULT s, checked every WAIT_POLL ms
     const WAIT_RESULT = 30;
     const WAIT_POLL = 250;
 
@@ -38,19 +38,18 @@ class WfExecution extends \sys\BaseModel {
     //runtime objects, keyed by wfid
     public $__nodes = [];
     public $__edges = [];
-    //CLD: 2026-11-02T15:46:06+02:00: a test case running (util\AgentEvalContext; test_run says it is one): never saved
+    //a test case running (util\AgentEvalContext; test_run says it is one): never saved
     public $__test = null;
 
     //node executions in the current run()
     private $steps = 0;
-    //CLD: 2026-10-13T13:15:14+03:00: step executions in the current pass of each active loop (loop wfid => count; reset when a pass starts)
+    //step executions in the current pass of each active loop (loop wfid => count; reset when a pass starts)
     private $passSteps = [];
 
     public function _init() {
 	parent::_init();
 
-	//CLD: 2026-10-18T11:40:00+03:00: the step classes only (WfNode::nodeClasses; was WfNode::getAll(): every step's definition and config form, rebuilt for each execution loaded,
-	//e.g. ~2 s for the Overview's executions)
+	//the step classes only (WfNode::nodeClasses; WfNode::getAll() builds every step's definition and config form: ~2 s for the Overview's executions)
 	$nodeClasses = \models\wf\WfNode::nodeClasses();
 
 	if (!is_array($this->tokens))
@@ -89,12 +88,10 @@ class WfExecution extends \sys\BaseModel {
 	}
     }
 
-    //an execution of workflow $wf, ready to run (not saved)
-    //CLD: 2026-10-07T11:28:54+03:00: + $trigger (manual, webhook, ...) and $input (what started it, e.g. the webhook request); top-level simple
-    //values of $input['vars'] become the first variables
-    //CLD: 2026-10-08T08:57:32+03:00: + $startNode: wfid of the trigger step that started it; only that step gets a token (default: all trigger steps)
+    //an execution of workflow $wf, ready to run (not saved): $trigger (manual, webhook, ...) and $input (what started it, e.g. the webhook request; top-level simple
+    //values of $input['vars'] become the first variables); $startNode: wfid of the trigger step that started it; only that step gets a token (default: all trigger steps)
     public static function startFor($wf, $trigger = 'manual', $input = null, $startNode = null) {
-	//CLD: 2026-10-22T23:00:00+03:00: none for a suspended account
+	//none for a suspended account
 	if (\models\Account::isSuspended($wf->aid))
 	    throw new \ErrorException('the account is suspended');
 	$data = [
@@ -104,7 +101,7 @@ class WfExecution extends \sys\BaseModel {
 	    'nodes' => is_array($wf->nodes) ? array_values($wf->nodes) : [],
 	    'trigger' => $trigger,
 	    'input' => $input,
-	    //CLD: 2026-10-11T13:51:42+03:00: the published version it runs (a Workflow::forVersion copy), null = the draft (designer Run, sys::run)
+	    //the published version it runs (a Workflow::forVersion copy), null = the draft (designer Run, sys::run)
 	    'version' => $wf->runVersion ? (int)$wf->runVersion->number : null,
 	];
 	if ($startNode !== null)
@@ -116,19 +113,19 @@ class WfExecution extends \sys\BaseModel {
     }
 
     //every way of deleting an execution comes here; the data of other features (e.g. its AI steps' traces) goes in execution:before-delete
-    //CLD: 2026-11-08T12:00:00+02:00: the traces through the hook (sys\Boot), as workflow:before-delete: the execution does not call the agent models
+    //the traces through the hook (sys\Boot), as workflow:before-delete: the execution does not call the agent models
     public function beforeDelete() {
 	parent::beforeDelete();
 	\V::app()->hooks->applyHook('execution:before-delete', [ $this ]);
     }
 
-    //CLD: 2026-11-02T14:00:00+02:00: new: a new execution (not saved) of workflow $wf's draft with the inputs of this finished one: the same trigger, input and first variables, so a change of the steps (e.g. a prompt)
+    //a new execution (not saved) of workflow $wf's draft with the inputs of this finished one: the same trigger, input and first variables, so a change of the steps (e.g. a prompt)
     //can be compared. Not the raw message of an Email trigger (the end of a run removes it, this run must not take the original's) and not a wait on the workflow that called it (it must not resume
     //that one again). \ErrorException when it has not finished, or the trigger is another one now: the inputs would not fit
     public function again($wf) {
 	if ($this->canRun())
 	    throw new \ErrorException('the execution has not finished');
-	//CLD: 2026-11-02T15:46:06+02:00: run again outside a test, its tools and steps would really act
+	//run again outside a test, its tools and steps would really act
 	if (!empty($this->test_run))
 	    throw new \ErrorException('this execution is a test: run the tests again');
 	$trigger = self::triggerOf(is_array($this->nodes) ? $this->nodes : []);
@@ -144,7 +141,7 @@ class WfExecution extends \sys\BaseModel {
 	return $exe;
     }
 
-    //CLD: 2026-11-02T14:00:00+02:00: new: the trigger step among $nodes (as stored: elements with wfid, fqname); null: none
+    //the trigger step among $nodes (as stored: elements with wfid, fqname); null: none
     private static function triggerOf(array $nodes) {
 	$classes = \models\wf\WfNode::nodeClasses();
 	foreach($nodes as $n) {
@@ -199,7 +196,7 @@ class WfExecution extends \sys\BaseModel {
 		'label' => 'Tokens',
 		'help' => false,
 	    ],
-	    //CLD: 2026-10-07T11:28:54+03:00: how the execution was started: manual, webhook, ...
+	    //how the execution was started: manual, webhook, ...
 	    [
 		'key' => 'trigger',
 		'type' => 'text',
@@ -207,28 +204,28 @@ class WfExecution extends \sys\BaseModel {
 		'help' => false,
 		'default' => 'manual',
 	    ],
-	    //CLD: 2026-10-11T13:51:42+03:00: number of the published version it ran; empty: the draft
+	    //number of the published version it ran; empty: the draft
 	    [
 		'key' => 'version',
 		'type' => 'number',
 		'label' => 'Version',
 		'help' => false,
 	    ],
-	    //CLD: 2026-10-07T11:28:54+03:00: what started it (e.g. the webhook request: method, query, body, ...)
+	    //what started it (e.g. the webhook request: method, query, body, ...)
 	    [
 		'key' => 'input',
 		'type' => 'array',
 		'label' => 'Input',
 		'help' => false,
 	    ],
-	    //CLD: 2026-11-02T14:00:00+02:00: the execution whose inputs it ran again with (again())
+	    //the execution whose inputs it ran again with (again())
 	    [
 		'key' => 'rerun_of',
 		'type' => 'text',
 		'label' => 'Run again of',
 		'help' => false,
 	    ],
-	    //CLD: 2026-11-02T15:46:06+02:00: the test run it belongs to (models\wf\WfTestRun): not listed with the workflow's executions
+	    //the test run it belongs to (models\wf\WfTestRun): not listed with the workflow's executions
 	    [
 		'key' => 'test_run',
 		'type' => 'text',
@@ -296,11 +293,11 @@ class WfExecution extends \sys\BaseModel {
     //---------------------------------------------------------------------------------------------------------------
     //variables and log (used by the nodes)
 
-    //CLD: 2026-10-13T15:24:28+03:00: the names expressions see: the execution's variables and `vars` = the project variables (credentials of type Variable; loaded once per run, never saved with the
+    //the names expressions see: the execution's variables and `vars` = the project variables (credentials of type Variable; loaded once per run, never saved with the
     //execution: a resumed run sees their current values)
     private $projectVars = null;
 
-    //CLD: 2026-10-22T00:28:13+03:00: the project variables are credentials of type Variable (models\credential\CredentialVariable)
+    //the project variables are credentials of type Variable (models\credential\CredentialVariable)
     public function expressionVariables() {
 	if ($this->projectVars === null)
 	    $this->projectVars = \models\credential\CredentialVariable::expressionValues($this->aid, $this->project);
@@ -333,16 +330,14 @@ class WfExecution extends \sys\BaseModel {
 	return in_array($this->state, [ 'new', 'run', 'sleep' ]);
     }
 
-    //CLD: 2026-11-02T15:46:06+02:00: new: an execution of a test case
+    //an execution of a test case
     public function isTest() {
 	return !empty($this->test_run);
     }
 
-    //run until the execution ends, fails, or only sleeping tokens are left; saves the execution
-    //CLD: 2026-10-11T17:45:25+03:00: the execution log: changes made while running are recorded there (ExecutionLog::$execution, also when a user clicked Run), with
+    //run until the execution ends, fails, or only sleeping tokens are left; saves the execution. Runs in the daemon (or the console) only: the web requests queue
+    //their executions (queue). The execution log: changes made while running are recorded there (ExecutionLog::$execution, also when a user clicked Run), with
     //execution.start (a new execution; saved first, so the entry has its id) and how the run stopped (end / error / sleep)
-    //CLD: 2026-10-30T15:00:00+02:00: runs in the daemon (or the console) only: the web requests queue their executions (queue); the handover to the daemon after
-    //app.executions.sync_timeout s in a web request and the interrupted-request handler are removed
     public function run() {
 	$outer = [ \models\ExecutionLog::$execution, \models\ExecutionLog::$step ];
 	\models\ExecutionLog::$execution = $this;
@@ -354,7 +349,7 @@ class WfExecution extends \sys\BaseModel {
 		\models\ExecutionLog::record('execution.start', null, 'trigger: ' . $this->trigger . ($this->version ? ', v' . (int)$this->version : ', draft'));
 	    }
 
-	    //CLD: 2026-10-23T00:40:00+03:00: saved as running at once, then after the passes,
+	    //saved as running at once, then after the passes,
 	    //at most every SAVE_EVERY s (the designer's Executions panel shows the steps as they run)
 	    if ($this->state == 'new') {
 		$this->state = 'run';
@@ -363,13 +358,13 @@ class WfExecution extends \sys\BaseModel {
 		$this->save();
 	    }
 	    $saved = microtime(true);
-	    //CLD: 2026-10-29T22:05:00+02:00: the steps the tokens were at when last saved, the times of the latest saves (SAVE_RATE)
+	    //the steps the tokens were at when last saved, the times of the latest saves (SAVE_RATE)
 	    $savedTokens = json_encode($this->tokens);
 	    $recent = [ $saved ];
 
 	    $this->steps = 0;
 	    while ($this->canRun()) {
-		//CLD: 2026-10-29T22:05:00+02:00: the steps about to run saved first (e.g. the trigger done in a few ms, then a long download: was shown at the trigger until the download ended)
+		//the steps about to run saved first (e.g. the trigger done in a few ms, then a long download: shown at the download while it runs)
 		if ($this->state == 'run' && json_encode($this->tokens) !== $savedTokens) {
 		    $now = microtime(true);
 		    $recent = array_values(array_filter($recent, fn($t) => $now - $t < 1));
@@ -386,16 +381,16 @@ class WfExecution extends \sys\BaseModel {
 		if (!$progress)
 		    break;
 		if ($this->state == 'run' && microtime(true) - $saved >= self::SAVE_EVERY) {
-		    //CLD: 2026-10-26T10:06:24+02:00: killed meanwhile (kill(), another process): stops here, not saved (would undo the kill)
+		    //killed meanwhile (kill(), another process): stops here, not saved (would undo the kill)
 		    if ($this->killed())
 			return $this->state;
 		    $this->save();
-		    //CLD: 2026-10-29T22:05:00+02:00: + $recent, $savedTokens
+		    //$recent, $savedTokens
 		    $saved = $recent[] = microtime(true);
 		    $savedTokens = json_encode($this->tokens);
 		}
 	    }
-	    //CLD: 2026-10-26T10:06:24+02:00: as above
+	    //as above
 	    if ($this->killed())
 		return $this->state;
 	    $this->save();
@@ -404,22 +399,22 @@ class WfExecution extends \sys\BaseModel {
 	    switch($this->state) {
 		case 'end':
 		    \models\ExecutionLog::record('execution.end', null, $this->steps . ' steps');
-		    //CLD: 2026-10-15T11:54:00+03:00: plugins act on a completed run (e.g. the Email inbound trigger deletes the raw message)
+		    //plugins act on a completed run (e.g. the Email inbound trigger deletes the raw message)
 		    \V::app()->hooks->applyHook('execution:end', [ $this ]);
 		    break;
 		case 'error':
 		    \models\ExecutionLog::record('execution.error', null, (string)$this->error);
 		    break;
 		case 'sleep':
-		    //CLD: 2026-10-24T16:30:00+03:00: util\Format::datetime (the account's format; the daemon: app.format.datetime)
+		    //util\Format::datetime (the account's format; the daemon: app.format.datetime)
 		    $wake = \util\Format::datetime($this->wake_at) ?: 'unknown';
 		    \models\ExecutionLog::record('execution.sleep', null, 'waiting until ' . $wake);
 		    break;
 	    }
-	    //CLD: 2026-10-30T19:00:00+02:00: ended or failed: the workflow waiting for it (Run a workflow) is resumed
+	    //ended or failed: the workflow waiting for it (Run a workflow) is resumed
 	    if (in_array($this->state, [ 'end', 'error' ], true)) {
 		$this->notifyCaller();
-		//CLD: 2026-11-02T18:00:00+02:00: + the hook of a run that stopped however it ended (models\agent\AgentConversation::afterRun)
+		//the hook of a run that stopped however it ended (models\agent\AgentConversation::afterRun)
 		\V::app()->hooks->applyHook('execution:stopped', [ $this ]);
 	    }
 	} finally {
@@ -428,7 +423,7 @@ class WfExecution extends \sys\BaseModel {
 	return $this->state;
     }
 
-    //CLD: 2026-10-26T10:06:24+02:00: kill a running (or waiting) execution: `cancel` in the database (a targeted update: the process running it may save meanwhile; it stops at its next
+    //kill a running (or waiting) execution: `cancel` in the database (a targeted update: the process running it may save meanwhile; it stops at its next
     //pass, see killed()), its daemon jobs removed (not run / queued again) and the worker running one stopped (Job::kill). $by: who killed it (the log). False when it no longer runs
     public function kill($by = null) {
 	$now = new \MongoDB\BSON\UTCDateTime();
@@ -453,23 +448,23 @@ class WfExecution extends \sys\BaseModel {
 	\models\ExecutionLog::record('execution.cancel', null, $message);
 	\models\ExecutionLog::$execution = $outer;
 
-	//CLD: 2026-11-01T23:30:00+02:00: its open tasks (Human task, an AI step's approval) are cancelled; an AI step's saved conversation is removed
+	//its open tasks (Human task, an AI step's approval) are cancelled; an AI step's saved conversation is removed
 	\V::app()->om->updateMany('WfTask', [ 'aid' => $this->aid, 'execution' => $this->_id, 'state' => 'open' ], [ '$set' => [ 'state' => 'cancelled' ] ]);
 	\models\node\NodeAppAi::dropSaved($this);
-	//CLD: 2026-11-02T14:00:00+02:00: its traces end
+	//its traces end
 	\models\agent\AgentTrace::stopOpen($this);
 
-	//CLD: 2026-10-30T19:00:00+02:00: the workflows it waits for (Run a workflow) are cancelled too; the workflow waiting for it is resumed (its step: cancelled)
+	//the workflows it waits for (Run a workflow) are cancelled too; the workflow waiting for it is resumed (its step: cancelled)
 	foreach(\V::app()->om->find('WfExecution', [ 'aid' => $this->aid, 'input.caller.execution' => (string)$this->_id, 'input.caller.wait' => true,
 	    'state' => [ '$in' => [ 'new', 'run', 'sleep' ] ] ]) as $child)
 	    $child->kill('the calling workflow was cancelled');
 	$this->notifyCaller();
-	//CLD: 2026-11-02T18:00:00+02:00: as a run that stops by itself
+	//as a run that stops by itself
 	\V::app()->hooks->applyHook('execution:stopped', [ $this ]);
 	return true;
     }
 
-    //CLD: 2026-10-30T19:00:00+02:00: new: a workflow started by a Run a workflow step that waits for it has ended (end, error, cancel): the caller, when it is paused, is queued to
+    //a workflow started by a Run a workflow step that waits for it has ended (end, error, cancel): the caller, when it is paused, is queued to
     //continue (its step reads the result). A caller still running (this workflow ran nested in it, or it is busy elsewhere) reads it itself
     public function notifyCaller() {
 	$caller = is_array($this->input) ? ($this->input['caller'] ?? null) : null;
@@ -480,7 +475,7 @@ class WfExecution extends \sys\BaseModel {
 	    $parent->queue('the workflow it waits for has ended (execution ' . (string)$this->_id . '): queued for the daemon');
     }
 
-    //CLD: 2026-10-26T10:06:24+02:00: whether it was killed meanwhile (state `cancel` in the database; then also here)
+    //whether it was killed meanwhile (state `cancel` in the database; then also here)
     private function killed() {
 	if (empty($this->_id) || !\V::app()->om->count('WfExecution', [ '_id' => $this->_id, 'aid' => $this->aid, 'state' => 'cancel' ]))
 	    return false;
@@ -489,10 +484,8 @@ class WfExecution extends \sys\BaseModel {
     }
 
     //---------------------------------------------------------------------------------------------------------------
-    //hand the run to the daemon (saved first)
-    //CLD: 2026-10-26T09:58:28+02:00: + $reason, the log message (default: the account's sync executions were all running)
-    //CLD: 2026-10-30T15:00:00+02:00: every execution started by a web request (designer Run, Webhook, Form, Human task, MCP run_workflow) is queued here;
-    //Job::submit wakes the daemon (NEWJOB on its socket), so an idle worker starts it at once
+    //hand the run to the daemon (saved first): every execution started by a web request (designer Run, Webhook, Form, Human task, MCP run_workflow) is queued here;
+    //Job::submit wakes the daemon (NEWJOB on its socket), so an idle worker starts it at once; $reason: the log message
     public function queue($reason = null) {
 	$this->log(null, $reason ?? 'queued for the daemon');
 	$this->save();
@@ -503,7 +496,7 @@ class WfExecution extends \sys\BaseModel {
 	]);
     }
 
-    //CLD: 2026-10-30T15:00:00+02:00: new: wait (at most $seconds) for the daemon to run this queued execution until it stops (end, error, cancel, sleep); reloaded from the database.
+    //wait (at most $seconds) for the daemon to run this queued execution until it stops (end, error, cancel, sleep); reloaded from the database.
     //Returns its state, or `queued` when it still runs (or waits for a worker) after $seconds. For the callers that answer with the result (Webhook "when finished", MCP run_workflow)
     public function waitFor($seconds) {
 	$until = microtime(true) + $seconds;
@@ -533,7 +526,7 @@ class WfExecution extends \sys\BaseModel {
 	$pending = $this->tokens;
 	$tokens = [];
 	$progress = false;
-	//CLD: 2026-10-13T12:43:29+03:00: loops whose pass was given up in this pass over the tokens (a step inside failed, the loop skips the item): their other tokens are dropped
+	//loops whose pass was given up in this pass over the tokens (a step inside failed, the loop skips the item): their other tokens are dropped
 	$aborted = [];
 
 	foreach($pending as $token) {
@@ -544,7 +537,7 @@ class WfExecution extends \sys\BaseModel {
 	    if ($aborted && $this->insideAny($nodeId, $aborted))
 		continue;
 
-	    //CLD: 2026-10-13T13:15:14+03:00: inside a loop: counted for its pass (not for the run)
+	    //inside a loop: counted for its pass (not for the run)
 	    $loop = $this->activeLoop($nodeId);
 	    if ($loop !== null) {
 		$this->passSteps[$loop->wfid] = ($this->passSteps[$loop->wfid] ?? 0) + 1;
@@ -555,13 +548,13 @@ class WfExecution extends \sys\BaseModel {
 	    }
 
 	    $node->exec = $this;
-	    //CLD: 2026-10-11T17:45:25+03:00: the step making changes now (execution log)
+	    //the step making changes now (execution log)
 	    \models\ExecutionLog::$step = (string)($node->title ?? $nodeId);
 	    try {
 		$result = $node->receive($token['edge'] ?? null);
 	    } catch (\Throwable $e) {
 		$node->state = 'fail';
-		//CLD: 2026-10-13T12:43:29+03:00: inside a loop that skips failed items: the pass ends, the workflow goes on
+		//inside a loop that skips failed items: the pass ends, the workflow goes on
 		if (($loop = $this->skippingLoop($nodeId)) !== null) {
 		    $this->abortPass($loop, (string)($node->title ?? $nodeId), $e->getMessage());
 		    $aborted[] = $loop->wfid;
@@ -583,7 +576,7 @@ class WfExecution extends \sys\BaseModel {
 	    $tokens = array_merge($tokens, $this->tokensFrom($nodeId, $result));
 	}
 
-	//CLD: 2026-10-13T12:43:29+03:00: loops: a pass ends when nothing runs inside the loop any more; the next one starts, or the loop continues on its output
+	//loops: a pass ends when nothing runs inside the loop any more; the next one starts, or the loop continues on its output
 	$tokens = $this->stepLoops($tokens, $progress);
 	if ($this->state === 'error')
 	    return false;
@@ -619,10 +612,8 @@ class WfExecution extends \sys\BaseModel {
 	return $progress;
     }
 
-    //CLD: 2026-10-13T12:43:29+03:00: the active loops (deepest first) whose pass is over (no token inside, no active loop inside, after releasing the Merge steps waiting inside): next()
-    //starts the next pass (a token for the loop's start step) or ends the loop (tokens on its output); a failing next() ends the pass of the loop around it (when that one skips
-    //failed items) or fails the execution
-    //CLD: 2026-10-14T21:17:55+03:00: no loop inside a loop (Workflow::validateFlow): no ordering by depth, no active loop inside to wait for, a failing next() fails the execution
+    //the active loops whose pass is over (no token inside, after releasing the Merge steps waiting inside): next() starts the next pass (a token for the loop's start step)
+    //or ends the loop (tokens on its output); a failing next() fails the execution (no loop inside a loop: Workflow::validateFlow)
     private function stepLoops(array $tokens, &$progress) {
 	$loops = array_filter($this->__nodes, fn($n) => !empty($n->active) && method_exists($n, 'next'));
 	foreach($loops as $id => $loop) {
@@ -685,7 +676,7 @@ class WfExecution extends \sys\BaseModel {
     }
 
     //whether step $nodeId is inside loop $loopId
-    //CLD: 2026-10-14T21:17:55+03:00: its parent (a loop cannot be inside another loop)
+    //its parent (a loop cannot be inside another loop)
     private function inside($nodeId, $loopId) {
 	return (string)($this->__nodes[$nodeId]->parentId ?? '') === (string)$loopId;
     }
@@ -706,14 +697,14 @@ class WfExecution extends \sys\BaseModel {
     }
 
     //the innermost active loop around step $nodeId, when it skips failed items (else null: the failure stops the workflow)
-    //CLD: 2026-10-13T13:15:14+03:00: through activeLoop
+    //through activeLoop
     private function skippingLoop($nodeId) {
 	$loop = $this->activeLoop($nodeId);
 	return $loop !== null && $loop->cfg('onError', 'stop') === 'skip' ? $loop : null;
     }
 
     //gives up the current pass of $loop: the failure listed by the loop, the steps inside reset (waiting Merge, sleeping Wait, active loops)
-    //CLD: 2026-10-14T21:17:55+03:00: no active loop inside to reset (a loop cannot be inside another loop)
+    //no active loop inside to reset (a loop cannot be inside another loop)
     private function abortPass($loop, $stepTitle, $message) {
 	$loop->exec = $this;
 	$loop->skip($stepTitle, $message);
@@ -730,7 +721,7 @@ class WfExecution extends \sys\BaseModel {
     }
 
     //tokens for the edges leaving $nodeId on the given output ports
-    //CLD: 2026-10-29T21:30:00+02:00: each edge taken is marked passed (state, passed_at: the latest time): the designer shows the connections the execution went through
+    //each edge taken is marked passed (state, passed_at: the latest time): the designer shows the connections the execution went through
     private function tokensFrom($nodeId, array $ports) {
 	$tokens = [];
 	foreach($this->__edges as $edgeId => $edge) {

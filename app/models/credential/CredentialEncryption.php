@@ -34,7 +34,7 @@ class CredentialEncryption extends \models\Credential {
 		'default' => '',
 		'requiredIf' => [ 'if' => 'method', 'in' => [ 'pgp' ] ],
 		'help' => '-----BEGIN PGP PUBLIC KEY BLOCK----- (gpg --armor --export); several keys: each recipient can open the files (e.g. the partner\'s and your own)',
-		//CLD: 2026-10-20T14:03:59+03:00: util\Validator key rules
+		//util\Validator key rules
 		'validate' => [
 		    [ 'notPrivateKey', 'when' => [ 'method' => [ 'pgp' ] ], 'skipEmpty' => true, 'last' => true, 'message' => 'this is a private key: paste the recipient\'s public key (gpg --armor --export)' ],
 		    [ 'pgpPublicKey', 'when' => [ 'method' => [ 'pgp' ] ], 'skipEmpty' => true, 'message' => 'not an armored PGP public key (-----BEGIN PGP PUBLIC KEY BLOCK-----)' ],
@@ -48,7 +48,7 @@ class CredentialEncryption extends \models\Credential {
 		'default' => '',
 		'requiredIf' => [ 'if' => 'method', 'in' => [ 'cms' ] ],
 		'help' => '-----BEGIN CERTIFICATE----- (PEM); several: each recipient can open the files',
-		//CLD: 2026-10-20T14:03:59+03:00: util\Validator certificate rules
+		//util\Validator certificate rules
 		'validate' => [
 		    [ 'notPrivateKey', 'when' => [ 'method' => [ 'cms' ] ], 'skipEmpty' => true, 'last' => true, 'message' => 'only the certificate: a private key does not belong here' ],
 		    [ 'pemCertificate', 'when' => [ 'method' => [ 'cms' ] ], 'skipEmpty' => true, 'message' => 'not a PEM certificate (-----BEGIN CERTIFICATE-----)' ],

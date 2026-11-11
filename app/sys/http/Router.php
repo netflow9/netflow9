@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-07T22:36:27+02:00: the license notice of Yii 1.1, the framework this file is ported from (CUrlManager, CUrlRule)
+//the license notice of Yii 1.1, the framework this file is ported from (CUrlManager, CUrlRule)
 /*
  * Copyright (c) 2008 by Yii Software LLC (http://www.yiisoft.com)
  * All rights reserved.

@@ -7,7 +7,7 @@
 //(internal: jobs, executions, indexes, the logs). Updates keep each changed field's value before and after; secret fields (password type, encrypted)
 //and keys outside the schema only show "changed"; long values are shortened. Entries are never changed. Fields with perm:read nobody (ids, browser,
 //changes) are not in the grid; the entry dialog shows them. Read with AuditLog::read (global: the account, project: the entries of the current project)
-//CLD: 2026-10-11T17:45:25+03:00: shares models\log\LogTrait with models\ExecutionLog (what triggers, workflow runs, the daemon and the console do: changes
+//shares models\log\LogTrait with models\ExecutionLog (what triggers, workflow runs, the daemon and the console do: changes
 //made while an execution runs go there, also when a user clicked Run); entries expire after the account's `audit_log_retention`
 
 namespace models;
@@ -17,20 +17,20 @@ class AuditLog extends \sys\BaseModel {
 
     protected static $collection = 'audit_log';
 
-    //CLD: 2026-10-12T12:18:11+03:00: removal after the retention (TTL); the account's / a project's entries, newest first (created by `v sys::indexes`)
+    //removal after the retention (TTL); the account's / a project's entries, newest first (created by `v sys::indexes`)
     public static $indexes = [
 	[ [ 'aid' => 1, 'created_at' => -1 ], [] ],
 	[ [ 'aid' => 1, 'project' => 1, 'created_at' => -1 ], [] ],
-	//CLD: 2026-10-22T00:00:00+03:00: the seal's numbers (verify)
+	//the seal's numbers (verify)
 	[ [ 'aid' => 1, 'seq' => 1 ], [] ],
     ];
 
-    //CLD: 2026-10-22T00:00:00+03:00: the seal (tamper evidence, SOC2.md gap 6): each entry of an account gets the account's next number (`seq`) and an HMAC of
+    //the seal (tamper evidence, SOC2.md gap 6): each entry of an account gets the account's next number (`seq`) and an HMAC of
     //its stored document (`mac`, key derived from APP_SECRET). The numbers are kept in collection audit_seal (models\AuditSeal): { _id: account id, seq: last number given,
     //pruned: highest number removed by the retention }. verify() finds changed or forged entries (MAC), removed ones (missing numbers, also the newest) and
     //entries without a MAC. Entries from before the seal have no number and are only counted
     const SEALED = true;
-    //CLD: 2026-11-07T10:37:49+02:00: the entries verify() reads at a time
+    //the entries verify() reads at a time
     const VERIFY_BATCH = 1000;
 
     //the shortest retention (days; the account's `audit_log_retention` below it is raised to it; 0 = forever)
@@ -41,38 +41,38 @@ class AuditLog extends \sys\BaseModel {
     const ACTIONS = [
 	'login' => 'Login',
 	'login.failed' => 'Failed login',
-	//CLD: 2026-10-21T18:00:00+03:00: too many failed sign-ins or 2FA codes: locked for a while (models\user\LoginThrottle)
+	//too many failed sign-ins or 2FA codes: locked for a while (models\user\LoginThrottle)
 	'login.locked' => 'Sign-in locked',
 	'logout' => 'Logout',
 	'workflow.run' => 'Run workflow',
 	'credential.test' => 'Test credential',
-	//CLD: 2026-10-11T20:51:55+03:00: a data table created from a file (DatatableController::import)
+	//a data table created from a file (DatatableController::import)
 	'datatable.import' => 'Import data table',
-	//CLD: 2026-11-04T10:00:00+02:00: a data table's rows downloaded as an Excel file (DatatableController::export)
+	//a data table's rows downloaded as an Excel file (DatatableController::export)
 	'datatable.export' => 'Export data table',
-	//CLD: 2026-11-04T12:00:00+02:00: moved to another project (ShareController::move)
+	//moved to another project (ShareController::move)
 	'datatable.move' => 'Move data table',
 	'credential.move' => 'Move credential',
 	'workflow.move' => 'Move workflow',
-	//CLD: 2026-10-24T00:04:00+03:00: executions of the draft deleted from the Executions panel (WorkflowController::execution_delete, executions_delete; executions themselves are not recorded)
+	//executions of the draft deleted from the Executions panel (WorkflowController::execution_delete, executions_delete; executions themselves are not recorded)
 	'workflow.execution.delete' => 'Delete execution',
 	'workflow.executions.delete' => 'Delete executions',
-	//CLD: 2026-10-26T10:06:24+02:00: a running execution killed (WorkflowController::execution_kill, the Overview)
+	//a running execution killed (WorkflowController::execution_kill, the Overview)
 	'workflow.execution.kill' => 'Kill execution',
-	//CLD: 2026-11-02T15:46:06+02:00: a workflow's tests (EvalController)
+	//a workflow's tests (EvalController)
 	'workflow.test.run' => 'Run tests',
 	'workflow.test.save' => 'Save test case',
 	'workflow.test.delete' => 'Delete test case',
-	//CLD: 2026-11-01T23:30:00+02:00: an AI step's tool calls approved / rejected in My tasks (TaskController)
+	//an AI step's tool calls approved / rejected in My tasks (TaskController)
 	'ai.approval' => 'Approve agent action',
-	//CLD: 2026-11-02T18:00:00+02:00: an owner deleted a conversation with an agent
+	//an owner deleted a conversation with an agent
 	'agent.conversation.delete' => 'Delete agent conversation',
-	//CLD: 2026-11-02T10:00:00+02:00: a tool call an AI step's agent made (agentCall)
+	//a tool call an AI step's agent made (agentCall)
 	self::AGENT_ACTION => 'Agent action',
     ];
 
     const AGENT_ACTION = 'ai.tool';
-    //CLD: 2026-11-02T10:00:00+02:00: the arguments kept: a value that names a secret is removed (the key: withoutSecrets), the longest value, all of them
+    //the arguments kept: a value that names a secret is removed (the key: withoutSecrets), the longest value, all of them
     const SECRET_KEYS = '/(pass(word|wd|phrase)|(^|[_-])pass$|secret|(^|[_-])tokens?$|^token|api[_-]?key|authorization|credential|private[_-]?key|cookie|session[_-]?id|(^|[_-])otp($|[_-]))/i';
     const SECRET_VALUES = '/(\bBearer\s+[\w.~+\/=-]+|\beyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]*|-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(-----END [A-Z ]*PRIVATE KEY-----|$)|\b(sk|pk|rk|xox[abprs])-[\w-]{16,}|\bAKIA[0-9A-Z]{16}\b|(?<=:\/\/)[^\s\/:@]+:[^\s\/@]+(?=@))/s';
     const REMOVED = '[removed]';
@@ -116,7 +116,7 @@ class AuditLog extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'showInForms' => false
 	    ],
-	    //CLD: 2026-11-02T10:00:00+02:00: an agent's tool call (agentCall): its workflow, execution, step; agent: { tool, access: read | write | unknown, status, arguments, approved_by, approved_by_id }
+	    //an agent's tool call (agentCall): its workflow, execution, step; agent: { tool, access: read | write | unknown, status, arguments, approved_by, approved_by_id }
 	    [
 		'key' => 'workflow',
 		'type' => 'object',
@@ -154,7 +154,7 @@ class AuditLog extends \sys\BaseModel {
 		'perm:update' => 'nobody',
 		'showInForms' => false
 	    ],
-	    //CLD: 2026-10-22T00:00:00+03:00: the seal's number (the MAC, `mac`, is written after the entry: not a field)
+	    //the seal's number (the MAC, `mac`, is written after the entry: not a field)
 	    [
 		'key' => 'seq',
 		'type' => 'number',
@@ -206,7 +206,7 @@ class AuditLog extends \sys\BaseModel {
 	]);
     }
 
-    //CLD: 2026-11-02T10:00:00+02:00: new: a tool call of the agent of step $stepTitle ($wfid) in execution $exec: what it called, with which arguments (secrets removed), read or write, how it ended
+    //a tool call of the agent of step $stepTitle ($wfid) in execution $exec: what it called, with which arguments (secrets removed), read or write, how it ended
     //($status), who approved it ($by: a user). Not a person's action (the daemon runs it, record() would not write it): user_name names the step
     public static function agentCall($exec, $stepTitle, $wfid, $tool, $args, $access, $status, $by = null) {
 	if (!static::$recordAgentCalls)
@@ -229,8 +229,8 @@ class AuditLog extends \sys\BaseModel {
 	]);
     }
 
-    //$value with what looks like a secret removed: the values of keys that name one (numbers and yes / no are kept: max_tokens), and secrets inside texts; long texts shortened
-    //CLD: 2026-11-02T14:00:00+02:00: + $maxValue (util\AgentTracer cuts them itself, the full length noted)
+    //$value with what looks like a secret removed: the values of keys that name one (numbers and yes / no are kept: max_tokens), and secrets inside texts; texts longer than
+    //$maxValue shortened (util\AgentTracer cuts them itself, the full length noted)
     public static function withoutSecrets($value, $key = '', $maxValue = self::MAX_VALUE) {
 	if (is_array($value)) {
 	    $out = [];
@@ -252,7 +252,7 @@ class AuditLog extends \sys\BaseModel {
     }
 
     // ------------------------------------------------------------------------------------
-    //CLD: 2026-10-22T00:00:00+03:00: the seal (see SEALED), the retention, verify
+    //the seal (see SEALED), the retention, verify
 
     //the account's next number
     protected static function nextSeq($aid) {
@@ -315,7 +315,7 @@ class AuditLog extends \sys\BaseModel {
 	    \V::app()->log->info('AuditLog seal: account ' . $acct->_id . ': last number ' . (int)($state['seq'] ?? 0) . ', removed by the retention up to ' . (int)($state['pruned'] ?? 0));
     }
 
-    //CLD: 2026-11-07T01:19:07+02:00: a logged value as text: yes / no, JSON for lists and objects, as it is otherwise; null for none
+    //a logged value as text: yes / no, JSON for lists and objects, as it is otherwise; null for none
     public static function valueText($v) {
 	if ($v === null)
 	    return null;
@@ -337,7 +337,7 @@ class AuditLog extends \sys\BaseModel {
 	$report['unsealed'] = $om->count('AuditLog', [ 'aid' => $aid, 'seq' => [ '$exists' => false ] ]);
 	$expected = $pruned + 1;
 	$prev = null;
-	//CLD: 2026-11-07T10:37:49+02:00: read VERIFY_BATCH at a time, in the order of (seq, _id)
+	//read VERIFY_BATCH at a time, in the order of (seq, _id)
 	$after = null;
 	do {
 	    $page = $om->find('AuditLog', [ 'aid' => $aid, 'seq' => [ '$exists' => true ] ]
@@ -366,7 +366,7 @@ class AuditLog extends \sys\BaseModel {
 	return $report;
     }
 
-    //CLD: 2026-11-07T01:06:08+02:00: the problem of entries $from to $to missing from the sequence
+    //the problem of entries $from to $to missing from the sequence
     private static function missingText($from, $to) {
 	return $from == $to ? "entry {$from} is missing" : "entries {$from} to {$to} are missing";
     }

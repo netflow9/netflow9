@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-05T13:00:00+02:00: new class: the base of the Namecheap steps (Domains, DNS, Account, API; not registered itself), through a Namecheap credential of the project
+    the base of the Namecheap steps (Domains, DNS, Account, API; not registered itself), through a Namecheap credential of the project
     (CredentialNamecheap, provides `namecheap`; util\Namecheap). As NodeAppWazuh:
 	- the shape: one input, `success` (+ `error` when On error is "Continue on the `error` output")
 	- the settings every Namecheap step has: credential, operation (static::OPERATIONS), the operation's own settings (operationFields(): each shown for its operations),

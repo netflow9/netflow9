@@ -76,7 +76,7 @@ class MailParser {
 	    return null;
 	//drop comments such as "(UTC)"
 	$value = trim(preg_replace('/\([^)]*\)/', '', $value));
-	//CLD: 2026-10-08T08:44:33+03:00: drop the day name - PHP moves the date to the next matching weekday when it is wrong (seen in real mail)
+	//drop the day name - PHP moves the date to the next matching weekday when it is wrong (seen in real mail)
 	$value = preg_replace('/^[A-Za-z]{3,},?\s*/', '', $value);
 	if ($value === '')
 	    return null;
@@ -379,7 +379,7 @@ class MailParser {
 	return $addresses;
     }
 
-    //CLD: 2026-11-07T01:14:34+02:00: the address read so far ($token, $angle: the part in <>, $name) added to $addresses when it has an @; the three emptied
+    //the address read so far ($token, $angle: the part in <>, $name) added to $addresses when it has an @; the three emptied
     private static function flushAddress(array &$addresses, &$token, &$angle, &$name) {
 	$email = trim($angle ?? $token);
 	$display = trim($angle !== null ? $name . $token : $name);

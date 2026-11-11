@@ -2,7 +2,7 @@
 
 namespace commands;
 
-//CLD: 2026-10-08T09:19:59+03:00: new command: try \util\ImapClient against a real mailbox, step by step (connect, sign in, folders, select,
+//try \util\ImapClient against a real mailbox, step by step (connect, sign in, folders, select,
 //latest messages); read-only: messages are fetched with BODY.PEEK (not marked read), nothing is moved or deleted
 //  ../v imap::test                                     uses the placeholders below
 //  ../v imap::test --preset=gmail --user=me@gmail.com --token=ya29...
@@ -132,7 +132,7 @@ class ImapCommand extends \sys\BaseController {
 	echo "all steps passed\n";
     }
 
-    //CLD: 2026-11-07T01:04:46+02:00: option --$key of the command line ($p), else $default (also when given without a value)
+    //option --$key of the command line ($p), else $default (also when given without a value)
     private static function opt(array $p, $key, $default) {
 	return (isset($p[$key]) && $p[$key] !== true) ? (string)$p[$key] : $default;
     }

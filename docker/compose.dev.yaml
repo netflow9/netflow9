@@ -1,4 +1,4 @@
-# CLD: 2026-11-01T19:00:00+02:00: development: docker compose -f compose.yaml -f compose.dev.yaml up -d
+# development: docker compose -f compose.yaml -f compose.dev.yaml up -d
 #   the working tree's code mounted over the image's (a change is live without a build; NFN_UID / NFN_GID in .env: your user's, so the files stay readable),
 #   mailpit catches the outgoing mail (http://127.0.0.1:8025), the site on http://127.0.0.1:8080 (a server's nginx keeps 80 / 443).
 #   Haraka (mail profile) on 127.0.0.1:2525 (a server's MTA keeps 25).
@@ -22,7 +22,7 @@ services:
       - "127.0.0.1:${HTTP_PORT:-8080}:80"
     volumes:
       - ../public_html:/srv/rail22/public_html:ro
-  # CLD: 2026-11-01T23:50:00+02:00: the mail profile is on by default: here on 2525, local only (port 25 is the server's MTA's)
+  # the mail profile is on by default: here on 2525, local only (port 25 is the server's MTA's)
   haraka:
     ports: !override
       - "127.0.0.1:${MAIL_PORT:-2525}:25"

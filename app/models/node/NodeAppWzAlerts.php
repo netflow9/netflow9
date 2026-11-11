@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new step: Wazuh Alerts - the alerts, read from the Wazuh indexer (wazuh-alerts-*). Operations (setting `operation`):
+    Wazuh Alerts - the alerts, read from the Wazuh indexer (wazuh-alerts-*). Operations (setting `operation`):
 	search   the alerts of a time range, a rule level and worse, agents, rules, groups, MITRE techniques and a query; newest first
 	get      one alert, by its _id
 	count    how many match
@@ -50,7 +50,7 @@ class NodeAppWzAlerts extends NodeAppWazuh {
 	];
     }
 
-    //CLD: 2026-11-07T01:10:30+02:00: a text filter field $key (of the operations $ops; null: every one), with $more
+    //a text filter field $key (of the operations $ops; null: every one), with $more
     private static function filterField($key, $label, $more, $ops) {
 	return array_merge([ 'key' => $key, 'type' => 'text', 'label' => $label, 'default' => '' ], $ops !== null ? [ 'ops' => $ops ] : [], $more);
     }

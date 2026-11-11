@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T18:00:00+02:00: new step: Reply to chat - the workflow answers in the conversation that started the run (models\agent\AgentConversation), as text or Markdown, with optional buttons: the button chosen
+    Reply to chat - the workflow answers in the conversation that started the run (models\agent\AgentConversation), as text or Markdown, with optional buttons: the button chosen
 	comes back as the next message (its value). In a chat page it appears at once; in a conversation by email or Teams it is sent there (util\AgentChannels; buttons: a line saying what to answer).
 	A run with no conversation (Run in the designer, a workflow started otherwise) sends nothing: the answer is logged. A Run again sends nothing either: the person has had the answer.
     The variable (default `reply`): { sent, text, message: its number }

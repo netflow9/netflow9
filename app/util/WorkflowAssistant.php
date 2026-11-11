@@ -2,26 +2,29 @@
 
 /*
     the Assistant of the workflow designer (right-side inspector):
-	the person describes a workflow or a change in their own words, Claude builds it on the canvas.
+	the person describes a workflow or a change in their own words, the model builds it on the canvas.
 
-    An agent loop on the Anthropic Messages API (raw HTTP, as models\node\NodeAppClaude; an Anthropic credential of the workflow's project):
-//  the system prompt holds the rules and the step types (util\WorkflowSpec::stepTypes; cached: it is the same for every request of the project),
-//  the last user turn holds the designer's current steps (unsaved changes included) as a spec (util\WorkflowSpec::toSpec), then the request;
-//  tools: set_workflow (the whole new canvas: steps + connections, built by util\WorkflowSpec::nodesFrom and checked by Workflow::validates, as when saving in the designer;
-//  refused settings go back to the model with the reasons, it fixes them) and some read-only project tools (util\MCPTools, as the user: their permissions apply).
-//CLD: 2026-10-23T23:30:00+03:00: all of them: tables and rows, files and images, workflows (but not update_workflow of this one: set_workflow), runs;
-//images in their results go to the model as images (as models\node\NodeAppClaude / NodeAppOpenAI)
-//Nothing is saved here: the designer shows the new steps, the person reviews and saves them (and publishes) as always.
-//The conversation is kept by the designer and sent back as text turns ([ { role, text } ]); thinking blocks are kept only within one request's loop.
-//ask() = { reply, nodes (the designer's data; null when the canvas was not changed), problems (Workflow::validateFlow of the new steps), rounds, usage }; \ErrorException on failure
-//CLD: 2026-10-19T16:05:12+03:00: + an OpenAI-compatible model (OpenAI, or a local server: Lemonade, Ollama, vLLM, ...), with an OpenAI API credential of the project
-//(models\credential\CredentialOpenAI): POST <base URL>/chat/completions, tools as functions, results as `tool` messages (as models\node\NodeAppOpenAI); the model from the
-//account settings (assistant_openai_model), else the first one the server lists. The provider follows the credential; the loop is the same (turnAnthropic / turnOpenAI)
-//CLD: 2026-10-20T10:00:00+03:00: only the Assistant's settings (models\assistant\AssistantSettings: provider, url, api_key, model, effort; credentialOf) are used, not a credential
-//of the workflow's project; models(): the models of the settings' server (the settings page's Connect)
-//CLD: 2026-10-22T14:00:00+03:00: bring your own key: the settings' provider (System: the installation's server, AssistantSettings::system; Claude, OpenAI, Gemini, Ollama, Lemonade) is
-//resolved to its server (resolve) and spoken to with its protocol (data\AiProviders: anthropic | openai). The cost of each turn is counted (AssistantSettings::pricesOf);
-//with $budget (USD left this month) the loop stops once it is spent: what was built so far is returned, `stopped` says why
+    The server: the Assistant's settings (models\assistant\AssistantSettings: provider, url, api_key, model, effort), not a credential of the project;
+	the provider (System: the installation's server, AssistantSettings::system; Claude, OpenAI, Gemini, Ollama, Lemonade) is resolved to its server (resolve)
+	and spoken to with its protocol (data\AiProviders: anthropic | openai), raw HTTP as models\node\NodeAppClaude / NodeAppOpenAI;
+	no model in the settings (OpenAI-compatible): the first one the server lists. models(): the server's models (the settings page's Connect).
+
+    An agent loop (turnAnthropic / turnOpenAI, the same loop for both):
+	the system prompt holds the rules and the step types (util\WorkflowSpec::stepTypes; cached: the same for every request of the project),
+	the last user turn holds the designer's current steps (unsaved changes included) as a spec (util\WorkflowSpec::toSpec), then the request;
+	tools:
+	    set_workflow: the whole new canvas (steps + connections, built by util\WorkflowSpec::nodesFrom and checked by Workflow::validates, as when saving
+	    in the designer; refused settings go back to the model with the reasons, it fixes them);
+	    the project tools of util\MCPTools, as the user (their permissions apply; structure only unless the account lets it read data), but not
+	    update_workflow of this one; images in their results go to the model as images.
+
+    Nothing is saved here: the designer shows the new steps, the person reviews and saves them (and publishes) as always.
+    The conversation is kept by the designer and sent back as text turns ([ { role, text } ]); thinking blocks are kept only within one request's loop.
+    The cost of each turn is counted (AssistantSettings::pricesOf, or credits with $rates); with $budget the loop stops once it is spent:
+	what was built so far is returned, `stopped` says why.
+
+    ask() = { reply, nodes (the designer's data; null when the canvas was not changed), problems (Workflow::validateFlow of the new steps), to_fix, rounds, usage, cost, stopped };
+	\ErrorException on failure. complete(): one question without tools or the Assistant's prompts (the judge of a test: util\AgentEval).
 */
 
 namespace util;
@@ -32,11 +35,11 @@ class WorkflowAssistant {
     const MAX_TOKENS = 32000;
     //most calls to the model per request (each tool use is one more)
     const MAX_ROUNDS = 12;
-    //CLD: 2026-10-19T17:14:20+03:00: how many times a model that stops with connection errors on the canvas is asked to fix them
+    //how many times a model that stops with connection errors on the canvas is asked to fix them
     const MAX_REMINDERS = 2;
     //per call to the model (s)
     const TIMEOUT = 600;
-    //CLD: 2026-10-20T10:00:00+03:00: for listing the server's models (Connect, s)
+    //for listing the server's models (Connect, s)
     const MODELS_TIMEOUT = 20;
     //the largest answer read (bytes)
     const MAX_RESPONSE = 10 * 1024 * 1024;
@@ -46,17 +49,15 @@ class WorkflowAssistant {
     //a tool result longer than this is cut (characters)
     const MAX_TOOL_RESULT = 30000;
 
-    //CLD: 2026-10-23T23:30:00+03:00: every tool of util\MCPTools is offered, as the user
-
     private $wf;
-    //CLD: 2026-11-01T02:00:00+02:00: whether the account lets the Assistant read the project's data (AssistantSettings::readsData), else its structure only (McpServerTools::STRUCTURE_TOOLS)
+    //whether the account lets the Assistant read the project's data (AssistantSettings::readsData), else its structure only (McpServerTools::STRUCTURE_TOOLS)
     private $readsData = false;
     private $cred;
     private $project;
     //the designer's steps while the model works: [ element ] (a list, as the designer sends them)
     private $nodes = [];
     private $changed = false;
-    //CLD: 2026-10-19T17:02:48+03:00: the settings of the current steps that are still wrong (set_workflow applies the steps anyway; the person fills them in), and why the last
+    //the settings of the current steps that are still wrong (set_workflow applies the steps anyway; the person fills them in), and why the last
     //set_workflow was refused (told to the person when the canvas was not changed: models may say they built it anyway)
     private $toFix = [];
     private $lastError = null;
@@ -64,52 +65,51 @@ class WorkflowAssistant {
     private $model;
     private $effort;
     private $provider;
-    //CLD: 2026-10-22T14:00:00+03:00: the API the provider speaks: anthropic | openai; the prices [ input, output, cache read ] USD per 1M tokens (null: not known)
+    //the API the provider speaks: anthropic | openai; the prices [ input, output, cache read ] USD per 1M tokens (null: not known)
     private $protocol;
     private $prices;
 
-    //CLD: 2026-10-22T14:00:00+03:00: USD that may still be spent by this request (null: no limit); what the last ask() spent: cost (USD), usage (tokens). Set also when ask() fails
-    //CLD: 2026-10-22T15:00:00+03:00: + $rates (System: the credits per 1M tokens, AssistantWallet::ratesOf): then $budget is in credits, and $credits what the last ask() used
+    //what may still be spent by this request (null: no limit); what the last ask() or complete() spent: cost (USD), usage (tokens), set also when it fails;
+    //with $rates (System: the credits per 1M tokens, AssistantWallet::ratesOf) $budget is in credits, and $credits what was used
     public $budget = null;
     public $cost = 0.0;
     public $usage = [];
     public $rates = null;
     public $credits = 0.0;
 
-    //the call to the API: fn(array $headers, ?array $body (null: GET), string $path) => object (the decoded answer); null = HTTP (the checks give their own)
-    //CLD: 2026-10-19T16:05:12+03:00: + $path (/v1/messages, /chat/completions, /models), GET
+    //the call to the API: fn(array $headers, ?array $body (null: GET), string $path (/v1/messages, /chat/completions, /models)) => object (the decoded answer);
+    //null = HTTP (the checks give their own)
     public $transport = null;
 
-    //CLD: 2026-10-19T20:40:00+03:00: + $settings: the Assistant's settings (models\assistant\AssistantSettings, or an object with the same fields); default: those of the workflow's account (were
-    //the account's assistant_* fields)
-    //CLD: 2026-10-20T10:00:00+03:00: no $cred: the server and its key are the settings' (credentialOf); the provider is the settings'
+    //$settings: the Assistant's settings (models\assistant\AssistantSettings, or an object with the same fields; default: those of the workflow's account);
+    //the provider, the server and its key are the settings' (credentialOf)
     public function __construct($wf, $project, $settings = null) {
 	$this->wf = $wf;
 	$this->project = $project;
 	$this->readsData = AssistantSettings::readsData($wf->aid);
 	$settings = $settings ?? \V::app()->om->findOne('AssistantSettings', [ 'aid' => $wf->aid ]);
-	//CLD: 2026-10-22T14:00:00+03:00: System: the installation's server
+	//System: the installation's server
 	$settings = self::resolve($settings);
 
 	$this->provider = self::providerOf($settings);
 	$this->protocol = \data\AiProviders::DATA[$this->provider]['protocol'];
 	$this->cred = self::credentialOf($settings);
 	$this->prices = AssistantSettings::pricesOf($settings);
-	//CLD: 2026-10-19T16:05:12+03:00: OpenAI-compatible: the model ('' = the server's first, see turnOpenAI); effort is Claude's only
+	//OpenAI-compatible: the model ('' = the server's first, see turnOpenAI); effort is Claude's only
 	if ($this->protocol === 'openai') {
 	    $this->model = trim((string)($settings->model ?? ''));
 	    return;
 	}
 	$model = trim((string)($settings->model ?? ''));
 	$this->model = $model !== '' ? $model : \data\AiProviders::DEFAULT_MODEL;
-	//CLD: 2026-10-22T14:00:00+03:00: an unknown effort is the default (the API refuses it)
+	//an unknown effort is the default (the API refuses it)
 	$effort = (string)($settings->effort ?? '');
 	$this->effort = array_key_exists($effort, \data\AiProviders::EFFORT) ? $effort : \data\AiProviders::DEFAULT_EFFORT;
     }
 
-    //CLD: 2026-10-20T10:00:00+03:00: the server of the Assistant's settings $settings (provider, url, api_key) as a credential: baseUrl, httpAuth (Anthropic: x-api-key and
-    //anthropic-version, as models\credential\CredentialAnthropic; OpenAI-compatible: Bearer, when there is a key), provides (the provider). Was accountServer (OpenAI-compatible only)
-    //CLD: 2026-10-22T14:00:00+03:00: System: the installation's server (resolve); the headers by the provider's protocol (Gemini, Ollama, Lemonade: Bearer, as OpenAI)
+    //the server of the Assistant's settings $settings (provider, url, api_key; System: the installation's server, resolve) as a credential: baseUrl,
+    //httpAuth by the provider's protocol (Anthropic: x-api-key and anthropic-version, as models\credential\CredentialAnthropic; OpenAI-compatible: Bearer, when there is a key),
+    //provides (the provider)
     public static function credentialOf($settings) {
 	$settings = self::resolve($settings);
 	$provider = self::providerOf($settings);
@@ -125,15 +125,14 @@ class WorkflowAssistant {
 	};
     }
 
-    //CLD: 2026-10-20T10:00:00+03:00: whether the Assistant can work with $settings: a model was chosen (after a Connect, on the settings page)
-    //CLD: 2026-10-22T14:00:00+03:00: System: when the installation provides a server
+    //whether the Assistant can work with $settings: a model was chosen (after a Connect, on the settings page); System: when the installation provides a server
     public static function isReady($settings) {
 	if (self::providerOf($settings) === 'system')
 	    return AssistantSettings::systemAvailable();
 	return trim((string)($settings->model ?? '')) !== '';
     }
 
-    //CLD: 2026-10-22T14:00:00+03:00: new: $settings with the System provider replaced by the installation's server (AssistantSettings::system: its provider, URL, key, model, effort,
+    //$settings with the System provider replaced by the installation's server (AssistantSettings::system: its provider, URL, key, model, effort,
     //prices; the account's own fields are not used); others as they are. Fails when the installation provides none
     public static function resolve($settings) {
 	if (self::providerOf($settings) !== 'system')
@@ -144,9 +143,9 @@ class WorkflowAssistant {
 	return $system;
     }
 
-    //CLD: 2026-10-20T10:00:00+03:00: the models the server of $settings lists (Anthropic: GET /v1/models, OpenAI-compatible: GET /models): [ { id, label } ], in the server's
-    //order; \ErrorException when it cannot be reached or refuses the key. $transport: as the instances' (the checks)
-    //CLD: 2026-10-22T14:00:00+03:00: by the provider's protocol; Gemini's ids come as models/<id>: listed without the prefix (its chat completions take both)
+    //the models the server of $settings lists, by the provider's protocol (Anthropic: GET /v1/models, OpenAI-compatible: GET /models): [ { id, label } ], in the server's
+    //order; Gemini's ids come as models/<id>: listed without the prefix (its chat completions take both). \ErrorException when it cannot be reached or refuses the key.
+    //$transport: as the instances' (the checks)
     public static function models($settings, $transport = null) {
 	$settings = self::resolve($settings);
 	$provider = self::providerOf($settings);
@@ -170,19 +169,18 @@ class WorkflowAssistant {
 	return array_values($models);
     }
 
-    //CLD: 2026-10-19T16:24:37+03:00: the provider account $account chose (a missing or unknown value: the default)
-    //CLD: 2026-10-19T20:40:00+03:00: of the Assistant's settings $settings (models\assistant\AssistantSettings: provider)
+    //the provider of the Assistant's settings $settings (a missing or unknown value: the default)
     public static function providerOf($settings) {
 	$p = (string)($settings->provider ?? '');
 	return array_key_exists($p, AssistantSettings::providers()) ? $p : AssistantSettings::DEFAULT_PROVIDER;
     }
 
-    //CLD: 2026-10-22T14:00:00+03:00: who answers, in messages
+    //who answers, in messages
     private static function nameOf($provider) {
 	return \data\AiProviders::name($provider, 'The server');
     }
 
-    //CLD: 2026-10-22T14:00:00+03:00: the cost (USD) of $usage (tokens) at the prices; 0 when they are not known (the settings ask for them when there is a budget)
+    //the cost (USD) of $usage (tokens) at the prices; 0 when they are not known (the settings ask for them when there is a budget)
     private function costOf(array $usage) {
 	if ($this->prices === null)
 	    return 0.0;
@@ -191,7 +189,7 @@ class WorkflowAssistant {
 	    + (int)($usage['cache_read_input_tokens'] ?? 0) * $cacheRead + (int)($usage['cache_creation_input_tokens'] ?? 0) * $in * \util\AiPrices::CACHE_WRITE) / 1000000;
     }
 
-    //CLD: 2026-11-02T15:46:06+02:00: new: one question without tools or the Assistant's prompts (the judge of a test: util\AgentEval): the answer's text. cost, usage, credits: of this call. \ErrorException when it fails
+    //one question without tools or the Assistant's prompts (the judge of a test: util\AgentEval): the answer's text. cost, usage, credits: of this call. \ErrorException when it fails
     public function complete($system, $prompt) {
 	$this->usage = [ 'input_tokens' => 0, 'output_tokens' => 0, 'cache_read_input_tokens' => 0, 'cache_creation_input_tokens' => 0 ];
 	$this->cost = 0.0;
@@ -243,11 +241,10 @@ class WorkflowAssistant {
 	    . \util\JSON::encode($spec, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n```\n\n" . mb_substr($message, 0, self::MAX_TURN) ];
 
 	$tools = $this->tools();
-	//CLD: 2026-10-19T16:05:12+03:00: the provider's turns (turnAnthropic / turnOpenAI: the model's turn added to $messages, as the provider wants them) and tool results
-	//(addResults)
+	//the provider's turns (turnAnthropic / turnOpenAI: the model's turn added to $messages, as the provider wants them) and tool results (addResults)
 	if ($this->protocol === 'openai')
 	    array_unshift($messages, [ 'role' => 'system', 'content' => self::systemPrompt($this->readsData) . "\n\n" . self::stepTypesText() ]);
-	//CLD: 2026-10-22T14:00:00+03:00: $this->usage, $this->cost (also known when the request fails)
+	//$this->usage, $this->cost: also known when the request fails
 	$this->usage = [ 'input_tokens' => 0, 'output_tokens' => 0, 'cache_read_input_tokens' => 0, 'cache_creation_input_tokens' => 0 ];
 	$this->cost = 0.0;
 	$this->credits = 0.0;
@@ -255,8 +252,7 @@ class WorkflowAssistant {
 	$reply = '';
 	$reminders = 0;
 	for($round = 1; ; $round++) {
-	    //CLD: 2026-10-22T14:00:00+03:00: the budget is spent: no more turns (the last turn's tools ran: the canvas keeps what it built)
-	    //CLD: 2026-10-22T15:00:00+03:00: with credits: the credits reserved for it
+	    //the budget (with credits: the credits reserved for it) is spent: no more turns (the last turn's tools ran: the canvas keeps what it built)
 	    if ($round > 1 && $this->budget !== null && ($this->rates !== null ? $this->credits : $this->cost) >= $this->budget) {
 		$stopped = $this->rates !== null ? 'the credits reserved for this request are used up' : 'the monthly budget of the Assistant is spent';
 		$round--;
@@ -269,7 +265,7 @@ class WorkflowAssistant {
 		$this->usage[$k] += $n;
 	    $this->cost += $this->costOf($turn['usage']);
 	    if ($this->rates !== null)
-		//CLD: 2026-10-31T22:00:00+02:00: the System provider counts them (util\AssistantSystem)
+		//the System provider counts them (util\AssistantSystem)
 		$this->credits += AssistantSystem::provider()->credits($this->rates, $turn['usage']);
 	    if ($turn['text'] !== '')
 		$reply = $turn['text'];
@@ -280,7 +276,7 @@ class WorkflowAssistant {
 		throw new \ErrorException('the answer was cut off: ask for a smaller change');
 	    if ($turn['stop'] === 'pause')
 		continue;
-	    //CLD: 2026-10-19T17:14:20+03:00: the model stops while the canvas it built has connection errors (small models do, and say they fixed them): reminded, with the errors
+	    //the model stops while the canvas it built has connection errors (small models do, and say they fixed them): reminded, with the errors
 	    if (!$results && $this->changed && $reminders < self::MAX_REMINDERS && $round < self::MAX_ROUNDS) {
 		$this->wf->nodes = $this->nodes;
 		$errors = array_values(array_filter(\util\WorkflowSpec::problems($this->wf), fn($p) => $p['level'] === 'error'));
@@ -301,21 +297,21 @@ class WorkflowAssistant {
 	    $this->wf->nodes = $this->nodes;
 	    $problems = $this->wf->validateFlow();
 	}
-	//CLD: 2026-10-19T17:02:48+03:00: set_workflow refused every time: said, whatever the model's answer claims
+	//set_workflow refused every time: said, whatever the model's answer claims
 	if (!$this->changed && $this->lastError !== null)
 	    $reply = trim($reply . "\n\n(The canvas was not changed: " . $this->lastError . ')');
-	//CLD: 2026-10-22T14:00:00+03:00: stopped by the budget
+	//stopped by the budget
 	if ($stopped !== null)
 	    $reply = trim($reply . "\n\n(Stopped before finishing: {$stopped}" . ($this->changed ? '; the canvas has what was built so far' : '') . '.)');
 	return [
 	    'reply' => $reply !== '' ? $reply : ($this->changed ? 'Done: the canvas is updated.' : ''),
 	    'nodes' => $this->changed ? $this->nodes : null,
 	    'problems' => $problems,
-	    //CLD: 2026-10-19T17:02:48+03:00: the settings the person still has to fill in or correct (step title: message)
+	    //the settings the person still has to fill in or correct (step title: message)
 	    'to_fix' => $this->changed ? $this->toFix : [],
 	    'rounds' => $round,
 	    'usage' => $this->usage,
-	    //CLD: 2026-10-22T14:00:00+03:00: the cost of this request (USD), and why it stopped early (null: it finished)
+	    //the cost of this request (USD), and why it stopped early (null: it finished)
 	    'cost' => round($this->cost, 6),
 	    'stopped' => $stopped,
 	];
@@ -347,9 +343,8 @@ class WorkflowAssistant {
 	return $messages;
     }
 
-    //the rules and the step types (the same for every request of the project: cached)
-    //CLD: 2026-10-23T23:30:00+03:00: + the project tools that change things at once (all tools are offered), and set_workflow for the canvas
-    //CLD: 2026-11-01T02:00:00+02:00: + $readsData: false: what the Assistant may not do (the account lets it read the structure only)
+    //the rules (the project tools change things at once, the canvas only with set_workflow; $readsData false: what the Assistant may not do, the account
+    //lets it read the structure only); the step types are sent with them (the same for every request of the project: cached)
     private static function systemPrompt($readsData = true) {
 	return self::basePrompt() . ($readsData ? '' : "\n\n" . <<<'TXT'
 Privacy: this account lets you see the project's structure only. Your project tools show data tables and their columns, workflows, step types, file names and variable names, and let you build with them; you cannot read or change rows, read files or images, run workflows or see executions, and you do not see the variables' values. Never guess or invent data: when a request needs it, say that the account's owners allow it in the Assistant settings, or build the workflow so that it reads the data when it runs.
@@ -395,22 +390,21 @@ TXT;
 	    ], 'required' => [ 'steps', 'connections' ] ],
 	] ];
 	foreach(\util\MCPTools::all() as $t) {
-	    //CLD: 2026-10-23T23:30:00+03:00: every tool; a plugin's set_workflow would clash with the Assistant's own
-	    //CLD: 2026-11-01T02:00:00+02:00: the structure tools only, unless the account lets it read data (a plugin's tools then too: what they read is not known)
+	    //every tool (the structure tools only, unless the account lets it read data: a plugin's tools then too, what they read is not known);
+	    //a plugin's set_workflow would clash with the Assistant's own
 	    if ($t['name'] !== 'set_workflow' && $this->allowed($t['name']))
 		$tools[] = [ 'name' => $t['name'], 'description' => mb_substr($t['description'], 0, 1000), 'input_schema' => $t['inputSchema'] ];
 	}
 	return $tools;
     }
 
-    //CLD: 2026-11-01T02:00:00+02:00: whether the Assistant may use project tool $name: any when the account lets it read data, else the structure tools
+    //whether the Assistant may use project tool $name: any when the account lets it read data, else the structure tools
     public function allowed($name) {
 	return $this->readsData || in_array($name, \util\McpServerTools::STRUCTURE_TOOLS, true);
     }
 
-    //call $id of tool $name: [ id, text, isError ]
-    //CLD: 2026-10-19T16:05:12+03:00: the result as [ id, text, isError ] (addResults makes the provider's message); $args null: not JSON
-    //CLD: 2026-10-23T23:30:00+03:00: + images: [ id, text, isError, images: [ [ mimeType, data (base64) ] ] ] (a tool such as read_image)
+    //call $id of tool $name ($args null: not JSON): [ id, text, isError, images: [ [ mimeType, data (base64) ] ] (a tool such as read_image) ];
+    //addResults makes the provider's message
     private function runTool($id, $name, $args) {
 	$images = [];
 	try {
@@ -418,10 +412,10 @@ TXT;
 		throw new \ErrorException('the arguments are not a JSON object: send them again');
 	    if ($name === 'set_workflow')
 		$result = $this->setWorkflow($args);
-	    //CLD: 2026-10-23T23:30:00+03:00: the workflow on the canvas is changed with set_workflow (update_workflow would save its draft behind the designer's back)
+	    //the workflow on the canvas is changed with set_workflow (update_workflow would save its draft behind the designer's back)
 	    elseif ($name === 'update_workflow' && in_array(trim((string)($args['workflow'] ?? '')), [ (string)$this->wf->_id, (string)$this->wf->name ], true))
 		throw new \ErrorException('this is the workflow on the canvas: change it with set_workflow');
-	    //CLD: 2026-11-01T02:00:00+02:00: a project tool (util\MCPTools), as the user, with the images of its result; a tool the account does not let it use (structure only)
+	    //a project tool (util\MCPTools), as the user, with the images of its result; a tool the account does not let it use (structure only)
 	    //is refused; a structure tool's result without the data (McpServerTools::structureOnly)
 	    elseif (!$this->allowed($name))
 		throw new \ErrorException("`{$name}` reads the project's data, which this account does not let the Assistant read (Assistant settings)");
@@ -437,7 +431,7 @@ TXT;
 	} catch (\ErrorException $e) {
 	    $text = $e->getMessage();
 	    $isError = true;
-	    //CLD: 2026-10-19T17:02:48+03:00: kept for the answer when nothing gets applied
+	    //kept for the answer when nothing gets applied
 	    if ($name === 'set_workflow')
 		$this->lastError = $text;
 	}
@@ -446,8 +440,8 @@ TXT;
 	return [ $id, $text === '' ? '(empty)' : $text, $isError, $images ];
     }
 
-    //CLD: 2026-10-19T16:05:12+03:00: the results of the calls of one turn added to $messages: Anthropic, one user turn of tool_result blocks; OpenAI, one `tool` message per call
-    //CLD: 2026-10-23T23:30:00+03:00: + the images of the results: OpenAI, in one user message after the tool messages; Anthropic, image blocks in the tool_result
+    //the results of the calls of one turn added to $messages: Anthropic, one user turn of tool_result blocks (their images as image blocks in them);
+    //OpenAI, one `tool` message per call, then the images in one user message
     private function addResults(array &$messages, array $results) {
 	if ($this->protocol === 'openai') {
 	    $images = [];
@@ -475,10 +469,9 @@ TXT;
 	}, $results) ];
     }
 
-    //set_workflow: the new steps, checked as when saving; kept for the designer when valid
-    //CLD: 2026-10-19T17:02:48+03:00: kept also when settings are wrong (was refused: a setting only the person can give, e.g. a data table that does not exist yet, refused the
-    //whole canvas, and models then said they had built it): the wrong settings are returned (to_fix) for the model to correct, else for the person; only steps that cannot be
-    //built at all (WorkflowSpec::nodesFrom: unknown type, missing step, ...) are refused
+    //set_workflow: the new steps, checked as when saving, kept for the designer also when settings are wrong (a setting only the person can give, e.g. a data table
+    //that does not exist yet, must not refuse the whole canvas): the wrong settings are returned (to_fix) for the model to correct, else for the person;
+    //only steps that cannot be built at all (WorkflowSpec::nodesFrom: unknown type, missing step, ...) are refused
     public function setWorkflow(array $args) {
 	foreach([ 'steps', 'connections' ] as $key) {
 	    if (!is_array($args[$key] ?? null) || ($args[$key] && !array_is_list($args[$key])))
@@ -507,16 +500,15 @@ TXT;
     // ------------------------------------------------------------------------------------
     //the API
 
-    //CLD: 2026-10-19T16:05:12+03:00: the step types for the system prompt
+    //the step types for the system prompt
     private static function stepTypesText() {
 	return "The step types (type, settings, outputs, variables):\n" . \util\JSON::encode(\util\WorkflowSpec::stepTypes(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
     //one turn of Claude, added to $messages: { text, calls: [ [ id, name, args ] ], stop: tool_use | end | pause | cut, usage }
-    //CLD: 2026-10-19T16:05:12+03:00: was call() (the answer itself) and the reading of it in ask()
     private function turnAnthropic(array &$messages, array $tools) {
 	$body = [
-	    //CLD: 2026-10-19T15:48:10+03:00: the account's model and effort
+	    //the account's model and effort
 	    'model' => $this->model,
 	    'max_tokens' => self::MAX_TOKENS,
 	    'system' => [
@@ -561,7 +553,7 @@ TXT;
 	    'stop' => [ 'max_tokens' => 'cut', 'pause_turn' => 'pause', 'tool_use' => 'tool_use' ][$stop] ?? 'end' ];
     }
 
-    //CLD: 2026-10-19T16:05:12+03:00: one turn of an OpenAI-compatible model (as turnAnthropic). No max_tokens: the server's own limit (local models have small contexts); reasoning
+    //one turn of an OpenAI-compatible model (as turnAnthropic). No max_tokens: the server's own limit (local models have small contexts); reasoning
     //between <think> tags is left out of the answer (as NodeAppOpenAI)
     private function turnOpenAI(array &$messages, array $tools) {
 	if ($this->model === '')
@@ -593,26 +585,23 @@ TXT;
 	    'stop' => $calls ? 'tool_use' : ($finish === 'length' ? 'cut' : 'end') ];
     }
 
-    //CLD: 2026-10-19T16:05:12+03:00: no model in the account settings: the first one the server lists (GET <base URL>/models)
+    //no model in the account settings: the first one the server lists (GET <base URL>/models)
     private function serverModel() {
 	$r = json_decode(\util\JSON::encode($this->request('/models', $this->cred->httpAuth()['headers'], null)), true);
 	$id = is_array($r['data'][0] ?? null) ? trim((string)($r['data'][0]['id'] ?? '')) : '';
 	if ($id === '')
-	    //CLD: 2026-10-19T20:40:00+03:00: Assistant settings
 	    throw new \ErrorException('the server lists no model: choose one in Assistant settings (Settings menu)');
 	return $id;
     }
 
-    //CLD: 2026-10-19T16:05:12+03:00: a call to the credential's API ($body null: GET): the decoded answer (objects)
+    //a call to the credential's API ($body null: GET): the decoded answer (objects)
     private function request($path, array $headers, $body) {
 	if ($this->transport !== null)
 	    return ($this->transport)($headers, $body, $path);
-	//CLD: 2026-10-20T10:00:00+03:00: http() (static: also for models())
-	//CLD: 2026-10-22T14:00:00+03:00: the provider's name (nameOf)
 	return self::http(rtrim((string)$this->cred->baseUrl, '/') . $path, $headers, $body, self::nameOf($this->provider));
     }
 
-    //CLD: 2026-10-23T15:00:00+03:00: through util\Http; $body null: GET (the server's models); $name: who answers, in messages; $timeout (s)
+    //$body null: GET (the server's models); $name: who answers, in messages; $timeout (s)
     private static function http($url, array $headers, ?array $body, $name, $timeout = self::TIMEOUT) {
 	$o = [ 'headers' => $headers + [ 'Content-Type' => 'application/json', 'Accept' => 'application/json' ], 'timeout' => $timeout, 'maxBytes' => self::MAX_RESPONSE ];
 	if ($body !== null)
@@ -620,7 +609,7 @@ TXT;
 	$r = \util\Http::request($body !== null ? 'POST' : 'GET', $url, $o);
 	if ($r['tooLarge'])
 	    throw new \ErrorException('the answer is too large');
-	//CLD: 2026-10-19T16:05:12+03:00: the provider's name in messages; the OpenAI-compatible servers' error shapes ({ error: { message } }, { error: text }, { message })
+	//the OpenAI-compatible servers' error shapes: { error: { message } }, { error: text }, { message }
 	if ($r['error'] !== null)
 	    throw new \ErrorException("no answer from " . \util\Http::shown($url) . ": {$r['error']}");
 	$status = $r['status'];
@@ -630,7 +619,6 @@ TXT;
 	    throw new \ErrorException("{$name} answered HTTP status {$status}" . (is_string($m) && $m !== '' ? ': ' . mb_substr($m, 0, 500) : ''));
 	}
 	if (!is_object($data))
-	    //CLD: 2026-10-20T10:00:00+03:00: the Server URL of the settings
 	    throw new \ErrorException("{$name} did not answer JSON (is the Server URL in Assistant settings right?)");
 	return $data;
     }

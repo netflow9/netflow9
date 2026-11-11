@@ -1,8 +1,10 @@
 <?php
 
-//CLD: 2026-10-21T10:00:00+03:00: new: the LDAP client through PHP's ldap extension (libldap; LdapClient::open picks it when the extension is loaded). The TLS options are set
-//on the connection (LDAP_OPT_X_TLS_NEWCTX: its own TLS context, so a CA file or "do not check" of one server does not change another's); referrals are not followed
-//(Active Directory answers searches at a domain's root with references to its other partitions: followed, they would bind there anonymously)
+/*
+    the LDAP client through PHP's ldap extension (libldap; LdapClient::open picks it when the extension is loaded). The TLS options are set
+    on the connection (LDAP_OPT_X_TLS_NEWCTX: its own TLS context, so a CA file or "do not check" of one server does not change another's); referrals are not followed
+    (Active Directory answers searches at a domain's root with references to its other partitions: followed, they would bind there anonymously)
+*/
 
 namespace util;
 

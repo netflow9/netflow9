@@ -14,7 +14,7 @@
 
 	    <h5 class='mb-3 text-center'><?=\V::t('Enter 2FA Code')?></h5>
 
-	    <?php //CLD: 2026-10-21T18:00:00+03:00: a wrong code or a lock (SiteController::tfa) ?>
+	    <?php //a wrong code or a lock (SiteController::tfa) ?>
 	    <?php if (!empty($error)): ?>
 	    <div class="alert alert-danger"><?= \V::app()->html->escape($error) ?> <a href="<?= \V::app()->createUrl('/site/login') ?>"><?= \V::t('Sign in') ?></a></div>
 	    <?php endif; ?>

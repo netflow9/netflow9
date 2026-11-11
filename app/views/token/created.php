@@ -1,9 +1,8 @@
 <?php
-//CLD: 2026-10-12T21:51:51+03:00: new view: the token just made, shown once (modal), with the server URL and a client configuration to copy
-//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
+//the token just made, shown once (modal), with the server URL (absolute: V::createAbsoluteUrl, app.env BASE_URL, always https://) and a client configuration to copy
 $url = \V::app()->createAbsoluteUrl('/mcp');
 $config = json_encode([ 'mcpServers' => [ 'rail22' => [ 'type' => 'http', 'url' => $url, 'headers' => [ 'Authorization' => 'Bearer ' . $secret ] ] ] ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-//CLD: 2026-11-07T01:19:27+02:00: the copy button of element {:id}
+//the copy button of element {:id}
 $copyTpl = "<button type='button' class='btn btn-sm btn-outline-secondary' onclick=\"navigator.clipboard.writeText(document.getElementById('{:id}').textContent); this.innerHTML='<i class=\\'bi bi-check2\\'></i>'\" title='Copy'><i class='bi bi-clipboard'></i></button>";
 
 $bodyTpl = '

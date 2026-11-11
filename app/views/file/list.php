@@ -9,7 +9,7 @@ if (\V::app()->user->can('File::create')) {
 	\V::app()->createUrl('/file/upload'),
 	[ 'id' => 'btn-upload', 'class' => 'btn btn-primary btn-sm', 'escape' => false ]
     );
-    //CLD: 2026-10-06T21:33:37+03:00: allowed file types (".png,.jpg,..."); also filters dropped files (app.FileUpload checks `accept`)
+    //allowed file types (".png,.jpg,..."); also filters dropped files (app.FileUpload checks `accept`)
     $createBtn .= '<input id="file-input" type="file" hidden multiple accept="' . implode(',', array_map(fn($ext) => '.' . $ext, array_keys(\models\File::$extensions))) . '">';
 }
 
@@ -38,7 +38,7 @@ $script = "
 	grid: {
 	    createRowUrl: false,
 	    rowActions: {
-		//CLD: 2026-10-06T21:29:27+03:00: view page (image preview, download) instead of the non-existing /file/update
+		//the view page (image preview, download)
 		view: `<a href='/file/view/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='View'><i class='bi bi-eye'></i></a>`,
 		delete: `<a href='/file/delete/{{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' data-confirm='Are you sure?' data-method='post'><i class='bi bi-trash'></i></a>`,
 	    }

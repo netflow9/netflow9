@@ -17,13 +17,13 @@ class FormController extends \sys\BaseController {
 	if (\V::app()->user->isGuest)
 	    $this->redirect(\V::app()->user->getLoginUrl());
 	$account = \V::app()->config('rt.account');
-	//CLD: 2026-10-17T20:21:12+03:00: the forms of every project of the account the user may open: public ones, and members ones of
+	//the forms of every project of the account the user may open: public ones, and members ones of
 	//the projects the user is a member of (as FormController::open)
 	$aid = $account->_id ?? null;
 	$forms = [];
 	$projects = [];
 	$member = [];
-	//CLD: 2026-10-15T11:54:00+03:00: the token index is TriggerToken
+	//the token index is TriggerToken
 	foreach(\V::app()->om->find('TriggerToken', [ 'aid' => $aid, 'type' => 'trigger::form' ], [ 'sort' => [ 'title' => 1 ] ]) as $link) {
 	    $pid = (string)$link->project;
 	    if (!array_key_exists($pid, $member))
@@ -46,7 +46,7 @@ class FormController extends \sys\BaseController {
 
 
 	//the published step of the token
-	//CLD: 2026-10-21T20:10:00+03:00: the link's token (TriggerToken) may be of another account than a signed-in user's: looked up across the accounts (ObjectManager
+	//the link's token (TriggerToken) may be of another account than a signed-in user's: looked up across the accounts (ObjectManager
 	//account guard)
 	[ $link, $wf ] = \V::app()->om->acrossAccounts(function() use ($token) {
 	    $link = \models\TriggerToken::isToken($token, 'hex') ? \V::app()->om->findOne('TriggerToken', [ 'type' => 'trigger::form', 'token' => $token ]) : null;
@@ -77,7 +77,7 @@ class FormController extends \sys\BaseController {
 	    if ((string)(\V::app()->config('rt.account')->_id ?? '') !== (string)$link->aid || !\models\Project::isMember($link->project, $link->aid, \V::app()->user->_id))
 		$this->fail(403, 'This form is for the members of its project.');
 	}
-	//CLD: 2026-10-21T20:10:00+03:00: also for a signed-in user of another account (a public form: the members-only ones were refused above): the form runs in its own account
+	//also for a signed-in user of another account (a public form: the members-only ones were refused above): the form runs in its own account
 	if ($guest || (string)(\V::app()->config('rt.account')->_id ?? '') !== (string)$link->aid)
 	    \V::app()->var('rt.account', \V::app()->om->findById('Account', $link->aid));
 	if ($wf->status !== \models\Workflow::PUBLISHED)
@@ -105,13 +105,13 @@ class FormController extends \sys\BaseController {
 	$exe = \models\wf\WfExecution::startFor($live, 'form', [ 'form' => $token, 'user' => $user['id'] ?? null, 'received_at' => new \MongoDB\BSON\UTCDateTime(),
 	    'vars' => [ $variable => $answers, $variable . '_user' => $user ] ], $link->node);
 	$exe->log($link->node, 'form sent' . ($user ? ' by ' . $user['name'] : ''));
-	//CLD: 2026-10-30T15:00:00+02:00: queued for the daemon (saved)
+	//queued for the daemon (saved)
 	$exe->queue();
 
 	$resp->sendJSON([ 'ok' => true, 'message' => (string)($cfg['message'] ?? 'Thank you, your answers were sent.') ]);
     }
 
-    //CLD: 2026-11-07T01:04:46+02:00: refused with $status: a JSON answer to the form's post, else the error page
+    //refused with $status: a JSON answer to the form's post, else the error page
     private function fail($status, $message) {
 	if (\V::app()->request->is('post'))
 	    \V::app()->response->sendJSON([ 'ok' => false, 'error' => $message ], true, $status);

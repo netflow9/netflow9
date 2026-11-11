@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T16:00:00+02:00: new trigger: Hyper-V VM state - starts the workflow when a VM of a Hyper-V host stops running (or on any change of its state), or when its replication
+    Hyper-V VM state - starts the workflow when a VM of a Hyper-V host stops running (or on any change of its state), or when its replication
     health turns Warning or Critical; optionally also when it recovers (running again, replication Normal). Hyper-V calls no webhook: the step reads the VMs on its schedule
     (models\wf\WfSchedule, every 2 minutes by default; util\Scheduler runs runScheduled; PowerShell over WinRM) and compares them with the last check's (models\TriggerState: VM ID =>
     { name, state, health, firedState, firedHealth }). Passing states (Starting, Stopping, Saving, ...) are not changes: the state before stays until a settled one is read. The first
@@ -231,7 +231,7 @@ PS, [ 'names' => $names ]);
 	return [ [ 'started' => true, 'vms' => (object)$now ], $started ];
     }
 
-    //CLD: 2026-11-07T01:11:11+02:00: an event of VM $v (id $id): $type, from $from to $to, with its state, replication health and the time of the check
+    //an event of VM $v (id $id): $type, from $from to $to, with its state, replication health and the time of the check
     private static function vmEvent($type, $from, $to, $v, $id, $state, $health, $time) {
 	return [ 'event' => $type, 'vm' => [ 'name' => (string)$v['name'], 'id' => $id ], 'from' => $from, 'to' => $to, 'state' => $state,
 	    'replicationHealth' => $health, 'time' => $time ];

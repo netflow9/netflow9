@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T04:00:00+02:00: new step: Veeam Sessions - the job sessions (runs) of a Veeam Backup & Replication server. Operations (setting `operation`):
+    Veeam Sessions - the job sessions (runs) of a Veeam Backup & Replication server. Operations (setting `operation`):
 	list      the sessions (GET /api/v1/sessions; newest first): of a job, with these results, of this state, created since; all pages up to At most
 	get       one session (GET /api/v1/sessions/{id}): state, progress, result { result, message, isCanceled }
 	tasks     its task sessions: one per machine (GET .../taskSessions)
@@ -27,7 +27,7 @@ class NodeAppVeeamSessions extends NodeAppVeeam {
 	'stop' => 'Stop a session',
 	'wait' => 'Wait for a session to finish',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'stop' ];
     const LISTS = [ 'list', 'tasks' ];
     const RESULTS = [ 'Success' => 'Success', 'Warning' => 'Warning', 'Failed' => 'Failed', 'None' => 'None (still running)' ];

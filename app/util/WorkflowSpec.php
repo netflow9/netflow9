@@ -1,14 +1,21 @@
 <?php
 
 /*
-    a workflow as a compact spec, for agents (MCP tools list_step_types / get_workflow / create_workflow / update_workflow; later the
-//designer's Assistant) - and back:
-//  steps:       [ { id, type (fqname, e.g. app::set), title, config, parent (a loop's id) } ]
-//  connections: [ { from, to, output (the output's label, e.g. true / otherwise / error, or its number; default 0), input (default 0) } ]
-//The designer's data is made from it: ids checked, unknown types refused, connections resolved to output numbers (+ `branch` = the label, as the designer), positions laid
-//out left to right (each level of a loop inside it, the loop sized around its steps); a step whose id is already in the workflow keeps its position and its server-set
-//values (initConfig keys, e.g. the webhook token); new steps get initConfig() values (an agent cannot set them). Settings are checked by Workflow::validates, as when
-//saving in the designer
+    a workflow as a compact spec, for agents - and back: the MCP tools (util\McpServerTools: list_step_types, get_workflow, create_workflow, update_workflow)
+	and the designer's Assistant (util\WorkflowAssistant).
+	steps:       [ { id, type (fqname, e.g. app::set), title, config, parent (a loop's id) } ]
+	connections: [ { from, to, output (the output's label, e.g. true / otherwise / error, or its number; default 0), input (default 0) } ]
+
+	stepTypes()                                         the step types an agent may use
+	toSpec($wf)                                         the draft of $wf as a spec
+	nodesFrom($steps, $connections, $old, $relayout)    the designer's data (`nodes`) from a spec
+	problems($wf)                                       the connection problems (Workflow::validateFlow)
+	schema()                                            the JSON schema of steps and connections (the tools' input)
+
+    nodesFrom: ids checked, unknown types refused, connections resolved to output numbers (+ `branch` = the label, as the designer), positions laid
+	out left to right (each level of a loop inside it, the loop sized around its steps); a step whose id is already in the workflow keeps its position and its
+	server-set values (initConfig keys, e.g. the webhook token); new steps get initConfig() values (an agent cannot set them). Settings are checked by
+	Workflow::validates, as when saving in the designer.
 */
 
 namespace util;
@@ -67,14 +74,14 @@ class WorkflowSpec {
 	if (($f['type'] ?? '') === 'editgrid') {
 	    $s['type'] = 'rows';
 	    $s['row'] = array_map([ self::class, 'setting' ], (array)($f['components'] ?? []));
-	//CLD: 2026-10-18T10:20:00+03:00: one nested object (app.smartform `nested`, sys\fields\Field_nested): its fields
+	//one nested object (app.smartform `nested`, sys\fields\Field_nested): its fields
 	} elseif (($f['type'] ?? '') === 'nested') {
 	    $s['type'] = 'object';
 	    $s['fields'] = array_map([ self::class, 'setting' ], (array)($f['components'] ?? []));
 	} elseif (!empty($f['multiple'])) {
 	    $s['type'] = 'list';
 	}
-	//CLD: 2026-10-22T01:58:24+03:00: a select that takes typed values too (allowCustom, e.g. the AI steps' Model): text for agents (its choices are the designer's, by credential)
+	//a select that takes typed values too (allowCustom, e.g. the AI steps' Model): text for agents (its choices are the designer's, by credential)
 	if (!empty($f['allowCustom']) && $s['type'] === 'select')
 	    $s['type'] = 'text';
 	if (!empty($f['required']))
@@ -89,14 +96,14 @@ class WorkflowSpec {
 	    $s['syntax'] = 'variable name';
 	if (!empty($f['helpText']))
 	    $s['help'] = (string)$f['helpText'];
-	//CLD: 2026-10-19T17:02:48+03:00: an email built with the email designer (models\EmailBlocks): its shape, so agents can write one (they could not: "add at least one block")
+	//an email built with the email designer (models\EmailBlocks): its shape, so agents can write one (they could not: "add at least one block")
 	if (($f['type'] ?? '') === 'emaildesigner')
-	    //CLD: 2026-10-23T01:10:00+03:00: + {{ markdown2html(...) }} (an AI step's answer formatted)
+	    //{{ markdown2html(...) }} (an AI step's answer formatted)
 	    $s['format'] = '{ preheader: "", blocks: [ { type: "html", html: "<p>text with {{ expressions }}</p>" } ] }: at least one block; html blocks take p, br, strong, em, u, h1-h3, ul / ol / li, a href; '
 		. 'values in {{ }} are shown as plain text; an AI step\'s answer is shown formatted with {{ ai.html }} (a field named html, alone in its {{ }}: its HTML cleaned) or '
 		. '{{ markdown2html(ai.text) }} (any Markdown text), e.g. <p>{{ ai.html }}</p>; '
 		. 'image blocks: { type: "image", file: <image file id (list_files)>, alt, width (px, at most ' . \models\EmailBlocks::WIDTH . '), align (left / center / right), href }';
-	//CLD: 2026-10-14T20:17:14+03:00: + required_if; a condition { key, operator, value } as it is (util\Conditions' operators)
+	//required_if; a condition { key, operator, value } as it is (util\Conditions' operators)
 	foreach([ 'showIf' => 'shown_if', 'hideIf' => 'hidden_if', 'requiredIf' => 'required_if' ] as $k => $name) {
 	    if (!empty($f[$k]))
 		$s[$name] = $f[$k];
@@ -197,7 +204,7 @@ class WorkflowSpec {
 		continue;
 	    if (!isset($nodes[$parent]) || empty($defs[$nodes[$parent]['fqname']]['isContainer']))
 		throw new \ErrorException("step `{$id}`: parent `{$parent}` is not a loop of this workflow");
-	    //CLD: 2026-10-14T21:17:55+03:00: a loop cannot be inside another loop (Workflow::validateFlow); so no loops containing each other
+	    //a loop cannot be inside another loop (Workflow::validateFlow); so no loops containing each other
 	    if (!empty($defs[$n['fqname']]['isContainer']))
 		throw new \ErrorException("step `{$id}`: a loop cannot be inside another loop");
 	    $n['parentId'] = $parent;
@@ -248,7 +255,7 @@ class WorkflowSpec {
 	self::place($nodes, $edges, $defs, $preds, null, 0, 0);
 
 	//loops grown around their steps
-	//CLD: 2026-10-14T21:17:55+03:00: in any order (one level: a loop cannot be inside another loop)
+	//in any order (one level: a loop cannot be inside another loop)
 	foreach(array_keys($nodes) as $id) {
 	    $parent = $nodes[$id]['parentId'];
 	    if ($parent === null)
@@ -259,12 +266,12 @@ class WorkflowSpec {
 	}
     }
 
-    //CLD: 2026-11-07T01:17:08+02:00: the ids of the steps of level $parent (null: the top; else a loop's)
+    //the ids of the steps of level $parent (null: the top; else a loop's)
     private static function levelOf(array $nodes, $parent) {
 	return array_keys(array_filter($nodes, fn($n) => $n['parentId'] === $parent));
     }
 
-    //CLD: 2026-11-07T01:17:08+02:00: whether step $id is a loop (a container)
+    //whether step $id is a loop (a container)
     private static function isLoop(array $nodes, array $defs, $id) {
 	return !empty($defs[$nodes[$id]['fqname']]['isContainer']);
     }
@@ -320,7 +327,7 @@ class WorkflowSpec {
     return [ $pos, $maxX, $maxY ];
     }
 
-    //CLD: 2026-11-07T01:17:08+02:00: whether geometry $g overlaps a placed step of $ids
+    //whether geometry $g overlaps a placed step of $ids
     private static function overlaps(array $nodes, $g, $ids) {
     foreach($ids as $o) {
 	$h = $nodes[$o]['geometry'];
@@ -368,6 +375,7 @@ class WorkflowSpec {
     }
     }
 
+    //the JSON schema properties `steps` and `connections`, for the input schemas of the tools that take a spec (create_workflow, update_workflow, set_workflow)
     public static function schema() {
 	return [
 	    'steps' => [

@@ -7,23 +7,20 @@ $this->pageTitle = $label;
 $sf = \util\WidgetsUtil::getSchema($log);
 $schema = $sf['schema'];
 unset($schema['updated_at']);
-//CLD: 2026-10-11T20:21:05+03:00: a project's log: every entry is of that project, no Project column
+//a project's log: every entry is of that project, no Project column
 if (!$system)
     unset($schema['project']);
 if (isset($schema['created_at']))
     $schema['created_at']['label'] = 'When';
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $schema = \util\JSON::encode($schema);
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $filter = \util\JSON::encode($sf['filter']);
 
-//CLD: 2026-10-21T00:55:00+03:00: the grid's data: list?data=1 with this log's query string
-//CLD: 2026-11-02T10:00:00+02:00: $qData: with the agents' filter
+//the grid's data: list?data=1 with this log's query string ($qData: with the agents' filter)
 $dataUrl = '/audit/list' . ($qData === '' ? '?data=1' : "{$qData}&data=1");
 
 $title = $system ? $label : $label . ': ' . \V::app()->html->escape((string)\V::app()->om->findById('Project', \V::app()->user->crtProject));
 
-//CLD: 2026-11-02T10:00:00+02:00: the audit log: all of it, or only the agents' tool calls
+//the audit log: all of it, or only the agents' tool calls
 $agentLink = '';
 if ($log == 'AuditLog')
     $agentLink = \util\VString::insert('<a class=\'btn btn-sm {:cls} ms-3\' href=\'{:href}\'><i class=\'bi bi-robot me-1\'></i>Agent actions</a>', [

@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-16T13:20:28+03:00: new view: "forgot username or password" (SiteController::forgot): the email; once sent, "check your inbox" (the same whether or not the address has an account)
+//"forgot username or password" (SiteController::forgot): the email; once sent, "check your inbox" (the same whether or not the address has an account)
 $this->pageTitle = \V::t('Forgot username or password');
 ?>
 

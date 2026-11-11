@@ -40,7 +40,7 @@ class HookController extends \sys\APIController {
 	$this->requireRunnable($wf, $live);
 
 	//start: the request is kept as JSON text (any keys allowed)
-	//CLD: 2026-10-17T10:46:42+03:00: the whole request goes into one variable, an object named by the step's `variable` setting (default `webhook`)
+	//the whole request goes into one variable, an object named by the step's `variable` setting (default `webhook`)
 	$query = $req->query;
 	$name = (string)($cfg['variable'] ?? 'webhook');
 	if (!\util\Validator::isIdentifier($name))
@@ -69,7 +69,7 @@ class HookController extends \sys\APIController {
 	    'vars' => $vars,
 	];
 
-	//CLD: 2026-10-30T15:00:00+02:00: the published version (records its number), started at this webhook step only; always run by the daemon (queued); answered with
+	//the published version (records its number), started at this webhook step only; always run by the daemon (queued); answered with
 	//its result: waits for it (WfExecution::waitFor, at most WAIT_RESULT s)
 	$respWhenFinished = ($cfg['respond'] ?? 'received') === 'finished';
 
@@ -78,7 +78,7 @@ class HookController extends \sys\APIController {
 	$exe->queue();
 
 	if ($respWhenFinished) {
-	    //CLD: 2026-10-26T09:58:28+02:00: still running: the daemon finishes it, no result to answer with
+	    //still running: the daemon finishes it, no result to answer with
 	    if ($exe->waitFor(\models\wf\WfExecution::WAIT_RESULT) === 'queued')
 		$resp->sendJSON([ 'execution' => (string)$exe->_id, 'state' => 'queued' ], true, 202);
 	    $answer = [ 'execution' => (string)$exe->_id, 'state' => $exe->state ];
@@ -91,7 +91,7 @@ class HookController extends \sys\APIController {
 	$resp->sendJSON([ 'execution' => (string)$exe->_id, 'state' => 'accepted' ], true, 202);
     }
 
-    //CLD: 2026-10-07T11:36:11+03:00: request authentication of the node (none / header / bearer / basic / hmac); replies 401 when it fails;
+    //request authentication of the node (none / header / bearer / basic / hmac); replies 401 when it fails;
     //fails closed: a mode without its secret refuses every request
     private function authenticate($req, array $cfg) {
 	$mode = $cfg['auth'] ?? 'none';

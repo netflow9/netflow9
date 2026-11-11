@@ -29,7 +29,7 @@
 		'bare' => true,
 	    ]);
 
-	    //CLD: 2026-10-05T20:02:30+03:00: enabled: "remember me" now selects a persistent session
+	    //"remember me" selects a persistent session
 	    echo \V::app()->form->field('rememberme', [
 		'type' => 'checkbox',
 		'label' => \V::t('Remember me'),

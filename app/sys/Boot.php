@@ -4,10 +4,10 @@ namespace sys;
 
 class Boot {
 
-    //CLD: 2026-10-21T16:30:00+03:00: the signed-in user as stored now (read again at each request by after_user_login)
+    //the signed-in user as stored (read again at each request by after_user_login)
     public $user = null;
 
-    //CLD: 2026-10-21T16:30:00+03:00: what a user who must set up 2FA (the account's "Enforce MFA") can still open: the profile (its Activate button), the 2FA activation, sign out
+    //what a user who must set up 2FA (the account's "Enforce MFA") can still open: the profile (its Activate button), the 2FA activation, sign out
     const MFA_SETUP_ROUTES = [ 'user/profile', 'user/tfa_activate', 'site/logout', 'site/tfa' ];
 
     public function __construct() {
@@ -45,10 +45,10 @@ class Boot {
 
 	//the Assistant's conversation goes with its workflow
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\assistant\AssistantChat::class, 'beforeWorkflowDelete' ]);
-	//CLD: 2026-11-02T18:00:00+02:00: the conversations with an agent go with its workflow; a run that stops ends its turn
+	//the conversations with an agent go with its workflow; a run that stops ends its turn
 	\V::app()->hooks->addHook('workflow:before-delete', [ \models\agent\AgentConversation::class, 'beforeWorkflowDelete' ]);
 	\V::app()->hooks->addHook('execution:stopped', [ \models\agent\AgentConversation::class, 'afterRun' ]);
-	//CLD: 2026-11-08T12:00:00+02:00: an execution's AI step traces go with it; CLD: 2026-11-08T12:10:00+02:00: and the conversation it answers is freed
+	//an execution's AI step traces go with it; and the conversation it answers is freed
 	\V::app()->hooks->addHook('execution:before-delete', [ \models\agent\AgentTrace::class, 'dropFor' ]);
 	\V::app()->hooks->addHook('execution:before-delete', [ \models\agent\AgentConversation::class, 'beforeExecutionDelete' ]);
 
@@ -129,7 +129,7 @@ class Boot {
 	\V::app()->router->add_rule('fortigate/<id:[a-f0-9]{32}>', 'fortigate/receive', true);
 	\V::app()->router->add_rule('form/<id:[a-f0-9]{32}>', 'form/open', true);
 	\V::app()->router->add_rule('task/<id:[a-f0-9]{24}>', 'task/open', true);
-	//CLD: 2026-11-02T18:00:00+02:00: the chat page of a Chat trigger: `/agent/<32 hex token>`; its embeddable page: `/chat/<32 hex token>`, its token is the credential: no session
+	//the chat page of a Chat trigger: `/agent/<32 hex token>`; its embeddable page: `/chat/<32 hex token>`, its token is the credential: no session
 	\V::app()->router->add_rule('agent/<id:[a-f0-9]{32}>', 'agent/open', true);
 	\V::app()->session->noSessionFor('/chat/');
 	\V::app()->router->add_rule('chat/<id:[a-f0-9]{32}>', 'chat/open', true);
@@ -167,7 +167,7 @@ class Boot {
 
 	//the stored user
 	\V::app()->config('rt.user', $user);
-	//CLD: 2026-11-08T12:00:00+02:00: its preferences (User prefs): the defaults + what is stored, cast (a key no longer in `prefs`' fields dropped); for the layout and views
+	//its preferences (User prefs): the defaults + what is stored, cast (a key no longer in `prefs`' fields dropped); for the layout and views
 	$prefs = $user->schema['prefs']->nestedObject(is_array($user->prefs) ? $user->prefs : [])->data();
 	\V::app()->config('rt.prefs', $prefs);
 
@@ -205,7 +205,7 @@ class Boot {
 	//	else the personal project,
 	//	else the first project the user is a member of (e.g. a Participant),
 	//	else a personal project created now (as the seed command does);
-	//CLD: 2026-11-07T12:00:00+02:00: one kept in the session that is no longer in the account (deleted) is chosen again
+	//one kept in the session that is not in the account (deleted) is chosen again
 	if (!empty(\V::app()->user->crtProject) && \V::app()->om->count('Project', [ '_id' => \V::app()->user->crtProject, 'aid' => $account->_id ]) == 0)
 	    \V::app()->user->crtProject = null;
 	if (empty(\V::app()->user->crtProject)) {
@@ -223,7 +223,7 @@ class Boot {
 	    }
 	    \V::app()->user->crtProject = $project->_id;
 	}
-	//CLD: 2026-11-07T12:00:00+02:00: a signed-in user always has a current project: what asks of it (sys\AAA, the controllers) relies on it
+	//a signed-in user always has a current project: what asks of it (sys\AAA, the controllers) relies on it
 	if (empty(\V::app()->user->crtProject))
 	    throw new \ErrorException('Boot: no current project for user ' . \V::app()->user->_id);
 

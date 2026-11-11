@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new step: FortiGate Banned IPs - the firewall's quarantine of IP addresses (the banned users list: monitor/user/banned): traffic from them is
+    FortiGate Banned IPs - the firewall's quarantine of IP addresses (the banned users list: monitor/user/banned): traffic from them is
     dropped until the ban expires. Operations (setting `operation`):
 	ban        IPs banned (add_users: ip_addresses, expiry in seconds; 0: until unbanned)
 	list       the banned IPs (GET monitor/user/banned)
@@ -24,7 +24,7 @@ class NodeAppFgtBanned extends NodeAppFortiGate {
 	'unban' => 'Unban IPs',
 	'clear' => 'Unban every IP',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'ban', 'unban', 'clear' ];
     const LISTS = [ 'list' ];
     const MAX_IPS = 1000;

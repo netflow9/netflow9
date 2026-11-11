@@ -1,13 +1,13 @@
 <?php
 
-//CLD: 2026-10-25T17:40:00+02:00: new: a Firebird server (pdo_firebird), for the Database step: the database's path or alias on the server, in UTF-8. The server is required: the
+//a Firebird server (pdo_firebird), for the Database step: the database's path or alias on the server, in UTF-8. The server is required: the
 //client library would otherwise open a database file of this machine itself. No statement time limit of its own
 
 namespace models\credential;
 
 class CredentialFirebird extends CredentialDatabase {
     public static $label = 'Firebird';
-    //CLD: 2026-10-31T23:30:00+02:00: + database:firebird: the credentials of the Firebird step (models\node\NodeAppFirebird)
+    //database:firebird: the credentials of the Firebird step (models\node\NodeAppFirebird)
     public static $provides = [ 'database', 'database:firebird' ];
 
     const TYPE = 'firebird';

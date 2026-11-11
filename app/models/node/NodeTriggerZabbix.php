@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new trigger: Zabbix problem - starts the workflow when Zabbix reports a new problem of a severity and worse, of hosts / host groups, with tags;
+    Zabbix problem - starts the workflow when Zabbix reports a new problem of a severity and worse, of hosts / host groups, with tags;
     optionally also when one is resolved. It checks the server on its schedule (models\wf\WfSchedule, every 2 minutes by default; util\Scheduler runs runScheduled): every current
     problem is read (acknowledged and suppressed ones too, so they are not taken as resolved) and compared with the last check's (models\TriggerState: eventid => { severity,
     fired, quiet }): a problem starts a run when it is new or its severity changed, unless it is acknowledged or suppressed and those are left out; a problem that started a run

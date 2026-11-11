@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-28T10:00:00+02:00: new tab: Export / import (Project::transfer; ProjectController::export / import, util\Transfer). Export: the project's workflows, credentials and
+//Export / import (Project::transfer; ProjectController::export / import, util\Transfer). Export: the project's workflows, credentials and
 //data tables to choose (each listed with its read permission), + what the chosen workflows use, the tables' rows, a passphrase (seals the file, puts the secrets in it);
 //a download, so the form is not pjax (its CSRF token is a field). Import: an export file (+ its passphrase), then the preview
 $om = \V::app()->om;
@@ -36,7 +36,7 @@ $rowsTpl = '
     <label class="form-check-label" for="{:id}">with rows</label>
 </div>
 ';
-//CLD: 2026-11-07T01:18:40+02:00: the three groups: workflows (their icon), credentials (their type), data tables (+ with rows)
+//the three groups: workflows (their icon), credentials (their type), data tables (+ with rows)
 $groups = '';
 foreach([ 'workflows' => [ 'Workflows', $workflows ], 'credentials' => [ 'Credentials & variables', $credentials ], 'datatables' => [ 'Data tables', $tables ] ] as $name => [ $title, $items ]) {
     $html = $items ? '' : '<div class="small text-body-secondary">None in this project</div>';

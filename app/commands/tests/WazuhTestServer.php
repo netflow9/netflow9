@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new file: a fake Wazuh (Server API and indexer, on one port) for the check suite (CheckCommand::suiteWazuh), run by PHP's built-in server:
+    a fake Wazuh (Server API and indexer, on one port) for the check suite (CheckCommand::suiteWazuh), run by PHP's built-in server:
     WZ_STATE=<a folder> php -S 127.0.0.1:<port> WazuhTestServer.php
 	Server API: POST /security/user/authenticate with Basic wazuh-wui / s3cret gives a JWT; the others want it as Bearer (<state>/expired: 401 once, for the token in use)
 	Like the real one it refuses a parameter a request does not take (Wazuh's spec is strict), e.g. wait_for_complete on PUT /manager/restart

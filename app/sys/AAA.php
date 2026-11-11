@@ -7,10 +7,10 @@ class AAA {
     public $allPerms = [];
     //the signed-in user's account role, loaded once
     public $userRole = null;
-    //CLD: 2026-11-07T12:00:00+02:00: account roles set by user id, for users with no record (the check suites' made-up users); read before the database
+    //account roles set by user id, for users with no record (the check suites' made-up users); read before the database
     public $userRoles = [];
 
-    //CLD: 2026-11-07T12:00:00+02:00: the account role of $userId (default: the signed-in user); another user's is read from their record each time, not kept
+    //the account role of $userId (default: the signed-in user); another user's is read from their record each time, not kept
     //(the daemon lives long and a changed role applies at once)
     public function getUserRole($userId = null) {
 	if ($userId === null || (string)$userId === (string)(\V::app()->user->_id ?? '')) {
@@ -69,7 +69,7 @@ class AAA {
 	    return $this->checkAccess($userId, $this->allPerms[$permName]['alias-of'], $params);
 
 	//now: if there is no object, check in the user's role; else, delegate to object
-	//CLD: 2026-11-07T12:00:00+02:00: $userId's account role, not the signed-in user's
+	//$userId's account role, not the signed-in user's
 	$userRole = $this->getUserRole($userId);
 	if (empty($userRole))
 	    return false;
@@ -83,7 +83,7 @@ class AAA {
 	//no object, a permission with a project scope: it is asked of the current project
 	if (empty($params['object'])) {
 	    if (in_array('project', $this->allPerms[$permName]['scopes'] ?? [], true)) {
-		//CLD: 2026-11-07T12:00:00+02:00: Boot sets the current project of every signed-in user: one not found is an error, not a refusal
+		//Boot sets the current project of every signed-in user: one not found is an error, not a refusal
 		$project = \V::app()->om->findOne('Project', [ '_id' => \V::app()->user->crtProject, 'aid' => \V::app()->config('rt.account')->_id ?? null ]);
 		if (empty($project))
 		    throw new \ErrorException('AAA: ' . $permName . ': the current project ' . \V::app()->user->crtProject . ' is not found');

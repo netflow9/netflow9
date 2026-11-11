@@ -1,41 +1,41 @@
 <?php
 
 /*
-    the tools of Rail22's MCP server (controllers\McpController) - also meant for the AI steps, which call them directly.
-    Every tool works on one project ($project) as the current user (\V::app()->user):
-	each object is checked with the user's permissions (user->can), as the pages do.
-    Data tables: list / query / insert / update / delete rows (rules and casts of the table's columns: models\datatable\DataTableDef);
-	CLD: 2026-10-22T01:11:17+03:00: + their structure: create_table, update_table (rename), add_column, update_column, delete_column (the rules of the column designer: models\datatable\FieldForm);
-    workflows: list, run (Manual trigger; the published version, else the draft),
-	an execution's result; files: list, read (text);
-    project variables: list.
-    CLD: 2026-11-01T22:35:00+02:00: knowledge bases: list, query (models\kb\KnowledgeBase::search: by meaning and by words; KnowledgeBase::read). query_knowledge_base, not search_knowledge_base: that is
-	the AI steps' own tool (their Knowledge bases setting), offered next to these
-
-    definitions() = the MCP tool list (name, title, description, inputSchema, annotations);
-    call() = the result (plain array) or \ErrorException for the caller
-    + building workflows (user's choice: create and update drafts, people publish): list_step_types, get_workflow, create_workflow, update_workflow (util\WorkflowSpec)
+    the tools of Rail22's MCP server (controllers\McpController), also run by the AI steps and the designer's Assistant through util\MCPTools.
+    Every tool works on one project ($project): as the current user (\V::app()->user: each object checked with the user's permissions, user->can, as the
+	pages do), or for an AI step without permission checks ($asUser false: the workflow decides; runs started as trigger `ai`, no audit entry).
+	data tables       list_tables; query_table, insert_rows, update_row, delete_row (the rules and casts of the table's columns: models\datatable\DataTableDef);
+	                  their structure: create_table, update_table (rename), add_column, update_column, delete_column (the column designer's rules: models\datatable\FieldForm)
+	workflows         list_workflows, run_workflow (Manual trigger; the published version, else the draft), get_execution (its result);
+	                  building them (drafts; people publish): list_step_types, get_workflow, create_workflow, update_workflow (util\WorkflowSpec)
+	tests             run_tests, get_test_run (util\AgentEval; over the MCP server only: NOT_FOR_MODELS)
+	files             list_files, read_file (text), read_image
+	variables         list_variables (the project's)
+	knowledge bases   list_knowledge_bases, query_knowledge_base (models\kb\KnowledgeBase::search: by meaning and by words; KnowledgeBase::read).
+	                  query_knowledge_base, not search_knowledge_base: that is the AI steps' own tool (their Knowledge bases setting), offered next to these
+    definitions() = the MCP tool list (name, title, description, inputSchema, annotations); call() = the result (plain array) or \ErrorException for the caller.
+    STRUCTURE_TOOLS / structureOnly(): what the Assistant gets when the account lets it read the project's structure only.
+    Named McpServerTools: util\McpTools would clash with util\MCPTools (PHP class names ignore case).
 */
 
-//CLD: 2026-10-26T23:56:07+02:00: named McpServerTools: util\McpTools would clash with util\MCPTools (PHP class names ignore case)
 namespace util;
 
 class McpServerTools {
 
-    //CLD: 2026-11-01T02:00:00+02:00: the tools that read or change only the project's structure (tables and their columns, workflows, step types, file names, variable names: list_variables
-    //without the values, see structureOnly): the ones the designer's Assistant gets when the account lets it read the structure only (AssistantSettings::readsData)
-    //CLD: 2026-11-01T22:35:00+02:00: + list_knowledge_bases (their names and descriptions; query_knowledge_base reads their content: data)
+    //the tools that read or change only the project's structure (tables and their columns, workflows, step types, file names, variable names: list_variables
+    //without the values, see structureOnly; knowledge bases' names and descriptions): the ones the designer's Assistant gets when the account lets it read the structure only
+    //(AssistantSettings::readsData)
     const STRUCTURE_TOOLS = [ 'list_tables', 'create_table', 'update_table', 'add_column', 'update_column', 'delete_column', 'list_workflows', 'get_workflow', 'create_workflow',
 	'update_workflow', 'list_step_types', 'list_files', 'list_variables', 'list_knowledge_bases' ];
 
-    //CLD: 2026-11-01T02:00:00+02:00: the result of tool $name with the data left out (a structure tool's: list_variables without the values)
+    //the result of tool $name with the data left out (a structure tool's: list_variables without the values)
     public static function structureOnly($name, $result) {
 	if ($name === 'list_variables' && is_array($result['variables'] ?? null))
 	    $result['variables'] = array_map(fn($v) => array_diff_key((array)$v, [ 'value' => 1 ]), $result['variables']);
 	return $result;
     }
 
-    //CLD: 2026-11-02T15:46:06+02:00: only over the MCP server (util\MCPTools leaves them out)
+    //only over the MCP server (util\MCPTools leaves them out)
     const NOT_FOR_MODELS = [ 'run_tests', 'get_test_run' ];
 
     const MAX_DEPTH = 3;
@@ -43,21 +43,20 @@ class McpServerTools {
 
     //most rows a query returns
     const MAX_ROWS = 200;
-    //CLD: 2026-11-01T22:35:00+02:00: most passages query_knowledge_base returns
+    //most passages query_knowledge_base returns
     const MAX_PASSAGES = 20;
     //most rows inserted at once
     const MAX_INSERT = 100;
-    //CLD: 2026-10-22T01:11:17+03:00: most columns create_table makes at once; column keys refused here besides the reserved ones (FieldForm): `id` is the row id in the rows these tools give
+    //most columns create_table makes at once; column keys refused here besides the reserved ones (FieldForm): `id` is the row id in the rows these tools give
     const MAX_COLUMNS = 100;
     const KEYS_TAKEN = [ 'id' ];
     //largest file read_file returns (bytes)
     const MAX_FILE = 262144;
     //log lines get_execution returns (the last ones)
     const MAX_LOG = 50;
-    //CLD: 2026-10-17T21:00:54+03:00: largest image read_image returns / an AI step sends (bytes; the providers' limit)
-    //CLD: 2026-10-20T23:40:00+03:00: the largest image is the AI steps' (models\node\NodeAppAi::MAX_IMAGE)
+    //the largest image read_image returns: the AI steps' (models\node\NodeAppAi::MAX_IMAGE)
     const MAX_IMAGE = \models\node\NodeAppAi::MAX_IMAGE;
-    //CLD: 2026-10-17T21:00:54+03:00: the key of a result holding images: [ [ mimeType, data (base64) ] ]; sent as image content (McpController, the AI steps), not as text (images())
+    //the key of a result holding images: [ [ mimeType, data (base64) ] ]; sent as image content (McpController, the AI steps), not as text (images())
     const IMAGES = '_images';
 
 
@@ -76,7 +75,7 @@ class McpServerTools {
 		'required' => [ 'column', 'operator' ],
 	    ],
 	];
-	//CLD: 2026-10-22T01:11:17+03:00: a column of create_table / add_column (models\datatable\FieldForm's settings)
+	//a column of create_table / add_column (models\datatable\FieldForm's settings)
 	$targets = self::linkTargets();
 	$column = [
 	    'type' => 'object',
@@ -126,7 +125,7 @@ class McpServerTools {
 		    'table' => $table,
 		    'id' => [ 'type' => 'string', 'description' => 'The row id' ],
 		], 'required' => [ 'table', 'id' ] ], 'annotations' => [ 'readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false ] ],
-	    //CLD: 2026-10-22T01:11:17+03:00: the structure of the data tables (DataTable::create, DataTable::update)
+	    //the structure of the data tables (DataTable::create, DataTable::update)
 	    [ 'name' => 'create_table', 'title' => 'Create a data table',
 		'description' => 'Creates a data table in the project with its columns (at least one, at most ' . self::MAX_COLUMNS . '). The name: letters, digits or underscore. '
 		    . 'Everything is checked first: nothing is created when the name or a column is refused. Answers the table as list_tables gives it.',
@@ -166,7 +165,7 @@ class McpServerTools {
 		'description' => 'The workflows of the project: id, name, status (draft / published), trigger, and whether run_workflow can start them (Manual trigger).',
 		'inputSchema' => [ 'type' => 'object', 'properties' => (object)[] ], 'annotations' => $ro ],
 	    [ 'name' => 'run_workflow', 'title' => 'Run a workflow',
-		//CLD: 2026-10-26T09:58:28+02:00: + the `queued` state
+		//the `queued` state
 		'description' => 'Runs a workflow whose trigger is a Manual trigger and waits for it: its published version, else its draft. The variables given are its first variables. Returns the execution id, its state (end, error, sleep; queued: it ran longer than the request allows, the daemon finishes it: see get_execution), error and variables.',
 		'inputSchema' => [ 'type' => 'object', 'properties' => [
 		    'workflow' => [ 'type' => 'string', 'description' => 'The workflow: its name or id (list_workflows)' ],
@@ -184,24 +183,24 @@ class McpServerTools {
 		    'limit' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 200, 'default' => 50 ],
 		] ], 'annotations' => $ro ],
 	    [ 'name' => 'read_file', 'title' => 'Read a file',
-		//CLD: 2026-10-27T23:11:38+02:00: + PDF and Office documents, as their text
+		//PDF and Office documents, as their text
 		'description' => 'The content of a text file of the project (UTF-8, at most ' . (self::MAX_FILE / 1024) . ' KB); of a PDF or an Office document (docx, xlsx, pptx, odt, ods, odp; at most '
 		    . (\models\node\NodeAppAi::MAX_PDF / 1048576) . ' MB) its text.',
 		'inputSchema' => [ 'type' => 'object', 'properties' => [
 		    'id' => [ 'type' => 'string', 'description' => 'The file id (list_files)' ],
 		], 'required' => [ 'id' ] ], 'annotations' => $ro ],
-	    //CLD: 2026-10-17T21:00:54+03:00: an image file, to look at
+	    //an image file, to look at
 	    [ 'name' => 'read_image', 'title' => 'Look at an image',
 		'description' => 'An image file of the project (PNG, JPEG, GIF, WebP; at most ' . (self::MAX_IMAGE / 1048576) . ' MB), given as an image to look at.',
 		'inputSchema' => [ 'type' => 'object', 'properties' => [
 		    'id' => [ 'type' => 'string', 'description' => 'The file id (list_files)' ],
 		], 'required' => [ 'id' ] ], 'annotations' => $ro ],
-	    //CLD: 2026-10-13T15:17:12+03:00: building workflows (drafts; publishing stays with people, in the designer)
+	    //building workflows (drafts; publishing stays with people, in the designer)
 	    [ 'name' => 'list_step_types', 'title' => 'List step types',
 		'description' => 'The step types a workflow can use (type = e.g. app::set), with their settings (key, type, required, default, choices; syntax: text = text with {{ expression }} parts, '
 		    . 'reference = only {{ variable }} or {{ variable.field }}, value = one {{ expression }}, script = J code (the Code step: no {{ }}; assigning a name sets that workflow variable)), their outputs (labels, for connections) and the variables they provide. '
 		    . 'A workflow has one trigger (kind trigger); a loop (container) runs the steps inside it (parent = the loop) once per item, starting at its inner step without an incoming connection. '
-		    //CLD: 2026-10-13T15:24:28+03:00: + the project variables
+		    //the project variables
 		    . 'Expressions also see the project variables as {{ vars.<name> }} (list_variables); no step may set a variable named vars.',
 		'inputSchema' => [ 'type' => 'object', 'properties' => (object)[] ], 'annotations' => $ro ],
 	    [ 'name' => 'get_workflow', 'title' => 'Get a workflow',
@@ -224,7 +223,7 @@ class McpServerTools {
 		    'name' => [ 'type' => 'string', 'description' => 'A new name' ],
 		    'relayout' => [ 'type' => 'boolean', 'default' => false ],
 		] + \util\WorkflowSpec::schema(), 'required' => [ 'workflow' ] ], 'annotations' => [ 'readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false ] ],
-	    //CLD: 2026-11-01T22:35:00+02:00: the knowledge bases
+	    //the knowledge bases
 	    [ 'name' => 'list_knowledge_bases', 'title' => 'List knowledge bases',
 		'description' => 'The knowledge bases of the project: id, name, description (what their documents are about), documents, chunks, state (ready; reindexing: not searchable meanwhile).',
 		'inputSchema' => [ 'type' => 'object', 'properties' => (object)[] ], 'annotations' => $ro ],
@@ -237,7 +236,7 @@ class McpServerTools {
 		    'limit' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_PASSAGES, 'default' => 5, 'description' => 'How many passages' ],
 		    'filter' => [ 'type' => 'object', 'description' => 'Optional: { meta name: value or a list of values } the passages must have, e.g. {"category": "hr"}' ],
 		], 'required' => [ 'knowledge_base', 'query' ] ], 'annotations' => $ro ],
-	    //CLD: 2026-11-02T15:46:06+02:00: a workflow's tests (util\AgentEval)
+	    //a workflow's tests (util\AgentEval)
 	    [ 'name' => 'run_tests', 'title' => 'Run a workflow\'s tests',
 		'description' => 'Runs all the test cases of a workflow on its saved draft, in the background, and waits for them: no step or tool that changes something runs, but the models are called (tokens are spent). Returns the run id, its state (passed, failed, stopped, error; queued, running: it takes longer than the request allows, see get_test_run), the totals and per case its result, answer and checks. One already running: that one.',
 		'inputSchema' => [ 'type' => 'object', 'properties' => [
@@ -250,21 +249,20 @@ class McpServerTools {
 		    'id' => [ 'type' => 'string', 'description' => 'The run id (run_tests)' ],
 		], 'required' => [ 'workflow' ] ], 'annotations' => $ro ],
 	    [ 'name' => 'list_variables', 'title' => 'List project variables',
-		//CLD: 2026-10-22T00:28:13+03:00: they are the credentials of type Variable
+		//they are the credentials of type Variable
 		'description' => 'The variables of the project (credentials of type Variable): name, value, description.',
 		'inputSchema' => [ 'type' => 'object', 'properties' => (object)[] ], 'annotations' => $ro ],
 	];
     }
 
 
-    //CLD: 2026-10-13T15:17:12+03:00: $wf with the steps / connections of $args (when given) as its draft, checked (wrong settings: \ErrorException with the reasons) and saved; the answer:
-    //CLD: 2026-10-19T17:25:00+03:00: wrong step settings do not refuse the save (they are in `problems`)
+    //$wf with the steps / connections of $args (when given) as its draft, checked and saved (wrong step settings do not refuse the save: they are in `problems`); the answer:
     //{ id, name, url (the designer), status, problems }
     private static function saveSpec($wf, array $args, $relayout) {
 	if (array_key_exists('steps', $args) || array_key_exists('connections', $args)) {
 	    $wf->nodes = \util\WorkflowSpec::nodesFrom(self::listArg($args, 'steps'), self::listArg($args, 'connections'), is_array($wf->nodes) ? array_values($wf->nodes) : [], $relayout);
 	}
-	//CLD: 2026-10-19T17:25:00+03:00: validatesDraft: saved even with errors in the steps' settings (as the designer); they are returned in `problems`
+	//validatesDraft: saved even with errors in the steps' settings (as the designer); they are returned in `problems`
 	//and stop publishing / running; only the workflow's own rules refuse the save
 	if (!$wf->validatesDraft()) {
 	    $messages = [];
@@ -274,21 +272,20 @@ class McpServerTools {
 	    throw new \ErrorException("not saved:\n- " . implode("\n- ", $messages ?: [ 'invalid workflow' ]));
 	}
 	$wf->save();
-	//CLD: 2026-10-19T17:25:00+03:00: + the errors in the steps' settings, first (WorkflowSpec::problems has the connections only)
+	//the errors in the steps' settings, first (WorkflowSpec::problems has the connections only)
 	$stepProblems = array_map(fn($i) => array_filter([ 'level' => $i['level'], 'step' => $i['node'] ?? null, 'message' => $i['message'] ], fn($v) => $v !== null), $wf->stepIssues);
-	//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
+	//absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
 	return [ 'id' => (string)$wf->_id, 'name' => (string)$wf->name, 'url' => \V::app()->createAbsoluteUrl('/workflow/index', [ 'id' => $wf->_id ]),
 	    'status' => (string)($wf->status ?: \models\Workflow::DRAFT), 'problems' => array_merge($stepProblems, \util\WorkflowSpec::problems($wf)) ];
     }
 
-    //CLD: 2026-11-02T15:46:06+02:00: test run $run as the tools give it
+    //test run $run as the tools give it
     private static function testRun(array $run) {
 	return \util\AgentEval::summary($run) + [ 'cases' => array_values(array_map(fn($c) => array_intersect_key($c, array_flip([ 'name', 'state', 'error', 'answer', 'tokens', 'cost', 'checks', 'notes', 'execution' ])), (array)($run['cases'] ?? []))) ];
     }
 
-    //runs tool $name with $args on project $project as the current user
-    //CLD: 2026-10-12T22:16:44+03:00: $asUser = false: for the AI steps (a workflow's own step: no web user; the workflow decides, not a user's permissions): no permission checks,
-    //runs started as trigger `ai`, no audit entry (the execution log records them)
+    //runs tool $name with $args on project $project as the current user; $asUser = false: for the AI steps (a workflow's own step: no web user; the workflow
+    //decides, not a user's permissions): no permission checks, runs started as trigger `ai`, no audit entry (the execution log records them)
     public static function call($name, array $args, $project, $asUser = true) {
 	$aid = $project->aid;
 	$user = $asUser ? \V::app()->user : null;
@@ -297,11 +294,11 @@ class McpServerTools {
 	switch($name) {
 	    case 'list_tables':
 		$list = [];
-		//CLD: 2026-11-03T14:00:00+02:00: + the tables shared with the project (with their project and what the project may do)
+		//the tables shared with the project (with their project and what the project may do)
 		foreach($om->find('DataTableDef', [ 'aid' => $aid ] + \models\datatable\DataTableDef::visibleInQuery($project->_id), [ 'sort' => [ 'name' => 1 ] ]) as $t) {
 		    if (!self::allowed($asUser, 'DataTable::read', $t))
 			continue;
-		    //CLD: 2026-10-22T01:11:17+03:00: tableInfo (+ choices, points_to; shared with the structure tools)
+		    //tableInfo (+ choices, points_to; shared with the structure tools)
 		    $list[] = self::tableInfo($t) + ($t->isHome($project->_id) ? [] : [ 'shared_from' => (string)\V::app()->om->findById('Project', $t->project), 'access' => (string)($t->shareOf($project->_id)['access'] ?? '') ]);
 		}
 		return [ 'tables' => $list ];
@@ -335,7 +332,7 @@ class McpServerTools {
 		foreach($list as $i => $item) {
 		    $models[] = self::rowFrom($t, $columns, $item, null, 'row ' . ($i + 1) . ': ');
 		}
-		//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of rows in a data table (util\Tiers): all of them, or none
+		//the tier's limit of rows in a data table (util\Tiers): all of them, or none
 		\util\Tiers::check($aid, 'datatable_records', count($models), $t->iname);
 		$ids = [];
 		foreach($models as $row) {
@@ -356,7 +353,7 @@ class McpServerTools {
 		self::rowById($t, $args['id'] ?? '')->delete();
 		return [ 'deleted' => 1 ];
 
-	    //CLD: 2026-10-22T01:11:17+03:00: the structure of the data tables
+	    //the structure of the data tables
 	    case 'create_table':
 		$proto = $om->create('DataTableDef', [ 'aid' => $aid, 'project' => $project->_id ]);
 		if (!self::allowed($asUser, 'DataTable::create', $proto))
@@ -366,7 +363,7 @@ class McpServerTools {
 		    throw new \ErrorException('columns: give at least one column');
 		if (count($columns) > self::MAX_COLUMNS)
 		    throw new \ErrorException('columns: at most ' . self::MAX_COLUMNS . ' columns');
-		//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of data tables (util\Tiers)
+		//the tier's limit of data tables (util\Tiers)
 		\util\Tiers::check($aid, 'datatables');
 		//the next free internal name (as the data table pages)
 		$n = $om->count('DataTableDef', [ 'aid' => $aid ]);
@@ -462,7 +459,7 @@ class McpServerTools {
 		$trigger = self::triggerOf($live);
 		if (($trigger['fqname'] ?? '') !== 'trigger::manual')
 		    throw new \ErrorException('only workflows with a Manual trigger can be run (this one starts by ' . ($trigger['fqname'] ?? 'nothing') . ')');
-		//CLD: 2026-10-19T17:10:00+03:00: issues(): a draft may be saved with errors in the steps' settings
+		//issues(): a draft may be saved with errors in the steps' settings
 		if (array_filter($live->issues(), fn($i) => $i['level'] == 'error'))
 		    throw new \ErrorException('the workflow has errors (steps\' settings or connections)');
 		$vars = $args['variables'] ?? [];
@@ -471,13 +468,13 @@ class McpServerTools {
 		foreach(array_keys($vars) as $v) {
 		    if (!\util\Validator::isIdentifier((string)$v))
 			throw new \ErrorException("variables: `{$v}` is not a valid name");
-		    //CLD: 2026-10-13T15:24:28+03:00: the project variables' name
+		    //the project variables' name
 		    if ((string)$v === \models\credential\CredentialVariable::EXPRESSION_NAME)
 			throw new \ErrorException('variables: `' . \models\credential\CredentialVariable::EXPRESSION_NAME . '` is the name of the project variables');
 		}
 		if (self::$depth >= self::MAX_DEPTH)
 		    throw new \ErrorException('workflows started from tools are nested too deep (at most ' . self::MAX_DEPTH . ')');
-		//CLD: 2026-10-30T15:00:00+02:00: the caller waits for the result. Called by an AI step of a running execution (a daemon worker): run here, nested (waiting for another
+		//the caller waits for the result. Called by an AI step of a running execution (a daemon worker): run here, nested (waiting for another
 		//worker could wait for ever when the account's are all busy); over MCP (a web request): queued for the daemon, waited for (WfExecution::waitFor, at most
 		//WAIT_RESULT s)
 		$exe = \models\wf\WfExecution::startFor($live, $asUser ? 'mcp' : 'ai', [ 'user' => $user ? (string)$user->_id : null, 'vars' => $vars ], (string)$trigger['wfid']);
@@ -496,11 +493,11 @@ class McpServerTools {
 			self::$depth--;
 		    }
 		}
-		//CLD: 2026-10-26T09:58:28+02:00: `queued`: still running, the daemon finishes it (get_execution)
+		//`queued`: still running, the daemon finishes it (get_execution)
 		return [ 'execution' => (string)$exe->_id, 'state' => $state === 'queued' ? 'queued' : (string)$exe->state, 'error' => $exe->error ?: null,
 		    'version' => $exe->version, 'variables' => \util\Expression::hostValue($exe->variables ?: []) ];
 
-	    //CLD: 2026-10-13T15:17:12+03:00: building workflows (drafts)
+	    //building workflows (drafts)
 	    case 'list_step_types':
 		return [ 'step_types' => \util\WorkflowSpec::stepTypes() ];
 
@@ -535,7 +532,7 @@ class McpServerTools {
 		}
 		return self::saveSpec($wf, $args, !empty($args['relayout']));
 
-	    //CLD: 2026-11-02T15:46:06+02:00: a workflow's tests: over MCP the request waits for them as run_workflow does
+	    //a workflow's tests: over MCP the request waits for them as run_workflow does
 	    case 'run_tests':
 		$wf = self::findIn('Workflow', $args['workflow'] ?? '', $project, 'workflow');
 		if (!self::allowed($asUser, 'Workflow::update', $wf))
@@ -575,7 +572,7 @@ class McpServerTools {
 		    'trigger' => (string)$exe->trigger, 'version' => $exe->version, 'start_at' => \util\Expression::hostValue($exe->start_at),
 		    'end_at' => \util\Expression::hostValue($exe->end_at), 'variables' => \util\Expression::hostValue($exe->variables ?: []), 'log' => $log ];
 
-	    //CLD: 2026-11-01T22:35:00+02:00: the knowledge bases (KnowledgeBase::read)
+	    //the knowledge bases (KnowledgeBase::read)
 	    case 'list_knowledge_bases':
 		$list = [];
 		foreach($om->find('KnowledgeBase', [ 'aid' => $aid, 'project' => $project->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $kb) {
@@ -615,7 +612,7 @@ class McpServerTools {
 		$f = \util\Validator::rule('oid', $id) ? $om->findOne('File', [ '_id' => $id, 'metadata.project' => $project->_id ]) : null;
 		if (!$f || ($f->metadata['aid'] ?? $f->aid) != $aid || !self::allowed($asUser, 'File::read', $f))
 		    throw new \ErrorException("no file `{$id}` in this project");
-		//CLD: 2026-10-27T23:11:38+02:00: a PDF or an Office document: its text (models\node\NodeAppAi::fileText: its own size limit)
+		//a PDF or an Office document: its text (models\node\NodeAppAi::fileText: its own size limit)
 		if ($f->extension() === 'pdf' || \util\OfficeText::isSupported($f->extension()))
 		    return [ 'id' => (string)$f->_id, 'filename' => (string)$f->filename, 'content' => \models\node\NodeAppAi::fileText($f) ];
 		if ((int)$f->length > self::MAX_FILE)
@@ -625,7 +622,7 @@ class McpServerTools {
 		    throw new \ErrorException("`{$f->filename}` is not a text file");
 		return [ 'id' => (string)$f->_id, 'filename' => (string)$f->filename, 'content' => $content ];
 
-	    //CLD: 2026-10-17T21:00:54+03:00: the image itself goes as image content (IMAGES)
+	    //the image itself goes as image content (IMAGES)
 	    case 'read_image':
 		$id = (string)($args['id'] ?? '');
 		$f = \util\Validator::rule('oid', $id) ? $om->findOne('File', [ '_id' => $id, 'metadata.project' => $project->_id ]) : null;
@@ -635,7 +632,7 @@ class McpServerTools {
 
 	    case 'list_variables':
 		$list = [];
-		//CLD: 2026-10-22T00:28:13+03:00: the credentials of type Variable, with Credential::read
+		//the credentials of type Variable, with Credential::read
 		foreach($om->find('CredentialVariable', [ 'aid' => $aid, 'project' => $project->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $v) {
 		    if (self::allowed($asUser, 'Credential::read', $v))
 			$list[] = [ 'name' => (string)$v->name, 'value' => $v->value, 'description' => (string)$v->description ];
@@ -645,14 +642,14 @@ class McpServerTools {
 	throw new \ErrorException("unknown tool `{$name}`");
     }
 
-    //CLD: 2026-11-07T01:16:14+02:00: whether the call may use object $o with permission $permName: always without a user ($asUser false: an AI step, the workflow's own)
+    //whether the call may use object $o with permission $permName: always without a user ($asUser false: an AI step, the workflow's own)
     private static function allowed($asUser, $permName, $o) {
 	return !$asUser || \V::app()->user->can($permName, [ 'object' => $o ]);
     }
 
     //the data table named / with the id in $args['table'], if the user has $permName on it (fn($permName, $o) => self::allowed($asUser, $permName, $o), see call())
     private static function table(array $args, $project, $permName, \Closure $can) {
-	//CLD: 2026-11-03T14:00:00+02:00: not of the project: one shared with it (by id, or its name when no table of the project has it); what the share's level does not give is refused also for an AI step ($can passes)
+	//not of the project: one shared with it (by id, or its name when no table of the project has it); what the share's level does not give is refused also for an AI step ($can passes)
 	try {
 	    $t = self::findIn('DataTableDef', $args['table'] ?? '', $project, 'table');
 	} catch (\ErrorException $e) {
@@ -663,7 +660,7 @@ class McpServerTools {
 		throw $e;
 	}
 	if (!$can($permName, $t) || !$t->shareAllows($project->_id, $permName))
-	    //CLD: 2026-10-22T01:11:17+03:00: + DataTable::update: its structure
+	    //DataTable::update: its structure
 	    throw new \ErrorException('you may not ' . match($permName) { 'DataTable::readData' => "read the rows of table `{$t->name}`", 'DataTable::update' => "change table `{$t->name}`",
 		default => "change the rows of table `{$t->name}`" });
 	return $t;
@@ -702,7 +699,7 @@ class McpServerTools {
 	return $row;
     }
 
-    //CLD: 2026-10-22T01:11:17+03:00: a data table as list_tables gives it: { id, name, columns: [ { key, label, type, required, choices (select), points_to (object) } ] }
+    //a data table as list_tables gives it: { id, name, columns: [ { key, label, type, required, choices (select), points_to (object) } ] }
     private static function tableInfo($t) {
 	$columns = [];
 	foreach($t->columns() as $key => $f) {
@@ -718,7 +715,7 @@ class McpServerTools {
 	return [ 'id' => (string)$t->_id, 'name' => (string)$t->name, 'columns' => $columns ];
     }
 
-    //CLD: 2026-10-22T01:11:17+03:00: the column `key` of table $t (its Field)
+    //the column `key` of table $t (its Field)
     private static function columnOf($t, $key) {
 	$key = trim((string)$key);
 	$field = $key === '' ? null : \V::app()->om->findOne('Field', [ 'objectName' => $t->iname, 'key' => $key ]);
@@ -727,7 +724,7 @@ class McpServerTools {
 	return $field;
     }
 
-    //CLD: 2026-10-22T01:11:17+03:00: a new column of table $iname from $col ({ key, label, type, required, choices, points_to }), checked by the column designer's rules (models\datatable\FieldForm):
+    //a new column of table $iname from $col ({ key, label, type, required, choices, points_to }), checked by the column designer's rules (models\datatable\FieldForm):
     //the form, ready to save (Field::create($form->data())); \ErrorException starting with $prefix when refused
     private static function columnForm($iname, $aid, $col, $project, $prefix) {
 	if (!is_array($col) || ($col && array_is_list($col)))
@@ -752,7 +749,7 @@ class McpServerTools {
 	return $form;
     }
 
-    //CLD: 2026-10-22T01:11:17+03:00: choices as the column keeps them: one per line (a list, or text with one per line)
+    //choices as the column keeps them: one per line (a list, or text with one per line)
     private static function choicesText($choices, $prefix) {
 	if (is_string($choices))
 	    $choices = preg_split('/\R/', $choices);
@@ -769,7 +766,7 @@ class McpServerTools {
 	return implode("\n", $list);
     }
 
-    //CLD: 2026-10-22T01:11:17+03:00: the objects (besides the data tables) a column may point to: [ objectName => label ]
+    //the objects (besides the data tables) a column may point to: [ objectName => label ]
     private static function linkTargets() {
 	$om = \V::app()->om;
 	$targets = [];
@@ -781,7 +778,7 @@ class McpServerTools {
 	return $targets;
     }
 
-    //CLD: 2026-10-22T01:11:17+03:00: what an object column points to: a data table of the project (name or id: its internal name), or one of linkTargets(); '' when not given (FieldForm refuses it)
+    //what an object column points to: a data table of the project (name or id: its internal name), or one of linkTargets(); '' when not given (FieldForm refuses it)
     private static function linkTarget($ref, $project, $prefix) {
 	$ref = trim((string)$ref);
 	if ($ref === '')
@@ -796,7 +793,7 @@ class McpServerTools {
 	return (string)$t->iname;
     }
 
-    //CLD: 2026-10-22T01:11:17+03:00: the validation messages of $model in one line ($labels: "<field label>: <message>")
+    //the validation messages of $model in one line ($labels: "<field label>: <message>")
     private static function messagesOf($model, $labels = false) {
 	$messages = [];
 	foreach((array)$model->errors() as $key => $list) {
@@ -814,7 +811,7 @@ class McpServerTools {
 	return $v;
     }
 
-    //CLD: 2026-10-17T21:00:54+03:00: a tool result split: [ the result without its images, the images: [ [ mimeType, data ] ] ]
+    //a tool result split: [ the result without its images, the images: [ [ mimeType, data ] ] ]
     public static function images(array $result) {
 	$images = (array)($result[self::IMAGES] ?? []);
 	unset($result[self::IMAGES]);

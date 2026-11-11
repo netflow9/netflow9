@@ -1,10 +1,10 @@
 <?php
 
-//CLD: 2026-10-21T10:00:00+03:00: new: a small LDAP server in memory, for the check suite's `ldap` checks (commands/CheckCommand::suiteLdap); not for any other use.
+//a small LDAP server in memory, for the check suite's `ldap` checks (commands/CheckCommand::suiteLdap); not for any other use.
 //  php LdapTestServer.php <directory.json> [--cert=<pem> --key=<pem>] [--ldaps] [--long-lengths]
 //  prints `PORT <n>` (listening on 127.0.0.1, a free port) and serves until it is stopped (or after 10 minutes). With --cert / --key it offers StartTLS, with --ldaps too:
 //  TLS from the start.
-//  CLD: 2026-10-21T11:00:00+03:00: --long-lengths: every length of the answers in 4 bytes (0x84 00 00 00 nn), nested ones too, as Active Directory sends them
+//  --long-lengths: every length of the answers in 4 bytes (0x84 00 00 00 nn), nested ones too, as Active Directory sends them
 //  directory.json: { "entries": [ { "dn": "...", "attributes": { "objectClass": [ ... ], "userPassword": [ "plain" ], ... } } ], "writers": [ dn, ... ], "ad": true|false }
 //    - a bind checks userPassword (plain text); a name with an empty password is accepted (an "unauthenticated" bind, as real servers do: the client must refuse it);
 //      "ad": refused binds carry Active Directory's diagnostic (data 52e; an entry's x-bind-data: another code, e.g. 775 = locked out)
@@ -103,7 +103,7 @@ class LdapTestServer {
 	}
     }
 
-    //CLD: 2026-10-21T11:00:00+03:00: the answers' lengths in 4 bytes (--long-lengths)
+    //the answers' lengths in 4 bytes (--long-lengths)
     public static $longLengths = false;
 
     protected static function out(&$client, $id, $op, $controls = '') {
@@ -111,7 +111,7 @@ class LdapTestServer {
 	fwrite($client['sock'], self::$longLengths ? self::longLengths($msg) : $msg);
     }
 
-    //CLD: 2026-10-21T11:00:00+03:00: BER $ber with each length as 0x84 + 4 bytes, inside constructed elements too (Active Directory's encoding)
+    //BER $ber with each length as 0x84 + 4 bytes, inside constructed elements too (Active Directory's encoding)
     public static function longLengths($ber) {
 	$out = '';
 	$o = 0;

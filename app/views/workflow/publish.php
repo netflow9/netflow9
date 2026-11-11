@@ -10,7 +10,7 @@ $noteInput = '
     <textarea id="publish-note" name="note" class="form-control" rows="3" maxlength="1000" placeholder="What changed in this version"></textarea>
 </div>';
 
-//CLD: 2026-11-02T15:46:06+02:00: the latest test result, above what the dialog says
+//the latest test result, above what the dialog says
 $testState = (string)($gate['latest']['state'] ?? '');
 $testTotals = (array)($gate['latest']['totals'] ?? []);
 $testNote = '';
@@ -24,7 +24,7 @@ if ($gate['cases'] > 0 || $gate['required']) {
     ]);
 }
 
-//CLD: 2026-11-03T16:00:00+02:00: shared, and its inputs or outputs change
+//shared, and its inputs or outputs change
 if ($callers)
     $testNote .= \util\VString::insert('<div class="alert alert-warning small py-2 mb-3"><i class="bi bi-exclamation-triangle me-1"></i>This changes the inputs or outputs of a shared workflow. These workflows of other projects call it: {:names}.</div>', [ 'names' => \V::app()->html->escape(implode(', ', $callers)) ]);
 

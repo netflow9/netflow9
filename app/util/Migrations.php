@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-05T16:00:00+02:00: new: the changes of the stored data that a version of the app needs (a function renamed in the expressions, a setting moved, ...), run once per
+    the changes of the stored data that a version of the app needs (a function renamed in the expressions, a setting moved, ...), run once per
     database by `../v sys::migrate` (SysCommand::migrate; scripts/deploy.sh runs it after the indexes, before the restart). Each migration has an id, the app's version that needs
     it and a method of this class; one is run when the app's version (data\Version::NUMBER) has reached its version and the database has no record of it (models\Migration),
     oldest version first; a failure stops the ones after it. A migration can be run again (it only changes what still needs it), so a failure is fixed and the command run again.
@@ -19,7 +19,7 @@ namespace util;
 class Migrations {
     const LIST = [
 	[ 'id' => 'markdown2html', 'version' => '0.99.820', 'label' => 'the expression function markdown() renamed markdown2html()', 'method' => 'markdown2html' ],
-	//CLD: 2026-11-08T12:00:00+02:00: the users' UI fields moved into User prefs
+	//the users' UI fields into User prefs
 	[ 'id' => 'userPrefs', 'version' => '0.99.839', 'label' => 'the users\' last_project, sidebar_width, sidebar_collapsed, hide_advanced_steps moved into prefs', 'method' => 'userPrefs' ],
     ];
 
@@ -143,7 +143,7 @@ class Migrations {
 	return ($dryRun ? 'would change ' : 'changed ') . Format::plural($steps, 'step') . ' in ' . Format::plural($docs, 'workflow, version or execution', 'workflows, versions or executions');
     }
 
-    //CLD: 2026-11-08T12:00:00+02:00: new: 0.99.839: a user's last_project, sidebar_width, sidebar_collapsed and hide_advanced_steps are keys of its `prefs` (merged
+    //0.99.839: a user's last_project, sidebar_width, sidebar_collapsed and hide_advanced_steps are keys of its `prefs` (merged
     //into the ones it may have already; one already in prefs is kept), the old fields removed
     protected static function userPrefs($dryRun) {
 	$keys = [ 'last_project', 'sidebar_width', 'sidebar_collapsed', 'hide_advanced_steps' ];

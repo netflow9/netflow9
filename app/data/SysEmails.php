@@ -36,7 +36,7 @@ class SysEmails {
 		],
 	    ],
 	],
-	//CLD: 2026-10-25T11:20:00+02:00: a user created by an administrator (Users: Create; or Send the sign-in link): a link to choose the password (UserController::sendPasswordLink)
+	//a user created by an administrator (Users: Create; or Send the sign-in link): a link to choose the password (UserController::sendPasswordLink)
 	'user_welcome' => [
 	    'subject' => 'Your {{ app }} user for {{ account }}',
 	    'email' => [

@@ -1,13 +1,13 @@
 <?php
 
-//CLD: 2026-10-25T17:40:00+02:00: new: an Oracle database (pdo_oci, with Oracle's client libraries), for the Database step: //host:port/service name (Easy Connect), in UTF-8.
+//an Oracle database (pdo_oci, with Oracle's client libraries), for the Database step: //host:port/service name (Easy Connect), in UTF-8.
 //No statement time limit of its own (the database's profile limits apply)
 
 namespace models\credential;
 
 class CredentialOracle extends CredentialDatabase {
     public static $label = 'Oracle';
-    //CLD: 2026-10-31T23:30:00+02:00: + database:oracle: the credentials of the Oracle step (models\node\NodeAppOracle)
+    //database:oracle: the credentials of the Oracle step (models\node\NodeAppOracle)
     public static $provides = [ 'database', 'database:oracle' ];
 
     const TYPE = 'oracle';

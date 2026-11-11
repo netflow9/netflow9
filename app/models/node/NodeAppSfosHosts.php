@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T10:00:00+02:00: new step: Sophos Firewall Hosts - the firewall's IP hosts, FQDN hosts and IP host groups (IPHost, FQDNHost, IPHostGroup). Operations (setting `operation`):
+    Sophos Firewall Hosts - the firewall's IP hosts, FQDN hosts and IP host groups (IPHost, FQDNHost, IPHostGroup). Operations (setting `operation`):
 	block     the usual way to block IPs: each made an IP host (named <prefix><ip>, an IPv6 one's colons as dashes; kept when it exists) and put in the host group a drop rule uses
 	          (already in it: fine); IPv6 hosts go to the IPv6 group (a group is of one IP family, and its name is unique among the hosts and groups)
 	unblock   each taken out of its group (not in it, or no such host: fine); the host removed too when chosen
@@ -34,7 +34,7 @@ class NodeAppSfosHosts extends NodeAppSophos {
 	'add' => 'Add a host to a group',
 	'remove' => 'Remove a host from a group',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'block', 'unblock', 'create', 'delete', 'add', 'remove' ];
     const LISTS = [ 'list', 'groups' ];
     const TYPES = [ 'ip' => 'IP / network', 'range' => 'IP range', 'fqdn' => 'FQDN' ];
@@ -63,7 +63,7 @@ class NodeAppSfosHosts extends NodeAppSophos {
 
     //the host of an IP / a network: [ fields, family ] (IPHost: HostType IP or Network; IPv4's subnet a mask, IPv6's a prefix length)
     public static function ipHost($v) {
-	//CLD: 2026-11-07T12:00:00+02:00: parsed by util\Ip::network
+	//parsed by util\Ip::network
 	$n = \util\Ip::network($v);
 	if ($n === null)
 	    throw new \RuntimeException("Value: not an IP or a network: `" . mb_substr(trim((string)$v), 0, 64) . '`');
@@ -99,7 +99,7 @@ class NodeAppSfosHosts extends NodeAppSophos {
 		    $tag = 'FQDNHost';
 		    $entity = [ 'Name' => $n, 'FQDN' => $val ] + ($desc !== '' ? [ 'Description' => $desc ] : []);
 		} elseif ($type === 'range') {
-		    //CLD: 2026-11-07T12:00:00+02:00: parsed by util\Ip::range
+		    //parsed by util\Ip::range
 		    $range = \util\Ip::range($val);
 		    if ($range === null)
 			throw new \RuntimeException("Value: not an IP range: `" . mb_substr($val, 0, 64) . '`');
@@ -169,12 +169,12 @@ class NodeAppSfosHosts extends NodeAppSophos {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:09:58+02:00: whether host entry $e is of IP family $family (IPv4 when not given)
+    //whether host entry $e is of IP family $family (IPv4 when not given)
     private static function isFamily($e, $family) {
 	return (string)($e['IPFamily'] ?? 'IPv4') === $family;
     }
 
-    //CLD: 2026-11-07T01:09:58+02:00: the firewall's object of the setting Host type: FQDNHost or IPHost
+    //the firewall's object of the setting Host type: FQDNHost or IPHost
     private function hostTag() {
 	return (string)$this->cfg('hostType', 'ip') === 'fqdn' ? 'FQDNHost' : 'IPHost';
     }

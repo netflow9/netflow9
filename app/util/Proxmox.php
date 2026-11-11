@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new: the client of a Proxmox VE cluster or server (the API of PVE 7 and 8: https://<node>:8006/api2/json/...), for the Proxmox credential, steps and task
+    the client of a Proxmox VE cluster or server (the API of PVE 7 and 8: https://<node>:8006/api2/json/...), for the Proxmox credential, steps and task
     trigger. Signed in with an API token (Authorization: PVEAPIToken=<user>@<realm>!<token id>=<secret>; no ticket, no CSRF token). Answers are { data }; an error is the HTTP status
     with Proxmox's message in the reason phrase (e.g. 500 VM 100 not running) and, for parameters, { errors: { param: message } }. Parameters: GET / DELETE in the query, POST / PUT
     as a form (booleans 1 / 0, lists comma separated). An action runs as a task (its UPID: UPID:<node>:...), followed with waitTask() until it stops. Public addresses only, unless

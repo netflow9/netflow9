@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T18:00:00+02:00: new trigger: Chat - people talk to the workflow. Published, it has a chat page in the app (/agent/<token>, listed under Agents for the users and roles allowed: project members,
+    Chat - people talk to the workflow. Published, it has a chat page in the app (/agent/<token>, listed under Agents for the users and roles allowed: project members,
 	Participants too) and, optionally, a page to embed (/chat/<embed token>, no sign-in: AgentController, ChatController). Each message starts a run of the published version, with the variables:
 	    message       what the person wrote (or the value of the button chosen)
 	    conversation  { id, channel, turn, title, history: [ { role, text, at } ] (the newest turns), summary }

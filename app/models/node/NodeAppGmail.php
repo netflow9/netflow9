@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T12:00:00+03:00: new step: Gmail - sends, drafts, searches and organizes the messages of a Gmail / Google Workspace mailbox over the Gmail API, through a
+    Gmail - sends, drafts, searches and organizes the messages of a Gmail / Google Workspace mailbox over the Gmail API, through a
     Google Mail (OAuth) credential of the project (\models\credential\CredentialGoogleMail, provides `gmail`; the same credential the Read emails step uses over IMAP).
     Inspired by sim.ai's Gmail block. Operations (setting `operation`):
 	send     a message from the account: to / cc / bcc, subject, text or HTML, project files as attachments; optionally a reply to a message (same thread, In-Reply-To /
@@ -21,7 +21,7 @@ namespace models\node;
 
 class NodeAppGmail extends NodeAppGoogle {
     //static data/structure
-    //CLD: 2026-10-20T14:00:00+03:00: the shape, the credential, the operation run and the API calls are NodeAppGoogle's
+    //the shape, the credential, the operation run and the API calls are NodeAppGoogle's
     public static $name = 'gmail';
     public static $label = 'Gmail';
     public static $icon = 'bi-envelope-at';
@@ -40,7 +40,7 @@ class NodeAppGmail extends NodeAppGoogle {
 	'trash' => 'Move a message to the trash',
 	'labels' => 'List the labels',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'send', 'draft', 'modify', 'trash' ];
 
     //the operations composing a message, the ones on an existing message
@@ -62,12 +62,12 @@ class NodeAppGmail extends NodeAppGoogle {
     protected $labelMap = null;
 
     public static function configSchema() {
-	//CLD: 2026-10-24T12:47:49+03:00: the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
+	//the help texts without their "; {{ ... }} for expressions" ending (the expression inputs suggest as one types; less height in the wide dialog)
 	return [
 	    static::credentialField('A Google Mail (OAuth) credential of the project; the Gmail API enabled'),
 	    static::operationField(),
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'messageId',
 		'type' => 'text',
 		'label' => 'Message',
@@ -79,7 +79,7 @@ class NodeAppGmail extends NodeAppGoogle {
 
 	    //send / draft
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'to',
 		'type' => 'text',
 		'label' => 'To',
@@ -88,7 +88,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, {{ mail.from }}', 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'cc',
 		'type' => 'text',
 		'label' => 'Cc',
@@ -96,7 +96,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'bcc',
 		'type' => 'text',
 		'label' => 'Bcc',
@@ -104,7 +104,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'subject',
 		'type' => 'text',
 		'label' => 'Subject',
@@ -113,7 +113,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'fromName',
 		'type' => 'text',
 		'label' => 'Sender name',
@@ -122,7 +122,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Body',
@@ -133,7 +133,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'replyTo',
 		'type' => 'text',
 		'label' => 'In reply to',
@@ -142,7 +142,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => '{{ msg.id }}', 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'attachments',
 		'type' => 'text',
 		'label' => 'Attachments',
@@ -151,7 +151,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'placeholder' => '{{ file.id }}', 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 lines
+		//layout: 6 lines
 		'key' => 'body',
 		'type' => 'textarea',
 		'label' => 'Content',
@@ -170,7 +170,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'placeholder' => 'from:billing@example.com has:attachment', 'expression' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'labelFilter',
 		'type' => 'text',
 		'label' => 'In labels',
@@ -179,7 +179,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxMessages',
 		'type' => 'number',
 		'label' => 'Messages',
@@ -190,7 +190,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'markAfter',
 		'type' => 'select',
 		'label' => 'Then mark them as',
@@ -200,7 +200,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'unreadOnly',
 		'type' => 'switch',
 		'label' => 'Unread only',
@@ -208,8 +208,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 3 wide
 		'key' => 'spamTrash',
 		'type' => 'switch',
 		'label' => 'Include spam and trash',
@@ -217,7 +216,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'advanced' => true, 'width' => 3, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'saveAttachments',
 		'type' => 'switch',
 		'label' => 'Save attachments as project files',
@@ -225,7 +224,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'search', 'get' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest message (MB)',
@@ -238,7 +237,7 @@ class NodeAppGmail extends NodeAppGoogle {
 
 	    //modify
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'mark',
 		'type' => 'select',
 		'label' => 'Mark as',
@@ -248,7 +247,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'archive',
 		'type' => 'switch',
 		'label' => 'Archive (out of the inbox)',
@@ -256,7 +255,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'addLabels',
 		'type' => 'text',
 		'label' => 'Add labels',
@@ -265,7 +264,7 @@ class NodeAppGmail extends NodeAppGoogle {
 		'ui' => [ 'width' => 6, 'expression' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:45:55+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'removeLabels',
 		'type' => 'text',
 		'label' => 'Remove labels',
@@ -329,7 +328,7 @@ class NodeAppGmail extends NodeAppGoogle {
     // ------------------------------------------------------------------------------------
     //running
 
-    //CLD: 2026-10-20T14:00:00+03:00: the operation (NodeAppGoogle::execute runs it: the variable, the log, On error)
+    //the operation (NodeAppGoogle::execute runs it: the variable, the log, On error)
     protected function runOperation($operation, \Closure $text, \Closure $value) {
 	return match($operation) {
 	    'send', 'draft' => $this->opCompose($operation === 'draft', $text, $value),

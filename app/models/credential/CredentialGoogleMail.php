@@ -1,7 +1,7 @@
 <?php
 
 //Gmail / Google Workspace mailbox over IMAP with OAuth (XOAUTH2); the Google app needs the Gmail API scope https://mail.google.com/
-//CLD: 2026-10-09T17:21:14+03:00: a variant of models\Credential (base CredentialGoogleOAuth2);
+//a variant of models\Credential (base CredentialGoogleOAuth2);
 
 namespace models\credential;
 
@@ -9,7 +9,7 @@ class CredentialGoogleMail extends \models\credential\CredentialGoogleOAuth2 {
     public static $label = 'Google Mail (OAuth)';
     public static $icon = 'bi-google';
     public static $group = 'Email';
-    //CLD: 2026-10-20T12:00:00+03:00: + gmail (the Gmail step, Gmail API: the scope https://mail.google.com/ covers it; the Google app needs the Gmail API enabled)
+    //gmail: the Gmail step, Gmail API (the scope https://mail.google.com/ covers it; the Google app needs the Gmail API enabled)
     public static $provides = [ 'imap', 'gmail' ];
 
     public static function serviceScope() {

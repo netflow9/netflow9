@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-20T19:00:00+03:00: new credential type: your private key to sign files with before they are sent (util\FileSign), for the FTP / SFTP Upload step.
+    your private key to sign files with before they are sent (util\FileSign), for the FTP / SFTP Upload step.
     Provides `sign`.
 	method: PGP / GPG private key (+ passphrase, a key id when the text has several), S/MIME / CMS (X.509 private key + its certificate + the chain), or a private key
 	for plain signatures (RSA, EC, Ed25519; PEM). Digest SHA-256 / 384 / 512; armored / base64 output. The key and passphrase are stored encrypted and never shown again;
@@ -35,7 +35,7 @@ class CredentialSigning extends \models\Credential {
 		'required' => true,
 		'encrypt' => true,
 		'help' => 'PGP: -----BEGIN PGP PRIVATE KEY BLOCK----- (gpg --armor --export-secret-keys); the others: -----BEGIN (ENCRYPTED / RSA / EC) PRIVATE KEY----- (PEM)',
-		//CLD: 2026-10-20T14:07:31+03:00: util\Validator key rules
+		//util\Validator key rules
 		'validate' => [
 		    [ 'notPublicKey', 'skipEmpty' => true, 'last' => true, 'message' => 'this is a public key: signing needs your private key' ],
 		    [ 'pgpPrivateKey', 'when' => [ 'method' => [ 'pgp' ] ], 'multiple' => true, 'skipEmpty' => true, 'message' => 'not an armored PGP private key (-----BEGIN PGP PRIVATE KEY BLOCK-----)' ],
@@ -65,7 +65,7 @@ class CredentialSigning extends \models\Credential {
 		'default' => '',
 		'requiredIf' => [ 'if' => 'method', 'in' => [ 'cms' ] ],
 		'help' => 'The certificate of the private key (PEM: -----BEGIN CERTIFICATE-----)',
-		//CLD: 2026-10-20T14:07:31+03:00: util\Validator certificate rules
+		//util\Validator certificate rules
 		'validate' => [
 		    [ 'notPrivateKey', 'when' => [ 'method' => [ 'cms' ] ], 'skipEmpty' => true, 'last' => true, 'message' => 'only the certificate: the private key goes in its own field' ],
 		    [ 'pemCertificate', 'when' => [ 'method' => [ 'cms' ] ], 'multiple' => false, 'skipEmpty' => true, 'message' => 'not a PEM certificate (-----BEGIN CERTIFICATE-----)' ],
@@ -78,7 +78,7 @@ class CredentialSigning extends \models\Credential {
 		'label' => 'Certificate chain',
 		'default' => '',
 		'help' => 'Optional: the intermediate certificates (PEM), sent in the signature',
-		//CLD: 2026-10-20T14:07:31+03:00: the chain was not checked
+		//the chain is checked
 		'validate' => [
 		    [ 'notPrivateKey', 'when' => [ 'method' => [ 'cms' ] ], 'skipEmpty' => true, 'last' => true, 'message' => 'only certificates: a private key does not belong here' ],
 		    [ 'pemCertificate', 'when' => [ 'method' => [ 'cms' ] ], 'skipEmpty' => true, 'message' => 'not PEM certificates (-----BEGIN CERTIFICATE-----)' ],

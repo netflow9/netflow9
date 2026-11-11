@@ -3,7 +3,7 @@
 $this->pageTitle = 'Workflow: ' . (string)$wf;
 
 //we need to build a list of available nodes for the builder
-//CLD: 2026-10-25T20:00:00+02:00: only their version here (WfNode::designerDefs, which builds them): the designer asks them when this tab does not have that version (nodeDefs below,
+//only their version here (WfNode::designerDefs, which builds them): the designer asks them when this tab does not have that version (nodeDefs below,
 //WorkflowController::node_defs)
 $nodeDefsVersion = \models\wf\WfNode::designerDefs(\V::app()->config('rt.account'))['version'];
 $nodeDefsUrl = \V::app()->createUrl('/workflow/node_defs');
@@ -15,7 +15,7 @@ $pageToken = bin2hex(random_bytes(6));
     [ '__canvas_pan_x', '__canvas_pan_y', '__canvas_zoom' ]);
 
 $nodeInitUrl = \V::app()->createUrl('/workflow/node_init', [ 'id' => $wf->_id ]);
-//CLD: 2026-11-04T08:10:00+02:00: the form of a step, asked when its dialog opens
+//the form of a step, asked when its dialog opens
 $nodeSchemaUrl = \V::app()->createUrl('/workflow/node_schema', [ 'id' => $wf->_id ]);
 $exprUrl = \V::app()->createUrl('/workflow/expression', [ 'id' => $wf->_id ]);
 $runUrl = \V::app()->createUrl('/workflow/start', [ 'id' => $wf->_id ]);
@@ -26,9 +26,9 @@ $wfIdJs = (string)$wf->_id;
 $executionUrl = \V::app()->createUrl('/workflow/execution', [ 'id' => $wf->_id ]);
 $executionDeleteUrl = \V::app()->createUrl('/workflow/execution_delete', [ 'id' => $wf->_id ]);
 $executionsDeleteUrl = \V::app()->createUrl('/workflow/executions_delete', [ 'id' => $wf->_id ]);
-//CLD: 2026-10-26T10:14:16+02:00: Kill in the Executions panel
+//Kill in the Executions panel
 $executionKillUrl = \V::app()->createUrl('/workflow/execution_kill', [ 'id' => $wf->_id ]);
-//CLD: 2026-11-02T14:00:00+02:00: an AI step's trace (app.WfExecutions), Run again; ?execution=&trace= (WorkflowController::trace): the panel opened on them
+//an AI step's trace (app.WfExecutions), Run again; ?execution=&trace= (WorkflowController::trace): the panel opened on them
 $executionTraceUrl = \V::app()->createUrl('/workflow/execution_trace', [ 'id' => $wf->_id ]);
 $executionAgainUrl = \V::app()->createUrl('/workflow/execution_again', [ 'id' => $wf->_id ]);
 $openExecution = \util\Validator::rule('oid', (string)(\V::app()->request->query['execution'] ?? '')) ? (string)\V::app()->request->query['execution'] : '';
@@ -40,20 +40,20 @@ $isPublished = $wf->status === \models\Workflow::PUBLISHED && $activeVersion !==
 $draftChanged = $activeVersion !== null && !$wf->draftMatches($activeVersion);
 $shown = $viewVersion ? $wf->forVersion($viewVersion) : $wf;
 $readonly = $viewVersion ? 'true' : 'false';
-//CLD: 2026-10-30T15:00:00+02:00: the step picker lists the advanced steps (User prefs hide_advanced_steps)
+//the step picker lists the advanced steps (User prefs hide_advanced_steps)
 $showAdvancedSteps = empty(\V::app()->var('rt.prefs')['hide_advanced_steps']) ? 'true' : 'false';
 $canUpdate = \V::app()->user->can('Workflow::update', [ 'object' => $wf ]);
 $canPublish = \V::app()->user->can('Workflow::publish', [ 'object' => $wf ]);
 $canDelete = \V::app()->user->can('Workflow::delete', [ 'object' => $wf ]);
 $canDuplicate = \V::app()->user->can('Workflow::create', [ 'object' => \V::app()->om->create('Workflow', [ 'aid' => $wf->aid, 'project' => $wf->project ]) ]);
 
-//CLD: 2026-10-25T19:30:00+02:00: the connection problems of the version shown (Workflow::validateFlow): marked on the nodes, counted in the header. The errors in the
+//the connection problems of the version shown (Workflow::validateFlow): marked on the nodes, counted in the header. The errors in the
 //steps' settings (a draft is saved with them) are asked once the designer is shown (WorkflowController::step_issues, stepCheck below: validateSteps was the slowest
 //part of this page) and marked until the step is changed (options.stepIssues)
 $issues = $shown->validateFlow();
 $issuesJs = \util\JSON::encode($issues);
 
-//CLD: 2026-11-02T15:46:06+02:00: the Tests panel (app.WfTests; EvalController): its URLs, by action
+//the Tests panel (app.WfTests; EvalController): its URLs, by action
 $testsUrls = [];
 foreach([ 'case_delete', 'case_from_execution', 'case_save', 'data', 'required', 'run_detail', 'run_stop', 'start' ] as $action)
     $testsUrls[$action] = \V::app()->createUrl('/eval/' . $action, [ 'id' => $wf->_id ]);
@@ -65,9 +65,9 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 +function() {
     let designer = null;
 
-    //CLD: 2026-10-10T19:08:46+03:00: manual run + Executions panel: Run starts the saved workflow at its Manual trigger step(s) (runs on the server after the answer);
-    //the panel lists the latest executions and shows one (summary, log, variables), refreshed every 2 s while one is new / running
-    //CLD: 2026-10-19T19:35:00+03:00: the bottom panel last open (exec | debug; none when closed) is kept in localStorage (this browser) and opened again when a designer opens
+    //Run + Executions panel: Run starts the saved workflow at its trigger step (runs in the daemon); the panel lists the latest executions and shows one (summary, log,
+    //variables), refreshed every 2 s while one is new / running. The bottom panel last open (exec | debug; none when closed) is kept in localStorage (this browser) and
+    //opened again when a designer opens
     const bottomPanel = {
 	KEY: 'rail22.wf.bottom.panel',
 	get() {
@@ -92,35 +92,35 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	},
     };
 
-    //CLD: 2026-10-25T20:30:00+02:00: a toast with plain texts
+    //a toast with plain texts
     const toast = (type, title, body) => app.utils.toast({ type: type, title: app.utils.escapeHtml(title), body: app.utils.escapeHtml(body), delay: 5000 });
     const csrf = () => $('meta[name=csrf-token]').attr('content');
 
-    //CLD: 2026-10-25T20:30:00+02:00: Run and the Executions panel: app.WfExecutions (app.wfexecutions.js), the Debug panel: app.WfDebug (app.wfdebug.js;
+    //Run and the Executions panel: app.WfExecutions (app.wfexecutions.js), the Debug panel: app.WfDebug (app.wfdebug.js;
     //was `debug`); one bottom panel at a time, the one last open remembered (bottomPanel)
     const exec = new app.WfExecutions(document.querySelector('.exec-panel'), {
 	urls: { run: '{$runUrl}', list: '{$executionsUrl}', detail: '{$executionUrl}', del: '{$executionDeleteUrl}', delAll: '{$executionsDeleteUrl}', kill: '{$executionKillUrl}', trace: '{$executionTraceUrl}', again: '{$executionAgainUrl}', saveCase: '{$testsUrls['case_from_execution']}' },
 	canRun: {$canRun},
-	//CLD: 2026-10-12T20:33:47+03:00: the triggers Run can start
+	//the triggers Run can start
 	runTriggers: {$runTriggers},
-	//CLD: 2026-10-19T18:05:00+03:00: started once the changes are saved (autosave)
+	//started once the changes are saved (autosave)
 	whenSaved: (fn) => autosave.whenSaved(fn),
 	onOpen: () => {
 	    debug.close();
-	    //CLD: 2026-11-02T15:46:06+02:00: + the Tests panel
+	    //the Tests panel
 	    tests.close();
 	    bottomPanel.set('exec');
 	},
-	//CLD: 2026-11-02T15:46:06+02:00: Save as test case: it opens in the Tests panel
+	//Save as test case: it opens in the Tests panel
 	onCaseSaved: (saved) => {
 	    toast('success', 'Saved', 'Test case saved: choose what it must check');
 	    tests.open();
 	    tests.refresh().done(() => tests.editCase(saved));
 	},
 	onClose: () => bottomPanel.closed('exec'),
-	//CLD: 2026-10-29T21:30:00+02:00: the selected execution's steps and connections on the canvas (done, running, waiting, failed; null: none)
+	//the selected execution's steps and connections on the canvas (done, running, waiting, failed; null: none)
 	onShow: (run) => designer && designer.setRun(run),
-	//CLD: 2026-10-29T21:38:25+02:00: the chip of the execution shown, at the top of the canvas
+	//the chip of the execution shown, at the top of the canvas
 	chip: () => document.getElementById('canvas-wrap'),
     });
     const debug = new app.WfDebug(document.querySelector('.wf-debug-panel'), {
@@ -135,13 +135,13 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	onShowNode: (id) => designer && designer.showNode(id),
 	onOpen: () => {
 	    exec.close();
-	    //CLD: 2026-11-02T15:46:06+02:00: + the Tests panel
+	    //the Tests panel
 	    tests.close();
 	    bottomPanel.set('debug');
 	},
 	onClose: () => bottomPanel.closed('debug'),
     });
-    //CLD: 2026-11-02T15:46:06+02:00: the Tests panel
+    //the Tests panel
     const tests = new app.WfTests(document.querySelector('.tests-panel'), {
 	urls: { data: '{$testsUrls['data']}', detail: '{$testsUrls['run_detail']}', save: '{$testsUrls['case_save']}', del: '{$testsUrls['case_delete']}', start: '{$testsUrls['start']}', stop: '{$testsUrls['run_stop']}', required: '{$testsUrls['required']}' },
 	whenSaved: (fn) => autosave.whenSaved(fn),
@@ -154,7 +154,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	onShowExecution: (execution, trace) => exec.openTrace(execution, trace),
     });
 
-    //CLD: 2026-10-19T18:05:00+03:00: Publish and Duplicate act on the saved draft: with changes not saved yet, done once they are saved (autosave);
+    //Publish and Duplicate act on the saved draft: with changes not saved yet, done once they are saved (autosave);
     //stopImmediatePropagation: the data-confirm handler is on the document too
     $('.btn-duplicate-wf, .btn-publish-draft').on('click', (e) => {
 	if (exec.dirty || designer.hasPendingChange()) {
@@ -166,9 +166,9 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	}
     });
 
-    //CLD: 2026-10-25T20:30:00+02:00: the Run and Executions handlers: in app.WfExecutions
+    //the Run and Executions handlers: in app.WfExecutions
 
-    //CLD: 2026-10-19T18:05:00+03:00: autosave: each new state of the canvas (app.workflow.js onCommit: every change, undo / redo too) is saved (WorkflowController::save), one request at a
+    //autosave: each new state of the canvas (app.workflow.js onCommit: every change, undo / redo too) is saved (WorkflowController::save), one request at a
     //time, the latest state waiting; the server's configs come back on the canvas (applySaved), its problems in the badges; a failed save is tried again (RETRY ms, or a
     //click on the status). whenSaved(fn): fn once nothing is waiting (Run, Publish, Duplicate use the saved draft)
     const autosave = {
@@ -179,7 +179,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	error: null,
 	retryTimer: null,
 	waiting: [],
-	//CLD: 2026-10-25T19:30:00+02:00: saves sent since the page was shown
+	//saves sent since the page was shown
 	sent: 0,
 
 	nodesOf: (snapshot) => {
@@ -205,7 +205,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	    }
 	    const snapshot = this.sending = this.queued;
 	    this.queued = null;
-	    //CLD: 2026-10-25T19:30:00+02:00: a save was sent: its answer has the step errors (stepCheck's are not used then)
+	    //a save was sent: its answer has the step errors (stepCheck's are not used then)
 	    this.sent++;
 	    this.status();
 	    $.ajax({ url: this.url, method: 'POST', dataType: 'json', data: { nodes: JSON.stringify(this.nodesOf(snapshot)) }, headers: { 'X-Csrf-Token': csrf() } })
@@ -255,7 +255,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	    const el = document.querySelector('.wf-save-status');
 	    if (!el)
 		return;
-	    //CLD: 2026-10-19T22:19:24+03:00: the texts in .btn-label (only the icon on phones; the title says it)
+	    //the texts in .btn-label (only the icon on phones; the title says it)
 	    let html = '<i class=\"bi bi-cloud-check me-1\"></i><span class=\"btn-label\">Saved</span>', cls = 'text-muted', tip = 'All changes are saved';
 	    if (this.error !== null && this.sending === null) {
 		[ html, cls, tip ] = [ '<i class=\"bi bi-cloud-slash me-1\"></i><span class=\"btn-label\">Not saved</span>', 'text-danger', this.error + ' (click to try again now)' ];
@@ -272,7 +272,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	if (autosave.error !== null)
 	    autosave.send();
     });
-    //CLD: 2026-10-19T18:05:00+03:00: Undo / Redo
+    //Undo / Redo
     $('.btn-undo-wf').on('click', (e) => {
 	e.preventDefault();
 	designer.undo();
@@ -282,7 +282,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	designer.redo();
     });
 
-    //CLD: 2026-10-19T18:05:00+03:00: the version menu follows the saved draft: `draft changed` and which Publish item (wf-if-changed / wf-if-same) is shown
+    //the version menu follows the saved draft: `draft changed` and which Publish item (wf-if-changed / wf-if-same) is shown
     const versions = {
 	update(changed) {
 	    const btn = document.querySelector('.wf-versions-btn');
@@ -297,7 +297,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	},
     };
 
-    //CLD: 2026-10-19T18:05:00+03:00: leaving with changes not saved: a change still waiting is committed when a link is clicked (in-app pages load without leaving: its save goes on);
+    //leaving with changes not saved: a change still waiting is committed when a link is clicked (in-app pages load without leaving: its save goes on);
     //the browser asks before closing / reloading while something is not saved. Once per page load (the designer page is loaded again by app.pjax): app.wfAutosave is the current one
     app.wfAutosave = autosave;
     if (!window.__wfAutosaveGuard) {
@@ -317,7 +317,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	});
     }
 
-    //CLD: 2026-10-19T19:50:00+03:00: the canvas pan / zoom per workflow, kept in localStorage (this browser): { <workflow id>: { x, y, zoom, t } } in one key, the MAX most recent
+    //the canvas pan / zoom per workflow, kept in localStorage (this browser): { <workflow id>: { x, y, zoom, t } } in one key, the MAX most recent
     //workflows; written PAUSE ms after the view stops moving (panning / zooming call onCanvasChange on every move)
     const canvasView = {
 	KEY: 'rail22.wf.canvas',
@@ -376,13 +376,13 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 		const list = issues.filter((i) => i.level === level);
 		if (!list.length)
 		    return;
-		//CLD: 2026-11-08T12:00:00+02:00: escapeHtml escapes single quotes too now; title stays double-quoted
+		//escapeHtml escapes single quotes too; title stays double-quoted
 		const tip = app.utils.escapeHtml(list.map((i) => '- ' + i.message).join('\\n'));
-		//CLD: 2026-10-11T19:57:28+03:00: + btn-debug-open: a click opens the debug panel (the list)
+		//btn-debug-open: a click opens the debug panel (the list)
 		html += `<span class='badge text-bg-\${color} me-1 btn-debug-open' role='button' title=\"\${tip}\"><i class='bi bi-exclamation-triangle me-1'></i>\${list.length} \${level}\${list.length > 1 ? 's' : ''}</span>`;
 	    });
 	    box.innerHTML = html;
-	    //CLD: 2026-10-11T19:57:28+03:00: the debug panel lists them too
+	    //the debug panel lists them too
 	    debug.setIssues(issues);
 	},
 	onDataChange: (workflow) => {
@@ -390,7 +390,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	    const nodes = {};
 	    workflow.forEach((n) => nodes[n.wfid] = n);
 	    $('[name=nodes]').text(JSON.stringify(nodes));
-	    //CLD: 2026-10-10T19:08:46+03:00: unsaved changes (the first call is the saved state) and whether there is a Manual trigger: what Run can do
+	    //unsaved changes (the first call is the saved state) and whether there is a Manual trigger: what Run can do
 	    exec.onDataChange(workflow, JSON.stringify(nodes));
 	    //console.log('onDataChange: nodes=', JSON.stringify(nodes, null, 2));
 	},
@@ -409,7 +409,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	options.canvas.zoom = canvas_zoom;
     if (canvas_pan_x.length && canvas_pan_y.length)
 	options.canvas.pan = { x: canvas_pan_x, y: canvas_pan_y };
-    //CLD: 2026-10-19T19:50:00+03:00: else the pan / zoom this workflow had last time (none: the view is fitted, as before)
+    //else the pan / zoom this workflow had last time (none: the view is fitted, as before)
     if (!options.canvas.zoom && !options.canvas.pan) {
 	const view = canvasView.stored();
 	if (view) {
@@ -418,7 +418,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	}
     }
 
-    //CLD: 2026-10-25T20:00:00+02:00: the step definitions of version {$nodeDefsVersion}: kept in this tab (app.wfNodeDefs: pages loaded by app.pjax share it), asked when missing or
+    //the step definitions of version {$nodeDefsVersion}: kept in this tab (app.wfNodeDefs: pages loaded by app.pjax share it), asked when missing or
     //of another version (a deploy, the account's plan changed); the designer is made once they are here
     const nodeDefs = {
 	url: '{$nodeDefsUrl}',
@@ -449,7 +449,7 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 
 	designer = new app.Workflow('canvas-wrap', options);
 
-	//CLD: 2026-10-25T19:30:00+02:00: the errors in the steps' settings, asked once the designer is shown; not used when
+	//the errors in the steps' settings, asked once the designer is shown; not used when
 	//the page was left (another designer is the current one) or the steps were changed since (a save answers with its own; a change not committed yet would
 	//take them as about its new config)
 	const stepCheck = {
@@ -466,17 +466,17 @@ $stepIssuesUrl = \V::app()->createUrl('/workflow/step_issues', array_filter([ 'i
 	};
 	stepCheck.load();
 
-	//CLD: 2026-10-19T19:35:00+03:00: the bottom panel open last time (after mount: the problems are known); Executions only where its button is (the draft)
+	//the bottom panel open last time (after mount: the problems are known); Executions only where its button is (the draft)
 	if (bottomPanel.get() === 'exec' && document.querySelector('.btn-exec-toggle'))
 	    exec.open();
 	else if (bottomPanel.get() === 'debug')
 	    debug.open();
-	//CLD: 2026-11-02T15:46:06+02:00: + the Tests panel
+	//the Tests panel
 	else if (bottomPanel.get() === 'tests' && document.querySelector('.btn-tests-toggle'))
 	    tests.open();
-	//CLD: 2026-10-29T21:38:25+02:00: the Executions panel closed: a run still running / waiting is shown on the canvas all the same (the draft, where the panel is)
+	//the Executions panel closed: a run still running / waiting is shown on the canvas all the same (the draft, where the panel is)
 	if (!exec.isOpen() && document.querySelector('.btn-exec-toggle'))
-	    //CLD: 2026-11-02T14:00:00+02:00: a link to a trace opens it, else the live run
+	    //a link to a trace opens it, else the live run
 	    if ('{$openExecution}')
 		exec.openTrace('{$openExecution}', '{$openTrace}');
 	    else
@@ -522,13 +522,13 @@ $formOptions = [
     <?= (new \sys\html\BtnExpandSidebar())->render() ?>
     <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
-	//CLD: 2026-10-05T20:42:44+03:00: Breadcrumbs prints labels as HTML; escape the user-editable name
+	//Breadcrumbs prints labels as HTML; escape the user-editable name
 	[ 'label' => \V::app()->html->escape((string)$wf->name) ],
     ]]))->render() ?>
 
     <div class="spacer"></div>
     <?php
-    //CLD: 2026-10-06T23:25:57+03:00: problem counts, the messages as tooltip
+    //problem counts, the messages as tooltip
     $issueBadges = '';
     foreach([ 'error' => 'danger', 'warning' => 'warning' ] as $level => $color) {
 	$list = array_values(array_filter($issues, fn($i) => $i['level'] == $level));
@@ -538,12 +538,12 @@ $formOptions = [
 	$tip = \V::app()->html->escape(implode("\n", array_map(fn($i) => '- ' . $i['message'], $list)));
 	$issueBadges .= "<span class='badge text-bg-{$color} me-1' title='{$tip}'><i class='bi bi-exclamation-triangle me-1'></i>{$label}</span>";
     }
-    //CLD: 2026-10-06T23:33:47+03:00: container updated live by the designer (onIssuesChange); the server-side badges are the first state
+    //container updated live by the designer (onIssuesChange); the server-side badges are the first state
     echo "<span id='wf-issues'>{$issueBadges}</span>";
     ?>
     <div>
 	<?php
-	//CLD: 2026-10-11T13:51:42+03:00: versions: viewing a version shows what it is and its actions; else a menu with the
+	//versions: viewing a version shows what it is and its actions; else a menu with the
 	//published version (if any), whether the draft differs, Publish, Unpublish and the Versions dialog
 	$id = (string)$wf->_id;
 	$versionsUrl = \V::app()->createUrl('/workflow/versions', [ 'id' => $id ]);
@@ -556,7 +556,7 @@ $formOptions = [
 		'active' => $isActive ? ' (published)' : '',
 	    ]);
 	    echo \util\VString::insert($linkTpl, [ 'href' => \V::app()->createUrl('/workflow/index', [ 'id' => $id ]), 'class' => 'btn-outline-secondary', 'attrs' => '', 'label' => 'Back to the draft' ]);
-	    //CLD: 2026-10-11T19:47:51+03:00: Publish again: $canPublish, Copy into the draft: $canUpdate
+	    //Publish again: $canPublish, Copy into the draft: $canUpdate
 	    if ($canPublish && !$isActive)
 		echo \util\VString::insert($linkTpl, [ 'href' => \V::app()->createUrl('/workflow/publish', $q), 'class' => 'btn-outline-success', 'attrs' => '', 'label' => 'Publish again' ]);
 	    if ($canUpdate)
@@ -590,7 +590,7 @@ $formOptions = [
 
 	    $items = '';
 	    if ($canPublish) {
-		//CLD: 2026-10-19T18:05:00+03:00: both items: the draft differs from the version (wf-if-changed) or not (wf-if-same); the one not shown is hidden, the autosave switches them (versions.update)
+		//both items: the draft differs from the version (wf-if-changed) or not (wf-if-same); the one not shown is hidden, the autosave switches them (versions.update)
 		$publishUrl = \V::app()->createUrl('/workflow/publish', [ 'id' => $id ]);
 		$differs = !$activeVersion || $draftChanged;
 		$publishTpl = '<li class="{:class}"><a class="dropdown-item btn-publish-draft" href="{:href}"><i class="bi bi-broadcast me-2"></i>{:label}</a></li>';
@@ -616,12 +616,12 @@ $formOptions = [
 		$items .= '<li><hr class="dropdown-divider"></li>';
 	    }
 	    $items .= \util\VString::insert('<li><a class="dropdown-item" href="{:href}"><i class="bi bi-clock me-2"></i>Versions</a></li>', [ 'href' => $versionsUrl ]);
-	    //CLD: 2026-11-03T16:00:00+02:00: Share (ShareController), not in a personal project
+	    //Share (ShareController), not in a personal project
 	    if (\V::app()->user->can('Workflow::share', [ 'object' => $wf ]) && !(\V::app()->om->findOne('Project', [ '_id' => $wf->project, 'aid' => $wf->aid ])->personal ?? true))
 		$items .= \util\VString::insert('<li><a class="dropdown-item" href="{:href}"><i class="bi bi-share me-2"></i>Share&hellip;</a></li>', [
 		    'href' => \V::app()->createUrl('/share/manage', [ 'object' => 'Workflow', 'id' => $id ]),
 		]);
-	    //CLD: 2026-11-04T15:00:00+02:00: Move (ShareController::move), as Delete: it leaves this project
+	    //Move (ShareController::move), as Delete: it leaves this project
 	    if ($canDelete)
 		$items .= \util\VString::insert('<li><a class="dropdown-item" href="{:href}"><i class="bi bi-folder-symlink me-2"></i>Move to project&hellip;</a></li>', [
 		    'href' => \V::app()->createUrl('/share/move', [ 'object' => 'Workflow', 'id' => $id ]),
@@ -657,7 +657,7 @@ $formOptions = [
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-run-wf text-success d-inline" title="Run"><i class="bi bi-play-fill"></i></a>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-exec-toggle d-inline" title="Executions"><i class="bi bi-clock-history"></i></a>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-debug-toggle d-inline" title="Debug: errors and warnings"><i class="bi bi-bug"></i></a>
-	<?php //CLD: 2026-11-02T15:46:06+02:00: the Tests panel ?>
+	<?php //the Tests panel ?>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-tests-toggle d-inline" title="Tests: check the AI steps before publishing"><i class="bi bi-clipboard-check"></i></a>
 	<?php /* <a href="<?= \V::app()->createUrl('/workflow/variables', [ 'id' => $wf->_id ]) ?>" class="px-1 btn btn-sm btn-icon d-inline"><i class="bi bi-code-slash"></i></a> */ ?>
 	<a href="<?= \V::app()->createUrl('/workflow/update_name', [ 'id' => $wf->_id ]) ?>" class="px-1 btn btn-sm btn-icon d-inline"><i class="bi bi-gear"></i></a>
@@ -665,12 +665,12 @@ $formOptions = [
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-redo-wf d-inline disabled opacity-50" title="Redo (Ctrl+Shift+Z)" aria-disabled="true"><i class="bi bi-arrow-clockwise"></i></a>
 	<a href="#" class="wf-save-status small px-1 text-nowrap text-muted text-decoration-none" title="All changes are saved"><i class="bi bi-cloud-check me-1"></i><span class="btn-label">Saved</span></a>
 	<?php endif; ?>
-	<?php //CLD: 2026-10-26T23:49:50+02:00: the Assistant's button: opens / closes its panel (app.WfAssistant) ?>
+	<?php //the Assistant's button: opens / closes its panel (app.WfAssistant) ?>
 	<a href="#" class="px-1 btn btn-sm btn-icon btn-assistant-toggle d-inline" title="Assistant: describe the workflow or a change" aria-pressed="false"><i class="bi bi-stars"></i></a>
 	<?php \V::app()->hooks->applyHook('workflow:designer-toolbar', [ $wf, $viewVersion ]); ?>
     </div>
 </div>
-<?php //CLD: 2026-10-19T22:19:24+03:00: on phones (below md), a note that the designer is made for larger screens; once closed, not shown again in this browser ?>
+<?php //on phones (below md), a note that the designer is made for larger screens; once closed, not shown again in this browser ?>
 <div class="alert alert-info alert-dismissible small d-md-none m-2 mb-0 py-2 wf-small-screen-note">
     <i class="bi bi-display me-1"></i>The designer works best on a larger screen. You can still view and run this workflow here.
     <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -680,14 +680,14 @@ $formOptions = [
     <?= \V::app()->form->create($wf, $formOptions); ?>
 	<textarea name="nodes" class="d-none"><?= \V::app()->html->escape(\util\JSON::encode(array_values(is_array($shown->nodes) ? $shown->nodes : []))) ?></textarea>
 
-	<?php //CLD: 2026-10-25T20:00:00+02:00: + data-page (mount() in the script) ?>
+	<?php //data-page: the page token (mount() in the script) ?>
 	<div id="canvas-wrap" class="position-relative overflow-hidden flex-grow-1" data-page="<?= $pageToken ?>">
 	    <div class="position-absolute top-0 start-0 canvas-main">
 		<svg class="position-absolute top-0 start-0 canvas-edges"></svg>
 	    </div>
 	</div>
 
-	<?php //CLD: 2026-10-26T23:49:50+02:00: the Assistant's panel ?>
+	<?php //the Assistant's panel ?>
 	<?= $this->renderFile('/views/assistant/_designer_panel', [ 'wf' => $wf, 'viewVersion' => $viewVersion ]) ?>
 	<?php \V::app()->hooks->applyHook('workflow:designer-panels', [ $wf, $viewVersion ]); ?>
     <?= \V::app()->form->end(); ?>
@@ -707,7 +707,7 @@ $formOptions = [
 	<div class="debug-issues"></div>
     </div>
 </div>
-<?php //CLD: 2026-11-02T15:46:06+02:00: the Tests panel (app.WfTests) ?>
+<?php //the Tests panel (app.WfTests) ?>
 <div class="debug-panel tests-panel d-none" style="background: var(--rail22-debug-bg)">
     <div class="debug-resize-handle"></div>
     <div class="debug-panel-header">
@@ -735,7 +735,7 @@ $formOptions = [
 	    <button class="debug-icon-btn btn-exec-close" title="Close panel"><i class="bi bi-x-lg"></i></button>
 	</div>
     </div>
-    <?php //CLD: 2026-10-19T22:19:24+03:00: the list's width is in the theme (rail22/_workflow.scss: .exec-panel .exec-list): the list goes above the details on phones ?>
+    <?php //the list's width is in the theme (rail22/_workflow.scss: .exec-panel .exec-list): the list goes above the details on phones ?>
     <div class="debug-panel-body d-flex gap-3 p-0">
 	<div class="exec-list overflow-auto py-2 ps-3 pe-2 border-end border-secondary"></div>
 	<div class="exec-detail overflow-auto flex-grow-1 py-2 pe-3"><span style="color: var(--rail22-debug-muted)">Select an execution</span></div>

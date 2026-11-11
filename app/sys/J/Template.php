@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-13T12:17:47+03:00: new class: the {{ }} parts of a text (a J template: text with expressions between {{ and }}, e.g. "INVOICE-{{ mail.date }}"), in one place so
+//the {{ }} parts of a text (a J template: text with expressions between {{ and }}, e.g. "INVOICE-{{ mail.date }}"), in one place so
 //the parser (Parser::parse mode `template`) and the editors' help find them the same way
 
 declare(strict_types=1);
@@ -59,7 +59,7 @@ final class Template
                     $stack[] = ['tpl'];
                 } elseif ($c === '/' && !in_array($text[$i + 1] ?? '', ['/', '*'], true) && Lexer::regexAllowedAt($text, $start, $i)
                     && (($end = Lexer::regexEnd($text, $i, strlen($text))) !== null || strcspn($text, "\r\n", $i) >= $limit - $i)) {
-                    //CLD: 2026-10-20T22:10:00+03:00: a regular expression: its } and quotes are not code; a cursor inside it (or in one not closed yet on its
+                    //a regular expression: its } and quotes are not code; a cursor inside it (or in one not closed yet on its
                     //line) is in a 'regex'
                     if ($end === null || $end > $limit) {
                         $inside = 'regex';

@@ -63,7 +63,7 @@ class FileDecrypt {
     // ------------------------------------------------------------------------------------
 
     //$in decrypted into $out with credential $cred (its method's fields: privateKey, passphrase, certificate, cipher, kdf, iterations); larger than $maxBytes: an error
-    //CLD: 2026-10-20T20:00:00+03:00: + $verifyCred: a PGP Verification key credential: a signature in the message is checked in the same pass (util\FileVerify::pgpResult):
+    //$verifyCred: a PGP Verification key credential: a signature in the message is checked in the same pass (util\FileVerify::pgpResult):
     //returns [ signer ] when it was signed by one of its keys, null when the message is not signed (the caller checks the inside); a bad or untrusted signature: an error
     public static function decrypt($cred, $in, $out, $maxBytes, $verifyCred = null) {
 	$method = (string)$cred->method;
@@ -115,7 +115,7 @@ class FileDecrypt {
 	    $passphrase = (string)$cred->passphrase;
 	    if ($method === 'pgp-symmetric' && $passphrase === '')
 		throw new \RuntimeException('the credential has no passphrase');
-	    //CLD: 2026-10-20T20:00:00+03:00: the signers' public keys (only theirs count: our own private key is in this keyring too); gpg's status lines on stdout
+	    //the signers' public keys (only theirs count: our own private key is in this keyring too); gpg's status lines on stdout
 	    $signers = $verifyCred ? array_column(\util\FileEncrypt::importPublicKeys($base, $work, $verifyCred->publicKey, 'S'), 'fpr') : null;
 	    $args = array_merge($base, [ '--yes', '--trust-model', 'always', '--pinentry-mode', 'loopback' ]);
 	    if ($signers !== null)
@@ -136,7 +136,7 @@ class FileDecrypt {
 		    throw $e;
 		}
 	    }
-	    //CLD: 2026-10-20T19:00:00+03:00: a signed file whose signer's public key is not known: gpg decrypts it but ends with 2; that is not an error here (signatures are
+	    //a signed file whose signer's public key is not known: gpg decrypts it but ends with 2; that is not an error here (signatures are
 	    //not checked by this step); a bad signature or a failed decryption still is
 	    clearstatcache(true, $out);
 	    $unverifiable = $code === 2 && is_file($out) && str_contains($err, "Can't check signature: No public key") && !preg_match('/BAD signature|decryption failed|no valid OpenPGP data/i', $err);
@@ -299,7 +299,7 @@ class FileDecrypt {
     }
 
     //the path of a tool; required: an error when it is not installed
-    //CLD: 2026-10-20T17:10:00+03:00: public: the initial setup (util\Setup::checks) looks the tools up the same way
+    //public: the initial setup (util\Setup::checks) looks the tools up the same way
     public static function tool($name, $required = true) {
 	foreach([ '/usr/bin/', '/usr/local/bin/', '/bin/' ] as $dir) {
 	    if (is_executable($dir . $name))

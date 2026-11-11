@@ -34,7 +34,7 @@ class CredentialVerification extends \models\Credential {
 		'default' => '',
 		'requiredIf' => [ 'if' => 'method', 'in' => [ 'pgp', 'raw' ] ],
 		'help' => 'PGP: -----BEGIN PGP PUBLIC KEY BLOCK----- of the sender (several: any of them may sign); plain: -----BEGIN PUBLIC KEY----- (PEM)',
-		//CLD: 2026-10-20T14:07:31+03:00: util\Validator key rules
+		//util\Validator key rules
 		'validate' => [
 		    [ 'notPrivateKey', 'skipEmpty' => true, 'last' => true, 'message' => 'this is a private key: paste the sender\'s public key' ],
 		    [ 'pgpPublicKey', 'when' => [ 'method' => [ 'pgp' ] ], 'skipEmpty' => true, 'message' => 'not an armored PGP public key (-----BEGIN PGP PUBLIC KEY BLOCK-----)' ],
@@ -49,7 +49,7 @@ class CredentialVerification extends \models\Credential {
 		'default' => '',
 		'requiredIf' => [ 'if' => 'method', 'in' => [ 'cms' ] ],
 		'help' => 'The signer\'s certificate, or the CA that issued it (PEM: -----BEGIN CERTIFICATE-----); several: any of them',
-		//CLD: 2026-10-20T14:07:31+03:00: util\Validator certificate rules
+		//util\Validator certificate rules
 		'validate' => [
 		    [ 'notPrivateKey', 'when' => [ 'method' => [ 'cms' ] ], 'skipEmpty' => true, 'last' => true, 'message' => 'only certificates: a private key does not belong here' ],
 		    [ 'pemCertificate', 'when' => [ 'method' => [ 'cms' ] ], 'skipEmpty' => true, 'message' => 'not a PEM certificate (-----BEGIN CERTIFICATE-----)' ],

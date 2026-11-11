@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new: a Wazuh installation (4.8 and later), for the Wazuh steps and alert trigger (util\Wazuh): the Server API's address (port 55000) and an API
+    a Wazuh installation (4.8 and later), for the Wazuh steps and alert trigger (util\Wazuh): the Server API's address (port 55000) and an API
     user; the indexer's address (port 9200) and its user, for the alerts and the vulnerabilities, which only the indexer has (optional: without it the other steps still work);
     the certificates trusted or not (a default installation's are self-signed). Passwords encrypted. A server on a private address needs the account's "Integrations may connect
     to private network addresses". Test: the Wazuh version, and that the indexer's alerts can be read. Provides `wazuh`

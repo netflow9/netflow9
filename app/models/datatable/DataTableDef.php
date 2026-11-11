@@ -3,9 +3,9 @@
 namespace models\datatable;
 
 class DataTableDef extends \sys\BaseModel {
-    //CLD: 2026-11-03T14:00:00+02:00: a table can be shared with other projects of the account: rows only; its columns stay with its own project
+    //a table can be shared with other projects of the account: rows only; its columns stay with its own project
     use \models\share\ShareableTrait;
-    //CLD: 2026-11-04T12:00:00+02:00: and moved to another project
+    //and moved to another project
     use \models\share\MovableTrait;
 
     const MOVE_PERMS = [ 'from' => 'DataTable::delete', 'to' => 'DataTable::create' ];
@@ -72,7 +72,7 @@ class DataTableDef extends \sys\BaseModel {
 		'showInForms' => false,
 	    ],
 
-	    //CLD: 2026-11-03T14:00:00+02:00: the projects it is shared with
+	    //the projects it is shared with
 	    [
 		'key' => 'shares',
 		'type' => 'array',
@@ -91,7 +91,7 @@ class DataTableDef extends \sys\BaseModel {
 	    $this->schema['name']->{'perm:edit'} = false;
     }
 
-    //CLD: 2026-10-26T07:17:30+02:00: a table saved: the ObjectManager's cached data tables are forgotten (ensureDataTables loads them again)
+    //a table saved: the ObjectManager's cached data tables are forgotten (ensureDataTables loads them again)
     public function afterSave() {
 	parent::afterSave();
 	\V::app()->om->resetCache();
@@ -102,14 +102,14 @@ class DataTableDef extends \sys\BaseModel {
     //The columns are matched by iname only (it holds the project id, so it is unique)
     public function beforeDelete() {
 	parent::beforeDelete();
-	//CLD: 2026-10-26T07:17:30+02:00: the cached data tables / columns forgotten
+	//the cached data tables / columns forgotten
 	\V::app()->om->resetCache();
 	if (empty($this->iname))
 	    return;
-	//CLD: 2026-10-12T12:21:36+03:00: through ObjectManager: the columns deleted one by one, the rows with om->drop()
+	//through ObjectManager: the columns deleted one by one, the rows with om->drop()
 	foreach(\V::app()->om->find('Field', [ 'objectName' => $this->iname ]) as $field)
 	    $field->delete();
-	//CLD: 2026-10-30T17:18:20+02:00: and its saved views
+	//and its saved views
 	foreach(\V::app()->om->find('DataTableView', [ 'table' => $this->_id, 'aid' => $this->aid ]) as $view)
 	    $view->delete();
 	if (!\V::app()->om->isDefined($this->iname))
@@ -118,7 +118,7 @@ class DataTableDef extends \sys\BaseModel {
 	    \V::app()->om->drop($this->iname);
     }
 
-    //CLD: 2026-10-11T21:16:48+03:00: access to a table (BaseModel's default always refuses): global scope = the
+    //access to a table (BaseModel's default always refuses): global scope = the
     //account's tables, project scope = the tables of the projects the user is a member of. The permissions are named DataTable::* (not DataTableDef::*)
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)
@@ -129,7 +129,7 @@ class DataTableDef extends \sys\BaseModel {
 	return \V::app()->om->findById('Project', $this->project)?->checkAccess($userId, $permName) || $this->sharedCan($userId, $permName);
     }
 
-    //CLD: 2026-11-03T14:00:00+02:00: what the Share dialog warns of: object columns pointing to tables that are not shared (their rows' labels are shown to who reads this one)
+    //what the Share dialog warns of: object columns pointing to tables that are not shared (their rows' labels are shown to who reads this one)
     public function shareWarnings() {
 	$names = [];
 	foreach($this->columns() as $f) {
@@ -142,7 +142,7 @@ class DataTableDef extends \sys\BaseModel {
 	return $names ? [ 'Columns of this table point to ' . implode(', ', array_keys($names)) . ': who reads this table also sees the labels of the rows they point to.' ] : [];
     }
 
-    //CLD: 2026-11-04T12:00:00+02:00: what the Move dialog warns of: object columns in both directions (they point by iname, which stays, so they keep working)
+    //what the Move dialog warns of: object columns in both directions (they point by iname, which stays, so they keep working)
     public function moveWarnings() {
 	$warnings = $this->shareWarnings();
 	$names = [];
@@ -159,7 +159,7 @@ class DataTableDef extends \sys\BaseModel {
     }
 
     // ------------------------------------------------------------------------------------
-    //CLD: 2026-10-12T21:51:51+03:00: rows, shared by the Data Table step (models\node\NodeAppTable) and the MCP server's data table tools (util\McpServerTools);
+    //rows, shared by the Data Table step (models\node\NodeAppTable) and the MCP server's data table tools (util\McpServerTools);
     //messages are \ErrorException for the user
 
     //the table's columns: [ key => Field ] (its row model's schema, without the system fields)
@@ -188,7 +188,7 @@ class DataTableDef extends \sys\BaseModel {
     }
 
     //the MongoDB query of $conditions ([ { column, operator, value } ], values through $render), $match all | any, within account $aid
-    //CLD: 2026-10-14T20:17:14+03:00: the query is util\Conditions::query with the columns' fields (their operators, their casts); id is the row's _id (an oid field), created_at /
+    //the query is util\Conditions::query with the columns' fields (their operators, their casts); id is the row's _id (an oid field), created_at /
     //updated_at dates
     public static function conditionsQuery(array $conditions, $match, array $columns, \Closure $render, $aid) {
 	$list = [];

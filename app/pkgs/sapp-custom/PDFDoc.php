@@ -90,17 +90,17 @@ class PDFDoc extends Buffer {
         return count($this->_pages_info);
     }
 
-    //CLD: 2026-10-27T22:40:00+02:00: true when the document is encrypted (/Encrypt in its trailer): its strings and streams cannot be read (PDFContentExtractor)
+    //true when the document is encrypted (/Encrypt in its trailer): its strings and streams cannot be read (PDFContentExtractor)
     public function is_encrypted() {
         return is_object($this->_pdf_trailer_object) && $this->_pdf_trailer_object['Encrypt'] !== false;
     }
 
-    //CLD: 2026-10-27T22:40:00+02:00: the text of the pages (PDFContentExtractor::get_text: its options); false when the document cannot be read
+    //the text of the pages (PDFContentExtractor::get_text: its options); false when the document cannot be read
     public function get_text($options = []) {
         return (new PDFContentExtractor($this))->get_text($options);
     }
 
-    //CLD: 2026-10-27T22:40:00+02:00: the images the pages draw (PDFContentExtractor::get_images: its options); false when the document cannot be read
+    //the images the pages draw (PDFContentExtractor::get_images: its options); false when the document cannot be read
     public function get_images($options = []) {
         return (new PDFContentExtractor($this))->get_images($options);
     }
@@ -347,7 +347,7 @@ class PDFDoc extends Buffer {
      * @param date a DateTime object that contains the date to be set; null to set "now"
      * @return ok true if the date could be set; false otherwise
      */
-    //CLD: 2026-10-27T23:40:00+02:00: ?\DateTime (an implicitly nullable parameter is deprecated since PHP 8.4)
+    //?\DateTime (an implicitly nullable parameter is deprecated since PHP 8.4)
     protected function update_mod_date(?\DateTime $date = null) {
         // First of all, we are searching for the root object (which should be in the trailer)
         $root = $this->_pdf_trailer_object["Root"];

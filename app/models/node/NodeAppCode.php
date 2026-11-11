@@ -19,7 +19,7 @@ class NodeAppCode extends \models\wf\WfNode {
     public static $label = 'Code';
     public static $icon = 'bi-code-slash';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: an advanced step, in Developer
+    //the step picker: an advanced step, in Developer
     public static $audience = 'advanced';
     public static $category = 'developer';
     public static $inputs = 1;
@@ -58,7 +58,7 @@ class NodeAppCode extends \models\wf\WfNode {
 		'required' => true,
 		'default' => 5,
 		'validate' => [ [ 'inRange', 'lower' => 1, 'upper' => self::MAX_TIMEOUT, 'skipEmpty' => true, 'message' => 'Between 1 and ' . self::MAX_TIMEOUT ] ],
-		//CLD: 2026-10-14T14:27:53+03:00: min / max from the validate rule (util\WidgetsUtil)
+		//min / max from the validate rule (util\WidgetsUtil)
 		'ui' => [ 'step' => 1, 'width' => 6 ],
 	    ],
 	    [
@@ -100,8 +100,7 @@ class NodeAppCode extends \models\wf\WfNode {
 		throw new \ErrorException("{$e['message']} (line {$e['line']}, column {$e['column']})");
 	    }
 	    $before = $this->exec->expressionVariables();
-	    //CLD: 2026-10-20T21:40:00+03:00: dates are J Dates (hostValue with dates), given back as expressions give them (dateFormat, util\Expression::LIMITS)
-	    //CLD: 2026-10-22T00:28:13+03:00: readOnly: CredentialVariable::EXPRESSION_NAME
+	    //dates are J Dates (hostValue with dates), given back as expressions give them (dateFormat, util\Expression::LIMITS); readOnly: CredentialVariable::EXPRESSION_NAME
 	    $vm = new \sys\J\Interpreter([ 'maxSteps' => self::MAX_STEPS, 'timeLimit' => (float)max(1, min(self::MAX_TIMEOUT, (int)$this->cfg('timeout', 5))),
 		'writable' => true, 'readOnly' => [ \models\credential\CredentialVariable::EXPRESSION_NAME ], 'implicitGlobals' => true, 'dateFormat' => \util\Expression::LIMITS['dateFormat'] ]);
 	    $context = [];
@@ -131,8 +130,7 @@ class NodeAppCode extends \models\wf\WfNode {
 	foreach($vm->globals() as $name => $value) {
 	    if ($name === \models\credential\CredentialVariable::EXPRESSION_NAME || $value instanceof \Closure)
 		continue;
-	    //CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
-	    //CLD: 2026-10-20T21:40:00+03:00: compared with the value as J gives it back (a date is text then)
+	    //compared with the value as J gives it back (a date is text then)
 	    if (array_key_exists($name, $context) && \util\JSON::encode($vm->toPhp($vm->toJs($context[$name]))) === \util\JSON::encode($value))
 		continue;
 	    $this->exec->setVariable($name, $value);

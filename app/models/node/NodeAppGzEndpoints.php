@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new step: GravityZone Endpoints - the endpoints and groups of a GravityZone console (Network API, Policies API). Operations (setting `operation`):
+    GravityZone Endpoints - the endpoints and groups of a GravityZone console (Network API, Policies API). Operations (setting `operation`):
 	list            the endpoints (getEndpointsList): of a group (empty: all the company's), managed / unmanaged, with the subgroups' (all pages up to At most)
 	details         one managed endpoint (getManagedEndpointDetails)
 	inventory       the network inventory: groups and endpoints (getNetworkInventoryItems)
@@ -38,7 +38,7 @@ class NodeAppGzEndpoints extends NodeAppGravityZone {
 	'policies' => 'List policies',
 	'assignPolicy' => 'Assign a policy',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'scan', 'move', 'label', 'assignPolicy' ];
     const LISTS = [ 'list', 'inventory', 'scanTasks', 'policies' ];
     const MANAGED = [ 'all' => 'All', 'managed' => 'Managed only', 'unmanaged' => 'Unmanaged only' ];
@@ -103,12 +103,12 @@ class NodeAppGzEndpoints extends NodeAppGravityZone {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: the setting Group (an id; empty: none)
+    //the setting Group (an id; empty: none)
     private function groupSetting() {
 	return self::id($this->settingOf('groupId'), 'Group', false);
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: the filter of the setting Recursive: the items of the subgroups too
+    //the filter of the setting Recursive: the items of the subgroups too
     private function depthFilter() {
 	return $this->cfg('recursive', true) ? [ 'filters' => [ 'depth' => [ 'allItemsRecursively' => true ] ] ] : [];
     }

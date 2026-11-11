@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-07T22:40:15+02:00: the license notice of Lithium (li3): parts of this file (the validation and errors methods) are ported from lithium\data\Model and lithium\data\Entity
+//the license notice of Lithium (li3): parts of this file (the validation and errors methods) are ported from lithium\data\Model and lithium\data\Entity
 /*
  * Copyright (c) 2009, Union of RAD http://union-of-rad.org
  * All rights reserved.
@@ -195,7 +195,7 @@ class BaseModel {
 		'perm:read' => 'everybody',
 		'perm:update' => 'nobody',
 		'perm:delete' => 'nobody',
-		//CLD: 2026-10-10T18:44:22+03:00: never in forms
+		//never in forms
 		'showInForms' => false,
 	    ],
 	    [
@@ -205,7 +205,7 @@ class BaseModel {
 		'perm:read' => 'everybody',
 		'perm:update' => 'nobody',
 		'perm:delete' => 'nobody',
-		//CLD: 2026-10-10T18:44:22+03:00: never in forms
+		//never in forms
 		'showInForms' => false,
 	    ],
 	];

@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-11-01T11:55:18+02:00: new: the tool servers' table (util\ToolServers: mcp.json): the super-admins' page (index.php, with the MultiTenant plugin) and the account settings' tab
+    the tool servers' table (util\ToolServers: mcp.json): the super-admins' page (index.php, with the MultiTenant plugin) and the account settings' tab
     (views/account/_tools.php, the owners): $servers, $open (models\ToolServerSlot::open: [ server => [ account => n ] ]), $enabled (the account's server ids: a switch each, the owners'
     tab; null: none, the super-admins switch them per account on the MultiTenant plugin's account page); Add, Edit, Remove, Test (ToolserversController)
 */

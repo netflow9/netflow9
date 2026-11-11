@@ -25,7 +25,7 @@ foreach(Tiers::LIMITS as $key => [ $label, $unit ]) {
 $recordsLimit = $limits['datatable_records'];
 ?>
 
-    <?php //CLD: 2026-10-31T11:58:40+02:00: the plan and its text only with the MultiTenant plugin (self-hosted without it: no plan to speak of) ?>
+    <?php //the plan and its text only with the MultiTenant plugin (self-hosted without it: no plan to speak of) ?>
     <?php if ($showTier): ?>
     <div class="pt-4 mb-4">
 	<span class="badge text-bg-primary align-middle me-1"><?= \V::app()->html->escape(Tiers::labelOf($account)) ?></span>

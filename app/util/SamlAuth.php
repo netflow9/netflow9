@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-23T12:00:00+03:00: new: the sign-in with SAML (SsoController::acs), by the accounts' settings (models\saml\SamlSettings), and the hooks of sys\Identity:
+//the sign-in with SAML (SsoController::acs), by the accounts' settings (models\saml\SamlSettings), and the hooks of sys\Identity:
 //  signIn($s, $claims, $opt)            the user of the claims of a checked response (util\SamlSp::response): [ 'user' => User|null, 'reason' => text|null ]. The user: the SSO
 //                                       user of the subject (SamlLink: the NameID; the email with a transient NameID), else a user of the account with the person's email when
 //                                       Link existing users is on (linked now: its password here removed), else a new user (provision), else refused. Refreshed at each
@@ -96,7 +96,7 @@ class SamlAuth {
 		return reset($found);
 	    $domain = substr($email, $at + 1);
 	    foreach($om->find('SamlSettings', [ 'enabled' => true ]) as $s) {
-		//CLD: 2026-10-24T09:45:36+03:00: of an account whose tier has SAML (enabledFor)
+		//of an account whose tier has SAML (enabledFor)
 		if (in_array($domain, $s->domainList(), true) && self::enabledFor($s->aid))
 		    return $s;
 	    }

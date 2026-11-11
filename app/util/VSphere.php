@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T12:00:00+02:00: new: the client of a VMware vCenter Server (vSphere 8; the VMware credential, steps and alarm trigger). Two APIs of the same server:
+    the client of a VMware vCenter Server (vSphere 8; the VMware credential, steps and alarm trigger). Two APIs of the same server:
 	- the vSphere Automation REST API (/api/..., vSphere 7.0 U2 and later): VMs, power, guest, inventory. Signed in with POST /api/session (Basic: user and password),
 	  the session id (a JSON string) sent as vmware-api-session-id. Errors: { error_type, messages: [ { default_message } ] }
 	- the VI/JSON API (/sdk/vim25/8.0.1.0/<type>/<id>/<property or method>, vSphere 8.0 U1 and later): what the REST API lacks (snapshots, triggered alarms, maintenance

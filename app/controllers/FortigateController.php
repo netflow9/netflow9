@@ -25,7 +25,7 @@ class FortigateController extends \sys\APIController {
 	    $this->refuse(413, 'Request body too large');
 	$this->requireBearer($cfg['secret'] ?? '');
 
-	//CLD: 2026-11-08T12:00:00+02:00: the body as sent (sys\http\Request); too large without a Content-Length (chunked): 413
+	//the body as sent (sys\http\Request); too large without a Content-Length (chunked): 413
 	$raw = $req->body();
 	if (strlen($raw) > \data\Constants::MAX_REQUEST_BODY)
 	    $this->refuse(413, 'Request body too large');

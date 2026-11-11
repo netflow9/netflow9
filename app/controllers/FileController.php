@@ -11,7 +11,7 @@ class FileController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	//the request's account (rt.account, set at sign-in), for the actions
 	$this->account = \V::app()->config('rt.account');
 
 	$this->project = \V::app()->om->findById('Project', \V::app()->user->crtProject);
@@ -38,7 +38,7 @@ class FileController extends \sys\BaseController {
 	if (!\V::app()->user->can('File::create'))
 	    \V::app()->error(403, 'Unauthorized');
 
-	//CLD: 2026-10-06T21:33:37+03:00: errors as JSON { error } with a 4xx status
+	//errors as JSON { error } with a 4xx status
 	$file = $req->files['file'] ?? null;
 	if (empty($file))
 	    $resp->sendJSON([ 'error' => 'No file uploaded' ], true, 400);
@@ -60,7 +60,7 @@ class FileController extends \sys\BaseController {
 	if (!is_uploaded_file($file['tmp_name']))
 	    $resp->sendJSON([ 'error' => 'Not an uploaded file' ], true, 400);
 
-	//CLD: 2026-10-06T21:33:37+03:00: only allowed file types (images, documents, spreadsheets, text, PDF; see File::$extensions)
+	//only allowed file types (images, documents, spreadsheets, text, PDF; see File::$extensions)
 	if (!\models\File::isAllowedName($file['name']))
 	    $resp->sendJSON([ 'error' => 'File type not allowed' ], true, 415);
 
@@ -73,7 +73,7 @@ class FileController extends \sys\BaseController {
 		'created_at' => new \MongoDB\BSON\UTCDateTime(),
 	    ],
 	];
-	//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of the account's files (util\Tiers; File::createFromStream checks it)
+	//the tier's limit of the account's files (util\Tiers; File::createFromStream checks it)
 	try {
 	    $file_id = \models\File::createFromStream($file['name'], $fp, $options);
 	} catch (\util\LimitException $e) {
@@ -83,7 +83,7 @@ class FileController extends \sys\BaseController {
 	$resp->sendJSON([ 'id' => (string)$file_id ]);
     }
 
-    //CLD: 2026-10-06T21:29:27+03:00: the file `id` of the current account and project (404 otherwise), if the user has $permName
+    //the file `id` of the current account and project (404 otherwise), if the user has $permName
     //(checked like list(): files have no checkAccess of their own yet)
     private function findFileOrError($permName) {
 	$oid = $this->getOidOrError();
@@ -104,13 +104,13 @@ class FileController extends \sys\BaseController {
 	return $file;
     }
 
-    //CLD: 2026-10-06T21:29:27+03:00: file page: details, image preview for image files (no other previews for now), download button
+    //file page: details, image preview for image files (no other previews for now), download button
     public function view($req, $resp) {
 	$file = $this->findFileOrError('File::read');
 	$this->render('view', compact('file'));
     }
 
-    //CLD: 2026-10-06T21:29:27+03:00: the file's bytes, streamed from GridFS: previewable images inline with their own type, everything else (and
+    //the file's bytes, streamed from GridFS: previewable images inline with their own type, everything else (and
     //?download=1) as an attachment of type application/octet-stream, so uploaded HTML/SVG/... never run in the app's origin
     public function content($req, $resp) {
 	$file = $this->findFileOrError('File::read');
@@ -141,7 +141,7 @@ class FileController extends \sys\BaseController {
 
 	$oid = $this->getOidOrError();
 
-	//CLD: 2026-10-05T20:35:40+03:00: restrict to the current account (files keep it in metadata.aid); a global-scope role passes
+	//restrict to the current account (files keep it in metadata.aid); a global-scope role passes
 	//File::delete without looking at the object, so without this a known file id from another account could be deleted
 	$file = \V::app()->om->findOne('File', [ '_id' => $oid, 'metadata.aid' => $this->account->_id ]);
 	if (empty($file))

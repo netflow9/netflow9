@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-05T13:00:00+02:00: new step: Namecheap API - any command of the Namecheap API (what the other Namecheap steps do not have: registering a domain, child name
+    Namecheap API - any command of the Namecheap API (what the other Namecheap steps do not have: registering a domain, child name
     servers, transfers, WhoisGuard, SSL activation, ...): the command and its parameters (a JSON object, or an expression giving one; Other parameters is not used here).
     Its result: the answer's CommandResponse as an array (util\Namecheap::toArray: attributes, children by name, repeated ones a list)
 */

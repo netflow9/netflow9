@@ -1,13 +1,13 @@
 <?php
 //an audit log entry (AuditController::view, dialog): who, when, what, and its changes (before -> after)
-//CLD: 2026-10-24T16:30:00+03:00: the account's datetime format (util\Format)
+//the account's datetime format (util\Format)
 $when = \util\Format::datetime($entry->created_at);
 
-//CLD: 2026-11-07T01:19:07+02:00: a logged value (models\AuditLog::valueText: text as is, other values as JSON), or empty
+//a logged value (models\AuditLog::valueText: text as is, other values as JSON), or empty
 $valueTpl = '<span style="white-space: pre-wrap; word-break: break-word">{:v}</span>';
 $emptyHtml = "<span class='text-muted'>empty</span>";
 
-//CLD: 2026-10-11T17:45:25+03:00: an execution log entry shows what acted (source, workflow, execution, step, who clicked Run) instead of the user / IP / browser
+//an execution log entry shows what acted (source, workflow, execution, step, who clicked Run) instead of the user / IP / browser
 $isExec = $entry instanceof \models\ExecutionLog;
 $facts = [ 'When' => \V::app()->html->escape($when) ];
 if ($isExec) {
@@ -36,7 +36,7 @@ if ($isExec) {
     $facts['Step'] = \V::app()->html->escape($entry->step);
 }
 $facts['Details'] = \V::app()->html->escape($entry->details);
-//CLD: 2026-11-02T10:00:00+02:00: an agent's tool call: its workflow, execution, step, tool, read or write, how it ended, who approved it, the arguments (secrets removed)
+//an agent's tool call: its workflow, execution, step, tool, read or write, how it ended, who approved it, the arguments (secrets removed)
 $agent = !$isExec && is_array($entry->agent) ? $entry->agent : null;
 if ($agent) {
     $agentWf = $entry->workflow ? \V::app()->om->findById('Workflow', (string)$entry->workflow) : null;
@@ -90,7 +90,7 @@ foreach($changes as $c) {
 
 $table = '';
 if ($rows !== '') {
-    //CLD: 2026-10-19T22:19:24+03:00: in .table-responsive (long before / after values scroll sideways on phones)
+    //in .table-responsive (long before / after values scroll sideways on phones)
     $tableTpl = '
 <div class="table-responsive"><table class="table table-sm align-top small mb-0">
     <thead><tr><th>Field</th>{:before}{:after}</tr></thead>

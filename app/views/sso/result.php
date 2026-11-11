@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-23T12:00:00+03:00: new: the end of a SAML sign-in that did not sign in (SsoController::acs, ::start): why ($message), and the steps of a settings test ($lines)
+//the end of a SAML sign-in that did not sign in (SsoController::acs, ::start): why ($message), and the steps of a settings test ($lines)
 $this->pageTitle = \V::t('Single sign-on');
 ?>
 

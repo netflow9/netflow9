@@ -23,10 +23,10 @@ class WidgetsUtil {
 	    $schema[$f->key] = [
 		'label' => $f->label,
 		'type' => $f->type,
-		//CLD: 2026-10-06T21:22:22+03:00: a list of choice values (the grid filter does choices.forEach); select choices may be a newline
+		//a list of choice values (the grid filter does choices.forEach); select choices may be a newline
 		//string or a [ value => label ] map, both normalized by Field_select::choicesToArray
 		'choices' => ($f->type == 'select') ? array_map('strval', array_keys($f->choicesToArray())) : [],
-		//CLD: 2026-10-10T09:14:41+03:00: not on encrypted fields (DataTrait ignores them)
+		//not on encrypted fields (DataTrait ignores them)
 		'filter' => empty($f->encrypt),
 		'delete' => $f->{'perm:delete'} != 'nobody',
 		'edit' => $f->{'perm:update'} != 'nobody',

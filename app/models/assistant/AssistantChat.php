@@ -17,7 +17,7 @@ class AssistantChat extends \sys\BaseModel {
     protected static $collection = 'assistant_chats';
     public static $indexes = [
 	[ [ 'aid' => 1, 'wf' => 1 ], [ 'unique' => true ] ],
-	//CLD: 2026-11-08T12:30:00+02:00: a workflow's conversation (beforeWorkflowDelete)
+	//a workflow's conversation (beforeWorkflowDelete)
 	[ [ 'wf' => 1 ], [] ],
     ];
 

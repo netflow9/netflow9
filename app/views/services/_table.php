@@ -1,11 +1,11 @@
 <?php
 /*
-    CLD: 2026-10-31T19:30:00+02:00: the services' table: the Services page (index.php, with the MultiTenant plugin) and the account settings' tab (views/account/_services.php, without it):
+    the services' table: the Services page (index.php, with the MultiTenant plugin) and the account settings' tab (views/account/_services.php, without it):
     $services, each with its `status` (util\Services::withStatus); start / stop / restart (ServicesController::control)
 */
 $csrf = '<input type="hidden" name="' . \V::app()->csrf->csrf_key . '" value="' . \V::app()->html->escape(\V::app()->csrf->getToken(false)) . '">';
 ?>
-<?php //CLD: 2026-11-01T19:00:00+02:00: in Docker (util\Services::docker): read-only, managed with docker compose on the host ?>
+<?php //in Docker (util\Services::docker): read-only, managed with docker compose on the host ?>
 <?php if (\util\Services::docker()): ?>
     <p class="text-muted small mb-3">The background services of this installation run in Docker: their state is their check's. Start, stop and restart them on the host, with <code>docker compose</code> (e.g. <code>docker compose restart daemon</code>).</p>
 <?php else: ?>

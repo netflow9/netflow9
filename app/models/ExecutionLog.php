@@ -30,18 +30,17 @@ class ExecutionLog extends \sys\BaseModel {
 	'execution.end' => 'Execution completed',
 	'execution.error' => 'Execution failed',
 	'execution.sleep' => 'Execution waiting',
-	//CLD: 2026-10-26T09:58:28+02:00: a run inside a web request handed to the daemon (WfExecution::run, app.executions.sync_timeout)
-	//CLD: 2026-10-30T15:00:00+02:00: no longer written (every execution runs in the daemon); kept for the older entries
+	//a run inside a web request handed to the daemon: no longer written (every execution runs in the daemon); kept for the older entries
 	'execution.queued' => 'Execution moved to the daemon',
-	//CLD: 2026-10-26T10:06:24+02:00: killed by a user (WfExecution::kill, the Overview)
+	//killed by a user (WfExecution::kill, the Overview)
 	'execution.cancel' => 'Execution killed',
 	'webhook.refused' => 'Webhook refused',
-	//CLD: 2026-11-01T00:30:00+02:00: a GravityZone event push refused, or events left out (GravityzoneController)
+	//a GravityZone event push refused, or events left out (GravityzoneController)
 	'gravityzone.refused' => 'GravityZone event refused',
-	//CLD: 2026-11-01T06:00:00+02:00: a FortiGate event refused (FortigateController)
+	//a FortiGate event refused (FortigateController)
 	'fortigate.refused' => 'FortiGate event refused',
 	'job.failed' => 'Job failed',
-	//CLD: 2026-11-01T23:30:00+02:00: an AI step's tool calls sent for approval; the decisions applied (approved, rejected, not decided in time)
+	//an AI step's tool calls sent for approval; the decisions applied (approved, rejected, not decided in time)
 	'ai.approval.ask' => 'Agent action awaiting approval',
 	'ai.approval' => 'Agent action decided',
     ];
@@ -146,7 +145,7 @@ class ExecutionLog extends \sys\BaseModel {
 	    $fields['started_by'] = $user ? (string)$user : null;
 	    if (!$o)
 		$fields['project'] = $exe->project;
-	    //CLD: 2026-11-03T14:00:00+02:00: the entry is in the log of the object's project: when the run is of another project (a shared table), it says which
+	    //the entry is in the log of the object's project: when the run is of another project (a shared table), it says which
 	    elseif (empty($fields['details'])) {
 		$home = static::projectOf($o, $data ?? $o->data());
 		if ($home && (string)$home !== (string)$exe->project)

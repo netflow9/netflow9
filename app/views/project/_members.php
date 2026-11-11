@@ -1,7 +1,6 @@
 <?php
-//CLD: 2026-10-13T20:55:43+03:00: members can be managed (Project::update): add a user of the account with a role, change a member's role (the select saves it), remove a member
-//(ProjectController::member_add / member_role / member_remove); read-only without the permission; a personal project has no members tab content (as before)
-//CLD: 2026-10-13T21:07:43+03:00: a personal project says why it has no members (the tab was empty)
+//members can be managed (Project::update): add a user of the account with a role, change a member's role (the select saves it), remove a member
+//(ProjectController::member_add / member_role / member_remove); read-only without the permission; a personal project says why it has no members
 if ($project->personal) {
     echo "<div class='alert alert-info mt-4 mb-0'><i class='bi bi-person-lock me-2'></i>This is your personal project: it has no other members. "
 	. "To work with others, create a project (<i class='bi bi-plus-lg'></i> at the top of the sidebar, <b>New project</b>) and add them in its Members tab.</div>";
@@ -13,7 +12,7 @@ $roles = [];
 foreach(\V::app()->om->find('Role', [ 'aid' => $project->aid ], [ 'sort' => [ 'name' => 1 ] ]) as $r)
     $roles[(string)$r->_id] = (string)$r;
 $members = (array)$project->members;
-//CLD: 2026-11-07T01:20:20+02:00: the role select (`role`): one option per role of the account
+//the role select (`role`): one option per role of the account
 $roleSelectTpl = '<select name="role" class="form-select form-select-sm" {:attrs}>{:options}</select>';
 $roleOptionTpl = '<option value="{:value}"{:selected}>{:label}</option>';
 
@@ -54,7 +53,7 @@ if ($canManage) {
 	'role' => $memberRoleSelect,
     ]);
 
-    //CLD: 2026-10-17T22:00:00+03:00: invite by email (ProjectController::member_invite): a user of the account is added; another address gets a link to join (needs User::create)
+    //invite by email (ProjectController::member_invite): a user of the account is added; another address gets a link to join (needs User::create)
     $canInvite = \V::app()->user->can('User::create');
     $inviteTpl = '
 <form method="post" action="{:action}" class="d-flex flex-wrap gap-2 align-items-end mb-1">
@@ -75,7 +74,7 @@ if ($canManage) {
     ]);
 }
 
-//CLD: 2026-10-25T21:30:00+02:00: the members as a table, as the invitations below
+//the members as a table, as the invitations below
 echo "<div class='table-responsive'><table class='table table-sm align-middle'><thead><tr><th>User</th><th style='width: 16rem'>Role</th><th style='width: 8rem'></th></tr></thead><tbody>";
 $memberTpl = '<tr><td>{:name}</td><td>{:role}</td><td class="text-end">{:remove}</td></tr>';
 $roleFormTpl = '<form method="post" action="{:action}" class="m-0" style="max-width: 14rem">{:select}</form>';
@@ -97,7 +96,7 @@ foreach($members as $key => $item) {
 	'remove' => $canManage
 	    ? \util\VString::insert($removeTpl, [
 		'href' => \V::app()->createUrl('/project/member_remove', $q),
-		//CLD: 2026-11-03T16:00:00+02:00: the confirmation is shown as HTML after the attribute is read: escaped for both
+		//the confirmation is shown as HTML after the attribute is read: escaped for both
 		'confirm' => \V::app()->html->escape('Remove ' . \V::app()->html->escape($name) . ' from the project?'),
 	    ])
 	    : '',
@@ -105,10 +104,10 @@ foreach($members as $key => $item) {
 }
 echo '</tbody></table></div>';
 
-//CLD: 2026-10-17T22:00:00+03:00: the pending invitations (not joined yet): send again / cancel
+//the pending invitations (not joined yet): send again / cancel
 $invites = $canManage ? iterator_to_array(\models\user\ProjectInvite::pending($project), false) : [];
 if ($invites) {
-    //CLD: 2026-10-19T22:19:24+03:00: in .table-responsive (scrolls sideways on phones; its fixed-width columns did not fit)
+    //in .table-responsive (scrolls sideways on phones; its fixed-width columns did not fit)
     echo "<h6 class='mt-4 mb-2'>Invited, not joined yet</h6><div class='table-responsive'><table class='table table-sm align-middle'><tbody>";
     $inviteRowTpl = '
 <tr>
@@ -124,7 +123,7 @@ if ($invites) {
     foreach($invites as $inv) {
 	$by = $inv->invited_by ? \V::app()->om->findById('User', $inv->invited_by) : null;
 	$q = [ 'id' => (string)$project->_id, 'invite' => (string)$inv->_id ];
-	//CLD: 2026-10-24T16:30:00+03:00: the invitation's end in the account's datetime format (util\Format)
+	//the invitation's end in the account's datetime format (util\Format)
 	echo \util\VString::insert($inviteRowTpl, [
 	    'email' => \V::app()->html->escape($inv->email),
 	    'role' => \V::app()->html->escape($roles[(string)$inv->role] ?? ''),

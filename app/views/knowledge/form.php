@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-31T01:00:00+02:00: new: a knowledge base's settings in a dialog (KnowledgeController::create / update): name, description, chunk size, overlap; the embedding model is the
+//a knowledge base's settings in a dialog (KnowledgeController::create / update): name, description, chunk size, overlap; the embedding model is the
 //account's (shown, not chosen here)
 use models\kb\KnowledgeBase;
 
@@ -17,7 +17,7 @@ $form_begin = \V::app()->form->create($kb, [ 'action' => $actionUrl ]);
 $body = $kb->schema['name']->input();
 $body .= $kb->schema['description']->input([ 'input' => [ 'rows' => 3 ] ]);
 
-//CLD: 2026-10-31T02:00:00+02:00: chunk size, overlap and the embedding model in a closed "Advanced…" section, as the steps' technical settings (app.smartform's section: a link with a
+//chunk size, overlap and the embedding model in a closed "Advanced…" section, as the steps' technical settings (app.smartform's section: a link with a
 //chevron, a collapse); open when one of them is not at its default or is invalid
 $errors = (array)$kb->errors();
 $open = (int)$kb->chunkSize !== KnowledgeBase::DEFAULT_CHUNK_SIZE || (int)$kb->overlap !== KnowledgeBase::DEFAULT_OVERLAP || isset($errors['chunkSize']) || isset($errors['overlap']);

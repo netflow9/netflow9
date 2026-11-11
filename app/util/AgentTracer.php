@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T14:00:00+02:00: new class: writes the trace of one visit of an AI step (models\agent\AgentTrace; models\node\NodeAppAi: run, loop, decided), round by round, so the Executions panel follows a
+    writes the trace of one visit of an AI step (models\agent\AgentTrace; models\node\NodeAppAi: run, loop, decided), round by round, so the Executions panel follows a
     run live. A trace never stops a run: a failed write is logged once, the step goes on.
 	What is kept is what the model saw: with Mask personal data, placeholders (the arguments as the model wrote them, the results masked).
 	Secrets never: values of keys that name a secret and secrets inside texts (models\AuditLog::withoutSecrets, SECRET_VALUES), `password: x` inside texts, the values of the step's
@@ -40,7 +40,7 @@ class AgentTracer {
 	$trace = new self($step, new \MongoDB\BSON\ObjectId());
 	$now = new \MongoDB\BSON\UTCDateTime();
 	$exec = $step->exec;
-	//CLD: 2026-11-08T13:50:00+02:00: save() (one write per visit of the step); a failed save throws, as a failed insert did, so attempt() logs it once
+	//save() (one write per visit of the step); a failed save throws, as a failed insert did, so attempt() logs it once
 	$trace->attempt(function() use ($trace, $step, $exec, $now) {
 	    $doc = \V::app()->om->create('AgentTrace', [ '_id' => $trace->id, 'aid' => $exec->aid, 'project' => $exec->project, 'wf' => $exec->wf, 'execution' => $exec->_id,
 		'node' => (string)$step->wfid, 'step' => (string)($step->title ?: $step::$label), 'visit' => (int)$step->runs + 1, 'provider' => $step::PROVIDER, 'model' => trim((string)$step->cfg('model', '')),
@@ -115,7 +115,7 @@ class AgentTracer {
 	$this->saveRound($n, [ 'model' => $round['model'] ]);
     }
 
-    //CLD: 2026-11-02T18:00:00+02:00: new: what the step was given of the conversation: { turns, summary: whether there is one, summarized: { turns, tokens: { input, output }, cost } when it made one now }
+    //what the step was given of the conversation: { turns, summary: whether there is one, summarized: { turns, tokens: { input, output }, cost } when it made one now }
     public function conversation(array $info) {
 	$this->save([ 'conversation' => $info ]);
     }

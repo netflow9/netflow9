@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T12:00:00+02:00: new step: VMware Snapshots - the snapshots of a VM (VI/JSON, vCenter 8.0 U1 and later; the REST API has none). Operations (setting `operation`):
+    VMware Snapshots - the snapshots of a VM (VI/JSON, vCenter 8.0 U1 and later; the REST API has none). Operations (setting `operation`):
 	list        its snapshots, the tree flattened (VirtualMachine snapshot): { id, name, description, createTime, state, quiesced, current, parent, depth }
 	create      a snapshot (CreateSnapshot_Task: name, description, the memory, the guest's file systems quiesced (VMware Tools))
 	revert      the VM reverted to a snapshot (RevertToSnapshot_Task), or to the current one when none is given (RevertToCurrentSnapshot_Task)
@@ -29,7 +29,7 @@ class NodeAppVmwareSnapshots extends NodeAppVmware {
 	'removeAll' => 'Remove all snapshots',
 	'prune' => 'Remove old snapshots',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'create', 'revert', 'remove', 'removeAll', 'prune' ];
     const LISTS = [ 'list' ];
     const WAITED = [ 'create', 'revert', 'remove', 'removeAll' ];
@@ -152,7 +152,7 @@ class NodeAppVmwareSnapshots extends NodeAppVmware {
 	return $out;
     }
 
-    //CLD: 2026-11-07T01:10:44+02:00: the snapshots of tree $list (children of $parent, at $depth) added to $out, depth first; $current: the current snapshot's id
+    //the snapshots of tree $list (children of $parent, at $depth) added to $out, depth first; $current: the current snapshot's id
     private static function walk(array $list, $parent, $depth, $current, array &$out) {
 	foreach($list as $t) {
 	    if (!is_array($t))

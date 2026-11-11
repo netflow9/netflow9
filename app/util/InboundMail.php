@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T16:11:37+02:00: new: inbound mail, the Email (inbound) trigger's: mail to <prefix>-<code>@MAIL_INBOUND_DOMAIN starts a workflow.
+    inbound mail, the Email (inbound) trigger's: mail to <prefix>-<code>@MAIL_INBOUND_DOMAIN starts a workflow.
     Haraka receives it (haraka/plugins/nfn.js: checks the address, stores the message, submits the job models\node\NodeTriggerEmail::deliver, wakes the daemon on DAEMON_PORT).
     Without Haraka (found()) the step is not available (NodeTriggerEmail::available: not in the palette, a workflow with it cannot run) and the account settings have no Inbound mail tab.
 	InboundMail::found()      Haraka is installed here with Rail22's plugin listed in its config/plugins
@@ -36,13 +36,13 @@ class InboundMail {
 	return self::$found;
     }
 
-    //CLD: 2026-11-01T19:00:00+02:00: where Haraka listens: HARAKA_HOST (app.env or the environment: Docker, its own container, e.g. haraka), else this machine
+    //where Haraka listens: HARAKA_HOST (app.env or the environment: Docker, its own container, e.g. haraka), else this machine
     public static function host() {
 	return (string)\V::env('HARAKA_HOST', '') ?: '127.0.0.1';
     }
 
     //the parts found() checks, for the settings pages
-    //CLD: 2026-11-01T19:00:00+02:00: in Docker (util\Services::docker) Haraka is another container: found when HARAKA_HOST is set (compose.yaml, with the mail profile), no files to check
+    //in Docker (util\Services::docker) Haraka is another container: found when HARAKA_HOST is set (compose.yaml, with the mail profile), no files to check
     public static function status() {
 	if (Services::docker()) {
 	    $set = (string)\V::env('HARAKA_HOST', '') !== '';
@@ -58,7 +58,7 @@ class InboundMail {
 
     //Haraka's service for the Services page (hook app:services, sys\Boot): when found and its unit is this installation's (not another installation's on this server)
     public static function service() {
-	//CLD: 2026-11-01T19:00:00+02:00: in Docker no unit to own (the haraka container)
+	//in Docker no unit to own (the haraka container)
 	if (!self::found() || (!Services::docker() && !Services::ownUnit('nfn-haraka.service')))
 	    return null;
 	return [
@@ -67,7 +67,7 @@ class InboundMail {
 	    'unit' => 'nfn-haraka.service',
 	    'pidfile' => BASE . '/run/haraka.pid',
 	    'health' => function() {
-		//CLD: 2026-11-01T19:00:00+02:00: on HARAKA_HOST
+		//on HARAKA_HOST
 		$s = @stream_socket_client('tcp://' . self::host() . ':25', $errno, $errstr, 2);
 		if (!$s)
 		    return [ false, 'port 25 does not answer' . ($errstr ? ": {$errstr}" : '') ];

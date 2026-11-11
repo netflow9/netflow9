@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-20T10:00:00+03:00: new credential variant: Google Drive (OAuth); the Google app needs the Google Drive API enabled and the scope
+//Google Drive (OAuth); the Google app needs the Google Drive API enabled and the scope
 //https://www.googleapis.com/auth/drive (all the files the account can open). Provides `gdrive` (the Google Drive step) and `http` (HTTP Request: a bearer token for other Google APIs)
 
 namespace models\credential;
@@ -8,8 +8,7 @@ namespace models\credential;
 class CredentialGoogleDrive extends \models\credential\CredentialGoogleOAuth2 {
     public static $label = 'Google Drive (OAuth)';
     public static $icon = 'bi-google';
-    //CLD: 2026-10-20T11:00:00+03:00: + gsheets (the Google Sheets step: the Sheets API accepts the Drive scope)
-    //CLD: 2026-10-20T15:00:00+03:00: + gdocs (the Google Docs step: the Docs API accepts the Drive scope)
+    //gsheets, gdocs: the Google Sheets and Docs steps (their APIs accept the Drive scope)
     public static $provides = [ 'gdrive', 'gsheets', 'gdocs', 'http' ];
 
     public static function serviceScope() {

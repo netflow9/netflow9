@@ -30,7 +30,7 @@ if (\V::app()->user->can('Credential::create')) {
 	]);
     }
     //one line, no single quotes: it goes into a JS string
-    //CLD: 2026-10-22T01:18:42+03:00: the menu scrolls (at most 60% of the window), a search box stays on top (its handlers: the page script below); a line when nothing matches
+    //the menu scrolls (at most 60% of the window), a search box stays on top (its handlers: the page script below); a line when nothing matches
     $searchBox = "<li class=\"sticky-top bg-body px-2 pt-1 pb-2 border-bottom\"><input type=\"search\" class=\"form-control form-control-sm cred-type-search\" placeholder=\"Search types...\" autocomplete=\"off\" aria-label=\"Search credential types\"></li>";
     $noMatch = "<li class=\"cred-type-none px-3 py-2 small text-body-secondary d-none\">No matching type</li>";
     $createBtn = "<div class=\"dropdown d-inline-block\"><button class=\"btn btn-primary btn-sm dropdown-toggle\" data-bs-toggle=\"dropdown\" aria-expanded=\"false\">Create</button><ul class=\"dropdown-menu dropdown-menu-end pt-0 overflow-y-auto\" style=\"z-index:1030; max-height:60vh; min-width:16rem\">{$searchBox}{$items}{$noMatch}</ul></div>";
@@ -39,7 +39,7 @@ if (\V::app()->user->can('Credential::create')) {
 //the grid gets the type's label: what each label can do
 $typeInfo = [];
 foreach(\V::app()->om->getVariants('Credential') as $name => $class)
-    //CLD: 2026-11-03T18:00:00+02:00: + shareable: not the variables
+    //shareable: not the variables
     $typeInfo[$class::$label] = [ 'oauth' => $class::isOAuth(), 'testable' => (bool)$class::$testable, 'shareable' => $name !== 'CredentialVariable' ];
 $typeInfo = \util\JSON::encode($typeInfo);
 
@@ -50,11 +50,11 @@ unset($schema['created_at'], $schema['updated_at']);
 $schema = \util\JSON::encode($schema);
 $filter = \util\JSON::encode($sf['filter']);
 
-//CLD: 2026-11-03T18:00:00+02:00: Share, with Credential::share (not in a personal project; not the variables); the second list: those shared with this project (no actions: they stay with their project)
+//Share, with Credential::share (not in a personal project; not the variables); the second list: those shared with this project (no actions: they stay with their project)
 $shareAction = $canShare ? "share: `{% if ((app.credentialTypes[item.__variant] || {}).shareable) { %}<a href='/share/manage?object=Credential&id={{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Share'><i class='bi bi-share'></i></a>{% } %}`,
 		    " : '';
 
-//CLD: 2026-11-04T12:00:00+02:00: Move, as Delete: it leaves this project (not the variables, as Share)
+//Move, as Delete: it leaves this project (not the variables, as Share)
 $moveAction = \V::app()->user->can('Credential::delete')
     ? "move: `{% if ((app.credentialTypes[item.__variant] || {}).shareable) { %}<a href='/share/move?object=Credential&id={{item._id}}' class='btn btn-sm btn-icon d-inline px-1 py-0 mx-1 row-action-btn' title='Move to another project'><i class='bi bi-folder-symlink'></i></a>{% } %}`,
 		    " : '';
@@ -88,7 +88,7 @@ $script = "
 		}
 	},
 	onInit: () => {
-	    //CLD: 2026-10-22T01:18:42+03:00: the Create menu's search box: filters the types (name or group) as you type, hides the groups left empty; cleared and focused when the menu opens;
+	    //the Create menu's search box: filters the types (name or group) as you type, hides the groups left empty; cleared and focused when the menu opens;
 	    //Enter opens the only / first match. On the container (made again on each page load: no handlers left behind)
 	    const filterTypes = (menu, text) => {
 		const words = text.toLowerCase().split(/\\s+/).filter(Boolean);
@@ -128,7 +128,7 @@ $script = "
 		input.value = '';
 		const menu = input.closest('.dropdown-menu');
 		filterTypes(menu, '');
-		//CLD: 2026-10-22T01:24:00+03:00: the width of the full list kept while searching (the menu narrowed and moved as the matches got shorter)
+		//the width of the full list kept while searching (else the menu narrows and moves as the matches get shorter)
 		menu.style.width = '';
 		menu.style.width = menu.offsetWidth + 'px';
 		input.focus();
@@ -146,7 +146,7 @@ $script = "
 
 \V::app()->cs->addPageScript($script);
 
-//CLD: 2026-11-03T18:00:00+02:00: the credentials shared with this project
+//the credentials shared with this project
 if ($sharedCount > 0) {
     \V::app()->cs->addPageScript("
 +function() {

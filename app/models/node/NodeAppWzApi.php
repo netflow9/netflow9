@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-03T10:00:00+02:00: new step: Wazuh API - any request of the Server API or of the indexer (what the other Wazuh steps do not have: MITRE, CDB lists, the ruleset's
+    Wazuh API - any request of the Server API or of the indexer (what the other Wazuh steps do not have: MITRE, CDB lists, the ruleset's
     files, agent upgrades, other indices, ...): where it goes, the method, the path, the query and the body (JSON objects, or expressions giving them; Other parameters is not used
     here). Its result: the answer as it is
 */

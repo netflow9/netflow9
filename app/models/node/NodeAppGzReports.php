@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T00:30:00+02:00: new step: GravityZone Reports - the reports of a GravityZone console (Reports API). Operations:
+    GravityZone Reports - the reports of a GravityZone console (Reports API). Operations:
 	create     a report (createReport: name, type, targets; the rest, e.g. the schedule or the options, in Other parameters)
 	list       the reports (getReportsList; all pages up to At most)
 	links      a report's download addresses (getDownloadLinks: readyForDownload, lastInstanceUrl, allInstancesUrl)
@@ -26,7 +26,7 @@ class NodeAppGzReports extends NodeAppGravityZone {
 	'download' => 'Download into Files',
 	'delete' => 'Delete a report',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'create', 'download', 'delete' ];
     const LISTS = [ 'list' ];
     const MAX_FILE = 100 * 1024 * 1024;
@@ -96,7 +96,7 @@ class NodeAppGzReports extends NodeAppGravityZone {
 	return $files;
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: stream $stream ($size bytes) saved as a file of the project named $filename: [ id, filename, size, contentType ]
+    //stream $stream ($size bytes) saved as a file of the project named $filename: [ id, filename, size, contentType ]
     private function saveFile($filename, $stream, $size) {
 	$id = \models\File::createFromStream($filename, $stream, [ 'metadata' => [
 	    'project' => $this->exec->project,
@@ -145,7 +145,7 @@ class NodeAppGzReports extends NodeAppGravityZone {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:09:01+02:00: the report of the setting Report
+    //the report of the setting Report
     private function reportRef() {
 	return [ 'reportId' => self::id($this->settingOf('reportId'), 'Report') ];
     }

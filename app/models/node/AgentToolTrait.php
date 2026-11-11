@@ -29,15 +29,15 @@ trait AgentToolTrait {
 	return $this->toolCall ? [] : $this->exec->expressionVariables();
     }
 
-    //CLD: 2026-11-07T01:01:41+02:00: the variables of settingOf() / settingText(), set by the step's execute() (varsForSettings)
+    //the variables of settingOf() / settingText(), set by the step's execute() (varsForSettings)
     protected $settingVars = [];
 
-    //CLD: 2026-11-07T01:01:41+02:00: setting $key of the config as the step runs it (settingValue, with settingVars); passed to runOperation() as $value
+    //setting $key of the config as the step runs it (settingValue, with settingVars); passed to runOperation() as $value
     protected function settingOf($key) {
 	return $this->settingValue($this->cfg($key, ''), $this->settingVars);
     }
 
-    //CLD: 2026-11-07T01:01:41+02:00: setting $key as text, trimmed; passed to runOperation() as $text
+    //setting $key as text, trimmed; passed to runOperation() as $text
     protected function settingText($key) {
 	return trim(\util\Expression::toText($this->settingOf($key)));
     }

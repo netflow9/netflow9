@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-25T11:20:00+02:00: new view: edit a user (UserController::update), a modal as create: name, email, role, state; Send sign-in link (UserController::send_link) for a
+//edit a user (UserController::update), a modal as create: name, email, role, state; Send sign-in link (UserController::send_link) for a
 //user who signs in with a password here
 $this->pageTitle = 'User::update';
 

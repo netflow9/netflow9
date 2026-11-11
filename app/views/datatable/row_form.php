@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-14T16:01:34+03:00: util\FormSchema and WidgetsUtil::smartFormFields / formValues are util\SmartForm (::showIf, ::modelFields, ::modelValues, ...)
+//util\FormSchema and WidgetsUtil::smartFormFields / formValues are util\SmartForm (::showIf, ::modelFields, ::modelValues, ...)
 //form through app.pjax's submit handler, same pattern as column_form.php; server errors shown on the fields
 if ($row->exists()) {
     $t_ok = 'Save';
@@ -13,7 +13,7 @@ if ($row->exists()) {
 
 $containerId = 'row-form-' . uniqid();
 $formId = $containerId . '-form';
-//CLD: 2026-10-14T14:38:46+03:00: the fields and their values from the row's model through util\WidgetsUtil (smartFormFields / formValues: types, choices, rules, date formats,
+//the fields and their values from the row's model through util\WidgetsUtil (smartFormFields / formValues: types, choices, rules, date formats,
 //object columns, value conversion); only the search URL of object columns with many targets is the data table's
 $fields = \util\SmartForm::modelFields($row, [ 'objectSearchUrl' => fn($f) => \V::app()->createUrl('/datatable/object_choices', [ 'id' => $dt->_id, 'key' => $f->key ]) ]);
 $values = \util\SmartForm::modelValues($row);

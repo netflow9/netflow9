@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new step: Proxmox Guests - the VMs (qemu) and containers (lxc) of a Proxmox VE cluster. Operations (setting `operation`):
+    Proxmox Guests - the VMs (qemu) and containers (lxc) of a Proxmox VE cluster. Operations (setting `operation`):
 	list        the guests (GET /cluster/resources?type=vm: names, * patterns; status, node, type; templates left out unless chosen): { vmid, name, node, type, status, cpu, maxcpu,
 	            mem, maxmem, disk, maxdisk, uptime, tags, template }, by VMID
 	status      its current status (GET .../status/current), with vmid, node, type
@@ -40,7 +40,7 @@ class NodeAppProxmoxGuests extends NodeAppProxmox {
 	'migrate' => 'Migrate to another node',
 	'delete' => 'Delete',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'start', 'shutdown', 'reboot', 'stop', 'suspend', 'resume', 'reset', 'clone', 'migrate', 'delete' ];
     const LISTS = [ 'list' ];
     const POWER = [ 'start', 'shutdown', 'reboot', 'stop', 'suspend', 'resume', 'reset' ];

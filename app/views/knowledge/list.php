@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-31T01:00:00+02:00: new: the project's knowledge bases (KnowledgeController::list; app.GridView, as the data tables' list); a note when the account has no embedding model
+//the project's knowledge bases (KnowledgeController::list; app.GridView, as the data tables' list); a note when the account has no embedding model
 
 $this->pageTitle = 'Knowledge bases';
 

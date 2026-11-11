@@ -2,20 +2,18 @@
 
 /*
 OpenAI - an AI step (NodeAppAi: prompt, tools, agent loop) on the OpenAI API or a compatible server (POST <base URL>/chat/completions)
-    //CLD: 2026-10-18T12:30:00+03:00: was NodeAppLemonade (step app::lemonade, now app::openai); with a CredentialOpenAI
     with an OpenAI API credential (models\credential\CredentialOpenAI):
     the model is one the server has (credential Test lists them); optional temperature.
     Tools are offered as functions (tool_calls, results as `tool` messages).
     JSON answers: a system prompt instruction (with the schema when given).
     Reasoning written by local models between <think> tags is left out of the answer
-    //CLD: 2026-10-17T21:00:54+03:00: images (prompt, tool results) as image_url parts with data: URLs (the model must read images, e.g. a vision model); `tool` messages are text only, so
+    //images (prompt, tool results) as image_url parts with data: URLs (the model must read images, e.g. a vision model); `tool` messages are text only, so
     the images of tool results follow them in a user message
-    //CLD: 2026-10-27T23:11:38+02:00: files: images as image_url parts, PDFs as file parts (PDFs as Auto: documents on api.openai.com only), text files as text parts
+    //files: images as image_url parts, PDFs as file parts (PDFs as Auto: documents on api.openai.com only), text files as text parts
 */
 
 namespace models\node;
 
-//CLD: 2026-10-18T12:30:00+03:00: was NodeAppLemonade / lemonade / 'Lemonade (OpenAI API)' / bi-cpu
 class NodeAppOpenAI extends NodeAppAi {
     public static $name = 'openai';
     public static $label = 'OpenAI';
@@ -27,25 +25,22 @@ class NodeAppOpenAI extends NodeAppAi {
     protected static function providerSchema() {
 	return [
 	    [
-		//CLD: 2026-10-24T13:05:14+03:00: layout: 4 wide, not on a new line
-		//CLD: 2026-10-29T10:30:00+02:00: under "Advanced…" (the designer's closed section of the technical settings)
+		//under "Advanced…" (the designer's closed section of the technical settings); 4 wide, not on a new line
 		'key' => 'temperature',
 		'type' => 'text',
 		'label' => 'Temperature',
 		'default' => '',
-		//CLD: 2026-10-24T12:42:45+03:00: 3 wide on a new line
+		//3 wide on a new line
 		'help' => '0 - 2; empty: the default',
 		'validate' => [ [ 'regex', 'pattern' => '^(0(\.\d+)?|1(\.\d+)?|2(\.0+)?)$', 'skipEmpty' => true, 'message' => 'A number from 0 to 2' ] ],
-		//CLD: 2026-10-29T12:00:00+02:00: placeholder: what an empty value means
+		//placeholder: what an empty value means
 		'ui' => [ 'advanced' => true, 'width' => 4, 'placeholder' => 'Provider default' ],
 	    ],
 	];
     }
 
-    //CLD: 2026-10-22T01:58:24+03:00: the Model field (a select of the credential's recorded models) is NodeAppAi's configSchema()
-
-    //CLD: 2026-10-17T21:00:54+03:00: + $images: image parts before the prompt's text
-    //CLD: 2026-10-27T23:11:38+02:00: $files: their parts before the prompt's text (filePart)
+    //the Model field (a select of the credential's recorded models) is NodeAppAi's configSchema()
+    //$files: their parts before the prompt's text (filePart)
     protected function startConversation($cred, $system, $prompt, $schema, array $files = []) {
 	if ($schema !== null)
 	    $system = trim($system . "\n\n" . self::jsonInstruction($schema));
@@ -61,12 +56,12 @@ class NodeAppOpenAI extends NodeAppAi {
 	return [ 'messages' => $messages ];
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: new: PDFs as Auto: the PDF itself on OpenAI's API (api.openai.com); a compatible server (Lemonade, vLLM, ...) gets their text and images
+    //PDFs as Auto: the PDF itself on OpenAI's API (api.openai.com); a compatible server (Lemonade, vLLM, ...) gets their text and images
     protected function pdfAsDocuments($cred) {
 	return strtolower((string)parse_url((string)($cred->baseUrl ?? ''), PHP_URL_HOST)) === 'api.openai.com';
     }
 
-    //CLD: 2026-10-27T23:11:38+02:00: new: a file part as a content part: an image (image_url), a PDF (file: its name and a data: URL), text
+    //a file part as a content part: an image (image_url), a PDF (file: its name and a data: URL), text
     protected static function filePart(array $part) {
 	return match($part['type']) {
 	    'image' => self::imagePart([ $part['mime'], $part['data'] ]),
@@ -75,7 +70,7 @@ class NodeAppOpenAI extends NodeAppAi {
 	};
     }
 
-    //CLD: 2026-10-17T21:00:54+03:00: an image as a content part (data: URL)
+    //an image as a content part (data: URL)
     protected static function imagePart(array $image) {
 	return [ 'type' => 'image_url', 'image_url' => [ 'url' => 'data:' . $image[0] . ';base64,' . $image[1] ] ];
     }
@@ -123,7 +118,7 @@ class NodeAppOpenAI extends NodeAppAi {
     }
 
     //one `tool` message per call
-    //CLD: 2026-10-17T21:00:54+03:00: the images of the results: in one user message after them
+    //the images of the results: in one user message after them
     protected function addToolResults(array &$state, array $results) {
 	$images = [];
 	foreach($results as $r) {

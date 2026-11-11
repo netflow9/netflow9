@@ -1,7 +1,7 @@
 if (!window.app)
     window.app = {};
 
-//CLD: 2026-10-25T20:30:00+02:00: the designer's Debug panel, a class as app.Workflow / app.WfAssistant:
+//the designer's Debug panel, a class as app.Workflow / app.WfAssistant:
 //
 //   const debug = new app.WfDebug(panel, options);     (the panel element: .wf-debug-panel, or its selector)
 //

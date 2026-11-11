@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new: a FortiGate firewall (FortiOS 7.x REST API), for the FortiGate steps (util\FortiGate): the firewall's address (its HTTPS administration port),
+    a FortiGate firewall (FortiOS 7.x REST API), for the FortiGate steps (util\FortiGate): the firewall's address (its HTTPS administration port),
     the API token of a REST API administrator (System > Administrators > REST API Admin; encrypted), the VDOM (empty: the administrator's default), the firewall's certificate trusted
     or not (FortiGate's own is self-signed). A firewall on a private address needs the account's "Integrations may connect to private network addresses"; the REST API
     administrator's Trusted Hosts must include Rail22's address. Test: the hostname, model, version and serial number. Provides `fortigate`

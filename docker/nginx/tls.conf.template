@@ -1,4 +1,4 @@
-# CLD: 2026-11-01T19:00:00+02:00: the site on HTTPS (compose.tls.yaml): port 80 redirects; the certificate from the host's ssl/ (mounted at /etc/nginx/ssl)
+# the site on HTTPS (compose.tls.yaml): port 80 redirects; the certificate from the host's ssl/ (mounted at /etc/nginx/ssl)
 server {
     server_name ${NGINX_SERVER_NAME};
     listen 80 default_server;

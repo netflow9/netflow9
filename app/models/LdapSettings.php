@@ -16,7 +16,7 @@ use util\LdapClient;
 use models\credential\LdapServerTrait;
 
 class LdapSettings extends \sys\BaseModel {
-    //CLD: 2026-10-26T07:23:58+02:00: the role choices are read from the database: not cached (BaseModel::attachSchema)
+    //the role choices are read from the database: not cached (BaseModel::attachSchema)
     protected static $cacheSchema = false;
 
     use LdapServerTrait;
@@ -250,7 +250,7 @@ class LdapSettings extends \sys\BaseModel {
 	    }
 	}
 	//a domain, or the names without @domain, belong to one account of the installation
-	//CLD: 2026-10-21T20:10:00+03:00: the other accounts' settings: across the accounts (ObjectManager account guard)
+	//the other accounts' settings: across the accounts (ObjectManager account guard)
 	$others = \V::app()->om->acrossAccounts(fn() => iterator_to_array(\V::app()->om->find('LdapSettings', [ 'aid' => [ '$ne' => $this->aid ], 'enabled' => true ]), false));
 	foreach($others as $o) {
 	    if ($this->bareLogins && $o->bareLogins) {

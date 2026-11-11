@@ -107,7 +107,7 @@ class Job extends \sys\BaseModel {
     //queue `Class::method` with $data; options: aid, project (default: $data['aid'] / $data['project']), delete_on_done, key (unique), notify
     //(default true: tell the daemon; false inside the daemon itself, which dispatches on its own); returns the event id.
     //The daemon is told at once (it also checks the queue every 10 s)
-    //CLD: 2026-10-08T21:36:00+03:00: aid / project kept at the top level for the daemon's limits; no `mode`
+    //aid / project kept at the top level for the daemon's limits; no `mode`
     public static function submit($spec, $data = [], $options = []) {
 	$data = (array)$data;
 	$doc = [
@@ -120,11 +120,11 @@ class Job extends \sys\BaseModel {
 	    'delete_on_done' => !empty($options['delete_on_done']),
 	    'created_at' => new \MongoDB\BSON\UTCDateTime(),
 	];
-	//CLD: 2026-10-08T22:47:34+03:00: options['key']: null when an event with this key already exists (it is not queued again)
+	//options['key']: null when an event with this key already exists (it is not queued again)
 	if (!empty($options['key'])) {
 	    $doc['key'] = (string)$options['key'];
 	}
-	//CLD: 2026-11-08T14:10:00+02:00: insertOne, not save(): save() rethrows any error as \ErrorException, the duplicate key (11000) of options['key'] would be lost
+	//insertOne, not save(): save() rethrows any error as \ErrorException, the duplicate key (11000) of options['key'] would be lost
 	try {
 	    $id = \V::app()->om->insertOne('Job', \V::app()->om->create('Job', $doc));
 	} catch (\MongoDB\Driver\Exception\BulkWriteException $e) {
@@ -138,7 +138,7 @@ class Job extends \sys\BaseModel {
     }
 
     //where the daemon takes its commands: tcp://127.0.0.1:<app.daemon_port> (DAEMON_PORT of app.env)
-    //CLD: 2026-11-01T19:00:00+02:00: $listen: the daemon's own address (app.daemon_listen), else where others reach it (app.daemon_host); both 127.0.0.1 unless set (Docker)
+    //$listen: the daemon's own address (app.daemon_listen), else where others reach it (app.daemon_host); both 127.0.0.1 unless set (Docker)
     public static function daemonAddress($listen = false) {
 	$host = (string)\V::app()->config($listen ? 'app.daemon_listen' : 'app.daemon_host');
 	return 'tcp://' . (str_contains($host, ':') ? "[{$host}]" : $host) . ':' . (int)\V::app()->config('app.daemon_port');

@@ -33,7 +33,7 @@ $modal = new \sys\html\Modal([
 ]);
 echo $modal->render();
 
-//CLD: 2026-11-03T08:20:00+02:00: the QR code is drawn in the browser by qrcode-generator (imported here: this dialog comes through pjax, which runs only inline page scripts); if it cannot load, the key above still works
+//the QR code is drawn in the browser by qrcode-generator (imported here: this dialog comes through pjax, which runs only inline page scripts); if it cannot load, the key above still works
 $script = "setTimeout(() => { $('#{$id}').focus(); }, 200);
 import('/js/vendor/qrcode-generator-2.0.4/qrcode.mjs').then(({ default: qrcode }) => {
     const el = document.getElementById('{$qrId}');

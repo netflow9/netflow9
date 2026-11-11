@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-28T23:55:00+02:00: new view: one page of the documentation (DocsController::index): the contents (sections, their pages; the current section open), the page,
+//one page of the documentation (DocsController::index): the contents (sections, their pages; the current section open), the page,
 //"On this page" (its h2 / h3; wide screens), previous / next
 
 $section = $current['section'];
@@ -73,7 +73,7 @@ $this->pageTitle = ($shown['title'] ?? '') . ' - Documentation';
 		<?php endif; ?>
 
 		<!-- the page's own HTML (app/data/docs.json, written by the docs site's editor: its links and headings prepared by the controller) -->
-		<?php //CLD: 2026-10-29T10:00:00+02:00: .docs-content (the theme's page typography: headings, code, tables, callouts; _docs.scss) ?>
+		<?php //.docs-content (the theme's page typography: headings, code, tables, callouts; _docs.scss) ?>
 		<div class="docs-content">
 		    <?= $html ?>
 		</div>

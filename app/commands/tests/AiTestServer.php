@@ -1,24 +1,24 @@
 <?php
 
 /*
-    CLD: 2026-10-22T01:36:46+03:00: new file: a fake local AI server for the check suite (CheckCommand::suiteLocalAi), run by PHP's built-in server: php -S 127.0.0.1:<port> AiTestServer.php
+    a fake local AI server for the check suite (CheckCommand::suiteLocalAi), run by PHP's built-in server: php -S 127.0.0.1:<port> AiTestServer.php
     It answers as a Lemonade server (OpenAI-compatible: GET /api/v1/models, POST /api/v1/chat/completions) and as an Ollama server (GET /api/version, /api/tags, POST /api/chat):
 	- an API key: with the env AI_TEST_KEY set, a request without `Authorization: Bearer <key>` gets 401 (as the servers, with their error bodies)
 	- a chat with tools and no tool result yet: the model asks for the first tool (arguments {}); with a tool result: the answer names the tool's result (its first 40 characters);
 	  a JSON answer (Ollama `format`) when asked; a model named `slow-model` is refused (404, as an unknown model)
 	- every request body is appended to <AI_TEST_LOG> (one JSON line: { path, body }) for the checks to read
-    CLD: 2026-10-30T23:30:00+02:00: + embeddings (CheckCommand::suiteKb): POST /api/v1/embeddings (OpenAI-compatible) and /api/embed (Ollama): each text's words hashed into 64 numbers
+    embeddings (CheckCommand::suiteKb): POST /api/v1/embeddings (OpenAI-compatible) and /api/embed (Ollama): each text's words hashed into 64 numbers
     (texts sharing words are similar); a model named `small-embed` answers 8 numbers (another length), `slow-model` is refused; GET /kb/page: an HTML page (Add a web page)
-    CLD: 2026-11-01T21:50:00+02:00: + a scripted chat (CheckCommand::suiteAgenttools; the OpenAI requests): a message with a line `SCRIPT: <JSON>` - a list of rounds, each a list of tool calls
+    a scripted chat (CheckCommand::suiteAgenttools; the OpenAI requests): a message with a line `SCRIPT: <JSON>` - a list of rounds, each a list of tool calls
     [ name, arguments ] - asks, in round N (the assistant turns with tool calls so far), for the calls of round N; after the last round it answers `RESULTS: ` and the JSON list of
     every tool result sent ({ tool_call_id, content }, in order)
-    CLD: 2026-11-02T10:00:00+02:00: in a script's arguments @@EMAIL@@ / @@PHONE@@ / @@IBAN@@ is the first such placeholder (util\PersonalData) in the request: a model passing on what it was given (CheckCommand::suiteAgentguard)
-    CLD: 2026-11-02T10:00:00+02:00: tool results are sent between untrusted marks (util\AgentGuard): what this server answers quotes them without the marks; the requests in the log have them
-    CLD: 2026-11-02T18:00:00+02:00: a conversation's earlier turns hold earlier SCRIPT lines: the last one is the current turn's (CheckCommand::suiteAgentchat); a request to summarize a conversation (util: NodeAppAi::summarize, its system
+    in a script's arguments @@EMAIL@@ / @@PHONE@@ / @@IBAN@@ is the first such placeholder (util\PersonalData) in the request: a model passing on what it was given (CheckCommand::suiteAgentguard)
+    tool results are sent between untrusted marks (util\AgentGuard): what this server answers quotes them without the marks; the requests in the log have them
+    a conversation's earlier turns hold earlier SCRIPT lines: the last one is the current turn's (CheckCommand::suiteAgentchat); a request to summarize a conversation (util: NodeAppAi::summarize, its system
     prompt) answers `SUMMARY-OK`, no tools
-    CLD: 2026-11-02T15:46:06+02:00: a line `ANSWER: <text>` in a message is what a script ends with, instead of the results (CheckCommand::suiteAgenteval: a JSON answer); the judge of a test (util\AgentEval, its system prompt) answers
+    a line `ANSWER: <text>` in a message is what a script ends with, instead of the results (CheckCommand::suiteAgenteval: a JSON answer); the judge of a test (util\AgentEval, its system prompt) answers
     {"pass": true} when the request holds JUDGE-PASS, text that is not JSON with JUDGE-BAD, else {"pass": false}
-    CLD: 2026-11-01T23:30:00+02:00: the scripted chat in each API's form (CheckCommand::suiteAgentapproval: every AI step resumes a saved conversation): OpenAI (POST .../chat/completions),
+    the scripted chat in each API's form (CheckCommand::suiteAgentapproval: every AI step resumes a saved conversation): OpenAI (POST .../chat/completions),
     Claude (POST /v1/messages, key in x-api-key), Gemini (POST .../models/<model>:generateContent, key in x-goog-api-key), Ollama (POST /api/chat). A round may start with a text
     (what the model says with its calls). The results: each tool result sent, an error as `ERROR: <text>` (Claude is_error, Gemini `error`), with the call's id
 */
@@ -42,13 +42,13 @@ if ($path === '/kb/page') {
     exit;
 }
 $ollama = str_starts_with($path, '/api/') && !str_starts_with($path, '/api/v1/');
-//CLD: 2026-11-01T23:30:00+02:00: the key as each API sends it (Bearer; Claude x-api-key; Gemini x-goog-api-key)
+//the key as each API sends it (Bearer; Claude x-api-key; Gemini x-goog-api-key)
 $key = (string)getenv('AI_TEST_KEY');
 $given = [ $_SERVER['HTTP_AUTHORIZATION'] ?? '', 'Bearer ' . ($_SERVER['HTTP_X_API_KEY'] ?? ''), 'Bearer ' . ($_SERVER['HTTP_X_GOOG_API_KEY'] ?? '') ];
 if ($key !== '' && !in_array("Bearer {$key}", $given, true))
     $send(401, $ollama ? [ 'error' => 'unauthorized' ] : [ 'error' => [ 'message' => 'Invalid API key', 'type' => 'invalid_request_error' ] ]);
 
-//CLD: 2026-11-02T10:00:00+02:00: a tool result without its untrusted marks
+//a tool result without its untrusted marks
 $unmark = fn($t) => preg_replace('~<untrusted_[0-9a-f]+ source="[^"]*">\n|\n</untrusted_[0-9a-f]+>~', '', (string)$t);
 //the result of the last tool message, and the tool asked for
 $toolResult = null;
@@ -71,16 +71,16 @@ $texts = function($v) use (&$texts) {
 	$out = array_merge($out, $texts($x));
     return $out;
 };
-//CLD: 2026-11-02T18:00:00+02:00: the last one; a tool's result never starts a line with it in the suites
+//the last one; a tool's result never starts a line with it in the suites
 foreach($texts($body['messages'] ?? $body['contents'] ?? []) as $t) {
     if (preg_match_all('/^SCRIPT: (.+)$/m', $t, $sm))
 	$script = json_decode(end($sm[1]), true);
 }
-//CLD: 2026-11-02T18:00:00+02:00: asked to summarize: the marker below, whatever the script says
+//asked to summarize: the marker below, whatever the script says
 $summarizing = str_contains((string)$raw, 'You keep the memory of a conversation');
 if ($summarizing)
     $script = [];
-//CLD: 2026-11-02T15:46:06+02:00: a test's judge; the answer a script ends with
+//a test's judge; the answer a script ends with
 $judging = str_contains((string)$raw, 'You grade the answer of an AI agent');
 if ($judging)
     $script = [];
@@ -122,12 +122,12 @@ if (is_array($script) && $api !== '') {
     $calls = $round < count($script) ? $script[$round] : null;
     $said = is_array($calls) && is_string($calls[0] ?? null) ? array_shift($calls) : '';
     $final = $summarizing ? 'SUMMARY-OK' : 'RESULTS: ' . json_encode($results, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    //CLD: 2026-11-02T15:46:06+02:00: a test's judge; the answer a script ends with
+    //a test's judge; the answer a script ends with
     if ($judging)
 	$final = str_contains((string)$raw, 'JUDGE-BAD') ? 'I think it is fine' : json_encode([ 'pass' => str_contains((string)$raw, 'JUDGE-PASS'), 'reason' => 'by the fake judge' ]);
     elseif ($ending !== null)
 	$final = $ending;
-    //CLD: 2026-11-02T10:00:00+02:00: + @@EMAIL@@ ...: the placeholders seen in the request
+    //the placeholders seen in the request (@@EMAIL@@ ...)
     $seen = [];
     foreach([ 'EMAIL', 'PHONE', 'IBAN' ] as $kind)
 	if (preg_match('/\[' . $kind . '_[0-9a-f]+_\d+\]/', (string)$raw, $pm))

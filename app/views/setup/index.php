@@ -1,6 +1,6 @@
 <?php
 //the initial setup, step 1 (SetupController::index): the prerequisites; when the required ones pass, a link to step 2
-//CLD: 2026-10-19T14:09:20+03:00: step 1 only (the server's settings and the first user are views/setup/server.php and account.php; "done" is done.php)
+//step 1 only (the server's settings and the first user are views/setup/server.php and account.php; "done" is done.php)
 $this->pageTitle = \V::t('Setup');
 ?>
 

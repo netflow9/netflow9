@@ -7,7 +7,7 @@ if (!window.app)
  * Fields: the Rail22 types (text, textarea, number, date, datetime, select, checkbox, switch, hidden) + design / layout nodes (title, paragraph, divider, columns).
  * Each input has a `key` (its name in the answers; from the label until edited). A condition { key, operator, value } shows a node only when another field
  * matches; its `showIf` is generated from it (the server does the same and drops any other showIf / hideIf / requiredIf).
- * CLD: 2026-10-14T20:17:14+03:00: the condition is the node's `showIf` itself (app.smartform evaluates it; no JS is generated); its operators are those of the field it reads
+ * the condition is the node's `showIf` itself (app.smartform evaluates it; no JS is generated); its operators are those of the field it reads
  * (option `operators`: { type: [ { value, label } ] }, from util\SmartForm::modelFields = the fields' operators, util\Conditions)
  * Build: the palette (click: add at the end, or drag), the canvas (cards rendered by app.smartform; drag to reorder, also into / out of columns), the selected
  * node's settings (an app.smartform). Preview: the form as people will see it, with its conditions and a Check button (validation).
@@ -56,7 +56,7 @@ window.app.FormDesigner = (function() {
     class FormDesigner {
 	constructor(container, options) {
 	    this.container = container;
-	    //CLD: 2026-10-14T20:17:14+03:00: + operators: { type: [ { value, label } ] }, the operators of each field type (conditions)
+	    //operators: { type: [ { value, label } ] }, the operators of each field type (conditions)
 	    this.o = Object.assign({ value: null, readonly: false, onChange: null, operators: {} }, options || {});
 	    this.mode = 'build';
 	    this.selected = null;
@@ -92,7 +92,7 @@ window.app.FormDesigner = (function() {
 	build() {
 	    const out = (list) => list.map((n) => {
 		const c = {};
-		//CLD: 2026-10-14T20:17:14+03:00: the condition stays the node's showIf (an object); no hideIf / requiredIf
+		//the condition stays the node's showIf (an object); no hideIf / requiredIf
 		Object.keys(n).forEach((k) => { if (!k.startsWith('_') && ![ 'hideIf', 'requiredIf' ].includes(k)) c[k] = n[k]; });
 		if (n.type === 'columns')
 		    c.columns = n.columns.map((col) => ({ width: col.width, fields: out(col.fields) }));
@@ -154,7 +154,7 @@ window.app.FormDesigner = (function() {
 	    return this.all().map(([ n ]) => n).filter((n) => TYPES[n.type].input);
 	}
 
-	//CLD: 2026-10-14T20:17:14+03:00: the operators a condition on field `key` may use: those of its type (option `operators`)
+	//the operators a condition on field `key` may use: those of its type (option `operators`)
 	operatorsOf(key) {
 	    const f = this.inputs().find((x) => x.key === key);
 	    return (f && this.o.operators[f.type]) || [];
@@ -230,7 +230,7 @@ window.app.FormDesigner = (function() {
 	    hit[1].splice(hit[2], 1);
 	    //conditions on a removed field go away
 	    const keys = new Set(this.inputs().map((n) => n.key));
-	    //CLD: 2026-10-14T20:17:14+03:00: the condition is n.showIf
+	    //the condition is n.showIf
 	    this.all().forEach(([ n ]) => { if (n.showIf && !keys.has(n.showIf.key)) delete n.showIf; });
 	    if (this.selected === id || !this.find(this.selected))
 		this.selected = null;
@@ -270,7 +270,7 @@ window.app.FormDesigner = (function() {
 		    return `"${n.label || n.key}": add at least one choice`;
 	    }
 	    for (const [ n ] of this.all()) {
-		//CLD: 2026-10-14T20:17:14+03:00: the condition is n.showIf
+		//the condition is n.showIf
 		if (n.showIf && !seen.has(n.showIf.key))
 		    return `"${n.label || n.type}": its condition uses a field that is not in the form`;
 	    }
@@ -281,9 +281,9 @@ window.app.FormDesigner = (function() {
 
 	render() {
 	    const ro = this.o.readonly;
-	    //CLD: 2026-10-13T20:13:36+03:00: focus inside the designer stays inside after drawing it again (else it falls to the page: Escape no longer closed the dialog around)
+	    //focus inside the designer stays inside after drawing it again (else it falls to the page: Escape would not close the dialog around)
 	    const hadFocus = this.container.contains(document.activeElement);
-	    //CLD: 2026-10-13T20:18:33+03:00: the palette is a column on the left (the step dialog is full screen), grouped Fields / Design, buttons
+	    //the palette is a column on the left (the step dialog is full screen), grouped Fields / Design, buttons
 	    //with their label (btn-light + border: the theme's outline-secondary looked disabled)
 	    const button = (type) => `<button type="button" class="btn btn-sm btn-light border w-100 text-start mb-1 fd-add" draggable="true" data-type="${type}" title="Click to add at the end, or drag onto the form">
 		<i class="bi ${TYPES[type].icon} me-2 text-primary"></i>${app.utils.escapeHtml(TYPES[type].label)}</button>`;
@@ -291,7 +291,7 @@ window.app.FormDesigner = (function() {
 		+ Object.keys(TYPES).filter((t) => TYPES[t].input).map(button).join('')
 		+ '<div class="small text-uppercase text-muted fw-semibold mt-3 mb-2">Design</div>'
 		+ Object.keys(TYPES).filter((t) => !TYPES[t].input).map(button).join('');
-	    //CLD: 2026-10-13T20:45:56+03:00: fill: the columns take the height left, each scrolling
+	    //fill: the columns take the height left, each scrolling
 	    const fill = !!this.o.fill;
 	    const scroll = fill ? 'height:100%; overflow:auto' : 'max-height:70vh; overflow:auto';
 	    this.container.innerHTML = `
@@ -307,7 +307,7 @@ window.app.FormDesigner = (function() {
 			</select>
 		    </div>
 		    <div class="row g-0 ${this.mode === 'build' ? '' : 'd-none'} ${fill ? 'flex-grow-1' : ''}" style="${fill ? 'min-height:0' : ''}">
-			<!-- CLD: 2026-10-13T20:12:00+03:00: up to 70% of the window (the step dialog is full screen; was 60%) -->
+			<!-- up to 70% of the window (the step dialog is full screen) -->
 			${ro ? '' : `<div class="col-md-2 p-2 border-end bg-body-tertiary fd-palette" style="${scroll}">${palette}</div>`}
 			<div class="${ro ? 'col-md-8' : 'col-md-6'} p-3 fd-canvas" style="${scroll}; min-height:260px"></div>
 			<div class="col-md-4 p-3 border-start fd-props" style="${scroll}"></div>
@@ -334,7 +334,7 @@ window.app.FormDesigner = (function() {
 	    }
 	    this.canvas = root.querySelector('.fd-canvas');
 	    this.canvas.appendChild(this.renderZone(this.fields, 'root'));
-	    //CLD: 2026-10-13T20:36:03+03:00: a click on the empty canvas: no field selected (the step's settings)
+	    //a click on the empty canvas: no field selected (the step's settings)
 	    this.canvas.addEventListener('click', (e) => {
 		if (!e.target.closest('.fd-item') && this.selected) {
 		    this.selected = null;
@@ -354,7 +354,7 @@ window.app.FormDesigner = (function() {
 		const empty = document.createElement('div');
 		empty.className = 'col-12 fd-empty text-center text-muted small rounded p-4';
 		empty.style.border = '2px dashed var(--bs-border-color)';
-		//CLD: 2026-10-13T20:26:20+03:00: the palette is on the left now
+		//the palette is on the left
 		empty.innerHTML = zone === 'root' ? '<i class="bi bi-ui-checks-grid d-block fs-4 mb-1"></i>The form is empty: click or drag a field from the list on the left' : 'Drop fields here';
 		row.appendChild(empty);
 	    }
@@ -511,7 +511,7 @@ window.app.FormDesigner = (function() {
 
 	// ------------------------------------------------------------------ settings of the selected node
 
-	//CLD: 2026-10-13T20:36:03+03:00: the step's settings (an element of the dialog), shown when no field is selected
+	//the step's settings (an element of the dialog), shown when no field is selected
 	setStepPanel(el) {
 	    this.stepPanel = el;
 	    if (this.mode === 'build')
@@ -558,7 +558,7 @@ window.app.FormDesigner = (function() {
 		fields.push({ key: 'text', type: 'textarea', label: 'Text', rows: 4 });
 	    if (n.type === 'columns')
 		fields.push({ key: 'ratio', type: 'select', label: 'Columns', choices: { '6-6': '1/2 + 1/2', '4-8': '1/3 + 2/3', '8-4': '2/3 + 1/3', '3-9': '1/4 + 3/4', '9-3': '3/4 + 1/4', '4-4-4': '1/3 + 1/3 + 1/3' } });
-	    //CLD: 2026-10-14T19:54:21+03:00: + url
+	    //url
 	    if ([ 'text', 'email', 'url', 'textarea', 'number' ].includes(n.type))
 		fields.push({ key: 'placeholder', type: 'text', label: 'Placeholder' });
 	    if (n.type === 'text')
@@ -584,9 +584,9 @@ window.app.FormDesigner = (function() {
 		fields.push({ type: 'title', label: 'Show only when', level: 'h6', className: 'mt-2 mb-0' },
 		    { key: 'condOn', type: 'switch', label: 'A condition decides' },
 		    { key: 'condKey', type: 'select', label: 'Field', choices: others, showIf: 'data.condOn' },
-		    //CLD: 2026-10-14T20:17:14+03:00: the operators of the field the condition reads (option `operators`, by its type)
+		    //the operators of the field the condition reads (option `operators`, by its type)
 		    { key: 'condOperator', type: 'select', label: 'Operator', choices: this.operatorsOf(n.showIf ? n.showIf.key : (others[0] || {}).value), showIf: 'data.condOn' },
-		    //CLD: 2026-10-14T14:08:12+03:00: `in`: the values one per line
+		    //`in`: the values one per line
 		    { key: 'condValue', type: 'text', label: 'Value', showIf: "data.condOn && !['empty', 'notEmpty', 'in'].includes(data.condOperator)" },
 		    { key: 'condValues', type: 'textarea', label: 'Values (one per line)', rows: 3, showIf: "data.condOn && data.condOperator === 'in'" });
 	    }
@@ -596,9 +596,9 @@ window.app.FormDesigner = (function() {
 	    const data = Object.assign({}, n, {
 		width: String(n.width || 12),
 		ratio: n.type === 'columns' ? (Object.keys(RATIOS).find((r) => RATIOS[r].join() === n.columns.map((c) => c.width).join()) || '6-6') : undefined,
-		//CLD: 2026-10-14T20:17:14+03:00: from n.showIf
+		//from n.showIf
 		condOn: !!n.showIf, condKey: n.showIf ? n.showIf.key : (others[0] || {}).value, condOperator: n.showIf ? n.showIf.operator : 'eq',
-		//CLD: 2026-10-14T14:08:12+03:00: a list value (`in`) is edited one per line
+		//a list value (`in`) is edited one per line
 		condValue: n.showIf && !Array.isArray(n.showIf.value) ? n.showIf.value : '',
 		condValues: n.showIf && Array.isArray(n.showIf.value) ? n.showIf.value.join('\n') : '',
 	    });
@@ -609,7 +609,7 @@ window.app.FormDesigner = (function() {
 	    form.setData(data);
 	    const apply = () => {
 		const d = form.getData();
-		//CLD: 2026-10-14T20:17:14+03:00: another field for the condition: its operators (the panel again, with an operator of that field)
+		//another field for the condition: its operators (the panel again, with an operator of that field)
 		const keyChanged = d.condOn && n.showIf && d.condKey !== n.showIf.key;
 		this.applyProps(n, d);
 		if (keyChanged) {
@@ -659,12 +659,11 @@ window.app.FormDesigner = (function() {
 		}
 		n.columns.forEach((c, i) => { c.width = widths[i]; });
 	    }
-	    //CLD: 2026-10-14T20:17:14+03:00: an operator of the field the condition reads (its first one when the chosen one does not apply)
+	    //an operator of the field the condition reads (its first one when the chosen one does not apply)
 	    const ops = this.operatorsOf(d.condKey).map((o) => o.value);
 	    const op = ops.includes(d.condOperator) ? d.condOperator : (ops[0] || 'eq');
 	    if (d.condOn && d.condKey)
-		//CLD: 2026-10-14T14:08:12+03:00: `in`: the lines as a list (blanks and repeats dropped)
-		//CLD: 2026-10-14T20:17:14+03:00: the condition is n.showIf
+		//the condition is n.showIf; `in`: the lines as a list (blanks and repeats dropped)
 		n.showIf = { key: d.condKey, operator: op, value: op === 'in'
 		    ? [ ...new Set(String(d.condValues ?? '').split(/\r?\n/).map((s) => s.trim()).filter((s) => s !== '')) ]
 		    : ([ 'empty', 'notEmpty' ].includes(op) ? '' : String(d.condValue ?? '')) };

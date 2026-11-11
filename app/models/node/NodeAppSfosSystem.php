@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T10:00:00+02:00: new step: Sophos Firewall System - what the XML API tells of the firewall. Operations (setting `operation`):
+    Sophos Firewall System - what the XML API tells of the firewall. Operations (setting `operation`):
 	info        the hostname (AdminSettings) and the API version (the answer's APIVersion: the firmware's)
 	interfaces  the interfaces (Interface)
 	zones       the zones (Zone)
@@ -24,7 +24,7 @@ class NodeAppSfosSystem extends NodeAppSophos {
 	'zones' => 'List zones',
 	'gateways' => 'List gateways',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [];
     const LISTS = [ 'interfaces', 'zones', 'gateways' ];
 

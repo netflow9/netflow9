@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-19T14:09:20+03:00: new form model: step 3 of the initial setup (SetupController::account) - the first account and its owner: username, email, names, the password twice
+//step 3 of the initial setup (SetupController::account) - the first account and its owner: username, email, names, the password twice
 //. The password fields and their rules are ChangePasswordForm's (create it with [ 'validateCurrentPassword' => false ])
 
 namespace models\setup;

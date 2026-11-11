@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-11-07T22:35:31+02:00: the license notice of Lithium (li3), the framework this file is ported from (lithium\template\helper\Form)
+//the license notice of Lithium (li3), the framework this file is ported from (lithium\template\helper\Form)
 /*
  * Copyright (c) 2009, Union of RAD http://union-of-rad.org
  * All rights reserved.

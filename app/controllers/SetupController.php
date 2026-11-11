@@ -1,12 +1,11 @@
 <?php
 
-//CLD: 2026-10-19T12:52:41+03:00: new controller: the initial setup page, served at every address while app.env is missing (public_html/index.php, get_setup_config);
-//once app.env exists it is not found. It shows the system prerequisites (util\Setup::checks); when the required ones pass, it asks the server's settings and the first
-//user, then: connects to the database (it must have no account yet), creates the indexes, the account (its system roles) and its owner (active; the Personal project
-//is made at the first sign-in), and writes app.env (with a new APP_SECRET). When app.env cannot be written, the account is removed again
-//CLD: 2026-10-19T14:09:20+03:00: in steps: 1. /setup the prerequisites; 2. /setup/server the server's settings (models\setup\ServerForm; the database is
-//checked here, the settings are kept in the setup session); 3. /setup/account the first account (models\setup\AccountForm), which installs. A step whose earlier one is
-//not done goes back to it; the last step checks the prerequisites and the database again
+//the initial setup page, served at every address while app.env is missing (public_html/index.php, get_setup_config); once app.env exists it is not found.
+//In steps: 1. /setup the system prerequisites (util\Setup::checks); 2. /setup/server the server's settings (models\setup\ServerForm; the database is
+//checked here: it must have no account yet; the settings are kept in the setup session); 3. /setup/account the first account and its owner (models\setup\AccountForm),
+//which installs: the indexes, the account (its system roles) and its owner (active; the Personal project is made at the first sign-in), and app.env (with a new
+//APP_SECRET). When app.env cannot be written, the account is removed again. A step whose earlier one is not done goes back to it; the last step checks the
+//prerequisites and the database again
 
 namespace controllers;
 
@@ -31,7 +30,7 @@ class SetupController extends \sys\BaseController {
 
 	$form = \models\setup\ServerForm::create();
 	$host = (string)(\V::app()->request->httpHost ?? 'localhost');
-	//CLD: 2026-11-01T19:00:00+02:00: the database's and SMTP's defaults from the environment when set (Docker: compose.yaml's NFN_SETUP_*: the mongo container, its app user)
+	//the database's and SMTP's defaults from the environment when set (Docker: compose.yaml's NFN_SETUP_*: the mongo container, its app user)
 	$form->assign($_SESSION['setup']['server'] ?? [
 	    'base_url' => self::setupEnv('BASE_URL', 'https://' . $host),
 	    'mongo_uri' => self::setupEnv('MONGO_URI', 'mongodb://127.0.0.1:27017/'),
@@ -39,9 +38,9 @@ class SetupController extends \sys\BaseController {
 	    'smtp_host' => self::setupEnv('SMTP_HOST', '127.0.0.1'),
 	    'smtp_port' => self::setupEnv('SMTP_PORT', '25'),
 	    'smtp_secure' => '',
-	    //CLD: 2026-10-19T14:20:35+03:00: noreply@ the request's domain (without the port)
+	    //noreply@ the request's domain (without the port)
 	    'mail_from' => 'noreply@' . preg_replace('/:\d+$/', '', $host),
-	    //CLD: 2026-10-19T14:18:52+03:00: no mail_inbound_domain (the inbound email is not set up here)
+	    //no mail_inbound_domain (the inbound email is not set up here)
 	]);
 	//the password is not shown again: an empty one keeps the one entered before
 	$passwordKept = (string)($_SESSION['setup']['server']['smtp_password'] ?? '') !== '';
@@ -50,7 +49,7 @@ class SetupController extends \sys\BaseController {
 	    if ($passwordKept && (string)$form->smtp_password === '')
 		$form->smtp_password = $_SESSION['setup']['server']['smtp_password'];
 	    if ($form->validates()) {
-		//CLD: 2026-10-29T02:00:00+02:00: util\Setup::database (shared with the command-line setup: commands\SysCommand)
+		//util\Setup::database (shared with the command-line setup: commands\SysCommand)
 		$problem = \util\Setup::database($form->values());
 		if ($problem) {
 		    $form->errors($problem[0], $problem[1]);
@@ -63,7 +62,7 @@ class SetupController extends \sys\BaseController {
 	$this->render('server', compact('form', 'passwordKept'));
     }
 
-    //CLD: 2026-11-07T01:05:52+02:00: the environment's NFN_SETUP_<k> (the installer's answers), else $d
+    //the environment's NFN_SETUP_<k> (the installer's answers), else $d
     private static function setupEnv($k, $d) {
 	return (string)getenv('NFN_SETUP_' . $k) ?: $d;
     }
@@ -82,7 +81,7 @@ class SetupController extends \sys\BaseController {
 	if ($req->is('post')) {
 	    $form->assign($req->data);
 	    if ($form->validates()) {
-		//CLD: 2026-10-29T02:00:00+02:00: util\Setup::install (shared with the command-line setup: commands\SysCommand)
+		//util\Setup::install (shared with the command-line setup: commands\SysCommand)
 		$user = \util\Setup::install($server, [ 'account_name' => $form->account_name, 'username' => $form->username, 'email' => $form->email,
 		    'firstname' => $form->firstname, 'lastname' => $form->lastname, 'password' => $form->new_password ], $error);
 		if ($user) {

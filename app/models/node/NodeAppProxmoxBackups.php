@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new step: Proxmox Backups - the backups of Proxmox VE (vzdump; a storage of type Proxmox Backup Server too). Operations (setting `operation`):
+    Proxmox Backups - the backups of Proxmox VE (vzdump; a storage of type Proxmox Backup Server too). Operations (setting `operation`):
 	backup   a guest backed up now (POST /nodes/{node}/vzdump: to a storage or the node's default, mode snapshot / suspend / stop, compression, notes): { vmid, node, storage, task,
 	         backup } (backup: its newest backup on the storage, when waited for and a storage is given)
 	list     the backups on a storage (GET /nodes/{node}/storage/{storage}/content?content=backup: of a guest or all): { volid, vmid, ctime, time, size, format, notes, protected,
@@ -28,7 +28,7 @@ class NodeAppProxmoxBackups extends NodeAppProxmox {
 	'jobs' => 'List backup jobs',
 	'delete' => 'Delete a backup',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'backup', 'delete' ];
     const LISTS = [ 'list', 'jobs' ];
     const MODES = [ 'snapshot' => 'Snapshot (no downtime)', 'suspend' => 'Suspend', 'stop' => 'Stop' ];

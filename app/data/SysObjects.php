@@ -72,12 +72,12 @@ class SysObjects {
 		'class' => 'models\user\ProjectInvite',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-21T18:00:00+03:00: the sign-in throttle (failed attempts and locks; SiteController login / tfa)
+	    //the sign-in throttle (failed attempts and locks; SiteController login / tfa)
 	    'LoginThrottle' => [
 		'class' => 'models\user\LoginThrottle',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-11-07T10:37:49+02:00: the web sessions' records (sys\Session)
+	    //the web sessions' records (sys\Session)
 	    'WebSession' => [
 		'class' => 'models\sys\WebSession',
 		'auditLog' => false,
@@ -106,7 +106,7 @@ class SysObjects {
 		'class' => 'models\wf\WfExecution',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-11T13:51:42+03:00: published versions of workflows
+	    //published versions of workflows
 	    'WfVersion' => [
 		'class' => 'models\wf\WfVersion',
 		'auditLog' => false,
@@ -115,12 +115,12 @@ class SysObjects {
 		'class' => 'models\AuditLog',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-11-07T10:37:49+02:00: the audit log's seal per account (AuditLog::nextSeq, prune, verify)
+	    //the audit log's seal per account (AuditLog::nextSeq, prune, verify)
 	    'AuditSeal' => [
 		'class' => 'models\AuditSeal',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-11T17:45:25+03:00: the execution log (never recorded in either log)
+	    //the execution log (never recorded in either log)
 	    'ExecutionLog' => [
 		'class' => 'models\ExecutionLog',
 		'auditLog' => false,
@@ -129,9 +129,8 @@ class SysObjects {
 		'class' => 'models\Job',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-16T11:26:09+03:00: the token index of the token triggers (Webhook, Form, Email inbound); rebuilt from the workflows: not in
-	    //the audit log
-	    //CLD: 2026-10-19T11:21:19+03:00: Signup is registered by the Registration plugin
+	    //the token index of the token triggers (Webhook, Form, Email inbound); rebuilt from the workflows: not in
+	    //the audit log. Signup is registered by the Registration plugin
 	    'TriggerToken' => [
 		'class' => 'models\TriggerToken',
 		'auditLog' => false,
@@ -139,11 +138,11 @@ class SysObjects {
 	    'DataTableDef' => [
 		'class' => 'models\datatable\DataTableDef',
 	    ],
-	    //CLD: 2026-10-30T17:18:20+02:00: the saved views of a data table (named filters)
+	    //the saved views of a data table (named filters)
 	    'DataTableView' => [
 		'class' => 'models\datatable\DataTableView',
 	    ],
-	    //CLD: 2026-10-30T23:30:00+02:00: the knowledge bases (documents cut into chunks, searched by meaning and by words: the Knowledge base step, the AI steps' tool); their documents and
+	    //the knowledge bases (documents cut into chunks, searched by meaning and by words: the Knowledge base step, the AI steps' tool); their documents and
 	    //chunks are written in bulk, not in the audit log
 	    'KnowledgeBase' => [
 		'class' => 'models\kb\KnowledgeBase',
@@ -156,11 +155,11 @@ class SysObjects {
 		'class' => 'models\kb\KbChunk',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-31T01:00:00+02:00: the account's embedding model (the knowledge bases': Settings, Knowledge bases)
+	    //the account's embedding model (the knowledge bases': Settings, Knowledge bases)
 	    'EmbeddingSettings' => [
 		'class' => 'models\kb\EmbeddingSettings',
 	    ],
-	    //CLD: 2026-10-26T23:56:07+02:00: the project's MCP server (controllers\McpController)
+	    //the project's MCP server (controllers\McpController)
 	    'McpToken' => [
 		'class' => 'models\McpToken',
 	    ],
@@ -181,12 +180,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialBearer',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-18T12:00:00+03:00: was CredentialLemonade (any OpenAI-compatible API)
 	    'CredentialOpenAI' => [
 		'class' => 'models\credential\CredentialOpenAI',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-22T01:36:46+03:00: a Lemonade server (OpenAI-compatible; the Lemonade AI step) and an Ollama server (the Ollama step)
+	    //a Lemonade server (OpenAI-compatible; the Lemonade AI step) and an Ollama server (the Ollama step)
 	    'CredentialLemonade' => [
 		'class' => 'models\credential\CredentialLemonade',
 		'variant-of' => 'Credential',
@@ -203,12 +201,12 @@ class SysObjects {
 		'class' => 'models\credential\CredentialAnthropic',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-22T12:00:00+03:00: the Google Gemini API (the Gemini step)
+	    //the Google Gemini API (the Gemini step)
 	    'CredentialGemini' => [
 		'class' => 'models\credential\CredentialGemini',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-12T21:51:51+03:00: an MCP server whose tools the AI steps can use (util\McpClient)
+	    //an MCP server whose tools the AI steps can use (util\McpClient)
 	    'CredentialMcp' => [
 		'class' => 'models\credential\CredentialMcp',
 		'variant-of' => 'Credential',
@@ -217,7 +215,7 @@ class SysObjects {
 		'class' => 'models\credential\CredentialImap',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-26T23:39:49+02:00: the Google credentials (OAuth: Mail, Drive, Sheets, Calendar, Docs), core for every account
+	    //the Google credentials (OAuth: Mail, Drive, Sheets, Calendar, Docs), core for every account
 	    'CredentialGoogleMail' => [
 		'class' => 'models\credential\CredentialGoogleMail',
 		'variant-of' => 'Credential',
@@ -238,7 +236,7 @@ class SysObjects {
 		'class' => 'models\credential\CredentialGoogleDocs',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-26T23:39:49+02:00: the Microsoft credentials (Microsoft 365 Mail over IMAP, and the Microsoft Graph ones: Outlook Mail, Outlook Calendar, OneDrive & SharePoint, Teams), core for every
+	    //the Microsoft credentials (Microsoft 365 Mail over IMAP, and the Microsoft Graph ones: Outlook Mail, Outlook Calendar, OneDrive & SharePoint, Teams), core for every
 	    //account
 	    'CredentialMicrosoftMail' => [
 		'class' => 'models\credential\CredentialMicrosoftMail',
@@ -260,12 +258,12 @@ class SysObjects {
 		'class' => 'models\credential\CredentialMicrosoftTeams',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-20T16:00:00+03:00: an FTP / FTPS / SFTP server and a key to decrypt files with (the FTP / SFTP step)
+	    //an FTP / FTPS / SFTP server and a key to decrypt files with (the FTP / SFTP step)
 	    'CredentialFtp' => [
 		'class' => 'models\credential\CredentialFtp',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-25T20:00:00+02:00: the databases (the Database step), core for every account; each offered when PHP
+	    //the databases (the Database step), core for every account; each offered when PHP
 	    //has its PDO driver (Credential::available())
 	    'CredentialMysql' => [
 		'class' => 'models\credential\CredentialMysql',
@@ -291,62 +289,62 @@ class SysObjects {
 		'class' => 'models\credential\CredentialOdbc',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-01T08:00:00+02:00: a Checkmk site (the Checkmk steps and problem trigger), core for every account
+	    //a Checkmk site (the Checkmk steps and problem trigger), core for every account
 	    'CredentialCheckmk' => [
 		'class' => 'models\credential\CredentialCheckmk',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-01T14:00:00+02:00: a Zabbix server (the Zabbix steps and problem trigger), core for every account
+	    //a Zabbix server (the Zabbix steps and problem trigger), core for every account
 	    'CredentialZabbix' => [
 		'class' => 'models\credential\CredentialZabbix',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-03T10:00:00+02:00: a Wazuh installation (the Wazuh steps and alert trigger), core for every account
+	    //a Wazuh installation (the Wazuh steps and alert trigger), core for every account
 	    'CredentialWazuh' => [
 		'class' => 'models\credential\CredentialWazuh',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-05T13:00:00+02:00: a Namecheap account's API access (the Namecheap steps), core for every account
+	    //a Namecheap account's API access (the Namecheap steps), core for every account
 	    'CredentialNamecheap' => [
 		'class' => 'models\credential\CredentialNamecheap',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-01T06:00:00+02:00: a FortiGate firewall (the FortiGate steps), core for every account
+	    //a FortiGate firewall (the FortiGate steps), core for every account
 	    'CredentialFortiGate' => [
 		'class' => 'models\credential\CredentialFortiGate',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-01T10:00:00+02:00: a Sophos Firewall (the Sophos Firewall steps: its XML API), core for every account
+	    //a Sophos Firewall (the Sophos Firewall steps: its XML API), core for every account
 	    'CredentialSophos' => [
 		'class' => 'models\credential\CredentialSophos',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-01T16:00:00+02:00: a Hyper-V host (the Hyper-V steps and VM state trigger; PowerShell over WinRM), core for every account
+	    //a Hyper-V host (the Hyper-V steps and VM state trigger; PowerShell over WinRM), core for every account
 	    'CredentialHyperV' => [
 		'class' => 'models\credential\CredentialHyperV',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-01T14:00:00+02:00: a Proxmox VE cluster or server (the Proxmox steps and task trigger), core for every account
+	    //a Proxmox VE cluster or server (the Proxmox steps and task trigger), core for every account
 	    'CredentialProxmox' => [
 		'class' => 'models\credential\CredentialProxmox',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-01T12:00:00+02:00: a VMware vCenter Server (the VMware steps and alarm trigger), core for every account
+	    //a VMware vCenter Server (the VMware steps and alarm trigger), core for every account
 	    'CredentialVmware' => [
 		'class' => 'models\credential\CredentialVmware',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-01T04:00:00+02:00: a Veeam Backup & Replication server (the Veeam steps and event trigger), core for every account
+	    //a Veeam Backup & Replication server (the Veeam steps and event trigger), core for every account
 	    'CredentialVeeam' => [
 		'class' => 'models\credential\CredentialVeeam',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-11-01T00:30:00+02:00: a Bitdefender GravityZone console (the GravityZone steps and event trigger), core for every account
+	    //a Bitdefender GravityZone console (the GravityZone steps and event trigger), core for every account
 	    'CredentialGravityZone' => [
 		'class' => 'models\\credential\\CredentialGravityZone',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-25T19:30:00+02:00: an LDAP server (the LDAP step), core for every account
+	    //an LDAP server (the LDAP step), core for every account
 	    'CredentialLdap' => [
 		'class' => 'models\credential\CredentialLdap',
 		'variant-of' => 'Credential',
@@ -355,22 +353,22 @@ class SysObjects {
 		'class' => 'models\credential\CredentialDecryption',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-20T18:00:00+03:00: a key to encrypt files with before sending them (the FTP / SFTP Upload step)
+	    //a key to encrypt files with before sending them (the FTP / SFTP Upload step)
 	    'CredentialEncryption' => [
 		'class' => 'models\credential\CredentialEncryption',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-20T19:00:00+03:00: your private key to sign files with before sending them (the FTP / SFTP Upload step)
+	    //your private key to sign files with before sending them (the FTP / SFTP Upload step)
 	    'CredentialSigning' => [
 		'class' => 'models\credential\CredentialSigning',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-20T20:00:00+03:00: what the senders sign with, to check the signatures of files downloaded (the FTP / SFTP step)
+	    //what the senders sign with, to check the signatures of files downloaded (the FTP / SFTP step)
 	    'CredentialVerification' => [
 		'class' => 'models\credential\CredentialVerification',
 		'variant-of' => 'Credential',
 	    ],
-	    //CLD: 2026-10-22T00:28:13+03:00: a project variable, {{ vars.<name> }}
+	    //a project variable, {{ vars.<name> }}
 	    'CredentialVariable' => [
 		'class' => 'models\credential\CredentialVariable',
 		'variant-of' => 'Credential',
@@ -379,7 +377,7 @@ class SysObjects {
 
 
 
-	    //CLD: 2026-10-17T13:24:18+03:00: the workflow steps (models\node); the order is the step picker's
+	    //the workflow steps (models\node); the order is the step picker's
 	    'NodeCoreIf' => [
 		'class' => 'models\node\NodeCoreIf',
 		'wfNode' => true,
@@ -408,12 +406,12 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerWebhook',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T16:11:37+02:00: Email (inbound): available() when Haraka is found
+	    //Email (inbound): available() when Haraka is found
 	    'NodeTriggerEmail' => [
 		'class' => 'models\node\NodeTriggerEmail',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-17T20:40:00+03:00: File upload trigger
+	    //File upload trigger
 	    'NodeTriggerFile' => [
 		'class' => 'models\node\NodeTriggerFile',
 		'wfNode' => true,
@@ -422,7 +420,7 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerSchedule',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-30T19:00:00+02:00: Called by a workflow (the workflow is started by the Run a workflow step of another one: its inputs and outputs)
+	    //Called by a workflow (the workflow is started by the Run a workflow step of another one: its inputs and outputs)
 	    'NodeTriggerCall' => [
 		'class' => 'models\node\NodeTriggerCall',
 		'wfNode' => true,
@@ -443,29 +441,28 @@ class SysObjects {
 		'class' => 'models\node\NodeAppDownload',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-30T15:00:00+02:00: Read a web page (the basic HTTP Request: a GET, the page's text or HTML)
+	    //Read a web page (the basic HTTP Request: a GET, the page's text or HTML)
 	    'NodeAppWebPage' => [
 		'class' => 'models\node\NodeAppWebPage',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-08T12:00:00+02:00: Read a certificate (an SSL / TLS certificate decoded: the one a server sends, or a certificate file at a URL)
+	    //Read a certificate (an SSL / TLS certificate decoded: the one a server sends, or a certificate file at a URL)
 	    'NodeAppCertificate' => [
 		'class' => 'models\node\NodeAppCertificate',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-20T16:00:00+03:00: FTP / SFTP (list or download files: filters, decryption, decompression, afterwards delete / move)
+	    //FTP / SFTP (list or download files: filters, decryption, decompression, afterwards delete / move)
 	    'NodeAppFtp' => [
 		'class' => 'models\node\NodeAppFtp',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-20T18:00:00+03:00: FTP / SFTP Upload (project files or a text; compression, encryption, safe .part upload, if the file exists)
+	    //FTP / SFTP Upload (project files or a text; compression, encryption, safe .part upload, if the file exists)
 	    'NodeAppFtpUpload' => [
 		'class' => 'models\node\NodeAppFtpUpload',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-25T20:00:00+02:00: Database (query and change SQL databases), core for every account; not in the
-	    //palette when PHP has no PDO driver of its types (WfNode::available())
-	    //CLD: 2026-10-31T23:30:00+02:00: one step per database type; each not in the palette when PHP has no PDO driver of its type
+	    //Database (query and change SQL databases), core for every account: one step per database type; each not in the palette when PHP has no PDO driver of its type
+	    //(WfNode::available())
 	    'NodeAppMysql' => [
 		'class' => 'models\node\NodeAppMysql',
 		'wfNode' => true,
@@ -490,7 +487,7 @@ class SysObjects {
 		'class' => 'models\node\NodeAppOdbc',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T08:00:00+02:00: Checkmk (one step per area, NodeAppCheckmk their base; the problem trigger, polling), core for every account
+	    //Checkmk (one step per area, NodeAppCheckmk their base; the problem trigger, polling), core for every account
 	    'NodeAppCmkStatus' => [
 		'class' => 'models\node\NodeAppCmkStatus',
 		'wfNode' => true,
@@ -511,7 +508,7 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerCheckmk',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T14:00:00+02:00: Zabbix (one step per area, NodeAppZabbix their base; the problem trigger, polling), core for every account
+	    //Zabbix (one step per area, NodeAppZabbix their base; the problem trigger, polling), core for every account
 	    'NodeAppZbxProblems' => [
 		'class' => 'models\node\NodeAppZbxProblems',
 		'wfNode' => true,
@@ -532,7 +529,7 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerZabbix',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-03T10:00:00+02:00: Wazuh (one step per area, NodeAppWazuh their base; the alert trigger, polling the indexer), core for every account
+	    //Wazuh (one step per area, NodeAppWazuh their base; the alert trigger, polling the indexer), core for every account
 	    'NodeAppWzAlerts' => [
 		'class' => 'models\node\NodeAppWzAlerts',
 		'wfNode' => true,
@@ -569,7 +566,7 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerWazuh',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-05T13:00:00+02:00: Namecheap (one step per area, NodeAppNamecheap their base), core for every account
+	    //Namecheap (one step per area, NodeAppNamecheap their base), core for every account
 	    'NodeAppNcDomains' => [
 		'class' => 'models\node\NodeAppNcDomains',
 		'wfNode' => true,
@@ -586,7 +583,7 @@ class SysObjects {
 		'class' => 'models\node\NodeAppNcApi',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T06:00:00+02:00: FortiGate (one step per area, NodeAppFortiGate their base; the event trigger: an automation stitch's webhook), core for every account
+	    //FortiGate (one step per area, NodeAppFortiGate their base; the event trigger: an automation stitch's webhook), core for every account
 	    'NodeAppFgtAddresses' => [
 		'class' => 'models\node\NodeAppFgtAddresses',
 		'wfNode' => true,
@@ -615,7 +612,7 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerFortiGate',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T10:00:00+02:00: Sophos Firewall (one step per area, NodeAppSophos their base; no trigger: SFOS sends no webhooks), core for every account
+	    //Sophos Firewall (one step per area, NodeAppSophos their base; no trigger: SFOS sends no webhooks), core for every account
 	    'NodeAppSfosHosts' => [
 		'class' => 'models\node\NodeAppSfosHosts',
 		'wfNode' => true,
@@ -640,7 +637,7 @@ class SysObjects {
 		'class' => 'models\node\NodeAppSfosApi',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T16:00:00+02:00: Hyper-V (one step per area, NodeAppHyperV their base; the VM state trigger, polling), core for every account
+	    //Hyper-V (one step per area, NodeAppHyperV their base; the VM state trigger, polling), core for every account
 	    'NodeAppHyperVVms' => [
 		'class' => 'models\node\NodeAppHyperVVms',
 		'wfNode' => true,
@@ -661,7 +658,7 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerHyperV',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T14:00:00+02:00: Proxmox VE (one step per area, NodeAppProxmox their base; the task trigger, polling), core for every account
+	    //Proxmox VE (one step per area, NodeAppProxmox their base; the task trigger, polling), core for every account
 	    'NodeAppProxmoxGuests' => [
 		'class' => 'models\node\NodeAppProxmoxGuests',
 		'wfNode' => true,
@@ -686,7 +683,7 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerProxmox',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T12:00:00+02:00: VMware vCenter (one step per area, NodeAppVmware their base; the alarm trigger, polling), core for every account
+	    //VMware vCenter (one step per area, NodeAppVmware their base; the alarm trigger, polling), core for every account
 	    'NodeAppVmwareVms' => [
 		'class' => 'models\node\NodeAppVmwareVms',
 		'wfNode' => true,
@@ -711,7 +708,7 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerVmware',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T04:00:00+02:00: Veeam Backup & Replication (one step per area, NodeAppVeeam their base; the event trigger, polling), core for every account
+	    //Veeam Backup & Replication (one step per area, NodeAppVeeam their base; the event trigger, polling), core for every account
 	    'NodeAppVeeamJobs' => [
 		'class' => 'models\node\NodeAppVeeamJobs',
 		'wfNode' => true,
@@ -740,7 +737,7 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerVeeam',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-01T00:30:00+02:00: Bitdefender GravityZone (one step per API area, NodeAppGravityZone their base; the event trigger), core for every account
+	    //Bitdefender GravityZone (one step per API area, NodeAppGravityZone their base; the event trigger), core for every account
 	    'NodeAppGzEndpoints' => [
 		'class' => 'models\\node\\NodeAppGzEndpoints',
 		'wfNode' => true,
@@ -773,7 +770,7 @@ class SysObjects {
 		'class' => 'models\\node\\NodeTriggerGravityZone',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-25T19:30:00+02:00: LDAP (search and change a directory), core for every account
+	    //LDAP (search and change a directory), core for every account
 	    'NodeAppLdap' => [
 		'class' => 'models\node\NodeAppLdap',
 		'wfNode' => true,
@@ -782,12 +779,11 @@ class SysObjects {
 		'class' => 'models\node\NodeAppClaude',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-18T12:30:00+03:00: was NodeAppLemonade
 	    'NodeAppOpenAI' => [
 		'class' => 'models\node\NodeAppOpenAI',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-22T01:36:46+03:00: Lemonade AI (the OpenAI step's requests, on a Lemonade server) and Ollama (Ollama's own API)
+	    //Lemonade AI (the OpenAI step's requests, on a Lemonade server) and Ollama (Ollama's own API)
 	    'NodeAppLemonade' => [
 		'class' => 'models\node\NodeAppLemonade',
 		'wfNode' => true,
@@ -800,12 +796,12 @@ class SysObjects {
 		'class' => 'models\node\NodeAppOllama',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-22T12:00:00+03:00: Gemini (Google; the Gemini API)
+	    //Gemini (Google; the Gemini API)
 	    'NodeAppGemini' => [
 		'class' => 'models\node\NodeAppGemini',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-30T23:30:00+02:00: Knowledge base (add documents, search them by meaning and by words)
+	    //Knowledge base (add documents, search them by meaning and by words)
 	    'NodeAppKnowledge' => [
 		'class' => 'models\node\NodeAppKnowledge',
 		'wfNode' => true,
@@ -814,7 +810,6 @@ class SysObjects {
 		'class' => 'models\node\NodeAppTable',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-17T14:00:00+03:00: renamed NodeAppEmail -> NodeAppSendEmail
 	    'NodeAppSendEmail' => [
 		'class' => 'models\node\NodeAppSendEmail',
 		'wfNode' => true,
@@ -823,13 +818,12 @@ class SysObjects {
 		'class' => 'models\node\NodeAppWait',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-17T14:20:00+03:00: the IMAP trigger is a regular step, Read emails
-	    //CLD: 2026-10-17T14:45:00+03:00: renamed NodeAppImap -> NodeAppReadEmail
+	    //the IMAP trigger is a regular step, Read emails
 	    'NodeAppReadEmail' => [
 		'class' => 'models\node\NodeAppReadEmail',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-26T23:39:49+02:00: the Google steps (Drive, Sheets, Gmail, Calendar, Docs), core for every account
+	    //the Google steps (Drive, Sheets, Gmail, Calendar, Docs), core for every account
 	    'NodeAppGoogleDrive' => [
 		'class' => 'models\node\NodeAppGoogleDrive',
 		'wfNode' => true,
@@ -850,7 +844,7 @@ class SysObjects {
 		'class' => 'models\node\NodeAppGoogleDocs',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-26T23:39:49+02:00: the Microsoft steps (Outlook Mail, Outlook Calendar, OneDrive / SharePoint, Excel, Teams), core for every account
+	    //the Microsoft steps (Outlook Mail, Outlook Calendar, OneDrive / SharePoint, Excel, Teams), core for every account
 	    'NodeAppOutlookMail' => [
 		'class' => 'models\node\NodeAppOutlookMail',
 		'wfNode' => true,
@@ -879,7 +873,7 @@ class SysObjects {
 		'class' => 'models\node\NodeAppTask',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-11-02T18:00:00+02:00: talking to an agent: the Chat and Teams message triggers, Reply to chat
+	    //talking to an agent: the Chat and Teams message triggers, Reply to chat
 	    'NodeTriggerChat' => [
 		'class' => 'models\node\NodeTriggerChat',
 		'wfNode' => true,
@@ -892,19 +886,19 @@ class SysObjects {
 		'class' => 'models\node\NodeAppChatReply',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-30T19:00:00+02:00: Run a workflow (starts a workflow that starts with Called by a workflow; waits for its outputs, or continues)
+	    //Run a workflow (starts a workflow that starts with Called by a workflow; waits for its outputs, or continues)
 	    'NodeAppWorkflow' => [
 		'class' => 'models\node\NodeAppWorkflow',
 		'wfNode' => true,
 	    ],
-	    //CLD: 2026-10-26T23:49:50+02:00: the designer's Assistant: the account's settings, its spending per month, the conversation of each workflow
+	    //the designer's Assistant: the account's settings, its spending per month, the conversation of each workflow
 	    'AssistantSettings' => [
 		'class' => 'models\assistant\AssistantSettings',
 	    ],
 	    'AssistantUsage' => [
 		'class' => 'models\assistant\AssistantUsage',
 	    ],
-	    //CLD: 2026-11-02T10:00:00+02:00: what an account's agents may do (Account settings > AI), what its AI steps spent this month (own keys)
+	    //what an account's agents may do (Account settings > AI), what its AI steps spent this month (own keys)
 	    'AgentPolicy' => [
 		'class' => 'models\agent\AgentPolicy',
 		'name' => 'AI policy',
@@ -912,12 +906,12 @@ class SysObjects {
 	    'AgentUsage' => [
 		'class' => 'models\agent\AgentUsage',
 	    ],
-	    //CLD: 2026-11-02T14:00:00+02:00: the traces of the AI steps' visits (the Executions panel)
+	    //the traces of the AI steps' visits (the Executions panel)
 	    'AgentTrace' => [
 		'class' => 'models\agent\AgentTrace',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-11-02T15:46:06+02:00: a workflow's test cases and test runs (util\AgentEval); the audit log has named actions for them (EvalController): a case's inputs are large
+	    //a workflow's test cases and test runs (util\AgentEval); the audit log has named actions for them (EvalController): a case's inputs are large
 	    'WfTestCase' => [
 		'class' => 'models\wf\WfTestCase',
 		'auditLog' => false,
@@ -926,7 +920,7 @@ class SysObjects {
 		'class' => 'models\wf\WfTestRun',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-11-02T18:00:00+02:00: the conversations with agents, their messages
+	    //the conversations with agents, their messages
 	    'AgentConversation' => [
 		'class' => 'models\agent\AgentConversation',
 		'auditLog' => false,
@@ -935,8 +929,8 @@ class SysObjects {
 		'class' => 'models\agent\AgentMessage',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-11-01T11:55:18+02:00: the tool servers (util\ToolServers): the servers an account may use, the sessions open
-	    //CLD: 2026-11-05T16:00:00+02:00: the data migrations done in this database (util\Migrations, sys::migrate); not in the audit log: the installation's, not an account's
+	    //the tool servers (util\ToolServers): the servers an account may use, the sessions open;
+	    //the data migrations done in this database (util\Migrations, sys::migrate); not in the audit log: the installation's, not an account's
 	    'Migration' => [
 		'class' => 'models\Migration',
 		'auditLog' => false,
@@ -947,8 +941,7 @@ class SysObjects {
 	    'ToolServerSlot' => [
 		'class' => 'models\ToolServerSlot',
 	    ],
-	    //CLD: 2026-11-01T04:00:00+02:00: what a polling trigger remembers between its checks (Veeam event)
-	    //CLD: 2026-11-01T16:11:37+02:00: an account's inbound mail prefix (the Email inbound addresses)
+	    //what a polling trigger remembers between its checks (Veeam event); an account's inbound mail prefix (the Email inbound addresses)
 	    'InboundMailSettings' => [
 		'class' => 'models\InboundMailSettings',
 	    ],
@@ -960,12 +953,12 @@ class SysObjects {
 		'class' => 'models\assistant\AssistantChat',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-17T13:24:18+03:00: the IMAP trigger's check state and the Human task's tasks; the check state is not in the audit log
+	    //the IMAP trigger's check state and the Human task's tasks; the check state is not in the audit log
 	    'MailPoll' => [
 		'class' => 'models\MailPoll',
 		'auditLog' => false,
 	    ],
-	    //CLD: 2026-10-20T16:00:00+03:00: the files the FTP / SFTP step has taken ("Only new files"); not in the audit log
+	    //the files the FTP / SFTP step has taken ("Only new files"); not in the audit log
 	    'RemoteFileState' => [
 		'class' => 'models\RemoteFileState',
 		'auditLog' => false,

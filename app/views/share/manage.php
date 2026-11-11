@@ -1,10 +1,10 @@
 <?php
 //the Share dialog (ShareController): $resource, $object (its kind), $names (project id => name), $targets (the projects it can still be shared with)
 $q = [ 'object' => $object, 'id' => (string)$resource->_id ];
-//CLD: 2026-11-07T01:20:20+02:00: the level select (`access`): one option per share level
+//the level select (`access`): one option per share level
 $levelSelectTpl = '<select name="access" class="form-select form-select-sm" {:attrs}>{:options}</select>';
 $levelOptionTpl = '<option value="{:value}"{:selected}>{:label}</option>';
-//CLD: 2026-11-03T18:00:00+02:00: a credential an HTTP step can send anywhere: the hosts it may be sent to, or any host (the owner's override); {:id}: unique within the dialog
+//a credential an HTTP step can send anywhere: the hosts it may be sent to, or any host (the owner's override); {:id}: unique within the dialog
 $hostsTpl = '
 <div class="mt-2">
     <label class="form-label small mb-1" for="share-hosts-{:id}">Hosts it may be sent to</label>
@@ -32,7 +32,7 @@ foreach((array)$resource->shares as $share) {
 	    ? '<div class="form-text mt-0">Used by: ' . \V::app()->html->escape(implode(', ', $used)) . '</div>'
 	    : '<div class="form-text mt-0">No workflow uses it there</div>',
 	'change' => \V::app()->createUrl('/share/change', $q + [ 'project' => $pid ]),
-	//CLD: 2026-11-03T18:00:00+02:00: with hosts: a Save button (the fields are typed; the level alone saves when it changes)
+	//with hosts: a Save button (the fields are typed; the level alone saves when it changes)
 	'select' => \util\VString::insert($levelSelectTpl, [ 'attrs' => ($resource->shareUsesHosts() ? '' : "onchange='this.form.requestSubmit()' ") . "aria-label='Level'", 'options' => $levelOptions ]),
 	'hosts' => $resource->shareUsesHosts()
 	    ? \util\VString::insert($hostsTpl, [ 'id' => $pid, 'hosts' => \V::app()->html->escape(implode(', ', array_map('strval', (array)($share['hosts'] ?? [])))), 'any' => !empty($share['any_host']) ? ' checked' : '' ]) . '<button type="submit" class="btn btn-sm btn-outline-primary mt-2">Save</button>'
@@ -52,7 +52,7 @@ $list = $rows === ''
 $options = '<option value="">Choose a project...</option>';
 foreach($targets as $id => $label)
     $options .= \util\VString::insert('<option value="{:value}">{:label}</option>', [ 'value' => \V::app()->html->escape($id), 'label' => \V::app()->html->escape($label) ]);
-//CLD: 2026-11-03T16:00:00+02:00: what the resource refuses comes first (a workflow not published)
+//what the resource refuses comes first (a workflow not published)
 $problem = $resource->shareProblem();
 $add = $problem !== null
     ? \util\VString::insert('<div class="alert alert-warning small py-2 mb-0"><i class="bi bi-exclamation-triangle me-2"></i>{:text}</div>', [ 'text' => \V::app()->html->escape($problem) ])

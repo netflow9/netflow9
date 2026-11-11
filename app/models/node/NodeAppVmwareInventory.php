@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T12:00:00+02:00: new step: VMware Inventory - the infrastructure of a vCenter Server. Operations (setting `operation`):
+    VMware Inventory - the infrastructure of a vCenter Server. Operations (setting `operation`):
 	hosts / clusters / datacenters / networks / folders / resourcePools   the lists of the REST API (GET /api/vcenter/...), of a datacenter (hosts: of a cluster too)
 	datastores        the datastores with their free space in percent and Low on space (free under the percent chosen): { datastore, name, type, capacity, free_space,
 	                  freePercent, lowOnSpace }
@@ -32,7 +32,7 @@ class NodeAppVmwareInventory extends NodeAppVmware {
 	'exitMaintenance' => 'Exit maintenance mode (host)',
 	'version' => 'Get vCenter\'s version',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'enterMaintenance', 'exitMaintenance' ];
     const LISTS = [ 'hosts', 'clusters', 'datacenters', 'datastores', 'networks', 'folders', 'resourcePools' ];
     //the REST collection of each list, and what an item is

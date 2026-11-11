@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T18:00:00+02:00: new: what an AI step remembers. The step's settings of the conversation (section Conversation: Continue the conversation, how much of it, summarizing; used by NodeAppAi::addConversation)
+    what an AI step remembers. The step's settings of the conversation (section Conversation: Continue the conversation, how much of it, summarizing; used by NodeAppAi::addConversation)
 	and the long-term memory (section Memory): two tools over a data table or a knowledge base the step names:
 	    remember { fact }        saves a fact (it changes something: limits, approval by the step's setting, the policy or a lockdown, the audit log, as every tool: NodeAppAi's loop)
 	    recall { query, limit }  searches what was saved
@@ -214,19 +214,19 @@ class AgentMemory {
 	];
     }
 
-    //CLD: 2026-11-07T01:13:30+02:00: fact $fact saved in the memory $mem of tools() (a data table's row, or a knowledge base's document): its id
+    //fact $fact saved in the memory $mem of tools() (a data table's row, or a knowledge base's document): its id
     private static function saveFact(array $mem, $fact) {
 	return isset($mem['table']) ? self::saveRow($mem['table'], $fact, $mem['scope'], $mem['conv'], $mem['ai'])
 	    : self::saveDocument($mem['kb'], $fact, $mem['scope'], $mem['conv'], $mem['timeout']);
     }
 
-    //CLD: 2026-11-07T01:13:30+02:00: the facts of memory $mem (tools()) matching $query, at most $limit
+    //the facts of memory $mem (tools()) matching $query, at most $limit
     private static function findFacts(array $mem, $query, $limit) {
 	return isset($mem['table']) ? self::findRows($mem['table'], $query, $limit, $mem['scope'])
 	    : self::findDocuments($mem['kb'], $query, $limit, $mem['scope'], $mem['timeout']);
     }
 
-    //CLD: 2026-11-07T01:13:30+02:00: $v as JSON for the model (slashes and Unicode as they are, invalid UTF-8 replaced)
+    //$v as JSON for the model (slashes and Unicode as they are, invalid UTF-8 replaced)
     private static function toJson($v) {
 	return json_encode($v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }

@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-11-04T12:00:00+02:00: new: the Move dialog (ShareController::move): $resource, $object (its kind), $targets (project id => the projects it can move to)
+//the Move dialog (ShareController::move): $resource, $object (its kind), $targets (project id => the projects it can move to)
 $alertTpl = '<div class="alert alert-warning small py-2 mb-3"><i class="bi bi-exclamation-triangle me-2"></i>{:text}</div>';
 
 $warnings = '';

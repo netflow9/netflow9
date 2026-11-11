@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T12:00:00+02:00: new step: VMware API - any request of a vCenter Server (what the other VMware steps do not have: VM hardware, content library deployments, tags,
+    VMware API - any request of a vCenter Server (what the other VMware steps do not have: VM hardware, content library deployments, tags,
     vMotion, ...): the REST API (/api/...: the method, the path, the query and the body) or VI/JSON (<type>/<id>/<property> with GET, <type>/<id>/<method> with POST and its
     parameters as the body; managed objects as { "_typeName": "ManagedObjectReference", "type": ..., "value": ... }); Other parameters is not used here. Optionally a task
     returned (VI/JSON) waited for: its info. Its result: vCenter's answer as it is
@@ -18,7 +18,7 @@ class NodeAppVmwareApi extends NodeAppVmware {
     public static $defaultVariable = 'vmware';
 
     const OPERATIONS = [ 'rest' => 'REST API request', 'vim' => 'VI/JSON request' ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'rest', 'vim' ];
     const METHODS = [ 'GET' => 'GET', 'POST' => 'POST', 'PUT' => 'PUT', 'PATCH' => 'PATCH', 'DELETE' => 'DELETE' ];
 

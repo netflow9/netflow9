@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T10:00:00+02:00: new step: Sophos Firewall API - any request of the Sophos Firewall XML API (what the other Sophos steps do not have: services, NAT rules, web
+    Sophos Firewall API - any request of the Sophos Firewall XML API (what the other Sophos steps do not have: services, NAT rules, web
     policies, IPS, DHCP, ...): the elements that follow <Login> in <Request>, as in the API reference (<Get>, <Set operation="add|update">, <Remove>), {{ }} allowed (a value put in
     the XML is not escaped); the login is added. Its result: the answer as JSON ({ APIVersion, <entity>: its fields or a Status, ... }); Other fields is not used here
 */
@@ -17,7 +17,7 @@ class NodeAppSfosApi extends NodeAppSophos {
     public static $defaultVariable = 'sfos';
 
     const OPERATIONS = [ 'request' => 'Send a request' ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something (any request); the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'request' ];
 
     protected static function operationFields() {

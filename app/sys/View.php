@@ -28,7 +28,7 @@ class View extends \sys\BaseObject {
     public function renderFile($template, $data = [] ) {
 	//resolve template file
 	$tpl_file = BASE . '/app/';
-	//CLD: 2026-10-08T09:04:38+03:00: the module (plugin) folder only for relative templates: absolute ones (/layouts/...) are relative to the app directory
+	//the module (plugin) folder only for relative templates: absolute ones (/layouts/...) are relative to the app directory
 	if (!empty($this->_config['module_path']) && $template[0] != '/')
 	    $tpl_file .= $this->_config['module_path'] . '/';
 	if ($template[0] != '/')

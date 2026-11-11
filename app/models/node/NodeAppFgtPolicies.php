@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new step: FortiGate Policies - the firewall policies (cmdb/firewall/policy). Operations (setting `operation`):
+    FortiGate Policies - the firewall policies (cmdb/firewall/policy). Operations (setting `operation`):
 	list      the policies (name containing a text)
 	get       one policy, by its ID
 	enable    a policy enabled (PUT status enable)
@@ -25,7 +25,7 @@ class NodeAppFgtPolicies extends NodeAppFortiGate {
 	'disable' => 'Disable a policy',
 	'stats' => 'Policy hit counts',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'enable', 'disable' ];
     const LISTS = [ 'list', 'stats' ];
 
@@ -54,7 +54,7 @@ class NodeAppFgtPolicies extends NodeAppFortiGate {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:08:03+02:00: the setting Policy ID, a number
+    //the setting Policy ID, a number
     private function policyId() {
 	$v = $this->settingText('policyId');
 	if (!ctype_digit($v))

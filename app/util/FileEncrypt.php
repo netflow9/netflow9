@@ -47,15 +47,14 @@ class FileEncrypt extends FileDecrypt {
 	    throw new \RuntimeException('nothing was encrypted');
     }
 
-    //the public keys of $text imported into keyring $home: their fingerprints (encryption keys only); an error when there are none
-    //CLD: 2026-10-20T19:00:00+03:00: public (util\FileSign: signed and encrypted in one message)
-    //CLD: 2026-10-20T20:00:00+03:00: + $capability: E (encrypt) or S (sign: util\FileVerify, the signers' keys)
+    //the public keys of $text imported into keyring $home: their fingerprints; $capability: E (encryption keys) or S (signing: util\FileVerify, the signers' keys);
+    //an error when there are none. Public: util\FileSign signs and encrypts in one message
     public static function importPublicKeys($base, $work, $text, $capability = 'E') {
 	$file = self::secretFile($work, 'pub.' . bin2hex(random_bytes(4)) . '.asc', trim((string)$text) . "\n");
 	[ $code, $err ] = self::run(array_merge($base, [ '--import', $file ]));
 	if ($code !== 0)
 	    throw new \RuntimeException('the public key could not be read: ' . self::toolMessage($err));
-	//CLD: 2026-10-20T20:00:00+03:00: the keys of $text only (--show-keys), not of the whole keyring: a private key imported into the same keyring
+	//the keys of $text only (--show-keys), not of the whole keyring: a private key imported into the same keyring
 	//(decrypting, signing) must never count as a trusted signer or become a recipient
 	[ , , $listing ] = self::run(array_merge($base, [ '--with-colons', '--show-keys', $file ]));
 	$keys = [];
@@ -172,7 +171,7 @@ class FileEncrypt extends FileDecrypt {
 	    try {
 		$keys = self::importPublicKeys([ self::tool('gpg'), '--homedir', $home, '--batch', '--no-tty', '--no-permission-warning' ], $work, $cred->publicKey);
 		$uids = array_merge(...array_map(fn($k) => $k['uids'] ?: [ substr($k['fpr'], -16) ], $keys));
-		//CLD: 2026-10-24T16:30:00+03:00: Format::plural
+		//Format::plural
 		return Format::plural(count($keys), 'recipient key') . ': ' . implode(', ', array_slice($uids, 0, 5));
 	    } finally {
 		$gpgconf = self::tool('gpgconf', false);
@@ -192,7 +191,7 @@ class FileEncrypt extends FileDecrypt {
 	    }
 	    if (!$names)
 		throw new \RuntimeException('no certificate');
-	    //CLD: 2026-10-24T16:30:00+03:00: Format::plural
+	    //Format::plural
 	    return Format::plural(count($names), 'recipient certificate') . ': ' . implode(', ', $names);
 	}
 	if ((string)$cred->passphrase === '')

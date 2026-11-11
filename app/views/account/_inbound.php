@@ -1,6 +1,6 @@
 <?php
 /*
-    CLD: 2026-11-01T16:11:37+02:00: new: the Inbound mail tab of the account's settings, the prefix of the account's
+    the Inbound mail tab of the account's settings, the prefix of the account's
     Email (inbound) addresses (AccountController::settings: $settings, InboundMailSettings; $domain, MAIL_INBOUND_DOMAIN); shown where Haraka is found
 */
 ?>

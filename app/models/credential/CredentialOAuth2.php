@@ -31,7 +31,7 @@ abstract class CredentialOAuth2 extends \models\Credential {
 	return [];
     }
 
-    //CLD: 2026-11-10T12:00:00+02:00: more parameters of every token request, the code's and the refreshes' (e.g. token_content_type=jwt for ANAF)
+    //more parameters of every token request, the code's and the refreshes' (e.g. token_content_type=jwt for ANAF)
     public function tokenParams() {
 	return [];
     }
@@ -97,7 +97,7 @@ abstract class CredentialOAuth2 extends \models\Credential {
 	]);
     }
 
-    //+ the redirect URI to register at the provider, after the client secret (a note, not a value)
+    //the redirect URI to register at the provider, after the client secret (a note, not a value)
     public function formFields() {
 	$fields = parent::formFields();
 	$at = array_search('clientSecret', array_column($fields, 'key'), true);
@@ -135,7 +135,7 @@ abstract class CredentialOAuth2 extends \models\Credential {
 	    'code_verifier' => $verifier,
 	    'client_id' => $this->clientId,
 	    'client_secret' => $this->clientSecret,
-	//CLD: 2026-11-10T12:00:00+02:00: + tokenParams()
+	//and tokenParams()
 	] + $this->tokenParams());
 	if (empty($tokens['refresh_token']))
 	    throw new \Exception('the provider sent no refresh token (offline access)');
@@ -157,7 +157,7 @@ abstract class CredentialOAuth2 extends \models\Credential {
 	    'refresh_token' => $this->refresh_token,
 	    'client_id' => $this->clientId,
 	    'client_secret' => $this->clientSecret,
-	//CLD: 2026-11-10T12:00:00+02:00: + tokenParams()
+	//and tokenParams()
 	] + $this->refreshParams() + $this->tokenParams());
 	$this->storeTokens($tokens);
 	$this->save();

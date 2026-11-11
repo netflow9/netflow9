@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T12:00:00+02:00: new: a VMware vCenter Server (vSphere 8; the REST API of 7.0 U2 and later, VI/JSON of 8.0 U1 and later), for the VMware steps and the VMware alarm
+    a VMware vCenter Server (vSphere 8; the REST API of 7.0 U2 and later, VI/JSON of 8.0 U1 and later), for the VMware steps and the VMware alarm
     trigger (util\VSphere): the server's address, a vCenter user (administrator@vsphere.local, or a user of a role with the privileges the workflows need) and its password
     (encrypted), the server's certificate trusted or not. A server on a private address needs the account's "Integrations may connect to private network addresses".
     Test: the product and version, the datacenters, and whether VI/JSON (snapshots, alarms, maintenance mode) is there. Provides `vmware`

@@ -6,7 +6,7 @@ ini_set('log_errors', TRUE);
 
 require("$__base/app/sys/V.php");
 require("$__base/app/config.php");
-//CLD: 2026-11-01T19:00:00+02:00: app.env in V::configDir() (NFN_CONFIG_DIR, else the app's folder)
+//app.env in V::configDir() (NFN_CONFIG_DIR, else the app's folder)
 $__env = V::configDir() . '/app.env';
 
 if (!is_file($__env)) {

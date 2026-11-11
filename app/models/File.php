@@ -234,7 +234,7 @@ class File extends \sys\BaseModel {
 		'help' => false,
 		'required' => true,
 		'perm:read' => 'nobody',
-		//CLD: 2026-10-10T19:00:56+03:00: perm:update (perm:edit is read by nothing)
+		//perm:update (perm:edit is read by nothing)
 		'perm:update' => 'nobody',
 	    ],
 	];
@@ -276,7 +276,7 @@ class File extends \sys\BaseModel {
 	if (!is_resource($stream))
 	    throw new \ErrorException('stream is not a resource');
 
-	//CLD: 2026-10-24T09:45:36+03:00: the tier's limit of the account's files (util\Tiers): refused when the file's size (when the stream knows it) does not fit; checked again once written
+	//the tier's limit of the account's files (util\Tiers): refused when the file's size (when the stream knows it) does not fit; checked again once written
 	//(a stream of unknown size): the file is removed when the account goes over the limit. LimitException: the step / the page shows its message
 	$aid = $options['metadata']['aid'] ?? null;
 	if (!empty($aid)) {
@@ -285,7 +285,7 @@ class File extends \sys\BaseModel {
 	    \util\Tiers::check($aid, 'files_bytes', $size);
 	}
 
-	//CLD: 2026-10-06T09:07:47+03:00: GridFS only takes custom data in `metadata`: copy metadata.aid to a top-level `aid`
+	//GridFS only takes custom data in `metadata`: copy metadata.aid to a top-level `aid`
 	//on the stored file document right after the upload (as File::beforeSave does on model saves)
 	$file_id = self::_bucket()->uploadFromStream($filename, $stream, $options);
 
@@ -324,15 +324,14 @@ class File extends \sys\BaseModel {
     }
 
 
-    //CLD: 2026-10-06T21:53:44+03:00: access to a file (BaseModel's default is always false):
+    //access to a file (BaseModel's default is always false):
     //role scope `global` -> yes; `project` -> only if the user is a member of the file's project (same account); else no.
     //AAA::checkAccess passes the full name (File::delete), field checks the short one (read, update)
     public function checkAccess($userId, $permName, $params = []) {
 	if (strpos($permName, '::') === false)
 	    $permName = 'File::' . $permName;
 
-	//CLD: 2026-11-03T12:00:00+02:00: the user's role in the file's project decides
-	//CLD: 2026-11-07T12:00:00+02:00: a file without a project (an execution's, e.g. an AI step's approval) gives nothing here: global scope is sys\AAA's
+	//the user's role in the file's project decides; a file without a project (an execution's, e.g. an AI step's approval) gives nothing here: global scope is sys\AAA's
 	$projectId = $this->metadata['project'] ?? $this->project;
 	return !empty($projectId) && (\V::app()->om->findById('Project', $projectId)?->checkAccess($userId, $permName) ?? false);
     }

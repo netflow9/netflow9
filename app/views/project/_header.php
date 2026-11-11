@@ -18,7 +18,7 @@ $navCfg = [
     ],
     'active' => $tab,
 ];
-//CLD: 2026-10-28T10:00:00+02:00: + Export / import (Project::transfer)
+//Export / import (Project::transfer)
 if (\V::app()->user->can('Project::transfer', [ 'object' => $project ]))
     $navCfg['items']['transfer'] = [
 	'label' => 'Export / import',

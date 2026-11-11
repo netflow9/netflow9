@@ -1,6 +1,6 @@
 <?php
-//CLD: 2026-10-19T14:09:20+03:00: new view: the initial setup, step 3 (SetupController::account): the first account and its owner (models\setup\AccountForm; were on
-//views/setup/index.php); $error: why the setup failed (e.g. the database of step 2), shown above the form
+//the initial setup, step 3 (SetupController::account): the first account and its owner (models\setup\AccountForm); $error: why the setup failed
+//(e.g. the database of step 2), shown above the form
 $this->pageTitle = \V::t('Setup');
 //the field's options first: they override the defaults (`type` => password / select)
 ?>

@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-19T14:09:20+03:00: new form model: step 2 of the initial setup (SetupController::server) - the server's settings written to app.env: the public address, the database,
+//step 2 of the initial setup (SetupController::server) - the server's settings written to app.env: the public address, the database,
 //the outgoing email. Values written to app.env are single-quoted there, so they may not hold a quote or a line break
 
 namespace models\setup;

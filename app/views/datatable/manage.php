@@ -4,37 +4,34 @@ $this->pageTitle = 'Manage Data Table: ' . $dt->name;
 
 //schema and filtering
 $sf = \util\WidgetsUtil::getSchema($dt->iname);
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $schema = \util\JSON::encode($sf['schema']);
-//CLD: 2026-10-14T16:35:21+03:00: util\JSON::encode (same escaping everywhere, safe inside HTML / scripts, invalid UTF-8 dropped instead of failing)
 $filter = \util\JSON::encode($sf['filter']);
 
 $dataUrl = \V::app()->createUrl('', [ 'id' => $dt->_id, 'data' => 1 ]);
 
-//CLD: 2026-10-11T22:10:29+03:00: what this user may do here: the column designer needs DataTable::update, row editing DataTable::writeData (viewing: DataTable::readData)
+//what this user may do here: the column designer needs DataTable::update, row editing DataTable::writeData (viewing: DataTable::readData)
 $canUpdate = \V::app()->user->can('DataTable::update', [ 'object' => $dt ]);
 $canWrite = \V::app()->user->can('DataTable::writeData', [ 'object' => $dt ]);
 
-//CLD: 2026-10-05T21:06:21+03:00: column designer URLs; the grid replaces __KEY__ with the column key
+//column designer URLs; the grid replaces __KEY__ with the column key
 $createColumnUrl = $canUpdate ? \V::app()->createUrl('/datatable/create_column', [ 'id' => $dt->_id ]) : '';
 $updateColumnUrl = $canUpdate ? \V::app()->createUrl('/datatable/update_column', [ 'id' => $dt->_id, 'key' => '__KEY__' ]) : '';
 $deleteColumnUrl = $canUpdate ? \V::app()->createUrl('/datatable/delete_column', [ 'id' => $dt->_id, 'key' => '__KEY__' ]) : '';
 $readonly = $canUpdate ? 'false' : 'true';
 
-//CLD: 2026-10-30T17:18:20+02:00: saved views (named filters, shared by the users who can open the table): list / save / delete URLs; the grid replaces __VIEW__ with the view id
+//saved views (named filters, shared by the users who can open the table): list / save / delete URLs; the grid replaces __VIEW__ with the view id
 $viewsUrl = \V::app()->createUrl('/datatable/views', [ 'id' => $dt->_id ]);
 $createViewUrl = \V::app()->createUrl('/datatable/create_view', [ 'id' => $dt->_id ]);
 $deleteViewUrl = \V::app()->createUrl('/datatable/delete_view', [ 'id' => $dt->_id, 'view' => '__VIEW__' ]);
 
-//CLD: 2026-11-04T10:00:00+02:00: the Excel export; the grid adds its current search and filter
+//the Excel export; the grid adds its current search and filter
 $exportUrl = \V::app()->createUrl('/datatable/export', [ 'id' => $dt->_id ]);
 
-//CLD: 2026-10-05T21:30:59+03:00: row editing URLs; rowActions templates get the row id from {{item._id}}
+//row editing URLs; rowActions templates get the row id from {{item._id}}
 $createRowUrl = \V::app()->createUrl('/datatable/create_row', [ 'id' => $dt->_id ]);
 $updateRowUrl = str_replace('__ROW__', '{{item._id}}', \V::app()->createUrl('/datatable/update_row', [ 'id' => $dt->_id, 'row' => '__ROW__' ]));
 $deleteRowUrl = str_replace('__ROW__', '{{item._id}}', \V::app()->createUrl('/datatable/delete_row', [ 'id' => $dt->_id, 'row' => '__ROW__' ]));
-//CLD: 2026-10-11T22:10:29+03:00: row editing (add-row button, edit / delete actions) only with DataTable::writeData
-//CLD: 2026-11-05T10:00:00+02:00: Create adds a record to this table (the row form in a modal), so it needs DataTable::writeData; it made a new table before
+//row editing (Create: the row form in a modal, add-row button, edit / delete actions) only with DataTable::writeData
 $createBtn = $canWrite ? \V::app()->html->link('Create', $createRowUrl, [ 'class' => 'btn btn-primary btn-sm', 'escape' => false ]) : '';
 $createRowJs = $canWrite ? "'{$createRowUrl}'" : 'false';
 $rowActionsJs = $canWrite ? "{
@@ -45,7 +42,7 @@ $rowActionsJs = $canWrite ? "{
 $script = "
 +function() {
     const dtName = '{$dt->name}';
-    //CLD: 2026-10-05T21:30:59+03:00: container kept for the reload on row events (onInit)
+    //container kept for the reload on row events (onInit)
     const container = document.getElementById('datatables-list');
     new app.GridView(
 	container, {
@@ -53,9 +50,9 @@ $script = "
 	    title: `<h5 class='h5 mb-0'>Manage Data Table: \${dtName}</h5>`,
 	    dataUrl: '{$dataUrl}',
 	    schema: {
-		//CLD: 2026-10-11T22:10:29+03:00: read-only without DataTable::update
+		//read-only without DataTable::update
 		readonly: {$readonly},
-		//CLD: 2026-10-05T21:06:21+03:00: real column designer URLs
+		//real column designer URLs
 		updateColumnUrl: '{$updateColumnUrl}',
 		createColumnUrl: '{$createColumnUrl}',
 		deleteColumnUrl: '{$deleteColumnUrl}',
@@ -63,26 +60,26 @@ $script = "
 	    },
 	    filter: {
 		data: {$filter},
-		//CLD: 2026-10-30T17:18:20+02:00: saved views
+		//saved views
 		views: {
 		    listUrl: '{$viewsUrl}',
 		    createUrl: '{$createViewUrl}',
 		    deleteUrl: '{$deleteViewUrl}',
 		},
 	    },
-	    //CLD: 2026-11-04T10:00:00+02:00: the Export button
+	    //the Export button
 	    exporter: { url: '{$exportUrl}' },
-	    //CLD: 2026-10-30T17:18:20+02:00: the page size kept in this browser, the same for every data table
+	    //the page size kept in this browser, the same for every data table
 	    pager: {
 		storeKey: 'rail22.datatable.pageSize',
 	    },
-	    //CLD: 2026-10-05T21:30:59+03:00: was under `data:`, which the grid does not read (it reads `grid:`); real row URLs and actions
+	    //real row URLs and actions (the grid reads `grid:`)
 	    grid: {
-		//CLD: 2026-10-11T22:10:29+03:00: add-row button and row actions only with DataTable::writeData (set in PHP above)
+		//add-row button and row actions only with DataTable::writeData (set in PHP above)
 		createRowUrl: {$createRowJs},
 		rowActions: {$rowActionsJs}
 	    },
-	    //CLD: 2026-10-05T21:30:59+03:00: reload rows after add/edit/delete (events sent by the row actions)
+	    //reload rows after add/edit/delete (events sent by the row actions)
 	    onInit: function(e) {
 		app.events.on('object::deleted object::created object::updated', (e) => {
 		    container._dataView.reload();
@@ -100,10 +97,10 @@ $script = "
     <?= (new \sys\html\Breadcrumbs([ 'items' => [
 	[ 'label' => 'Home', 'href' => '/site/index' ],
 	[ 'label' => 'Data Tables', 'href' => '/datatable/list' ],
-	//CLD: 2026-10-05T20:42:44+03:00: Breadcrumbs prints labels as HTML; escape the user-editable name
+	//Breadcrumbs prints labels as HTML; escape the user-editable name
 	[ 'label' => \V::app()->html->escape((string)$dt->name) ],
     ]]))->render() ?>
-    <?php //CLD: 2026-11-03T14:00:00+02:00: a table of another project, open through a share ?>
+    <?php //a table of another project, open through a share ?>
     <?php if (!$dt->isHome(\V::app()->user->crtProject)): ?>
     <div class="spacer"></div>
     <span class="badge text-bg-info"><i class="bi bi-share me-1"></i>From project <?= \V::app()->html->escape((string)\V::app()->om->findById('Project', $dt->project)) ?><?= $canWrite ? '' : ' (read only)' ?></span>

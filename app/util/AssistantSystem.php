@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-31T22:00:00+02:00: new: the Assistant's System provider, as a plugin offers it (the MultiTenant plugin's System AI): the core asks only this, so it runs without
+    the Assistant's System provider, as a plugin offers it (the MultiTenant plugin's System AI): the core asks only this, so it runs without
     the plugin (then there is no System provider). Hook assistant:system-provider ($box: \ArrayObject): $box['provider'] = an object with
 	config()                                  the System AI: { provider, url, api_key, model, effort, price_input, price_output }; null: not configured
 	rates($resolved)                          its credit rates for the resolved settings (WorkflowAssistant::resolve); null: not priced

@@ -35,7 +35,7 @@ foreach($versions as $v) {
 	'attrs' => '',
 	'icon' => 'bi-eye',
     ]) ];
-    //CLD: 2026-10-11T19:47:51+03:00: publish again needs Workflow::publish; copy into the draft stays Workflow::update
+    //publish again needs Workflow::publish; copy into the draft stays Workflow::update
     if ($canPublish && !($isCurrent && $published))
 	$actions[] = \util\VString::insert($actionTpl, [
 	    'class' => 'btn-outline-success',
@@ -63,7 +63,7 @@ foreach($versions as $v) {
     ]);
 }
 
-//CLD: 2026-10-19T22:19:24+03:00: in .table-responsive (scrolls sideways on phones)
+//in .table-responsive (scrolls sideways on phones)
 $body = $rows === ''
     ? "<p class='text-muted mb-0'>No versions yet: publishing the workflow creates v1.</p>"
     : \util\VString::insert('<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Version</th><th>Published</th><th>Note</th><th></th></tr></thead><tbody>{:rows}</tbody></table></div>', [ 'rows' => $rows ]);

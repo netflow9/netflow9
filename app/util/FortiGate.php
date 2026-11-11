@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T06:00:00+02:00: new: the client of the FortiOS REST API (FortiGate 7.x), for the FortiGate credential, steps and trigger setup.
+    the client of the FortiOS REST API (FortiGate 7.x), for the FortiGate credential, steps and trigger setup.
     https://<firewall>[:port]/api/v2/{cmdb | monitor | log}/...; the REST API administrator's token as `Authorization: Bearer <token>`; the VDOM as ?vdom= (the credential's,
     when set). Answers: { results, status: success | error, http_status, error (a number), vdom, version, build, serial }: results given back, an error made a
     \RuntimeException (FortiOS's error codes, e.g. -3 the object does not exist, named). Public addresses only, unless the account allows private network addresses (a firewall
@@ -20,10 +20,20 @@ class FortiGate {
     const MAX_ANSWER = 20 * 1024 * 1024;
     //FortiOS's error numbers (the answer's `error`) and what they mean
     const ERRORS = [
-	-1 => 'invalid length of value', -2 => 'value out of range', -3 => 'the object does not exist', -4 => 'the maximum number of entries was reached',
-	-5 => 'an object of that name already exists', -6 => 'incomplete or wrong syntax', -7 => 'the object is in use', -8 => 'invalid IP address',
-	-9 => 'invalid IPv6 address', -14 => 'the object cannot be deleted', -15 => 'duplicate entry', -23 => 'the object is in use by other objects',
-	-37 => 'no permission', -651 => 'invalid value',
+	-1 => 'invalid length of value',
+	-2 => 'value out of range',
+	-3 => 'the object does not exist',
+	-4 => 'the maximum number of entries was reached',
+	-5 => 'an object of that name already exists',
+	-6 => 'incomplete or wrong syntax',
+	-7 => 'the object is in use',
+	-8 => 'invalid IP address',
+	-9 => 'invalid IPv6 address',
+	-14 => 'the object cannot be deleted',
+	-15 => 'duplicate entry',
+	-23 => 'the object is in use by other objects',
+	-37 => 'no permission',
+	-651 => 'invalid value',
     ];
 
     public static $testing = false;

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-05T13:00:00+02:00: new file: a fake Namecheap API for the check suite (CheckCommand::suiteNamecheap), run by PHP's built-in server:
+    a fake Namecheap API for the check suite (CheckCommand::suiteNamecheap), run by PHP's built-in server:
     NC_STATE=<a folder> php -S 127.0.0.1:<port> NamecheapTestServer.php
 	POST /xml.response, the form: ApiUser nfuser, ApiKey k3y, ClientIp 203.0.113.10 (others: Namecheap's errors 1011102 / 1011150), Command and its parameters; answers as Namecheap does,
 	    <ApiResponse Status="OK|ERROR" xmlns="http://api.namecheap.com/xml.response">

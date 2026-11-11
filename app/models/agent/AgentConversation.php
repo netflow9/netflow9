@@ -23,9 +23,9 @@ class AgentConversation extends \sys\BaseModel {
 	[ [ 'aid' => 1, 'last_at' => -1 ], [] ],
 	[ [ 'aid' => 1, 'wf' => 1, 'thread' => 1 ], [ 'sparse' => true ] ],
 	[ [ 'aid' => 1, 'wf' => 1, 'refs' => 1 ], [ 'sparse' => true ] ],
-	//CLD: 2026-11-08T12:20:00+02:00: the conversation a run answers (beforeExecutionDelete, at each execution deleted)
+	//the conversation a run answers (beforeExecutionDelete, at each execution deleted)
 	[ [ 'execution' => 1 ], [] ],
-	//CLD: 2026-11-08T12:30:00+02:00: a workflow's conversations (beforeWorkflowDelete)
+	//a workflow's conversations (beforeWorkflowDelete)
 	[ [ 'wf' => 1 ], [] ],
     ];
 
@@ -67,7 +67,7 @@ class AgentConversation extends \sys\BaseModel {
 		'label' => 'Channel',
 		'help' => false
 	    ],
-	    //CLD: 2026-11-08T14:40:00+02:00: defaults of a new conversation: the pages read title, turns, summary, user_name, user_email without a fallback;
+	    //defaults of a new conversation: the pages read title, turns, summary, user_name, user_email without a fallback;
 	    //summary_upto 0: the summary is written only while it matches (summarize)
 	    [
 		'key' => 'title',
@@ -129,7 +129,7 @@ class AgentConversation extends \sys\BaseModel {
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //CLD: 2026-11-08T14:40:00+02:00: a new conversation: last_at (the lists' order, prune()) from its start
+    //a new conversation: last_at (the lists' order, prune()) from its start
     public function beforeSave() {
 	parent::beforeSave();
 	if (!$this->exists() && empty($this->last_at))
@@ -180,7 +180,7 @@ class AgentConversation extends \sys\BaseModel {
 	    self::remove($c);
     }
 
-    //CLD: 2026-11-08T12:10:00+02:00: hook execution:before-delete (sys\Boot): a deleted run no longer answers its conversation; else the conversation keeps its id and prune() never removes it.
+    //hook execution:before-delete (sys\Boot): a deleted run no longer answers its conversation; else the conversation keeps its id and prune() never removes it.
     //By the id only: some deletes read only _id and aid (Workflow::beforeDelete)
     public static function beforeExecutionDelete($exe) {
 	\V::app()->om->updateMany('AgentConversation', [ 'execution' => (string)$exe->_id ], [ '$set' => [ 'execution' => null ] ]);
@@ -200,7 +200,7 @@ class AgentConversation extends \sys\BaseModel {
 	    [ 'arrays' => true, 'projection' => [ 'seq' => 1 ] ]);
 	if (!$after)
 	    throw new \ErrorException('the conversation is gone');
-	//CLD: 2026-11-08T13:40:00+02:00: save(): a couple of messages a turn, beside an AI call, not too frequent for it; no log entries (auditLog false in SysObjects)
+	//save(): a couple of messages a turn, beside an AI call, not too frequent for it; no log entries (auditLog false in SysObjects)
 	$message = \V::app()->om->create('AgentMessage', [ 'aid' => $conv['aid'], 'conversation' => $conv['_id'], 'seq' => (int)$after['seq'], 'role' => (string)$role, 'at' => $now ] + $fields);
 	if (!$message->save())
 	    throw new \ErrorException('the message was not saved');

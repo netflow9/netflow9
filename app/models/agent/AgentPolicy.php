@@ -175,7 +175,7 @@ class AgentPolicy extends \sys\BaseModel {
 	    if ($t && ($t['annotations']['readOnlyHint'] ?? false) !== true && !$policy->writeAllowed((string)$name, 'project'))
 		$errors[] = "Use these tools: agents may not use `{$name}` (it changes something), {$why}";
 	}
-	//CLD: 2026-11-02T11:00:00+02:00: the setting of the project's and MCP tools
+	//the setting of the project's and MCP tools
 	if ($policy->needsApproval() && (string)$step->cfg(\util\AgentTools::TOOLS_APPROVAL, 'writes') === 'none')
 	    $errors[] = "Project and MCP tools: ask for approval: those that change something always need approval, {$why}";
 	$workflows = array_map('strval', (array)$step->cfg(\util\AgentTools::WORKFLOWS, []));

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T00:41:28+03:00: new step: Outlook Mail - sends, drafts, searches and organizes the messages of a Microsoft 365 / Outlook.com mailbox over Microsoft Graph,
+    Outlook Mail - sends, drafts, searches and organizes the messages of a Microsoft 365 / Outlook.com mailbox over Microsoft Graph,
     through an Outlook Mail (Microsoft Graph) credential of the project (CredentialMicrosoftOutlook, provides `msmail`). As the Gmail step.
     Operations (setting `operation`):
 	send     a message from the account: to / cc / bcc, subject, text or HTML, project files as attachments (3 MB in all: Graph's limit of a request); optionally a reply
@@ -39,7 +39,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 	'delete' => 'Delete a message',
 	'folders' => 'List the folders',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'send', 'draft', 'modify', 'delete' ];
 
     //the operations composing a message, the ones on an existing message
@@ -65,7 +65,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 
 	    //get / modify / delete
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'messageId',
 		'type' => 'text',
 		'label' => 'Message',
@@ -75,7 +75,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn(self::ON_MESSAGE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'to',
 		'type' => 'text',
 		'label' => 'To',
@@ -84,7 +84,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'placeholder' => 'ana@example.com, Ion <ion@example.com>', 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'cc',
 		'type' => 'text',
 		'label' => 'Cc',
@@ -92,7 +92,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'bcc',
 		'type' => 'text',
 		'label' => 'Bcc',
@@ -100,7 +100,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 9 wide, on a new line
+		//layout: 9 wide, on a new line
 		'key' => 'subject',
 		'type' => 'text',
 		'label' => 'Subject',
@@ -109,7 +109,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 9, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'bodyType',
 		'type' => 'select',
 		'label' => 'Body',
@@ -120,7 +120,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 	    ],
 	    //send / draft
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'replyTo',
 		'type' => 'text',
 		'label' => 'In reply to',
@@ -129,7 +129,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 6, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn(self::COMPOSE) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'attachments',
 		'type' => 'text',
 		'label' => 'Attachments',
@@ -148,7 +148,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 
 	    //search
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 4 wide, on a new line
+		//layout: 4 wide, on a new line
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -157,7 +157,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 4, 'newRow' => true, 'expression' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 8 wide
+		//layout: 8 wide
 		'key' => 'query',
 		'type' => 'text',
 		'label' => 'Search',
@@ -166,7 +166,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 8, 'placeholder' => 'from:ana@example.com subject:invoice', 'expression' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxResults',
 		'type' => 'number',
 		'label' => 'Messages',
@@ -176,7 +176,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'unreadOnly',
 		'type' => 'switch',
 		'label' => 'Unread only',
@@ -184,7 +184,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'search' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'saveAttachments',
 		'type' => 'switch',
 		'label' => 'Save the attachments in the project Files',
@@ -193,7 +193,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'showIf' => static::operationIn([ 'search', 'get' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest attachment (MB)',
@@ -206,7 +206,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 
 	    //modify
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'mark',
 		'type' => 'select',
 		'label' => 'Mark as',
@@ -216,7 +216,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'newRow' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'moveTo',
 		'type' => 'text',
 		'label' => 'Move to folder',
@@ -225,7 +225,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'addCategories',
 		'type' => 'text',
 		'label' => 'Add categories',
@@ -234,7 +234,7 @@ class NodeAppOutlookMail extends NodeAppMicrosoft {
 		'ui' => [ 'width' => 3, 'expression' => true, 'showIf' => static::operationIn([ 'modify' ]) ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:49:29+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'removeCategories',
 		'type' => 'text',
 		'label' => 'Remove categories',

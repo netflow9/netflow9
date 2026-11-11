@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-16T13:20:28+03:00: new view: the page of a "forgot" link (SiteController::reset): the new password, twice; an expired / used link says so
+//the page of a "forgot" link (SiteController::reset): the new password, twice; an expired / used link says so
 $this->pageTitle = \V::t('Set a new password');
 ?>
 

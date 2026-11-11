@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-23T12:00:00+03:00: new: the SAML single sign-on settings of an account, one document per account (the settings page: SamlController::settings). With `enabled`,
+//the SAML single sign-on settings of an account, one document per account (the settings page: SamlController::settings). With `enabled`,
 //the people of the account sign in at the account's identity provider (IdP: Microsoft Entra ID, Okta, Google Workspace, ADFS, Keycloak, ...), util\SamlAuth:
 //  - the IdP: entity ID, single sign-on URL (HTTP-Redirect binding), signing certificates (PEM, one or more: during a rollover both); filled by importing its metadata
 //  - this service provider (SP): entity ID (empty: its metadata URL), the NameID format asked, signed requests, ForceAuthn, unsolicited (IdP-initiated) responses,
@@ -15,7 +15,7 @@ namespace models\saml;
 use util\Certificate;
 
 class SamlSettings extends \sys\BaseModel {
-    //CLD: 2026-10-26T07:23:58+02:00: the role choices are read from the database: not cached (BaseModel::attachSchema)
+    //the role choices are read from the database: not cached (BaseModel::attachSchema)
     protected static $cacheSchema = false;
 
     protected static $collection = 'saml_settings';
@@ -201,7 +201,7 @@ class SamlSettings extends \sys\BaseModel {
 	return array_merge($fields, $this->getSystemSchema());
     }
 
-    //CLD: 2026-11-07T01:11:11+02:00: field $def, read and changed by everybody
+    //field $def, read and changed by everybody
     private static function withPerms($def) {
 	return $def + [ 'perm:read' => 'everybody', 'perm:update' => 'everybody' ];
     }

@@ -1,8 +1,8 @@
 <?php
 
 /*
-    CLD: 2026-11-01T05:00:00+02:00: VBR 12 too (12.0 to 12.3): the Veeam version chosen sets the REST API version sent (util\Veeam::VERSIONS)
-    CLD: 2026-11-01T04:00:00+02:00: new: a Veeam Backup & Replication server (v13 REST API), for the Veeam steps and the Veeam event trigger (util\Veeam): the server's address (port 9419),
+    a Veeam Backup & Replication server (VBR 12.0 to 12.3 and v13: the Veeam version chosen sets the REST API version sent, util\Veeam::VERSIONS), for the Veeam steps and the
+    Veeam event trigger (util\Veeam): the server's address (port 9419),
     a user of a built-in Veeam role (custom roles cannot use the REST API) and its password (encrypted), the API version (x-api-version), the server's self-signed certificate
     trusted or not. A server on a private address needs the account's "Integrations may connect to private network addresses". Test: the server's name and version. Provides `veeam`
 */
@@ -46,7 +46,7 @@ class CredentialVeeam extends \models\Credential {
 		'encrypt' => true,
 		'ui' => [ 'width' => 6 ],
 	    ],
-	    //CLD: 2026-11-01T05:00:00+02:00: a choice of the releases (VBR 13 and 12.0 to 12.3: util\Veeam::VERSIONS)
+	    //a choice of the releases (VBR 13 and 12.0 to 12.3: util\Veeam::VERSIONS)
 	    [
 		'key' => 'apiVersion',
 		'type' => 'select',
@@ -72,7 +72,7 @@ class CredentialVeeam extends \models\Credential {
 	return new \util\Veeam($this, $aid, $timeout);
     }
 
-    //CLD: 2026-11-01T05:00:00+02:00: after a sign-in refused with $message: when it is about the API version (x-api-version), the first other version (newest first) the server signs in with; else null
+    //after a sign-in refused with $message: when it is about the API version (x-api-version), the first other version (newest first) the server signs in with; else null
     protected function versionTaken($message) {
 	if (!preg_match('/version/i', (string)$message))
 	    return null;
@@ -95,13 +95,13 @@ class CredentialVeeam extends \models\Credential {
 	try {
 	    $info = $this->client($this->aid, 20)->request('GET', '/api/v1/serverInfo');
 	} catch (\RuntimeException $e) {
-	    //CLD: 2026-11-01T05:00:00+02:00: refused for the API version (another release): the version the server takes, named
+	    //refused for the API version (another release): the version the server takes, named
 	    $fits = $this->versionTaken($e->getMessage());
 	    throw new \Exception($e->getMessage() . ($fits !== null ? '; this server takes Veeam version "' . \util\Veeam::VERSIONS[$fits]['label'] . '": choose it' : ''));
 	}
 	$name = (string)($info['name'] ?? parse_url((string)$this->serverUrl, PHP_URL_HOST));
 	$build = (string)($info['buildVersion'] ?? '');
-	//CLD: 2026-11-01T05:00:00+02:00: the version chosen against the server's build: the right one named when it differs
+	//the version chosen against the server's build: the right one named when it differs
 	$right = \util\Veeam::versionForBuild($build);
 	$chosen = (string)$this->apiVersion !== '' ? (string)$this->apiVersion : \util\Veeam::DEFAULT_VERSION;
 	$advice = $right !== null && $right !== $chosen ? '; choose Veeam version "' . \util\Veeam::VERSIONS[$right]['label'] . '" for this server' : '';

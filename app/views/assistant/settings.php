@@ -1,30 +1,26 @@
 <?php
-//CLD: 2026-10-24T16:30:00+03:00: the numbers: util\Format::number
+//the numbers: util\Format::number
 /*
     the Assistant's settings page (AssistantController::settings;
     Only the settings of the chosen provider are shown (all are saved)
-    //CLD: 2026-10-20T10:00:00+03:00: one server for both providers (Server URL, API key), then Connect (AssistantController::connect): when it answers, the models it lists
-    //are offered in Model; Effort for Claude only. The saved model is shown until the next Connect (the page connects by itself when there is one)
-    //CLD: 2026-10-22T14:00:00+03:00: bring your own key: System (the installation's server: nothing to set; offered only when there is one: $system), Claude, OpenAI, Gemini, Ollama,
-    //Lemonade (the Server URL's placeholder is the provider's own). + the monthly budget (not for System) and this month's spending ($usage)
-    //CLD: 2026-10-22T15:00:00+03:00: System is paid in credits: the wallet ($wallet: this month's allowance, the top-ups and their expiry), the model's rates ($rates), the last
-    //entries ($ledger), the account's monthly limit (credit_cap). The budget is for the other providers only
-    //CLD: 2026-10-23T10:00:00+03:00: System is the System AI (plugins\MultiTenant): here its credits left and the account's monthly limit for the Assistant; the allowance, the top-ups
-    //and the last changes on its own page (AI credits: /MultiTenant/credits/index; no $ledger)
-    //CLD: 2026-10-31T22:00:00+02:00: the System part is the provider's ($systemHtml: util\AssistantSystem; no $wallet, $rates)
+    //bring your own key: System (the installation's server: nothing to set; offered only when there is one: $system), Claude, OpenAI, Gemini, Ollama, Lemonade
+    //(the Server URL's placeholder is the provider's own): one server (Server URL, API key), then Connect (AssistantController::connect): when it answers, the models it lists
+    //are offered in Model; Effort for Claude only. The saved model is shown until the next Connect (the page connects by itself when there is one).
+    //The monthly budget (not for System) and this month's spending ($usage). The System part is the provider's ($systemHtml: util\AssistantSystem, e.g. the System AI of
+    //plugins\MultiTenant: its credits left and the account's monthly limit for the Assistant)
 */
 use models\assistant\AssistantSettings;
 
 $this->pageTitle = 'Assistant settings';
 
 $model = (string)$settings->model;
-//CLD: 2026-10-22T14:00:00+03:00: + system (offered), urls (the providers' own), the connected model is the saved one only for the saved provider
+//system (offered), urls (the providers' own), the connected model is the saved one only for the saved provider
 $connectJs = \util\JSON::encode([ 'url' => \V::app()->createUrl('/assistant/connect'), 'auto' => $model !== '' && (string)$settings->provider !== 'system',
     'system' => $system !== null, 'urls' => \data\AiProviders::chatUrls() ]);
 $budget = AssistantSettings::budgetOf($settings);
-//CLD: 2026-10-23T01:30:00+03:00: \V::app()->html->escape() called directly
+//\V::app()->html->escape() called directly
 
-//CLD: 2026-10-20T10:00:00+03:00: nowdoc: the script's text as is
+//nowdoc: the script's text as is
 \V::app()->cs->addPageScript("+function(o) {" . <<<'JS'
     const form = document.getElementById('assistant-settings');
     if (!form)
@@ -35,13 +31,13 @@ $budget = AssistantSettings::budgetOf($settings);
     const status = form.querySelector('.assistant-connect-status');
 
     //the settings of the chosen provider only
-    //CLD: 2026-10-22T14:00:00+03:00: data-assistant-provider: the providers it is for (space-separated); the Server URL shows the provider's own
+    //data-assistant-provider: the providers it is for (space-separated); the Server URL shows the provider's own
     const urlInput = form.querySelector('[name=url]');
     const show = () => {
 	form.querySelectorAll('[data-assistant-provider]').forEach((el) => el.classList.toggle('d-none', !el.dataset.assistantProvider.split(' ').includes(provider.value)));
 	urlInput.placeholder = o.urls[provider.value] || '';
     };
-    //CLD: 2026-10-22T14:00:00+03:00: System only when the installation provides a server
+    //System only when the installation provides a server
     const sysOption = provider.querySelector('option[value=system]');
     if (sysOption && !o.system) {
 	sysOption.disabled = true;
@@ -85,7 +81,7 @@ $budget = AssistantSettings::budgetOf($settings);
 	});
     };
 
-    //CLD: 2026-10-31T20:00:00+02:00: the API key's "Stored" placeholder (sys\fields\Field_password) only while the provider and the server are the saved ones: otherwise the saved key
+    //the API key's "Stored" placeholder (sys\fields\Field_password) only while the provider and the server are the saved ones: otherwise the saved key
     //is not kept (AssistantController::settings)
     const keyInput = form.querySelector('[name=api_key]');
     const storedHint = keyInput.placeholder;
@@ -98,7 +94,7 @@ $budget = AssistantSettings::budgetOf($settings);
     provider.addEventListener('change', () => {
 	show();
 	disconnected();
-	//CLD: 2026-10-22T14:00:00+03:00: the saved key is not kept for another provider (AssistantController::settings)
+	//the saved key is not kept for another provider (AssistantController::settings)
 	form.querySelector('[name=api_key]').value = '';
     });
     form.querySelectorAll('[name=url], [name=api_key]').forEach((el) => el.addEventListener('input', () => setStatus('text-muted', 'Changed: Connect again to check')));
@@ -131,13 +127,13 @@ JS . "}({$connectJs});");
 	    <div class="flex-fill"></div>
 	</div>
 
-	<?php //CLD: 2026-10-31T20:30:00+02:00: two columns, to fit one screen: the provider and its server on the left, the budget on the right ?>
+	<?php //two columns, to fit one screen: the provider and its server on the left, the budget on the right ?>
 	<div class="row gx-5 pt-4">
 	<div class="col-xl-6">
 	    <?= $settings->schema['provider']->input([ 'cols' => '3,9' ]) ?>
 
-	    <?php //CLD: 2026-10-22T14:00:00+03:00: System: what the installation provides ?>
-	    <?php //CLD: 2026-10-31T22:00:00+02:00: the provider's part ($systemHtml: util\AssistantSystem::settingsHtml, the plugin's view: the model, the credits, the monthly limit) ?>
+	    <?php //System: what the installation provides ?>
+	    <?php //the provider's part ($systemHtml: util\AssistantSystem::settingsHtml, the plugin's view: the model, the credits, the monthly limit) ?>
 	    <div data-assistant-provider="system">
 		<?php if ($systemHtml !== null): ?>
 		<?= $systemHtml ?>
@@ -150,15 +146,15 @@ JS . "}({$connectJs});");
 		<?php endif; ?>
 	    </div>
 
-	    <?php //CLD: 2026-10-22T14:00:00+03:00: your own server and key: every provider but System ?>
+	    <?php //your own server and key: every provider but System ?>
 	    <div data-assistant-provider="anthropic openai gemini ollama lemonade lmstudio">
 	    <?= $settings->schema['url']->input([ 'cols' => '3,9' ]) ?>
 	    <?= $settings->schema['api_key']->input([ 'cols' => '3,9', 'input' => [ 'autocomplete' => 'new-password' ] ]) ?>
 
-	    <?php //CLD: 2026-10-20T10:00:00+03:00: Connect: the server's models in Model ?>
+	    <?php //Connect: the server's models in Model ?>
 	    <div class="form-group row mb-2">
 		<div class="col-sm-9 offset-sm-3 d-flex align-items-center gap-2">
-		    <?php //CLD: 2026-10-31T20:30:00+02:00: the button keeps its label on one line (text-nowrap) ?>
+		    <?php //the button keeps its label on one line (text-nowrap) ?>
 		    <button type="button" class="btn btn-sm btn-outline-primary btn-assistant-connect text-nowrap flex-shrink-0"><i class="bi bi-plug me-1"></i>Connect</button>
 		    <span class="assistant-connect-status small text-muted"><?= $model !== '' ? 'Saved model: ' . \V::app()->html->escape($model) : 'Not connected' ?></span>
 		</div>
@@ -178,20 +174,19 @@ JS . "}({$connectJs});");
 	    <div data-assistant-provider="anthropic">
 		<?= $settings->schema['effort']->input([ 'cols' => '3,9' ]) ?>
 	    </div>
-	    <?php //CLD: 2026-10-22T14:00:00+03:00: + gemini, ollama, lemonade ?>
 	    <div data-assistant-provider="openai gemini ollama lemonade lmstudio">
 		<div class="form-text">The Server URL is reached from this application's server, so localhost means that machine. A local model needs a large context (the step types alone take about 10,000 tokens) and good tool calling.</div>
 	    </div>
 
 	</div>
 	<div class="col-xl-6">
-	    <?php //CLD: 2026-10-22T14:00:00+03:00: new: the monthly budget, this month's spending ?>
-	    <?php //CLD: 2026-10-22T15:00:00+03:00: the budget is for your own key (System: credits, above) ?>
+	    <?php //the monthly budget, this month's spending ?>
+	    <?php //the budget is for your own key (System: credits, above) ?>
 	    <div data-assistant-provider="anthropic openai gemini ollama lemonade lmstudio">
 	    <h6 class="mt-4 mt-xl-2">Budget</h6>
 	    <?= $settings->schema['budget']->input([ 'cols' => '3,9', 'input' => [ 'inputmode' => 'decimal', 'placeholder' => 'No limit' ] ]) ?>
 	    </div>
-	    <?php //CLD: 2026-10-22T15:00:00+03:00: your own key's spending (System: the credits, above) ?>
+	    <?php //your own key's spending (System: the credits, above) ?>
 	    <div class="form-group row mb-2" data-assistant-provider="anthropic openai gemini ollama lemonade lmstudio">
 		<label class="col-sm-3 col-form-label">This month</label>
 		<div class="col-sm-9 pt-2">
@@ -209,7 +204,7 @@ JS . "}({$connectJs});");
 		</div>
 	    </div>
 
-	    <?php //CLD: 2026-11-01T03:00:00+02:00: what the Assistant may read (data_access), for every provider ?>
+	    <?php //what the Assistant may read (data_access), for every provider ?>
 	    <h6 class="mt-4">Data access</h6>
 	    <?= $settings->schema['data_access']->input([ 'cols' => '3,9' ]) ?>
 	    <div class="form-text">

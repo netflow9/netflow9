@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-22T22:00:00+03:00: new: an AI step's session on a tool server (util\ToolServers): an MCP client (util\McpClient) holding a slot of the account and one of the installation
+    an AI step's session on a tool server (util\ToolServers): an MCP client (util\McpClient) holding a slot of the account and one of the installation
     (models\ToolServerSlot) from open() until close(); the slots are renewed while tools are called, and freed also when the process ends without close()
 */
 

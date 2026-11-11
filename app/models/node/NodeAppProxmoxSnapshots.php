@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T14:00:00+02:00: new step: Proxmox Snapshots - the snapshots of a VM or container of Proxmox VE. Operations (setting `operation`):
+    Proxmox Snapshots - the snapshots of a VM or container of Proxmox VE. Operations (setting `operation`):
 	list      its snapshots (GET .../snapshot, without Proxmox's `current` entry): { name, description, snaptime, time (ISO 8601), vmstate, parent, current }, oldest first
 	create    a snapshot (POST .../snapshot: a name of letters, digits, _ -, starting with a letter; a description; a VM's RAM too when chosen)
 	rollback  the guest rolled back to a snapshot (POST .../snapshot/{name}/rollback)
@@ -26,7 +26,7 @@ class NodeAppProxmoxSnapshots extends NodeAppProxmox {
 	'delete' => 'Delete a snapshot',
 	'prune' => 'Delete old snapshots',
     ];
-    //CLD: 2026-11-01T21:50:00+02:00: the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
+    //the operations that change something; the others only read (an AI step's tools: the read ones ticked by default, util\AgentTools)
     const WRITES = [ 'create', 'rollback', 'delete', 'prune' ];
     const LISTS = [ 'list' ];
     //Proxmox's snapshot names (pve-configid)
@@ -93,7 +93,7 @@ class NodeAppProxmoxSnapshots extends NodeAppProxmox {
 	throw new \RuntimeException("unknown operation `{$operation}`");
     }
 
-    //CLD: 2026-11-07T01:09:58+02:00: the result of a snapshot operation of guest $g: snapshot $name, task $upid
+    //the result of a snapshot operation of guest $g: snapshot $name, task $upid
     private static function snapshotResult($g, $name, $upid) {
 	return [ 'vmid' => $g['vmid'], 'node' => $g['node'], 'type' => $g['type'], 'snapshot' => $name, 'task' => $upid ];
     }

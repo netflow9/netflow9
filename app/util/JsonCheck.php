@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-23T12:30:00+03:00: new: the syntax of a JSON text that may hold {{ }} expressions (the HTTP Request step's body), for util\Expression::check (syntaxes json / jsonrpc)
+    the syntax of a JSON text that may hold {{ }} expressions (the HTTP Request step's body), for util\Expression::check (syntaxes json / jsonrpc)
     and the step's save check:
 	\util\JsonCheck::problems($text, $rpc)    [ [ severity error|warning, message, start, end ] ] - byte offsets in $text
     A {{ }} part outside a string stands for a value (as it runs: util\Expression::render gives objects and lists as JSON); inside a string it is part of the string.
@@ -286,7 +286,7 @@ class JsonCheck {
 	}
     }
 
-    //CLD: 2026-11-07T01:14:34+02:00: whether value $x of the parsed content is an expression ({{ }}: its value known only when the step runs)
+    //whether value $x of the parsed content is an expression ({{ }}: its value known only when the step runs)
     private static function isExpression($x) {
 	return $x['type'] === 'expression' || ($x['type'] === 'string' && $x['value'] === null);
     }

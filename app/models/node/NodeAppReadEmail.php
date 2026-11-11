@@ -3,7 +3,7 @@
     checks a folder of a mail account (IMAP) and gives its messages to the steps after it (models\MailPoll::read). Options: which messages (new since
 //the last check / unread / all) and what to do with them afterwards (nothing / mark read / move / delete)
 
-//CLD: 2026-10-17T14:20:00+03:00: a regular step, Read emails: each run checks the folder
+//a regular step, Read emails: each run checks the folder
 //(models\MailPoll::read) and puts the messages it picks into one list variable (default `mails`) for the steps after it (e.g. a Loop over {{ mails }}); runs on a schedule come
 //from a Schedule trigger before it. The check state (last UID, lock) is still kept per workflow and step (models\MailPoll)
 
@@ -17,7 +17,7 @@ class NodeAppReadEmail extends \models\wf\WfNode {
     public static $label = 'Read emails (IMAP)';
     public static $icon = 'bi-envelope-arrow-down';
     public static $color = 'var(--wf-color-app)';
-    //CLD: 2026-10-30T15:00:00+02:00: the step picker: in Email
+    //the step picker: in Email
     public static $category = 'email';
     public static $inputs = 1;
     public static $outputs = 1;
@@ -49,10 +49,8 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 	    $valid = false;
 	}
 
-	//CLD: 2026-10-09T08:10:30+03:00: folder, schedule fields, which / after, moveTo, limits: rules of configSchema() (checked by parent::validates); here only the
-	//checks between values and the weekdays (a list)
-	//CLD: 2026-10-17T14:20:00+03:00: no schedule (a Schedule trigger runs the workflow) and no refused which / after combinations: reading the same messages at every run
-	//is the user's choice for a step
+	//folder, which / after, moveTo, limits: rules of configSchema() (checked by parent::validates); here only the checks between values. No refused which / after
+	//combinations: reading the same messages at every run is the user's choice for a step
 	$after = $this->cfg('after', 'none');
 
 	if ($after === 'move') {
@@ -65,16 +63,14 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 	return $valid;
     }
 
-    //CLD: 2026-10-08T14:37:58+03:00: credentials of the current project providing `imap`, for the designer
+    //credentials of the current project providing `imap`, for the designer
     protected static function credentialChoices() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest || empty(\V::app()->user->crtProject))
 	    return [];
 	return \models\Credential::choicesFor('imap', \V::app()->config('rt.account')->_id ?? null, \V::app()->user->crtProject);
     }
 
-    //CLD: 2026-10-09T08:10:30+03:00: model field definitions with rules (WfNode::configForm(), a sys\NestedModel): credential and folder, then the
-    //schedule of the checks (WfSchedule::schema, default every 5 minutes), then the message options
-    //CLD: 2026-10-17T14:20:00+03:00: without the schedule fields (a regular step)
+    //model field definitions with rules (WfNode::configForm(), a sys\NestedModel): credential and folder, then the message options (no schedule: a regular step)
     public static function configSchema() {
 	$choices = [];
 	foreach(static::credentialChoices() as $c)
@@ -90,7 +86,7 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'required' => true,
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 6 wide
+		//layout: 6 wide
 		'key' => 'folder',
 		'type' => 'text',
 		'label' => 'Folder',
@@ -109,7 +105,7 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'ui' => [ 'variableName' => 'write' ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 6 wide, on a new line
+		//layout: 6 wide, on a new line
 		'key' => 'which',
 		'type' => 'select',
 		'label' => 'Read',
@@ -120,7 +116,7 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'ui' => [ 'width' => 6, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'after',
 		'type' => 'select',
 		'label' => 'Afterwards',
@@ -130,7 +126,7 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide
+		//layout: 3 wide
 		'key' => 'moveTo',
 		'type' => 'text',
 		'label' => 'Move to folder',
@@ -139,7 +135,7 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'placeholder' => 'Processed', 'showIf' => [ 'key' => 'after', 'operator' => 'eq', 'value' => 'move' ] ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: 3 wide, on a new line
+		//layout: 3 wide, on a new line
 		'key' => 'saveAttachments',
 		'type' => 'switch',
 		'label' => 'Save attachments as project files',
@@ -147,7 +143,7 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'ui' => [ 'width' => 3, 'newRow' => true ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxMessages',
 		'type' => 'number',
 		'label' => 'Messages per run',
@@ -158,7 +154,7 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 		'ui' => [ 'limit' => true, 'step' => 1, 'width' => 6 ],
 	    ],
 	    [
-		//CLD: 2026-10-24T12:55:27+03:00: layout: a limit (the last line)
+		//layout: a limit (the last line)
 		'key' => 'maxSize',
 		'type' => 'number',
 		'label' => 'Largest message (MB)',
@@ -171,21 +167,21 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 	];
     }
 
-    //CLD: 2026-10-17T14:20:00+03:00: a list of message objects (messageType()), named by the step's `variable` setting (default `mails`)
+    //a list of message objects (messageType()), named by the step's `variable` setting (default `mails`)
     public static function outputVariables($config) {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'mails') : 'mails';
 	return \util\Validator::isIdentifier($name) ? [ $name => [ 'type' => 'array', 'info' => 'the messages read (oldest first; empty when there are none): [ { subject, from, text, html, attachments, ... } ]',
 	    'items' => self::messageType() ] ] : [];
     }
 
-    //CLD: 2026-10-17T14:20:00+03:00: the type of a message object
+    //the type of a message object
     public static function messageType() {
 	return [
 	    'type' => 'object',
 	    'info' => 'a received message: { account, folder, uid, message_id, from, from_name, to, cc, reply_to (lists), subject, date (ISO 8601), text, html, in_reply_to, '
 		. 'references (list), headers (lower-case name => value, or a list when repeated), attachments ([ { filename, contentType, size, disposition, file } ]), '
 		. 'attachment_count, attachment_files (saved file ids) }',
-	    //CLD: 2026-10-13T12:34:29+03:00: the fields and their types (util\Expression::typeAt: suggested after `mail.`, `mail.attachments[0].`)
+	    //the fields and their types (util\Expression::typeAt: suggested after `mail.`, `mail.attachments[0].`)
 	    'fields' => [
 		'account' => [
 		    'type' => 'string',
@@ -252,10 +248,10 @@ class NodeAppReadEmail extends \models\wf\WfNode {
 	    ] ];
     }
 
-    //CLD: 2026-10-17T14:20:00+03:00: the step's work: one check of the mailbox, the messages picked go into the list
+    //the step's work: one check of the mailbox, the messages picked go into the list
     //variable (empty when none, e.g. the first run of `new`); a failed check, or another run checking this step at the same time, fails the step
     public function execute($edgeId = null) {
-	//CLD: 2026-10-18T10:00:00+03:00: models\MailPoll::read(), the log callable as an argument
+	//models\MailPoll::read(), the log callable as an argument
 	$result = \models\MailPoll::read($this->exec, $this->wfid, is_array($this->config) ? $this->config : [], function($message) {
 	    $this->exec->log($this->wfid, $message);
 	});

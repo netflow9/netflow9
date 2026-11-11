@@ -4,7 +4,7 @@
     one index of the triggers reached by a token:
 	Webhook (/hook/<token>),
 	Form (/form/<token>),
-	Chat (/agent/<token>; CLD: 2026-11-02T18:00:00+02:00: its embed token in `data`: /chat/<embed token>),
+	Chat (/agent/<token>; its embed token in `data`: /chat/<embed token>),
 	Email inbound (<account mail_prefix>-<token>@MAIL_INBOUND_DOMAIN, read by Haraka:
 
     kept while unpublished: the trigger then answers "not published"
@@ -83,10 +83,10 @@ class TriggerToken extends \sys\BaseModel {
 	foreach((is_array($version->nodes ?? null) ? $version->nodes : []) as $n) {
 	    $def = empty($n['isNode']) ? null : ($defs[$n['fqname'] ?? ''] ?? null);
 	    $class = $def ? \V::app()->om->getObjectClass($def['objectName']) : null;
-	    //CLD: 2026-10-18T15:00:00+03:00: self::isToken
+	    //self::isToken
 	    if (!$class || !method_exists($class, 'tokenData'))
 		continue;
-	    //CLD: 2026-10-21T11:30:00+03:00: the class's TOKEN_FORMAT, default `hex`, read here
+	    //the class's TOKEN_FORMAT, default `hex`, read here
 	    $format = defined($class . '::TOKEN_FORMAT') ? constant($class . '::TOKEN_FORMAT') : 'hex';
 	    if (!self::isToken($n['config']['token'] ?? null, $format))
 		continue;

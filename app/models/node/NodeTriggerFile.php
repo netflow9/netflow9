@@ -1,6 +1,6 @@
 <?php
 
-//CLD: 2026-10-17T20:40:00+03:00: new step: File upload - starts the workflow (its published version) for each file a user uploads to the workflow's project (Files page:
+//File upload - starts the workflow (its published version) for each file a user uploads to the workflow's project (Files page:
 //FileController::upload -> uploaded()); optionally only for some file types (File::$extensions). Files made by runs (mail attachments, Download step, ...) do not start it,
 //so a workflow cannot start itself again. The run is a daemon job (deliver), the upload is not delayed
 namespace models\node;
@@ -50,7 +50,7 @@ class NodeTriggerFile extends \models\wf\WfNode {
 	];
     }
 
-    //CLD: 2026-10-18T13:30:00+03:00: the check of `types` against typeChoices() is the select field's own `choices` rule (sys\fields\Field_select::bindTo)
+    //the check of `types` against typeChoices() is the select field's own `choices` rule (sys\fields\Field_select::bindTo)
 
     public static function outputVariables($config) {
 	$name = is_array($config) ? (string)($config['variable'] ?? 'file') : 'file';

@@ -6,8 +6,7 @@ if (!window.app)
  *
  *   new app.DocxViewer(containerEl | '#selector', { url: '/file/content/<id>' })
  *
- * - JSZip and docx-preview (UMD builds, globals `JSZip` and `docx`) are loaded on first use by adding <script> tags
- *   CLD: 2026-10-13T16:48:57+03:00: now loaded by app/layouts/_webpage.php; `jszipSrc` / `libSrc` are gone
+ * - JSZip and docx-preview (UMD builds, globals `JSZip` and `docx`) are loaded by app/layouts/_webpage.php
  * - the document is rendered inside a shadow root: its styles cannot leak into the app and the app's CSS does not
  *   distort it; links other than http(s) / mailto / #anchors are neutralized after rendering
  * - the file is fetched by the viewer (fetch + ArrayBuffer), so the server keeps sending it as an attachment
@@ -311,7 +310,7 @@ window.app.PdfViewer = (function() {
 	    const t = this.o.texts;
 	    this.container.innerHTML = '';
 
-	    //CLD: 2026-10-06T21:49:39+03:00: toolbar buttons are btn-icon
+	    //toolbar buttons are btn-icon
 
 	    //toolbar
 	    const bar = app.utils.el('div', 'd-flex align-items-center gap-1 mb-2 flex-wrap');
@@ -381,7 +380,7 @@ window.app.PdfViewer = (function() {
 	    }
 
 	    try {
-		//CLD: 2026-10-06T21:46:14+03:00: pdf.js 6 has no `isEvalSupported` (no eval path left); same-origin requests send the session cookie
+		//pdf.js 6 has no `isEvalSupported` (no eval path left); same-origin requests send the session cookie
 		//by default, so no `withCredentials`
 		this.doc = await lib.getDocument({
 		    url: this.o.url,

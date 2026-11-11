@@ -35,7 +35,7 @@ $js = \util\JSON::encode([
     'testUrl' => \V::app()->createUrl('/ldap/test'),
 ]);
 
-//CLD: 2026-10-21T10:00:00+03:00: nowdoc: the script's text as is
+//nowdoc: the script's text as is
 \V::app()->cs->addPageScript("+function(o) {" . <<<'JS'
     const container = document.getElementById(o.containerId);
     if (!container)

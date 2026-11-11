@@ -2,7 +2,7 @@
 
 namespace util;
 
-//CLD: 2026-11-04T10:00:00+02:00: writes a table as an Excel (.xlsx) file, one sheet (the data table export, DatatableController::export; the reverse of util\TableImport):
+//writes a table as an Excel (.xlsx) file, one sheet (the data table export, DatatableController::export; the reverse of util\TableImport):
 //
 //    $x = new \util\TableExport('customers', [ [ 'label' => 'Name' ], [ 'label' => 'Born', 'format' => 'date' ] ]);
 //    $x->addRow([ 'Ann', new \DateTimeImmutable('2001-02-03') ]);
@@ -192,7 +192,7 @@ class TableExport {
 	return '<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">' . self::escape($sheet . '!' . self::absoluteRef($from) . ':' . self::absoluteRef($to)) . '</definedName></definedNames>';
     }
 
-    //CLD: 2026-11-07T01:22:46+02:00: cell reference $ref (A1) as an absolute one ($A$1)
+    //cell reference $ref (A1) as an absolute one ($A$1)
     private static function absoluteRef($ref) {
 	return preg_replace('/^([A-Z]+)(\d+)$/', '\$$1\$$2', $ref);
     }

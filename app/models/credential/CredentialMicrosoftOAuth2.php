@@ -1,8 +1,7 @@
 <?php
 
-//CLD: 2026-10-08T14:34:02+03:00: new class: base of the Microsoft identity platform credential types (Microsoft 365 / Outlook.com); tenant field, endpoints;
+//base of the Microsoft identity platform credential types (Microsoft 365 / Outlook.com): tenant field, endpoints, instance methods;
 //subclasses give the scopes. The app is registered in Microsoft Entra admin center > App registrations (platform: Web)
-//CLD: 2026-10-09T17:21:14+03:00: base of Microsoft OAuth credential variants; instance methods
 
 namespace models\credential;
 
@@ -13,7 +12,7 @@ abstract class CredentialMicrosoftOAuth2 extends \models\credential\CredentialOA
     //the service scopes (space separated); offline_access openid email profile are added
     abstract public static function serviceScope();
 
-    //+ tenant, after the client secret
+    //tenant, after the client secret
     public function getSchema() {
 	$fields = parent::getSchema();
 	$at = array_search('clientSecret', array_column($fields, 'key'), true);

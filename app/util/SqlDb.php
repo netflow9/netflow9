@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-25T17:40:00+02:00: new: what the database credentials and the Database step share: the database types and their PDO drivers, the SQL of a step ({{ }} values sent
+    what the database credentials and the Database step share: the database types and their PDO drivers, the SQL of a step ({{ }} values sent
     as parameters), the values bound and read back
 //  SqlDb::TYPES                       type => [ label, drivers: [ PDO driver => its PHP extension ] (the first loaded one is used) ]
 //  SqlDb::driver($type)               the PDO driver of $type this PHP has, or null

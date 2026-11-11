@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-27T23:10:00+02:00: new: the text of Office documents (the AI models read text, not these files; ZipArchive + DOM, no Composer):
+    the text of Office documents (the AI models read text, not these files; ZipArchive + DOM, no Composer):
 	docx    Word (word/document.xml): paragraphs, headings (# by the styles' outline level: Title, heading 1..6), list items (- ), tables (| a | b |), tabs and
 		line breaks, text boxes, equations (their text); then the footnotes and endnotes. Deleted text (tracked changes), field codes and the fallbacks of alternate content are left out;
 		headers, footers and comments too

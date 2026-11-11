@@ -1,5 +1,5 @@
 <?php
-//CLD: 2026-10-19T14:09:20+03:00: new partial: the steps of the initial setup (SetupController::STEPS) above each step's page; $crt: the current step (an action), or 'done'
+//the steps of the initial setup (SetupController::STEPS) above each step's page; $crt: the current step (an action), or 'done'
 $keys = array_keys(\controllers\SetupController::STEPS);
 $pos = $crt === 'done' ? count($keys) : array_search($crt, $keys, true);
 ?>

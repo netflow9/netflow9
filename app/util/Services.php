@@ -1,9 +1,9 @@
 <?php
 
 /*
-    CLD: 2026-10-31T11:05:39+02:00: the Services page of the Settings (controllers\ServicesController);
+    the Services page of the Settings (controllers\ServicesController);
     the list (services(): hook app:services) and who may see / manage them (allowed())
-    CLD: 2026-11-01T19:00:00+02:00: in Docker (docker()): read-only, the status from each service's check, start / stop / restart with docker compose on the host
+    in Docker (docker()): read-only, the status from each service's check, start / stop / restart with docker compose on the host
     the installation's services: their status (systemd: `systemctl show`, which any user may read; a service not yet made a unit:
     its script's PID file) and start / stop / restart (`systemctl`, allowed to this app's user for these units only by the polkit rule of scripts/daemon.sh)
 */
@@ -13,7 +13,7 @@ namespace util;
 class Services {
     const VERBS = [ 'start', 'stop', 'restart' ];
 
-    //CLD: 2026-10-31T11:05:39+02:00: the services of the installation (hook app:services ($services: \ArrayObject): id => [ label, description, unit (systemd), pidfile (before the unit:
+    //the services of the installation (hook app:services ($services: \ArrayObject): id => [ label, description, unit (systemd), pidfile (before the unit:
     //a script's), health: fn() => [ ok (bool|null), text ] ])
     public static function services() {
 	$services = new \ArrayObject();
@@ -21,7 +21,7 @@ class Services {
 	return $services->getArrayCopy();
     }
 
-    //CLD: 2026-10-31T19:30:00+02:00: the services, each with its `status` (status()): what the page shows
+    //the services, each with its `status` (status()): what the page shows
     public static function withStatus() {
 	$r = [];
 	foreach(self::services() as $id => $s)
@@ -29,17 +29,17 @@ class Services {
 	return $r;
     }
 
-    //CLD: 2026-10-31T19:30:00+02:00: where the services are managed: with the MultiTenant plugin its super-admins' page (/services/index), without it a tab of the account's settings
+    //where the services are managed: with the MultiTenant plugin its super-admins' page (/services/index), without it a tab of the account's settings
     public static function pageUrl() {
 	return self::adminPlugin() ? \V::app()->createUrl('/services/index') : \V::app()->createUrl('/account/settings', [ '__tab' => 'services' ]);
     }
 
-    //CLD: 2026-10-31T11:05:39+02:00: whether the signed-in user may see and manage the services: with the MultiTenant plugin, a super-admin (its
+    //whether the signed-in user may see and manage the services: with the MultiTenant plugin, a super-admin (its
     //2FA is required by the page); without it, the account's owners (ownerSignedIn)
     public static function allowed() {
 	if (\V::app()->config('app.mode') != 'web' || \V::app()->user->isGuest)
 	    return false;
-	//CLD: 2026-10-31T22:00:00+02:00: the administration's own check (hook services:admin)
+	//the administration's own check (hook services:admin)
 	if (($admin = self::admin()) !== null)
 	    return (bool)($admin['allowed'])();
 	return self::ownerSignedIn();
@@ -54,12 +54,12 @@ class Services {
     }
 
     //the administration is there: the MultiTenant plugin is enabled (plugins.json)
-    //CLD: 2026-10-31T22:00:00+02:00: a plugin manages the services (hook services:admin), so the core runs without the MultiTenant plugin
+    //a plugin manages the services (hook services:admin), so the core runs without the MultiTenant plugin
     public static function adminPlugin() {
 	return self::admin() !== null;
     }
 
-    //CLD: 2026-10-31T22:00:00+02:00: new: the administration that manages the services, as a plugin offers it (hook services:admin ($box: \ArrayObject): `allowed` => fn() => whether the
+    //the administration that manages the services, as a plugin offers it (hook services:admin ($box: \ArrayObject): `allowed` => fn() => whether the
     //signed-in user may see them, `require` => fn() => refuses the request otherwise); null: none (the account's owners manage them)
     public static function admin() {
 	$box = new \ArrayObject();
@@ -67,7 +67,7 @@ class Services {
 	return isset($box['allowed'], $box['require']) ? $box->getArrayCopy() : null;
     }
 
-    //CLD: 2026-10-31T18:00:00+02:00: the systemd unit of this installation's service $name (daemon, playwright): nfn-<name>-<the app's user> (the owner of app/, as
+    //the systemd unit of this installation's service $name (daemon, playwright): nfn-<name>-<the app's user> (the owner of app/, as
     //scripts/daemon.sh and scripts/playwright-mcp.sh name them), so that several installations on one server (live, development) each have theirs
     public static function unit($name) {
 	$owner = @fileowner(BASE . '/app');
@@ -76,7 +76,7 @@ class Services {
     }
 
     //unit $unit was written by one of this installation's scripts (its first line: #written by <app>/scripts/...), or is not there yet: a server's Haraka is one installation's
-    //CLD: 2026-11-01T21:30:00+02:00: any script of the installation (Haraka's unit: scripts/haraka.sh)
+    //any script of the installation (Haraka's unit: scripts/haraka.sh)
     public static function ownUnit($unit) {
 	$file = '/etc/systemd/system/' . $unit;
 	if (!is_file($file))
@@ -88,13 +88,13 @@ class Services {
 	return str_starts_with($first, '#written by ' . BASE . '/scripts/');
     }
 
-    //CLD: 2026-11-01T19:00:00+02:00: the app runs in Docker (NFN_RUNTIME=docker, compose.yaml): no systemd; the services are compose's, shown from their checks only (read-only)
+    //the app runs in Docker (NFN_RUNTIME=docker, compose.yaml): no systemd; the services are compose's, shown from their checks only (read-only)
     public static function docker() {
 	return (string)\V::env('NFN_RUNTIME', '') === 'docker';
     }
 
     //the status of service $s: [ unit (installed as a systemd unit), running (bool|null: unknown), state (text), pid, since (unix s|null), health: [ ok, text ]|null ]
-    //CLD: 2026-11-01T19:00:00+02:00: + docker (bool): in Docker running is the check's result (no systemctl, no PID files: another container's)
+    //docker (bool): in Docker running is the check's result (no systemctl, no PID files: another container's)
     public static function status(array $s) {
 	$r = [ 'unit' => false, 'running' => null, 'state' => 'unknown', 'pid' => null, 'since' => null, 'health' => null, 'docker' => self::docker() ];
 	$unit = $r['docker'] ? '' : (string)($s['unit'] ?? '');
@@ -142,12 +142,12 @@ class Services {
     public static function control(array $s, $verb) {
 	if (!in_array($verb, self::VERBS, true))
 	    return [ false, 'unknown action' ];
-	//CLD: 2026-11-01T19:00:00+02:00: Docker's services are managed by compose, on the host
+	//Docker's services are managed by compose, on the host
 	if (self::docker())
 	    return [ false, 'managed by Docker: docker compose ' . $verb . ' <service>, on the host' ];
 	$unit = (string)($s['unit'] ?? '');
 	if ($unit === '' || !self::status([ 'unit' => $unit ])['unit'])
-	    //CLD: 2026-11-01T22:00:00+02:00: the service's own script
+	    //the service's own script
 	    return [ false, 'not a system service yet: run its script as root first (scripts/daemon.sh, haraka.sh or playwright-mcp.sh install)' ];
 	[ $code, $out ] = self::run([ 'systemctl', '--no-ask-password', $verb, $unit ], 60);
 	if ($code !== 0)
