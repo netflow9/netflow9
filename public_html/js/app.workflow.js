@@ -19,7 +19,7 @@ if (!window.app)
 	destroy(),
 	setRun(run): an execution shown on the canvas (WorkflowController::runStatus; null: none)
 //app.Workflow.current: the designer of the page (e.g. for the Assistant). A new one destroys the previous one: its listeners on the document removed, its editor / picker closed
-//CLD: 2026-10-19T22:30:00+03:00: the designer's state and functions are the class's fields and methods;
+//the designer's state and functions are the class's fields and methods;
 //the steps / connections (WfNode, WfEdge) reach their designer through `d` (not enumerable: not in their JSON, the saved steps); the helpers without state
 //(curves, the picker's markup and placement, the drag preview) stay functions of the module
 
@@ -61,8 +61,7 @@ window.app.Workflow = (function() {
     let sequence = 1;
     class WfBaseNode {
 	wfid = null;
-
-	//CLD: 2026-10-19T22:30:00+03:00: + designer: the app.Workflow it belongs to, as `d` (not enumerable: JSON.stringify, the saved steps and the snapshots, leave it out)
+	//designer: the app.Workflow it belongs to, as `d` (not enumerable: JSON.stringify, the saved steps and the snapshots, leave it out)
 	constructor(designer, wfid, type) {
 	    Object.defineProperty(this, 'd', { value: designer });
 	    ++sequence;
@@ -108,7 +107,7 @@ window.app.Workflow = (function() {
 
 	portPos(isInput, index){
 	    const def = this.d.nodeDefs[this.fqname];
-	    //CLD: 2026-10-11T20:24:33+03:00: the step's own outputs (outPortsOf); more than 2 are spread evenly
+	    //the step's own outputs (outPortsOf); more than 2 are spread evenly
 	    const count = isInput ? def.inputs : this.d.outPortsOf(this).count;
 	    let ty;
 	    if(count <= 1)
@@ -133,7 +132,7 @@ window.app.Workflow = (function() {
 	    return d;
 	}
 
-	//CLD: 2026-10-17T10:59:58+03:00: the header classes are shared with the step boxes
+	//the header classes are shared with the step boxes
 	renderContainer(def) {
     	    const title = window.app.utils.escapeHtml(this.title);
 	    return `
@@ -158,10 +157,10 @@ window.app.Workflow = (function() {
 	}
 
 	render() {
-	    //CLD: 2026-10-19T22:30:00+03:00: the designer's state through this.d
+	    //the designer's state through this.d
 	    const d = this.d;
     	    const def = d.nodeDefs[this.fqname];
-	    //CLD: 2026-10-11T20:24:33+03:00: the step's outputs; tall enough for them (e.g. a Switch with many cases)
+	    //the step's outputs; tall enough for them (e.g. a Switch with many cases)
 	    const outs = d.outPortsOf(this);
 	    if (!def.isContainer && !def.isNote && this.geometry.h < d.minHeightFor(this))
 		this.geometry.h = d.minHeightFor(this);
@@ -176,8 +175,6 @@ window.app.Workflow = (function() {
     	    el.style.setProperty('--type-color', def.color);
     	    el.dataset.id = this.wfid;
 
-	    //CLD: 2026-10-07T07:47:40+03:00: problem marker moved below (small icon instead of an outline)
-
 	    switch(true) {
 		case def.isContainer:
     		    el.innerHTML = this.renderContainer(def);
@@ -185,13 +182,13 @@ window.app.Workflow = (function() {
     		case def.isNote:
     		    el.innerHTML = this.renderNote(def);
     		    break;
-    		//CLD: 2026-10-17T10:59:58+03:00: laid out like the loop: icon and title in a header at the top of the box;
+    		//laid out like the loop: icon and title in a header at the top of the box;
     		//below it, the variable the step sets (variableOf)
     		default:
     		    const title = window.app.utils.escapeHtml(this.title);
     		    const variable = d.variableOf(this);
     		    const varHtml = variable ? `<span class="node-var" title="Sets the variable ${window.app.utils.escapeHtml(variable)}"><i class="bi bi-box-arrow-right"></i><span>${window.app.utils.escapeHtml(variable)}</span></span>` : '';
-    		    //CLD: 2026-10-17T19:43:34+03:00: the step's label (its kind, e.g. Download File) in the body, above the variable
+    		    //the step's label (its kind, e.g. Download File) in the body, above the variable
     		    const label = window.app.utils.escapeHtml(def.label || def.name || '');
     		    const labelHtml = label ? `<span class="node-label" title="${label}">${label}</span>` : '';
     		    el.innerHTML = `
@@ -206,7 +203,7 @@ window.app.Workflow = (function() {
     		    break;
     	    }
 
-	    //CLD: 2026-10-07T07:47:40+03:00: steps with connection problems get a small icon at the bottom-right (red: error, amber: warning),
+	    //steps with connection problems get a small icon at the bottom-right (red: error, amber: warning),
 	    //messages as tooltip; inside the step's box (already position: relative), else (containers, notes) the node itself
 	    const issue = d.nodeIssues[this.wfid];
 	    if (issue) {
@@ -225,7 +222,7 @@ window.app.Workflow = (function() {
 		(el.querySelector('.node-box') || el).appendChild(marker);
 	    }
 
-	    //CLD: 2026-10-19T09:02:41+03:00: scheduled steps (nodeDefs[..].scheduled, WfNode::$scheduled) get a small clock at the bottom-right, left of the problem
+	    //scheduled steps (nodeDefs[..].scheduled, WfNode::$scheduled) get a small clock at the bottom-right, left of the problem
 	    //marker if any: the daemon starts them on their schedule (util\Scheduler)
 	    if (def.scheduled) {
 		const marker = document.createElement('i');
@@ -242,7 +239,7 @@ window.app.Workflow = (function() {
 		(el.querySelector('.node-box') || el).appendChild(marker);
 	    }
 
-	    //CLD: 2026-10-29T21:30:00+02:00: the execution shown (setRun): a badge at the top-right corner of the step (RUN_STATUS), its box outlined (.run-<status>)
+	    //the execution shown (setRun): a badge at the top-right corner of the step (RUN_STATUS), its box outlined (.run-<status>)
 	    const run = d.run && d.run.nodes[this.wfid];
 	    const runDef = run && RUN_STATUS[run.status];
 	    if (runDef) {
@@ -257,14 +254,14 @@ window.app.Workflow = (function() {
     	    if(isSelected && !d.options.readonly) {
     		const toolbar = document.createElement('div');
     		toolbar.className='node-toolbar';
-    		//CLD: 2026-10-12T15:21:00+03:00: type="button": the canvas is inside a <form>, so a plain button also submitted it (app.pjax then posted the page and closed the dialogs)
+    		//type="button": the canvas is inside a <form>, so a plain button also submitted it (app.pjax then posted the page and closed the dialogs)
     		toolbar.innerHTML = `
         	<div class="btn-group btn-group-sm shadow-sm bg-white border rounded-2">
         	    <button type="button" class="btn btn-light tool-edit" title="Edit step"><i class="bi bi-pencil"></i></button>
         	    <button type="button" class="btn btn-light text-danger tool-delete" title="Delete step"><i class="bi bi-trash"></i></button>
         	</div>
     		`;
-    		//CLD: 2026-10-12T15:21:00+03:00: opens the step's editor (a dialog)
+    		//opens the step's editor (a dialog)
     		toolbar.querySelector('.tool-edit').addEventListener('click', (e)=>{
         	    e.stopPropagation();
         	    d.openEditor(this.wfid);
@@ -328,7 +325,7 @@ window.app.Workflow = (function() {
     	    el.addEventListener('click', (e)=>{
     		if(d.dragMoved)
     		    return;
-    		//CLD: 2026-10-12T15:21:00+03:00: a second click on the same step within 400 ms (a double click) opens its editor; the first one re-renders the canvas, so the
+    		//a second click on the same step within 400 ms (a double click) opens its editor; the first one re-renders the canvas, so the
     		//browser's dblclick never reaches the new element
     		const now = Date.now();
     		const twice = d.lastClick.id === this.wfid && now - d.lastClick.time < 400;
@@ -349,12 +346,12 @@ window.app.Workflow = (function() {
     			continue;
     		    const p = this.portPos(false, i);
     		    const btn = document.createElement('button');
-    		    //CLD: 2026-10-12T15:21:00+03:00: not a submit button (the canvas is inside a <form>)
+    		    //not a submit button (the canvas is inside a <form>)
     		    btn.type = 'button';
     		    btn.className='btn btn-sm btn-circle-xs btn-outline-primary add-btn';
     		    btn.style.position = 'absolute';
     		    btn.style.zIndex = 6;
-    		    //CLD: 2026-10-11T20:24:33+03:00: after the output's label
+    		    //after the output's label
     		    btn.style.left = (p.x + 14 + (outs.labels ? String(outs.labels[i]).length * 5 + 6 : 0))+'px';
 		    btn.style.top = (p.y-10)+'px';
     		    btn.innerHTML = '<i class="bi bi-plus-lg"></i>';
@@ -399,7 +396,7 @@ window.app.Workflow = (function() {
     	    const d = bezier(p1.x,p1.y,p2.x,p2.y);
     	    const isSelected = this.wfid === this.d.selectedId;
     	    const sel = isSelected ? ' selected' : '';
-	    //CLD: 2026-10-29T21:30:00+02:00: the execution shown (setRun): a connection passed (green, a tick in the middle) or carrying a token now (moving dashes)
+	    //the execution shown (setRun): a connection passed (green, a tick in the middle) or carrying a token now (moving dashes)
 	    const run = this.d.run ? this.d.run.edges[this.wfid] : null;
 	    const runCls = run ? ' run-' + run : '';
     	    svg += `<path class="edge-hit" data-edge="${this.wfid}" d="${d}"></path>`;
@@ -437,10 +434,10 @@ window.app.Workflow = (function() {
     }
 
     function buildPicker() {
-	//CLD: 2026-10-11T13:34:03+03:00: + "no match" line; the search box is wired by showPicker()
+	//"no match" line; the search box is wired by showPicker()
 	return $(`
 	<div class="picker card bg-white p-2 position-fixed active-picker" style="z-index:20">
-	    <!-- CLD: 2026-10-30T15:00:00+02:00: + the "Advanced" switch: the advanced steps listed or not (wired by showPicker) -->
+	    <!-- the "Advanced" switch: the advanced steps listed or not (wired by showPicker) -->
 	    <div class="d-flex align-items-center justify-content-between gap-3 mb-2">
 		<h6 class="mb-0">Add node</h6>
 		<div class="form-check form-switch small mb-0" title="List the advanced (technical) steps too; the search finds them always">
@@ -455,7 +452,7 @@ window.app.Workflow = (function() {
 	`);
     }
 
-    //CLD: 2026-10-13T20:32:03+03:00: moves a shown picker inside the window (10px from its edges); taller than the window: its list gets shorter and scrolls
+    //moves a shown picker inside the window (10px from its edges); taller than the window: its list gets shorter and scrolls
     function fitPicker(picker) {
 	const el = picker[0];
 	const list = el.querySelector('.nodes-container');
@@ -478,7 +475,7 @@ window.app.Workflow = (function() {
 	    css: { position: 'fixed', top: '-1000px', left: '-1000px', '--type-color': def.color, },
 	    class: 'node',
 	});
-	//CLD: 2026-10-17T10:59:58+03:00: the step box's header (icon and name), as on the canvas
+	//the step box's header (icon and name), as on the canvas
 	const inner = $('<div>', { class: 'node-box step-box', width: def.defaultWidth + 'px', height: def.defaultHeight + 'px', })
 	    .append($(`<div class="node-header"><span class="node-header-icon"><i class="bi ${def.icon}"></i></span><span class="node-header-title"></span></div>`))
 	    .appendTo(el);
@@ -488,9 +485,9 @@ window.app.Workflow = (function() {
     }
 
 
-    //CLD: 2026-10-19T22:30:00+03:00: the designer of one canvas; its state is in its fields, its functions are its methods
+    //the designer of one canvas; its state is in its fields, its functions are its methods
     class Workflow {
-	//CLD: 2026-10-19T22:30:00+03:00: a new instance starts clean
+	//a new instance starts clean
 	constructor(root, options) {
 	    if (current)
 		current.destroy();
@@ -501,7 +498,7 @@ window.app.Workflow = (function() {
 	    this.nodeDefs = this.options.nodeDefs || {};
 	    this.options.canvas = this.options.canvas || {};
 
-	    //CLD: 2026-10-19T22:00:00+03:00: the listeners this designer adds outside its own elements (the document) or that must not stay on a reused element; destroy() removes them
+	    //the listeners this designer adds outside its own elements (the document) or that must not stay on a reused element; destroy() removes them
 	    this.unlisten = [];
 
 	    this.wrapEl = null;
@@ -522,12 +519,12 @@ window.app.Workflow = (function() {
 
 	    this.workflow = [];
 	    this.selectedId = null;
-	    //CLD: 2026-10-06T23:25:57+03:00: problems per node from the server (options.issues): { wfid: { level: 'error'|'warning', messages: [...] } }
+	    //problems per node from the server (options.issues): { wfid: { level: 'error'|'warning', messages: [...] } }
 	    this.nodeIssues = {};
-	    //CLD: 2026-10-19T17:10:00+03:00: errors in the steps' settings from the server (options.stepIssues; the draft is saved with them): { wfid: { config: JSON of the
+	    //errors in the steps' settings from the server (options.stepIssues; the draft is saved with them): { wfid: { config: JSON of the
 	    //step's config when loaded, issues: [...] } }; shown while the step's config is unchanged (the server checks it again on save)
 	    this.serverStepIssues = {};
-	    //CLD: 2026-10-29T21:30:00+02:00: the execution shown on the canvas (setRun): { nodes: { wfid: { status, runs } }, edges: { wfid: status } }, null: none
+	    //the execution shown on the canvas (setRun): { nodes: { wfid: { status, runs } }, edges: { wfid: status } }, null: none
 	    this.run = null;
 	    this.runJson = 'null';
 
@@ -537,22 +534,22 @@ window.app.Workflow = (function() {
 	    this.historyTimer = null;
 	    this.pointerHeld = false;
 
-	    //CLD: 2026-10-06T23:33:47+03:00: the problems last told to the page (updateIssues)
+	    //the problems last told to the page (updateIssues)
 	    this.lastIssuesJson = null;
 
-	    //CLD: 2026-10-12T15:21:00+03:00: the step editor (openEditor) and the double click on a step
+	    //the step editor (openEditor) and the double click on a step
 	    this.editor = null;
 	    this.lastClick = { id: null, time: 0 };
 
-	    //CLD: 2026-10-11T13:34:03+03:00: the listener that closes the open picker on a click outside it (showPicker)
+	    //the listener that closes the open picker on a click outside it (showPicker)
 	    this.pickerOutside = null;
 
-	    //CLD: 2026-10-12T15:21:00+03:00: an editor left open by a previous page goes away
+	    //an editor left open by a previous page goes away
 	    document.querySelectorAll('.modal.wf-editor').forEach((m) => m.remove());
 
-	    //CLD: 2026-10-06T23:33:47+03:00: problems are computed live in render() (validateFlow)
+	    //problems are computed live in render() (validateFlow)
 
-	    //CLD: 2026-10-19T22:00:00+03:00: the element, or the element of id `root`
+	    //the element, or the element of id `root`
 	    this.wrapEl = typeof root === 'string' ? document.getElementById(root) : root;
 	    this.worldEl = this.wrapEl.getElementsByClassName('canvas-main')[0];
 	    this.svgEl = this.wrapEl.getElementsByClassName('canvas-edges')[0];
@@ -567,7 +564,7 @@ window.app.Workflow = (function() {
 	    this.svgEl.style.pointerEvents = 'none';
 
 	    this.loadNodes(this.options.workflow || []);
-	    //CLD: 2026-10-19T17:10:00+03:00: the server's errors in the steps' settings, with each step's config as loaded
+	    //the server's errors in the steps' settings, with each step's config as loaded
 	    (this.options.stepIssues || []).forEach((i) => {
 		const n = this.workflow.find((e) => e.wfid === i.node);
 		if (!n)
@@ -577,7 +574,7 @@ window.app.Workflow = (function() {
 	    });
 
 	    this.setupZoom();
-	    //CLD: 2026-10-19T23:20:00+03:00: + pinch to zoom (touch screens); before setupPan (its handler runs first)
+	    //pinch to zoom (touch screens); before setupPan (its handler runs first)
 	    this.setupPinch();
 	    this.setupPan();
 
@@ -591,7 +588,7 @@ window.app.Workflow = (function() {
 		this.fit();
 
 	    this.setupKeyboard();
-	    //CLD: 2026-10-19T18:05:00+03:00: undo / redo; the first state is the steps as loaded
+	    //undo / redo; the first state is the steps as loaded
 	    this.setupHistory();
 	    if (!this.options.readonly) {
 		this.history = [ this.snapshot() ];
@@ -618,13 +615,13 @@ window.app.Workflow = (function() {
 	    this.render();
 	}
 
-	//CLD: 2026-10-24T00:30:00+03:00: new: zoom in (factor > 1) or out (< 1) about the middle of the canvas (the toolbar's + / - buttons)
+	//zoom in (factor > 1) or out (< 1) about the middle of the canvas (the toolbar's + / - buttons)
 	zoomBy(factor) {
 	    const r = this.wrapEl.getBoundingClientRect();
 	    this.zoomAt(r.width / 2, r.height / 2, this.canvas.zoom * factor);
 	}
 
-	//CLD: 2026-10-11T19:57:28+03:00: select step `id` and centre the view on it (same zoom); e.g. a problem clicked in the debug panel
+	//select step `id` and centre the view on it (same zoom); e.g. a problem clicked in the debug panel
 	showNode(id) {
 	    const n = this.workflow.find(n => n.wfid === id);
 	    if (!n)
@@ -638,15 +635,13 @@ window.app.Workflow = (function() {
 	    this.render();
 	}
 
-	//CLD: 2026-10-19T15:26:28+03:00: the current steps and connections as plain data (as saved; e.g. the Assistant sends them to the server)
+	//the current steps and connections as plain data (as saved; e.g. the Assistant sends them to the server)
 	getNodes() {
 	    return JSON.parse(JSON.stringify(this.workflow));
 	}
 
-	//CLD: 2026-10-19T15:26:28+03:00: replaces the steps and connections (e.g. built by the Assistant, or its Undo): nothing selected, open editor / picker closed, the view
-	//fitted; not saved (onDataChange marks the changes)
-	//CLD: 2026-10-19T18:05:00+03:00: saved by the page's autosave (onCommit), as any change
-	//CLD: 2026-10-19T18:05:00+03:00: can be undone (Undo), saved as any change
+	//replaces the steps and connections (e.g. built by the Assistant, or its Undo): nothing selected, open editor / picker closed, the view
+	//fitted; saved by the page's autosave (onCommit) and undone (Undo) as any change
 	setNodes(nodes) {
 	    if (this.options.readonly)
 		return;
@@ -659,7 +654,7 @@ window.app.Workflow = (function() {
 	    this.render();
 	}
 
-	//CLD: 2026-10-19T18:05:00+03:00: undo / redo (the toolbar buttons)
+	//undo / redo (the toolbar buttons)
 	undo() {
 	    this.restore(this.historyAt - 1);
 	}
@@ -667,7 +662,7 @@ window.app.Workflow = (function() {
 	    this.restore(this.historyAt + 1);
 	}
 
-	//CLD: 2026-10-19T18:05:00+03:00: commit a change still waiting for the canvas to be still (e.g. before leaving the page, Run, Publish); whether one is waiting
+	//commit a change still waiting for the canvas to be still (e.g. before leaving the page, Run, Publish); whether one is waiting
 	commitNow() {
 	    this.commit();
 	}
@@ -675,7 +670,7 @@ window.app.Workflow = (function() {
 	    return this.historyTimer !== null;
 	}
 
-	//CLD: 2026-10-19T18:05:00+03:00: after `sent` (a snapshot from onCommit) was saved: the steps' configs as the server saved them (normalized by their config forms: cast values,
+	//after `sent` (a snapshot from onCommit) was saved: the steps' configs as the server saved them (normalized by their config forms: cast values,
 	//defaults; e.g. a webhook token) replace those on the canvas, in the current state too (no new undo step), when nothing changed since; whether the canvas changed
 	applySaved(sent, nodes) {
 	    if (this.options.readonly || this.historyTimer !== null || this.history[this.historyAt] !== sent)
@@ -703,7 +698,7 @@ window.app.Workflow = (function() {
 	    return true;
 	}
 
-	//CLD: 2026-10-19T18:05:00+03:00: the server's errors in the steps' settings after a save (as options.stepIssues), with each step's config now
+	//the server's errors in the steps' settings after a save (as options.stepIssues), with each step's config now
 	setStepIssues(issues) {
 	    this.serverStepIssues = {};
 	    (issues || []).forEach((i) => {
@@ -722,7 +717,7 @@ window.app.Workflow = (function() {
 	    }
 	}
 
-	//CLD: 2026-10-29T21:30:00+02:00: show an execution on the canvas (the Executions panel's selected one, refreshed while it runs): `run` as WorkflowController::runStatus,
+	//show an execution on the canvas (the Executions panel's selected one, refreshed while it runs): `run` as WorkflowController::runStatus,
 	//null: none. Steps / connections not on the canvas (e.g. a published version's) are left out. Drawn again only when it changed; not a change of the data (as setStepIssues)
 	setRun(run) {
 	    const json = JSON.stringify(run || null);
@@ -738,7 +733,7 @@ window.app.Workflow = (function() {
 	    }
 	}
 
-	//CLD: 2026-10-19T22:00:00+03:00: a change still waiting is committed (onCommit: the page saves it), the editor / picker closed, the listeners removed, the palette button taken off
+	//a change still waiting is committed (onCommit: the page saves it), the editor / picker closed, the listeners removed, the palette button taken off
 	destroy() {
 	    if (this.historyTimer !== null && !this.options.readonly)
 		this.commit();
@@ -754,23 +749,23 @@ window.app.Workflow = (function() {
 	}
 
 	/* ---------------- Internals ---------------- */
-	//CLD: 2026-10-19T22:00:00+03:00: a listener removed by destroy()
+	//a listener removed by destroy()
 	listen(target, type, fn, opts) {
 	    target.addEventListener(type, fn, opts);
 	    this.unlisten.push(() => target.removeEventListener(type, fn, opts));
 	}
 
-	//CLD: 2026-10-11T20:24:33+03:00: the outputs of step n: { count, labels } (labels null = numbered). Steps whose outputs follow their config (def.outPorts, e.g. Switch: one per
+	//the outputs of step n: { count, labels } (labels null = numbered). Steps whose outputs follow their config (def.outPorts, e.g. Switch: one per
 	//case) read them from its rows (missing: the field's default); keep in sync with WfNode::outLabelsFor
 	outPortsOf(n) {
 	    const def = this.nodeDefs[n.fqname] || {};
 	    const p = def.outPorts;
 	    if (!p)
 		return { count: def.outputs || 0, labels: def.outLabels || null };
-	    //CLD: 2026-10-12T08:26:57+03:00: outputs that depend on a setting ({ field, values: { value: [ labels ] } }; another value = the class's own outputs)
+	    //outputs that depend on a setting ({ field, values: { value: [ labels ] } }; another value = the class's own outputs)
 	    if (p.field) {
 		let value = n.config ? n.config[p.field] : undefined;
-		//CLD: 2026-11-04T08:10:00+02:00: def.portDefault (WfNode::withCanvasHints; the definitions have no configSchema: openEditor asks it)
+		//def.portDefault (WfNode::withCanvasHints; the definitions have no configSchema: openEditor asks it)
 		if (value === undefined || value === null)
 		    value = def.portDefault;
 		const labels = (p.values || {})[String(value)];
@@ -783,13 +778,13 @@ window.app.Workflow = (function() {
 	    return { count: labels.length, labels: labels };
 	}
 
-	//CLD: 2026-10-17T10:59:58+03:00: the variable a step sets, shown in its box: its first setting marked as a variable name to write (variableName 'write'),
+	//the variable a step sets, shown in its box: its first setting marked as a variable name to write (variableName 'write'),
 	//or that setting's default; '' when it has none (loops: they show only their header)
 	variableOf(n) {
 	    const def = this.nodeDefs[n.fqname] || {};
 	    if (def.isContainer || def.isNote)
 		return '';
-	    //CLD: 2026-11-04T08:10:00+02:00: def.writeVariable (WfNode::withCanvasHints)
+	    //def.writeVariable (WfNode::withCanvasHints)
 	    const f = def.writeVariable;
 	    if (!f)
 		return '';
@@ -797,7 +792,7 @@ window.app.Workflow = (function() {
 	    return (value === undefined || value === null) ? '' : String(value).trim();
 	}
 
-	//CLD: 2026-10-11T20:24:33+03:00: the height a step needs for its outputs (more than 2: 26px each)
+	//the height a step needs for its outputs (more than 2: 26px each)
 	minHeightFor(n) {
 	    const count = this.outPortsOf(n).count;
 	    return count > 2 ? (count + 1) * 26 : 0;
@@ -808,7 +803,6 @@ window.app.Workflow = (function() {
 	    return { x:(clientX - r.left - this.canvas.pan.x) / this.canvas.zoom, y:(clientY - r.top - this.canvas.pan.y) / this.canvas.zoom };
 	}
 
-	//CLD: 2026-10-19T22:30:00+03:00: was the inner fitView() (fitView(), public, also draws)
 	fit(){
 	    const canvas = this.canvas;
 	    if (!this.workflow.length) {
@@ -838,7 +832,7 @@ window.app.Workflow = (function() {
 
 	/* ---------------- Canvas pan & zoom ---------------- */
 	setupPan() {
-	    //CLD: 2026-10-19T22:00:00+03:00: listen()
+	    //listen()
 	    this.listen(this.wrapEl, 'pointerdown', (e) => {
 		let panState = null;
 
@@ -846,12 +840,11 @@ window.app.Workflow = (function() {
     		    if(e.target.tagName !== 'svg' && e.target !== this.svgEl)
     			return;
 		}
-		//CLD: 2026-10-19T23:20:00+03:00: a second finger on the canvas is a pinch (setupPinch), not a new pan
+		//a second finger on the canvas is a pinch (setupPinch), not a new pan
 		if (this.pinchState)
 		    return;
 		this.selectedId=null;
-
-		//CLD: 2026-10-19T23:20:00+03:00: + pointerId: only this pointer's moves pan (with two fingers down, the other one's moves came here too)
+		//pointerId: only this pointer's moves pan (with two fingers down, the other one's moves came here too)
 		const pointerId = e.pointerId;
 		panState = {startX:e.clientX, startY:e.clientY, ox:this.canvas.pan.x, oy:this.canvas.pan.y};
 		this.wrapEl.classList.add('panning');
@@ -866,8 +859,7 @@ window.app.Workflow = (function() {
 		    if (this.options.onCanvasChange)
 			this.options.onCanvasChange(this.canvas.pan, this.canvas.zoom);
 		};
-
-		//CLD: 2026-10-19T23:20:00+03:00: + pointercancel; only this pointer's up ends it; also ended by a pinch starting (this.endPan)
+		//pointercancel; only this pointer's up ends it; also ended by a pinch starting (this.endPan)
 		const endPan = (e) => {
 		    if (e && e.pointerId !== pointerId)
 			return;
@@ -886,7 +878,7 @@ window.app.Workflow = (function() {
 	    });
 	}
 
-	//CLD: 2026-10-19T23:20:00+03:00: new: pinch to zoom on touch screens (two fingers on the canvas; the wheel is setupZoom). The point between the fingers stays
+	//pinch to zoom on touch screens (two fingers on the canvas; the wheel is setupZoom). The point between the fingers stays
 	//under them: the canvas zooms by the change of their distance and moves with their midpoint, so it also pans. Started when a second finger touches the canvas
 	//while the first one pans it (not during a step drag, resize or a new connection), ending that pan; ends when a finger lifts (the other one does not pan
 	//then: a new touch does). #canvas-wrap has touch-action none (theme rail22/_workflow.scss), so the browser does not zoom or scroll the page instead
@@ -953,16 +945,16 @@ window.app.Workflow = (function() {
 	}
 
 	setupZoom() {
-	    //CLD: 2026-10-19T22:00:00+03:00: listen()
+	    //listen()
 	    this.listen(this.wrapEl, 'wheel', (e)=>{
 		e.preventDefault();
 		const r = this.wrapEl.getBoundingClientRect();
-		//CLD: 2026-10-24T00:30:00+03:00: zoomAt (shared with zoomBy)
+		//zoomAt (shared with zoomBy)
 		this.zoomAt(e.clientX - r.left, e.clientY - r.top, this.canvas.zoom * (e.deltaY>0 ? 0.9 : 1.1));
 	    }, {passive:false});
 	}
 
-	//CLD: 2026-10-24T00:30:00+03:00: new: zoom to `zoom` (kept within 0.4 - 1.6) with the canvas point at (cx, cy) staying where it is
+	//zoom to `zoom` (kept within 0.4 - 1.6) with the canvas point at (cx, cy) staying where it is
 	zoomAt(cx, cy, zoom) {
 	    const canvas = this.canvas;
 	    const worldX = (cx - canvas.pan.x) / canvas.zoom, worldY = (cy - canvas.pan.y) / canvas.zoom;
@@ -998,7 +990,7 @@ window.app.Workflow = (function() {
     		const dy = (e.clientY - resizeState.startY) / this.canvas.zoom;
     		let newW = Math.max(def.minWidth, resizeState.ow + dx);
     		let newH = Math.max(def.minHeight, resizeState.oh + dy);
-    		//CLD: 2026-10-11T13:46:00+03:00: isContainer (`container` does not exist: loops could be shrunk smaller than their steps)
+    		//isContainer (`container` does not exist: loops could be shrunk smaller than their steps)
     		if(def.isContainer) {
     		    // never shrink a loop smaller than the children it currently holds
     		    const kids = this.workflow.filter(n=>n.parentId===node.wfid);
@@ -1026,9 +1018,8 @@ window.app.Workflow = (function() {
 
 
 	/* ---------------- Keyboard ---------------- */
-	//CLD: 2026-10-11T14:09:51+03:00: the document listener is added once (mount() runs on every designer page: it was added again each time); the read-only and
-	//"designer still on the page" checks are made per key press (after leaving the designer, Delete must not act on its old selection)
-	//CLD: 2026-10-19T22:00:00+03:00: once per designer, removed by destroy()
+	//once per designer, removed by destroy(); the read-only and "designer still on the page" checks are made per key press (after leaving the designer,
+	//Delete must not act on its old selection)
 	setupKeyboard() {
 	    this.listen(document, 'keydown', (e)=>{
 		if (this.options.readonly || !this.wrapEl || !document.body.contains(this.wrapEl))
@@ -1037,7 +1028,7 @@ window.app.Workflow = (function() {
 		if(tag==='input'||tag==='textarea'||tag==='select')
 		    return;
 		//keys pressed while working in the inspector never act on the canvas
-		//CLD: 2026-10-12T15:21:00+03:00: nor in a dialog (the step editor)
+		//nor in a dialog (the step editor)
 		if(e.target.closest && (e.target.closest('.inspector') || e.target.closest('.modal')))
 		    return;
 		if (document.querySelector('.modal.show'))
@@ -1050,12 +1041,12 @@ window.app.Workflow = (function() {
 	}
 
 	/* ---------------- Undo / redo, autosave ---------------- */
-	//CLD: 2026-10-19T18:05:00+03:00: the steps and connections as saved (JSON)
+	//the steps and connections as saved (JSON)
 	snapshot() {
 	    return JSON.stringify(this.workflow);
 	}
 
-	//CLD: 2026-10-19T18:05:00+03:00: commit later (called by render(): the data may have changed)
+	//commit later (called by render(): the data may have changed)
 	scheduleCommit() {
 	    if (this.options.readonly || this.historyAt < 0)
 		return;
@@ -1063,7 +1054,7 @@ window.app.Workflow = (function() {
 	    this.historyTimer = setTimeout(() => this.commit(), HISTORY_DELAY);
 	}
 
-	//CLD: 2026-10-19T18:05:00+03:00: a new current state when the data differs from it (later states, the redo ones, are dropped)
+	//a new current state when the data differs from it (later states, the redo ones, are dropped)
 	commit() {
 	    clearTimeout(this.historyTimer);
 	    this.historyTimer = null;
@@ -1091,7 +1082,7 @@ window.app.Workflow = (function() {
 		this.options.onCommit(this.history[this.historyAt]);
 	}
 
-	//CLD: 2026-10-19T18:05:00+03:00: go to state `at` (undo / redo): open editor / picker closed, the selection kept when the step is still there, the view not changed
+	//go to state `at` (undo / redo): open editor / picker closed, the selection kept when the step is still there, the view not changed
 	restore(at) {
 	    this.commit();
 	    if (this.options.readonly || at < 0 || at >= this.history.length || at === this.historyAt)
@@ -1109,8 +1100,8 @@ window.app.Workflow = (function() {
 	    this.historyChanged(true);
 	}
 
-	//CLD: 2026-10-19T18:05:00+03:00: pointers held anywhere (a drag, resize or new connection is not committed halfway); Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y, Ctrl+S (commit now) on the canvas
-	//CLD: 2026-10-19T22:00:00+03:00: once per designer, removed by destroy()
+	//pointers held anywhere (a drag, resize or new connection is not committed halfway); Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y, Ctrl+S (commit now) on the canvas;
+	//once per designer, removed by destroy()
 	setupHistory() {
 	    this.listen(document, 'pointerdown', () => { this.pointerHeld = true; }, true);
 	    const release = () => {
@@ -1159,14 +1150,14 @@ window.app.Workflow = (function() {
 	}
 
 	/* ---------------- Dragging nodes ---------------- */
-	//CLD: 2026-10-11T13:46:00+03:00: module level: also places new steps in the loop they are added to
+	//module level: also places new steps in the loop they are added to
 	// find the innermost loop container whose bounds contain a node's center
 	findContainerFor(node, excludeIds){
 	    const nodeDefs = this.nodeDefs;
-	    //CLD: 2026-10-11T13:39:20+03:00: a trigger cannot be placed in a loop (it starts the workflow, not an iteration)
+	    //a trigger cannot be placed in a loop (it starts the workflow, not an iteration)
 	    if (nodeDefs[node.fqname].type === 'trigger')
 		return null;
-	    //CLD: 2026-10-14T21:06:38+03:00: nor a loop in another loop
+	    //nor a loop in another loop
 	    if (nodeDefs[node.fqname].isContainer)
 		return null;
 	    const cx = node.geometry.x + node.geometry.w/2, cy = node.geometry.y + node.geometry.h/2;
@@ -1186,7 +1177,7 @@ window.app.Workflow = (function() {
 	    return best ? best.wfid : null;
 	}
 
-	//CLD: 2026-10-11T13:46:00+03:00: grows the loops holding `node` (innermost first) so it fits inside, with the same margins as the resize rule
+	//grows the loops holding `node` (innermost first) so it fits inside, with the same margins as the resize rule
 	growContainers(node) {
 	    let child = node;
 	    let parent = this.workflow.find(n => n.wfid === child.parentId);
@@ -1271,7 +1262,7 @@ window.app.Workflow = (function() {
 	    const p = node.portPos(false, idx);
 	    connectState = { fromNode:node, fromPort:idx, x:p.x, y:p.y };
 
-	    //CLD: 2026-10-19T23:40:00+03:00: the input port the connection goes to: the one under the pointer, else the nearest within 16px (24px for a finger: it covers
+	    //the input port the connection goes to: the one under the pointer, else the nearest within 16px (24px for a finger: it covers
 	    //the port); used both for the highlight while moving and for the drop (the drop took only the port exactly under the pointer: a highlighted port near a
 	    //finger was not connected; the highlight could also show several ports, now the nearest one)
 	    const radius = e.pointerType === 'touch' ? 24 : 16;
@@ -1332,7 +1323,7 @@ window.app.Workflow = (function() {
         		    return !(n.toNode===toNode && n.toPort===toPort)
     			});
         		const edge = new WfEdge(this, null, connectState.fromNode.wfid, connectState.fromPort, toNode, toPort);
-        		//CLD: 2026-10-11T20:24:33+03:00: the source step's own output labels
+        		//the source step's own output labels
         		const srcLabels = this.outPortsOf(connectState.fromNode).labels;
         		if(srcLabels)
         		    edge.branch = srcLabels[connectState.fromPort];
@@ -1348,7 +1339,7 @@ window.app.Workflow = (function() {
 	}
 
 	/* ---------------- New steps ---------------- */
-	//CLD: 2026-10-08T08:10:24+03:00: steps of node types with their own initConfig() (nodeDefs[..].hasInitConfig) get their starting config
+	//steps of node types with their own initConfig() (nodeDefs[..].hasInitConfig) get their starting config
 	//from the server right after they are added (e.g. a webhook token and URL); the inspector is refreshed if it shows the step
 	initNodeConfig(node) {
 	    const def = this.nodeDefs[node.fqname];
@@ -1360,7 +1351,7 @@ window.app.Workflow = (function() {
 		    if (!resp || !resp.config || typeof resp.config !== 'object' || !this.workflow.includes(node))
 			return;
 		    node.config = Object.assign({}, node.config || {}, resp.config);
-		    //CLD: 2026-10-12T15:21:00+03:00: the step's editor, if open, shows the new values
+		    //the step's editor, if open, shows the new values
 		    if (this.editor && this.editor.nodeId === node.wfid)
 			this.editor.form.setData(Object.assign({}, node.config, this.nodeDefs[node.fqname].isNote ? {} : { __title: node.title }));
 		    this.render();
@@ -1369,7 +1360,7 @@ window.app.Workflow = (function() {
 	}
 
 	/* ---------------- Validation ---------------- */
-	//CLD: 2026-10-06T23:33:47+03:00: client-side twin of models\Workflow::validateFlow (same rules and messages; the server check stays the
+	//client-side twin of models\Workflow::validateFlow (same rules and messages; the server check stays the
 	//reference for saving and running): [ { level: 'error'|'warning', node: wfid|null, message } ]
 	validateFlow() {
 	    const issues = [];
@@ -1392,7 +1383,7 @@ window.app.Workflow = (function() {
 		    add('error', id, 'Unknown step type');
 		    return;
 		}
-		//CLD: 2026-10-11T20:24:33+03:00: the step's own outputs when they follow its config (as Workflow::validateFlow)
+		//the step's own outputs when they follow its config (as Workflow::validateFlow)
 		if (d.outPorts) {
 		    const outs = this.outPortsOf(nodes[id]);
 		    d = Object.assign({}, d, { outputs: outs.count, outLabels: outs.labels });
@@ -1400,7 +1391,7 @@ window.app.Workflow = (function() {
 		def[id] = d;
 	    });
 
-	    //CLD: 2026-10-11T13:46:00+03:00: the level of a step: the loop it is in, null at the top (keep in sync with Workflow::validateFlow)
+	    //the level of a step: the loop it is in, null at the top (keep in sync with Workflow::validateFlow)
 	    const levelOf = (id) => {
 		const parent = nodes[id].parentId;
 		return (parent && def[parent] && def[parent].isContainer) ? parent : null;
@@ -1411,9 +1402,9 @@ window.app.Workflow = (function() {
 	    if (!triggers.length)
 		add('error', null, 'The workflow has no trigger');
 	    triggers.slice(1).forEach((id) => add('error', id, 'Only one trigger is allowed'));
-	    //CLD: 2026-10-14T21:06:38+03:00: a loop cannot be inside another loop (keep in sync with Workflow::validateFlow)
+	    //a loop cannot be inside another loop (keep in sync with Workflow::validateFlow)
 	    Object.keys(def).filter((id) => def[id].isContainer && levelOf(id) !== null).forEach((id) => add('error', id, 'A loop cannot be inside another loop'));
-	    //CLD: 2026-10-11T13:39:20+03:00: a trigger cannot be inside a loop (keep in sync with Workflow::validateFlow)
+	    //a trigger cannot be inside a loop (keep in sync with Workflow::validateFlow)
 	    triggers.forEach((id) => {
 		const parent = nodes[id].parentId;
 		if (parent && def[parent] && def[parent].isContainer)
@@ -1437,7 +1428,7 @@ window.app.Workflow = (function() {
 		    add('error', to, 'This step cannot have incoming connections');
 		    return;
 		}
-		//CLD: 2026-10-11T13:46:00+03:00: connections stay on their level (a loop's own input / output belong to the level around it)
+		//connections stay on their level (a loop's own input / output belong to the level around it)
 		if (levelOf(from) !== levelOf(to)) {
 		    add('error', from, "A connection cannot cross a loop's border");
 		    return;
@@ -1466,7 +1457,7 @@ window.app.Workflow = (function() {
 		(outputsUsed[from] = outputsUsed[from] || {})[fromPort] = true;
 	    });
 
-	    //CLD: 2026-10-11T13:46:00+03:00: computed for every level
+	    //computed for every level
 	    const hasIncoming = {};
 	    Object.keys(adjacent).forEach((from) => adjacent[from].forEach((to) => { hasIncoming[to] = true; }));
 
@@ -1483,9 +1474,9 @@ window.app.Workflow = (function() {
 			}
 		    });
 		}
-		//CLD: 2026-10-07T08:01:20+03:00: flag only where a disconnected chain starts (no incoming connection), not every step after it;
-		//steps of a disconnected cycle (all have incoming connections, none starts the chain) are flagged too
-		//CLD: 2026-10-11T13:46:00+03:00: top-level steps only (the steps inside a loop are checked from the loop's starting step, below)
+		//flag only where a disconnected chain starts (no incoming connection), not every step after it;
+		//steps of a disconnected cycle (all have incoming connections, none starts the chain) are flagged too; top-level steps only (the steps inside a loop are
+		//checked from the loop's starting step, below)
 		const unreached = Object.keys(def).filter((id) => !def[id].isNote && levelOf(id) === null && !reached[id]);
 
 		const starts = unreached.filter((id) => !hasIncoming[id]);
@@ -1507,7 +1498,7 @@ window.app.Workflow = (function() {
 		});
 	    }
 
-	    //CLD: 2026-10-11T13:46:00+03:00: the inside of each loop is a flow of its own: each pass starts at its one step without an incoming connection, every step inside
+	    //the inside of each loop is a flow of its own: each pass starts at its one step without an incoming connection, every step inside
 	    //must be reachable from it; notes and triggers (an error of their own) are left out
 	    Object.keys(def).filter((id) => def[id].isContainer).forEach((loopId) => {
 		const inner = Object.keys(def).filter((id) => !def[id].isNote && def[id].type !== 'trigger' && levelOf(id) === loopId);
@@ -1559,11 +1550,11 @@ window.app.Workflow = (function() {
 	    return issues;
 	}
 
-	//CLD: 2026-10-06T23:33:47+03:00: recompute the problems; index them by node for the outlines (an error wins over a warning) and tell the
+	//recompute the problems; index them by node for the outlines (an error wins over a warning) and tell the
 	//page when the list changed (options.onIssuesChange, e.g. header badges)
 	updateIssues() {
 	    const issues = this.validateFlow();
-	    //CLD: 2026-10-19T17:10:00+03:00: + the server's errors in the settings of steps not changed since loaded
+	    //the server's errors in the settings of steps not changed since loaded
 	    this.workflow.forEach((n) => {
 		const s = this.serverStepIssues[n.wfid];
 		if (s && s.config === JSON.stringify(n.config ?? null))
@@ -1591,7 +1582,7 @@ window.app.Workflow = (function() {
 
 	/* ---------------- Rendering ---------------- */
 	render(){
-	    //CLD: 2026-10-06T23:33:47+03:00: live validation of the connections before drawing (outlines + options.onIssuesChange)
+	    //live validation of the connections before drawing (outlines + options.onIssuesChange)
 	    this.updateIssues();
 
 	    this.worldEl.style.transform = `translate(${this.canvas.pan.x}px, ${this.canvas.pan.y}px) scale(${this.canvas.zoom})`;
@@ -1618,8 +1609,7 @@ window.app.Workflow = (function() {
 		svg += edge.render();
 	    });
 
-	    //CLD: 2026-10-24T11:20:00+03:00: the edges' color of the theme (--wf-edge: the dark mode)
-	    //CLD: 2026-10-29T21:30:00+02:00: + arrowhead-passed: of a connection passed in the execution shown (setRun)
+	    //the edges' color of the theme (--wf-edge: the dark mode); arrowhead-passed: of a connection passed in the execution shown (setRun)
 	    svg += `<defs><marker id="arrowhead" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" style="fill:var(--wf-edge)"></path></marker><marker id="arrowhead-passed" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" style="fill:var(--wf-run-done)"></path></marker></defs>`;
 	    this.svgEl.innerHTML = svg;
 
@@ -1638,14 +1628,14 @@ window.app.Workflow = (function() {
     		});
 	    });
 
-	    //CLD: 2026-10-11T13:34:03+03:00: the empty-canvas button (setupPickerButton) while there are no steps
+	    //the empty-canvas button (setupPickerButton) while there are no steps
 	    const emptyEl = this.wrapEl.querySelector('.wf-empty');
 	    if (emptyEl)
 		emptyEl.classList.toggle('d-none', this.workflow.some(n => n.isNode));
 
 	    if (typeof this.options.onDataChange === 'function')
 		this.options.onDataChange(this.workflow);
-	    //CLD: 2026-10-19T18:05:00+03:00: undo / redo, autosave
+	    //undo / redo, autosave
 	    this.scheduleCommit();
 
 	}
@@ -1653,10 +1643,10 @@ window.app.Workflow = (function() {
 
 
 
-	//CLD: 2026-10-11T20:24:33+03:00: after the outputs of step `node` changed: each connection follows its output's label; a renamed output (no
+	//after the outputs of step `node` changed: each connection follows its output's label; a renamed output (no
 	//label match, the same position holds a new label) keeps its connections; connections of removed outputs are removed
 	remapOutputs(node, before) {
-	    //CLD: 2026-10-12T08:26:57+03:00: outputs without labels (e.g. HTTP Request back to one output): the connections of the outputs that remain are kept
+	    //outputs without labels (e.g. HTTP Request back to one output): the connections of the outputs that remain are kept
 	    const outs = this.outPortsOf(node);
 	    if (!outs.labels) {
 		this.workflow = this.workflow.filter((e) => !(e.isEdge && e.fromNode === node.wfid && e.fromPort >= outs.count));
@@ -1681,7 +1671,7 @@ window.app.Workflow = (function() {
 	}
 
 	/* ---------------- Step editor ---------------- */
-	//CLD: 2026-10-12T15:21:00+03:00: steps are edited in a dialog:
+	//steps are edited in a dialog:
 	//opened by a double click on the step, its toolbar's pencil, or when a step is added. OK applies the values to the step (saved with the workflow),
 	//Cancel / Escape leaves it unchanged, Delete removes the step. Read-only (a version): the values only, Close
 	closeEditor() {
@@ -1699,7 +1689,7 @@ window.app.Workflow = (function() {
 	    if (this.editor)
 		this.closeEditor();
 
-	    //CLD: 2026-11-04T08:10:00+02:00: the step's form is asked now, with the project's current choices (WorkflowController::node_schema).
+	    //the step's form is asked now, with the project's current choices (WorkflowController::node_schema).
 	    //The dialog opens with the answer, unless another one was asked, the step is gone or the page was left
 	    const asked = this.editorAsked = {};
 	    document.body.style.cursor = 'progress';
@@ -1721,7 +1711,7 @@ window.app.Workflow = (function() {
 	    const readonly = !!this.options.readonly;
 
 	    //the step name is stored in node.title, everything else in node.config
-	    //CLD: 2026-10-24T12:37:37+03:00: the settings every step places the same way:
+	    //the settings every step places the same way:
 	    //  row 1: Step name, the output variable (`variable` written by the step: variableName write; 3 wide), On error (`onError`, 3); the name takes the rest
 	    //  row 2: Credential (`credential`, or what the step works on: `resource`, e.g. the data table; 6; without an operation, the step's width for it, the step's first
 	    //  settings next to it), Operation (`operation`, 6)
@@ -1736,9 +1726,9 @@ window.app.Workflow = (function() {
 	    const onError = take((f) => f.key === 'onError');
 	    const credential = take((f) => f.key === 'credential' || f.resource);
 	    const operation = take((f) => f.key === 'operation');
-	    //CLD: 2026-10-29T10:00:00+02:00: not a timeout marked advanced: false (the Human task's deadline: stays in its place, next to its unit)
+	    //not a timeout marked advanced: false (the Human task's deadline: stays in its place, next to its unit)
 	    const timeout = take((f) => f.key === 'timeout' && f.type === 'number' && f.advanced !== false);
-	    //CLD: 2026-10-29T10:00:00+02:00: the technical settings in a section "Advanced…" at the end, closed (opened when one of them is not at its default, or is invalid):
+	    //the technical settings in a section "Advanced…" at the end, closed (opened when one of them is not at its default, or is invalid):
 	    //the step's `advanced` fields (in their order and widths), then a last row of On error, the limits and Timeout (3 wide each); row 1 is the step name and the output
 	    //variable (On error was there)
 	    const fields = [];
@@ -1751,7 +1741,7 @@ window.app.Workflow = (function() {
 	    if (operation)
 		fields.push(Object.assign(operation, { width: 6 }));
 	    own.filter((f) => !f.limit && !f.advanced && !f.section).forEach((f) => fields.push(f));
-	    //CLD: 2026-11-01T21:50:00+02:00: the fields of a named section (`section`, e.g. the AI steps' Integrations) in a section of that name after the step's own settings, closed
+	    //the fields of a named section (`section`, e.g. the AI steps' Integrations) in a section of that name after the step's own settings, closed
 	    //(opened when one of them is not at its default, or is invalid)
 	    const sections = {};
 	    own.filter((f) => f.section && !f.limit && !f.advanced).forEach((f) => (sections[f.section] = sections[f.section] || []).push(f));
@@ -1762,17 +1752,17 @@ window.app.Workflow = (function() {
 	    if (advanced.length)
 		fields.push({ type: 'section', label: 'Advanced…', collapsed: true, openIfChanged: true, fields: advanced });
 	    if (readonly)
-		//CLD: 2026-11-01T21:50:00+02:00: + the named sections' fields
+		//the named sections' fields
 		advanced.concat(fields, ...Object.values(sections)).forEach(f => f.editable = false);
 
 	    const el = document.createElement('div');
 	    el.className = 'modal fade wf-editor';
-	    //CLD: 2026-10-24T12:37:37+03:00: two sizes: nearly full screen with a designer (.modal-near-fullscreen: a margin all around; the whole screen on phones,
+	    //two sizes: nearly full screen with a designer (.modal-near-fullscreen: a margin all around; the whole screen on phones,
 	    //modal-fullscreen-sm-down: theme rail22/_modal.scss), else extra-large
 	    const dialogSize = configSchema.some((f) => [ 'formdesigner', 'emaildesigner' ].includes(f.type)) ? 'modal-near-fullscreen' : 'modal-xl';
 	    el.tabIndex = -1;
 	    el.innerHTML = `
-		<!-- CLD: 2026-10-16T12:01:59+03:00: + the email designer (Send Email) -->
+		<!-- the email designer (Send Email) -->
 		<div class="modal-dialog ${dialogSize} modal-fullscreen-sm-down modal-dialog-scrollable">
 		    <div class="modal-content">
 			<div class="modal-header">
@@ -1791,15 +1781,14 @@ window.app.Workflow = (function() {
 		</div>`;
 	    document.body.appendChild(el);
 
-	    //CLD: 2026-10-11T22:38:36+03:00: expression fields get live help: checked / completed by the server with the variables available at this step (the current, unsaved steps are sent)
+	    //expression fields get live help: checked / completed by the server with the variables available at this step (the current, unsaved steps are sent)
 	    const expression = (this.options.exprUrl && !readonly) ? { url: this.options.exprUrl, params: () => ({ node: node.wfid, nodes: JSON.stringify(this.workflow) }) } : null;
 	    const form = new app.smartform(el.querySelector('.wf-editor-form'), { fields: fields, expression: expression });
 	    const formEl = form.render();
 	    form.setData(Object.assign({}, node.config || {}, def.isNote ? {} : { __title: node.title }));
 
-	    //CLD: 2026-10-13T20:36:15+03:00: a step with a form (Form trigger, Human task; user's choice): the dialog is the form designer; the step's other settings (name, ...) are moved into
-	    //the designer's right panel, shown when no field of the form is selected (the same inputs: data and checks as before); stacked there (the panel is narrow)
-	    //CLD: 2026-10-16T12:01:59+03:00: the same for a step with an email (Send Email: the email designer)
+	    //a step with a form or an email (Form trigger, Human task, Send Email; user's choice): the dialog is the form / email designer; the step's other settings (name, ...)
+	    //are in the designer's right panel, shown when no field of the form is selected (the same inputs: data and checks); stacked there (the panel is narrow)
 	    const designerField = form.fields.find((f) => [ 'formdesigner', 'emaildesigner' ].includes(f.schema.type) && f.designer);
 	    let stepPanel = null;
 	    if (designerField) {
@@ -1813,7 +1802,7 @@ window.app.Workflow = (function() {
 		stepPanel.querySelectorAll('[class*="col-md-"]').forEach((c) => { c.className = c.className.replace(/\bcol-md-\d+\b/g, 'col-md-12'); });
 		if (designerField.labelEl)
 		    designerField.labelEl.classList.add('d-none');
-		//CLD: 2026-10-13T20:45:56+03:00: the designer fills the dialog's body (which no longer scrolls): its columns scroll on their own; the chain from the body down to the
+		//the designer fills the dialog's body (which does not scroll): its columns scroll on their own; the chain from the body down to the
 		//designer stretches (flex column, min-height 0)
 		const body = el.querySelector('.modal-body');
 		body.style.cssText += 'display:flex; flex-direction:column; overflow:hidden';
@@ -1844,7 +1833,7 @@ window.app.Workflow = (function() {
 
 	    const save = () => {
 		if (!form.validate()) {
-		    //CLD: 2026-10-13T20:36:15+03:00: a problem in the step's settings while a field of the form is selected: show them
+		    //a problem in the step's settings while a field of the form is selected: show them
 		    if (stepPanel && !stepPanel.isConnected && stepPanel.querySelector('.is-invalid'))
 			designerField.designer.select(null);
 		    return;
@@ -1854,7 +1843,7 @@ window.app.Workflow = (function() {
 		if (!def.isNote)
 		    node.title = data.__title;
 		delete data.__title;
-		//CLD: 2026-10-11T20:24:33+03:00: outputs that follow the config (Switch cases): connections stay with their output
+		//outputs that follow the config (Switch cases): connections stay with their output
 		const before = this.outPortsOf(node).labels || [];
 		node.config = data;
 		if (def.outPorts)
@@ -1878,7 +1867,7 @@ window.app.Workflow = (function() {
 
 
 	/* ---------------- Node Picker ---------------- */
-	//CLD: 2026-10-30T15:00:00+02:00: grouped by the steps' category (WfNode::CATEGORIES, in their order); the items carry what the search box matches (name, label, type,
+	//grouped by the steps' category (WfNode::CATEGORIES, in their order); the items carry what the search box matches (name, label, type,
 	//fqname), groups / items get classes for filtering; the advanced steps (audience) get the picker-advanced class and an "advanced" badge: showPicker lists them or not.
 	//No trigger offered when the workflow has one; insideLoop: the step goes inside a loop, so no loop is offered (a loop cannot be inside another loop)
 	buildPickerContent(picker, insideLoop) {
@@ -1891,7 +1880,7 @@ window.app.Workflow = (function() {
 		    hasTriggerNode = true;
 	    });
 
-	    //CLD: 2026-10-24T09:45:36+03:00: without the steps the account's tier does not have (`unavailable`: views/workflow/index.php)
+	    //without the steps the account's tier does not have (`unavailable`: views/workflow/index.php)
 	    const allNodeTypes = Object.keys(nodeDefs).filter((fqname) => !nodeDefs[fqname].unavailable && !(insideLoop && nodeDefs[fqname].isContainer)
 		&& !(hasTriggerNode && nodeDefs[fqname].type === 'trigger'));
 
@@ -1921,7 +1910,7 @@ window.app.Workflow = (function() {
 		    const def = nodeDefs[fqname];
 		    const advanced = def.audience === 'advanced';
 		    const search = [ def.name, def.label, def.type, def.categoryLabel || '', advanced ? 'advanced' : '', fqname ].join(' ').toLowerCase();
-		    //CLD: 2026-10-17T19:41:38+03:00: the step's label; the name when it has no label
+		    //the step's label; the name when it has no label
 		    const item = $('<li>', { class: 'list-group-item list-group-item-action picker-item d-flex align-items-center gap-2' + (advanced ? ' picker-advanced' : ''), 'data-fqname': fqname, 'data-search': search, draggable: true })
 			.html(`<span class="d-inline-flex align-items-center justify-content-center rounded-2 text-white" style="width:20px;height:20px;background:${def.color};font-size:11px;"><i class="bi ${def.icon}"></i></span>`)
 			.append(document.createTextNode(def.label || def.name))
@@ -1934,7 +1923,7 @@ window.app.Workflow = (function() {
 	    main_ul.appendTo($(picker).find('.nodes-container'));
 	}
 
-	//CLD: 2026-10-11T13:34:03+03:00: one way to open / close every picker. Typing filters the steps (groups without matches hidden), arrows move the highlight, Enter
+	//one way to open / close every picker. Typing filters the steps (groups without matches hidden), arrows move the highlight, Enter
 	//adds the highlighted (or first) step, Escape closes. Clicks inside the picker keep it open (they closed it, e.g. clicking the search box); any click
 	//outside closes it (capture phase: also clicks the canvas stops). Was: no search, a document listener per opening
 	closePicker() {
@@ -1946,7 +1935,7 @@ window.app.Workflow = (function() {
 	}
 
 	//picker: buildPicker() result, already positioned; onPick(fqname) adds the step
-	//CLD: 2026-10-14T21:06:38+03:00: + insideLoop (buildPickerContent)
+	//insideLoop (buildPickerContent)
 	showPicker(picker, onPick, insideLoop) {
 	    this.buildPickerContent(picker, insideLoop);
 
@@ -1972,7 +1961,7 @@ window.app.Workflow = (function() {
 		pick(e.currentTarget.dataset.fqname);
 	    });
 
-	    //CLD: 2026-10-30T15:00:00+02:00: the advanced steps listed when the "Advanced" switch is on (User hide_advanced_steps, options.showAdvancedSteps); a search finds every step
+	    //the advanced steps listed when the "Advanced" switch is on (User hide_advanced_steps, options.showAdvancedSteps); a search finds every step
 	    const filter = () => {
 		const q = search.val().trim().toLowerCase();
 		const showAdvanced = !!this.options.showAdvancedSteps;
@@ -1997,7 +1986,7 @@ window.app.Workflow = (function() {
 		filter();
 		fitPicker(picker);
 		search.trigger('focus');
-		//CLD: 2026-11-08T12:00:00+02:00: kept for the user by /site/prefs (User prefs hide_advanced_steps)
+		//kept for the user by /site/prefs (User prefs hide_advanced_steps)
 		$.ajax({ url: '/site/prefs', method: 'POST', data: { hide_advanced_steps: this.options.showAdvancedSteps ? 0 : 1 }, dataType: 'json',
 		    headers: { 'X-Csrf-Token': $('meta[name=csrf-token]').attr('content'), 'X-Requested-With': 'XMLHttpRequest' } })
 		    .fail((xhr) => console.warn('app.Workflow: the steps view was not saved', xhr.status));
@@ -2022,7 +2011,7 @@ window.app.Workflow = (function() {
 	    });
 
 	    $('body').append(picker);
-	    //CLD: 2026-10-13T20:32:03+03:00: kept inside the window, measured as it is (its height was guessed: near the bottom the list went off screen); again when a group opens / closes
+	    //kept inside the window, measured as it is; again when a group opens / closes
 	    fitPicker(picker);
 	    picker.on('shown.bs.collapse hidden.bs.collapse', () => fitPicker(picker));
 	    search.trigger('focus');
@@ -2039,7 +2028,7 @@ window.app.Workflow = (function() {
 
 	/* ---------------- Node picker popover ---------------- */
 	openPicker(anchorEl, sourceNode, sourcePortIndex){
-	    //CLD: 2026-10-11T13:34:03+03:00: closePicker / showPicker (search, keyboard, closing)
+	    //closePicker / showPicker (search, keyboard, closing)
 	    this.closePicker();
 
 	    const rect = anchorEl.getBoundingClientRect();
@@ -2062,18 +2051,19 @@ window.app.Workflow = (function() {
 	    this.showPicker(picker, (fqname) => {
 		const def = this.nodeDefs[fqname];
 		const geo = new Geometry(
-		    //sourceNode.geometry.x + def.defaultWidth * 1.5,
-		    sourceNode.geometry.x + 200,
-		    sourceNode.geometry.y + (sourcePortIndex - (this.outPortsOf(sourceNode).count - 1)/2)*70
+		    //CLD: 2026-11-11T14:00:00+02:00: 80px right of the source and centred on its middle (for a 120px step: x + 200, the same y as before), so a step added from
+		    //a loop's output lands after the loop, level with its output, not on it
+		    sourceNode.geometry.x + sourceNode.geometry.w + 80,
+		    sourceNode.geometry.y + (sourceNode.geometry.h - def.minHeight)/2 + (sourcePortIndex - (this.outPortsOf(sourceNode).count - 1)/2)*70
 		);
 		const n = new WfNode(this, null, fqname, geo, def.label);
-		//CLD: 2026-10-11T13:46:00+03:00: in the same loop as the step it follows (a trigger never goes in a loop)
+		//in the same loop as the step it follows (a trigger never goes in a loop)
 		if (def.type !== 'trigger' && sourceNode.parentId) {
 		    n.parentId = sourceNode.parentId;
 		    this.growContainers(n);
 		}
 		this.workflow.push(n)
-		//CLD: 2026-10-08T08:10:24+03:00: starting config from the server (e.g. webhook token)
+		//starting config from the server (e.g. webhook token)
 		this.initNodeConfig(n);
 
 		if (def.inputs) {
@@ -2085,34 +2075,34 @@ window.app.Workflow = (function() {
     		}
     		this.selectedId = n.wfid;
     		this.render();
-    		//CLD: 2026-10-12T15:21:00+03:00: a new step opens its editor
+    		//a new step opens its editor
     		this.openEditor(n.wfid);
-    	    //CLD: 2026-10-14T21:06:38+03:00: from a step inside a loop: no loop offered
+    	    //from a step inside a loop: no loop offered
     	    }, !!sourceNode.parentId);
 	}
 
 
 
 	/* ---------------- Palette (click & drag to add) ---------------- */
-	//CLD: 2026-10-11T13:34:03+03:00: a new step at world position (x, y) (top-left corner), selected
+	//a new step at world position (x, y) (top-left corner), selected
 	addNodeAt(fqname, x, y) {
 	    const def = this.nodeDefs[fqname];
 	    const n = new WfNode(this, null, fqname, new Geometry(x, y), def.label);
-	    //CLD: 2026-10-11T13:46:00+03:00: placed on a loop: inside it (findContainerFor: not for triggers)
+	    //placed on a loop: inside it (findContainerFor: not for triggers)
 	    n.parentId = this.findContainerFor(n, new Set());
 	    if (n.parentId)
 		this.growContainers(n);
 	    this.workflow.push(n)
-	    //CLD: 2026-10-08T08:10:24+03:00: starting config from the server (e.g. webhook token)
+	    //starting config from the server (e.g. webhook token)
 	    this.initNodeConfig(n);
 
 	    this.selectedId = n.wfid;
 	    this.render();
-	    //CLD: 2026-10-12T15:21:00+03:00: a new step opens its editor
+	    //a new step opens its editor
 	    this.openEditor(n.wfid);
 	}
 
-	//CLD: 2026-10-11T13:34:03+03:00: the palette below anchorEl (the + button, the empty-canvas button): a click adds the step at the middle of the canvas, or drag it
+	//the palette below anchorEl (the + button, the empty-canvas button): a click adds the step at the middle of the canvas, or drag it
 	//onto the canvas (was inside the + button's click handler, which added another canvas drop handler at each opening: one drop added several steps)
 	openPalette(anchorEl) {
 	    this.closePicker();
@@ -2137,7 +2127,7 @@ window.app.Workflow = (function() {
 		e.originalEvent.dataTransfer.effectAllowed = 'copy';
 		const preview = buildDragPreview(def);
 		$('body').append(preview);
-		//CLD: 2026-10-11T13:34:03+03:00: the preview is held at its middle (def.w / def.h do not exist: NaN)
+		//the preview is held at its middle (def.w / def.h do not exist: NaN)
 		e.originalEvent.dataTransfer.setDragImage(preview.get(0), def.defaultWidth/2, def.defaultHeight/2);
 		setTimeout(() => preview.remove(), 0);
 	    });
@@ -2158,8 +2148,7 @@ window.app.Workflow = (function() {
 	    });
 	    btnPalette.appendTo(this.wrapEl);
 
-	    //CLD: 2026-10-11T13:34:03+03:00: steps dragged from the palette: one handler, set once
-	    //CLD: 2026-10-19T22:00:00+03:00: listen()
+	    //steps dragged from the palette: one handler, set once (listen())
 	    this.listen(this.wrapEl, 'dragover', e=>e.preventDefault());
 	    this.listen(this.wrapEl, 'drop', e => {
 		e.preventDefault();
@@ -2172,7 +2161,7 @@ window.app.Workflow = (function() {
 		this.addNodeAt(fqname, w.x, w.y);
 	    });
 
-	    //CLD: 2026-10-11T13:34:03+03:00: empty canvas: a button in the middle opens the palette (shown by render() while there are no steps)
+	    //empty canvas: a button in the middle opens the palette (shown by render() while there are no steps)
 	    const empty = $(`
 		<div class="wf-empty position-absolute top-50 start-50 translate-middle text-center d-none" style="z-index: 15">
 		    <button type="button" class="btn btn-outline-success btn-lg rounded-circle mb-2" style="width: 64px; height: 64px">
@@ -2204,7 +2193,7 @@ window.app.Workflow = (function() {
 	    if (!handle.length)
 		return;
 
-	    //CLD: 2026-10-19T19:05:00+03:00: the width set by the handle is kept in localStorage (this browser), and used again when a designer opens; lastWidth starts
+	    //the width set by the handle is kept in localStorage (this browser), and used again when a designer opens; lastWidth starts
 	    //at the panel's own width (a click on the handle without a drag stores that, not minWidth)
 	    const WIDTH_KEY = 'rail22.wf.inspector.width';
 	    lastWidth = Math.max(minWidth, Math.min(maxWidth, Math.round(el.outerWidth()) || minWidth));
@@ -2216,9 +2205,9 @@ window.app.Workflow = (function() {
 		}
 	    } catch (e) {}
 
-	    //CLD: 2026-10-19T22:00:00+03:00: namespaced, removed by destroy()
+	    //namespaced, removed by destroy()
 	    this.unlisten.push(() => handle.off('.wfdesigner'));
-	    //CLD: 2026-10-19T23:05:00+03:00: pointer events (mouse, touch and pen), as setupPanelResize: the pointer is captured by the handle,
+	    //pointer events (mouse, touch and pen), as setupPanelResize: the pointer is captured by the handle,
 	    //pointercancel ends the drag like pointerup; touch-action none on the handle (theme rail22/_workflow.scss)
 	    handle.on('pointerdown.wfdesigner', (e) => {
 		//main button only (a touch or a pen contact is button 0 too)
@@ -2230,7 +2219,7 @@ window.app.Workflow = (function() {
 		    handle[0].setPointerCapture(pointerId);
 		} catch (err) {}
 
-		//CLD: 2026-10-19T20:10:00+03:00: from the panel's width now (it may have been hidden when the designer opened: the Assistant's panel; a click without a drag stores that)
+		//from the panel's width (it may have been hidden when the designer opened: the Assistant's panel; a click without a drag stores that)
 		lastWidth = Math.max(minWidth, Math.min(maxWidth, Math.round(el.outerWidth()) || minWidth));
 		handle.addClass('dragging');
 		el.removeClass('collapsed');
@@ -2252,7 +2241,7 @@ window.app.Workflow = (function() {
 			try {
 			    handle[0].releasePointerCapture(pointerId);
 			} catch (err) {}
-			//CLD: 2026-10-19T19:05:00+03:00: kept for the next designers
+			//kept for the next designers
 			try {
 			    localStorage.setItem(WIDTH_KEY, String(lastWidth));
 			} catch (e) {}
@@ -2260,7 +2249,7 @@ window.app.Workflow = (function() {
 	    });
 	}
 
-	//CLD: 2026-10-10T19:08:46+03:00: each bottom panel (debug, executions) resizes on its own
+	//each bottom panel (debug, executions) resizes on its own
 	setupDebugResize() {
 	    $('.debug-panel').each((i, el) => {
 		this.setupPanelResize($(el));
@@ -2277,7 +2266,7 @@ window.app.Workflow = (function() {
 	    if (!handle.length)
 		return;
 
-	    //CLD: 2026-10-19T19:20:00+03:00: the height set by the handle is kept in localStorage (this browser), one per panel, and used again when a designer opens (opening a panel
+	    //the height set by the handle is kept in localStorage (this browser), one per panel, and used again when a designer opens (opening a panel
 	    //lower than 120px still makes it 300px: debug.open / exec.open in views/workflow/index.php)
 	    const HEIGHT_KEY = el.hasClass('exec-panel') ? 'rail22.wf.exec.height' : el.hasClass('wf-debug-panel') ? 'rail22.wf.debug.height' : null;
 	    if (HEIGHT_KEY) {
@@ -2293,9 +2282,9 @@ window.app.Workflow = (function() {
 	    // Resize (debug panel height) — drag the handle up/down; height is
 	    // measured from the bottom of the viewport up to the cursor.
 
-	    //CLD: 2026-10-19T22:00:00+03:00: namespaced, removed by destroy()
+	    //namespaced, removed by destroy()
 	    this.unlisten.push(() => handle.off('.wfdesigner'));
-	    //CLD: 2026-10-19T22:55:00+03:00: pointer events (mouse, touch and pen). The pointer is captured by the
+	    //pointer events (mouse, touch and pen). The pointer is captured by the
 	    //handle, so its moves come to the handle even outside it; pointercancel (e.g. the browser takes the gesture) ends the drag like pointerup.
 	    //The handle has touch-action none (theme rail22/_debug.scss), so a touch drag does not scroll the page
 	    handle.on('pointerdown.wfdesigner', (e) => {
@@ -2308,7 +2297,7 @@ window.app.Workflow = (function() {
 		    handle[0].setPointerCapture(pointerId);
 		} catch (err) {}
 
-		//CLD: 2026-10-19T19:20:00+03:00: from the panel's own height (a click without a drag stores that, not minHeight)
+		//from the panel's own height (a click without a drag stores that, not minHeight)
 		lastHeight = Math.max(minHeight, Math.min(maxHeight, Math.round(el.outerHeight()) || minHeight));
 		handle.addClass('dragging');
 		$('body').css({ 'user-select': 'none', 'cursor': 'row-resize' });
@@ -2329,7 +2318,7 @@ window.app.Workflow = (function() {
 			try {
 			    handle[0].releasePointerCapture(pointerId);
 			} catch (err) {}
-			//CLD: 2026-10-19T19:20:00+03:00: kept for the next designers
+			//kept for the next designers
 			if (HEIGHT_KEY) {
 			    try {
 				localStorage.setItem(HEIGHT_KEY, String(lastHeight));
