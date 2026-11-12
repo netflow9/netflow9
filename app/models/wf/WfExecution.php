@@ -347,6 +347,14 @@ class WfExecution extends \sys\BaseModel {
 		if (!$this->exists())
 		    $this->save();
 		\models\ExecutionLog::record('execution.start', null, 'trigger: ' . $this->trigger . ($this->version ? ', v' . (int)$this->version : ', draft'));
+	    } elseif ($this->state == 'sleep') {
+		//CLD: 2026-11-12T12:00:00+02:00: a sleeping run continues: logged with the step it slept at (and the loop item) and how late it woke, so a run that sleeps as
+		//planned (a resume after each sleep) can be told from one that is stuck (a sleep without a resume)
+		\models\ExecutionLog::$step = $this->sleepingSteps();
+		$due = $this->wake_at instanceof \MongoDB\BSON\UTCDateTime ? (int)floor((int)(string)$this->wake_at / 1000) : null;
+		\models\ExecutionLog::record('execution.resume', null, $this->sleepingAt() . ($due !== null ? ', due ' . \util\Format::datetime($this->wake_at)
+		    . (time() - $due > 0 ? ', ' . (time() - $due) . ' s late' : '') : ''));
+		\models\ExecutionLog::$step = null;
 	    }
 
 	    //saved as running at once, then after the passes,
@@ -407,8 +415,11 @@ class WfExecution extends \sys\BaseModel {
 		    break;
 		case 'sleep':
 		    //util\Format::datetime (the account's format; the daemon: app.format.datetime)
+		    //CLD: 2026-11-12T12:00:00+02:00: with the step(s) sleeping and, inside a loop, the item (sleepingAt): which of the loop's sleeps this is
 		    $wake = \util\Format::datetime($this->wake_at) ?: 'unknown';
-		    \models\ExecutionLog::record('execution.sleep', null, 'waiting until ' . $wake);
+		    \models\ExecutionLog::$step = $this->sleepingSteps();
+		    \models\ExecutionLog::record('execution.sleep', null, $this->sleepingAt() . ', waiting until ' . $wake);
+		    \models\ExecutionLog::$step = null;
 		    break;
 	    }
 	    //ended or failed: the workflow waiting for it (Run a workflow) is resumed
@@ -742,6 +753,29 @@ class WfExecution extends \sys\BaseModel {
 		$edges[] = $edgeId;
 	}
 	return $edges;
+    }
+
+    //CLD: 2026-11-12T12:00:00+02:00: the titles of the steps the run sleeps at (the execution log's step)
+    private function sleepingSteps() {
+	$titles = [];
+	foreach($this->__nodes as $wfid => $node) {
+	    if ($node->state == 'sleep')
+		$titles[] = (string)($node->title ?? $wfid);
+	}
+	return $titles ? implode(', ', $titles) : null;
+    }
+
+    //CLD: 2026-11-12T12:00:00+02:00: where the run sleeps, for the execution log: each sleeping step, inside a loop with its item, e.g. "Wait 30s (loop `Files`, item 3 of 10)"
+    private function sleepingAt() {
+	$at = [];
+	foreach($this->__nodes as $wfid => $node) {
+	    if ($node->state != 'sleep')
+		continue;
+	    $loop = $this->activeLoop((string)$wfid);
+	    $at[] = (string)($node->title ?? $wfid) . ($loop !== null ? ' (loop `' . ($loop->title ?? $loop->wfid) . '`, item ' . ((int)$loop->index + 1) . ' of '
+		. (is_array($loop->items) ? count($loop->items) : 0) . ')' : '');
+	}
+	return $at ? 'at ' . implode(', ', $at) : 'sleeping';
     }
 
     private function earliestWake() {

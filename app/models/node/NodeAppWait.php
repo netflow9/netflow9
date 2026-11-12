@@ -54,13 +54,16 @@ class NodeAppWait extends \models\wf\WfNode {
 
 	    $seconds = (int)round($amount * \data\Constants::TIME_UNIT_SECONDS_ALL[$unit]);
 	    $this->resume_at = new \MongoDB\BSON\UTCDateTime(($now + $seconds) * 1000);
-	    $this->exec->log($this->wfid, "wait {$amount} {$unit}");
+	    //CLD: 2026-11-12T12:00:00+02:00: with the time it continues and, as below, when it did: the log tells a planned sleep from a stuck one
+	    $this->exec->log($this->wfid, "wait {$amount} {$unit}, until " . \util\Format::datetime($this->resume_at));
 	}
 
-	if ($now < $this->resume_at->toDateTime()->getTimestamp())
+	$due = $this->resume_at->toDateTime()->getTimestamp();
+	if ($now < $due)
 	    return self::SLEEP;
 
 	$this->resume_at = null;
+	$this->exec->log($this->wfid, 'waited, continues' . ($now - $due > 0 ? ' (' . ($now - $due) . ' s late)' : ''));
 	return [ 0 ];
     }
 

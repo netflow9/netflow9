@@ -167,6 +167,8 @@ class NodeCoreLoop extends \models\wf\WfNode {
 	if ($index < count($items)) {
 	    $this->exec->setVariable((string)$this->cfg('itemVariable', 'item'), $items[$index]);
 	    $this->exec->setVariable((string)$this->cfg('indexVariable', 'index'), $index);
+	    //CLD: 2026-11-12T12:00:00+02:00: each pass logged: the lines of the steps inside (e.g. a Wait) are read as those of this item
+	    $this->exec->log($this->wfid, 'loop: item ' . ($index + 1) . ' of ' . count($items));
 	    return 'enter';
 	}
 
