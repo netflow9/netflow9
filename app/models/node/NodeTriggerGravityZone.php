@@ -17,7 +17,6 @@ class NodeTriggerGravityZone extends \models\wf\WfNode {
     public static $name = 'gravityzone';
     public static $label = 'GravityZone event';
     public static $icon = 'bi-shield-exclamation';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
 

@@ -18,7 +18,6 @@ class NodeTriggerWazuh extends \models\wf\WfNode {
     public static $name = 'wazuh';
     public static $label = 'Wazuh alert';
     public static $icon = 'bi-shield-exclamation';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

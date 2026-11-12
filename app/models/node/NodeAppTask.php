@@ -16,7 +16,6 @@ class NodeAppTask extends \models\wf\WfNode {
     public static $name = 'task';
     public static $label = 'Human task';
     public static $icon = 'bi-person-check';
-    public static $color = 'var(--wf-color-app)';
     //the step picker: in Flow
     public static $category = 'flow';
     public static $inputs = 1;

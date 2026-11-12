@@ -15,7 +15,6 @@ class NodeTriggerTeams extends \models\wf\WfNode {
     public static $name = 'teams';
     public static $label = 'Teams message';
     public static $icon = 'bi-microsoft-teams';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

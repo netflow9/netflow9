@@ -8,7 +8,6 @@ class NodeAppSet extends \models\wf\WfNode {
     public static $name = 'set';
     public static $label = 'Set';
     public static $icon = 'bi-pencil-fill';
-    public static $color = 'var(--wf-color-app)';
     public static $inputs = 1;
     public static $outputs = 1;
 

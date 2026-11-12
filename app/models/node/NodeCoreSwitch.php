@@ -12,7 +12,6 @@ class NodeCoreSwitch extends \models\wf\WfNode {
     public static $name = 'switch';
     public static $label = 'Switch';
     public static $icon = 'bi-diagram-3-fill';
-    public static $color = 'var(--wf-color-condition)';
     public static $inputs = 1;
     //the outputs of a new step (the default case + otherwise); the step's own come from its cases ($outPorts)
     public static $outputs = 2;

@@ -12428,6 +12428,7 @@ body {
   --success:#2f9e5e;
   --wf-color-trigger:#2f9e5e;
   --wf-color-app:#3568c9;
+  --wf-color-core:#5f6b7a;
   --wf-color-condition:#7a6a1f;
   --wf-color-merge:#0f8fa3;
   --wf-color-loop:#a2578e;
@@ -12469,6 +12470,35 @@ body {
   --wf-run-wait:#e0a53a;
   --wf-run-fail:#e5595d;
   --wf-run-stopped:#8b939b;
+}
+
+/* ----------------------- step colors -------------------------- */
+[data-wf-type=trigger] {
+  --type-color: var(--wf-color-trigger);
+}
+
+[data-wf-type=app] {
+  --type-color: var(--wf-color-app);
+}
+
+[data-wf-type=core] {
+  --type-color: var(--wf-color-core);
+}
+
+[data-wf-step="core::if"], [data-wf-step="core::switch"] {
+  --type-color: var(--wf-color-condition);
+}
+
+[data-wf-step="core::loop"] {
+  --type-color: var(--wf-color-loop);
+}
+
+[data-wf-step="core::merge"] {
+  --type-color: var(--wf-color-merge);
+}
+
+[data-wf-step="core::note"] {
+  --type-color: var(--wf-color-note);
 }
 
 /* ----------------------- edges -------------------------- */

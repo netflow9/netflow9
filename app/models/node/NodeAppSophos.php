@@ -22,7 +22,6 @@ abstract class NodeAppSophos extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-fire';
-    public static $color = 'var(--wf-color-app)';
     public static $category = 'security';
     public static $inputs = 1;
     public static $outputs = 1;

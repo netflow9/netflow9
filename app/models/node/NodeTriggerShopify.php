@@ -18,7 +18,6 @@ class NodeTriggerShopify extends \models\wf\WfNode {
     public static $name = 'shopify';
     public static $label = 'Shopify event';
     public static $icon = 'bi-bag';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
 

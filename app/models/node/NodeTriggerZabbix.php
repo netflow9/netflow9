@@ -17,7 +17,6 @@ class NodeTriggerZabbix extends \models\wf\WfNode {
     public static $name = 'zabbix';
     public static $label = 'Zabbix problem';
     public static $icon = 'bi-speedometer2';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

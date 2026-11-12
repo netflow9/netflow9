@@ -16,7 +16,6 @@ class NodeTriggerHubSpot extends \models\wf\WfNode {
     public static $name = 'hubspot';
     public static $label = 'HubSpot record';
     public static $icon = 'bi-person-lines-fill';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

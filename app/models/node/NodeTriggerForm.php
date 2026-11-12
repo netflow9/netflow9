@@ -6,7 +6,6 @@ class NodeTriggerForm extends \models\wf\WfNode {
     public static $name = 'form';
     public static $label = 'Form';
     public static $icon = 'bi-ui-checks';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
 

@@ -16,7 +16,6 @@ class NodeCoreLoop extends \models\wf\WfNode {
     public static $name = 'loop';
     public static $label = 'Loop';
     public static $icon = 'bi-arrow-repeat';
-    public static $color = 'var(--wf-color-loop)';
     public static $inputs = 1;
     public static $outputs = 1;
     public static $isContainer = true;

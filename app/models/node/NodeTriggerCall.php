@@ -13,7 +13,6 @@ class NodeTriggerCall extends \models\wf\WfNode {
     public static $name = 'call';
     public static $label = 'Called by a workflow';
     public static $icon = 'bi-box-arrow-in-right';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
 

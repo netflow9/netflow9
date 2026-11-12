@@ -14,7 +14,6 @@ class NodeAppChatReply extends \models\wf\WfNode {
     public static $name = 'chatreply';
     public static $label = 'Reply to chat';
     public static $icon = 'bi-reply';
-    public static $color = 'var(--wf-color-app)';
     public static $category = 'ai';
     public static $inputs = 1;
     public static $outputs = 1;

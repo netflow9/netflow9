@@ -174,7 +174,9 @@ window.app.Workflow = (function() {
     	    el.style.left = this.geometry.x + 'px';
     	    el.style.top = this.geometry.y + 'px';
     	    el.style.width = this.geometry.w + 'px';
-    	    el.style.setProperty('--type-color', def.color);
+    	    //CLD: 2026-11-12T23:00:00+02:00: the step's color from its type and name (the theme's [data-wf-type] / [data-wf-step] rules set --type-color)
+    	    el.dataset.wfType = def.type;
+    	    el.dataset.wfStep = def.type + '::' + def.name;
     	    el.dataset.id = this.wfid;
 
 	    switch(true) {
@@ -474,8 +476,10 @@ window.app.Workflow = (function() {
 
     function buildDragPreview(def) {
 	const el = $('<div>', {
-	    css: { position: 'fixed', top: '-1000px', left: '-1000px', '--type-color': def.color, },
+	    css: { position: 'fixed', top: '-1000px', left: '-1000px', },
 	    class: 'node',
+	    'data-wf-type': def.type,
+	    'data-wf-step': def.type + '::' + def.name,
 	});
 	//the step box's header (icon and name), as on the canvas
 	const inner = $('<div>', { class: 'node-box step-box', width: def.defaultWidth + 'px', height: def.defaultHeight + 'px', })
@@ -1768,7 +1772,7 @@ window.app.Workflow = (function() {
 		<div class="modal-dialog ${dialogSize} modal-fullscreen-sm-down modal-dialog-scrollable">
 		    <div class="modal-content">
 			<div class="modal-header">
-			    <span class="badge d-inline-flex align-items-center gap-1 me-2" style="background:${def.color}"><i class="bi ${def.icon}"></i>${app.utils.escapeHtml(def.label)}</span>
+			    <span class="badge d-inline-flex align-items-center gap-1 me-2" data-wf-type="${def.type}" data-wf-step="${def.type}::${def.name}" style="background:var(--type-color)"><i class="bi ${def.icon}"></i>${app.utils.escapeHtml(def.label)}</span>
 			    <h5 class="modal-title text-truncate">${app.utils.escapeHtml(def.isNote ? 'Note' : (node.title || def.label))}</h5>
 			    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
@@ -1914,7 +1918,7 @@ window.app.Workflow = (function() {
 		    const search = [ def.name, def.label, def.type, def.categoryLabel || '', advanced ? 'advanced' : '', fqname ].join(' ').toLowerCase();
 		    //the step's label; the name when it has no label
 		    const item = $('<li>', { class: 'list-group-item list-group-item-action picker-item d-flex align-items-center gap-2' + (advanced ? ' picker-advanced' : ''), 'data-fqname': fqname, 'data-search': search, draggable: true })
-			.html(`<span class="d-inline-flex align-items-center justify-content-center rounded-2 text-white" style="width:20px;height:20px;background:${def.color};font-size:11px;"><i class="bi ${def.icon}"></i></span>`)
+			.html(`<span class="d-inline-flex align-items-center justify-content-center rounded-2 text-white" data-wf-type="${def.type}" data-wf-step="${def.type}::${def.name}" style="width:20px;height:20px;background:var(--type-color);font-size:11px;"><i class="bi ${def.icon}"></i></span>`)
 			.append(document.createTextNode(def.label || def.name))
 			.appendTo(collapse_ul);
 		    if (advanced)

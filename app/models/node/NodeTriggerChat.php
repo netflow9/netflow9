@@ -17,7 +17,6 @@ class NodeTriggerChat extends \models\wf\WfNode {
     public static $name = 'chat';
     public static $label = 'Chat';
     public static $icon = 'bi-chat-dots';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
 

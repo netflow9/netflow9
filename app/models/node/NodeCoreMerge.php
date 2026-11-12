@@ -8,7 +8,6 @@ class NodeCoreMerge extends \models\wf\WfNode {
     public static $name = 'merge';
     public static $label = 'Merge';
     public static $icon = 'bi-signpost-2-fill';
-    public static $color = 'var(--wf-color-merge)';
     public static $inputs = 2;
     public static $outputs = 1;
 

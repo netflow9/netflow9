@@ -17,7 +17,6 @@ class NodeTriggerVeeam extends \models\wf\WfNode {
     public static $name = 'veeam';
     public static $label = 'Veeam event';
     public static $icon = 'bi-hdd-stack';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

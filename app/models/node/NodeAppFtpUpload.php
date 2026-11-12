@@ -27,7 +27,6 @@ class NodeAppFtpUpload extends \models\wf\WfNode {
     public static $name = 'ftp-upload';
     public static $label = 'FTP / SFTP Upload';
     public static $icon = 'bi-cloud-upload';
-    public static $color = 'var(--wf-color-app)';
     //the step picker: an advanced step, in Web & files
     public static $audience = 'advanced';
     public static $category = 'web';

@@ -13,7 +13,6 @@ class WfNode extends \sys\NestedModel {
     public static $name = ''; // 'manual-trigger'
     public static $label = ''; //eg 'Manual Trigger'
     public static $icon = '';
-    public static $color = '';
     public static $inputs = 0;
     public static $outputs = 0;
     public static $defaultWidth = 120;
@@ -460,7 +459,6 @@ class WfNode extends \sys\NestedModel {
 		'name' => $__class::$name,
 		'label' => $__class::$label,
 		'icon' => $__class::$icon,
-		'color' => $__class::$color,
 		'inputs' => $__class::$inputs,
 		'outputs' => $__class::$outputs,
 		'defaultWidth' => $__class::$defaultWidth,

@@ -19,7 +19,6 @@ class NodeAppHttp extends \models\wf\WfNode {
     public static $name = 'http';
     public static $label = 'HTTP Request';
     public static $icon = 'bi-globe2';
-    public static $color = 'var(--wf-color-app)';
     //the step picker: an advanced step, in Developer
     public static $audience = 'advanced';
     public static $category = 'developer';

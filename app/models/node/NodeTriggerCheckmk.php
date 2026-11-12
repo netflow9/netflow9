@@ -17,7 +17,6 @@ class NodeTriggerCheckmk extends \models\wf\WfNode {
     public static $name = 'checkmk';
     public static $label = 'Checkmk problem';
     public static $icon = 'bi-activity';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

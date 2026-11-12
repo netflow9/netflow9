@@ -8,7 +8,6 @@ class NodeAppWait extends \models\wf\WfNode {
     public static $name = 'wait';
     public static $label = 'Wait';
     public static $icon = 'bi-stopwatch';
-    public static $color = 'var(--wf-color-app)';
     //the step picker: in Flow
     public static $category = 'flow';
     public static $inputs = 1;

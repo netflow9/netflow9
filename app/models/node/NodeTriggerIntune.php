@@ -18,7 +18,6 @@ class NodeTriggerIntune extends \models\wf\WfNode {
     public static $name = 'intune';
     public static $label = 'Intune device';
     public static $icon = 'bi-phone';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

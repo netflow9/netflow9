@@ -16,7 +16,6 @@ class NodeTriggerSalesforce extends \models\wf\WfNode {
     public static $name = 'salesforce';
     public static $label = 'Salesforce record';
     public static $icon = 'bi-cloud-fill';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

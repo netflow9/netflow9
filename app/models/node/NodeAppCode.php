@@ -18,7 +18,6 @@ class NodeAppCode extends \models\wf\WfNode {
     public static $name = 'code';
     public static $label = 'Code';
     public static $icon = 'bi-code-slash';
-    public static $color = 'var(--wf-color-app)';
     //the step picker: an advanced step, in Developer
     public static $audience = 'advanced';
     public static $category = 'developer';

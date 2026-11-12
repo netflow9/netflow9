@@ -16,7 +16,6 @@ class NodeTriggerProxmox extends \models\wf\WfNode {
     public static $name = 'proxmox';
     public static $label = 'Proxmox task';
     public static $icon = 'bi-hdd-rack';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

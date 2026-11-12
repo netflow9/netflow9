@@ -8,7 +8,6 @@ class NodeTriggerManual extends \models\wf\WfNode {
     public static $name = 'manual';
     public static $label = 'Manual Trigger';
     public static $icon = 'bi-play-fill';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
 

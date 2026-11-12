@@ -8,7 +8,6 @@ class NodeCoreNote extends \models\wf\WfNode {
     public static $name = 'note';
     public static $label = 'Note';
     public static $icon = 'bi-sticky-fill';
-    public static $color = 'var(--wf-color-note)';
     public static $inputs = 0;
     public static $outputs = 0;
     public static $isNote = true;

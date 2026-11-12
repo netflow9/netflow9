@@ -19,7 +19,6 @@ abstract class NodeAppNextcloud extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-cloud';
-    public static $color = 'var(--wf-color-app)';
     public static $category = 'nextcloud';
     public static $inputs = 1;
     public static $outputs = 1;

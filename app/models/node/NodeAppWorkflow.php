@@ -18,7 +18,6 @@ class NodeAppWorkflow extends \models\wf\WfNode {
     public static $name = 'workflow';
     public static $label = 'Run a workflow';
     public static $icon = 'bi-diagram-3';
-    public static $color = 'var(--wf-color-app)';
     public static $category = 'flow';
     public static $inputs = 1;
     public static $outputs = 1;

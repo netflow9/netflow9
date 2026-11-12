@@ -23,7 +23,6 @@ abstract class NodeAppMicrosoft extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-microsoft';
-    public static $color = 'var(--wf-color-app)';
     //the step picker: the Microsoft steps in Microsoft
     public static $category = 'microsoft';
     public static $inputs = 1;

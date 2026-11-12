@@ -21,7 +21,6 @@ abstract class NodeAppVmware extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-boxes';
-    public static $color = 'var(--wf-color-app)';
     public static $category = 'virtualization';
     public static $inputs = 1;
     public static $outputs = 1;

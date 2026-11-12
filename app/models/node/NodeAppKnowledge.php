@@ -26,7 +26,6 @@ class NodeAppKnowledge extends \models\wf\WfNode {
     public static $name = 'knowledge';
     public static $label = 'Knowledge base';
     public static $icon = 'bi-journal-bookmark';
-    public static $color = 'var(--wf-color-app)';
     public static $inputs = 1;
     public static $outputs = 1;
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];

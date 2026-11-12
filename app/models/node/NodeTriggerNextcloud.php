@@ -17,7 +17,6 @@ class NodeTriggerNextcloud extends \models\wf\WfNode {
     public static $name = 'nextcloud';
     public static $label = 'Nextcloud file';
     public static $icon = 'bi-cloud-arrow-up';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

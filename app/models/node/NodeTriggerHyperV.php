@@ -17,7 +17,6 @@ class NodeTriggerHyperV extends \models\wf\WfNode {
     public static $name = 'hyperv';
     public static $label = 'Hyper-V VM state';
     public static $icon = 'bi-windows';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

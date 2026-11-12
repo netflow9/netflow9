@@ -18,7 +18,6 @@ class NodeTriggerEmail extends \models\wf\WfNode {
     public static $name = 'email';
     public static $label = 'Email (inbound)';
     public static $icon = 'bi-envelope-arrow-down';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
 

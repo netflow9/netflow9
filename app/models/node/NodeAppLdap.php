@@ -29,7 +29,6 @@ class NodeAppLdap extends \models\wf\WfNode {
     public static $name = 'ldap';
     public static $label = 'LDAP';
     public static $icon = 'bi-diagram-3';
-    public static $color = 'var(--wf-color-app)';
     //the step picker: an advanced step, in Developer
     public static $audience = 'advanced';
     public static $category = 'developer';

@@ -20,7 +20,6 @@ abstract class NodeAppCheckmk extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-activity';
-    public static $color = 'var(--wf-color-app)';
     public static $category = 'monitoring';
     public static $inputs = 1;
     public static $outputs = 1;

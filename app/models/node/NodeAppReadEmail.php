@@ -16,7 +16,6 @@ class NodeAppReadEmail extends \models\wf\WfNode {
     public static $name = 'read-email';
     public static $label = 'Read emails (IMAP)';
     public static $icon = 'bi-envelope-arrow-down';
-    public static $color = 'var(--wf-color-app)';
     //the step picker: in Email
     public static $category = 'email';
     public static $inputs = 1;

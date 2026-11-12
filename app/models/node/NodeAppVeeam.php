@@ -21,7 +21,6 @@ abstract class NodeAppVeeam extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-hdd-stack';
-    public static $color = 'var(--wf-color-app)';
     public static $category = 'backup';
     public static $inputs = 1;
     public static $outputs = 1;

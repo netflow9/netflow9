@@ -8,7 +8,6 @@ class NodeCoreIf extends \models\wf\WfNode {
     public static $name = 'if';
     public static $label = 'If';
     public static $icon = 'bi-signpost-split-fill';
-    public static $color = 'var(--wf-color-condition)';
     public static $inputs = 1;
     public static $outputs = 2;
     public static $outLabels = [ 'true', 'false' ];

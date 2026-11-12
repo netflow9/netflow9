@@ -48,7 +48,6 @@ namespace models\node;
 
 abstract class NodeAppAi extends \models\wf\WfNode {
     public static $type = 'app';
-    public static $color = 'var(--wf-color-app)';
     //the step picker: the AI steps in AI
     public static $category = 'ai';
     public static $inputs = 1;

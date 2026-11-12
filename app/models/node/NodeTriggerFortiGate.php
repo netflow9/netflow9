@@ -16,7 +16,6 @@ class NodeTriggerFortiGate extends \models\wf\WfNode {
     public static $name = 'fortigate';
     public static $label = 'FortiGate event';
     public static $icon = 'bi-bricks';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
 

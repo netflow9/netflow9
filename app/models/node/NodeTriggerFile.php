@@ -10,7 +10,6 @@ class NodeTriggerFile extends \models\wf\WfNode {
     public static $name = 'file';
     public static $label = 'File upload';
     public static $icon = 'bi-file-earmark-arrow-up';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
 

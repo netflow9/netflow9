@@ -17,7 +17,6 @@ class NodeTriggerVmware extends \models\wf\WfNode {
     public static $name = 'vmware';
     public static $label = 'VMware alarm';
     public static $icon = 'bi-boxes';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
     public static $scheduled = true;

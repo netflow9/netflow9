@@ -34,7 +34,6 @@ class NodeAppTable extends \models\wf\WfNode {
     public static $name = 'table';
     public static $label = 'Data Table';
     public static $icon = 'bi-table';
-    public static $color = 'var(--wf-color-app)';
     public static $inputs = 1;
     public static $outputs = 1;
     public static $outPorts = [ 'field' => 'onError', 'values' => [ 'output' => [ 'success', 'error' ] ] ];

@@ -8,7 +8,6 @@ class NodeTriggerSchedule extends \models\wf\WfNode {
     public static $name = 'schedule';
     public static $label = 'Schedule Trigger';
     public static $icon = 'bi-clock-fill';
-    public static $color = 'var(--wf-color-trigger)';
     public static $inputs = 0;
     public static $outputs = 1;
 

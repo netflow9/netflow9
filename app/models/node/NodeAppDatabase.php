@@ -24,7 +24,6 @@ abstract class NodeAppDatabase extends \models\wf\WfNode {
     //static data/structure
     public static $type = 'app';
     public static $icon = 'bi-database';
-    public static $color = 'var(--wf-color-app)';
     //the step picker: an advanced step, in its own group, Databases
     public static $audience = 'advanced';
     public static $category = 'database';
