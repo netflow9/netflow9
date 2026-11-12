@@ -4,10 +4,11 @@
 #one script for the compose setup, as the other scripts (a command first); docker compose itself works as well,
 #the files to use are in .env (COMPOSE_FILE), so `docker compose ps` etc. (from docker/) see the same setup
 #Run as a user of the docker group (or root):
-#   docker/docker.sh setup [--dev] [--tls] [--no-browser] [--no-mail]   .env written (random passwords, the folder owner's uid / gid), the submodules checked out;
+#   docker/docker.sh setup [--dev] [--no-browser] [--mail]           .env written (random passwords, the folder owner's uid / gid), the submodules checked out;
 #                                                                   an existing .env: its values kept, the passwords never changed
-#the web browser (playwright) and inbound mail (haraka) by default; --no-browser / --no-mail leave them out.
-#Setup asks (on a terminal) what an option did not say: development, TLS, the profiles, the ports, the mail domain,
+#the web browser (playwright) by default (--no-browser leaves it out); --mail: the host's Haraka (the operator's, README.md: compose.mail.yaml publishes
+#the database and the daemon on 127.0.0.1 for it). HTTPS and mail are the operator's: the site on 127.0.0.1:8080 for the host's reverse proxy (README.md).
+#Setup asks (on a terminal) what an option did not say: development, the browser, the host's Haraka, the ports,
 #the public address, the containers' user; the defaults are an existing .env's values. Without a terminal: the options, .env's values, the defaults
 #   docker/docker.sh build [service...]                           the images (all of the setup's, or the ones named)
 #   docker/docker.sh install [setup's options]                    setup (asks, as above), build, start
@@ -17,8 +18,7 @@
 #   docker/docker.sh check                                        the check suite in the app container
 #   docker/docker.sh uninstall                                    the containers removed, the data (DATA_DIR: database, config) kept
 #   docker/docker.sh purge                                        the containers and the data (DATA_DIR) removed: all data gone (asks first)
-#--dev: compose.dev.yaml (the working tree mounted, mailpit on 127.0.0.1:8025, the site on 127.0.0.1:8080); --tls: compose.tls.yaml (HTTPS, ssl/);
-#with --dev, Haraka is published on 127.0.0.1:2525 (a server's MTA keeps 25)
+#--dev: compose.dev.yaml (the working tree mounted, mailpit on 127.0.0.1:8025, the site on 127.0.0.1 only)
 
 set -euo pipefail
 
@@ -27,7 +27,7 @@ BASE=$(dirname "$SELF_DIR")
 ENV_FILE="$SELF_DIR/.env"
 
 usage() {
-    echo "usage: $0 {setup | install [--[no-]dev] [--[no-]tls] [--browser | --no-browser] [--mail | --no-mail] | build [service...] | install | start | stop | restart [service...] | status | logs [service...] | check | uninstall | purge}"
+    echo "usage: $0 {setup | install [--[no-]dev] [--browser | --no-browser] [--mail | --no-mail] | build [service...] | install | start | stop | restart [service...] | status | logs [service...] | check | uninstall | purge}"
     exit "${1:-1}"
 }
 
@@ -35,7 +35,6 @@ command="${1:-}"
 [ -n "$command" ] && shift || true
 # empty: not given, setup asks (or takes .env's value, or the default)
 DEV=
-TLS=
 BROWSER=
 MAIL=
 SERVICES=()
@@ -43,8 +42,6 @@ while [ "$#" -gt 0 ]; do
     case $1 in
         --dev) DEV=1 ;;
         --no-dev) DEV=0 ;;
-        --tls) TLS=1 ;;
-        --no-tls) TLS=0 ;;
         --browser) BROWSER=1 ;;
         --mail) MAIL=1 ;;
         --no-browser) BROWSER=0 ;;
@@ -148,8 +145,8 @@ in_list() {
 EXISTING=0
 
 # the folders of compose.yaml's mounts in $1: the app's (config, logs, var, tmp, assets) the containers' user's, the database's mongo's own
-#(its entrypoint changes their owner), Haraka's the image's user node's (1000); bounces: Haraka writes, the app reads and removes (both)
-DATA_DIRS=(config logs var tmp assets bounces mongo-data haraka-queue haraka-dkim)
+#(its entrypoint changes their owner); bounces: the host's Haraka writes, the app reads and removes (both)
+DATA_DIRS=(config logs var tmp assets bounces mongo-data)
 make_data() {
     local d uid gid
     uid=$(get_env NFN_UID)
@@ -159,10 +156,6 @@ make_data() {
     done
     if [ "$(id -u)" -eq 0 ]; then
         chown "$uid:$gid" "$1" "$1"/{config,logs,var,tmp,assets,bounces}
-        chown 1000:1000 "$1/haraka-queue" "$1/haraka-dkim"
-    elif [ "$(id -u)" -ne 1000 ]; then
-        #not root: Haraka's folders writable by its user anyway (the keys inside are its own, mode 600)
-        chmod 777 "$1/haraka-queue" "$1/haraka-dkim"
     fi
     chmod 700 "$1"
     chmod 777 "$1/bounces"
@@ -170,8 +163,8 @@ make_data() {
 }
 
 setup() {
-    local files profiles=() domain owner_uid owner_gid
-    local d_dev=0 d_tls=0 d_browser=1 d_mail=1
+    local files profiles=() owner_uid owner_gid
+    local d_dev=0 d_browser=1 d_mail=0
 
     if [ -d "$BASE/.git" ] && command -v git >/dev/null 2>&1; then
         git -C "$BASE" submodule update --init
@@ -184,21 +177,18 @@ setup() {
         files=$(get_env COMPOSE_FILE)
         echo ".env found: its values are the defaults (the passwords are kept)"
         in_list compose.dev.yaml "$files" && d_dev=1
-        in_list compose.tls.yaml "$files" && d_tls=1
         in_list browser "$(get_env COMPOSE_PROFILES)" || d_browser=0
-        in_list mail "$(get_env COMPOSE_PROFILES)" || d_mail=0
+        in_list compose.mail.yaml "$files" && d_mail=1
     fi
 
     pick_yn DEV "$d_dev" "Development (the working tree mounted, mailpit, local ports only)?"
-    pick_yn TLS "$d_tls" "HTTPS here (the certificate in ssl/)?"
     pick_yn BROWSER "$d_browser" "Web browser for the AI steps (playwright)?"
-    pick_yn MAIL "$d_mail" "Inbound mail (Haraka)?"
+    pick_yn MAIL "$d_mail" "Haraka on this host (yours, README.md: the database and the daemon published on 127.0.0.1 for it)?"
 
     files="compose.yaml"
     [ "$DEV" -eq 0 ] || files="$files:compose.dev.yaml"
-    [ "$TLS" -eq 0 ] || files="$files:compose.tls.yaml"
+    [ "$MAIL" -eq 0 ] || files="$files:compose.mail.yaml"
     [ "$BROWSER" -eq 0 ] || profiles+=(browser)
-    [ "$MAIL" -eq 0 ] || profiles+=(mail)
     profiles=$(IFS=,; echo "${profiles[*]:-}")
 
     if [ "$EXISTING" -eq 0 ]; then
@@ -237,46 +227,26 @@ setup() {
         [ "$(id -u)" -ne 0 ] || chown "$owner_uid:$owner_gid" "$BASE/public_html/assets"
     fi
 
-    #development: the server's nginx keeps 80 (a production value of 80 changed too)
-    if [ "$DEV" -eq 1 ] && [ "$(get_env HTTP_PORT)" = "80" ]; then
-        set_env HTTP_PORT 8080
-    fi
-    if [ "$DEV" -eq 1 ]; then
-        pick_env HTTP_PORT 8080 "The site's port (on 127.0.0.1)"
-    else
-        pick_env HTTP_PORT 80 "The site's port"
-    fi
+    #the site for the operator's reverse proxy (HTTPS there); development: 127.0.0.1 always (compose.dev.yaml)
+    [ "$DEV" -eq 1 ] || pick_env HTTP_BIND 127.0.0.1 "The site's address (127.0.0.1: the reverse proxy on this host)"
+    pick_env HTTP_PORT 8080 "The site's port (the reverse proxy forwards to it)"
     port_warn "$(get_env HTTP_PORT)" "the site"
-    if [ "$TLS" -eq 1 ]; then
-        pick_env HTTPS_PORT 443 "The HTTPS port"
-        port_warn "$(get_env HTTPS_PORT)" "HTTPS"
-        local ssl
-        ssl=$(get_env SSL_DIR)
-        ssl=${ssl:-../ssl}
-        [ -f "$ssl/ssl.crt" ] && [ -f "$ssl/ssl.key" ] || echo "  tls: put the certificate in $ssl/ssl.crt and $ssl/ssl.key"
-    fi
-    pick_env BASE_URL "" "The public address (e.g. https://flows.example.com; empty: asked by /setup)"
+    pick_env BASE_URL "" "The public address, the reverse proxy's (e.g. https://flows.example.com; empty: asked by /setup)"
 
     if in_list browser "$profiles"; then
         set_env NFN_BROWSER_URL "http://playwright:8931/mcp"
     else
         set_env NFN_BROWSER_URL ""
     fi
-    #a profile left out: its settings emptied too (HARAKA_HOST set without Haraka would offer the Email (inbound) step)
-    if in_list mail "$profiles"; then
-        set_env HARAKA_HOST haraka
-        #Haraka does not start without the domain: this host's name by default (its MX record points to this host)
-        domain=$(hostname -f 2>/dev/null || hostname)
-        pick_env MAIL_INBOUND_DOMAIN "$domain" "The inbound mail domain (its MX record points here)"
-        if [ "$DEV" -eq 1 ] && [ "$(get_env MAIL_PORT)" = "25" ]; then
-            set_env MAIL_PORT 2525
-        fi
-        if [ "$DEV" -eq 1 ]; then
-            pick_env MAIL_PORT 2525 "Haraka's port (on 127.0.0.1)"
-        else
-            pick_env MAIL_PORT 25 "Haraka's port (25 receives the internet's mail)"
-        fi
-        port_warn "$(get_env MAIL_PORT)" "mail"
+    #the host's Haraka: the ports it reaches (nfn.ini's uri and job_port), the app's SMTP server (development: mailpit); without it HARAKA_HOST empty
+    #(set, the Email (inbound) step would be offered)
+    if [ "$MAIL" -eq 1 ]; then
+        set_env HARAKA_HOST host.docker.internal
+        pick_env MONGO_HOST_PORT 27017 "The database's port for Haraka (on 127.0.0.1)"
+        port_warn "$(get_env MONGO_HOST_PORT)" "the database"
+        pick_env DAEMON_HOST_PORT 9000 "The daemon's port for Haraka (on 127.0.0.1)"
+        port_warn "$(get_env DAEMON_HOST_PORT)" "the daemon"
+        [ "$DEV" -eq 1 ] || [ -n "$(get_env SMTP_HOST)" ] || { set_env SMTP_HOST host.docker.internal; set_env SMTP_PORT 25; }
     else
         set_env HARAKA_HOST ""
     fi
@@ -290,7 +260,8 @@ setup() {
     echo "  project: $(get_env COMPOSE_PROJECT_NAME)"
     echo "  files: $files"
     echo "  profiles: ${profiles:-(none)}"
-    echo "  site: port $(get_env HTTP_PORT); containers' user $(get_env NFN_UID):$(get_env NFN_GID)"
+    echo "  site: $(get_env HTTP_BIND):$(get_env HTTP_PORT) (HTTPS: your reverse proxy in front, README.md); containers' user $(get_env NFN_UID):$(get_env NFN_GID)"
+    [ "$MAIL" -eq 0 ] || echo "  mail: your Haraka on this host (README.md, Inbound mail): database 127.0.0.1:$(get_env MONGO_HOST_PORT), daemon 127.0.0.1:$(get_env DAEMON_HOST_PORT), bounces $(get_env DATA_DIR)/bounces"
 }
 
 show_status() {

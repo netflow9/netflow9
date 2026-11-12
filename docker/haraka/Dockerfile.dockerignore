@@ -1,5 +1,0 @@
-# the haraka image's build context (the repository's folder): only what its Dockerfile copies
-*
-!scripts/haraka
-!docker/haraka
-**/node_modules

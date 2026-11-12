@@ -36,13 +36,13 @@ class InboundMail {
 	return self::$found;
     }
 
-    //where Haraka listens: HARAKA_HOST (app.env or the environment: Docker, its own container, e.g. haraka), else this machine
+    //where Haraka listens: HARAKA_HOST (app.env or the environment: Docker, the host's Haraka, host.docker.internal), else this machine
     public static function host() {
 	return (string)\V::env('HARAKA_HOST', '') ?: '127.0.0.1';
     }
 
     //the parts found() checks, for the settings pages
-    //in Docker (util\Services::docker) Haraka is another container: found when HARAKA_HOST is set (compose.yaml, with the mail profile), no files to check
+    //in Docker (util\Services::docker) Haraka is the host's: found when HARAKA_HOST is set (compose.mail.yaml), no files to check
     public static function status() {
 	if (Services::docker()) {
 	    $set = (string)\V::env('HARAKA_HOST', '') !== '';
@@ -58,7 +58,7 @@ class InboundMail {
 
     //Haraka's service for the Services page (hook app:services, sys\Boot): when found and its unit is this installation's (not another installation's on this server)
     public static function service() {
-	//in Docker no unit to own (the haraka container)
+	//in Docker no unit to own (the host's Haraka, the operator's)
 	if (!self::found() || (!Services::docker() && !Services::ownUnit('nfn-haraka.service')))
 	    return null;
 	return [

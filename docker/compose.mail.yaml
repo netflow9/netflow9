@@ -1,0 +1,16 @@
+# the host's Haraka (the operator's, with Rail22's plugin: README.md, Inbound mail): docker compose -f compose.yaml -f compose.mail.yaml up -d
+#   Haraka reaches the database (nfn_haraka) and the daemon (NEWJOB) on the host's 127.0.0.1, the app reaches Haraka (port 25: the Inbound mail tab's check,
+#   SMTP_HOST for the outgoing mail it DKIM-signs) as host.docker.internal; HARAKA_HOST=host.docker.internal in .env
+#   MONGO_HOST_PORT, DAEMON_HOST_PORT: the published ports (a host that runs its own MongoDB or a server's daemon keeps theirs: choose others)
+services:
+  mongo:
+    ports:
+      - "127.0.0.1:${MONGO_HOST_PORT:-27017}:27017"
+  app:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  daemon:
+    ports:
+      - "127.0.0.1:${DAEMON_HOST_PORT:-9000}:${DAEMON_PORT:-9000}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

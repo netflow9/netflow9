@@ -101,17 +101,97 @@ On any Linux host with Docker Engine and its Compose plugin (2.24 or later); the
 
 ```bash
 git clone --recurse-submodules https://github.com/toolmk/rail22-core.git && cd rail22
-docker/docker.sh install                          # asks (profiles, ports, ...), docker/.env, build, start; then open the site: /setup
+docker/docker.sh install                          # asks (browser, host's Haraka, ports, ...), docker/.env, build, start
 ```
 
-Or step by step: `docker/docker.sh setup [--[no-]dev] [--[no-]tls] [--[no-]browser] [--[no-]mail]` asks what the options do not say and writes `docker/.env` (an existing one gives the defaults and keeps its passwords; the compose files go in `COMPOSE_FILE`, so plain `docker compose` in `docker/` uses the same ones), then `build`, `start`; also `stop`, `restart`, `status`, `logs`, `check`, `uninstall` (data kept), `purge` (all data). By hand: `cd docker && cp env.example .env`, fill it in, make `DATA_DIR`'s folders, `docker compose build && docker compose up -d`.
+As n8n's: compose runs the app, its database and the browser; **HTTPS and mail are the operator's**. The site is published on `127.0.0.1:8080` for your reverse proxy, and inbound mail is your Haraka on the host (below). Then open the site (through the proxy): `/setup`.
 
-- Containers: `mongo` (8.3, sign-in required; its users from `scripts/mongo_users.js`), `app` (PHP-FPM, AlmaLinux 9 + Remi, the installer's packages), `daemon`, `web` (nginx, port 80); profiles `browser` (`playwright`: the AI steps' web browser, with its own firewall table) and `mail` (`haraka`, port 25; `127.0.0.1:2525` with `compose.dev.yaml`), in `COMPOSE_PROFILES`: both on by default
-- The data is in folders of `DATA_DIR` (setup: `docker-volumes` in the user's home, made with their owners): `config` (`app.env`, `plugins.json`, `mcp.json`; keep a copy of `app.env`: `APP_SECRET`), `logs`, `var`, `tmp`, `assets`, `bounces`, `mongo-data`, `haraka-queue`, `haraka-dkim`
+Or step by step: `docker/docker.sh setup [--[no-]dev] [--[no-]browser] [--[no-]mail]` asks what the options do not say and writes `docker/.env` (an existing one gives the defaults and keeps its passwords; the compose files go in `COMPOSE_FILE`, so plain `docker compose` in `docker/` uses the same ones), then `build`, `start`; also `stop`, `restart`, `status`, `logs`, `check`, `uninstall` (data kept), `purge` (all data). By hand: `cd docker && cp env.example .env`, fill it in, make `DATA_DIR`'s folders, `docker compose build && docker compose up -d`.
+
+- Containers: `mongo` (8.3, sign-in required; its users from `scripts/mongo_users.js`), `app` (PHP-FPM, AlmaLinux 9 + Remi, the installer's packages), `daemon`, `web` (nginx: the static files and PHP, plain HTTP on `HTTP_BIND:HTTP_PORT`, `127.0.0.1:8080`); profile `browser` (`playwright`: the AI steps' web browser, with its own firewall table), on by default
+- The data is in folders of `DATA_DIR` (setup: `docker-volumes` in the user's home, made with their owners): `config` (`app.env`, `plugins.json`, `mcp.json`; keep a copy of `app.env`: `APP_SECRET`), `logs`, `var`, `tmp`, `assets`, `bounces`, `mongo-data`
 - The Services page is read-only there: `docker compose restart daemon`; the console: `docker compose exec app app/v <command>`
 - Upgrade: `git pull && git submodule update --init && docker compose build && docker compose up -d` (the app adds the new indexes at its start)
-- HTTPS in the container: `-f compose.tls.yaml` (`ssl/ssl.crt`, `ssl/ssl.key`); development: `-f compose.dev.yaml` (the working tree mounted, mailpit, the site on `127.0.0.1:8080`)
+- Development: `-f compose.dev.yaml` (the working tree mounted, mailpit on `127.0.0.1:8025`, the site on `127.0.0.1` only)
 - Files: all in `docker/` (`compose*.yaml`, the images and their `Dockerfile.dockerignore`, `env.example`, `.env`, `docker.sh`); `docker compose` commands run there. More: the docs, Self-hosting > Docker Compose
+
+#### Reverse proxy (HTTPS)
+
+The `web` container trusts `X-Forwarded-For` and `X-Forwarded-Proto` from private addresses (Docker's networks: the host's proxy arrives from the bridge's gateway): the app sees the client's address and HTTPS (secure session cookies). Keep `HTTP_BIND=127.0.0.1` unless the port is reachable only by your proxy. Set `BASE_URL` (or the setup's public address) to the proxy's `https://` address.
+
+nginx on the host, the certificate from certbot (`certbot --nginx -d flows.example.com`, or `certbot certonly` and the paths below):
+
+```nginx
+server {
+    listen 80;
+    server_name flows.example.com;
+    return 301 https://$host$request_uri;
+}
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name flows.example.com;
+    ssl_certificate     /etc/letsencrypt/live/flows.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/flows.example.com/privkey.pem;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    # uploads (the app's limit), long steps (the app's FastCGI timeout)
+    client_max_body_size 100M;
+    proxy_read_timeout 600s;
+    proxy_send_timeout 600s;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+}
+```
+
+On RHEL with SELinux, nginx may connect to the port only after `setsebool -P httpd_can_network_connect 1`. Caddy instead (its own certificate): `flows.example.com { reverse_proxy 127.0.0.1:8080 }`, with `request_body { max_size 100MB }` for large uploads.
+
+#### Inbound mail (your Haraka on the host)
+
+The Email (inbound) trigger needs Haraka with Rail22's plugin (`scripts/haraka/`): it stores the mail in MongoDB (user `nfn_haraka`) and tells the daemon (`NEWJOB`). The same Haraka relays and DKIM-signs the app's outgoing mail. The DKIM keys, the DNS records and port 25 are yours, so Haraka runs on the host, not in compose.
+
+1. `docker/docker.sh setup --mail`: adds `compose.mail.yaml`, which publishes the database (`MONGO_HOST_PORT`, 27017) and the daemon (`DAEMON_HOST_PORT`, 9000) on the host's `127.0.0.1` for Haraka, and gives the app `host.docker.internal` (`HARAKA_HOST`; the setup's SMTP server, port 25). Start (or `docker compose up -d` again).
+2. Haraka (Node.js 20 or later), as root, from the repository's folder; `.env`'s values: `NFN_HARAKA_PW`, `MONGO_DB`, `MONGO_HOST_PORT`, `DAEMON_HOST_PORT`, `DATA_DIR`:
+
+   ```bash
+   R=$PWD H=/opt/rail22-haraka DOMAIN=mail.example.com
+   mkdir -p $H && cd $H && npm init -y >/dev/null
+   npm install --omit=dev https://github.com/haraka/Haraka/archive/refs/tags/v3.3.4.tar.gz mongodb@^3.5.5
+   cp -r $R/scripts/haraka/{plugins,config,dkim} .
+   for f in aliases connection.ini http.ini log.ini outbound.ini outbound.bounce_message outbound.bounce_message_html \
+            outbound.bounce_message_image smtp.ini tls.ini; do cp -n node_modules/haraka/config/$f config/; done
+   sed -i "s|@DOMAIN@|$DOMAIN|g; s|@MONGO_DB@|rail22-db|g" config/{nfn.ini,me}
+   sed -i '/^daemonize=/d; /^daemon_log_file=/d; /^daemon_pid_file=/d' config/smtp.ini   # in the foreground (systemd)
+   ```
+
+   Then in `config/nfn.ini`: `uri=mongodb://nfn_haraka:<NFN_HARAKA_PW>@127.0.0.1:<MONGO_HOST_PORT>/?authSource=<MONGO_DB>`, `job_host=127.0.0.1`, `job_port=<DAEMON_HOST_PORT>`, `bounce_dir=<DATA_DIR>/bounces`.
+3. Relaying: the app's mail comes from the containers' addresses, not `127.0.0.1`: add them to `config/relay_acl_allow` (`172.16.0.0/12`, or the subnets of `docker network inspect <COMPOSE_PROJECT_NAME>_backend` and `_browser`). With firewalld, the containers must reach the host's port 25 (Docker's `docker` zone accepts them by default).
+4. DKIM: `cd $H/config/dkim && ../../dkim/dkim_key_gen.sh $DOMAIN root`, then publish the TXT record it prints (also in `$DOMAIN/dns`); one key per sender domain. DNS: an MX record of `$DOMAIN` to this host, SPF for the app's sender domains.
+5. A unit, `/etc/systemd/system/rail22-haraka.service` (as root: port 25), then `systemctl daemon-reload && systemctl enable --now rail22-haraka`:
+
+   ```ini
+   [Unit]
+   Description=Rail22 inbound mail (Haraka)
+   After=network-online.target docker.service
+   Wants=network-online.target
+
+   [Service]
+   ExecStart=/usr/bin/node /opt/rail22-haraka/node_modules/haraka/bin/haraka -c /opt/rail22-haraka
+   Restart=on-failure
+   RestartSec=5
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+6. The app: `MAIL_INBOUND_DOMAIN='mail.example.com'` in `DATA_DIR/config/app.env`, then `docker compose restart app daemon`. The Inbound mail tab checks port 25 on `host.docker.internal`.
+
+After an update of the app, copy `scripts/haraka/plugins/nfn.js` to `/opt/rail22-haraka/plugins/` again and restart Haraka.
 
 ### By hand (other systems)
 

@@ -1,9 +1,11 @@
 # Rail22 with Docker Compose (next to install.sh, the servers' way). From docker/: settings in .env (docker.sh setup, or copy env.example); then
 #   docker compose build && docker compose up -d       and open the site (/setup, unless NFN_SETUP_JSON set it up)
-# Profiles (COMPOSE_PROFILES in .env; both on in env.example and docker.sh setup): browser (the AI steps' web browser), mail (Haraka, inbound mail on port 25).
+# The site on HTTP_BIND:HTTP_PORT (127.0.0.1:8080): HTTPS by the operator's reverse proxy in front (README.md: nginx, Caddy); no mail server here:
+# the operator's Haraka on the host (compose.mail.yaml publishes the database and the daemon for it; README.md: Inbound mail).
+# Profile (COMPOSE_PROFILES in .env; on in env.example and docker.sh setup): browser (the AI steps' web browser).
 # Upgrade: git pull && docker compose build && docker compose up -d (the app adds the new indexes at its start).
 # Development (the working tree mounted, mailpit, a database of its own): docker compose -f compose.yaml -f compose.dev.yaml up -d
-# HTTPS here (not behind a proxy): -f compose.tls.yaml
+# The host's Haraka (inbound mail, the app's outgoing mail DKIM-signed): -f compose.mail.yaml
 
 name: ${COMPOSE_PROJECT_NAME:-rail22}
 
@@ -25,7 +27,7 @@ x-app: &app
     DAEMON_LISTEN: 0.0.0.0
     DAEMON_HOST: daemon
     DAEMON_PORT: ${DAEMON_PORT:-9000}
-    # set with the mail profile (haraka): the Email (inbound) step and the Inbound mail tab
+    # the host's Haraka (compose.mail.yaml: host.docker.internal): the Email (inbound) step and the Inbound mail tab
     HARAKA_HOST: ${HARAKA_HOST:-}
     # the setup's defaults (/setup): the database of the mongo container, its app user
     NFN_SETUP_MONGO_URI: mongodb://nfn_app:${NFN_APP_PW:?NFN_APP_PW is not set (.env)}@mongo:27017/?authSource=${MONGO_DB:-rail22-db}
@@ -104,8 +106,9 @@ services:
     restart: unless-stopped
     environment:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
+    # the operator's reverse proxy forwards here (README.md); HTTP_BIND=0.0.0.0 only with a proxy elsewhere that alone reaches the port
     ports:
-      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80"
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80"
     volumes:
       - ${DATA_DIR:?DATA_DIR is not set (.env)}/assets:/srv/rail22/public_html/assets:ro
     networks: [ backend ]
@@ -126,36 +129,8 @@ services:
     shm_size: 1gb
     networks: [ browser ]
 
-  haraka:
-    profiles: [ mail ]
-    image: ${COMPOSE_PROJECT_NAME:-rail22}-haraka:local
-    build:
-      context: ..
-      dockerfile: docker/haraka/Dockerfile
-    restart: unless-stopped
-    environment:
-      MAIL_INBOUND_DOMAIN: ${MAIL_INBOUND_DOMAIN:-}
-      MONGO_DB: ${MONGO_DB:-rail22-db}
-      NFN_HARAKA_PW: ${NFN_HARAKA_PW}
-      DAEMON_HOST: daemon
-      DAEMON_PORT: ${DAEMON_PORT:-9000}
-    # port 25 as the image's user node
-    sysctls:
-      net.ipv4.ip_unprivileged_port_start: 25
-    # the published port from .env (MAIL_PORT, asked by setup): a host whose own MTA keeps 25 publishes another
-    ports:
-      - "${SMTP_BIND:-0.0.0.0}:${MAIL_PORT:-25}:25"
-    volumes:
-      - ${DATA_DIR:?DATA_DIR is not set (.env)}/haraka-queue:/srv/haraka/queue
-      - ${DATA_DIR:?DATA_DIR is not set (.env)}/haraka-dkim:/srv/haraka/config/dkim
-      - ${DATA_DIR:?DATA_DIR is not set (.env)}/bounces:/srv/haraka/bounces
-    networks: [ backend ]
-    depends_on:
-      mongo:
-        condition: service_healthy
-
 networks:
-  # the database, the app, the daemon, nginx, Haraka
+  # the database, the app, the daemon, nginx
   backend:
   # the app and the daemon reach the browser; the browser's own firewall refuses every private address (the containers too)
   browser:
