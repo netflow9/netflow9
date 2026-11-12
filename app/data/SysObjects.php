@@ -309,6 +309,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialNamecheap',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-12T10:00:00+02:00: a Shopify store's Admin API access (the Shopify steps and event trigger), core for every account
+	    'CredentialShopify' => [
+		'class' => 'models\credential\CredentialShopify',
+		'variant-of' => 'Credential',
+	    ],
 	    //a FortiGate firewall (the FortiGate steps), core for every account
 	    'CredentialFortiGate' => [
 		'class' => 'models\credential\CredentialFortiGate',
@@ -581,6 +586,35 @@ class SysObjects {
 	    ],
 	    'NodeAppNcApi' => [
 		'class' => 'models\node\NodeAppNcApi',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-12T10:00:00+02:00: Shopify (one step per area, NodeAppShopify their base; the event trigger: the store's webhooks), core for every account
+	    'NodeAppShopOrders' => [
+		'class' => 'models\node\NodeAppShopOrders',
+		'wfNode' => true,
+	    ],
+	    'NodeAppShopProducts' => [
+		'class' => 'models\node\NodeAppShopProducts',
+		'wfNode' => true,
+	    ],
+	    'NodeAppShopInventory' => [
+		'class' => 'models\node\NodeAppShopInventory',
+		'wfNode' => true,
+	    ],
+	    'NodeAppShopCustomers' => [
+		'class' => 'models\node\NodeAppShopCustomers',
+		'wfNode' => true,
+	    ],
+	    'NodeAppShopStore' => [
+		'class' => 'models\node\NodeAppShopStore',
+		'wfNode' => true,
+	    ],
+	    'NodeAppShopGraphql' => [
+		'class' => 'models\node\NodeAppShopGraphql',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerShopify' => [
+		'class' => 'models\node\NodeTriggerShopify',
 		'wfNode' => true,
 	    ],
 	    //FortiGate (one step per area, NodeAppFortiGate their base; the event trigger: an automation stitch's webhook), core for every account

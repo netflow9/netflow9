@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -8485,6 +8485,298 @@ class CheckCommand extends \sys\BaseController {
 		$apiBad?->getVariable('route'), $osent[0]['form']['SortBy'] ?? null ]);
 	} finally {
 	    $NC::$testUrl = null;
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-12T10:00:00+02:00: Shopify against a fake Admin API (commands/tests/ShopifyTestServer.php; util\Shopify::$testUrl: http, no address guard): values (the store's
+    //address, GIDs, connections simplified, the webhook signature), the credential (an access token; the client credentials grant, its token reused), a THROTTLED answer waited for,
+    //the steps' queries and mutations, the inventory changes by API version, the event trigger (subscriptions on publish / unpublish; a signed webhook starts a run, others do not)
+    private function suiteShopify() {
+	$S = \util\Shopify::class;
+	$T = \models\node\NodeTriggerShopify::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$sig = base64_encode(hash_hmac('sha256', '{"id":1}', 'sec', true));
+	$this->check('shopify: values: the store\'s address (a name, an admin address); GIDs (a number, a payload, another type refused); connections and money simplified; the signature; topics', [
+	    'my-shop.myshopify.com', 'my-shop.myshopify.com', 'my-shop.myshopify.com', true, 'gid://shopify/Order/12', 'gid://shopify/Order/450789469', 'Order: a Product\'s ID, not a Order\'s: `gid://shopify/Product/1`',
+	    'Order: empty', [ 'items' => [ [ 'a' => 1 ], [ 'a' => 2 ] ], 'total' => [ 'amount' => '9.50', 'currencyCode' => 'EUR' ] ], true, false, 'ORDERS_CREATE', 3 ], [
+	    $S::shopDomain('My-Shop'), $S::shopDomain('https://my-shop.myshopify.com/admin'), $S::shopDomain('https://admin.shopify.com/store/my-shop/orders'),
+	    str_contains($thrown(fn() => $S::shopDomain('shop.example.com')), 'not a <shop>.myshopify.com'), $S::gid('Order', '12'),
+	    $S::gid('Order', [ 'id' => 450789469, 'admin_graphql_api_id' => 'gid://shopify/Order/450789469' ]), $thrown(fn() => $S::gid('Order', 'gid://shopify/Product/1')), $thrown(fn() => $S::gid('Order', ' ')),
+	    $S::simplify([ 'items' => [ 'edges' => [ [ 'node' => [ 'a' => 1 ] ], [ 'node' => [ 'a' => 2 ] ] ], 'pageInfo' => [] ], 'total' => [ 'shopMoney' => [ 'amount' => '9.50', 'currencyCode' => 'EUR' ] ] ]),
+	    $S::verifyHmac('{"id":1}', $sig, 'sec'), $S::verifyHmac('{"id":2}', $sig, 'sec'), $S::topicEnum('orders/create'),
+	    $S::waitFor([ 'requestedQueryCost' => 250, 'throttleStatus' => [ 'currentlyAvailable' => 0, 'restoreRate' => 100 ] ]) ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-shop-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('shopify', 'ShopifyTestServer.php', $dir, [ 'SHOP_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$S::$testUrl = "http://127.0.0.1:{$port}";
+	$S::forgetTokens();
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$put = fn($name, $v) => file_put_contents("{$dir}/{$name}.json", json_encode($v));
+	$get = fn($name) => json_decode((string)@file_get_contents("{$dir}/{$name}.json"), true);
+	$creds = [];
+	$wfs = [];
+	$runs = [];
+	try {
+	    $make = function(array $over = []) use ($om, &$creds) {
+		$c = $om->create('CredentialShopify', $over + [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Shopify ' . uniqid(), 'shop' => 'check-store',
+		    'authMode' => 'token', 'accessToken' => 'shpat_check', 'clientSecret' => 'whsecret', 'apiVersion' => '2026-10' ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('shopify: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		return $om->findById('CredentialShopify', (string)$c->_id);
+	    };
+	    $cred = $make();
+	    $client = $make([ 'authMode' => 'client', 'accessToken' => '', 'clientId' => 'cid-check-123', 'clientSecret' => 'csecret' ]);
+	    $wrong = $make([ 'accessToken' => 'shpat_nope' ]);
+	    $old = $make([ 'apiVersion' => '2025-10' ]);
+	    if (!$cred || !$client || !$wrong || !$old)
+		return;
+	    $bad = $om->create('CredentialShopify', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'x', 'shop' => 'shop.example.com', 'authMode' => 'client', 'apiVersion' => '2026-05' ]);
+	    $bad->validates();
+	    $badKeys = array_keys((array)$bad->errors());
+	    sort($badKeys);
+	    $requests();
+	    $tested = $cred->test();
+	    $sent = $requests();
+	    $client->test();
+	    $client->test();
+	    $csent = $requests();
+	    $this->check('shopify: the form (the store, the version, a client\'s ID and secret); Test: the store, plan, scopes; the token in its header, the version in the path; the client credentials '
+		. 'grant once, its token reused; a wrong token said', [
+		[ 'apiVersion', 'clientId', 'clientSecret', 'shop' ], 'check-store.myshopify.com', 'connected to Check Store (check-store.myshopify.com, Basic), API 2026-10; scopes: read_orders, write_products',
+		[ 'shpat_check', '/admin/api/2026-10/graphql.json' ], [ '/admin/oauth/access_token', '/admin/api/2026-10/graphql.json', '/admin/api/2026-10/graphql.json' ], [ 'client_credentials', 'tok-1' ], true ], [
+		$badKeys, (string)$cred->shop, $tested, [ $sent[0]['token'] ?? null, $sent[0]['path'] ?? null ], array_column($csent, 'path'), [ $csent[0]['form']['grant_type'] ?? null, $csent[2]['token'] ?? null ],
+		str_contains($thrown(fn() => $wrong->test()), 'HTTP status 401: [API] Invalid API key or access token') ]);
+
+	    $id = (string)$cred->_id;
+	    $step = function($fq, $cfg, $vars = [], $credId = null) use ($n, $e, $id, $requests) {
+		$requests();
+		$exe = $this->runFlow("shop {$fq}", [ $n('m', 'trigger::manual'), $n('s', $fq, $cfg + [ 'credential' => $credId ?? $id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $logOf = fn($exe, $prefix) => str_replace($prefix, '', (string)self::logLine($exe, $prefix));
+
+	    //orders
+	    $money = fn($a) => [ 'shopMoney' => [ 'amount' => $a, 'currencyCode' => 'RON' ] ];
+	    $orders = [];
+	    for ($i = 1; $i <= 60; $i++)
+		$orders[] = [ 'id' => "gid://shopify/Order/{$i}", 'name' => '#' . (1000 + $i), 'email' => "c{$i}@example.com", 'displayFinancialStatus' => 'PENDING', 'displayFulfillmentStatus' => 'UNFULFILLED',
+		    'tags' => [ 'web' ], 'totalPrice' => $money('120.00'), 'lineItems' => [ 'nodes' => [ [ 'id' => "gid://shopify/LineItem/{$i}", 'sku' => 'MUG-1', 'quantity' => 2 ] ] ],
+		    'fulfillmentOrders' => [ 'nodes' => [ [ 'id' => "gid://shopify/FulfillmentOrder/{$i}1", 'status' => 'OPEN', 'assignedLocation' => [ 'location' => [ 'id' => 'gid://shopify/Location/1' ] ] ],
+			[ 'id' => "gid://shopify/FulfillmentOrder/{$i}2", 'status' => 'OPEN', 'assignedLocation' => [ 'location' => [ 'id' => 'gid://shopify/Location/2' ] ] ],
+			[ 'id' => "gid://shopify/FulfillmentOrder/{$i}3", 'status' => 'CLOSED', 'assignedLocation' => [ 'location' => [ 'id' => 'gid://shopify/Location/1' ] ] ] ] ] ];
+	    $put('orders', $orders);
+	    [ $l, $sent ] = $step('app::shopify-orders', [ 'operation' => 'list', 'search' => 'financial_status:pending', 'variable' => 'r' ]);
+	    $r = $l?->getVariable('r');
+	    [ $l2, ] = $step('app::shopify-orders', [ 'operation' => 'list', 'maxItems' => 5, 'variable' => 'r' ]);
+	    $this->check('shopify: Orders list: pages of 50 (first / after), the search and the sort; money as { amount, currencyCode }; truncated at At most', [ 60, false, [ 50, 10 ], [ null, '50' ],
+		'financial_status:pending', true, [ 'amount' => '120.00', 'currencyCode' => 'RON' ], [ 5, true ] ], [
+		$r['count'] ?? null, $r['truncated'] ?? null, array_map(fn($s) => $s['variables']['first'] ?? null, $sent), array_map(fn($s) => $s['variables']['after'] ?? null, $sent),
+		$sent[0]['variables']['query'] ?? null, str_contains((string)($sent[0]['query'] ?? ''), 'sortKey: CREATED_AT, reverse: true'), $r['items'][0]['totalPrice'] ?? null,
+		[ $l2?->getVariable('r')['count'] ?? null, $l2?->getVariable('r')['truncated'] ?? null ] ]);
+	    $put('throttle', 1);
+	    $t0 = microtime(true);
+	    [ $th, $sent ] = $step('app::shopify-orders', [ 'operation' => 'get', 'order' => '#1007', 'variable' => 'o' ]);
+	    $this->check('shopify: a THROTTLED answer: waited for (the cost to restore), sent again; an order by its name', [ 3, '#1007', [ 'MUG-1' ], true ], [
+		count($sent), $th?->getVariable('o')['name'] ?? null, array_column($th?->getVariable('o')['lineItems'] ?? [], 'sku'), microtime(true) - $t0 >= 1 ]);
+	    [ $g, ] = $step('app::shopify-orders', [ 'operation' => 'get', 'order' => '{{ hook }}', 'variable' => 'o' ], [ 'hook' => [ 'id' => 3, 'admin_graphql_api_id' => 'gid://shopify/Order/3' ] ]);
+	    [ $ghost, ] = $step('app::shopify-orders', [ 'operation' => 'get', 'order' => '#9999', 'variable' => 'o' ]);
+	    [ $wrongType, ] = $step('app::shopify-orders', [ 'operation' => 'get', 'order' => 'gid://shopify/Customer/3', 'variable' => 'o' ]);
+	    $this->check('shopify: Orders get: of a webhook\'s payload; a name no order has, another type\'s ID: the error output, said', [ '#1003', 'error', 'Order: no order #9999', 'error' ], [
+		$g?->getVariable('o')['name'] ?? null, $ghost?->getVariable('route'), $logOf($ghost, 'Shopify Orders get: '), $wrongType?->getVariable('route') ]);
+	    [ $u, $sent ] = $step('app::shopify-orders', [ 'operation' => 'update', 'order' => '5', 'note' => 'Gift', 'tags' => 'vip, web', 'fields' => '{"customAttributes": [{"key": "gift", "value": "yes"}]}', 'variable' => 'o' ]);
+	    [ $nothing, ] = $step('app::shopify-orders', [ 'operation' => 'update', 'order' => '5', 'variable' => 'o' ]);
+	    $step('app::shopify-orders', [ 'operation' => 'addTags', 'order' => '5', 'tags' => 'packed', 'variable' => 'o' ]);
+	    [ $paid, ] = $step('app::shopify-orders', [ 'operation' => 'markPaid', 'order' => '5', 'variable' => 'o' ]);
+	    $o5 = $get('orders')[4] ?? [];
+	    $this->check('shopify: Orders update: the input (id, note, tags, Other fields merged); nothing to change: an error; tags added; marked paid', [
+		[ 'id' => 'gid://shopify/Order/5', 'note' => 'Gift', 'tags' => [ 'vip', 'web' ], 'customAttributes' => [ [ 'key' => 'gift', 'value' => 'yes' ] ] ], 'error', [ 'vip', 'web', 'packed' ], 'PAID', 'PAID' ], [
+		$sent[0]['variables']['input'] ?? null, $nothing?->getVariable('route'), $o5['tags'] ?? null, $o5['displayFinancialStatus'] ?? null, $paid?->getVariable('o')['displayFinancialStatus'] ?? null ]);
+	    [ $f, $sent ] = $step('app::shopify-orders', [ 'operation' => 'fulfill', 'order' => '6', 'company' => 'DHL Express', 'trackingNumber' => 'JD0123', 'notify' => false, 'variable' => 'f' ]);
+	    [ $f2, ] = $step('app::shopify-orders', [ 'operation' => 'fulfill', 'order' => '6', 'variable' => 'f' ]);
+	    $creates = array_values(array_filter($sent, fn($s) => str_contains((string)$s['query'], 'fulfillmentCreate')));
+	    $this->check('shopify: Orders fulfill: the open fulfillment orders, one fulfillment per location, the tracking, notify off; again: nothing left (the error output)', [
+		2, [ [ [ 'fulfillmentOrderId' => 'gid://shopify/FulfillmentOrder/61' ] ], [ [ 'fulfillmentOrderId' => 'gid://shopify/FulfillmentOrder/62' ] ] ], [ 'company' => 'DHL Express', 'number' => 'JD0123' ], false,
+		'error', '#1006: nothing left to fulfill' ], [
+		count($creates), array_map(fn($s) => $s['variables']['f']['lineItemsByFulfillmentOrder'], $creates), $creates[0]['variables']['f']['trackingInfo'] ?? null,
+		$creates[0]['variables']['f']['notifyCustomer'] ?? null, $f2?->getVariable('route'), $logOf($f2, 'Shopify Orders fulfill: ') ]);
+	    [ $c, $sent ] = $step('app::shopify-orders', [ 'operation' => 'cancel', 'order' => '7', 'reason' => 'CUSTOMER', 'restock' => false, 'staffNote' => 'asked by phone', 'variable' => 'c' ]);
+	    [ $c2, ] = $step('app::shopify-orders', [ 'operation' => 'cancel', 'order' => '777', 'variable' => 'c' ]);
+	    $this->check('shopify: Orders cancel: reason, refund, restock, notify, the staff note; the job; Shopify\'s orderCancelUserErrors said', [
+		[ 'id' => 'gid://shopify/Order/7', 'reason' => 'CUSTOMER', 'refund' => true, 'restock' => false, 'notify' => true, 'note' => 'asked by phone' ], 'gid://shopify/Job/77', 'orderId: Order not found (NOT_FOUND)' ], [
+		$sent[0]['variables'] ?? null, $c?->getVariable('c')['job']['id'] ?? null, $logOf($c2, 'Shopify Orders cancel: ') ]);
+
+	    //products, inventory
+	    $level = fn($loc, $name, $q) => [ 'location' => [ 'id' => "gid://shopify/Location/{$loc}", 'name' => $name, 'isActive' => true ], 'quantities' => [ [ 'name' => 'available', 'quantity' => $q ],
+		[ 'name' => 'on_hand', 'quantity' => $q + 1 ] ] ];
+	    $put('variants', [ [ 'id' => 'gid://shopify/ProductVariant/11', 'sku' => 'MUG-1', 'title' => 'Blue', 'displayName' => 'Mug - Blue', 'price' => '25.00', 'compareAtPrice' => null,
+		'product' => [ 'id' => 'gid://shopify/Product/1', 'title' => 'Mug' ], 'inventoryItem' => [ 'id' => 'gid://shopify/InventoryItem/21', 'tracked' => true,
+		'inventoryLevels' => [ 'nodes' => [ $level(1, 'Warehouse', 10), $level(2, 'Shop Floor', 3) ] ] ] ] ]);
+	    $put('locations', [ [ 'id' => 'gid://shopify/Location/1', 'name' => 'Warehouse', 'isActive' => true ], [ 'id' => 'gid://shopify/Location/2', 'name' => 'Shop Floor', 'isActive' => true ],
+		[ 'id' => 'gid://shopify/Location/3', 'name' => 'Old', 'isActive' => false ] ]);
+	    $put('products', [ [ 'id' => 'gid://shopify/Product/1', 'title' => 'Mug', 'handle' => 'mug', 'status' => 'ACTIVE', 'tags' => [] ] ]);
+	    [ $pc, $sent ] = $step('app::shopify-products', [ 'operation' => 'create', 'title' => 'Tea Pot', 'status' => 'ACTIVE', 'tags' => 'kitchen', 'price' => '49,90', 'sku' => 'POT-1', 'variable' => 'p' ]);
+	    [ $noTitle, ] = $step('app::shopify-products', [ 'operation' => 'create', 'vendor' => 'Acme', 'variable' => 'p' ]);
+	    [ $badPrice, ] = $step('app::shopify-products', [ 'operation' => 'create', 'title' => 'X', 'price' => 'cheap', 'variable' => 'p' ]);
+	    $this->check('shopify: Products create: productCreate, then the first variant\'s price (a decimal comma) and SKU; no title, a price that is not one: the error output', [
+		[ 'title' => 'Tea Pot', 'status' => 'ACTIVE', 'tags' => [ 'kitchen' ] ], [ [ 'id' => 'gid://shopify/ProductVariant/20', 'price' => '49.90', 'inventoryItem' => [ 'sku' => 'POT-1' ] ] ], 'POT-1', 'error',
+		'Title: required to create a product', 'error' ], [
+		$sent[0]['variables']['product'] ?? null, $sent[1]['variables']['variants'] ?? null, $pc?->getVariable('p')['variants'][0]['sku'] ?? null, $noTitle?->getVariable('route'),
+		$logOf($noTitle, 'Shopify Products create: '), $badPrice?->getVariable('route') ]);
+	    [ $ph, ] = $step('app::shopify-products', [ 'operation' => 'get', 'product' => 'mug', 'variable' => 'p' ]);
+	    [ $sp, $sent ] = $step('app::shopify-products', [ 'operation' => 'setPrice', 'find' => 'sku', 'variant' => 'MUG-1', 'price' => '22.50', 'compareAtPrice' => '25.00', 'variable' => 'p' ]);
+	    [ $del, ] = $step('app::shopify-products', [ 'operation' => 'delete', 'product' => '1', 'variable' => 'p' ]);
+	    $this->check('shopify: Products get by handle; set a variant\'s price by its SKU (its product\'s ID); delete', [ 'gid://shopify/Product/1', [ 'gid://shopify/Product/1', '22.50', '25.00' ], true ], [
+		$ph?->getVariable('p')['id'] ?? null, [ $sent[1]['variables']['productId'] ?? null, $sent[1]['variables']['variants'][0]['price'] ?? null, $sent[1]['variables']['variants'][0]['compareAtPrice'] ?? null ],
+		$del?->getVariable('p')['deleted'] ?? null ]);
+	    [ $lv, ] = $step('app::shopify-inventory', [ 'operation' => 'levels', 'variant' => 'MUG-1', 'variable' => 'i' ]);
+	    [ $adj, $sent ] = $step('app::shopify-inventory', [ 'operation' => 'adjust', 'variant' => 'MUG-1', 'location' => 'shop floor', 'delta' => '-2', 'reason' => 'damaged', 'variable' => 'i' ]);
+	    $adjSent = end($sent);
+	    [ $set, $sent ] = $step('app::shopify-inventory', [ 'operation' => 'set', 'variant' => 'MUG-1', 'location' => 'Warehouse', 'quantity' => '40', 'variable' => 'i' ], [], (string)$old->_id);
+	    $setSent = end($sent);
+	    [ $noLoc, ] = $step('app::shopify-inventory', [ 'operation' => 'set', 'variant' => 'MUG-1', 'quantity' => '1', 'variable' => 'i' ]);
+	    [ $noSku, ] = $step('app::shopify-inventory', [ 'operation' => 'levels', 'variant' => 'NOPE', 'variable' => 'i' ]);
+	    $this->check('shopify: Inventory levels by SKU (each location, the total); adjust at a location by name (2026-10: changeFromQuantity, @idempotent); set (2025-10: ignoreCompareQuantity); '
+		. 'no location with two: said; an unknown SKU: the error output', [
+		13, [ 'Warehouse', 10, 11 ], [ 'before' => 3, 'after' => 1, 'delta' => -2 ], [ -2, 3, 'damaged', true ], [ 'before' => 10, 'after' => 40, 'delta' => 30 ], [ true, false, 40 ],
+		'Location: required (the store has 2 active locations)', 'error' ], [
+		$lv?->getVariable('i')['available'] ?? null, [ $lv?->getVariable('i')['levels'][0]['location'] ?? null, $lv?->getVariable('i')['levels'][0]['available'] ?? null, $lv?->getVariable('i')['levels'][0]['on_hand'] ?? null ],
+		array_intersect_key((array)$adj?->getVariable('i'), [ 'before' => 1, 'after' => 1, 'delta' => 1 ]),
+		[ $adjSent['variables']['input']['changes'][0]['delta'] ?? null, $adjSent['variables']['input']['changes'][0]['changeFromQuantity'] ?? null, $adjSent['variables']['input']['reason'] ?? null,
+		    str_contains((string)$adjSent['query'], '@idempotent(key: $key)') && strlen((string)($adjSent['variables']['key'] ?? '')) === 32 ],
+		array_intersect_key((array)$set?->getVariable('i'), [ 'before' => 1, 'after' => 1, 'delta' => 1 ]),
+		[ $setSent['variables']['input']['ignoreCompareQuantity'] ?? null, str_contains((string)$setSent['query'], '@idempotent'), $setSent['variables']['input']['quantities'][0]['quantity'] ?? null ],
+		$logOf($noLoc, 'Shopify Inventory set: '), $noSku?->getVariable('route') ]);
+
+	    //customers
+	    $put('customers', [ [ 'id' => 'gid://shopify/Customer/1', 'email' => 'ana@example.com', 'displayName' => 'Ana Pop', 'numberOfOrders' => '4', 'tags' => [] ] ]);
+	    [ $cg, ] = $step('app::shopify-customers', [ 'operation' => 'get', 'customer' => 'ANA@example.com', 'variable' => 'c' ]);
+	    [ $cn, ] = $step('app::shopify-customers', [ 'operation' => 'get', 'customer' => 'nobody@example.com', 'variable' => 'c' ]);
+	    [ $cc, $sent ] = $step('app::shopify-customers', [ 'operation' => 'create', 'email' => 'dan@example.com', 'firstName' => 'Dan', 'marketing' => true, 'tags' => 'b2b', 'variable' => 'c' ]);
+	    [ $dup, ] = $step('app::shopify-customers', [ 'operation' => 'create', 'email' => 'ana@example.com', 'variable' => 'c' ]);
+	    [ $none, ] = $step('app::shopify-customers', [ 'operation' => 'create', 'firstName' => 'X', 'variable' => 'c' ]);
+	    $this->check('shopify: Customers get by email (any case); none: null, not an error; create with marketing consent; Shopify\'s userErrors said; no email or phone: an error', [
+		'Ana Pop', [ null, null ], [ 'marketingState' => 'SUBSCRIBED', 'marketingOptInLevel' => 'SINGLE_OPT_IN' ], [ 'b2b' ], 'gid://shopify/Customer/2', 'email: Email has already been taken', 'error' ], [
+		$cg?->getVariable('c')['displayName'] ?? null, [ $cn?->getVariable('c'), $cn?->getVariable('route') ], $sent[0]['variables']['input']['emailMarketingConsent'] ?? null,
+		$sent[0]['variables']['input']['tags'] ?? null, $cc?->getVariable('c')['id'] ?? null, $logOf($dup, 'Shopify Customers create: '), $none?->getVariable('route') ]);
+
+	    //GraphQL, Store
+	    [ $gq, $sent ] = $step('app::shopify-graphql', [ 'operation' => 'query', 'query' => 'query($id: ID!) { order(id: $id) { name totalPrice: totalPriceSet { shopMoney { amount } } } }',
+		'variables' => '{"id": "{{ oid }}"}', 'variable' => 'x' ], [ 'oid' => 'gid://shopify/Order/2' ]);
+	    [ $gbad, ] = $step('app::shopify-graphql', [ 'operation' => 'query', 'query' => '{ nothing { id } }', 'variable' => 'x' ]);
+	    $this->check('shopify: GraphQL: the query as written, variables with {{ }}, the data simplified; an unknown field: Shopify\'s error', [
+		[ 'id' => 'gid://shopify/Order/2' ], '#1002', [ 'amount' => '120.00', 'currencyCode' => 'RON' ], 'Field \'nothing\' doesn\'t exist on type \'QueryRoot\' (undefinedField)' ], [
+		$sent[0]['variables'] ?? null, $gq?->getVariable('x')['order']['name'] ?? null, $gq?->getVariable('x')['order']['totalPrice'] ?? null, $logOf($gbad, 'Shopify GraphQL query: ') ]);
+	    [ $sub, $sent ] = $step('app::shopify-store', [ 'operation' => 'subscribe', 'topic' => 'products/update', 'address' => 'https://hooks.example.com/x', 'variable' => 'w' ]);
+	    [ $wl, ] = $step('app::shopify-store', [ 'operation' => 'webhooks', 'variable' => 'w' ]);
+	    [ $notHttps, ] = $step('app::shopify-store', [ 'operation' => 'subscribe', 'topic' => 'products/update', 'address' => 'http://hooks.example.com/x', 'variable' => 'w' ]);
+	    $this->check('shopify: Store subscribe: the topic\'s enum, the address, JSON; the list with each address; not https: an error', [ [ 'PRODUCTS_UPDATE', 'https://hooks.example.com/x', 'JSON' ],
+		[ 'https://hooks.example.com/x' ], 'error' ], [
+		[ $sent[0]['variables']['topic'] ?? null, $sent[0]['variables']['sub']['callbackUrl'] ?? null, $sent[0]['variables']['sub']['format'] ?? null ],
+		array_column($wl?->getVariable('w')['items'] ?? [], 'callbackUrl'), $notHttps?->getVariable('route') ]);
+	    $A = \util\AgentTools::class;
+	    $ops = $A::operations('shopify');
+	    $this->check('shopify: as an AI step\'s tools: shopify_<step>_<operation>, reads and writes', [ false, true, false, true, true ], [
+		$ops['shopify_orders_list']['writes'] ?? null, $ops['shopify_orders_cancel']['writes'] ?? null, $ops['shopify_inventory_levels']['writes'] ?? null, $ops['shopify_graphql_query']['writes'] ?? null,
+		isset($ops['shopify_store_subscribe']) ]);
+
+	    //the event trigger: subscriptions on publish / unpublish, a signed webhook
+	    $put('webhooks', []);
+	    $init = $T::initConfig();
+	    $node = $n('t', 'trigger::shopify', $init + [ 'credential' => $id, 'connect' => true, 'topics' => [ 'orders/create', 'orders/paid' ], 'variable' => 'ev' ]);
+	    $wf = $this->workflow('shopify event', [ $node, $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ev.data.name }}' ]), $e('e1', 't', 's') ]);
+	    $noSecret = $this->errorsOf('shopify event bad', [ $n('t', 'trigger::shopify', $T::initConfig() + [ 'topics' => [] ]) ]);
+	    $msg = $T::onPublish($wf, $node);
+	    $hooks1 = $get('webhooks');
+	    $T::onPublish($wf, $node);
+	    $hooks2 = $get('webhooks');
+	    $node2 = $node;
+	    $node2['config']['topics'] = [ 'orders/paid' ];
+	    $T::onPublish($wf, $node2);
+	    $hooks3 = $get('webhooks');
+	    $this->check('shopify: event: a credential or a signing key, a topic, required; published: each topic subscribed to the address; again: kept; a topic no longer chosen: deleted', [
+		true, 'Shopify sends 2 topics to this workflow (2 subscribed now)', [ [ 'ORDERS_CREATE', $init['url'] ], [ 'ORDERS_PAID', $init['url'] ] ], 2, [ 'ORDERS_PAID' ] ], [
+		count($noSecret) >= 1 && str_contains(json_encode($noSecret), 'a credential (its client secret checks the webhooks) or the signing key'), $msg,
+		array_map(fn($w) => [ $w['topic'], $w['endpoint']['callbackUrl'] ], $hooks1), count($hooks2), array_column($hooks3, 'topic') ]);
+	    $msg = $T::onUnpublish($wf, $node2);
+	    $this->check('shopify: event: unpublished: its subscriptions deleted', [ 'Shopify no longer sends its webhooks here (1 subscription deleted)', [] ], [ $msg, $get('webhooks') ]);
+
+	    $this->check('shopify: event: the workflow is valid', true, $wf->validates());
+	    $wf->nodes = array_replace($wf->nodes, [ 't' => array_replace_recursive($wf->nodes['t'], [ 'config' => [ 'connect' => false ] ]) ]);
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $version = $om->create('WfVersion', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'number' => 1, 'name' => (string)$wf->name, 'nodes' => $wf->nodes ]);
+	    $version->save();
+	    $wf->version = $version->_id;
+	    $wf->status = \models\Workflow::PUBLISHED;
+	    $wf->save();
+	    $host = (string)parse_url($init['url'], PHP_URL_HOST);
+	    $post = function($secret, $topic = 'orders/create', $shop = 'check-store.myshopify.com') use ($init, $host) {
+		$body = json_encode([ 'id' => 820982911946154508, 'admin_graphql_api_id' => 'gid://shopify/Order/820982911946154508', 'name' => '#9001', 'line_items' => [ [ 'sku' => 'MUG-1', 'quantity' => 1 ] ] ]);
+		$ch = curl_init($init['url']);
+		curl_setopt_array($ch, [ CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+		    CURLOPT_HTTPHEADER => [ 'Content-Type: application/json', 'X-Shopify-Hmac-Sha256: ' . base64_encode(hash_hmac('sha256', $body, $secret, true)), "X-Shopify-Topic: {$topic}",
+			"X-Shopify-Shop-Domain: {$shop}", 'X-Shopify-Webhook-Id: wh-1', 'X-Shopify-Event-Id: ev-1', 'X-Shopify-API-Version: 2026-10', 'X-Shopify-Triggered-At: 2026-11-12T10:00:00Z' ],
+		    CURLOPT_RESOLVE => [ "{$host}:443:127.0.0.1" ], CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0 ]);
+		$answer = json_decode((string)curl_exec($ch), true);
+		$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+		curl_close($ch);
+		return [ $status, $answer ];
+	    };
+	    [ $status ] = $post('wrong');
+	    if ($status === 0) {
+		echo "  skipped: the event trigger's address (this installation's web server cannot be reached from here)\n";
+	    } else {
+		[ $other ] = $post('whsecret', 'orders/create', 'evil.myshopify.com');
+		[ , $ignored ] = $post('whsecret', 'products/update');
+		[ $ok, $answer ] = $post('whsecret');
+		$runs = iterator_to_array($om->find('WfExecution', [ 'wf' => $wf->_id, 'trigger' => 'shopify' ]), false);
+		$ev = $runs[0]?->getVariable('ev') ?? [];
+		$this->check('shopify: event: a wrong signature refused, another store refused, a topic not chosen ignored; a signed webhook starts one run: topic, shop, data, ids', [
+		    401, 403, 'ignored', 200, 1, [ 'orders/create', 'check-store.myshopify.com', '#9001', 'MUG-1', 'ev-1', '2026-10' ], true ], [
+		    $status, $other, $ignored['state'] ?? null, $ok, count($runs), [ $ev['topic'] ?? null, $ev['shop'] ?? null, $ev['data']['name'] ?? null, $ev['data']['line_items'][0]['sku'] ?? null,
+		    $ev['event_id'] ?? null, $ev['api_version'] ?? null ], isset($ev['received_at']) ]);
+	    }
+	} finally {
+	    $S::$testUrl = null;
+	    $S::forgetTokens();
+	    foreach($runs as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		foreach($om->find('WfVersion', [ 'wf' => $wf->_id ]) as $v)
+		    $v->delete();
 	    foreach($creds as $c)
 		$c->delete();
 	    proc_terminate($proc);

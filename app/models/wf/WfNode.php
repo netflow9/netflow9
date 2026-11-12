@@ -43,6 +43,8 @@ class WfNode extends \sys\NestedModel {
 	'monitoring' => 'Monitoring',
 	'virtualization' => 'Virtualization',
 	'domains' => 'Domains & DNS',
+	//CLD: 2026-11-12T10:00:00+02:00: the Shopify steps
+	'commerce' => 'E-commerce',
 	'ai' => 'AI',
 	//the steps of a country or region (the Regional<code> plugins, e.g. RegionalRO)
 	'regional' => 'Regional',

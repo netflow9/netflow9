@@ -127,6 +127,9 @@ class Boot {
 	//the FortiGate event trigger's endpoint: `/fortigate/<32 hex token>` -> FortigateController::receive (an automation stitch's webhook; no session)
 	\V::app()->session->noSessionFor('/fortigate/');
 	\V::app()->router->add_rule('fortigate/<id:[a-f0-9]{32}>', 'fortigate/receive', true);
+	//CLD: 2026-11-12T10:00:00+02:00: the Shopify event trigger's endpoint: `/shopify/<32 hex token>` -> ShopifyController::receive (the store's webhooks; no session)
+	\V::app()->session->noSessionFor('/shopify/');
+	\V::app()->router->add_rule('shopify/<id:[a-f0-9]{32}>', 'shopify/receive', true);
 	\V::app()->router->add_rule('form/<id:[a-f0-9]{32}>', 'form/open', true);
 	\V::app()->router->add_rule('task/<id:[a-f0-9]{24}>', 'task/open', true);
 	//the chat page of a Chat trigger: `/agent/<32 hex token>`; its embeddable page: `/chat/<32 hex token>`, its token is the credential: no session
