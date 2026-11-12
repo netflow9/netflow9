@@ -310,6 +310,11 @@ class SysObjects {
 		'variant-of' => 'Credential',
 	    ],
 	    //CLD: 2026-11-12T10:00:00+02:00: a Shopify store's Admin API access (the Shopify steps and event trigger), core for every account
+	    //CLD: 2026-11-12T12:00:00+02:00: a Nextcloud user's access (the Nextcloud steps and file trigger), core for every account
+	    'CredentialNextcloud' => [
+		'class' => 'models\credential\CredentialNextcloud',
+		'variant-of' => 'Credential',
+	    ],
 	    'CredentialShopify' => [
 		'class' => 'models\credential\CredentialShopify',
 		'variant-of' => 'Credential',
@@ -615,6 +620,31 @@ class SysObjects {
 	    ],
 	    'NodeTriggerShopify' => [
 		'class' => 'models\node\NodeTriggerShopify',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-12T12:00:00+02:00: Nextcloud (one step per area, NodeAppNextcloud their base; the file trigger: a folder read on a schedule), core for every account
+	    'NodeAppNxFiles' => [
+		'class' => 'models\node\NodeAppNxFiles',
+		'wfNode' => true,
+	    ],
+	    'NodeAppNxShares' => [
+		'class' => 'models\node\NodeAppNxShares',
+		'wfNode' => true,
+	    ],
+	    'NodeAppNxUsers' => [
+		'class' => 'models\node\NodeAppNxUsers',
+		'wfNode' => true,
+	    ],
+	    'NodeAppNxTalk' => [
+		'class' => 'models\node\NodeAppNxTalk',
+		'wfNode' => true,
+	    ],
+	    'NodeAppNxApi' => [
+		'class' => 'models\node\NodeAppNxApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerNextcloud' => [
+		'class' => 'models\node\NodeTriggerNextcloud',
 		'wfNode' => true,
 	    ],
 	    //FortiGate (one step per area, NodeAppFortiGate their base; the event trigger: an automation stitch's webhook), core for every account

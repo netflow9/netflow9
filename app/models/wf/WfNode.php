@@ -37,6 +37,8 @@ class WfNode extends \sys\NestedModel {
 	'web' => 'Web & files',
 	'google' => 'Google',
 	'microsoft' => 'Microsoft',
+	//CLD: 2026-11-12T12:00:00+02:00: the Nextcloud steps
+	'nextcloud' => 'Nextcloud',
 	'database' => 'Databases',
 	'security' => 'Security',
 	'backup' => 'Backup',

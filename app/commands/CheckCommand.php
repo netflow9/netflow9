@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -8784,6 +8784,222 @@ class CheckCommand extends \sys\BaseController {
 	    foreach(glob("{$dir}/*") as $f)
 		@unlink($f);
 	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-12T12:00:00+02:00: Nextcloud against a fake server (commands/tests/NextcloudTestServer.php: WebDAV on a real folder, OCS; util\Nextcloud::$testing: http, no address
+    //guard): paths, the credential (Test, a wrong app password), the Files operations (subfolders, patterns, search, download into Files, upload conflicts, folders with parents,
+    //move / copy, delete), shares, users and groups, Talk, the OCS API step, the file trigger (the first check notes, then new / changed files start runs)
+    private function suiteNextcloud() {
+	$N = \util\Nextcloud::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$this->check('nextcloud: paths: slashes and dots cleaned, a list item\'s path, `..` refused; share permissions, dates', [ '/Docs/a b.pdf', '/', '/Scans/x.pdf',
+	    'Path: not a path in the files: `/a/../etc`', [ 1, 3, 15, 4 ], '2026-12-31', true ], [
+	    $N::path('Docs//./a b.pdf/'), $N::path(''), $N::path([ 'path' => '/Scans/x.pdf' ]), $thrown(fn() => $N::path('/a/../etc')),
+	    [ \models\node\NodeAppNxShares::permissions('read', true), \models\node\NodeAppNxShares::permissions('edit', false), \models\node\NodeAppNxShares::permissions('edit', true),
+		\models\node\NodeAppNxShares::permissions('drop', true) ], \models\node\NodeAppNxShares::date('2026-12-31'), \models\node\NodeAppNxFiles::matches('Invoice-7.PDF', '*.txt, invoice-*') ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-nx-' . uniqid();
+	@mkdir("{$dir}/files/ncuser/Scans/sub", 0700, true);
+	file_put_contents("{$dir}/files/ncuser/Scans/a b.pdf", '%PDF-1.4 test');
+	file_put_contents("{$dir}/files/ncuser/Scans/notes.txt", 'notes');
+	file_put_contents("{$dir}/files/ncuser/Scans/sub/deep.txt", 'deep');
+	file_put_contents("{$dir}/groups.json", json_encode([ 'staff', 'admins' ]));
+	file_put_contents("{$dir}/rooms.json", json_encode([ [ 'token' => 'abc123', 'name' => 'ops', 'displayName' => 'Ops Team', 'type' => 2 ] ]));
+	$server = $this->startServer('nextcloud', 'NextcloudTestServer.php', $dir, [ 'NX_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$N::$testing = true;
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$get = fn($name) => json_decode((string)@file_get_contents("{$dir}/{$name}.json"), true);
+	$creds = [];
+	$files = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function($password) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialNextcloud', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Nextcloud ' . uniqid(),
+		    'serverUrl' => "https://127.0.0.1:{$port}", 'username' => 'ncuser', 'appPassword' => $password ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('nextcloud: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->serverUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialNextcloud', (string)$c->_id);
+	    };
+	    $cred = $make('app-pass-1');
+	    $wrong = $make('nope');
+	    if (!$cred || !$wrong)
+		return;
+	    $bad = $om->create('CredentialNextcloud', [ 'name' => 'x', 'serverUrl' => 'http://cloud', 'username' => 'u', 'appPassword' => 'p' ]);
+	    $bad->validates();
+	    $requests();
+	    $this->check('nextcloud: the form (https); Test: the version, the user, the quota, OCS-APIRequest sent; a wrong app password said', [
+		[ 'serverUrl' ], 'connected to Nextcloud 30.0.4 as ncuser (NC User); 1 MB used of 10 GB', 'true', 'HTTP status 401: Current user is not logged in' ], [
+		array_values(array_intersect([ 'serverUrl' ], array_keys((array)$bad->errors()))), $cred->test(), $requests()[0]['headers']['ocs'] ?? null, $thrown(fn() => $wrong->test()) ]);
+
+	    $id = (string)$cred->_id;
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $id, $requests) {
+		$requests();
+		$exe = $this->runFlow("nx {$fq}", [ $n('m', 'trigger::manual'), $n('s', $fq, $cfg + [ 'credential' => $id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $logOf = fn($exe, $prefix) => str_replace($prefix, '', (string)self::logLine($exe, $prefix));
+	    $F = 'app::nextcloud-files';
+
+	    //files
+	    [ $l, $sent ] = $step($F, [ 'operation' => 'list', 'folder' => '/Scans', 'variable' => 'r' ]);
+	    [ $l2, ] = $step($F, [ 'operation' => 'list', 'folder' => 'Scans', 'depth' => 1, 'include' => 'files', 'pattern' => '*.txt', 'variable' => 'r' ]);
+	    [ $l3, ] = $step($F, [ 'operation' => 'list', 'folder' => '/Scans/notes.txt', 'variable' => 'r' ]);
+	    $this->check('nextcloud: Files list: PROPFIND Depth 1 (the folder itself left out), the items\' fields; subfolders, files only, a pattern; a file: an error', [
+		[ 'PROPFIND', '1', '/remote.php/dav/files/ncuser/Scans' ], [ 'a b.pdf', 'notes.txt', 'sub' ], [ '/Scans/a b.pdf', 'application/pdf', 13, false ], [ '/Scans/notes.txt', '/Scans/sub/deep.txt' ],
+		'error', '/Scans/notes.txt is a file, not a folder' ], [
+		[ $sent[0]['method'] ?? null, $sent[0]['headers']['depth'] ?? null, $sent[0]['path'] ?? null ], array_column($l?->getVariable('r')['items'] ?? [], 'name'),
+		(function($i) { return [ $i['path'] ?? null, $i['contentType'] ?? null, $i['size'] ?? null, $i['isFolder'] ?? null ]; })($l?->getVariable('r')['items'][0] ?? []),
+		array_column($l2?->getVariable('r')['items'] ?? [], 'path'), $l3?->getVariable('route'), $logOf($l3, 'Nextcloud Files list: ') ]);
+	    [ $s, $sent ] = $step($F, [ 'operation' => 'search', 'search' => 'DEEP', 'variable' => 'r' ]);
+	    $this->check('nextcloud: Files search: SEARCH, a like in any case, under the user\'s files', [ [ '/Scans/sub/deep.txt' ], 'SEARCH', true ], [
+		array_column($s?->getVariable('r')['items'] ?? [], 'path'), $sent[0]['method'] ?? null, str_contains((string)($sent[0]['body'] ?? ''), '<d:literal>%deep%</d:literal>') ]);
+	    [ $dl, ] = $step($F, [ 'operation' => 'download', 'path' => '{{ f }}', 'variable' => 'd' ], [ 'f' => [ 'path' => '/Scans/a b.pdf' ] ]);
+	    $d = $dl?->getVariable('d');
+	    $file = !empty($d['id']) ? $om->findOne('File', [ '_id' => $d['id'] ]) : null;
+	    if ($file)
+		$files[] = $file;
+	    [ $big, ] = $step($F, [ 'operation' => 'download', 'path' => '/Scans/sub', 'variable' => 'd' ]);
+	    $this->check('nextcloud: Files download: a list item\'s path, saved in Files with its name and content; a folder: an error', [ 'a b.pdf', '%PDF-1.4 test', '/Scans/a b.pdf', 'error' ], [
+		$d['filename'] ?? null, $file?->getContents(), $d['item']['path'] ?? null, $big?->getVariable('route') ]);
+	    [ $u1, ] = $step($F, [ 'operation' => 'upload', 'folder' => '/Scans', 'source' => 'text', 'name' => 'notes.txt', 'content' => 'v2', 'variable' => 'u' ]);
+	    [ $u2, $sent ] = $step($F, [ 'operation' => 'upload', 'folder' => '/Scans', 'source' => 'text', 'name' => 'notes.txt', 'content' => 'v3', 'conflict' => 'fail', 'variable' => 'u' ]);
+	    [ $u3, ] = $step($F, [ 'operation' => 'upload', 'folder' => '/Scans', 'source' => 'text', 'name' => 'notes.txt', 'content' => '{{ v }}', 'conflict' => 'replace', 'variable' => 'u' ], [ 'v' => [ 'a' => 1 ] ]);
+	    [ $u4, ] = $step($F, [ 'operation' => 'upload', 'folder' => '/Scans', 'source' => 'file', 'sourceFile' => (string)($d['id'] ?? ''), 'name' => 'copy.pdf', 'variable' => 'u' ]);
+	    $root = "{$dir}/files/ncuser/Scans";
+	    $this->check('nextcloud: Files upload: a name that exists renamed (2); refused (If-None-Match: *); replaced (a list written as JSON); a project file', [
+		'/Scans/notes (2).txt', 'v2', 'error', '*', "{\n    \"a\": 1\n}", '%PDF-1.4 test' ], [
+		$u1?->getVariable('u')['path'] ?? null, @file_get_contents("{$root}/notes (2).txt"), $u2?->getVariable('route'), end($sent)['headers']['if-none-match'] ?? null,
+		@file_get_contents("{$root}/notes.txt"), @file_get_contents("{$root}/copy.pdf") ]);
+	    [ $mk, $sent ] = $step($F, [ 'operation' => 'createFolder', 'path' => '/Archive/2026/11', 'variable' => 'f' ]);
+	    [ $mk2, ] = $step($F, [ 'operation' => 'createFolder', 'path' => '/Archive/2026', 'variable' => 'f' ]);
+	    [ $mv, $sent2 ] = $step($F, [ 'operation' => 'move', 'path' => '/Scans/copy.pdf', 'target' => '/Archive/2026/', 'variable' => 'f' ]);
+	    [ $cp, ] = $step($F, [ 'operation' => 'copy', 'path' => '/Scans/notes.txt', 'target' => '/Archive/2026/notes-old.txt', 'variable' => 'f' ]);
+	    [ $cp2, ] = $step($F, [ 'operation' => 'copy', 'path' => '/Scans/notes.txt', 'target' => '/Archive/2026/notes-old.txt', 'variable' => 'f' ]);
+	    [ $del, ] = $step($F, [ 'operation' => 'delete', 'path' => '/Scans/notes (2).txt', 'variable' => 'f' ]);
+	    $mv0 = array_values(array_filter($sent2, fn($r) => $r['method'] === 'MOVE'))[0] ?? [];
+	    $this->check('nextcloud: Files createFolder: the parents too, one that exists fine; move into a folder (its name kept), copy to a path, again without Overwrite: an error; delete', [
+		3, '/Archive/2026 exists already', true, [ 'F', true ], true, 'error', false ], [
+		count(array_filter($sent, fn($r) => $r['method'] === 'MKCOL')), $logOf($mk2, 'Nextcloud Files createFolder: '), is_file("{$dir}/files/ncuser/Archive/2026/copy.pdf"),
+		[ $mv0['headers']['overwrite'] ?? null, str_ends_with((string)($mv0['headers']['destination'] ?? ''), '/remote.php/dav/files/ncuser/Archive/2026/copy.pdf') ],
+		is_file("{$dir}/files/ncuser/Archive/2026/notes-old.txt"), $cp2?->getVariable('route'), is_file("{$root}/notes (2).txt") ]);
+
+	    //shares, users, Talk, API
+	    $S = 'app::nextcloud-shares';
+	    [ $sh, $sent ] = $step($S, [ 'operation' => 'share', 'path' => '/Scans', 'with' => 'link', 'access' => 'drop', 'password' => 's3cret', 'expireDate' => '2026-12-31', 'variable' => 'sh' ]);
+	    $form = array_values(array_filter($sent, fn($r) => $r['method'] === 'POST'))[0]['form'] ?? [];
+	    [ $shf, ] = $step($S, [ 'operation' => 'share', 'path' => '/Archive/2026/copy.pdf', 'with' => 'link', 'access' => 'drop', 'variable' => 'sh' ]);
+	    [ $shu, ] = $step($S, [ 'operation' => 'share', 'path' => '/Archive/2026/copy.pdf', 'with' => 'user', 'shareWith' => 'ana', 'access' => 'edit', 'variable' => 'sh' ]);
+	    [ $up, $usent ] = $step($S, [ 'operation' => 'update', 'share' => '{{ s }}', 'note' => 'Please upload', 'variable' => 'sh' ], [ 's' => $sh?->getVariable('sh') ]);
+	    [ $ls, ] = $step($S, [ 'operation' => 'list', 'which' => 'path', 'path' => '/Scans', 'variable' => 'sh' ]);
+	    [ $sd, ] = $step($S, [ 'operation' => 'delete', 'share' => '{{ s.id }}', 'variable' => 'sh' ], [ 's' => $shu?->getVariable('sh') ]);
+	    $this->check('nextcloud: Shares: a folder\'s file-drop link (permissions 4, public upload, password, expiry) and its url; file drop on a file refused; a user can edit a file (3); '
+		. 'update a note; list of a path; delete', [
+		[ '/Scans', '3', '4', 'true', 's3cret', '2026-12-31' ], 'https://cloud.example.com/s/tok11', 'error', 3, [ 'note' => 'Please upload' ], [ '/Scans' ], true, 1 ], [
+		[ $form['path'] ?? null, $form['shareType'] ?? null, $form['permissions'] ?? null, $form['publicUpload'] ?? null, $form['password'] ?? null, $form['expireDate'] ?? null ],
+		$sh?->getVariable('sh')['url'] ?? null, $shf?->getVariable('route'), $shu?->getVariable('sh')['permissions'] ?? null, end($usent)['form'] ?? null,
+		array_column($ls?->getVariable('sh')['items'] ?? [], 'path'), $sd?->getVariable('sh')['deleted'] ?? null, count((array)$get('shares')) ]);
+	    $U = 'app::nextcloud-users';
+	    [ $uc, $sent ] = $step($U, [ 'operation' => 'create', 'userid' => 'ana', 'displayName' => 'Ana Pop', 'email' => 'ana@example.com', 'groupList' => 'staff', 'variable' => 'u' ]);
+	    [ $uc2, ] = $step($U, [ 'operation' => 'create', 'userid' => 'dan', 'variable' => 'u' ]);
+	    [ $uc3, ] = $step($U, [ 'operation' => 'create', 'userid' => 'ana', 'email' => 'x@example.com', 'variable' => 'u' ]);
+	    [ $uu, $usent ] = $step($U, [ 'operation' => 'update', 'user' => 'ana', 'email' => 'ana.pop@example.com', 'quota' => '5 GB', 'variable' => 'u' ]);
+	    [ $ud, ] = $step($U, [ 'operation' => 'disable', 'user' => '{{ u }}', 'variable' => 'u' ], [ 'u' => [ 'id' => 'ana' ] ]);
+	    [ $ug, ] = $step($U, [ 'operation' => 'addToGroup', 'user' => 'ana', 'groupList' => [ 'admins' ], 'variable' => 'u' ]);
+	    [ $ug2, ] = $step($U, [ 'operation' => 'removeFromGroup', 'user' => 'ana', 'groupList' => 'staff', 'variable' => 'u' ]);
+	    [ $ul, ] = $step($U, [ 'operation' => 'list', 'search' => 'pop', 'variable' => 'u' ]);
+	    [ $gone, ] = $step($U, [ 'operation' => 'get', 'user' => 'ghost', 'variable' => 'u' ]);
+	    $ana = $get('users')['ana'] ?? [];
+	    $this->check('nextcloud: Users create (groups[], the user\'s details back); no password nor email: an error; one that exists: Nextcloud\'s message; update one key at a time; disable; '
+		. 'groups added / removed; list a search; an unknown user said', [
+		[ 'staff' ], 'Ana Pop', 'error', 'User already exists (OCS 102)', [ 'email', 'quota' ], [ false, 'ana.pop@example.com', '5 GB', [ 'admins' ] ], [ 'ana' ], 'User does not exist' ], [
+		array_values(array_filter($sent, fn($r) => $r['method'] === 'POST'))[0]['form']['groups'] ?? null, $uc?->getVariable('u')['displayname'] ?? null, $uc2?->getVariable('route'),
+		$logOf($uc3, 'Nextcloud Users create: '), array_map(fn($r) => $r['form']['key'] ?? null, array_values(array_filter($usent, fn($r) => $r['method'] === 'PUT'))),
+		[ $ana['enabled'] ?? null, $ana['email'] ?? null, $ana['quota']['quota'] ?? null, $ana['groups'] ?? null ], array_column($ul?->getVariable('u')['items'] ?? [], 'id'), $logOf($gone, 'Nextcloud Users get: ') ]);
+	    $T = 'app::nextcloud-talk';
+	    [ $tm, ] = $step($T, [ 'operation' => 'send', 'conversation' => 'ops team', 'message' => 'Backup **failed** on {{ host }}', 'silent' => true, 'variable' => 't' ], [ 'host' => 'srv1' ]);
+	    [ $tr, ] = $step($T, [ 'operation' => 'messages', 'conversation' => 'abc123', 'variable' => 't' ]);
+	    [ $tx, ] = $step($T, [ 'operation' => 'send', 'conversation' => 'nowhere', 'message' => 'x', 'variable' => 't' ]);
+	    $this->check('nextcloud: Talk send to a conversation by name (any case), silent; read its messages; an unknown conversation said', [
+		[ 'abc123', 'Backup **failed** on srv1', true ], 1, 'Conversation: the user has no conversation `nowhere`' ], [
+		[ $tm?->getVariable('t')['token'] ?? null, $tm?->getVariable('t')['message'] ?? null, $tm?->getVariable('t')['silent'] ?? null ], $tr?->getVariable('t')['count'] ?? null,
+		$logOf($tx, 'Nextcloud Talk send: ') ]);
+	    [ $api, ] = $step('app::nextcloud-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => '/cloud/groups', 'parameters' => '{"search": "adm"}', 'variable' => 'x' ]);
+	    [ $apiBad, ] = $step('app::nextcloud-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => '/nothing', 'variable' => 'x' ]);
+	    $A = \util\AgentTools::class;
+	    $ops = $A::operations('nextcloud');
+	    $this->check('nextcloud: API: an OCS request, its parameters; an unknown path: Nextcloud\'s message; as an AI step\'s tools, reads and writes', [ [ 'admins' ], 'error',
+		[ false, true, false, true ] ], [ $api?->getVariable('x')['groups'] ?? null, $apiBad?->getVariable('route'),
+		[ $ops['nextcloud_files_list']['writes'] ?? null, $ops['nextcloud_files_delete']['writes'] ?? null, $ops['nextcloud_talk_messages']['writes'] ?? null, $ops['nextcloud_users_create']['writes'] ?? null ] ]);
+
+	    //the file trigger
+	    $wf = $this->workflow('nextcloud file', [ $n('t', 'trigger::nextcloud', [ 'credential' => $id, 'folder' => '/Scans', 'depth' => 1, 'pattern' => '*.pdf, *.txt', 'changes' => 'changed',
+		'runs' => 'each', 'variable' => 'file', 'mode' => 'interval', 'every' => 5, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ file.path }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('nextcloud: file: the workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $TN = \models\node\NodeTriggerNextcloud::class;
+	    $node = $wf->nodes['t'];
+	    [ $data0, $none0 ] = $TN::check($wf, $node, []);
+	    file_put_contents("{$root}/new-scan.pdf", '%PDF new');
+	    file_put_contents("{$root}/sub/deep.txt", 'deep, changed');
+	    touch("{$root}/sub/deep.txt", time() + 5);
+	    file_put_contents("{$root}/skip.jpg", 'x');
+	    [ $data1, $first ] = $TN::check($wf, $node, $data0);
+	    $started = array_merge($started, $none0, $first);
+	    [ $data2, $second ] = $TN::check($wf, $node, $data1);
+	    $started = array_merge($started, $second);
+	    $byPath = [];
+	    foreach($first as $x)
+		$byPath[$x->getVariable('file')['path'] ?? ''] = $x->getVariable('file')['change'] ?? null;
+	    ksort($byPath);
+	    $this->check('nextcloud: file: the first check only notes the files; then new and changed ones (matching, in subfolders) start a run each, queued; checked again: none', [
+		[], 3, [ '/Scans/new-scan.pdf' => 'new', '/Scans/sub/deep.txt' => 'changed' ], [ 'new', 'nextcloud' ], [] ], [
+		$none0, count($data0['seen'] ?? []), $byPath, [ $first[0]?->state ?? null, $first[0]?->trigger ?? null ], $second ]);
+	    $now = $TN::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('nextcloud: file: Run in the designer: one run', 1, count($now['executions'] ?? []));
+	} finally {
+	    $N::$testing = false;
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($files as $f)
+		$f->delete();
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    exec('rm -rf ' . escapeshellarg($dir));
 	}
     }
 
