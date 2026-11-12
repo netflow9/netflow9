@@ -310,6 +310,11 @@ class SysObjects {
 		'variant-of' => 'Credential',
 	    ],
 	    //CLD: 2026-11-12T10:00:00+02:00: a Shopify store's Admin API access (the Shopify steps and event trigger), core for every account
+	    //CLD: 2026-11-12T16:00:00+02:00: a HubSpot account's API access (the HubSpot steps and record trigger), core for every account
+	    'CredentialHubSpot' => [
+		'class' => 'models\credential\CredentialHubSpot',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-12T14:00:00+02:00: a Jira site (the Jira steps and issue trigger), core for every account
 	    'CredentialJira' => [
 		'class' => 'models\credential\CredentialJira',
@@ -625,6 +630,23 @@ class SysObjects {
 	    ],
 	    'NodeTriggerShopify' => [
 		'class' => 'models\node\NodeTriggerShopify',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-12T16:00:00+02:00: HubSpot (one step per area, NodeAppHubSpot their base; the record trigger: a CRM search on a schedule), core for every account
+	    'NodeAppHsRecords' => [
+		'class' => 'models\node\NodeAppHsRecords',
+		'wfNode' => true,
+	    ],
+	    'NodeAppHsCrm' => [
+		'class' => 'models\node\NodeAppHsCrm',
+		'wfNode' => true,
+	    ],
+	    'NodeAppHsApi' => [
+		'class' => 'models\node\NodeAppHsApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerHubSpot' => [
+		'class' => 'models\node\NodeTriggerHubSpot',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-12T14:00:00+02:00: Jira (one step per area, NodeAppJira their base; the issue trigger: a JQL search on a schedule), core for every account

@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -9210,6 +9210,197 @@ class CheckCommand extends \sys\BaseController {
 		\models\TriggerState::beforeWorkflowDelete($wf);
 	    foreach($files as $f)
 		$om->findOne('File', [ '_id' => $f ])?->delete();
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-12T16:00:00+02:00: HubSpot against a fake API (commands/tests/HubSpotTestServer.php; util\HubSpot::$testUrl: http, no address guard): filter lines, the credential,
+    //a 429 waited for, the Records operations on contacts / deals / a custom object (search paged with filters, text and sort; get by ID or email, none: null; create, HubSpot's
+    //409; update; create or update by email; associate, associations; a note; delete), CRM, the API step, the record trigger (floor, created / updated, seen)
+    private function suiteHubSpot() {
+	$HS = \util\HubSpot::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$this->check('hubspot: filter lines: operators, IN lists, has, dates as ms; a line that is not one, more than 6 refused', [
+	    [ [ 'propertyName' => 'amount', 'operator' => 'GT', 'value' => '1000' ], [ 'propertyName' => 'industry', 'operator' => 'IN', 'values' => [ 'Retail', 'Tech' ] ],
+		[ 'propertyName' => 'phone', 'operator' => 'HAS_PROPERTY' ], [ 'propertyName' => 'createdate', 'operator' => 'GTE', 'value' => '1793491200000' ] ],
+	    'Filters: not "<property> <operator> <value>": `amount is big`', 'Filters: at most 6 (HubSpot\'s limit in one search)' ], [
+	    $HS::filters("amount > 1000\nindustry in Retail, Tech\n# a comment\nphone has\ncreatedate >= 2026-11-01"), $thrown(fn() => $HS::filters('amount is big')),
+	    $thrown(fn() => $HS::filters(str_repeat("a = 1\n", 7))) ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-hs-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$t0 = (int)floor(microtime(true) * 1000) - 600000;
+	$clock = fn($ms) => file_put_contents("{$dir}/now.txt", (string)$ms);
+	$clock($t0);
+	$server = $this->startServer('hubspot', 'HubSpotTestServer.php', $dir, [ 'HS_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$HS::$testUrl = "http://127.0.0.1:{$port}";
+	$HS::forgetAccounts();
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$load = fn($name) => json_decode((string)@file_get_contents("{$dir}/{$name}.json"), true) ?? [];
+	$creds = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function($token) use ($om, &$creds) {
+		$c = $om->create('CredentialHubSpot', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: HubSpot ' . uniqid(), 'accessToken' => $token ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('hubspot: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		return $om->findById('CredentialHubSpot', (string)$c->_id);
+	    };
+	    $cred = $make('pat-check');
+	    $wrong = $make('nope');
+	    if (!$cred || !$wrong)
+		return;
+	    $this->check('hubspot: Test: the account; a wrong token: HubSpot\'s message', [ 'connected to HubSpot account 4242 (STANDARD), data in eu1, RON, Europe/Bucharest',
+		'HTTP status 401: Authentication credentials not found. This API supports OAuth 2.0 authentication. (INVALID_AUTHENTICATION)' ], [ $cred->test(), $thrown(fn() => $wrong->test()) ]);
+
+	    $step = function($cfg, $vars = [], $fq = 'app::hubspot-records') use ($n, $e, $cred, $requests) {
+		$requests();
+		$exe = $this->runFlow("hs {$fq}", [ $n('m', 'trigger::manual'), $n('s', $fq, $cfg + [ 'credential' => (string)$cred->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $logOf = fn($exe, $prefix) => str_replace($prefix, '', (string)self::logLine($exe, $prefix));
+
+	    //create, get, update, upsert
+	    [ $c1, $sent ] = $step([ 'operation' => 'create', 'objectType' => 'contacts', 'properties' => '{"email": "{{ f.email }}", "firstname": "Ana", "hs_tags": ["vip", "eu"], "consent": true}',
+		'variable' => 'c' ], [ 'f' => [ 'email' => 'ana@example.com' ] ]);
+	    $c = $c1?->getVariable('c');
+	    [ $dup, ] = $step([ 'operation' => 'create', 'objectType' => 'contacts', 'properties' => '{"email": "ana@example.com"}', 'variable' => 'c' ]);
+	    [ $bad, ] = $step([ 'operation' => 'create', 'objectType' => 'contacts', 'properties' => '[1, 2]', 'variable' => 'c' ]);
+	    $this->check('hubspot: Records create: the properties (a list joined with ;, true as text), the record with its properties at the top and its address; a second with that email: '
+		. 'HubSpot\'s 409; properties not an object: an error', [
+		[ 'ana@example.com', 'Ana', 'vip;eu', 'true' ], [ 'ana@example.com', true ], 'HTTP status 409: Contact already exists. Existing ID: 1001 (CONFLICT)', 'error' ], [
+		(function($p) { return [ $p['email'] ?? null, $p['firstname'] ?? null, $p['hs_tags'] ?? null, $p['consent'] ?? null ]; })($sent[0]['body']['properties'] ?? []),
+		[ $c['email'] ?? null, str_ends_with((string)($c['url'] ?? ''), 'app-eu1.hubspot.com/contacts/4242/record/0-1/1001') ], $logOf($dup, 'HubSpot Records create: '), $bad?->getVariable('route') ]);
+	    [ $g1, ] = $step([ 'operation' => 'get', 'objectType' => 'contacts', 'record' => '{{ c }}', 'variable' => 'g' ], [ 'c' => $c ]);
+	    [ $g2, $sent ] = $step([ 'operation' => 'get', 'objectType' => 'contacts', 'record' => 'ANA@example.com', 'idProperty' => 'email', 'read' => 'hs_tags', 'variable' => 'g' ]);
+	    [ $g3, ] = $step([ 'operation' => 'get', 'objectType' => 'contacts', 'record' => 'nobody@example.com', 'idProperty' => 'email', 'variable' => 'g' ]);
+	    $this->check('hubspot: Records get: a record of a variable; by email (idProperty), the usual properties + those named; none: null on the success output', [
+		'1001', [ 'email', true ], [ null, null ] ], [ $g1?->getVariable('g')['id'] ?? null,
+		[ $sent[0]['query']['idProperty'] ?? null, str_contains((string)($sent[0]['query']['properties'] ?? ''), 'hs_tags') ], [ $g3?->getVariable('g'), $g3?->getVariable('route') ] ]);
+	    $clock($t0 + 1000);
+	    [ $u1, $sent ] = $step([ 'operation' => 'update', 'objectType' => 'contacts', 'record' => '1001', 'properties' => '{"lifecyclestage": "customer"}', 'variable' => 'u' ]);
+	    [ $up1, ] = $step([ 'operation' => 'upsert', 'objectType' => 'contacts', 'idProperty' => 'email', 'properties' => '{"email": "ana@example.com", "jobtitle": "CTO"}', 'variable' => 'u' ]);
+	    [ $up2, ] = $step([ 'operation' => 'upsert', 'objectType' => 'contacts', 'idProperty' => 'email', 'properties' => '{"email": "dan@example.com", "firstname": "Dan"}', 'variable' => 'u' ]);
+	    [ $up3, ] = $step([ 'operation' => 'upsert', 'objectType' => 'contacts', 'idProperty' => 'email', 'properties' => '{"firstname": "X"}', 'variable' => 'u' ]);
+	    $contacts = $load('contacts');
+	    $this->check('hubspot: Records update (PATCH); create or update by email: the one that has it updated, a new one created; no value for it: an error', [
+		[ 'PATCH', 'customer' ], [ false, '1001', 'CTO' ], [ true, '1002' ], 2, 'Find by: the properties have no value for `email`' ], [
+		[ $sent[0]['method'] ?? null, $u1?->getVariable('u')['lifecyclestage'] ?? null ], [ $up1?->getVariable('u')['created'] ?? null, $up1?->getVariable('u')['id'] ?? null, $contacts[0]['properties']['jobtitle'] ?? null ],
+		[ $up2?->getVariable('u')['created'] ?? null, $up2?->getVariable('u')['id'] ?? null ], count($contacts), $logOf($up3, 'HubSpot Records upsert: ') ]);
+
+	    //search
+	    for ($k = 1; $k <= 5; $k++)
+		$step([ 'operation' => 'create', 'objectType' => 'deals', 'properties' => json_encode([ 'dealname' => "Deal {$k}", 'amount' => (string)($k * 500), 'dealstage' => $k > 3 ? 'closedwon' : 'appointmentscheduled' ]), 'variable' => 'd' ]);
+	    file_put_contents("{$dir}/throttle.json", '1');
+	    [ $s1, $sent ] = $step([ 'operation' => 'search', 'objectType' => 'deals', 'filters' => "amount >= 1000\ndealstage != closedwon", 'sort' => 'amount desc', 'variable' => 'r' ]);
+	    [ $s2, ] = $step([ 'operation' => 'search', 'objectType' => 'deals', 'maxItems' => 2, 'variable' => 'r' ]);
+	    [ $s3, ] = $step([ 'operation' => 'search', 'objectType' => 'contacts', 'text' => 'dan', 'variable' => 'r' ]);
+	    $body = end($sent)['body'] ?? [];
+	    $this->check('hubspot: Records search: a 429 waited for; filters (one group, all to match), the sort, the deal\'s usual properties; At most: truncated with the total; a text', [
+		[ 'Deal 3', 'Deal 2' ], 2, [ [ 'propertyName' => 'amount', 'direction' => 'DESCENDING' ] ], true, [ 2, 5, true ], [ 'dan@example.com' ] ], [
+		array_column($s1?->getVariable('r')['items'] ?? [], 'dealname'), count($body['filterGroups'][0]['filters'] ?? []), $body['sorts'] ?? null, in_array('dealstage', (array)($body['properties'] ?? []), true),
+		[ $s2?->getVariable('r')['count'] ?? null, $s2?->getVariable('r')['total'] ?? null, $s2?->getVariable('r')['truncated'] ?? null ], array_column($s3?->getVariable('r')['items'] ?? [], 'email') ]);
+
+	    //associations, notes, delete, a custom object
+	    [ $as, $sent ] = $step([ 'operation' => 'associate', 'objectType' => 'deals', 'record' => '1001', 'toType' => 'contacts', 'toRecord' => '{{ c }}', 'variable' => 'a' ], [ 'c' => $c ]);
+	    [ $as2, ] = $step([ 'operation' => 'associate', 'objectType' => 'deals', 'record' => '1001', 'toType' => 'contacts', 'toRecord' => '9999', 'variable' => 'a' ]);
+	    [ $al, ] = $step([ 'operation' => 'associations', 'objectType' => 'contacts', 'record' => '1001', 'toType' => 'deals', 'variable' => 'a' ]);
+	    [ $nt, $nsent ] = $step([ 'operation' => 'note', 'objectType' => 'contacts', 'record' => '1001', 'body' => "Called {{ who }} & co\nWill buy", 'variable' => 'n' ], [ 'who' => 'Ana' ]);
+	    [ $cu, $csent ] = $step([ 'operation' => 'create', 'objectType' => 'custom', 'customType' => '2-7654321', 'properties' => '{"name": "Machine 1"}', 'variable' => 'x' ]);
+	    [ $cbad, ] = $step([ 'operation' => 'create', 'objectType' => 'custom', 'customType' => 'Bad Type!', 'properties' => '{"name": "x"}', 'variable' => 'x' ]);
+	    [ $del, ] = $step([ 'operation' => 'delete', 'objectType' => 'deals', 'record' => '1005', 'variable' => 'x' ]);
+	    $notes = $load('notes');
+	    $this->check('hubspot: Records associate (v4 default; an unknown record said); associated records listed from the other side; a note (escaped, line breaks) associated; a custom '
+		. 'object by its type ID, a bad one refused; delete', [
+		'/crm/v4/objects/deals/1001/associations/default/contacts/1001', 'error', [ '1001' ], [ 'Called Ana &amp; co<br />' . "\n" . 'Will buy', '/crm/v4/objects/notes/1001/associations/default/contacts/1001' ],
+		[ '/crm/v3/objects/2-7654321', 'Machine 1' ], 'error', 4 ], [
+		$sent[0]['path'] ?? null, $as2?->getVariable('route'), array_column($al?->getVariable('a')['items'] ?? [], 'id'),
+		[ $notes[0]['properties']['hs_note_body'] ?? null, $nsent[1]['path'] ?? null ], [ $csent[0]['path'] ?? null, $cu?->getVariable('x')['name'] ?? null ], $cbad?->getVariable('route'), count($load('deals')) ]);
+
+	    //CRM, API, tools
+	    [ $pp, ] = $step([ 'operation' => 'properties', 'objectType' => 'contacts', 'search' => 'stage', 'variable' => 'p' ], [], 'app::hubspot-crm');
+	    [ $pl, ] = $step([ 'operation' => 'pipelines', 'pipelineType' => 'deals', 'variable' => 'p' ], [], 'app::hubspot-crm');
+	    [ $ow, ] = $step([ 'operation' => 'owners', 'email' => 'ana@example.com', 'variable' => 'p' ], [], 'app::hubspot-crm');
+	    [ $api, ] = $step([ 'operation' => 'request', 'method' => 'GET', 'path' => '/crm/v3/objects/contacts/{{ id }}', 'variable' => 'x' ], [ 'id' => '1001' ], 'app::hubspot-api');
+	    $ops = \util\AgentTools::operations('hubspot');
+	    $this->check('hubspot: CRM properties (an enumeration\'s choices), pipelines\' stages, an owner by email; API: any path; as AI tools', [ [ 'lifecyclestage', [ 'lead', 'customer' ] ],
+		[ 'appointmentscheduled', 'closedwon' ], [ '77' ], 'ana@example.com', [ false, true, false ] ], [
+		[ $pp?->getVariable('p')['items'][0]['name'] ?? null, array_column($pp?->getVariable('p')['items'][0]['options'] ?? [], 'value') ], array_column($pl?->getVariable('p')['items'][0]['stages'] ?? [], 'id'),
+		array_column($ow?->getVariable('p')['items'] ?? [], 'id'), $api?->getVariable('x')['properties']['email'] ?? null,
+		[ $ops['hubspot_records_search']['writes'] ?? null, $ops['hubspot_records_upsert']['writes'] ?? null, $ops['hubspot_crm_owners']['writes'] ?? null ] ]);
+
+	    //the record trigger
+	    $wf = $this->workflow('hubspot record', [ $n('t', 'trigger::hubspot', [ 'credential' => (string)$cred->_id, 'objectType' => 'contacts', 'filters' => 'lifecyclestage = lead', 'event' => 'created',
+		'runs' => 'each', 'variable' => 'record', 'mode' => 'interval', 'every' => 5, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ record.email }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('hubspot: record: the workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $TH = \models\node\NodeTriggerHubSpot::class;
+	    $node = $wf->nodes['t'];
+	    [ $d0, $none ] = $TH::check($wf, $node, [], $t0 + 100000);
+	    $clock($t0 + 160000);
+	    $step([ 'operation' => 'create', 'objectType' => 'contacts', 'properties' => '{"email": "lead1@example.com", "lifecyclestage": "lead"}', 'variable' => 'c' ]);
+	    $step([ 'operation' => 'create', 'objectType' => 'contacts', 'properties' => '{"email": "cust@example.com", "lifecyclestage": "customer"}', 'variable' => 'c' ]);
+	    $clock($t0 + 170000);
+	    $step([ 'operation' => 'create', 'objectType' => 'contacts', 'properties' => '{"email": "lead2@example.com", "lifecyclestage": "lead"}', 'variable' => 'c' ]);
+	    $requests();
+	    [ $d1, $first ] = $TH::check($wf, $node, $d0, $t0 + 200000);
+	    $q = array_values(array_filter($requests(), fn($r) => str_ends_with($r['path'], '/search')))[0]['body'] ?? [];
+	    [ , $second ] = $TH::check($wf, $node, $d1, $t0 + 260000);
+	    $nodeU = array_replace_recursive($node, [ 'config' => [ 'event' => 'updated', 'filters' => '' ] ]);
+	    [ $u0, ] = $TH::check($wf, $nodeU, [], $t0 + 175000);
+	    $clock($t0 + 180000);
+	    $step([ 'operation' => 'update', 'objectType' => 'contacts', 'record' => '1001', 'properties' => '{"phone": "+40 721 000 000"}', 'variable' => 'u' ]);
+	    [ , $upd ] = $TH::check($wf, $nodeU, $u0, $t0 + 240000);
+	    $started = array_merge($started, $first, $second, $upd);
+	    $this->check('hubspot: record: the first check only notes the time; then contacts created since that match the filters, the oldest first (createdate >= since - lag, ascending); '
+		. 'again: none; Created or updated: lastmodifieddate, an updated contact with its event', [
+		[], [ 'lead1@example.com', 'lead2@example.com' ], [ 'propertyName' => 'createdate', 'operator' => 'GTE' ], [ [ 'propertyName' => 'createdate', 'direction' => 'ASCENDING' ] ], [],
+		[ [ 'ana@example.com', 'updated' ] ], [ 'new', 'hubspot' ] ], [
+		$none, array_map(fn($x) => $x->getVariable('record')['email'] ?? null, $first), array_intersect_key((array)($q['filterGroups'][0]['filters'][1] ?? []), [ 'propertyName' => 1, 'operator' => 1 ]),
+		$q['sorts'] ?? null, $second, array_map(fn($x) => [ $x->getVariable('record')['email'] ?? null, $x->getVariable('record')['event'] ?? null ], $upd), [ $first[0]?->state ?? null, $first[0]?->trigger ?? null ] ]);
+	    $now = $TH::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('hubspot: record: Run in the designer: the newest matching record', [ 1, 'lead2@example.com' ], [ count($now['executions'] ?? []), ($now['executions'][0] ?? null)?->getVariable('record')['email'] ?? null ]);
+	} finally {
+	    $HS::$testUrl = null;
+	    $HS::forgetAccounts();
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
 	    foreach($creds as $c)
 		$c->delete();
 	    proc_terminate($proc);
