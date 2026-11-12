@@ -144,9 +144,9 @@ in_list() {
 
 EXISTING=0
 
-# the folders of compose.yaml's mounts in $1: the app's (config, logs, var, tmp, assets) the containers' user's, the database's mongo's own
+# the folders of compose.yaml's mounts in $1: the app's (config, logs, var, tmp) the containers' user's, the database's mongo's own
 #(its entrypoint changes their owner); bounces: the host's Haraka writes, the app reads and removes (both)
-DATA_DIRS=(config logs var tmp assets bounces mongo-data)
+DATA_DIRS=(config logs var tmp bounces mongo-data)
 make_data() {
     local d uid gid
     uid=$(get_env NFN_UID)
@@ -155,7 +155,7 @@ make_data() {
         mkdir -p "$1/$d"
     done
     if [ "$(id -u)" -eq 0 ]; then
-        chown "$uid:$gid" "$1" "$1"/{config,logs,var,tmp,assets,bounces}
+        chown "$uid:$gid" "$1" "$1"/{config,logs,var,tmp,bounces}
     fi
     chmod 700 "$1"
     chmod 777 "$1/bounces"
@@ -221,11 +221,6 @@ setup() {
         *) data="$BASE/$data"; set_env DATA_DIR "$data" ;;
     esac
     make_data "$data"
-    # development mounts public_html read-only: the assets mount's point must be there already (public_html/assets is not in git)
-    if [ "$DEV" -eq 1 ] && [ ! -d "$BASE/public_html/assets" ]; then
-        mkdir -p "$BASE/public_html/assets"
-        [ "$(id -u)" -ne 0 ] || chown "$owner_uid:$owner_gid" "$BASE/public_html/assets"
-    fi
 
     #the site for the operator's reverse proxy (HTTPS there); development: 127.0.0.1 always (compose.dev.yaml)
     [ "$DEV" -eq 1 ] || pick_env HTTP_BIND 127.0.0.1 "The site's address (127.0.0.1: the reverse proxy on this host)"

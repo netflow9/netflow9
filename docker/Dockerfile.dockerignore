@@ -5,7 +5,6 @@
 !public_html
 !scripts
 !docker
-public_html/assets/
 **/*.local.php
 **/.git
 **/node_modules

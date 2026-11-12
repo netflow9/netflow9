@@ -15,7 +15,6 @@
 !/docker/
 
 # --- never commit (secrets / runtime) ---
-public_html/assets/
 app.env
 # the compose settings (passwords), next to docker/compose.yaml
 /docker/.env

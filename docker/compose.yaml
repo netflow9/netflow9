@@ -42,7 +42,6 @@ x-app: &app
     - ${DATA_DIR:?DATA_DIR is not set (.env)}/var:/srv/rail22/var
     - ${DATA_DIR:?DATA_DIR is not set (.env)}/tmp:/srv/rail22/tmp
     - ${DATA_DIR:?DATA_DIR is not set (.env)}/bounces:/srv/rail22/bounces
-    - ${DATA_DIR:?DATA_DIR is not set (.env)}/assets:/srv/rail22/public_html/assets
   depends_on:
     mongo:
       condition: service_healthy
@@ -109,8 +108,6 @@ services:
     # the operator's reverse proxy forwards here (README.md); HTTP_BIND=0.0.0.0 only with a proxy elsewhere that alone reaches the port
     ports:
       - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80"
-    volumes:
-      - ${DATA_DIR:?DATA_DIR is not set (.env)}/assets:/srv/rail22/public_html/assets:ro
     networks: [ backend ]
     depends_on: [ app ]
 

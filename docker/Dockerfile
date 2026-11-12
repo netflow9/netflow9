@@ -42,8 +42,8 @@ COPY app ${BASE}/app
 COPY public_html ${BASE}/public_html
 COPY scripts ${BASE}/scripts
 COPY docker/entrypoint.sh /usr/local/bin/nfn-entrypoint
-RUN mkdir -p ${BASE}/config ${BASE}/logs ${BASE}/tmp ${BASE}/run ${BASE}/bounces ${BASE}/var/php/session ${BASE}/var/php/wsdlcache ${BASE}/var/php/opcache ${BASE}/public_html/assets \
- && chown -R nfn:nfn ${BASE}/config ${BASE}/logs ${BASE}/tmp ${BASE}/run ${BASE}/bounces ${BASE}/var ${BASE}/public_html/assets \
+RUN mkdir -p ${BASE}/config ${BASE}/logs ${BASE}/tmp ${BASE}/run ${BASE}/bounces ${BASE}/var/php/session ${BASE}/var/php/wsdlcache ${BASE}/var/php/opcache \
+ && chown -R nfn:nfn ${BASE}/config ${BASE}/logs ${BASE}/tmp ${BASE}/run ${BASE}/bounces ${BASE}/var \
  && chmod 755 /usr/local/bin/nfn-entrypoint
 
 WORKDIR ${BASE}

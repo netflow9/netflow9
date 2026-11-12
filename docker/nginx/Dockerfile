@@ -1,5 +1,5 @@
 # Rail22's web container: nginx with the app's public_html (the static files; the .php ones go to app:9000, the same path there), the site from
-# templates/ (the image's envsubst: NGINX_SERVER_NAME); public_html/assets is the shared volume (compose.yaml)
+# templates/ (the image's envsubst: NGINX_SERVER_NAME)
 FROM nginx:stable
 COPY public_html /srv/rail22/public_html
 COPY docker/nginx/locations.conf /etc/nginx/nfn/locations.conf

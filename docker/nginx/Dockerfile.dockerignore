@@ -2,4 +2,3 @@
 *
 !public_html
 !docker/nginx
-public_html/assets/

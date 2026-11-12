@@ -187,10 +187,6 @@ function get_config($mode = 'web') {
 		'preload' => true,
 		'class' => '\sys\CSRF',
 	    ],
-	    'am' => [
-		'class' => '\sys\Assets',
-		'appendTimestamp' => true,
-	    ],
 	    'form' => [
 		'class' => '\sys\html\QForm',
 	    ],
