@@ -45,6 +45,8 @@ class WfNode extends \sys\NestedModel {
 	'monitoring' => 'Monitoring',
 	'virtualization' => 'Virtualization',
 	'domains' => 'Domains & DNS',
+	//CLD: 2026-11-12T14:00:00+02:00: the Jira steps
+	'work' => 'Work management',
 	//CLD: 2026-11-12T10:00:00+02:00: the Shopify steps
 	'commerce' => 'E-commerce',
 	'ai' => 'AI',

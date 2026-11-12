@@ -36,6 +36,8 @@ class AgentTools {
 	'wazuh' => [ 'label' => 'Wazuh', 'prefix' => 'wazuh', 'capability' => 'wazuh', 'base' => \models\node\NodeAppWazuh::class ],
 	//Namecheap's steps as tools
 	'namecheap' => [ 'label' => 'Namecheap', 'prefix' => 'namecheap', 'capability' => 'namecheap', 'base' => \models\node\NodeAppNamecheap::class ],
+	//CLD: 2026-11-12T14:00:00+02:00: Jira's steps as tools
+	'jira' => [ 'label' => 'Jira', 'prefix' => 'jira', 'capability' => 'jira', 'base' => \models\node\NodeAppJira::class ],
 	//CLD: 2026-11-12T12:00:00+02:00: Nextcloud's steps as tools
 	'nextcloud' => [ 'label' => 'Nextcloud', 'prefix' => 'nextcloud', 'capability' => 'nextcloud', 'base' => \models\node\NodeAppNextcloud::class ],
 	//CLD: 2026-11-12T10:00:00+02:00: Shopify's steps as tools

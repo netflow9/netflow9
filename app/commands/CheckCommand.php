@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -9000,6 +9000,223 @@ class CheckCommand extends \sys\BaseController {
 	    proc_terminate($proc);
 	    proc_close($proc);
 	    exec('rm -rf ' . escapeshellarg($dir));
+	}
+    }
+
+    //CLD: 2026-11-12T14:00:00+02:00: Jira against a fake site (commands/tests/JiraTestServer.php; util\Jira::$testing: http, no address guard): keys, ADF both ways, the credentials
+    //(Cloud: email + API token, Data Center: a bearer token), a 429 waited for, the Issues operations (JQL search paged, create with Jira's field errors, update, labels, assign by
+    //email, transitions by name or status, comments, links, attachments, delete), Projects, the API step, the issue trigger (relative JQL window, floor, seen, created / updated)
+    private function suiteJira() {
+	$J = \util\Jira::class;
+	$I = \models\node\NodeAppJiraIssues::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$adf = $J::adf("Line 1\nLine 2\n\nNext");
+	$this->check('jira: values: keys (an address, an item, lower case), ADF from text (paragraphs, line breaks) and back, labels without spaces, the trigger\'s JQL', [
+	    'OPS-12', 'OPS-3', 'Issue: not an issue key (PROJ-123): `NOPE`', 2, [ 'type' => 'hardBreak' ], "Line 1\nLine 2\n\nNext", "- a\n- b", 'Labels: no spaces in a label: `two words`',
+	    '(project = OPS) AND updated >= -7m ORDER BY updated ASC' ], [
+	    $J::issueKey('https://x.atlassian.net/browse/ops-12'), $J::issueKey([ 'key' => 'OPS-3', 'id' => '1' ]), $thrown(fn() => $J::issueKey('nope')), count($adf['content']),
+	    $adf['content'][0]['content'][1], $J::plain($adf), $J::plain([ 'type' => 'bulletList', 'content' => [ [ 'type' => 'listItem', 'content' => [ [ 'type' => 'paragraph', 'content' => [ [ 'type' => 'text', 'text' => 'a' ] ] ] ] ],
+		[ 'type' => 'listItem', 'content' => [ [ 'type' => 'paragraph', 'content' => [ [ 'type' => 'text', 'text' => 'b' ] ] ] ] ] ] ]), $thrown(fn() => $I::labels('ok, two words')),
+	    \models\node\NodeTriggerJira::jql('project = OPS ORDER BY rank', 'updated', 7) ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-jira-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$t0 = (int)floor(microtime(true) * 1000) - 600000;
+	$clock = fn($ms) => file_put_contents("{$dir}/now.txt", (string)$ms);
+	$clock($t0);
+	$server = $this->startServer('jira', 'JiraTestServer.php', $dir, [ 'JIRA_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$J::$testing = true;
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$issues = fn() => json_decode((string)@file_get_contents("{$dir}/issues.json"), true);
+	$creds = [];
+	$files = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function(array $over) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialJira', $over + [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Jira ' . uniqid() ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('jira: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->siteUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialJira', (string)$c->_id);
+	    };
+	    $cloud = $make([ 'deployment' => 'cloud', 'siteUrl' => 'https://check.atlassian.net', 'email' => 'bot@example.com', 'apiToken' => 'tok-cloud' ]);
+	    $dc = $make([ 'deployment' => 'server', 'siteUrl' => "https://127.0.0.1:{$port}", 'apiToken' => 'pat-dc' ]);
+	    $wrong = $make([ 'deployment' => 'cloud', 'siteUrl' => 'https://check.atlassian.net', 'email' => 'bot@example.com', 'apiToken' => 'nope' ]);
+	    if (!$cloud || !$dc || !$wrong)
+		return;
+	    $bad = $om->create('CredentialJira', [ 'name' => 'x', 'deployment' => 'cloud', 'siteUrl' => 'https://jira.example.com', 'apiToken' => 't' ]);
+	    $bad->validates();
+	    $badKeys = array_values(array_intersect([ 'email', 'siteUrl' ], array_keys((array)$bad->errors())));
+	    $requests();
+	    $tc = $cloud->test();
+	    $sent = $requests();
+	    $this->check('jira: the form (Cloud: an email, an atlassian.net site); Test: Cloud by Basic on /rest/api/3, Data Center by Bearer on /rest/api/2; a wrong token said', [
+		[ 'email', 'siteUrl' ], 'connected to Check Jira (Cloud) as Workflow Bot <bot@example.com>', [ '/rest/api/3/myself', true ], 'connected to Check Jira (Data Center 9.12.4) as Workflow Bot <bot@example.com>',
+		'HTTP status 401: You are not authenticated. Authentication required to perform this operation.' ], [
+		$badKeys, $tc, [ $sent[0]['path'] ?? null, str_starts_with((string)($sent[0]['headers']['auth'] ?? ''), 'Basic ') ], $dc->test(), $thrown(fn() => $wrong->test()) ]);
+
+	    $step = function($fq, $cfg, $vars = [], $cred = null) use ($n, $e, $cloud, $requests) {
+		$requests();
+		$exe = $this->runFlow("jira {$fq}", [ $n('m', 'trigger::manual'), $n('s', $fq, $cfg + [ 'credential' => (string)($cred ?? $cloud)->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $logOf = fn($exe, $prefix) => str_replace($prefix, '', (string)self::logLine($exe, $prefix));
+	    $IS = 'app::jira-issues';
+	    $posted = fn($sent, $suffix) => array_values(array_filter($sent, fn($r) => $r['method'] !== 'GET' && str_ends_with($r['path'], $suffix)))[0] ?? [];
+
+	    //create, update, labels, assign
+	    [ $c1, $sent ] = $step($IS, [ 'operation' => 'create', 'project' => 'ops', 'issueType' => 'Bug', 'summary' => 'Disk full on {{ host }}', 'description' => "Free: 2%\nNode: {{ host }}",
+		'priority' => 'High', 'assignee' => 'ana@example.com', 'labels' => 'alert, disk', 'duedate' => '2026-12-31', 'fields' => '{"customfield_10016": 3}', 'variable' => 'i' ], [ 'host' => 'srv1' ]);
+	    $f = $posted($sent, '/rest/api/3/issue')['body']['fields'] ?? [];
+	    $i1 = $c1?->getVariable('i');
+	    [ $c2, ] = $step($IS, [ 'operation' => 'create', 'project' => 'OPS', 'issueType' => 'Epic', 'summary' => '', 'variable' => 'i' ]);
+	    [ $c3, ] = $step($IS, [ 'operation' => 'create', 'project' => 'OPS', 'issueType' => 'Epic', 'summary' => 'X', 'variable' => 'i' ]);
+	    $this->check('jira: Issues create: the project\'s key, the type, the description as ADF, the assignee by email (an account ID), labels, the due date, Other fields; the issue read back '
+		. '(its url); no summary; Jira\'s field errors said', [
+		[ 'OPS', 'Bug', 'doc', 'ana-5b10a2844c20165700ede21g', [ 'alert', 'disk' ], '2026-12-31', 3, [ 'name' => 'High' ] ], [ 'OPS-1', "Free: 2%\nNode: srv1", 'Ana', true ],
+		'Summary: required to create an issue', 'HTTP status 400: issuetype: The issue type selected is invalid.' ], [
+		[ $f['project']['key'] ?? null, $f['issuetype']['name'] ?? null, $f['description']['type'] ?? null, $f['assignee']['accountId'] ?? null, $f['labels'] ?? null, $f['duedate'] ?? null,
+		    $f['customfield_10016'] ?? null, $f['priority'] ?? null ],
+		[ $i1['key'] ?? null, $i1['description'] ?? null, $i1['assignee']['displayName'] ?? null, str_ends_with((string)($i1['url'] ?? ''), '/browse/OPS-1') ],
+		$logOf($c2, 'Jira Issues create: '), $logOf($c3, 'Jira Issues create: ') ]);
+	    [ $u, $sent ] = $step($IS, [ 'operation' => 'update', 'issue' => '{{ i }}', 'summary' => 'Disk full', 'labels' => [ 'disk' ], 'variable' => 'i' ], [ 'i' => $i1 ]);
+	    [ $al, $sent2 ] = $step($IS, [ 'operation' => 'addLabels', 'issue' => 'ops-1', 'labels' => 'p1', 'variable' => 'x' ]);
+	    [ $as, $sent3 ] = $step($IS, [ 'operation' => 'assign', 'issue' => 'OPS-1', 'assignee' => '-', 'variable' => 'x' ]);
+	    $o1 = $issues()['OPS-1']['fields'] ?? [];
+	    $this->check('jira: Issues update (an issue of a variable; labels replaced); add labels (update.labels add); unassign (accountId null)', [
+		[ 'summary' => 'Disk full', 'labels' => [ 'disk' ] ], [ [ 'add' => 'p1' ] ], [ 'accountId' => null ], [ 'disk', 'p1' ], null ], [
+		$posted($sent, '/issue/OPS-1')['body']['fields'] ?? null, $posted($sent2, '/issue/OPS-1')['body']['update']['labels'] ?? null, $posted($sent3, '/assignee')['body'] ?? null,
+		$o1['labels'] ?? null, $o1['assignee'] ?? 'kept' ]);
+
+	    //search (paged, a 429), transitions, comments
+	    for ($k = 2; $k <= 4; $k++)
+		$step($IS, [ 'operation' => 'create', 'project' => 'OPS', 'summary' => "Task {$k}", 'variable' => 'i' ]);
+	    file_put_contents("{$dir}/throttle.json", '1');
+	    [ $s, $sent ] = $step($IS, [ 'operation' => 'search', 'jql' => 'project = OPS ORDER BY created ASC', 'maxItems' => 3, 'extraFields' => 'customfield_10016', 'variable' => 'r' ]);
+	    $r = $s?->getVariable('r');
+	    [ $sdc, $dsent ] = $step($IS, [ 'operation' => 'search', 'jql' => 'project = OPS', 'variable' => 'r' ], [], $dc);
+	    $this->check('jira: Issues search: Cloud /search/jql (a 429 waited for, the fields asked, At most: truncated), the issues simplified; Data Center /rest/api/2/search by startAt', [
+		[ 3, true, 'OPS-1', 'Disk full', 'To Do', 'new' ], [ '/rest/api/3/search/jql', true, true ], [ 4, '/rest/api/2/search', 0 ] ], [
+		[ $r['count'] ?? null, $r['truncated'] ?? null, $r['items'][0]['key'] ?? null, $r['items'][0]['summary'] ?? null, $r['items'][0]['status'] ?? null, $r['items'][0]['statusCategory'] ?? null ],
+		[ end($sent)['path'] ?? null, count($sent) >= 2, in_array('customfield_10016', (array)(end($sent)['body']['fields'] ?? []), true) ],
+		[ $sdc?->getVariable('r')['count'] ?? null, $dsent[0]['path'] ?? null, $dsent[0]['body']['startAt'] ?? null ] ]);
+	    [ $t1, $sent ] = $step($IS, [ 'operation' => 'transition', 'issue' => 'OPS-2', 'to' => 'in progress', 'comment' => 'Working on it', 'variable' => 't' ]);
+	    [ $t2, ] = $step($IS, [ 'operation' => 'transition', 'issue' => 'OPS-2', 'to' => 'Resolve', 'resolution' => 'Done', 'variable' => 't' ]);
+	    [ $t3, ] = $step($IS, [ 'operation' => 'transition', 'issue' => 'OPS-2', 'to' => 'Done', 'variable' => 't' ]);
+	    [ $t4, ] = $step($IS, [ 'operation' => 'transition', 'issue' => 'OPS-3', 'to' => 'Review', 'variable' => 't' ]);
+	    $o2 = $issues()['OPS-2'] ?? [];
+	    $this->check('jira: Issues transition: by the status it leads to (any case), with a comment (ADF); by its name, with a resolution; already there: nothing done; none: said with those it has', [
+		[ '11', 'doc' ], [ 'To Do', 'In Progress' ], [ 'Done', 'Done' ], [ false, 'OPS-2 is Done already' ], 'no transition to `Review` from To Do (it has: Start → In Progress, Close → Done)' ], [
+		[ $posted($sent, '/transitions')['body']['transition']['id'] ?? null, $posted($sent, '/transitions')['body']['update']['comment'][0]['add']['body']['type'] ?? null ],
+		[ $t1?->getVariable('t')['from'] ?? null, $t1?->getVariable('t')['status'] ?? null ], [ $o2['fields']['status']['name'] ?? null, $o2['fields']['resolution']['name'] ?? null ],
+		[ $t3?->getVariable('t')['changed'] ?? null, $logOf($t3, 'Jira Issues transition: ') ], $logOf($t4, 'Jira Issues transition: ') ]);
+	    [ $cm, $sent ] = $step($IS, [ 'operation' => 'comment', 'issue' => 'OPS-3', 'comment' => "Seen.\n\nThanks", 'variable' => 'c' ]);
+	    [ $cms, ] = $step($IS, [ 'operation' => 'comments', 'issue' => 'OPS-3', 'variable' => 'c' ]);
+	    [ $dcm, $dsent ] = $step($IS, [ 'operation' => 'comment', 'issue' => 'OPS-3', 'comment' => 'From DC', 'variable' => 'c' ], [], $dc);
+	    $this->check('jira: Issues comment: Cloud ADF (two paragraphs), Data Center a text; comments listed newest first, as plain text', [ [ 2, 'From DC' ], [ 'From DC', "Seen.\n\nThanks" ], 1 ], [
+		[ count($posted($sent, '/comment')['body']['body']['content'] ?? []), $posted($dsent, '/comment')['body']['body'] ?? null ],
+		(function() use ($step, $IS) { [ $x ] = $step($IS, [ 'operation' => 'comments', 'issue' => 'OPS-3', 'variable' => 'c' ]); return array_column($x?->getVariable('c')['items'] ?? [], 'body'); })(),
+		$cms?->getVariable('c')['count'] ?? 0 ]);
+	    [ $lk, $sent ] = $step($IS, [ 'operation' => 'link', 'issue' => 'OPS-3', 'linkType' => 'Blocks', 'other' => 'OPS-4', 'variable' => 'l' ]);
+	    [ $lk2, ] = $step($IS, [ 'operation' => 'link', 'issue' => 'OPS-3', 'linkType' => 'Blocks', 'other' => 'OPS-99', 'variable' => 'l' ]);
+	    $file = \models\File::createFromString('log.txt', "line\n", [ 'metadata' => [ 'project' => $this->project->_id, 'aid' => $this->account->_id, 'owner' => null, 'source' => 'check' ] ]);
+	    $files[] = $file;
+	    [ $at, $sent ] = $step($IS, [ 'operation' => 'attach', 'issue' => 'OPS-3', 'sourceFile' => (string)$file, 'variable' => 'a' ]);
+	    [ $dl, $sent2 ] = $step($IS, [ 'operation' => 'delete', 'issue' => 'OPS-4', 'deleteSubtasks' => true, 'variable' => 'd' ]);
+	    $this->check('jira: Issues link (outwardIssue this, inwardIssue the other; an unknown issue said); attach a project file (multipart, X-Atlassian-Token); delete with subtasks', [
+		[ 'Blocks', 'OPS-3', 'OPS-4' ], 'error', [ 'log.txt', 5, 'no-check' ], [ 'true', false ] ], [
+		[ $posted($sent, '/issueLink')['body']['type']['name'] ?? null, $posted($sent, '/issueLink')['body']['outwardIssue']['key'] ?? null, $posted($sent, '/issueLink')['body']['inwardIssue']['key'] ?? null ],
+		$lk2?->getVariable('route'), [ $at?->getVariable('a')['filename'] ?? null, $at?->getVariable('a')['size'] ?? null, $posted($sent, '/attachments')['headers']['atlassian'] ?? null ],
+		[ $posted($sent2, '/issue/OPS-4')['query']['deleteSubtasks'] ?? null, isset($issues()['OPS-4']) ] ]);
+
+	    //projects, API, tools
+	    [ $pr, ] = $step('app::jira-projects', [ 'operation' => 'project', 'project' => 'ops', 'variable' => 'p' ]);
+	    [ $fl, ] = $step('app::jira-projects', [ 'operation' => 'fields', 'search' => 'story', 'variable' => 'p' ]);
+	    [ $us, ] = $step('app::jira-projects', [ 'operation' => 'users', 'search' => 'dan', 'variable' => 'p' ]);
+	    [ $api, ] = $step('app::jira-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => '/rest/api/3/issue/{{ k }}', 'query' => '{"fields": ["summary"]}', 'variable' => 'x' ], [ 'k' => 'OPS-1' ]);
+	    [ $apiBad, ] = $step('app::jira-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => '/secure/Dashboard.jspa', 'variable' => 'x' ]);
+	    $ops = \util\AgentTools::operations('jira');
+	    $this->check('jira: Projects: a project\'s issue types; a custom field\'s id; a user; API: any /rest/ path; not /rest/: refused; as AI tools', [
+		[ 'Task', 'Sub-task' ], [ 'customfield_10016' ], [ 'dan-5b10a2844c20165700ede22h' ], 'OPS-1', 'error', [ false, true, false ] ], [
+		array_column($pr?->getVariable('p')['issueTypes'] ?? [], 'name'), array_column($fl?->getVariable('p')['items'] ?? [], 'id'), array_column($us?->getVariable('p')['items'] ?? [], 'accountId'),
+		$api?->getVariable('x')['key'] ?? null, $apiBad?->getVariable('route'),
+		[ $ops['jira_issues_search']['writes'] ?? null, $ops['jira_issues_transition']['writes'] ?? null, $ops['jira_projects_fields']['writes'] ?? null ] ]);
+
+	    //the issue trigger
+	    $wf = $this->workflow('jira issue', [ $n('t', 'trigger::jira', [ 'credential' => (string)$cloud->_id, 'jql' => 'project = OPS ORDER BY rank', 'event' => 'created', 'runs' => 'each',
+		'variable' => 'issue', 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ issue.key }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('jira: issue: the workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $TJ = \models\node\NodeTriggerJira::class;
+	    $node = $wf->nodes['t'];
+	    [ $d0, $none ] = $TJ::check($wf, $node, [], $t0 + 1000);
+	    $clock($t0 + 60000);
+	    $step($IS, [ 'operation' => 'create', 'project' => 'OPS', 'summary' => 'New A', 'variable' => 'i' ]);
+	    $step($IS, [ 'operation' => 'create', 'project' => 'OPS', 'summary' => 'New B', 'variable' => 'i' ]);
+	    $clock($t0 + 120000);
+	    $requests();
+	    [ $d1, $first ] = $TJ::check($wf, $node, $d0, $t0 + 120000);
+	    $jql = array_values(array_filter($requests(), fn($r) => str_ends_with($r['path'], '/search/jql')))[0]['body']['jql'] ?? null;
+	    [ $d2, $second ] = $TJ::check($wf, $node, $d1, $t0 + 180000);
+	    $started = array_merge($started, $first, $second);
+	    $nodeU = array_replace_recursive($node, [ 'config' => [ 'event' => 'updated' ] ]);
+	    [ $u0, ] = $TJ::check($wf, $nodeU, [], $t0 + 150000);
+	    $clock($t0 + 160000);
+	    $step($IS, [ 'operation' => 'comment', 'issue' => 'OPS-1', 'comment' => 'x', 'variable' => 'c' ]);
+	    $step($IS, [ 'operation' => 'update', 'issue' => 'OPS-1', 'summary' => 'Disk full!', 'variable' => 'c' ]);
+	    [ , $upd ] = $TJ::check($wf, $nodeU, $u0, $t0 + 200000);
+	    $started = array_merge($started, $upd);
+	    $this->check('jira: issue: the first check only notes the time; then issues created since (older ones in the window left out), the oldest first, the JQL relative without the user\'s '
+		. 'ORDER BY; checked again: none; Created or updated: an issue updated, its event', [
+		[], [ 'New A', 'New B' ], [ 'created', 'created' ], '(project = OPS) AND created >= -5m ORDER BY created ASC', [], [ [ 'OPS-1', 'updated' ] ], [ 'new', 'jira' ] ], [
+		$none, array_map(fn($x) => $x->getVariable('issue')['summary'] ?? null, $first), array_map(fn($x) => $x->getVariable('issue')['event'] ?? null, $first), $jql, $second,
+		array_map(fn($x) => [ $x->getVariable('issue')['key'] ?? null, $x->getVariable('issue')['event'] ?? null ], $upd), [ $first[0]?->state ?? null, $first[0]?->trigger ?? null ] ]);
+	    $now = $TJ::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('jira: issue: Run in the designer: the newest issue', 1, count($now['executions'] ?? []));
+	} finally {
+	    $J::$testing = false;
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($files as $f)
+		$om->findOne('File', [ '_id' => $f ])?->delete();
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
 	}
     }
 

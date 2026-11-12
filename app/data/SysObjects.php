@@ -310,6 +310,11 @@ class SysObjects {
 		'variant-of' => 'Credential',
 	    ],
 	    //CLD: 2026-11-12T10:00:00+02:00: a Shopify store's Admin API access (the Shopify steps and event trigger), core for every account
+	    //CLD: 2026-11-12T14:00:00+02:00: a Jira site (the Jira steps and issue trigger), core for every account
+	    'CredentialJira' => [
+		'class' => 'models\credential\CredentialJira',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-12T12:00:00+02:00: a Nextcloud user's access (the Nextcloud steps and file trigger), core for every account
 	    'CredentialNextcloud' => [
 		'class' => 'models\credential\CredentialNextcloud',
@@ -620,6 +625,23 @@ class SysObjects {
 	    ],
 	    'NodeTriggerShopify' => [
 		'class' => 'models\node\NodeTriggerShopify',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-12T14:00:00+02:00: Jira (one step per area, NodeAppJira their base; the issue trigger: a JQL search on a schedule), core for every account
+	    'NodeAppJiraIssues' => [
+		'class' => 'models\node\NodeAppJiraIssues',
+		'wfNode' => true,
+	    ],
+	    'NodeAppJiraProjects' => [
+		'class' => 'models\node\NodeAppJiraProjects',
+		'wfNode' => true,
+	    ],
+	    'NodeAppJiraApi' => [
+		'class' => 'models\node\NodeAppJiraApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerJira' => [
+		'class' => 'models\node\NodeTriggerJira',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-12T12:00:00+02:00: Nextcloud (one step per area, NodeAppNextcloud their base; the file trigger: a folder read on a schedule), core for every account
