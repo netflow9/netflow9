@@ -1,5 +1,8 @@
 <?php
 
+//CLD: 2026-11-12T23:30:00+02:00: the app's version (app.version) is data\Version::NUMBER; required here: get_config() runs before V::create() registers the autoloader
+require_once __DIR__ . '/data/Version.php';
+
 //app.env's SYSTEM_AI_<name>, else $default
 function system_ai_env($name, $default = '') {
     return defined('SYSTEM_AI_' . $name) ? constant('SYSTEM_AI_' . $name) : $default;
@@ -29,7 +32,7 @@ function get_config($mode = 'web') {
 	'app.debug' => defined('APP_DEBUG') && filter_var(APP_DEBUG, FILTER_VALIDATE_BOOLEAN),
 	'app.name' => 'rail22',
 	'app.author' => 'None',
-	'app.version' => '1.0.0',
+	'app.version' => \data\Version::NUMBER,
 	'app.mode' => $mode,
 
 	//application timezone; might be changed
