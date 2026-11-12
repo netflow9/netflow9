@@ -50,6 +50,8 @@ class WfNode extends \sys\NestedModel {
 	'work' => 'Work management',
 	//CLD: 2026-11-12T10:00:00+02:00: the Shopify steps
 	'commerce' => 'E-commerce',
+	//CLD: 2026-11-13T00:30:00+02:00: the Infobip steps (SMS, WhatsApp, email, 2FA)
+	'messaging' => 'Messaging',
 	'ai' => 'AI',
 	//the steps of a country or region (the Regional<code> plugins, e.g. RegionalRO)
 	'regional' => 'Regional',

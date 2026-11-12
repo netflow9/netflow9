@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'glpi', 'intune', 'zendesk', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'glpi', 'intune', 'zendesk', 'infobip', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -10286,6 +10286,243 @@ class CheckCommand extends \sys\BaseController {
 	    }
 	    foreach($wfs as $wf)
 		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($files as $f)
+		$om->findOne('File', [ '_id' => $f ])?->delete();
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-13T00:30:00+02:00: Infobip against a fake account (commands/tests/InfobipTestServer.php; util\Infobip::$testing: its address): values (numbers, times, Infobip's
+    //errors both ways, a post's results), the credential (an API key, its default senders), a 429 waited for, SMS (send with the credential's sender, a time, validity, callback
+    //data and a delivery address; preview; logs; reports and inbox read once), WhatsApp (text per recipient, a template's placeholders, a file; Infobip's refusal of a sender),
+    //Email (multipart, an attachment), 2FA (send, a wrong PIN, verify, resend), Account, the API step, the message trigger (/infobip/<token>: kinds chosen, others ignored)
+    private function suiteInfobip() {
+	$IB = \util\Infobip::class;
+	$TI = \models\node\NodeTriggerInfobip::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$this->check('infobip: values: numbers (spaces, +, 00, a list of objects), a time in UTC and with its zone, placeholders by line, Infobip\'s errors (both formats), a post\'s '
+	    . 'results (SMS, WhatsApp, a report)', [
+	    [ '40722123456', '40733000000', '447860099299' ], 'To: not a phone number in international format (e.g. 40722123456 or +40 722 123 456): `12`', '2026-12-01T09:00:00.000+0000',
+	    '2026-12-01T07:00:00.000+0000', [ 'Ana', '#1001' ], 'Bad request (to: must not be empty) [BAD_REQUEST]', 'Request cannot be processed. (to: must be a number) [E400]',
+	    [ [ 'sms', 'SMS', 'STOP please' ], [ 'whatsapp', 'WHATSAPP', 'IMAGE', 'Ana' ], [ 'reports', 'UNDELIVERABLE', 'Absent subscriber', 'order-7' ] ] ], [
+	    $IB::numbers([ '+40 722-123-456', [ 'phone' => '0040733000000' ], '447860099299' ]), $thrown(fn() => $IB::number('12')),
+	    \models\node\NodeAppInfobipSms::time('2026-12-01 09:00'), \models\node\NodeAppInfobipSms::time('2026-12-01T09:00:00+02:00'),
+	    \models\node\NodeAppInfobipWhatsapp::placeholders("Ana\n#1001\n"),
+	    $IB::message([ 'requestError' => [ 'serviceException' => [ 'messageId' => 'BAD_REQUEST', 'text' => 'Bad request', 'validationErrors' => [ 'to' => [ 'must not be empty' ] ] ] ] ]),
+	    $IB::message([ 'errorCode' => 'E400', 'description' => 'Request cannot be processed.', 'violations' => [ [ 'property' => 'to', 'violation' => 'must be a number' ] ] ]),
+	    [ (fn($i) => [ $i['_kind'], $i['channel'], $i['text'] ])($TI::itemOf([ 'from' => '40722123456', 'to' => '447860099299', 'text' => 'STOP please', 'keyword' => 'STOP', 'receivedAt' => 'x' ])),
+		(fn($i) => [ $i['_kind'], $i['channel'], $i['type'], $i['contactName'] ])($TI::itemOf([ 'from' => '40722123456', 'integrationType' => 'WHATSAPP', 'receivedAt' => 'x',
+		    'message' => [ 'type' => 'IMAGE', 'url' => 'https://x/y.jpg' ], 'contact' => [ 'name' => 'Ana' ] ])),
+		(fn($i) => [ $i['_kind'], $i['statusGroup'], $i['error'], $i['callbackData'] ])($TI::itemOf([ 'messageId' => 'm', 'to' => '40722123456', 'smsCount' => 1,
+		    'status' => [ 'groupName' => 'UNDELIVERABLE' ], 'error' => [ 'groupName' => 'HANDSET_ERRORS', 'description' => 'Absent subscriber' ], 'callbackData' => 'order-7' ])) ] ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-infobip-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('infobip', 'InfobipTestServer.php', $dir, [ 'INFOBIP_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$IB::$testing = "http://127.0.0.1:{$port}";
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$creds = [];
+	$files = [];
+	$wfs = [];
+	$runs = [];
+	try {
+	    $make = function(array $over) use ($om, &$creds) {
+		$c = $om->create('CredentialInfobip', $over + [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Infobip ' . uniqid(), 'baseUrl' => 'https://abc123.api.infobip.com' ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('infobip: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		return $om->findById('CredentialInfobip', (string)$c->_id);
+	    };
+	    $ok = $make([ 'apiKey' => 'key-ib', 'smsSender' => 'Acme', 'whatsappSender' => '+44 7860 099299', 'emailFrom' => 'Acme <noreply@acme.com>' ]);
+	    $wrong = $make([ 'apiKey' => 'nope' ]);
+	    if (!$ok || !$wrong)
+		return;
+	    $bad = $om->create('CredentialInfobip', [ 'name' => 'x', 'baseUrl' => 'https://example.com' ]);
+	    $bad->validates();
+	    $badKeys = array_values(array_intersect([ 'baseUrl', 'apiKey' ], array_keys((array)$bad->errors())));
+	    $requests();
+	    $tt = $ok->test();
+	    $sent = $requests();
+	    $this->check('infobip: the form (an Infobip base URL, the API key); Test: App <key>, the balance; a wrong key said', [
+		[ 'baseUrl', 'apiKey' ], 'connected to Infobip: balance 47.50 EUR', [ '/account/1/balance', 'App key-ib' ], 'HTTP status 401: Invalid login details [UNAUTHORIZED]' ], [
+		$badKeys, $tt, [ $sent[0]['path'] ?? null, $sent[0]['auth'] ?? null ], $thrown(fn() => $wrong->test()) ]);
+
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $ok, $requests) {
+		$requests();
+		$exe = $this->runFlow("infobip {$fq}", [ $n('m', 'trigger::manual'), $n('s', $fq, $cfg + [ 'credential' => (string)$ok->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $logOf = fn($exe, $prefix) => str_replace($prefix, '', (string)self::logLine($exe, $prefix));
+	    $to = fn($sent, $path) => array_values(array_filter($sent, fn($r) => $r['path'] === $path));
+
+	    //SMS
+	    $SM = 'app::infobip-sms';
+	    [ $s1, $sent ] = $step($SM, [ 'operation' => 'send', 'to' => '+40 722 123 456, 0040733000000', 'text' => 'Your code: {{ code }}', 'sendAt' => '2026-12-01 09:00', 'validity' => 30,
+		'callbackData' => 'order-7', 'notifyUrl' => 'https://example.com/hook', 'variable' => 's' ], [ 'code' => 4321 ]);
+	    $m = $to($sent, '/sms/2/text/advanced')[0]['body']['messages'][0] ?? [];
+	    [ $s2, ] = $step($SM, [ 'operation' => 'send', 'to' => '40722123456', 'from' => 'TOOLONGSENDER', 'text' => 'x', 'variable' => 's' ]);
+	    [ $p1, ] = $step($SM, [ 'operation' => 'preview', 'text' => 'Hello', 'variable' => 'p' ]);
+	    [ $p2, ] = $step($SM, [ 'operation' => 'preview', 'text' => str_repeat('ă', 80), 'variable' => 'p' ]);
+	    $this->check('infobip: SMS send: the numbers international, the credential\'s sender, the text, a UTC time, the validity, callback data, the delivery address as JSON; the result; '
+		. 'Infobip\'s refusal of a sender; preview (GSM 7-bit, Unicode)', [
+		[ 'Acme', [ [ 'to' => '40722123456' ], [ 'to' => '40733000000' ] ], 'Your code: 4321', '2026-12-01T09:00:00.000+0000', 30, 'order-7', 'https://example.com/hook', 'application/json' ],
+		[ 2, 'PENDING', '2 SMS to 40722123456, 40733000000: PENDING' ], 'HTTP status 400: Bad request (messages[0].from: size must be between 0 and 11) [BAD_REQUEST]', [ 1, 155 ], [ 2, 54 ] ], [
+		[ $m['from'] ?? null, $m['destinations'] ?? null, $m['text'] ?? null, $m['sendAt'] ?? null, $m['validityPeriod'] ?? null, $m['callbackData'] ?? null, $m['notifyUrl'] ?? null, $m['notifyContentType'] ?? null ],
+		[ $s1?->getVariable('s')['count'] ?? null, $s1?->getVariable('s')['messages'][0]['statusGroup'] ?? null, preg_replace('/ \(\d+ ms\)$/', '', $logOf($s1, 'Infobip SMS send: ')) ],
+		$logOf($s2, 'Infobip SMS send: '), [ $p1?->getVariable('p')['parts'] ?? null, $p1?->getVariable('p')['charactersRemaining'] ?? null ],
+		[ $p2?->getVariable('p')['parts'] ?? null, $p2?->getVariable('p')['charactersRemaining'] ?? null ] ]);
+	    file_put_contents("{$dir}/reports.json", json_encode([ [ 'bulkId' => 'b', 'messageId' => 'sms-1', 'to' => '40722123456', 'smsCount' => 1, 'status' => [ 'groupName' => 'DELIVERED' ], 'error' => [ 'groupName' => 'OK' ] ],
+		[ 'bulkId' => 'b', 'messageId' => 'sms-2', 'to' => '40733000000', 'smsCount' => 1, 'status' => [ 'groupName' => 'UNDELIVERABLE' ], 'error' => [ 'groupName' => 'HANDSET_ERRORS', 'description' => 'Absent subscriber' ] ] ]));
+	    file_put_contents("{$dir}/inbox.json", json_encode([ [ 'messageId' => 'in-1', 'from' => '40722123456', 'to' => 'Acme', 'text' => 'YES', 'receivedAt' => '2026-11-12T10:00:00.000+0000' ] ]));
+	    [ $l1, $sent ] = $step($SM, [ 'operation' => 'logs', 'to' => '+40722123456', 'variable' => 'l' ]);
+	    [ $r1, ] = $step($SM, [ 'operation' => 'reports', 'variable' => 'r' ]);
+	    [ $r2, ] = $step($SM, [ 'operation' => 'reports', 'variable' => 'r' ]);
+	    [ $i1, ] = $step($SM, [ 'operation' => 'inbox', 'variable' => 'i' ]);
+	    $this->check('infobip: SMS logs of a number; delivery reports read once (the error said); received messages', [
+		[ [ '40722123456' ], '40722123456', 'DELIVERED' ], [ [ 'DELIVERED', 'UNDELIVERABLE' ], 'Absent subscriber', 0 ], [ 'YES', '40722123456' ] ], [
+		[ array_column($l1?->getVariable('l')['items'] ?? [], 'to'), $sent[0]['query']['to'] ?? null, $l1?->getVariable('l')['items'][0]['statusGroup'] ?? null ],
+		[ array_column($r1?->getVariable('r')['items'] ?? [], 'statusGroup'), $r1?->getVariable('r')['items'][1]['error'] ?? null, $r2?->getVariable('r')['count'] ?? null ],
+		[ $i1?->getVariable('i')['items'][0]['text'] ?? null, $i1?->getVariable('i')['items'][0]['from'] ?? null ] ]);
+
+	    //WhatsApp, Email
+	    $WA = 'app::infobip-whatsapp';
+	    file_put_contents("{$dir}/throttle.json", '1');
+	    [ $w1, $sent ] = $step($WA, [ 'operation' => 'text', 'to' => [ '40722123456', '40733000000' ], 'text' => 'Hi *there*', 'variable' => 'w' ]);
+	    [ $w2, ] = $step($WA, [ 'operation' => 'text', 'to' => '40722123456', 'from' => '40700000000', 'text' => 'x', 'variable' => 'w' ]);
+	    [ $w3, $sent2 ] = $step($WA, [ 'operation' => 'template', 'to' => '40722123456', 'templateName' => 'order_shipped', 'language' => 'en', 'placeholders' => "{{ name }}\n#1001", 'variable' => 'w' ], [ 'name' => 'Ana' ]);
+	    [ $w4, ] = $step($WA, [ 'operation' => 'templates', 'variable' => 'w' ]);
+	    [ $w5, $sent3 ] = $step($WA, [ 'operation' => 'media', 'to' => '40722123456', 'mediaType' => 'document', 'mediaUrl' => 'https://example.com/invoice.pdf', 'caption' => 'Your invoice',
+		'filename' => 'invoice-1001.pdf', 'variable' => 'w' ]);
+	    [ $w6, ] = $step($WA, [ 'operation' => 'media', 'to' => '40722123456', 'mediaType' => 'image', 'mediaUrl' => 'http://example.com/x.jpg', 'variable' => 'w' ]);
+	    $texts = $to($sent, '/whatsapp/1/message/text');
+	    $this->check('infobip: WhatsApp text: one request per recipient, from the credential\'s sender (a 429 waited for); an unregistered sender refused; a template with placeholders '
+		. '(a {{ }} in them); templates; a document by address; an http address refused', [
+		[ 2, [ '447860099299', '40722123456', 'Hi *there*' ], 2 ], 'HTTP status 400: Bad request (from: sender is not registered for WhatsApp) [BAD_REQUEST]',
+		[ 'order_shipped', [ 'Ana', '#1001' ], 'en', 1 ], [ [ 'order_shipped', 'APPROVED', 2 ] ], [ 'https://example.com/invoice.pdf', 'Your invoice', 'invoice-1001.pdf' ], 'error' ], [
+		[ count(array_filter($texts, fn($r) => $r['body'] !== null && !empty($r['body']['to']))) >= 2 ? 2 : count($texts),
+		    [ $texts[0]['body']['from'] ?? null, $texts[0]['body']['to'] ?? null, $texts[0]['body']['content']['text'] ?? null ], $w1?->getVariable('w')['count'] ?? null ],
+		$logOf($w2, 'Infobip WhatsApp text: '),
+		(fn($b) => [ $b['content']['templateName'] ?? null, $b['content']['templateData']['body']['placeholders'] ?? null, $b['content']['language'] ?? null, $w3?->getVariable('w')['count'] ?? null ])(
+		    $to($sent2, '/whatsapp/1/message/template')[0]['body']['messages'][0] ?? []),
+		array_map(fn($t) => [ $t['name'], $t['status'], $t['placeholders'] ], $w4?->getVariable('w')['items'] ?? []),
+		(fn($c) => [ $c['mediaUrl'] ?? null, $c['caption'] ?? null, $c['filename'] ?? null ])($to($sent3, '/whatsapp/1/message/document')[0]['body']['content'] ?? []),
+		$w6?->getVariable('route') ]);
+	    $file = \models\File::createFromString('invoice.txt', "Total: 100\n", [ 'metadata' => [ 'project' => $this->project->_id, 'aid' => $this->account->_id, 'owner' => null, 'source' => 'check' ] ]);
+	    $files[] = $file;
+	    [ $e1, $sent ] = $step('app::infobip-email', [ 'operation' => 'send', 'to' => 'Ana Pop <ana@example.com>', 'subject' => 'Your invoice', 'text' => 'See attached', 'html' => '<p>See attached</p>',
+		'sourceFile' => (string)$file, 'variable' => 'm' ]);
+	    [ $e2, ] = $step('app::infobip-email', [ 'operation' => 'send', 'to' => 'ana@example.com', 'subject' => 'x', 'variable' => 'm' ]);
+	    $post = $to($sent, '/email/3/send')[0] ?? [];
+	    $this->check('infobip: Email send: multipart from the credential\'s sender, the address of a name, subject, text, HTML, the attachment; no text nor HTML refused', [
+		[ 'Acme <noreply@acme.com>', 'ana@example.com', 'Your invoice', 'See attached', '<p>See attached</p>', [ 'invoice.txt', 11 ], 1 ], 'Text / HTML: give one' ], [
+		[ $post['post']['from'] ?? null, $post['post']['to'] ?? null, $post['post']['subject'] ?? null, $post['post']['text'] ?? null, $post['post']['html'] ?? null, $post['files']['attachment'] ?? null,
+		    $e1?->getVariable('m')['count'] ?? null ], $logOf($e2, 'Infobip Email send: ') ]);
+
+	    //2FA, account, API, tools
+	    $FA = 'app::infobip-2fa';
+	    [ $f1, ] = $step($FA, [ 'operation' => 'send', 'applicationId' => 'APP1', 'messageId' => 'MSG1', 'to' => '+40722123456', 'variable' => 'otp' ]);
+	    $otp = $f1?->getVariable('otp');
+	    [ $f2, ] = $step($FA, [ 'operation' => 'verify', 'pinId' => '{{ otp }}', 'pin' => '0000', 'variable' => 'v' ], [ 'otp' => $otp ]);
+	    [ $f3, ] = $step($FA, [ 'operation' => 'verify', 'pinId' => '{{ otp.pinId }}', 'pin' => '1234', 'variable' => 'v' ], [ 'otp' => $otp ]);
+	    [ $f4, ] = $step($FA, [ 'operation' => 'messages', 'applicationId' => 'APP1', 'variable' => 'v' ]);
+	    [ $a1, ] = $step('app::infobip-account', [ 'operation' => 'lookup', 'to' => '40722123456, 40733000000, 1234567', 'variable' => 'a' ]);
+	    [ $api, ] = $step('app::infobip-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => '/account/1/balance', 'variable' => 'x' ]);
+	    [ $apiBad, ] = $step('app::infobip-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => 'https://example.com/account/1/balance', 'variable' => 'x' ]);
+	    $ops = \util\AgentTools::operations('infobip');
+	    $this->check('infobip: 2FA send (a pinId); a wrong PIN: not verified, not an error; the right one; message templates; Account lookup (valid, ported, an error); API; another address '
+		. 'refused; as AI tools (a lookup is charged: a write)', [
+		[ true, '40722123456', 'MESSAGE_SENT' ], [ false, 2, 'WRONG_PIN', null ], true, [ 'Your code is {{pin}}' ],
+		[ [ true, false, 'Orange' ], [ true, true, 'Vodafone' ], [ false, false, 'Absent subscriber' ] ], 47.5, 'error', [ true, false, true, true, false ] ], [
+		[ str_starts_with((string)($otp['pinId'] ?? ''), 'PIN'), $otp['to'] ?? null, $otp['status'] ?? null ],
+		[ $f2?->getVariable('v')['verified'] ?? null, $f2?->getVariable('v')['attemptsRemaining'] ?? null, $f2?->getVariable('v')['error'] ?? null, $f2?->getVariable('route') ],
+		$f3?->getVariable('v')['verified'] ?? null, array_column($f4?->getVariable('v')['items'] ?? [], 'text'),
+		array_map(fn($x) => [ $x['valid'], $x['ported'], $x['portedNetwork'] ?? $x['error'] ?? $x['network'] ], $a1?->getVariable('a')['items'] ?? []),
+		$api?->getVariable('x')['balance'] ?? null, $apiBad?->getVariable('route'),
+		[ $ops['infobip_sms_send']['writes'] ?? null, $ops['infobip_sms_logs']['writes'] ?? null, $ops['infobip_account_lookup']['writes'] ?? null, $ops['infobip_2fa_verify']['writes'] ?? null,
+		    $ops['infobip_whatsapp_templates']['writes'] ?? null ] ]);
+
+	    //the message trigger
+	    $init = $TI::initConfig();
+	    $wf = $this->workflow('infobip message', [ $n('t', 'trigger::infobip', $init + [ 'kinds' => [ 'sms', 'reports' ], 'runs' => 'each', 'variable' => 'msg' ]),
+		$n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ msg.text }}' ]), $e('e1', 't', 's') ]);
+	    $noKind = $this->errorsOf('infobip none', [ $n('t', 'trigger::infobip', $TI::initConfig() + [ 'kinds' => [], 'variable' => 'msg' ]) ]);
+	    $this->check('infobip: message: the workflow is valid; no kind chosen refused; its address', [ true, true, true ], [ $wf->validates(),
+		str_contains(json_encode($noKind), 'choose at least one kind'), (bool)preg_match('~/infobip/[a-f0-9]{32}$~', (string)$init['url']) ]);
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $version = $om->create('WfVersion', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'number' => 1, 'name' => (string)$wf->name, 'nodes' => $wf->nodes ]);
+	    $version->save();
+	    $wf->version = $version->_id;
+	    $wf->status = \models\Workflow::PUBLISHED;
+	    $wf->save();
+	    $host = (string)parse_url($init['url'], PHP_URL_HOST);
+	    $post = function($body, $method = 'POST') use ($init, $host) {
+		$ch = curl_init($init['url']);
+		curl_setopt_array($ch, [ CURLOPT_CUSTOMREQUEST => $method, CURLOPT_POSTFIELDS => $body, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+		    CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ], CURLOPT_RESOLVE => [ "{$host}:443:127.0.0.1" ], CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0 ]);
+		$answer = json_decode((string)curl_exec($ch), true);
+		$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+		curl_close($ch);
+		return [ $status, $answer ];
+	    };
+	    [ $status ] = $post('', 'GET');
+	    if ($status === 0) {
+		echo "  skipped: the message trigger's address (this installation's web server cannot be reached from here)\n";
+	    } else {
+		[ $notJson ] = $post('not json');
+		[ , $ignored ] = $post(json_encode([ 'results' => [ [ 'from' => '40722123456', 'integrationType' => 'WHATSAPP', 'receivedAt' => 'x', 'message' => [ 'type' => 'TEXT', 'text' => 'hi' ] ] ] ]));
+		[ $okStatus, $answer ] = $post(json_encode([ 'results' => [
+		    [ 'messageId' => 'in-9', 'from' => '40722123456', 'to' => 'Acme', 'text' => 'STOP', 'keyword' => 'STOP', 'receivedAt' => '2026-11-12T10:00:00.000+0000', 'smsCount' => 1 ],
+		    [ 'from' => '40733000000', 'integrationType' => 'WHATSAPP', 'receivedAt' => 'x', 'message' => [ 'type' => 'TEXT', 'text' => 'not chosen' ] ],
+		    [ 'bulkId' => 'b', 'messageId' => 'sms-11', 'to' => '40722123456', 'smsCount' => 1, 'status' => [ 'groupName' => 'DELIVERED', 'name' => 'DELIVERED_TO_HANDSET' ],
+			'error' => [ 'groupName' => 'OK' ], 'callbackData' => 'order-7' ] ], 'messageCount' => 3 ]));
+		$runs = iterator_to_array($om->find('WfExecution', [ 'wf' => $wf->_id, 'trigger' => 'infobip' ]), false);
+		$got = array_map(fn($x) => [ $x->getVariable('msg')['kind'] ?? null, $x->getVariable('msg')['channel'] ?? null, $x->getVariable('msg')['text'] ?? $x->getVariable('msg')['callbackData'] ?? null ], $runs);
+		sort($got);
+		$this->check('infobip: message: a GET refused, not JSON refused, only kinds not chosen: ignored; a post of an SMS, a WhatsApp message and a report: one run each of the kinds chosen', [
+		    405, 400, 'ignored', 200, 2, [ [ 'message', 'SMS', 'STOP' ], [ 'report', 'SMS', 'order-7' ] ] ], [
+		    $status, $notJson, $ignored['state'] ?? null, $okStatus, count($answer['executions'] ?? []), $got ]);
+	    }
+	} finally {
+	    $IB::$testing = null;
+	    foreach($runs as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf) {
+		foreach($om->find('WfVersion', [ 'wf' => $wf->_id ]) as $v)
+		    $v->delete();
+		foreach($om->find('TriggerToken', [ 'wf' => $wf->_id ]) as $t)
+		    $t->delete();
+	    }
 	    foreach($files as $f)
 		$om->findOne('File', [ '_id' => $f ])?->delete();
 	    foreach($creds as $c)

@@ -320,6 +320,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialHubSpot',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-13T00:30:00+02:00: an Infobip account (the Infobip steps), core for every account
+	    'CredentialInfobip' => [
+		'class' => 'models\credential\CredentialInfobip',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-12T23:45:00+02:00: a Zendesk Support account (the Zendesk steps and ticket trigger), core for every account
 	    'CredentialZendesk' => [
 		'class' => 'models\credential\CredentialZendesk',
@@ -684,6 +689,35 @@ class SysObjects {
 	    ],
 	    'NodeTriggerHubSpot' => [
 		'class' => 'models\node\NodeTriggerHubSpot',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-13T00:30:00+02:00: Infobip (one step per channel, NodeAppInfobip their base; the message trigger: Infobip's posts to /infobip/<token>), core for every account
+	    'NodeAppInfobipSms' => [
+		'class' => 'models\node\NodeAppInfobipSms',
+		'wfNode' => true,
+	    ],
+	    'NodeAppInfobipWhatsapp' => [
+		'class' => 'models\node\NodeAppInfobipWhatsapp',
+		'wfNode' => true,
+	    ],
+	    'NodeAppInfobipEmail' => [
+		'class' => 'models\node\NodeAppInfobipEmail',
+		'wfNode' => true,
+	    ],
+	    'NodeAppInfobip2fa' => [
+		'class' => 'models\node\NodeAppInfobip2fa',
+		'wfNode' => true,
+	    ],
+	    'NodeAppInfobipAccount' => [
+		'class' => 'models\node\NodeAppInfobipAccount',
+		'wfNode' => true,
+	    ],
+	    'NodeAppInfobipApi' => [
+		'class' => 'models\node\NodeAppInfobipApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerInfobip' => [
+		'class' => 'models\node\NodeTriggerInfobip',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-12T23:45:00+02:00: Zendesk (one step per area, NodeAppZendesk their base; the ticket trigger: a search on a schedule), core for every account
