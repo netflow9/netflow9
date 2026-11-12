@@ -27,7 +27,7 @@ function get_config($mode = 'web') {
     $_config = [
 	//development switch: error details on the pages - set false outside development
 	'app.debug' => defined('APP_DEBUG') && filter_var(APP_DEBUG, FILTER_VALIDATE_BOOLEAN),
-	'app.name' => 'Rail22',
+	'app.name' => 'rail22',
 	'app.author' => 'None',
 	'app.version' => '1.0.0',
 	'app.mode' => $mode,
