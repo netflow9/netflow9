@@ -18,7 +18,7 @@ class AuditController extends \sys\BaseController {
     //?scope=system: the system log (every entry of the account; global scope only); else the current project's log (its entries only, also for global scope)
     private $system = false;
 
-    //CLD: 2026-11-02T10:00:00+02:00: ?agent=1: only the tool calls of the agents (the audit log)
+    //?agent=1: only the tool calls of the agents (the audit log)
     private $agent = false;
 
     public function _init() {
@@ -26,7 +26,7 @@ class AuditController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	//the request's account (rt.account, set at sign-in), for the actions
 	$this->account = \V::app()->config('rt.account');
 
 	$this->project = \V::app()->om->findById('Project', \V::app()->user->crtProject);
@@ -59,7 +59,7 @@ class AuditController extends \sys\BaseController {
 	$system = $this->system;
 	$log = $this->log;
 	$agent = $this->agent;
-	//CLD: 2026-11-02T10:00:00+02:00: the same log with / without the agents' filter (logQuery: without it)
+	//the same log with / without the agents' filter (logQuery: without it)
 	$q = $this->logQuery();
 	$qData = $agent ? ($q === '' ? '?agent=1' : "{$q}&agent=1") : $q;
 	$this->render('list', compact('system', 'log', 'q', 'qData', 'agent'));
@@ -68,7 +68,7 @@ class AuditController extends \sys\BaseController {
     //one entry (dialog): who / what acted, when, what, and the changed values
     public function view($req, $resp) {
 	$oid = $this->getOidOrError();
-	$entry = \V::app()->om->findOne($this->log, [ '_id' => $oid, 'aid' => $this->account->_id ]);
+	$entry = \V::app()->om->findOne($this->log, [ '_id' => $oid ]);
 	if (empty($entry))
 	    \V::app()->error(404, 'Not found');
 

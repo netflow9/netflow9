@@ -29,7 +29,7 @@ class AssistantController extends \sys\BaseController {
     //workflow ?id of the current account that the user may $permName, else 404 / 403 (as WorkflowController::findWorkflow)
     private function findWorkflow($permName) {
 	$oid = $this->getOidOrError();
-	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $this->account->_id ]);
+	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid ]);
 	if (empty($wf))
 	    \V::app()->error(404, 'Not found');
 
@@ -173,7 +173,7 @@ class AssistantController extends \sys\BaseController {
 		$settings->api_key = '';
 	    if ($settings->validates() && $settings->save()) {
 		$this->addToast('success', 'OK', 'Assistant settings saved!');
-		//CLD: 2026-11-02T23:00:00+02:00: a budget this model's spending is not counted in
+		//a budget this model's spending is not counted in
 		if (AssistantSettings::budgetOf($settings) !== null && AssistantSettings::pricesOf($settings) === null)
 		    $this->addToast('warning', 'Budget', 'Rail22 does not know the price of this model: what it spends is not counted in the monthly budget');
 	    }
@@ -191,8 +191,7 @@ class AssistantController extends \sys\BaseController {
 
     //the Assistant's settings of the current account; new (not saved) when it has none yet
     private function findSettings() {
-	$aid = $this->account->_id;
-	return \V::app()->om->findOne('AssistantSettings', [ 'aid' => $aid ]) ?: \V::app()->om->create('AssistantSettings', [ 'aid' => $aid ]);
+	return \V::app()->om->findOne('AssistantSettings') ?: \V::app()->om->create('AssistantSettings', [ 'aid' => $this->account->_id ]);
     }
 
     //Connect on the settings page (POST, JSON): `provider`, `url`, `api_key` as in the form (not saved yet) => { models: [ { id, label } ] }

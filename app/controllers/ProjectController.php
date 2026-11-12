@@ -18,9 +18,9 @@ class ProjectController extends \sys\BaseController {
 	if (!\V::app()->user->can('Project::create'))
 	    \V::app()->error(403, 'Unauthorized');
 
-	$n = \V::app()->om->count('Project', [ 'aid' => $this->account->_id ]);
+	$n = \V::app()->om->count('Project');
 
-	$role = \V::app()->om->findOne('Role', [ 'aid' => $this->account->_id, 'iname' => 'owner' ]);
+	$role = \V::app()->om->findOne('Role', [ 'iname' => 'owner' ]);
 
 	$project = \V::app()->om->create('Project', [
 	    'aid' => $this->account->_id,
@@ -42,9 +42,9 @@ class ProjectController extends \sys\BaseController {
     }
 
     public function settings($req, $resp) {
-	//CLD: 2026-10-05T20:42:44+03:00: validate the id and restrict the lookup to the current account
+	//validate the id and restrict the lookup to the current account
 	$id = $this->getOidParam('id', (string)\V::app()->user->crtProject);
-	$project = empty($id) ? null : \V::app()->om->findOne('Project', [ '_id' => $id, 'aid' => $this->account->_id ]);
+	$project = empty($id) ? null : \V::app()->om->findOne('Project', [ '_id' => $id ]);
 	if (empty($project))
 	    \V::app()->error(404, 'Not found');
 
@@ -113,12 +113,12 @@ class ProjectController extends \sys\BaseController {
 	\V::app()->end();
     }
 
-    //CLD: 2026-11-07T01:05:52+02:00: whether the user has permission $perm on object $o
+    //whether the user has permission $perm on object $o
     private static function canRead($o, $perm) {
 	return \V::app()->user->can($perm, [ 'object' => $o ]);
     }
 
-    //CLD: 2026-11-07T01:05:52+02:00: the objects $objectName of project $project whose ids are in $data[$key] and the user may $perm: [ id => object ]
+    //the objects $objectName of project $project whose ids are in $data[$key] and the user may $perm: [ id => object ]
     private function readableOf($project, $data, $objectName, $key, $perm) {
 	$om = \V::app()->om;
 	$ids = array_values(array_filter(array_map('strval', (array)($data[$key] ?? [])), fn($id) => \util\Validator::rule('oid', $id)));
@@ -203,7 +203,7 @@ class ProjectController extends \sys\BaseController {
     //the project of ?id (default: the current one) of this account, with Project::transfer
     private function transferProject() {
 	$id = $this->getOidParam('id', (string)\V::app()->user->crtProject);
-	$project = empty($id) ? null : \V::app()->om->findOne('Project', [ '_id' => $id, 'aid' => $this->account->_id ]);
+	$project = empty($id) ? null : \V::app()->om->findOne('Project', [ '_id' => $id ]);
 	if (empty($project))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can('Project::transfer', [ 'object' => $project ]))
@@ -224,15 +224,15 @@ class ProjectController extends \sys\BaseController {
 	};
     }
 
-    //CLD: 2026-10-13T20:55:25+03:00: the members of a project (user's choice: managed by who has Project::update): add one (a user of the account, with a role), change a member's role,
+    //the members of a project (user's choice: managed by who has Project::update): add one (a user of the account, with a role), change a member's role,
     //remove one. POST only, back to the Members tab. A personal project has one member; a change cannot take away the last member with the owner role. Each change is
     //saved through the model (members is not a form field) and written to the audit log
     public function member_add($req, $resp) {
 	$project = $this->memberProject();
 	$uid = (string)($req->data['user'] ?? '');
-	$user = \util\Validator::rule('oid', $uid) ? \V::app()->om->findOne('User', [ '_id' => $uid, 'aid' => $this->account->_id ]) : null;
+	$user = \util\Validator::rule('oid', $uid) ? \V::app()->om->findOne('User', [ '_id' => $uid ]) : null;
 	$roleId = (string)($req->data['role'] ?? '');
-	$role = \util\Validator::rule('oid', $roleId) ? \V::app()->om->findOne('Role', [ '_id' => $roleId, 'aid' => $this->account->_id ]) : null;
+	$role = \util\Validator::rule('oid', $roleId) ? \V::app()->om->findOne('Role', [ '_id' => $roleId ]) : null;
 	$members = (array)$project->members;
 	if (!$user || !$role)
 	    $this->addToast('error', 'Not added', 'Choose a user and a role');
@@ -249,7 +249,7 @@ class ProjectController extends \sys\BaseController {
 	$project = $this->memberProject();
 	$uid = (string)($req->query['user'] ?? '');
 	$roleId = (string)($req->data['role'] ?? '');
-	$role = \util\Validator::rule('oid', $roleId) ? \V::app()->om->findOne('Role', [ '_id' => $roleId, 'aid' => $this->account->_id ]) : null;
+	$role = \util\Validator::rule('oid', $roleId) ? \V::app()->om->findOne('Role', [ '_id' => $roleId ]) : null;
 	$members = (array)$project->members;
 	if (!isset($members[$uid]) || !$role)
 	    $this->addToast('error', 'Not changed', 'Unknown member or role');
@@ -275,22 +275,22 @@ class ProjectController extends \sys\BaseController {
 	$this->redirect('/project/settings', [ 'id' => (string)$project->_id, '__tab' => 'members' ]);
     }
 
-    //CLD: 2026-10-17T22:00:00+03:00: invite by email (POST email, role): a user of the account with that address is added now (and told by email); another address gets an
+    //invite by email (POST email, role): a user of the account with that address is added now (and told by email); another address gets an
     //invitation (models\user\ProjectInvite: a link, valid 7 days, that makes the user and joins the project) - that needs User::create too, since it adds a user to the account
     public function member_invite($req, $resp) {
 	$project = $this->memberProject();
 	$email = strtolower(trim((string)($req->data['email'] ?? '')));
 	$roleId = (string)($req->data['role'] ?? '');
-	$role = \util\Validator::rule('oid', $roleId) ? \V::app()->om->findOne('Role', [ '_id' => $roleId, 'aid' => $this->account->_id ]) : null;
+	$role = \util\Validator::rule('oid', $roleId) ? \V::app()->om->findOne('Role', [ '_id' => $roleId ]) : null;
 	if (!\util\Validator::rule('email', $email) || !$role) {
 	    $this->addToast('error', 'Not invited', 'Enter an email address and choose a role');
 	    $this->backTo($project, 'members');
 	}
 	$inviter = \V::app()->om->findById('User', \V::app()->user->_id);
 	$vars = [ 'inviter' => (string)$inviter, 'project' => (string)$project->name, 'account' => (string)($this->account->name ?? '') ?: (string)$this->account->hostname ];
-	//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
+	//absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
 
-	$user = \V::app()->om->findOne('User', [ 'aid' => $this->account->_id, 'email' => $email ]);
+	$user = \V::app()->om->findOne('User', [ 'email' => $email ]);
 	if ($user) {
 	    $members = (array)$project->members;
 	    if (isset($members[(string)$user->_id]))
@@ -315,21 +315,21 @@ class ProjectController extends \sys\BaseController {
 	$this->backTo($project, 'members');
     }
 
-    //CLD: 2026-11-07T01:05:52+02:00: back to tab $tab of project $project's settings; with $title: an error toast first
+    //back to tab $tab of project $project's settings; with $title: an error toast first
     private function backTo($project, $tab, $title = null, $message = null) {
 	if ($title !== null)
 	    $this->addToast('error', $title, $message);
 	$this->redirect('/project/settings', [ 'id' => (string)$project->_id, '__tab' => $tab ]);
     }
 
-    //CLD: 2026-10-17T22:00:00+03:00: a pending invitation (?invite): sent again (a new link, the old one stops working) or cancelled
+    //a pending invitation (?invite): sent again (a new link, the old one stops working) or cancelled
     public function member_invite_resend($req, $resp) {
 	$project = $this->memberProject();
 	$invite = $this->memberInvite($project);
 	if ($invite) {
 	    $inviter = \V::app()->om->findById('User', \V::app()->user->_id);
 	    [ , $token ] = \models\user\ProjectInvite::start($project, (string)$invite->email, $invite->role, $inviter);
-	    //CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
+	    //absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
 	    \util\EmailSend::system('project_invite', (string)$invite->email, [ 'inviter' => (string)$inviter, 'project' => (string)$project->name,
 		'account' => (string)($this->account->name ?? '') ?: (string)$this->account->hostname, 'link' => \V::app()->createAbsoluteUrl('/site/invite', [ 't' => $token ]),
 		'days' => intdiv(\data\Constants::INVITE_VALID, 86400) ]);
@@ -363,7 +363,7 @@ class ProjectController extends \sys\BaseController {
 	if (!\V::app()->request->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 	$id = $this->getOidOrError();
-	$project = \V::app()->om->findOne('Project', [ '_id' => $id, 'aid' => $this->account->_id ]);
+	$project = \V::app()->om->findOne('Project', [ '_id' => $id ]);
 	if (empty($project))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can('Project::update', [ 'object' => $project ]))
@@ -374,7 +374,7 @@ class ProjectController extends \sys\BaseController {
     }
 
     //saves the members (a change does not take away the last member with the owner role) and records the change
-    //CLD: 2026-10-17T22:00:00+03:00: returns whether saved (member_invite emails only then)
+    //returns whether saved (member_invite emails only then)
     private function saveMembers($project, array $members, $action, $details) {
 	$owner = \V::app()->om->findOne('Role', [ 'aid' => $project->aid, 'iname' => 'owner' ]);
 	if (self::ownersIn((array)$project->members, $owner) > 0 && self::ownersIn($members, $owner) == 0) {
@@ -392,7 +392,7 @@ class ProjectController extends \sys\BaseController {
 	return true;
     }
 
-    //CLD: 2026-11-07T01:05:52+02:00: how many of the members $list have role $owner (the account's Owner role; none: 0)
+    //how many of the members $list have role $owner (the account's Owner role; none: 0)
     private static function ownersIn(array $list, $owner) {
 	return count(array_filter($list, fn($m) => $owner && (string)($m['role'] ?? '') === (string)$owner->_id));
     }

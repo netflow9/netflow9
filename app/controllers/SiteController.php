@@ -4,7 +4,7 @@ namespace controllers;
 
 class SiteController extends \sys\BaseController {
 
-    //CLD: 2026-10-21T20:10:00+03:00: session key of the accounts to choose from after a sign-in whose name and password fit users of several accounts (login, choose_account),
+    //session key of the accounts to choose from after a sign-in whose name and password fit users of several accounts (login, choose_account),
     //and how long the choice waits (seconds)
     const CHOICES = 'login_choices';
     const CHOICES_TTL = 300;
@@ -28,10 +28,10 @@ class SiteController extends \sys\BaseController {
 		$identity = new \sys\Identity();
 		if ($identity->authenticate($form->username, $form->password)) {
 		    \models\user\LoginThrottle::clear($nameKey);
-		    //CLD: 2026-10-16T13:15:57+03:00: signIn() (the 2FA step when the user has one, the login, the audit entry; shared with the sign-up and the password reset)
+		    //signIn() (the 2FA step when the user has one, the login, the audit entry; shared with the sign-up and the password reset)
 		    $this->signIn(\V::app()->om->findById('User', $identity->data()['_id']), !empty($form->rememberme));
 		} elseif (!empty($identity->choices)) {
-		    //CLD: 2026-10-21T20:10:00+03:00: the name and password fit users of several accounts: the user picks one (choose_account); the password was right
+		    //the name and password fit users of several accounts: the user picks one (choose_account); the password was right
 		    \models\user\LoginThrottle::clear($nameKey);
 		    $_SESSION[self::CHOICES] = [
 			'users' => array_map(fn($u) => (string)$u->_id, $identity->choices),
@@ -41,11 +41,11 @@ class SiteController extends \sys\BaseController {
 		    $resp->redirect('/site/choose_account');
 		} else {
 		    $form->errors('password', $identity->reason);
-		    //CLD: 2026-10-11T17:35:22+03:00: audit log: a failed login of an existing user (the entry belongs to the user's account; unknown names are not recorded)
+		    //audit log: a failed login of an existing user (the entry belongs to the user's account; unknown names are not recorded)
 		    $failed = \V::app()->om->findOne('User', [ '$or' => [ [ 'username' => (string)$form->username ], [ 'email' => (string)$form->username ] ] ]);
 		    if (!empty($failed))
 			\models\AuditLog::record('login.failed', $failed, 'wrong password, or the user is not active', [], null, $failed);
-		    //CLD: 2026-10-21T18:00:00+03:00: counted for the name and the address; a new lock is recorded
+		    //counted for the name and the address; a new lock is recorded
 		    $nameLocked = \models\user\LoginThrottle::fail($nameKey);
 		    $ipLocked = \models\user\LoginThrottle::fail($ipKey);
 		    if ($nameLocked || $ipLocked) {
@@ -104,11 +104,11 @@ class SiteController extends \sys\BaseController {
     //signs user $user in and goes to the app:
     //first the 2FA step when the user has one (unless $tfaDone),
     //else the login (persistent: $remember) and its audit entry ($details)
-    //CLD: 2026-10-19T11:21:19+03:00: public static: also used by the Registration plugin's sign-up (uses no controller state; $this->signIn() calls still work)
+    //public static: also used by the Registration plugin's sign-up (uses no controller state; $this->signIn() calls still work)
     public static function signIn($user, $remember = false, $details = null, $tfaDone = false) {
 	if (!$tfaDone && !empty($user->tfa_secret)) {
 	    $_SESSION['tfa_user_id'] = (string)$user->_id;
-	    //CLD: 2026-10-05T20:02:30+03:00: carry the "remember me" choice over the 2FA step
+	    //carry the "remember me" choice over the 2FA step
 	    $_SESSION['tfa_remember'] = $remember;
 	    \V::app()->response->redirect('/site/tfa');
 	}
@@ -130,7 +130,7 @@ class SiteController extends \sys\BaseController {
 	$sent = false;
 	if ($req->is('post')) {
 	    $form->assign($req->data);
-	    //CLD: 2026-10-24T00:20:00+03:00: rate limits (models\user\LoginThrottle; SOC2.md gap 12): per address, refused with 429 once over; per email, nothing is sent once over, with the same answer
+	    //rate limits (models\user\LoginThrottle; SOC2.md gap 12): per address, refused with 429 once over; per email, nothing is sent once over, with the same answer
 	    //(the page tells nothing about the accounts)
 	    $ipKey = \models\user\LoginThrottle::resetIpKey();
 	    $ipLocked = \models\user\LoginThrottle::lockedFor($ipKey);
@@ -144,12 +144,12 @@ class SiteController extends \sys\BaseController {
 		$emailLocked = \models\user\LoginThrottle::lockedFor($emailKey) > 0;
 		if (!$emailLocked && \models\user\LoginThrottle::fail($emailKey))
 		    \V::app()->log->warn('SiteController: password reset emails locked for ' . $emailKey);
-		//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
+		//absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
 		foreach($emailLocked ? [] : \V::app()->om->find('User', [ 'email' => (string)$form->email, 'state' => 'active' ]) as $user) {
-		    //CLD: 2026-10-21T10:00:00+03:00: not for a user whose password is kept elsewhere (e.g. an LDAP user: the directory's password)
+		    //not for a user whose password is kept elsewhere (e.g. an LDAP user: the directory's password)
 		    if (\sys\Identity::passwordSource($user) !== null)
 			continue;
-		    //CLD: 2026-10-24T08:20:00+03:00: User::startPasswordReset
+		    //User::startPasswordReset
 		    $token = $user->startPasswordReset(\V::app()->request->userIP);
 		    $account = \V::app()->om->findById('Account', (string)$user->aid);
 		    \util\EmailSend::system('password_reset', (string)$user->email, [ 'username' => (string)($user->username ?: $user->email), 'email' => (string)$user->email,
@@ -161,7 +161,7 @@ class SiteController extends \sys\BaseController {
 	$this->render('forgot', compact('form', 'sent'));
     }
 
-    //CLD: 2026-10-16T13:15:57+03:00: the link of a "forgot" email: a new password (twice; ChangePasswordForm's rules); then the user's other sessions are ended, the user's links are used up, a
+    //the link of a "forgot" email: a new password (twice; ChangePasswordForm's rules); then the user's other sessions are ended, the user's links are used up, a
     //"password changed" email is sent, and the user is signed in here (2FA still asked when set)
     public function reset($req, $resp) {
 	if (!\V::app()->user->isGuest)
@@ -169,9 +169,9 @@ class SiteController extends \sys\BaseController {
 	$this->layout = 'bare';
 	$token = (string)($req->query['t'] ?? '');
 
-	//CLD: 2026-10-24T08:20:00+03:00: User::findByResetToken
+	//User::findByResetToken
 	$user = \models\User::findByResetToken($token);
-	//CLD: 2026-10-21T10:00:00+03:00: a link of a user whose password is now kept elsewhere (e.g. became an LDAP user) no longer works
+	//a link of a user whose password is kept elsewhere (e.g. an LDAP user) does not work
 	if ($user && \sys\Identity::passwordSource($user) !== null)
 	    $user = null;
 	$form = \models\user\ChangePasswordForm::create([], [ 'validateCurrentPassword' => false ]);
@@ -182,11 +182,11 @@ class SiteController extends \sys\BaseController {
 		$user->password = \V::app()->security->generatePasswordHash((string)$form->new_password);
 		if (!$user->save())
 		    throw new \ErrorException('reset: the password was not saved: ' . json_encode($user->errors()));
-		//CLD: 2026-10-24T08:20:00+03:00: User::clearPasswordReset
+		//User::clearPasswordReset
 		$user->clearPasswordReset();
 		\V::app()->session->endFor($user->_id);
 		\models\AuditLog::record('password.reset', $user, 'with a "forgot" link; the other sessions ended', [], null, $user);
-		//CLD: 2026-10-18T23:04:55+03:00: absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
+		//absolute url from V::createAbsoluteUrl (app.env BASE_URL, always https://)
 		\util\EmailSend::system('password_changed', (string)$user->email, [ 'email' => (string)$user->email, 'login' => \V::app()->createAbsoluteUrl('/site/login') ]);
 		$this->signIn($user, false, 'after a password reset');
 	    }
@@ -194,7 +194,7 @@ class SiteController extends \sys\BaseController {
 	$this->render('reset', [ 'form' => $form, 'user' => $user, 'token' => $token ]);
     }
 
-    //CLD: 2026-10-21T20:10:00+03:00: the accounts a sign-in's name and password fit (login: CHOICES): the user picks one and is signed in there (2FA still asked when set)
+    //the accounts a sign-in's name and password fit (login: CHOICES): the user picks one and is signed in there (2FA still asked when set)
     public function choose_account($req, $resp) {
 	if (!\V::app()->user->isGuest)
 	    $resp->redirect('/site/index');
@@ -234,7 +234,7 @@ class SiteController extends \sys\BaseController {
 	    $resp->redirect('/site/login');
 
 	if ($req->is('post')) {
-	    //CLD: 2026-10-05T20:02:30+03:00: "remember me" choice saved by login()
+	    //"remember me" choice saved by login()
 	    $remember = !empty($_SESSION['tfa_remember']);
 	    unset($_SESSION['tfa_user_id'], $_SESSION['tfa_remember']);
 
@@ -243,21 +243,21 @@ class SiteController extends \sys\BaseController {
 		$resp->redirect('/site/login');
 
 	    $user = \V::app()->om->findById('User', $user_id);
-	    //CLD: 2026-10-21T18:00:00+03:00: the 2FA throttle (models\user\LoginThrottle, per user): a locked user's code is not checked
+	    //the 2FA throttle (models\user\LoginThrottle, per user): a locked user's code is not checked
 	    $tfaKey = \models\user\LoginThrottle::tfaKey($user_id);
 	    $lockedFor = \models\user\LoginThrottle::lockedFor($tfaKey);
 	    if ($lockedFor > 0) {
 		$error = \models\user\LoginThrottle::message($lockedFor);
 		$resp->status = 429;
-	    //CLD: 2026-10-24T00:20:00+03:00: a code is accepted once (User::useTfaCode); a reused one counts as wrong
+	    //a code is accepted once (User::useTfaCode); a reused one counts as wrong
 	    } elseif (!empty($user) && $user->useTfaCode($code)) {
 		\models\user\LoginThrottle::clear($tfaKey);
-		//CLD: 2026-10-16T13:15:57+03:00: signIn()
+		//signIn()
 		$this->signIn($user, $remember, 'with a 2FA code', true);
 	    } elseif (!empty($user)) {
-		//CLD: 2026-10-11T17:35:22+03:00: audit log
+		//audit log
 		\models\AuditLog::record('login.failed', $user, 'wrong 2FA code', [], null, $user);
-		//CLD: 2026-10-21T18:00:00+03:00: counted; a new lock is recorded
+		//counted; a new lock is recorded
 		$error = \V::t('The code is not correct. Sign in again.');
 		if (\models\user\LoginThrottle::fail($tfaKey)) {
 		    \V::app()->log->warn("SiteController: 2FA locked for user {$user_id}");
@@ -267,7 +267,7 @@ class SiteController extends \sys\BaseController {
 	    }
 	}
 
-	//CLD: 2026-10-21T18:00:00+03:00: $error: a wrong code or a lock
+	//$error: a wrong code or a lock
 	$this->render('tfa', [ 'error' => $error ?? null ]);
     }
 
@@ -348,7 +348,7 @@ class SiteController extends \sys\BaseController {
 	}
 
 	$wfIds = array_map(fn($w) => $w->_id, array_values($workflows));
-	//CLD: 2026-11-02T15:46:06+02:00: not the runs of test cases (trigger test): they are not the workflow's work
+	//not the runs of test cases (trigger test): they are not the workflow's work
 	$base = [ 'aid' => $project->aid, 'project' => $project->_id, 'wf' => [ '$in' => $wfIds ], 'test_run' => null ];
 	$fields = [ 'state' => 1, 'trigger' => 1, 'wf' => 1, 'start_at' => 1, 'end_at' => 1, 'error' => 1, 'wake_at' => 1 ];
 
@@ -456,7 +456,7 @@ class SiteController extends \sys\BaseController {
 	    [ 'state' => 'run', 'start_at' => [ '$lt' => new \MongoDB\BSON\UTCDateTime(($now - self::OVERVIEW_LONG_RUN) * 1000) ] ],
 	    [ 'state' => 'sleep', 'wake_at' => [ '$lt' => new \MongoDB\BSON\UTCDateTime($now * 1000) ] ],
 	] ], [ 'projection' => $fields, 'sort' => [ '_id' => 1 ], 'limit' => 10 ]) as $e)
-	    //CLD: 2026-10-26T10:06:24+02:00: + id and canKill (a long run: the Kill button, WorkflowController::execution_kill; Workflow::update)
+	    //id and canKill: a long run gets the Kill button (WorkflowController::execution_kill; Workflow::update)
 	    $stuck[] = [ 'kind' => $e->state === 'run' ? 'running' : 'late', 'id' => (string)$e->_id, 'wf' => (string)$e->wf, 'workflow' => (string)($workflows[(string)$e->wf]->name ?? ''),
 		'since' => $e->state === 'run' ? self::isoOf($e->start_at, $tz) : self::isoOf($e->wake_at, $tz),
 		'canKill' => $e->state === 'run' && isset($workflows[(string)$e->wf]) && $user->can('Workflow::update', [ 'object' => $workflows[(string)$e->wf] ]) ];
@@ -477,22 +477,22 @@ class SiteController extends \sys\BaseController {
 	$resp->sendJSON($out);
     }
 
-    //CLD: 2026-11-07T01:05:52+02:00: the smallest ObjectId of time $t (a Unix time): the executions from $t on
+    //the smallest ObjectId of time $t (a Unix time): the executions from $t on
     private static function idAt($t) {
 	return new \MongoDB\BSON\ObjectId(sprintf('%08x', $t) . '0000000000000000');
     }
 
-    //CLD: 2026-11-07T01:05:52+02:00: a UTCDateTime as milliseconds; null otherwise
+    //a UTCDateTime as milliseconds; null otherwise
     private static function msOf($d) {
 	return $d instanceof \MongoDB\BSON\UTCDateTime ? (int)(string)$d : null;
     }
 
-    //CLD: 2026-11-07T01:05:52+02:00: a date ($d: a UTCDateTime, or an ObjectId's time) as ISO 8601 in time zone $tz; null otherwise
+    //a date ($d: a UTCDateTime, or an ObjectId's time) as ISO 8601 in time zone $tz; null otherwise
     private static function isoOf($d, $tz) {
 	return $d instanceof \MongoDB\BSON\UTCDateTime ? $d->toDateTime()->setTimezone($tz)->format('c') : ($d instanceof \MongoDB\BSON\ObjectId ? date('c', $d->getTimestamp()) : null);
     }
 
-    //CLD: 2026-11-07T01:05:52+02:00: the $p percentile (0..1) of $values (nearest rank); null when there are none
+    //the $p percentile (0..1) of $values (nearest rank); null when there are none
     private static function percentile(array $values, $p) {
 	if (!$values)
 	    return null;
@@ -505,8 +505,7 @@ class SiteController extends \sys\BaseController {
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
 
 	$oid = $this->getOidOrError();
-	$account = \V::app()->config('rt.account');
-	$project = \V::app()->om->findOne('Project', [ '_id' => $oid, 'aid' => $account->_id ]);
+	$project = \V::app()->om->findOne('Project', [ '_id' => $oid ]);
 	if (empty($project))
 	    \V::app()->error(404, 'Not found');
 

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-01T21:50:00+02:00: new class: Rail22's own steps and workflows as the tools of an AI step (models\node\NodeAppAi::collectTools), so one AI step can look into and act
+    Rail22's own steps and workflows as the tools of an AI step (models\node\NodeAppAi::collectTools), so one AI step can look into and act
     on the integrations.
 	Integrations (FAMILIES): a family is the steps of one product (GravityZone, FortiGate, ..., a database, Gmail, Outlook Mail, ...). The AI step's settings name one credential
 	    per family (`<family>Credential`) and the operations the model may use (`<family>Tools`: the tools' names; default: the operations that only read, each step's WRITES).
@@ -14,12 +14,12 @@
 	    (NodeAppWorkflow::startChild: no loops, at most MAX_DEPTH deep); a workflow that pauses (Wait, Human task) goes on by itself, its outputs are not given to the model.
 	Wrong arguments (unknown, missing, of another type, not one of the choices) are tool errors, as is a step that fails; the credentials stay on the server (resolved when a
 	tool runs; never in a schema, an argument or a result).
-    CLD: 2026-11-01T23:30:00+02:00: approvals - per tool: not offered (never used), run without approval, or ask for approval (`<family>ApprovalMode`: writes - the write operations,
+    approvals - per tool: not offered (never used), run without approval, or ask for approval (`<family>ApprovalMode`: writes - the write operations,
 	the default -, all, none, chosen - those of `<family>Approval`; `workflowsApproval`: the workflows that need it, default none). A tool that asks gets an optional argument `reason` (the model's one line for the approver;
 	`approval_reason` when the tool has a `reason` of its own) and `approval` (what, on what, its main arguments: the task's title) and `check` (its arguments checked without
 	running: a wrong call is not sent for approval). Who approves: `approvalUsers`, `approvalRoles` (as a Human task), `approvalTimeout` / `approvalTimeoutUnit` (none: no time limit).
 	The AI step asks and resumes (models\node\NodeAppAi: askApproval, decided)
-    CLD: 2026-11-10T14:00:00+02:00: the plugins' families too (families(): FAMILIES + hook agent:families); a family of public services (`credential` => false: no credential) is chosen with
+    the plugins' families too (families(): FAMILIES + hook agent:families); a family of public services (`credential` => false: no credential) is chosen with
 	`<family>Credential` = NO_CREDENTIAL ("Used")
 */
 
@@ -32,9 +32,9 @@ class AgentTools {
 	'gravityzone' => [ 'label' => 'Bitdefender GravityZone', 'prefix' => 'gz', 'capability' => 'gravityzone', 'base' => \models\node\NodeAppGravityZone::class ],
 	'fortigate' => [ 'label' => 'FortiGate', 'prefix' => 'fgt', 'capability' => 'fortigate', 'base' => \models\node\NodeAppFortiGate::class ],
 	'sophos' => [ 'label' => 'Sophos Firewall', 'prefix' => 'sfos', 'capability' => 'sophos', 'base' => \models\node\NodeAppSophos::class ],
-	//CLD: 2026-11-03T10:00:00+02:00: Wazuh's steps as tools
+	//Wazuh's steps as tools
 	'wazuh' => [ 'label' => 'Wazuh', 'prefix' => 'wazuh', 'capability' => 'wazuh', 'base' => \models\node\NodeAppWazuh::class ],
-	//CLD: 2026-11-05T13:00:00+02:00: Namecheap's steps as tools
+	//Namecheap's steps as tools
 	'namecheap' => [ 'label' => 'Namecheap', 'prefix' => 'namecheap', 'capability' => 'namecheap', 'base' => \models\node\NodeAppNamecheap::class ],
 	'veeam' => [ 'label' => 'Veeam Backup & Replication', 'prefix' => 'veeam', 'capability' => 'veeam', 'base' => \models\node\NodeAppVeeam::class ],
 	'vmware' => [ 'label' => 'VMware vCenter', 'prefix' => 'vmware', 'capability' => 'vmware', 'base' => \models\node\NodeAppVmware::class ],
@@ -55,7 +55,7 @@ class AgentTools {
 	'googleDocs' => [ 'label' => 'Google Docs', 'prefix' => 'gdocs', 'capability' => null, 'steps' => [ \models\node\NodeAppGoogleDocs::class ] ],
     ];
 
-    //CLD: 2026-11-10T14:00:00+02:00: the value of `<family>Credential` of a family without credential (`credential` => false): the family is used
+    //the value of `<family>Credential` of a family without credential (`credential` => false): the family is used
     const NO_CREDENTIAL = 'use';
 
     //the AI step's settings of the families and of the workflows
@@ -67,10 +67,10 @@ class AgentTools {
     const NOT_ARGUMENT_TYPES = [ 'formdesigner', 'emaildesigner', 'password' ];
     //a step's limit (`limit` fields: At most, ...) larger than this has this default as a tool (the result is cut at NodeAppAi::MAX_TOOL_RESULT characters anyway)
     const LIMIT_DEFAULT = 100;
-    //CLD: 2026-11-01T23:30:00+02:00: the AI step's settings of the approvals (section Approvals), the argument the model gives its reason in
+    //the AI step's settings of the approvals (section Approvals), the argument the model gives its reason in
     const APPROVALS = 'Approvals';
     const WORKFLOWS_APPROVAL = 'workflowsApproval';
-    //CLD: 2026-11-02T11:00:00+02:00: the project's tools, MCP servers' and tool servers' tools: those that change something ask (default), or none do
+    //the project's tools, MCP servers' and tool servers' tools: those that change something ask (default), or none do
     const TOOLS_APPROVAL = 'toolsApprovalMode';
     const TOOLS_APPROVAL_MODES = [ 'writes' => 'Those that change something', 'none' => 'None: run without' ];
     const REASON = 'reason';
@@ -82,7 +82,7 @@ class AgentTools {
     private static $steps = null;
     private static $families = null;
 
-    //CLD: 2026-11-10T14:00:00+02:00: new: the families: the core's (FAMILIES) and the plugins' (hook agent:families: an \ArrayObject the plugins add entries to, key => an entry as FAMILIES', + `credential`
+    //the families: the core's (FAMILIES) and the plugins' (hook agent:families: an \ArrayObject the plugins add entries to, key => an entry as FAMILIES', + `credential`
     //=> false for public services), built once; an entry with a key already taken, no label, a prefix that is not snake_case, or neither base nor steps is left out (logged)
     public static function families() {
 	if (self::$families !== null)
@@ -225,7 +225,7 @@ class AgentTools {
 	    $ops = self::operations($key);
 	    if (!$ops)
 		continue;
-	    //CLD: 2026-11-10T14:00:00+02:00: a family without credential: "Used", always offered
+	    //a family without credential: "Used", always offered
 	    $public = ($fam['credential'] ?? true) === false;
 	    $creds = $public ? [ self::NO_CREDENTIAL => 'Used (no credential)' ] : ($aid ? self::credentialChoices($key, $aid, $project) : []);
 	    if ($aid && !$creds)
@@ -239,7 +239,7 @@ class AgentTools {
 		'help' => $public ? 'A public service: the model may use it' : 'The credential the model uses',
 		'ui' => [ 'section' => self::SECTION, 'width' => 4, 'newRow' => true, 'placeholder' => 'Not used' ],
 	    ];
-	    //CLD: 2026-11-01T23:30:00+02:00: 4 wide: the approvals next to it
+	    //4 wide: the approvals next to it
 	    $fields[] = [
 		'key' => "{$key}Tools",
 		'type' => 'select',
@@ -250,7 +250,7 @@ class AgentTools {
 		'help' => 'Those that read are ticked; those that change something are not',
 		'ui' => [ 'section' => self::SECTION, 'width' => 4, 'placeholder' => 'None', 'showIf' => [ 'key' => "{$key}Credential", 'operator' => 'notEmpty' ] ],
 	    ];
-	    //CLD: 2026-11-01T23:30:00+02:00: new: the operations that wait for a person's approval (the others run without; those not offered are never used): the write ones, all,
+	    //the operations that wait for a person's approval (the others run without; those not offered are never used): the write ones, all,
 	    //none, or those chosen
 	    $fields[] = [
 		'key' => "{$key}ApprovalMode",
@@ -291,10 +291,10 @@ class AgentTools {
 	];
     }
 
-    //CLD: 2026-11-01T23:30:00+02:00: new: the AI step's settings of the approvals (section Approvals): the workflows that ask, who approves (as a Human task), the time limit
+    //the AI step's settings of the approvals (section Approvals): the workflows that ask, who approves (as a Human task), the time limit
     public static function approvalFields() {
 	return [
-	    //CLD: 2026-11-02T11:00:00+02:00: new: Use these tools, MCP servers, Tool servers: they have no choice per operation (util\AgentGuard::govern)
+	    //Use these tools, MCP servers, Tool servers: they have no choice per operation (util\AgentGuard::govern)
 	    [
 		'key' => self::TOOLS_APPROVAL,
 		'type' => 'select',
@@ -361,14 +361,14 @@ class AgentTools {
 	$wf = $step->workflow;
 	foreach(self::families() as $key => $fam) {
 	    $id = (string)$step->cfg("{$key}Credential", '');
-	    //CLD: 2026-11-10T14:00:00+02:00: a family without credential: Used or not
+	    //a family without credential: Used or not
 	    if (($fam['credential'] ?? true) === false) {
 		if ($id !== '' && $id !== self::NO_CREDENTIAL)
 		    $errors[] = "{$fam['label']}: Used, or Not used";
 	    } elseif ($id !== '' && (!$wf || !self::credential($key, $wf, $id)))
 		$errors[] = "{$fam['label']}: choose a credential of this project";
 	    $known = self::operations($key);
-	    //CLD: 2026-11-01T23:30:00+02:00: + the operations that ask for approval
+	    //the operations that ask for approval
 	    foreach(array_merge((array)$step->cfg("{$key}Tools", []), (array)$step->cfg("{$key}Approval", [])) as $name) {
 		if (!isset($known[(string)$name])) {
 		    $errors[] = "{$fam['label']}: unknown operation `{$name}`";
@@ -376,7 +376,7 @@ class AgentTools {
 		}
 	    }
 	}
-	//CLD: 2026-11-01T23:30:00+02:00: the approvers: members of the project, roles of the account; the workflows that ask: among Workflows
+	//the approvers: members of the project, roles of the account; the workflows that ask: among Workflows
 	$project = $wf ? \V::app()->om->findOne('Project', [ '_id' => $wf->project, 'aid' => $wf->aid ]) : null;
 	foreach((array)$step->cfg('approvalUsers', []) as $uid) {
 	    if (!$project || !isset($project->members[(string)$uid])) {
@@ -396,7 +396,7 @@ class AgentTools {
 	    if (!$wf)
 		break;
 	    $called = \models\node\NodeAppWorkflow::findWorkflow((string)$id, $wf->aid, $wf->project);
-	    //CLD: 2026-11-03T16:00:00+02:00: copyFor: a shared workflow counts only while published
+	    //copyFor: a shared workflow counts only while published
 	    if (!$called || \models\node\NodeTriggerCall::contractOf($called->copyFor($wf->project)?->nodes) === null)
 		$errors[] = 'Workflows: choose workflows of this project that start with Called by a workflow, or published ones shared with it';
 	    elseif ((string)$called->_id === (string)$wf->_id)
@@ -417,7 +417,7 @@ class AgentTools {
 	    $id = (string)$ai->cfg("{$key}Credential", '');
 	    if ($id === '')
 		continue;
-	    //CLD: 2026-11-10T14:00:00+02:00: a family without credential: none
+	    //a family without credential: none
 	    $cred = ($fam['credential'] ?? true) === false ? null : self::credential($key, $exec, $id);
 	    if (!$cred && ($fam['credential'] ?? true) !== false)
 		throw new \ErrorException("the {$fam['label']} credential is no longer available");
@@ -430,17 +430,17 @@ class AgentTools {
 		    throw new \ErrorException("{$fam['label']}: no step for the credential `{$cred->name}` (its type is not available here)");
 		[ $schema, $fields ] = self::inputSchema($class, $o['op']);
 		$isList = defined("{$class}::LISTS") && in_array($o['op'], (array)$class::LISTS, true);
-		//CLD: 2026-11-01T23:30:00+02:00: + approval (asks: those of `<family>Approval`, default the write ones), the reason argument, check
+		//approval (asks: those of `<family>Approval`, default the write ones), the reason argument, check
 		$ask = match((string)$ai->cfg("{$key}ApprovalMode", 'writes')) { 'all' => true, 'none' => false, 'chosen' => in_array($name, array_map('strval', (array)$ai->cfg("{$key}Approval", [])), true),
 		    default => $o['writes'] };
 		[ $schema, $reason ] = $ask ? self::withReason($schema) : [ $schema, null ];
-		//CLD: 2026-11-02T10:00:00+02:00: + kind, family, writes, askMeta (util\AgentGuard: the account's policy, the limits, approval when the policy or a lockdown asks for it)
+		//kind, family, writes, askMeta (util\AgentGuard: the account's policy, the limits, approval when the policy or a lockdown asks for it)
 		$meta = [ 'what' => trim(preg_replace('/\s*\([^)]*\)\s*$/', '', (string)$class::OPERATIONS[$o['op']])), 'on' => $cred ? "{$fam['label']} {$cred->name}" : $fam['label'],
 		    'label' => $o['label'], 'main' => array_keys(array_filter($fields, fn($f) => $f['required'])) ];
 		$tools[$name] = [ 'name' => $name, 'kind' => 'integration', 'family' => $key, 'writes' => (bool)$o['writes'], 'askMeta' => $meta,
 		    'description' => "[{$fam['label']}] {$o['label']}" . ($o['writes'] ? ' - changes it' : ' - reads only')
 			. ($isList ? '. Result: { items, count, total, truncated } (truncated: more than maxItems)' : '') . ($ask ? '. A person approves it first' : '') . '.',
-		    'schema' => json_decode(JSON::encode($schema)),
+		    'schema' => JSON::json_decode(JSON::encode($schema), true),
 		    'approval' => $ask ? $meta + [ 'reason' => $reason ] : null,
 		    'check' => fn(array $args) => self::arguments($fields, self::withoutReason($args, $reason))[1],
 		    'run' => fn(array $args) => self::runStep($ai, self::steps($key)[$class][0], $class, $o['op'], $cred, $fields, self::withoutReason($args, $reason)) ];
@@ -449,22 +449,22 @@ class AgentTools {
 	$taken = [];
 	foreach((array)$ai->cfg(self::WORKFLOWS, []) as $id) {
 	    $wf = \models\node\NodeAppWorkflow::findWorkflow((string)$id, $exec->aid, $exec->project);
-	    //CLD: 2026-11-03T16:00:00+02:00: copyFor: a shared workflow counts only while published
+	    //copyFor: a shared workflow counts only while published
 	    $contract = $wf ? \models\node\NodeTriggerCall::contractOf($wf->copyFor($exec->project)?->nodes) : null;
 	    if ($contract === null)
 		throw new \ErrorException('a workflow of Workflows is no longer in the project or shared with it, or no longer starts with Called by a workflow');
 	    $name = self::workflowToolName((string)$wf->name, $taken, $tools);
 	    [ $schema, $inputs ] = self::workflowSchema($contract);
 	    $outputs = $contract['outputs'] ? implode(', ', $contract['outputs']) : 'none';
-	    //CLD: 2026-11-01T23:30:00+02:00: + approval (asks: those of `workflowsApproval`), the reason argument, check
+	    //approval (asks: those of `workflowsApproval`), the reason argument, check
 	    $ask = in_array((string)$wf->_id, array_map('strval', (array)$ai->cfg(self::WORKFLOWS_APPROVAL, [])), true);
 	    [ $schema, $reason ] = $ask ? self::withReason($schema) : [ $schema, null ];
-	    //CLD: 2026-11-02T10:00:00+02:00: + kind, writes (a workflow may do anything: it counts as a write), askMeta
+	    //kind, writes (a workflow may do anything: it counts as a write), askMeta
 	    $meta = [ 'what' => 'Run the workflow', 'on' => (string)$wf->name, 'label' => "Workflow {$wf->name}", 'main' => array_keys(array_filter($inputs, fn($i) => $i['required'])) ];
 	    $tools[$name] = [ 'name' => $name, 'kind' => 'workflow', 'writes' => true, 'askMeta' => $meta,
 		'description' => "[Workflow {$wf->name}] " . ($contract['description'] !== '' ? $contract['description'] : "Runs the workflow {$wf->name}.")
 		    . " Result: { ok, state, execution, outputs: { {$outputs} }, error }." . ($ask ? ' A person approves it first.' : ''),
-		'schema' => json_decode(JSON::encode($schema)),
+		'schema' => JSON::json_decode(JSON::encode($schema), true),
 		'approval' => $ask ? $meta + [ 'reason' => $reason ] : null,
 		'check' => fn(array $args) => self::workflowInputs($inputs, self::withoutReason($args, $reason))[1],
 		'run' => fn(array $args) => self::runWorkflow($ai, $wf, $inputs, self::withoutReason($args, $reason)) ];
@@ -472,7 +472,7 @@ class AgentTools {
 	return $tools;
     }
 
-    //CLD: 2026-11-01T23:30:00+02:00: new: schema $schema (an array) with an optional argument for the reason (`reason`, else `approval_reason` when the tool has its own): [ schema, its name ]
+    //schema $schema (an array) with an optional argument for the reason (`reason`, else `approval_reason` when the tool has its own): [ schema, its name ]
     protected static function withReason(array $schema) {
 	$props = (array)$schema['properties'];
 	$name = isset($props[self::REASON]) ? 'approval_' . self::REASON : self::REASON;
@@ -481,7 +481,7 @@ class AgentTools {
 	return [ $schema, $name ];
     }
 
-    //CLD: 2026-11-01T23:30:00+02:00: new: the arguments without the reason (argument $reason; null: none)
+    //the arguments without the reason (argument $reason; null: none)
     public static function withoutReason(array $args, $reason) {
 	if ($reason !== null && !array_is_list($args))
 	    unset($args[$reason]);
@@ -624,7 +624,7 @@ class AgentTools {
 	return [ true, $others || (bool)$hide ];
     }
 
-    //CLD: 2026-11-07T01:13:30+02:00: a showIf / hideIf as a list of conditions (one, or a list; none)
+    //a showIf / hideIf as a list of conditions (one, or a list; none)
     private static function conditionList($c) {
 	return is_array($c) ? (array_is_list($c) ? $c : [ $c ]) : [];
     }
@@ -692,14 +692,14 @@ class AgentTools {
 		    $v = $f['multiple'] ? array_map('strval', $list) : (string)$v;
 		    break;
 		case 'list':
-		    if (is_string($v) && is_array($json = json_decode($v, true)))
-			$v = $json;
+		    if (is_string($v))
+			$v = self::decoded($v);
 		    if (!is_array($v) || !array_is_list($v))
 			return [ null, "`{$key}`: a list is expected" ];
 		    break;
 		case 'object':
-		    if (is_string($v) && is_array($json = json_decode($v, true)))
-			$v = $json;
+		    if (is_string($v))
+			$v = self::decoded($v);
 		    if (!is_array($v) || ($v && array_is_list($v)))
 			return [ null, "`{$key}`: an object is expected" ];
 		    break;
@@ -723,7 +723,7 @@ class AgentTools {
 
     //runs operation $op of step $class (object $objectName) for AI step $ai with credential $cred: the step made with the arguments as its settings, run in $ai's execution
     //(logged under $ai) => [ the result as JSON, isError, images ]
-    //CLD: 2026-11-10T14:00:00+02:00: $cred null: a family without credential
+    //$cred null: a family without credential
     protected static function runStep($ai, $objectName, $class, $op, $cred, array $fields, array $args) {
 	[ $values, $error ] = self::arguments($fields, $args);
 	if ($error !== null)
@@ -742,7 +742,7 @@ class AgentTools {
 	} catch (\Throwable $e) {
 	    return [ $e->getMessage(), true, [] ];
 	}
-	return [ json_encode($step->toolResult, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), false, [] ];
+	return [ self::toJson($step->toolResult), false, [] ];
     }
 
     //the input schema of a workflow of contract $contract (NodeTriggerCall::contractOf): [ JSON schema, the inputs: [ name => [ type, required, default ] ] ]
@@ -775,7 +775,7 @@ class AgentTools {
 	return [ $schema, $inputs ];
     }
 
-    //CLD: 2026-11-01T23:30:00+02:00: new: the arguments $args checked against $inputs, cast to their types: [ the inputs given, null ] or [ null, what is wrong ]
+    //the arguments $args checked against $inputs, cast to their types: [ the inputs given, null ] or [ null, what is wrong ]
     public static function workflowInputs(array $inputs, array $args) {
 	$given = [];
 	if ($args && array_is_list($args))
@@ -802,7 +802,7 @@ class AgentTools {
     //runs workflow $wf for AI step $ai with the arguments $args (checked against $inputs, cast to their types): nested, as Run a workflow (NodeAppWorkflow::startChild) =>
     //[ { ok, state, execution, outputs, error } as JSON, isError, images ]
     protected static function runWorkflow($ai, $wf, array $inputs, array $args) {
-	//CLD: 2026-11-01T23:30:00+02:00: workflowInputs() (also the check of a call waiting for approval)
+	//workflowInputs() (also the check of a call waiting for approval)
 	[ $given, $error ] = self::workflowInputs($inputs, $args);
 	if ($error !== null)
 	    return [ $error, true, [] ];
@@ -823,8 +823,17 @@ class AgentTools {
 	return [ self::toJson([ 'ok' => true, 'state' => 'end', 'execution' => (string)$child->_id, 'outputs' => $outputs, 'error' => null ]), false, [] ];
     }
 
-    //CLD: 2026-11-07T01:13:30+02:00: $r as JSON for the model (slashes and Unicode as they are, invalid UTF-8 replaced)
+    //$r as JSON for the model (util\JSON, as the project tools' results: slashes and Unicode as they are, invalid UTF-8 dropped)
     private static function toJson($r) {
-	return json_encode($r, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+	return JSON::encode($r, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    //CLD: 2026-11-10T16:00:00+02:00: an argument the model gave as JSON text: the list / object (util\JSON: tolerant of what models write, e.g. single quotes, a comma after the last item); else the text
+    private static function decoded($text) {
+	try {
+	    return JSON::json_decode($text);
+	} catch (\ErrorException $e) {
+	    return $text;
+	}
     }
 }

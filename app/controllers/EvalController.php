@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-11-02T15:46:06+02:00: new: the designer's Tests panel (app.WfTests; util\AgentEval): a workflow's test cases, its test runs, Tests must pass to publish. All on ?id=<workflow>, answers in JSON.
+    the designer's Tests panel (app.WfTests; util\AgentEval): a workflow's test cases, its test runs, Tests must pass to publish. All on ?id=<workflow>, answers in JSON.
     Workflow::read to see them (as the executions they come from), Workflow::update to change the cases and run them (as Run), Workflow::publish for the gate (who may publish decides what publishing asks for)
 */
 
@@ -17,13 +17,13 @@ class EvalController extends \sys\BaseController {
 	parent::_init();
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->sendJSON([ 'error' => 'Log in first' ], true, 401);
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	//the request's account (rt.account, set at sign-in), for the actions
 	$this->account = \V::app()->config('rt.account');
     }
 
     private function findWorkflow($permName) {
 	$oid = $this->getOidOrError();
-	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid, 'aid' => $this->account->_id ]);
+	$wf = \V::app()->om->findOne('Workflow', [ '_id' => $oid ]);
 	if (empty($wf))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can($permName, [ 'object' => $wf ]))

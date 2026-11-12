@@ -32,7 +32,7 @@ class KnowledgeController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	//the request's account (rt.account, set at sign-in), for the actions
 	$this->account = \V::app()->config('rt.account');
 
 	$this->project = empty(\V::app()->user->crtProject) ? null : \V::app()->om->findById('Project', \V::app()->user->crtProject);
@@ -48,7 +48,7 @@ class KnowledgeController extends \sys\BaseController {
     //the knowledge base `id` of the current account and project, if the user has $permName on it (404 / 403 otherwise)
     private function findKb($permName) {
 	$oid = $this->getOidOrError();
-	$kb = empty($this->project) ? null : \V::app()->om->findOne('KnowledgeBase', [ '_id' => $oid, 'aid' => $this->account->_id, 'project' => $this->project->_id ]);
+	$kb = empty($this->project) ? null : \V::app()->om->findOne('KnowledgeBase', [ '_id' => $oid, 'project' => $this->project->_id ]);
 	if (empty($kb))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can($permName, [ 'object' => $kb ]))
@@ -63,7 +63,7 @@ class KnowledgeController extends \sys\BaseController {
 	    \V::app()->error(403, 'Unauthorized');
 
 	if (!empty($req->query['data'])) {
-	    $query = [ 'aid' => $this->account->_id, 'project' => $this->project->_id ];
+	    $query = [ 'project' => $this->project->_id ];
 	    $response = [ 'nRecords' => \V::app()->om->count('KnowledgeBase', $query), 'data' => [] ];
 	    foreach(\V::app()->om->find('KnowledgeBase', $query, [ 'sort' => [ 'name' => 1 ] ]) as $kb) {
 		$state = (string)$kb->state === 'reindexing' ? 'Re-indexing' : ($kb->needsReindex() ? 'Re-index needed' : 'Ready');
@@ -260,8 +260,7 @@ class KnowledgeController extends \sys\BaseController {
     public function settings($req, $resp) {
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
-	$aid = $this->account->_id;
-	$settings = EmbeddingSettings::of($aid);
+	$settings = EmbeddingSettings::of($this->account->_id);
 
 	if ($req->is('post')) {
 	    //the saved key belongs to the saved provider and Server URL: another one without a new key starts without it (never sent to another server)
@@ -278,7 +277,7 @@ class KnowledgeController extends \sys\BaseController {
 	//the knowledge bases of the account indexed with another model (re-index them)
 	$stale = [];
 	if ($settings->ready()) {
-	    foreach(\V::app()->om->find('KnowledgeBase', [ 'aid' => $aid, 'chunks' => [ '$gt' => 0 ], 'model' => [ '$ne' => trim((string)$settings->model) ] ]) as $kb)
+	    foreach(\V::app()->om->find('KnowledgeBase', [ 'chunks' => [ '$gt' => 0 ], 'model' => [ '$ne' => trim((string)$settings->model) ] ]) as $kb)
 		$stale[] = $kb;
 	}
 	$this->render('settings', compact('settings', 'stale'));

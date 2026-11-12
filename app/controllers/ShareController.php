@@ -28,7 +28,7 @@ class ShareController extends \sys\BaseController {
 	if ($req->is('post')) {
 	    $project = $this->targetProject($resource, (string)($req->data['project'] ?? ''));
 	    $access = (string)($req->data['access'] ?? '');
-	    //CLD: 2026-11-03T16:00:00+02:00: what the resource itself refuses (a workflow not published)
+	    //what the resource itself refuses (a workflow not published)
 	    if ($resource->shareProblem() !== null)
 		$this->addToast('error', 'Not shared', $resource->shareProblem());
 	    elseif (!$project || !isset($resource::SHARE_LEVELS[$access]))
@@ -73,7 +73,7 @@ class ShareController extends \sys\BaseController {
 	    } else {
 		$resource->moveTo($project);
 		$this->addToast('success', 'Moved', (string)$resource->name . ' is now in project ' . $project->name);
-		//CLD: 2026-11-04T15:00:00+02:00: its designer is open behind the dialog and would go on saving: as a delete, away from it
+		//its designer is open behind the dialog and would go on saving: as a delete, away from it
 		if ($resource instanceof \models\Workflow) {
 		    $this->addEvent('sidebar::refresh');
 		    $this->redirect('/site/index');
@@ -87,7 +87,7 @@ class ShareController extends \sys\BaseController {
 	$this->render('move', compact('resource', 'object', 'targets'));
     }
 
-    //CLD: 2026-11-03T18:00:00+02:00: + what the resource asks for (shareOptions: a credential's hosts)
+    //what the resource asks for comes too (shareOptions: a credential's hosts)
     private function saved($resource, $project, $access, $data) {
 	[ $options, $error ] = $resource->shareOptions(is_array($data) ? $data : []);
 	if ($error !== null) {
@@ -101,7 +101,7 @@ class ShareController extends \sys\BaseController {
     private function show($resource) {
 	$names = [];
 	$targets = [];
-	foreach(\V::app()->om->find('Project', [ 'aid' => $this->account->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $p) {
+	foreach(\V::app()->om->find('Project', [], [ 'sort' => [ 'name' => 1 ] ]) as $p) {
 	    $names[(string)$p->_id] = (string)$p->name;
 	    if (!$p->personal && !$resource->isHome($p->_id) && !$resource->shareOf($p->_id))
 		$targets[(string)$p->_id] = (string)$p->name;
@@ -110,13 +110,12 @@ class ShareController extends \sys\BaseController {
 	$this->render('manage', compact('resource', 'object', 'names', 'targets'));
     }
 
-    //CLD: 2026-11-08T12:00:00+02:00: + $action: share (SHARE_PERM; not from a personal project: 400) or move (MOVE_PERMS `from`)
-    //the resource of the request, if the user may share / move it (404 / 403 otherwise)
+    //the resource of the request, if the user may share it (SHARE_PERM; not from a personal project: 400) or move it (MOVE_PERMS `from`) ($action); 404 / 403 otherwise
     private function resource($action) {
 	$object = (string)(\V::app()->request->query['object'] ?? '');
 	if (!in_array($object, \data\Constants::PROJECT_KINDS, true))
 	    \V::app()->error(404, 'Not found');
-	$resource = \V::app()->om->findOne($object, [ '_id' => $this->getOidOrError(), 'aid' => $this->account->_id ]);
+	$resource = \V::app()->om->findOne($object, [ '_id' => $this->getOidOrError() ]);
 	if (empty($resource))
 	    \V::app()->error(404, 'Not found');
 	if (!\V::app()->user->can($action === 'move' ? $resource::MOVE_PERMS['from'] : $resource::SHARE_PERM, [ 'object' => $resource ]))

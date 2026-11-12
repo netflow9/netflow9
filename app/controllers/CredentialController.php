@@ -17,7 +17,7 @@ class CredentialController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	//the request's account (rt.account, set at sign-in), for the actions
 	$this->account = \V::app()->config('rt.account');
 
 	$this->project = \V::app()->om->findById('Project', \V::app()->user->crtProject);
@@ -30,7 +30,6 @@ class CredentialController extends \sys\BaseController {
 	$oid = $this->getOidOrError();
 	$cred = \V::app()->om->findOne('Credential', [
 	    '_id' => $oid,
-	    'aid' => $this->account->_id,
 	    'project' => $this->project->_id,
 	]);
 	if (empty($cred))
@@ -50,7 +49,7 @@ class CredentialController extends \sys\BaseController {
 	if (!\V::app()->user->can('Credential::list'))
 	    \V::app()->error(403, 'Unauthorized');
 
-	//CLD: 2026-11-03T18:00:00+02:00: ?shared=1: the credentials other projects share with this one: name, type, project (the page's second list)
+	//?shared=1: the credentials other projects share with this one: name, type, project (the page's second list)
 	if (!empty($req->query['data']) && !empty($req->query['shared'])) {
 	    $data = array_map(fn($c) => [ '_id' => (string)$c->_id, 'name' => (string)$c->name, 'type' => (string)$c::$label, 'project' => (string)\V::app()->om->findById('Project', $c->project) ], $this->sharedHere());
 	    $resp->sendJSON([ 'nRecords' => count($data), 'data' => $data ]);
@@ -66,9 +65,9 @@ class CredentialController extends \sys\BaseController {
 	$this->render('list', compact('sharedCount', 'canShare'));
     }
 
-    //CLD: 2026-11-07T01:04:46+02:00: the credentials other projects share with the current one, by name
+    //the credentials other projects share with the current one, by name
     private function sharedHere() {
-	return iterator_to_array(\V::app()->om->find('Credential', [ 'aid' => $this->account->_id, 'shares.project' => $this->project->_id ], [ 'sort' => [ 'name' => 1 ] ]), false);
+	return iterator_to_array(\V::app()->om->find('Credential', [ 'shares.project' => $this->project->_id ], [ 'sort' => [ 'name' => 1 ] ]), false);
     }
 
     public function create($req, $resp) {
@@ -138,7 +137,7 @@ class CredentialController extends \sys\BaseController {
 	$cred = $this->findOrError('Credential::delete');
 
 	if ($req->is('post')) {
-	    //CLD: 2026-11-03T18:00:00+02:00: not while it is shared: ending each share (the Share dialog) shows which workflows of the other project use it
+	    //not while it is shared: ending each share (the Share dialog) shows which workflows of the other project use it
 	    if (!empty((array)$cred->shares)) {
 		$this->addToast('error', 'Not deleted', 'This credential is shared with other projects: stop sharing it first');
 		$this->sendEvents();
@@ -205,7 +204,6 @@ class CredentialController extends \sys\BaseController {
 
 	$cred = \V::app()->om->findOne('Credential', [
 	    '_id' => \V::app()->om->to_oid($pending['credential']),
-	    'aid' => $this->account->_id,
 	    'project' => $this->project->_id,
 	]);
 	if (empty($cred) || !$cred::isOAuth() || !\V::app()->user->can('Credential::update', [ 'object' => $cred ])) {

@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-23T12:00:00+03:00: new: the settings pages of the SAML sign-in, served at /saml/<action>, for who may change the account (Account::update, as AccountController::settings):
+    the settings pages of the SAML sign-in, served at /saml/<action>, for who may change the account (Account::update, as AccountController::settings):
 	settings   the account's SAML settings (models\saml\SamlSettings; posted as JSON: `settings_json`, the form's app.smartform data), the service provider's details for the IdP,
 		   the account's SSO users. Made (and saved, off) at the first visit: the SP's key pair and metadata exist before the IdP is set up
 	import     POST, JSON: the IdP's metadata (`url`, read here, or the pasted `xml`) read: { ok, values (the form's IdP fields), lines }; nothing saved
@@ -24,7 +24,7 @@ class SamlController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	//the request's account (rt.account, set at sign-in), for the actions
 	$this->account = \V::app()->config('rt.account');
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
@@ -32,8 +32,7 @@ class SamlController extends \sys\BaseController {
 
     //saved, or made now (off) with its key pair
     protected function settingsOfAccount() {
-	$aid = $this->account->_id;
-	$s = \V::app()->om->findOne('SamlSettings', [ 'aid' => $aid ]) ?: \V::app()->om->create('SamlSettings', [ 'aid' => $aid ]);
+	$s = \V::app()->om->findOne('SamlSettings') ?: \V::app()->om->create('SamlSettings', [ 'aid' => $this->account->_id ]);
 	if (empty($s->_id) || trim((string)$s->spCert) === '') {
 	    $s->keys();
 	    if (!$s->save())
@@ -116,11 +115,10 @@ class SamlController extends \sys\BaseController {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 	$oid = $this->getOidOrError();
-	$aid = $this->account->_id;
-	$user = \V::app()->om->findOne('User', [ '_id' => $oid, 'aid' => $aid ]);
+	$user = \V::app()->om->findOne('User', [ '_id' => $oid ]);
 	if (empty($user))
 	    \V::app()->error(404, 'Not found');
-	foreach(\V::app()->om->find('SamlLink', [ 'aid' => $aid, 'user' => $user->_id ]) as $l)
+	foreach(\V::app()->om->find('SamlLink', [ 'user' => $user->_id ]) as $l)
 	    $l->delete();
 	\models\AuditLog::record('saml.unlink', $user, 'no longer an SSO user');
 	$this->addToast('success', 'OK', \V::app()->html->escape((string)$user) . ' is no longer an SSO user: "Forgot username or password?" sets a password');

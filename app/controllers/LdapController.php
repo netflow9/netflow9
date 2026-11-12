@@ -1,7 +1,7 @@
 <?php
 
 /*
-    CLD: 2026-10-21T10:00:00+03:00: new: the pages of the LDAP sign-in, served at /ldap/<action>, for who may change the account (Account::update, as AccountController::settings):
+    the pages of the LDAP sign-in, served at /ldap/<action>, for who may change the account (Account::update, as AccountController::settings):
 	settings   the account's LDAP sign-in settings (models\LdapSettings; posted as JSON: `settings_json`, the form's app.smartform data) and its LDAP users
 	test       POST, JSON: the settings of the form (not saved) tried: mode `connection` (connect, bind, the Base DN, a few people of the user filter) or `signin` (what the
 		   sign-in of `login` / `password` would do: util\LdapAuth::trial); answers { ok, lines }
@@ -22,16 +22,15 @@ class LdapController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	//the request's account (rt.account, set at sign-in), for the actions
 	$this->account = \V::app()->config('rt.account');
 	if (!\V::app()->user->can('Account::update'))
 	    \V::app()->error(403, 'Unauthorized');
     }
 
     protected function settingsOfAccount() {
-	//CLD: 2026-10-21T11:30:00+03:00: saved, or new with the defaults (not saved)
-	$aid = $this->account->_id;
-	return \V::app()->om->findOne('LdapSettings', [ 'aid' => $aid ]) ?: \V::app()->om->create('LdapSettings', [ 'aid' => $aid ]);
+	//saved, or new with the defaults (not saved)
+	return \V::app()->om->findOne('LdapSettings') ?: \V::app()->om->create('LdapSettings', [ 'aid' => $this->account->_id ]);
     }
 
     //the form's values (JSON) assigned to $settings (an empty secret keeps the saved one)
@@ -118,11 +117,10 @@ class LdapController extends \sys\BaseController {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
 	$oid = $this->getOidOrError();
-	$aid = $this->account->_id;
-	$user = \V::app()->om->findOne('User', [ '_id' => $oid, 'aid' => $aid ]);
+	$user = \V::app()->om->findOne('User', [ '_id' => $oid ]);
 	if (empty($user))
 	    \V::app()->error(404, 'Not found');
-	foreach(\V::app()->om->find('LdapLink', [ 'aid' => $aid, 'user' => $user->_id ]) as $l)
+	foreach(\V::app()->om->find('LdapLink', [ 'user' => $user->_id ]) as $l)
 	    $l->delete();
 	\models\AuditLog::record('ldap.unlink', $user, 'no longer an LDAP user');
 	$this->addToast('success', 'OK', \V::app()->html->escape((string)$user) . ' is no longer an LDAP user: "Forgot username or password?" sets a password');

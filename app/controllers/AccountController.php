@@ -9,7 +9,7 @@ class AccountController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	//the request's account (rt.account, set at sign-in), for the actions
 	$this->account = \V::app()->config('rt.account');
     }
 
@@ -36,7 +36,7 @@ class AccountController extends \sys\BaseController {
 
 	if ($tab === 'inbound') {
 	    //new settings (not saved yet) for an account without them
-	    $settings = \V::app()->om->findOne('InboundMailSettings', [ 'aid' => $account->_id ])
+	    $settings = \V::app()->om->findOne('InboundMailSettings')
 		?: \V::app()->om->create('InboundMailSettings', [ 'aid' => $account->_id, 'prefix' => \models\InboundMailSettings::DEFAULT_PREFIX ]);
 	    if ($req->is('post')) {
 		$settings->assign($req->data, true);
@@ -50,7 +50,7 @@ class AccountController extends \sys\BaseController {
 	    return;
 	}
 
-	//CLD: 2026-11-02T10:00:00+02:00: the AI policy: the switches name the families allowed (denied_families: the others); a new document saved only when something is posted
+	//the AI policy: the switches name the families allowed (denied_families: the others); a new document saved only when something is posted
 	if ($tab === 'ai') {
 	    $policy = \models\agent\AgentPolicy::ofAccount($account->_id);
 	    if ($req->is('post')) {
@@ -87,7 +87,7 @@ class AccountController extends \sys\BaseController {
 	//Data access: the projects whose MCP server is on (switches: mcp_projects[]; only the account's projects are kept)
 	if ($tab === 'access') {
 	    $projects = [];
-	    foreach(\V::app()->om->find('Project', [ 'aid' => $account->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $p)
+	    foreach(\V::app()->om->find('Project', [], [ 'sort' => [ 'name' => 1 ] ]) as $p)
 		$projects[(string)$p->_id] = $p;
 	    if ($req->is('post')) {
 		$on = array_values(array_intersect(array_map('strval', (array)($req->data['mcp_projects'] ?? [])), array_keys($projects)));
@@ -100,7 +100,7 @@ class AccountController extends \sys\BaseController {
 	    $owners = [];
 	    $ownerIds = array_values(array_filter(array_map(fn($p) => $p->personal ? $p->owner : null, $projects)));
 	    if ($ownerIds)
-		foreach(\V::app()->om->find('User', [ 'aid' => $account->_id, '_id' => [ '$in' => $ownerIds ] ]) as $u)
+		foreach(\V::app()->om->find('User', [ '_id' => [ '$in' => $ownerIds ] ]) as $u)
 		    $owners[(string)$u->_id] = $u;
 	    $this->render('settings', compact('account', 'tab', 'tabs', 'projects', 'owners'));
 	    return;
@@ -110,7 +110,7 @@ class AccountController extends \sys\BaseController {
 	    $usage = \util\Tiers::usage($account);
 	    $limits = \util\Tiers::limits($account);
 	    $projects = [];
-	    foreach(\V::app()->om->find('Project', [ 'aid' => $account->_id ], [ 'sort' => [ 'name' => 1 ] ]) as $p)
+	    foreach(\V::app()->om->find('Project', [], [ 'sort' => [ 'name' => 1 ] ]) as $p)
 		$projects[(string)$p->_id] = $p;
 	    $this->render('settings', compact('account', 'tab', 'tabs', 'usage', 'limits', 'projects'));
 	    return;

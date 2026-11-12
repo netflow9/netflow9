@@ -11,7 +11,7 @@ class RoleController extends \sys\BaseController {
 
 	if (\V::app()->user->isGuest)
 	    \V::app()->response->redirect(\V::app()->user->getLoginUrl());
-	//CLD: 2026-11-06T23:25:44+02:00: the request's account (rt.account, set at sign-in), for the actions
+	//the request's account (rt.account, set at sign-in), for the actions
 	$this->account = \V::app()->config('rt.account');
     }
 
@@ -28,7 +28,7 @@ class RoleController extends \sys\BaseController {
     }
 
 
-    //CLD: 2026-10-13T21:12:34+03:00: a new custom role (POST; Role::create): "New role N", every permission off; its page follows (name and permissions)
+    //a new custom role (POST; Role::create): "New role N", every permission off; its page follows (name and permissions)
     public function create($req, $resp) {
 	if (!$req->is('post'))
 	    \V::app()->error(405, 'Method not allowed');
@@ -41,7 +41,7 @@ class RoleController extends \sys\BaseController {
 		    $permissions[$p['name']] = [ 'enabled' => false ];
 	    }
 	}
-	$role = \V::app()->om->create('Role', [ 'aid' => $this->account->_id, 'name' => 'New role ' . (\V::app()->om->count('Role', [ 'aid' => $this->account->_id ]) + 1),
+	$role = \V::app()->om->create('Role', [ 'aid' => $this->account->_id, 'name' => 'New role ' . (\V::app()->om->count('Role') + 1),
 	    'permissions' => $permissions, 'override' => [] ]);
 	if (!$role->validates() || !$role->save())
 	    \V::app()->error(400, 'The role could not be created');
@@ -51,7 +51,7 @@ class RoleController extends \sys\BaseController {
 
     public function update($req, $resp) {
 	$oid = $this->getOidOrError();
-	$role = \V::app()->om->findOne('Role', [ '_id' => $oid, 'aid' => $this->account->_id ]);
+	$role = \V::app()->om->findOne('Role', [ '_id' => $oid ]);
 	if (empty($role))
 	    \V::app()->error(404, 'Not found');
 
@@ -88,7 +88,7 @@ class RoleController extends \sys\BaseController {
 	    foreach($role->override as $permName => $permData)
 		$role->permissions[$permName] = $permData;
 
-	    //CLD: 2026-10-13T21:12:34+03:00: a custom role (no internal name) can be renamed; the system roles (owner, member, participant) keep theirs
+	    //a custom role (no internal name) can be renamed; the system roles (owner, member, participant) keep theirs
 	    if (empty($role->iname) && trim((string)$req->getDataParam('name', '')) !== '')
 		$role->name = mb_substr(trim((string)$req->getDataParam('name', '')), 0, 100);
 
