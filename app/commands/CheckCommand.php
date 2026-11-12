@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'glpi', 'intune', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'glpi', 'intune', 'zendesk', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -10061,6 +10061,233 @@ class CheckCommand extends \sys\BaseController {
 	    }
 	    foreach($wfs as $wf)
 		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-12T23:45:00+02:00: Zendesk against a fake account (commands/tests/ZendeskTestServer.php; util\Zendesk::$testing: its address): values, the credential (an agent's
+    //email and API token, an OAuth token, a wrong token said), a 429 waited for, Tickets (create with a new requester, an assignee by email, a group by name, tags, custom fields;
+    //Zendesk's validation errors; update, an internal note, status, assign, tags, comments, search, an attachment, merge, delete), Users and organizations, Setup, the API step,
+    //the ticket trigger (a UTC window in the search, floor, seen, created / updated)
+    private function suiteZendesk() {
+	$Z = \util\Zendesk::class;
+	$T = \models\node\NodeAppZendeskTickets::class;
+	$TZ = \models\node\NodeTriggerZendesk::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$this->check('zendesk: values: ticket ids (an address, #, an item), a subdomain of an address, a quoted value, tags, a due date, Zendesk\'s validation details, the trigger\'s search', [
+	    77, 5, 9, 'Ticket: not a ticket id (a number, e.g. 123): `x`', 'acme', '"Tier 2"', [ 'vip', 'floor-2' ], '2026-12-31T00:00:00Z',
+	    'Assignee is not an agent; Subject: is blank (RecordInvalid)', 'type:ticket tags:vip updated>2026-11-12T10:00:00Z' ], [
+	    $Z::ticketId('https://acme.zendesk.com/agent/tickets/77'), $Z::ticketId('#5'), $Z::ticketId([ 'id' => 9 ]), $thrown(fn() => $Z::ticketId('x')), $Z::subdomain('https://ACME.zendesk.com/agent'),
+	    $Z::quote('Tier 2'), \models\node\NodeAppZendesk::tags('VIP, floor-2 vip'), $T::date('2026-12-31'),
+	    $Z::message([ 'error' => 'RecordInvalid', 'description' => 'Record validation errors', 'details' => [ 'assignee' => [ [ 'description' => 'Assignee is not an agent' ] ],
+		'subject' => [ [ 'description' => 'Subject: is blank' ] ] ] ]),
+	    $TZ::query('tags:vip', 'updated', strtotime('2026-11-12T10:00:00Z') * 1000 + 500) ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-zendesk-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$t0 = (int)floor(microtime(true) * 1000) - 3600000;
+	$clock = fn($ms) => file_put_contents("{$dir}/now.txt", (string)$ms);
+	$clock($t0 - 600000);
+	$server = $this->startServer('zendesk', 'ZendeskTestServer.php', $dir, [ 'ZENDESK_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$Z::$testing = "http://127.0.0.1:{$port}";
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$db = fn() => json_decode((string)@file_get_contents("{$dir}/db.json"), true);
+	$creds = [];
+	$files = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function(array $over) use ($om, &$creds) {
+		$c = $om->create('CredentialZendesk', $over + [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Zendesk ' . uniqid(), 'subdomain' => 'acme' ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('zendesk: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		return $om->findById('CredentialZendesk', (string)$c->_id);
+	    };
+	    $tok = $make([ 'auth' => 'token', 'email' => 'bot@acme.com', 'apiToken' => 'tok-zd' ]);
+	    $oauth = $make([ 'auth' => 'oauth', 'accessToken' => 'oauth-zd' ]);
+	    $wrong = $make([ 'auth' => 'token', 'email' => 'bot@acme.com', 'apiToken' => 'nope' ]);
+	    if (!$tok || !$oauth || !$wrong)
+		return;
+	    $bad = $om->create('CredentialZendesk', [ 'name' => 'x', 'subdomain' => 'acme corp', 'auth' => 'token' ]);
+	    $bad->validates();
+	    $badKeys = array_values(array_intersect([ 'subdomain', 'email', 'apiToken' ], array_keys((array)$bad->errors())));
+	    $requests();
+	    $tt = $tok->test();
+	    $sent = $requests();
+	    $this->check('zendesk: the form (a subdomain, the email and API token with token sign-in); Test: Basic <email>/token, the agent; OAuth: Bearer; a wrong token said', [
+		[ 'subdomain', 'email', 'apiToken' ], 'connected to acme.zendesk.com as Workflow Bot <bot@acme.com>, admin', [ '/api/v2/users/me.json', 'Basic ' . base64_encode('bot@acme.com/token:tok-zd') ],
+		'connected to acme.zendesk.com as Ana Pop <ana@acme.com>, agent', 'HTTP status 401: Couldn\'t authenticate you' ], [
+		$badKeys, $tt, [ $sent[0]['path'] ?? null, $sent[0]['auth'] ?? null ], $oauth->test(), $thrown(fn() => $wrong->test()) ]);
+
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $tok, $requests) {
+		$requests();
+		$exe = $this->runFlow("zendesk {$fq}", [ $n('m', 'trigger::manual'), $n('s', $fq, $cfg + [ 'credential' => (string)$tok->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $logOf = fn($exe, $prefix) => str_replace($prefix, '', (string)self::logLine($exe, $prefix));
+	    $TS = 'app::zendesk-tickets';
+	    $sentTo = fn($sent, $method, $path) => array_values(array_filter($sent, fn($r) => $r['method'] === $method && $r['path'] === "/api/v2{$path}.json"))[0]['body'] ?? [];
+
+	    //create, update, status, assign, tags, comments
+	    [ $c1, $sent ] = $step($TS, [ 'operation' => 'create', 'subject' => 'Printer down on {{ floor }}', 'description' => "Paper jam\nFloor {{ floor }}", 'requester' => 'guest@example.org',
+		'requesterName' => 'Guest', 'priority' => 'high', 'type' => 'incident', 'assignee' => 'ana@acme.com', 'group' => 'Tier 2', 'tags' => 'printer, floor-2',
+		'customFields' => '{"501": "gold"}', 'variable' => 't' ], [ 'floor' => 2 ]);
+	    $in = $sentTo($sent, 'POST', '/tickets')['ticket'] ?? [];
+	    $t1 = $c1?->getVariable('t');
+	    [ $c2, ] = $step($TS, [ 'operation' => 'create', 'subject' => 'X', 'description' => 'Y', 'assignee' => 'eva@customer.com', 'variable' => 't' ]);
+	    [ $c3, ] = $step($TS, [ 'operation' => 'create', 'subject' => '', 'description' => 'Y', 'variable' => 't' ]);
+	    $this->check('zendesk: Tickets create: a new requester by email and name, an assignee by email, a group by name, tags, custom fields, the description as the first comment; '
+		. 'read back with names; Zendesk\'s refusal of an end user as assignee; no subject', [
+		[ [ 'email' => 'guest@example.org', 'name' => 'Guest' ], 101, 402, [ 'printer', 'floor-2' ], [ [ 'id' => 501, 'value' => 'gold' ] ], "Paper jam\nFloor 2", 'high', 'incident' ],
+		[ 1, 'Printer down on 2', 'Guest', 'Ana Pop', 'Tier 2', [ '501' => 'gold' ], true ], 'HTTP status 422: Assignee is not an agent (RecordInvalid)', 'Subject: required to create a ticket' ], [
+		[ $in['requester'] ?? null, $in['assignee_id'] ?? null, $in['group_id'] ?? null, $in['tags'] ?? null, $in['custom_fields'] ?? null, $in['comment']['body'] ?? null, $in['priority'] ?? null, $in['type'] ?? null ],
+		[ $t1['id'] ?? null, $t1['subject'] ?? null, $t1['requester']['name'] ?? null, $t1['assignee']['name'] ?? null, $t1['group'] ?? null, $t1['customFields'] ?? null,
+		    str_ends_with((string)($t1['url'] ?? ''), '/agent/tickets/1') ],
+		$logOf($c2, 'Zendesk Tickets create: '), $logOf($c3, 'Zendesk Tickets create: ') ]);
+	    [ $u1, $sent ] = $step($TS, [ 'operation' => 'update', 'ticket' => '{{ t }}', 'subject' => 'Printer down', 'tags' => 'printer', 'message' => 'Checked the tray', 'public' => false, 'variable' => 'u' ], [ 't' => $t1 ]);
+	    [ $s1, $sent2 ] = $step($TS, [ 'operation' => 'status', 'ticket' => '1', 'newStatus' => 'pending', 'message' => 'Waiting for the part', 'variable' => 's' ]);
+	    [ $a1, $sent3 ] = $step($TS, [ 'operation' => 'assign', 'ticket' => '1', 'assignee' => 'Dan Ionescu', 'group' => 'Support', 'variable' => 'a' ]);
+	    [ $g1, ] = $step($TS, [ 'operation' => 'addTags', 'ticket' => '1', 'tags' => [ 'vip', 'urgent-fix' ], 'variable' => 'g' ]);
+	    [ $g2, ] = $step($TS, [ 'operation' => 'removeTags', 'ticket' => '1', 'tags' => 'urgent-fix', 'variable' => 'g' ]);
+	    $this->check('zendesk: Tickets update (a ticket of a variable; tags replaced; an internal note); status with a comment; assign by name and group; tags added and removed', [
+		[ 'Printer down', [ 'printer' ], false ], [ 'pending', 'Waiting for the part' ], [ 102, 401 ], [ 'printer', 'vip', 'urgent-fix' ], [ 'printer', 'vip' ] ], [
+		[ $u1?->getVariable('u')['subject'] ?? null, $u1?->getVariable('u')['tags'] ?? null, $sentTo($sent, 'PUT', '/tickets/1')['ticket']['comment']['public'] ?? null ],
+		[ $s1?->getVariable('s')['status'] ?? null, $sentTo($sent2, 'PUT', '/tickets/1')['ticket']['comment']['body'] ?? null ],
+		[ $a1?->getVariable('a')['assigneeId'] ?? null, $a1?->getVariable('a')['groupId'] ?? null ], $g1?->getVariable('g')['tags'] ?? null, $g2?->getVariable('g')['tags'] ?? null ]);
+	    $clock($t0 - 500000);
+	    [ $cm, $sent ] = $step($TS, [ 'operation' => 'comment', 'ticket' => '1', 'message' => '<p>Part <strong>ordered</strong></p>', 'variable' => 'c' ]);
+	    [ $cl, ] = $step($TS, [ 'operation' => 'comments', 'ticket' => '1', 'variable' => 'c' ]);
+	    for ($k = 2; $k <= 4; $k++)
+		$step($TS, [ 'operation' => 'create', 'subject' => "Printer {$k}", 'description' => 'x', 'priority' => $k === 3 ? 'urgent' : '', 'variable' => 't' ]);
+	    [ $sr, $sent2 ] = $step($TS, [ 'operation' => 'search', 'statusFilter' => 'unsolved', 'query' => 'printer', 'order' => 'oldest', 'maxItems' => 2, 'variable' => 'r' ]);
+	    [ $sr2, ] = $step($TS, [ 'operation' => 'search', 'statusFilter' => '', 'query' => 'priority:urgent', 'variable' => 'r' ]);
+	    $search = array_values(array_filter($sent2, fn($r) => $r['path'] === '/api/v2/search.json'))[0]['query'] ?? [];
+	    $this->check('zendesk: Tickets comment in HTML (html_body); comments the newest first, as text; search: unsolved, the words, the oldest first, At most: truncated; Zendesk\'s search', [
+		'<p>Part <strong>ordered</strong></p>', [ 'Part ordered', 'Waiting for the part', 'Checked the tray', "Paper jam\nFloor 2" ], [ 'type:ticket status<solved printer', 'created_at', 'asc' ],
+		[ 2, true, [ 'Printer down', 'Printer 2' ] ], [ 3 ] ], [
+		$sentTo($sent, 'PUT', '/tickets/1')['ticket']['comment']['html_body'] ?? null, array_column($cl?->getVariable('c')['items'] ?? [], 'body'),
+		[ $search['query'] ?? null, $search['sort_by'] ?? null, $search['sort_order'] ?? null ],
+		[ $sr?->getVariable('r')['count'] ?? null, $sr?->getVariable('r')['truncated'] ?? null, array_column($sr?->getVariable('r')['items'] ?? [], 'subject') ],
+		array_column($sr2?->getVariable('r')['items'] ?? [], 'id') ]);
+	    $file = \models\File::createFromString('log.txt', "line\n", [ 'metadata' => [ 'project' => $this->project->_id, 'aid' => $this->account->_id, 'owner' => null, 'source' => 'check' ] ]);
+	    $files[] = $file;
+	    [ $at, $sent ] = $step($TS, [ 'operation' => 'attach', 'ticket' => '2', 'sourceFile' => (string)$file, 'variable' => 'f' ]);
+	    [ $mg, $sent2 ] = $step($TS, [ 'operation' => 'merge', 'ticket' => '2', 'sources' => '3, 2, 4', 'variable' => 'm' ]);
+	    [ $dl, ] = $step($TS, [ 'operation' => 'delete', 'ticket' => '4', 'variable' => 'd' ]);
+	    $up = array_values(array_filter($sent, fn($r) => $r['path'] === '/api/v2/uploads.json'))[0] ?? [];
+	    $comments = array_values(array_filter($db()['comments'] ?? [], fn($c) => $c['ticket_id'] === 2 && $c['attachments']));
+	    $this->check('zendesk: Tickets attach (uploads.json: the file\'s name and bytes; a comment with the upload\'s token); merge (this ticket left out of its sources); delete', [
+		[ 'log.txt', 'application/binary', 5, 'Attached: log.txt', 'log.txt' ], [ [ 3, 4 ], 'closed', 'queued' ], [ true, false ] ], [
+		[ $up['query']['filename'] ?? null, $up['type'] ?? null, $up['size'] ?? null, $comments[0]['body'] ?? null, $comments[0]['attachments'][0]['file_name'] ?? null ],
+		[ $sentTo($sent2, 'POST', '/tickets/2/merge')['ids'] ?? null, $db()['tickets']['3']['status'] ?? null, $mg?->getVariable('m')['jobStatus'] ?? null ],
+		[ $dl?->getVariable('d')['deleted'] ?? null, isset($db()['tickets']['4']) ] ]);
+
+	    //users, organizations, setup, API, tools
+	    $US = 'app::zendesk-users';
+	    [ $us, ] = $step($US, [ 'operation' => 'users', 'search' => 'eva', 'variable' => 'x' ]);
+	    [ $ug, ] = $step($US, [ 'operation' => 'user', 'user' => 'eva@customer.com', 'variable' => 'x' ]);
+	    [ $uw, $sent ] = $step($US, [ 'operation' => 'saveUser', 'email' => 'eva@customer.com', 'phone' => '+40 700 000 000', 'organization' => 'Customer Co', 'customFields' => '{"plan": "free"}', 'variable' => 'x' ]);
+	    [ $un, ] = $step($US, [ 'operation' => 'saveUser', 'email' => 'new@customer.com', 'variable' => 'x' ]);
+	    [ $ut, ] = $step($US, [ 'operation' => 'userTickets', 'user' => 'guest@example.org', 'variable' => 'x' ]);
+	    [ $os, ] = $step($US, [ 'operation' => 'organizations', 'search' => 'cust', 'variable' => 'x' ]);
+	    [ $ow, ] = $step($US, [ 'operation' => 'saveOrganization', 'name' => 'New Org', 'domains' => 'new.example, neworg.example', 'variable' => 'x' ]);
+	    [ $ot, ] = $step($US, [ 'operation' => 'organizationTickets', 'organization' => 'Customer Co', 'variable' => 'x' ]);
+	    $saved = $sentTo($sent, 'POST', '/users/create_or_update')['user'] ?? [];
+	    $this->check('zendesk: Users: a search; a user by email (its organization, tags, user fields); create or update by email (the organization by name, user fields); a new one without a name '
+		. 'refused; a requester\'s tickets; organizations by a part of the name; one saved with its domains; an organization\'s tickets', [
+		[ 'Eva Marin' ], [ 201, 301, [ 'vip' ], 'gold' ], [ 'eva@customer.com', 301, [ 'plan' => 'free' ], '+40 700 000 000' ], 'error', [ 1 ], [ 'Customer Co' ], [ 'new.example', 'neworg.example' ], 0 ], [
+		array_column($us?->getVariable('x')['items'] ?? [], 'name'),
+		[ $ug?->getVariable('x')['id'] ?? null, $ug?->getVariable('x')['organizationId'] ?? null, $ug?->getVariable('x')['tags'] ?? null, $ug?->getVariable('x')['userFields']['plan'] ?? null ],
+		[ $saved['email'] ?? null, $saved['organization_id'] ?? null, $saved['user_fields'] ?? null, $uw?->getVariable('x')['phone'] ?? null ], $un?->getVariable('route'),
+		array_column($ut?->getVariable('x')['items'] ?? [], 'id'), array_column($os?->getVariable('x')['items'] ?? [], 'name'), $ow?->getVariable('x')['domains'] ?? null,
+		$ot?->getVariable('x')['count'] ?? null ]);
+	    $SU = 'app::zendesk-setup';
+	    [ $sg, ] = $step($SU, [ 'operation' => 'groups', 'variable' => 'y' ]);
+	    [ $sf, ] = $step($SU, [ 'operation' => 'ticketFields', 'search' => 'plan', 'variable' => 'y' ]);
+	    [ $sv, ] = $step($SU, [ 'operation' => 'viewTickets', 'view' => 'unsolved tickets', 'variable' => 'y' ]);
+	    [ $api, ] = $step('app::zendesk-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => '/tickets/{{ k }}', 'variable' => 'z' ], [ 'k' => 1 ]);
+	    [ $apiBad, ] = $step('app::zendesk-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => 'https://example.com/api/v2/tickets.json', 'variable' => 'z' ]);
+	    $ops = \util\AgentTools::operations('zendesk');
+	    $this->check('zendesk: Setup: groups; a ticket field\'s id and options; a view by title, its tickets; API: any path below /api/v2; another address refused; as AI tools', [
+		[ 'Support', 'Tier 2' ], [ 501, [ 'gold', 'free' ] ], [ 1, 2 ], 'Printer down', 'error', [ false, true, true, false ] ], [
+		array_column($sg?->getVariable('y')['items'] ?? [], 'name'),
+		[ $sf?->getVariable('y')['items'][0]['id'] ?? null, array_column($sf?->getVariable('y')['items'][0]['options'] ?? [], 'value') ], array_column($sv?->getVariable('y')['items'] ?? [], 'id'),
+		$api?->getVariable('z')['ticket']['subject'] ?? null, $apiBad?->getVariable('route'),
+		[ $ops['zendesk_tickets_search']['writes'] ?? null, $ops['zendesk_tickets_add_tags']['writes'] ?? null, $ops['zendesk_users_save_user']['writes'] ?? null,
+		    $ops['zendesk_setup_view_tickets']['writes'] ?? null ] ]);
+
+	    //the ticket trigger
+	    $wf = $this->workflow('zendesk ticket', [ $n('t', 'trigger::zendesk', [ 'credential' => (string)$tok->_id, 'query' => 'priority:urgent', 'event' => 'created', 'runs' => 'each',
+		'variable' => 'ticket', 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ticket.id }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('zendesk: ticket: the workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $node = $wf->nodes['t'];
+	    [ $d0, $none ] = $TZ::check($wf, $node, [], $t0);
+	    $clock($t0 + 60000);
+	    $step($TS, [ 'operation' => 'create', 'subject' => 'New A', 'description' => 'a', 'priority' => 'urgent', 'variable' => 't' ]);
+	    $step($TS, [ 'operation' => 'create', 'subject' => 'New B', 'description' => 'b', 'priority' => 'low', 'variable' => 't' ]);
+	    $requests();
+	    [ $d1, $first ] = $TZ::check($wf, $node, $d0, $t0 + 120000);
+	    $q = array_values(array_filter($requests(), fn($r) => $r['path'] === '/api/v2/search.json'))[0]['query'] ?? [];
+	    [ , $second ] = $TZ::check($wf, $node, $d1, $t0 + 180000);
+	    $started = array_merge($started, $first, $second);
+	    $nodeU = array_replace_recursive($node, [ 'config' => [ 'event' => 'updated', 'query' => '' ] ]);
+	    [ $u0, ] = $TZ::check($wf, $nodeU, [], $t0 + 150000);
+	    $clock($t0 + 160000);
+	    $step($TS, [ 'operation' => 'comment', 'ticket' => '1', 'message' => 'x', 'variable' => 'c' ]);
+	    $step($TS, [ 'operation' => 'create', 'subject' => 'New C', 'description' => 'c', 'variable' => 't' ]);
+	    [ $u1, $upd ] = $TZ::check($wf, $nodeU, $u0, $t0 + 200000);
+	    [ , $upd2 ] = $TZ::check($wf, $nodeU, $u1, $t0 + 260000);
+	    $started = array_merge($started, $upd, $upd2);
+	    $this->check('zendesk: ticket: the first check only notes the time; then the tickets created since that the filter finds (UTC, the oldest first); checked again: none; '
+		. 'Created or updated: a ticket commented on and a new one, their events, once', [
+		[ [], [ 'New A' ], [ 'type:ticket priority:urgent created>' . gmdate('Y-m-d\TH:i:s\Z', intdiv($t0, 1000)), 'created_at', 'asc' ], [] ],
+		[ [ [ 1, 'updated' ], [ 6, 'created' ] ], [], [ 'new', 'zendesk' ] ] ], [
+		[ $none, array_map(fn($x) => $x->getVariable('ticket')['subject'] ?? null, $first), [ $q['query'] ?? null, $q['sort_by'] ?? null, $q['sort_order'] ?? null ], $second ],
+		[ array_map(fn($x) => [ $x->getVariable('ticket')['id'] ?? null, $x->getVariable('ticket')['event'] ?? null ], $upd), $upd2, [ $first[0]?->state ?? null, $first[0]?->trigger ?? null ] ] ]);
+	    $now = $TZ::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('zendesk: ticket: Run in the designer: the newest ticket the filter finds', 'Run with the newest ticket: #4 New A', $now['message'] ?? null);
+	} finally {
+	    $Z::$testing = null;
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($files as $f)
+		$om->findOne('File', [ '_id' => $f ])?->delete();
 	    foreach($creds as $c)
 		$c->delete();
 	    proc_terminate($proc);

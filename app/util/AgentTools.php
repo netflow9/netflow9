@@ -40,6 +40,8 @@ class AgentTools {
 	'salesforce' => [ 'label' => 'Salesforce', 'prefix' => 'salesforce', 'capability' => 'salesforce', 'base' => \models\node\NodeAppSalesforce::class ],
 	//CLD: 2026-11-12T16:00:00+02:00: HubSpot's steps as tools
 	'hubspot' => [ 'label' => 'HubSpot', 'prefix' => 'hubspot', 'capability' => 'hubspot', 'base' => \models\node\NodeAppHubSpot::class ],
+	//CLD: 2026-11-12T23:45:00+02:00: Zendesk's steps as tools
+	'zendesk' => [ 'label' => 'Zendesk', 'prefix' => 'zendesk', 'capability' => 'zendesk', 'base' => \models\node\NodeAppZendesk::class ],
 	//CLD: 2026-11-12T22:00:00+02:00: Intune's steps as tools
 	'intune' => [ 'label' => 'Microsoft Intune', 'prefix' => 'intune', 'capability' => 'intune', 'base' => \models\node\NodeAppIntune::class ],
 	//CLD: 2026-11-12T21:00:00+02:00: GLPI's steps as tools

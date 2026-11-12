@@ -320,6 +320,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialHubSpot',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-12T23:45:00+02:00: a Zendesk Support account (the Zendesk steps and ticket trigger), core for every account
+	    'CredentialZendesk' => [
+		'class' => 'models\credential\CredentialZendesk',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-12T22:00:00+02:00: a Microsoft Intune tenant's app (the Intune steps and device trigger), core for every account
 	    'CredentialIntune' => [
 		'class' => 'models\credential\CredentialIntune',
@@ -679,6 +684,27 @@ class SysObjects {
 	    ],
 	    'NodeTriggerHubSpot' => [
 		'class' => 'models\node\NodeTriggerHubSpot',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-12T23:45:00+02:00: Zendesk (one step per area, NodeAppZendesk their base; the ticket trigger: a search on a schedule), core for every account
+	    'NodeAppZendeskTickets' => [
+		'class' => 'models\node\NodeAppZendeskTickets',
+		'wfNode' => true,
+	    ],
+	    'NodeAppZendeskUsers' => [
+		'class' => 'models\node\NodeAppZendeskUsers',
+		'wfNode' => true,
+	    ],
+	    'NodeAppZendeskSetup' => [
+		'class' => 'models\node\NodeAppZendeskSetup',
+		'wfNode' => true,
+	    ],
+	    'NodeAppZendeskApi' => [
+		'class' => 'models\node\NodeAppZendeskApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerZendesk' => [
+		'class' => 'models\node\NodeTriggerZendesk',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-12T22:00:00+02:00: Microsoft Intune (one step per area, NodeAppIntune their base; the device trigger: devices read on a schedule), core for every account
