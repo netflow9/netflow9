@@ -56,7 +56,7 @@ $assistantJs = \util\JSON::encode([
 	    <p class="mb-2">Describe the workflow you need in your own words, and the Assistant builds its steps and connections here.</p>
 	    <?php //not set up: Assistant settings ?>
 	    <?php //the providers: System, or your own key (Claude, OpenAI, Gemini, Ollama, Lemonade) ?>
-	    <p class="mb-0"><i class="bi bi-plug me-1"></i>It is not set up yet: in <a href="<?= \V::app()->createUrl('/assistant/settings') ?>">Assistant settings</a>, choose System, or a provider (Claude, OpenAI, Gemini, Ollama, Lemonade, LM Studio) with your key, and a model<?= \V::app()->user->can('Account::update') ? '' : ' (ask who manages the account)' ?>, then reopen this workflow.</p>
+	    <p class="mb-0"><i class="bi bi-plug me-1"></i>It is not set up yet: in <a href="<?= \V::app()->createUrl('/assistant/settings') ?>">Assistant settings</a>, choose System, or a provider (Claude, OpenAI, Gemini, Mistral, Ollama, Lemonade, LM Studio) with your key, and a model<?= \V::app()->user->can('Account::update') ? '' : ' (ask who manages the account)' ?>, then reopen this workflow.</p>
 	</div>
 	<?php else: ?>
 	    <div class="wfa-messages flex-grow-1 overflow-auto px-3 py-2" style="min-height: 0"></div>

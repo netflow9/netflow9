@@ -6,6 +6,7 @@
 	Lemonade AI - NodeAppLemonade (the OpenAI requests),
 	Ollama - NodeAppOllama
 	Gemini - NodeAppGemini
+	Mistral - NodeAppMistral (OpenAI-compatible)
     Settings:
 	a credential of the project (the step's provider: static::CAPABILITY),
 	the model,

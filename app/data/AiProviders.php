@@ -47,6 +47,15 @@ class AiProviders {
 	    'url' => 'https://generativelanguage.googleapis.com/v1beta',
 	    'chat_url' => 'https://generativelanguage.googleapis.com/v1beta/openai',
 	],
+	//CLD: 2026-11-12T23:55:00+02:00: Mistral AI (La Plateforme), OpenAI-compatible: chat completions, models, embeddings (mistral-embed)
+	'mistral' => [
+	    'label' => 'Mistral AI',
+	    'name' => 'Mistral',
+	    'protocol' => 'openai',
+	    'cloud' => true,
+	    'embeddings' => true,
+	    'url' => 'https://api.mistral.ai/v1',
+	],
 	'ollama' => [
 	    'label' => 'Ollama',
 	    'name' => 'Ollama',
@@ -141,6 +150,9 @@ class AiProviders {
 	    'gemini-2.5-pro' => [ 1.25, 10.00, 0.125 ],
 	    'gemini-2.5-flash-lite' => [ 0.10, 0.40, 0.01 ],
 	    'gemini-2.5-flash' => [ 0.30, 2.50, 0.03 ],
+	],
+	//CLD: 2026-11-12T23:55:00+02:00: mistral.ai/pricing gives no rates by model id: none yet, so Mistral's models run uncounted (a warning) until they are filled in
+	'mistral' => [
 	],
     ];
 

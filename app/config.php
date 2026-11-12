@@ -93,7 +93,7 @@ function get_config($mode = 'web') {
 	/*
 	    the System AI (the MultiTenant plugin, option system_ai: the server this installation offers to every account, for the Assistant's provider System and the AI steps;
 		off without SYSTEM_AI_PROVIDER / SYSTEM_AI_MODEL):
-		    its provider (anthropic, openai, gemini, ollama, lemonade, lmstudio),
+		    its provider (anthropic, openai, gemini, mistral, ollama, lemonade, lmstudio),
 		    Server URL (empty: the provider's own), key, model, effort (Claude),
 		    and the prices (USD per 1M tokens; empty: the known prices of Claude models)
 	    the credits each account gets per month (no rollover), the most one request may reserve (0: no limit)

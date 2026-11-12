@@ -43,6 +43,8 @@ class ExecutionLog extends \sys\BaseModel {
 	'fortigate.refused' => 'FortiGate event refused',
 	//CLD: 2026-11-12T10:00:00+02:00: a Shopify webhook refused (ShopifyController)
 	'shopify.refused' => 'Shopify event refused',
+	//CLD: 2026-11-12T23:30:00+02:00: a Yousign webhook refused (YousignController)
+	'yousign.refused' => 'Yousign event refused',
 	//CLD: 2026-11-13T00:30:00+02:00: an Infobip post refused (InfobipController)
 	'infobip.refused' => 'Infobip message refused',
 	'job.failed' => 'Job failed',

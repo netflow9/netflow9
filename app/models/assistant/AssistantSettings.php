@@ -8,7 +8,7 @@
 
     bring your own key:
 	the providers System (the installation's server, config assistant.system: no key, URL or model here),
-	Claude, OpenAI, Gemini, Ollama, Lemonade, LM Studio;
+	Claude, OpenAI, Gemini, Mistral, Ollama, Lemonade, LM Studio;
 	each speaks one protocol (data\AiProviders: the Anthropic Messages API or OpenAI chat completions).
 	+ a monthly budget (USD; the spending: AssistantUsage), counted at the list prices (data\AiProviders)
 
@@ -72,7 +72,7 @@ class AssistantSettings extends \sys\BaseModel {
 		'key' => 'api_key',
 		'type' => 'password',
 		'label' => 'API key',
-		'help' => 'Claude: console.anthropic.com; OpenAI: platform.openai.com; Gemini: aistudio.google.com; Ollama, Lemonade, LM Studio: only when the server asks for one. Empty keeps the saved one',
+		'help' => 'Claude: console.anthropic.com; OpenAI: platform.openai.com; Gemini: aistudio.google.com; Mistral: console.mistral.ai; Ollama, Lemonade, LM Studio: only when the server asks for one. Empty keeps the saved one',
 		'perm:update' => 'everybody',
 		'encrypt' => true,
 		'default' => '',

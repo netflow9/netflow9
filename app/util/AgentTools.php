@@ -40,6 +40,8 @@ class AgentTools {
 	'salesforce' => [ 'label' => 'Salesforce', 'prefix' => 'salesforce', 'capability' => 'salesforce', 'base' => \models\node\NodeAppSalesforce::class ],
 	//CLD: 2026-11-12T16:00:00+02:00: HubSpot's steps as tools
 	'hubspot' => [ 'label' => 'HubSpot', 'prefix' => 'hubspot', 'capability' => 'hubspot', 'base' => \models\node\NodeAppHubSpot::class ],
+	//CLD: 2026-11-12T23:30:00+02:00: Yousign's steps as tools
+	'yousign' => [ 'label' => 'Yousign', 'prefix' => 'yousign', 'capability' => 'yousign', 'base' => \models\node\NodeAppYousign::class ],
 	//CLD: 2026-11-13T00:30:00+02:00: Infobip's steps as tools
 	'infobip' => [ 'label' => 'Infobip', 'prefix' => 'infobip', 'capability' => 'infobip', 'base' => \models\node\NodeAppInfobip::class ],
 	//CLD: 2026-11-12T23:45:00+02:00: Zendesk's steps as tools

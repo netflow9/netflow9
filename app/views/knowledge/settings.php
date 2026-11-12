@@ -120,7 +120,7 @@ JS . "}({$connectJs});");
 
 	    <div class="form-group row mb-2">
 		<div class="col-sm-9 offset-sm-3">
-		    <div class="form-text">E.g. <code>nomic-embed-text</code> or <code>bge-m3</code> (Ollama), <code>text-embedding-3-small</code> (OpenAI), <code>gemini-embedding-001</code> (Gemini).
+		    <div class="form-text">E.g. <code>nomic-embed-text</code> or <code>bge-m3</code> (Ollama), <code>text-embedding-3-small</code> (OpenAI), <code>gemini-embedding-001</code> (Gemini), <code>mistral-embed</code> (Mistral).
 			Every knowledge base is indexed with this model: after a change, re-index them (their documents' chunks are embedded again).</div>
 		</div>
 	    </div>

@@ -189,6 +189,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialLemonade',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-12T23:55:00+02:00: Mistral AI's API (the Mistral step, the Assistant, embeddings)
+	    'CredentialMistral' => [
+		'class' => 'models\credential\CredentialMistral',
+		'variant-of' => 'Credential',
+	    ],
 	    'CredentialLmStudio' => [
 		'class' => 'models\credential\CredentialLmStudio',
 		'variant-of' => 'Credential',
@@ -318,6 +323,11 @@ class SysObjects {
 	    //CLD: 2026-11-12T16:00:00+02:00: a HubSpot account's API access (the HubSpot steps and record trigger), core for every account
 	    'CredentialHubSpot' => [
 		'class' => 'models\credential\CredentialHubSpot',
+		'variant-of' => 'Credential',
+	    ],
+	    //CLD: 2026-11-12T23:30:00+02:00: a Yousign organization's API key (the Yousign steps and event trigger), core for every account
+	    'CredentialYousign' => [
+		'class' => 'models\credential\CredentialYousign',
 		'variant-of' => 'Credential',
 	    ],
 	    //CLD: 2026-11-13T00:30:00+02:00: an Infobip account (the Infobip steps), core for every account
@@ -691,6 +701,23 @@ class SysObjects {
 		'class' => 'models\node\NodeTriggerHubSpot',
 		'wfNode' => true,
 	    ],
+	    //CLD: 2026-11-12T23:30:00+02:00: Yousign (Signature Requests, Account, API, NodeAppYousign their base; the event trigger: Yousign's webhooks to /yousign/<token>), core for every account
+	    'NodeAppYousignRequests' => [
+		'class' => 'models\node\NodeAppYousignRequests',
+		'wfNode' => true,
+	    ],
+	    'NodeAppYousignAccount' => [
+		'class' => 'models\node\NodeAppYousignAccount',
+		'wfNode' => true,
+	    ],
+	    'NodeAppYousignApi' => [
+		'class' => 'models\node\NodeAppYousignApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerYousign' => [
+		'class' => 'models\node\NodeTriggerYousign',
+		'wfNode' => true,
+	    ],
 	    //CLD: 2026-11-13T00:30:00+02:00: Infobip (one step per channel, NodeAppInfobip their base; the message trigger: Infobip's posts to /infobip/<token>), core for every account
 	    'NodeAppInfobipSms' => [
 		'class' => 'models\node\NodeAppInfobipSms',
@@ -1032,6 +1059,11 @@ class SysObjects {
 	    //Lemonade AI (the OpenAI step's requests, on a Lemonade server) and Ollama (Ollama's own API)
 	    'NodeAppLemonade' => [
 		'class' => 'models\node\NodeAppLemonade',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-12T23:55:00+02:00: Mistral (Mistral AI's API, OpenAI-compatible)
+	    'NodeAppMistral' => [
+		'class' => 'models\node\NodeAppMistral',
 		'wfNode' => true,
 	    ],
 	    'NodeAppLmStudio' => [

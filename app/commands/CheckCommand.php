@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'glpi', 'intune', 'zendesk', 'infobip', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'glpi', 'intune', 'zendesk', 'infobip', 'yousign', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -1786,6 +1786,20 @@ class CheckCommand extends \sys\BaseController {
 	    $sent = $requests('/api/v1/chat/completions');
 	    $this->check('LM Studio: a run (the answer, the model, the prompt, the temperature)', [ 'success', 'Hello from Qwen3-8B-GGUF', 'Qwen3-8B-GGUF', 'Hi Ana', 0.3 ],
 		[ $exe?->getVariable('route'), $exe?->getVariable('ai')['text'] ?? null, $sent[0]['model'] ?? null, $unmark($sent[0]['messages'][1]['content'] ?? ''), $sent[0]['temperature'] ?? null ]);
+
+	    //CLD: 2026-11-12T23:55:00+02:00: Mistral: the OpenAI requests, at Mistral's address by default, a cloud provider (masking offered, a key required)
+	    $mis = $make('CredentialMistral', "http://127.0.0.1:{$port}/v1", 'check-key');
+	    $noKey = $om->create('CredentialMistral', [ 'aid' => $this->account->_id, 'name' => 'x' ]);
+	    $noKey->validates();
+	    $this->check('Mistral: the step type; the credential: what it provides, its default address, a key required, its Test; the Assistant\'s address; cloud', [ true, [ 'mistral', 'http' ],
+		'https://api.mistral.ai/v1', true, '2 models: Qwen3-8B-GGUF, Gemma-3-4b-it-GGUF', 'https://api.mistral.ai/v1', true, true ], [ isset($all['app::mistral']), \models\credential\CredentialMistral::$provides,
+		$om->create('CredentialMistral', [ 'aid' => $this->account->_id ])->baseUrl, isset(((array)$noKey->errors())['apiKey']), $refused($mis),
+		\util\WorkflowAssistant::credentialOf((object)[ 'provider' => 'mistral' ])->baseUrl, \data\AiProviders::isCloud('mistral'), isset(\data\AiProviders::forEmbeddings()['mistral']) ]);
+	    @unlink($log);
+	    $exe = $flow('mistral', 'app::mistral', [ 'model' => 'mistral-small-latest', 'temperature' => '0.2', 'tools' => [] ], $mis);
+	    $sent = $requests('/v1/chat/completions');
+	    $this->check('Mistral: a run (the answer, the model, the prompt, the temperature, the key)', [ 'success', 'mistral-small-latest', 'Hi Ana', 0.2 ],
+		[ $exe?->getVariable('route'), $sent[0]['model'] ?? null, $unmark($sent[0]['messages'][1]['content'] ?? ''), $sent[0]['temperature'] ?? null ]);
 
 	    //Ollama: its own API
 	    @unlink($log);
@@ -4195,8 +4209,8 @@ class CheckCommand extends \sys\BaseController {
 	    $exe = $start('claude', [ [ $list ] ], [ 'prompt' => "Write to {$names}\nSCRIPT: " . json_encode([ [ $list ] ]) ]);
 	    $this->check('agent guard: masking is off by default', $secret, $hasSecret($sentRaw()));
 	    //System AI of a cloud provider: masked, of a local one: not (the provider's kind decides)
-	    $this->check('agent guard: masking: the switch is offered on cloud providers only', [ true, true, true, false, false, false ], array_map(fn($c) => in_array('maskPersonalData', array_column($c::configSchema(), 'key'), true),
-		[ \models\node\NodeAppClaude::class, \models\node\NodeAppOpenAI::class, \models\node\NodeAppGemini::class, \models\node\NodeAppLemonade::class, \models\node\NodeAppOllama::class, \models\node\NodeAppLmStudio::class ]));
+	    $this->check('agent guard: masking: the switch is offered on cloud providers only', [ true, true, true, false, false, false, true ], array_map(fn($c) => in_array('maskPersonalData', array_column($c::configSchema(), 'key'), true),
+		[ \models\node\NodeAppClaude::class, \models\node\NodeAppOpenAI::class, \models\node\NodeAppGemini::class, \models\node\NodeAppLemonade::class, \models\node\NodeAppOllama::class, \models\node\NodeAppLmStudio::class, \models\node\NodeAppMistral::class ]));
 	    //a tool result, across a wait for approval
 	    $listed = 'wf_check_guard_child';
 	    $clear();
@@ -10524,6 +10538,289 @@ class CheckCommand extends \sys\BaseController {
 		    $t->delete();
 	    }
 	    foreach($files as $f)
+		$om->findOne('File', [ '_id' => $f ])?->delete();
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-12T23:30:00+02:00: Yousign against a fake API (commands/tests/YousignTestServer.php; util\Yousign::$testing: its address): values (signers' lines and objects,
+    //the fields' positions, Yousign's filters, the webhook signature), the credential (a key; Test; a wrong key said), a 429 waited for, Send (documents and an attachment uploaded,
+    //signers with their field on the last page, activated, the signature links of delivery None; a draft; a refused signer deletes the draft), a template's labels, get, list
+    //(filters, pages), cancel, remind (the signers not done), download (signed: a ZIP's PDFs saved one by one), the audit trail, Account, API, the AI family's writes, the event
+    //trigger (Connect: the webhook made with the step's secret, updated, deleted; /yousign/<token>: the signature checked, events not chosen ignored, sandbox / production)
+    private function suiteYousign() {
+	$Y = \util\Yousign::class;
+	$R = \models\node\NodeAppYousignRequests::class;
+	$TY = \models\node\NodeTriggerYousign::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$sig = fn($body, $secret) => 'sha256=' . hash_hmac('sha256', $body, $secret);
+	$this->check('yousign: values: a signer\'s line (a phone made international, a label), an object (a name split), a wrong line; the fields\' rows; Yousign\'s filters; the signature', [
+	    [ 'Ana Maria', 'Pop', 'ana@example.com', '+40722123456', 'ro' ], [ 'Client', 'Ion', 'Ionescu' ], [ 'Eva', 'Marin', 'eva@example.com', 'fr' ],
+	    'Signers: not `First Last <email>`: `just a name`', [ [ 60, 680 ], [ 260, 680 ], [ 60, 760 ] ], 'status%5Bin%5D=draft%2Cdone&q=a%20b&limit=5', [ true, false, false ] ], [
+	    (fn($s) => [ $s[1]['first_name'], $s[1]['last_name'], $s[1]['email'], $s[1]['phone_number'] ?? null, $s[1]['locale'] ])($R::signer('Ana Maria Pop <ana@example.com> 0040 722-123-456', 'ro')),
+	    (fn($s) => [ $s[0], $s[1]['first_name'], $s[1]['last_name'] ])($R::signer('Client: Ion Ionescu <ion@example.com>', 'en')),
+	    (fn($s) => [ $s[1]['first_name'], $s[1]['last_name'], $s[1]['email'], $s[1]['locale'] ])($R::signer([ 'name' => 'Eva Marin', 'email' => 'eva@example.com', 'locale' => 'fr' ], 'en')),
+	    $thrown(fn() => $R::signer('just a name', 'en')),
+	    array_map(fn($f) => [ $f[0]['x'], $f[0]['y'] ], $R::positions(3, 'd', 1, 60, 680)),
+	    $Y::query([ 'status' => [ 'in' => [ 'draft', 'done' ] ], 'q' => 'a b', 'limit' => 5, 'after' => null ]),
+	    [ $Y::verify('{"a":1}', $sig('{"a":1}', 'k'), 'k'), $Y::verify('{"a":2}', $sig('{"a":1}', 'k'), 'k'), $Y::verify('{"a":1}', $sig('{"a":1}', 'k'), '') ] ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-yousign-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('yousign', 'YousignTestServer.php', $dir, [ 'YOUSIGN_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$Y::$testing = "http://127.0.0.1:{$port}";
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$state = fn() => json_decode((string)@file_get_contents("{$dir}/requests.json"), true) ?: [];
+	$creds = [];
+	$files = [];
+	$wfs = [];
+	$runs = [];
+	try {
+	    $make = function(array $over) use ($om, &$creds) {
+		$c = $om->create('CredentialYousign', $over + [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Yousign ' . uniqid(), 'sandbox' => true ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('yousign: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		return $om->findById('CredentialYousign', (string)$c->_id);
+	    };
+	    $ok = $make([ 'apiKey' => 'key-ys', 'workspaceId' => '00000000-0000-4000-8000-0000000000ff' ]);
+	    $wrong = $make([ 'apiKey' => 'nope' ]);
+	    if (!$ok || !$wrong)
+		return;
+	    $bad = $om->create('CredentialYousign', [ 'name' => 'x', 'workspaceId' => 'not-a-uuid' ]);
+	    $bad->validates();
+	    $requests();
+	    $tt = $ok->test();
+	    $sent = $requests();
+	    $this->check('yousign: the form (the API key, a workspace\'s UUID); Test: Bearer <key>, a request listed; a wrong key said', [
+		[ 'apiKey', 'workspaceId' ], 'connected to Yousign (sandbox): no signature request yet', [ '/signature_requests', 'Bearer key-ys' ], 'HTTP status 401: Unauthorized' ], [
+		array_values(array_intersect([ 'apiKey', 'workspaceId' ], array_keys((array)$bad->errors()))), $tt, [ $sent[0]['path'] ?? null, $sent[0]['auth'] ?? null ],
+		$thrown(fn() => $wrong->test()) ]);
+
+	    $meta = [ 'metadata' => [ 'project' => $this->project->_id, 'aid' => $this->account->_id, 'owner' => null, 'source' => 'check', 'created_at' => new \MongoDB\BSON\UTCDateTime() ] ];
+	    $fileOf = function($name, $bytes) use (&$files, $meta) {
+		$s = fopen('php://temp', 'w+b');
+		fwrite($s, $bytes);
+		rewind($s);
+		$id = \models\File::createFromStream($name, $s, $meta);
+		fclose($s);
+		$files[] = $id;
+		return (string)$id;
+	    };
+	    $doc = $fileOf('contract.pdf', "%PDF-1.4\ncontract\n%%EOF");
+	    $annex = $fileOf('annex.pdf', "%PDF-1.4\nannex\n%%EOF");
+	    $logo = $fileOf('terms.png', "\x89PNG\r\n\x1a\nfake");
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $ok, $requests) {
+		$requests();
+		$exe = $this->runFlow("yousign {$fq}", [ $n('m', 'trigger::manual'), $n('s', $fq, $cfg + [ 'credential' => (string)$ok->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'err', 1) ], $vars);
+		foreach((array)$exe?->getVariable('x') as $v)
+		    foreach((array)(is_array($v) ? ($v['files'] ?? []) : []) as $f)
+			$files[] = $f['id'] ?? null;
+		return [ $exe, $requests() ];
+	    };
+	    $to = fn($sent, $method, $suffix) => array_values(array_filter($sent, fn($r) => $r['method'] === $method && str_ends_with($r['path'], $suffix)));
+	    $logOf = fn($exe, $prefix) => preg_replace('/ \(\d+ ms\)$/', '', str_replace($prefix, '', (string)self::logLine($exe, $prefix)));
+	    $SR = 'app::yousign-requests';
+
+	    //Send
+	    file_put_contents("{$dir}/throttle.json", '1');
+	    [ $s1, $sent ] = $step($SR, [ 'operation' => 'send', 'name' => 'Contract {{ k }}', 'documents' => "{$doc}, {$annex}", 'attachments' => [ [ 'id' => $logo ] ],
+		'signers' => "Ana Pop <ana@example.com> +40722123456\nIon Ionescu <ion@example.com>", 'signatureLevel' => 'advanced_electronic_signature', 'authMode' => 'otp_sms',
+		'locale' => 'ro', 'deliveryMode' => 'none', 'placement' => 'position', 'page' => 'last', 'x' => '60', 'y' => '700', 'orderedSigners' => true, 'expiration' => '2027-01-31',
+		'externalId' => 'order-{{ k }}', 'activate' => true, 'variable' => 'x' ], [ 'k' => 7 ]);
+	    $create = $to($sent, 'POST', '/signature_requests')[0]['body'] ?? [];
+	    $docs = $to($sent, 'POST', '/documents');
+	    $signers = array_column($to($sent, 'POST', '/signers'), 'body');
+	    $x = $s1?->getVariable('x') ?? [];
+	    $this->check('yousign: Send: the request (name, delivery, order, expiry, external ID, the credential\'s workspace; a 429 waited for), the documents and the attachment as multipart, '
+		. 'the signers (level, SMS codes, language) each with a field on the last page in a row, activated; the result with the signature links', [
+		[ 'Contract 7', 'none', true, '2027-01-31', 'order-7', '00000000-0000-4000-8000-0000000000ff' ], [ [ 'contract.pdf', 'signable_document' ], [ 'annex.pdf', 'signable_document' ], [ 'terms.png', 'attachment' ] ],
+		[ [ 'Ana', 'ana@example.com', '+40722123456', 'ro', 'advanced_electronic_signature', 'otp_sms', 3, 60, 700 ], [ 'Ion', 'ion@example.com', null, 'ro', 'advanced_electronic_signature', 'otp_sms', 3, 260, 700 ] ],
+		[ 'ongoing', 2, true, 'order-7' ], 'Contract 7: ongoing, 2 signers (ana@example.com, ion@example.com)' ], [
+		[ $create['name'] ?? null, $create['delivery_mode'] ?? null, $create['ordered_signers'] ?? null, $create['expiration_date'] ?? null, $create['external_id'] ?? null, $create['workspace_id'] ?? null ],
+		array_map(fn($d) => [ $d['files']['file'][0] ?? null, $d['post']['nature'] ?? null ], $docs),
+		array_map(fn($s) => [ $s['info']['first_name'] ?? null, $s['info']['email'] ?? null, $s['info']['phone_number'] ?? null, $s['info']['locale'] ?? null, $s['signature_level'] ?? null,
+		    $s['signature_authentication_mode'] ?? null, $s['fields'][0]['page'] ?? null, $s['fields'][0]['x'] ?? null, $s['fields'][0]['y'] ?? null ], $signers),
+		[ $x['status'] ?? null, count($x['signers'] ?? []), str_starts_with((string)($x['signers'][0]['signatureLink'] ?? ''), 'https://'), $x['externalId'] ?? null ], $logOf($s1, 'Yousign Signature Requests send: ') ]);
+	    $id = (string)($x['id'] ?? '');
+
+	    [ $s2, ] = $step($SR, [ 'operation' => 'send', 'name' => 'Draft', 'documents' => $doc, 'signers' => 'Ana Pop <ana@example.com>', 'activate' => false, 'variable' => 'x' ]);
+	    [ $s3, $sent3 ] = $step($SR, [ 'operation' => 'send', 'name' => 'Refused', 'documents' => $doc, 'signers' => "Ana Pop <ana@example.com>\nNo One <refused@example.com>", 'variable' => 'x' ]);
+	    [ $s4, ] = $step($SR, [ 'operation' => 'send', 'name' => 'SMS', 'documents' => $doc, 'signers' => 'Ana Pop <ana@example.com>', 'authMode' => 'otp_sms', 'variable' => 'x' ]);
+	    [ $s5, ] = $step($SR, [ 'operation' => 'send', 'name' => 'Image', 'documents' => $logo, 'signers' => 'Ana Pop <ana@example.com>', 'variable' => 'x' ]);
+	    $this->check('yousign: Send as a draft (not activated); a signer refused: Yousign\'s reason, the draft deleted; codes by SMS without a phone refused (deleted too); an image to sign refused', [
+		[ 'draft', 0 ], 'HTTP status 400: Validation failed (info.email: This email is blocked.) (the draft was deleted)', 1, 'Signers: ana@example.com needs a phone number for codes by SMS (the draft was deleted)',
+		'Documents: `terms.png` is not a PDF or DOCX (images can only be attachments)' ], [
+		[ $s2?->getVariable('x')['status'] ?? null, count($to($requests(), 'POST', '/activate')) ], $logOf($s3, 'Yousign Signature Requests send: '),
+		count($to($sent3, 'DELETE', '')), $logOf($s4, 'Yousign Signature Requests send: '), $logOf($s5, 'Yousign Signature Requests send: ') ]);
+	    $draft = (string)($s2?->getVariable('x')['id'] ?? '');
+
+	    //a template, get, list, activate, cancel, remind
+	    [ $t1, $sentT ] = $step($SR, [ 'operation' => 'template', 'templateId' => '00000000-0000-4000-8000-00000000aaaa', 'signers' => 'Client: Ion Ionescu <ion@example.com>', 'variable' => 'x' ]);
+	    [ $t2, ] = $step($SR, [ 'operation' => 'template', 'templateId' => '00000000-0000-4000-8000-00000000aaaa', 'signers' => 'Ion Ionescu <ion@example.com>', 'variable' => 'x' ]);
+	    $tb = $to($sentT, 'POST', '/signature_requests')[0]['body'] ?? [];
+	    [ $g1, ] = $step($SR, [ 'operation' => 'get', 'requestId' => strtoupper($id), 'variable' => 'x' ]);
+	    [ $l1, $sentL ] = $step($SR, [ 'operation' => 'list', 'statuses' => [ 'ongoing' ], 'search' => 'contract', 'maxItems' => 1, 'variable' => 'x' ]);
+	    [ $a1, ] = $step($SR, [ 'operation' => 'activate', 'requestId' => $draft, 'variable' => 'x' ]);
+	    [ $r1, $sentR ] = $step($SR, [ 'operation' => 'remind', 'requestId' => $id, 'variable' => 'x' ]);
+	    [ $c1, $sentC ] = $step($SR, [ 'operation' => 'cancel', 'requestId' => $draft, 'reason' => 'errors_in_document', 'note' => 'Wrong amount', 'variable' => 'x' ]);
+	    [ $bad1, ] = $step($SR, [ 'operation' => 'get', 'requestId' => 'nope', 'variable' => 'x' ]);
+	    $this->check('yousign: from a template: its labels filled, activated; a signer without a label refused; get (an ID in upper case); list (statuses, a search, a page of 1, more left); '
+		. 'a draft sent; reminders to the signers not done; cancel with a reason and a note; a wrong ID refused', [
+		[ '00000000-0000-4000-8000-00000000aaaa', [ [ 'label' => 'Client', 'info' => [ 'first_name' => 'Ion', 'last_name' => 'Ionescu', 'email' => 'ion@example.com', 'locale' => 'en' ] ] ], 'ongoing' ],
+		'error', [ $id, 'Contract 7', 2 ], [ 1, true, 'ongoing', 'public_api' ], 'ongoing', 2, [ 'errors_in_document', 'Wrong amount', 'canceled' ], 'error' ], [
+		[ $tb['template_id'] ?? null, $tb['template_placeholders']['signers'] ?? null, $t1?->getVariable('x')['status'] ?? null ], $t2?->getVariable('route'),
+		[ $g1?->getVariable('x')['id'] ?? null, $g1?->getVariable('x')['name'] ?? null, count($g1?->getVariable('x')['signers'] ?? []) ],
+		[ $l1?->getVariable('x')['count'] ?? null, $l1?->getVariable('x')['truncated'] ?? null, $sentL[0]['query']['status']['in'] ?? null, $sentL[0]['query']['source']['eq'] ?? null ],
+		$a1?->getVariable('x')['status'] ?? null, count($to($sentR, 'POST', '/send_reminder')),
+		[ $to($sentC, 'POST', '/cancel')[0]['body']['reason'] ?? null, $to($sentC, 'POST', '/cancel')[0]['body']['custom_note'] ?? null, $c1?->getVariable('x')['status'] ?? null ], $bad1?->getVariable('route') ]);
+
+	    //download, audit trail
+	    [ $d0, ] = $step($SR, [ 'operation' => 'download', 'requestId' => $id, 'variable' => 'x' ]);
+	    $st = $state();
+	    $st[$id]['status'] = 'done';
+	    file_put_contents("{$dir}/requests.json", json_encode($st));
+	    [ $d1, $sentD ] = $step($SR, [ 'operation' => 'download', 'requestId' => $id, 'filename' => 'Signed {{ k }}', 'variable' => 'x' ], [ 'k' => 7 ]);
+	    [ $au, ] = $step($SR, [ 'operation' => 'audit', 'requestId' => $id, 'variable' => 'x' ]);
+	    foreach([ $d0, $d1 ] as $d)
+		foreach((array)($d?->getVariable('x')['files'] ?? []) as $f)
+		    $files[] = $f['id'];
+	    if ($au?->getVariable('x')['id'] ?? null)
+		$files[] = $au->getVariable('x')['id'];
+	    $saved = array_map(fn($f) => [ $f['filename'], (string)$om->findOne('File', [ '_id' => $f['id'] ])?->getContents() ], (array)($d1?->getVariable('x')['files'] ?? []));
+	    $this->check('yousign: download before done: the current documents (not signed); done: version completed, the ZIP\'s PDFs saved one by one, named; the audit trail as a PDF', [
+		[ 2, false ], [ 'completed', [ [ 'Signed 7 1.pdf', "%PDF-1.4\nsigned contract.pdf\n%%EOF" ], [ 'Signed 7 2.pdf', "%PDF-1.4\nsigned annex.pdf\n%%EOF" ] ], true ], 'Contract 7 - audit trail.pdf' ], [
+		[ $d0?->getVariable('x')['count'] ?? null, $d0?->getVariable('x')['signed'] ?? null ],
+		[ $to($sentD, 'GET', '/documents/download')[0]['query']['version'] ?? null, $saved, $d1?->getVariable('x')['signed'] ?? null ], $au?->getVariable('x')['filename'] ?? null ]);
+
+	    //Account, API, the AI family
+	    $AC = 'app::yousign-account';
+	    [ $ac1, ] = $step($AC, [ 'operation' => 'templates', 'variable' => 'x' ]);
+	    [ $ac2, ] = $step($AC, [ 'operation' => 'workspaces', 'variable' => 'x' ]);
+	    [ $ac3, $sentA ] = $step($AC, [ 'operation' => 'addContact', 'firstName' => 'Eva', 'lastName' => 'Marin', 'email' => 'eva@example.com', 'phone' => '+40 733 000 000', 'company' => 'Eva SRL', 'variable' => 'x' ]);
+	    [ $ac4, ] = $step($AC, [ 'operation' => 'contacts', 'search' => 'marin', 'variable' => 'x' ]);
+	    [ $api, ] = $step('app::yousign-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => '/signature_requests/{{ id }}', 'variable' => 'x' ], [ 'id' => $id ]);
+	    [ $apiBad, ] = $step('app::yousign-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => 'https://example.com/v3/x', 'variable' => 'x' ]);
+	    $ops = \util\AgentTools::operations('yousign');
+	    $this->check('yousign: Account: templates with their signers\' labels, workspaces (the default), a contact added (its phone international), contacts by a search; API: a path; '
+		. 'another address refused; as AI tools: reads, writes', [
+		[ [ 'Client' ] ], [ true, false ], [ '+40733000000', 'Eva SRL' ], [ 'Eva' ], 'Contract 7', 'error', [ false, false, true, true, true, false, true ] ], [
+		array_column($ac1?->getVariable('x')['items'] ?? [], 'signers'), array_column($ac2?->getVariable('x')['items'] ?? [], 'default'),
+		[ $to($sentA, 'POST', '/contacts')[0]['body']['phone_number'] ?? null, $to($sentA, 'POST', '/contacts')[0]['body']['company_name'] ?? null ],
+		array_column($ac4?->getVariable('x')['items'] ?? [], 'firstName'), $api?->getVariable('x')['name'] ?? null, $apiBad?->getVariable('route'),
+		array_map(fn($k) => $ops[$k]['writes'] ?? null, [ 'yousign_requests_get', 'yousign_requests_list', 'yousign_requests_send', 'yousign_requests_cancel', 'yousign_requests_download',
+		    'yousign_account_templates', 'yousign_api_request' ]) ]);
+
+	    //the event trigger: Connect
+	    $init = $TY::initConfig();
+	    $cfg = $init + [ 'credential' => (string)$ok->_id, 'connect' => true, 'events' => [ 'signature_request.done', 'signer.done' ], 'variable' => 'ys' ];
+	    $wf = $this->workflow('yousign event', [ $n('t', 'trigger::yousign', $cfg), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ys.signatureRequest.id }}' ]), $e('e1', 't', 's') ]);
+	    $noEvent = $this->errorsOf('yousign none', [ $n('t', 'trigger::yousign', $TY::initConfig() + [ 'events' => [], 'variable' => 'ys' ]) ]);
+	    $shortKey = $this->errorsOf('yousign key', [ $n('t', 'trigger::yousign', [ 'secretKey' => 'short' ] + $cfg) ]);
+	    $this->check('yousign: event: the workflow is valid (a secret key of 32 made); no event refused; Connect with a short key refused; its address', [ true, 32, true, true, true ], [
+		$wf->validates(), strlen((string)$init['secretKey']), str_contains(json_encode($noEvent), 'choose at least one event'), str_contains(json_encode($shortKey), '32 characters'),
+		(bool)preg_match('~/yousign/[a-f0-9]{32}$~', (string)$init['url']) ]);
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $node = $wf->nodes['t'];
+	    $requests();
+	    $p1 = $TY::onPublish($wf, $node);
+	    $hooks = json_decode((string)@file_get_contents("{$dir}/webhooks.json"), true) ?: [];
+	    $hook = array_values($hooks)[0] ?? [];
+	    $p2 = $TY::onPublish($wf, array_replace_recursive($node, [ 'config' => [ 'events' => [ 'signature_request.declined' ] ] ]));
+	    $hooks2 = array_values(json_decode((string)@file_get_contents("{$dir}/webhooks.json"), true) ?: []);
+	    $u1 = $TY::onUnpublish($wf, $node);
+	    $hooks3 = json_decode((string)@file_get_contents("{$dir}/webhooks.json"), true) ?: [];
+	    $this->check('yousign: event: published: the webhook made (the address, the events, the step\'s secret key, sandbox, retries); published again: updated, not made twice; '
+		. 'unpublished: deleted', [
+		[ 'Yousign sends 2 events to this workflow (subscribed now)', $init['url'], [ 'signature_request.done', 'signer.done' ], $init['secretKey'], true, true ],
+		[ 'Yousign sends 1 event to this workflow', 1, [ 'signature_request.declined' ] ], [ 'Yousign no longer sends its events here (1 subscription deleted)', [] ] ], [
+		[ $p1, $hook['endpoint'] ?? null, $hook['subscribed_events'] ?? null, $hook['secret_key'] ?? null, $hook['sandbox'] ?? null, $hook['auto_retry'] ?? null ],
+		[ $p2, count($hooks2), $hooks2[0]['subscribed_events'] ?? null ], [ $u1, $hooks3 ] ]);
+
+	    //the event trigger: Yousign's posts
+	    $version = $om->create('WfVersion', [ 'aid' => $wf->aid, 'project' => $wf->project, 'wf' => $wf->_id, 'number' => 1, 'name' => (string)$wf->name, 'nodes' => $wf->nodes ]);
+	    $version->save();
+	    $wf->version = $version->_id;
+	    $wf->status = \models\Workflow::PUBLISHED;
+	    $wf->save();
+	    $host = (string)parse_url($init['url'], PHP_URL_HOST);
+	    $post = function($body, $signature, $method = 'POST') use ($init, $host) {
+		$ch = curl_init($init['url']);
+		curl_setopt_array($ch, [ CURLOPT_CUSTOMREQUEST => $method, CURLOPT_POSTFIELDS => $body, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+		    CURLOPT_HTTPHEADER => [ 'Content-Type: application/json', "X-Yousign-Signature-256: {$signature}" ], CURLOPT_RESOLVE => [ "{$host}:443:127.0.0.1" ],
+		    CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0 ]);
+		$answer = json_decode((string)curl_exec($ch), true);
+		$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+		curl_close($ch);
+		return [ $status, $answer ];
+	    };
+	    $event = fn($name, $sandbox = true) => json_encode([ 'event_id' => 'ev-' . uniqid(), 'event_name' => $name, 'event_time' => '1762941600', 'subscription_id' => 'sub-1', 'sandbox' => $sandbox,
+		'data' => [ 'signature_request' => [ 'id' => $id, 'name' => 'Contract 7', 'status' => 'done', 'external_id' => 'order-7' ],
+		    'signer' => $name === 'signer.done' ? [ 'id' => 's1', 'info' => [ 'email' => 'ana@example.com' ], 'status' => 'signed' ] : null ] ]);
+	    $key = (string)$init['secretKey'];
+	    [ $status ] = $post('', '', 'GET');
+	    if ($status === 0) {
+		echo "  skipped: the event trigger's address (this installation's web server cannot be reached from here)\n";
+	    } else {
+		$b = $event('signature_request.done');
+		[ $badSig ] = $post($b, $sig($b, 'wrong'));
+		$b2 = $event('signature_request.activated');
+		[ , $ignored ] = $post($b2, $sig($b2, $key));
+		$b3 = $event('signature_request.done', false);
+		[ $prod ] = $post($b3, $sig($b3, $key));
+		[ $okStatus, $answer ] = $post($b, $sig($b, $key));
+		$b4 = $event('signer.done');
+		[ $okSigner ] = $post($b4, $sig($b4, $key));
+		$runs = iterator_to_array($om->find('WfExecution', [ 'wf' => $wf->_id, 'trigger' => 'yousign' ]), false);
+		$got = array_map(fn($x) => [ $x->getVariable('ys')['event'] ?? null, $x->getVariable('ys')['signatureRequest']['external_id'] ?? null, $x->getVariable('ys')['signer']['info']['email'] ?? null,
+		    $x->getVariable('ys')['eventTime'] ?? null ], $runs);
+		sort($got);
+		$this->check('yousign: event: a GET refused, a wrong signature refused, an event not chosen ignored, a production event to a sandbox credential refused; the events chosen: a run each', [
+		    405, 401, 'ignored', 403, 200, 200, [ [ 'signature_request.done', 'order-7', null, '2025-11-12T10:00:00Z' ], [ 'signer.done', 'order-7', 'ana@example.com', '2025-11-12T10:00:00Z' ] ] ], [
+		    $status, $badSig, $ignored['state'] ?? null, $prod, $okStatus, $okSigner, $got ]);
+	    }
+	} finally {
+	    $Y::$testing = null;
+	    foreach($runs as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf) {
+		foreach($om->find('WfVersion', [ 'wf' => $wf->_id ]) as $v)
+		    $v->delete();
+		foreach($om->find('TriggerToken', [ 'wf' => $wf->_id ]) as $t)
+		    $t->delete();
+	    }
+	    foreach(array_filter($files) as $f)
 		$om->findOne('File', [ '_id' => $f ])?->delete();
 	    foreach($creds as $c)
 		$c->delete();
