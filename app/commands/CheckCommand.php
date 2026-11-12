@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'glpi', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -9598,6 +9598,240 @@ class CheckCommand extends \sys\BaseController {
 	    }
 	    foreach($wfs as $wf)
 		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-12T21:00:00+02:00: GLPI against a fake server (commands/tests/GlpiTestServer.php; util\Glpi::$testing: http, no address guard): ids, HTML both ways, the
+    //credential (API token or login + password, App-Token, profile and entity), a session opened again when expired and closed after each step, the Tickets operations
+    //(search paged, create with a category by complete name, a requester by email, assigned by login and group, update, status with a follow-up, actors replaced, follow-ups,
+    //tasks, solution, attachment, delete), Assets, Setup, the API step, the ticket trigger (created by id, updated by date_mod with floor and seen)
+    private function suiteGlpi() {
+	$G = \util\Glpi::class;
+	$T = \models\node\NodeAppGlpiTickets::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$this->check('glpi: values: ids (an address, an item, #12), HTML from text (paragraphs, line breaks, escaped) and kept, GLPI\'s encoded HTML as text, the criteria (status, title, AND), '
+	    . 'a time moved', [
+	    12, 7, 3, 'Ticket: not an id (a number, e.g. 12): `x`', "<p>a &lt; b<br>c</p>\n<p>d</p>", '<p>kept</p>', "Line\n\n- one\n- two", [ 'all', 'AND', 'AND' ], '2026-01-01 00:59:00' ], [
+	    $G::itemId('https://glpi.example.com/front/ticket.form.php?id=12'), $G::itemId([ 'id' => 7 ]), $G::itemId('#3'), $thrown(fn() => $G::itemId('x')), $G::html("a < b\nc\n\nd"),
+	    $G::html('<p>kept</p>'), $G::plain('&lt;p&gt;Line&lt;/p&gt;&lt;ul&gt;&lt;li&gt;one&lt;/li&gt;&lt;li&gt;two&lt;/li&gt;&lt;/ul&gt;'),
+	    (fn($c) => [ $c[0]['value'], $c[1]['link'], $c[2]['link'] ])($T::criteria('', 'disk', [ [ 'field' => 7, 'searchtype' => 'equals', 'value' => 2 ] ])),
+	    \models\node\NodeTriggerGlpi::shifted('2026-01-01 01:00:00', -60) ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-glpi-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$clock = fn($t) => file_put_contents("{$dir}/now.txt", $t);
+	$clock('2026-11-12 10:00:00');
+	$server = $this->startServer('glpi', 'GlpiTestServer.php', $dir, [ 'GLPI_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$G::$testing = true;
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$db = fn() => json_decode((string)@file_get_contents("{$dir}/items.json"), true);
+	$sessions = fn() => count(json_decode((string)@file_get_contents("{$dir}/sessions.json"), true) ?: []);
+	$creds = [];
+	$files = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function(array $over) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialGlpi', $over + [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: GLPI ' . uniqid(), 'url' => 'https://glpi.example.com' ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('glpi: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->url = "http://127.0.0.1:{$port}/apirest.php";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialGlpi', (string)$c->_id);
+	    };
+	    $tok = $make([ 'auth' => 'token', 'userToken' => 'tok-glpi', 'appToken' => 'app-1', 'profileId' => '6', 'entityId' => '0', 'entityRecursive' => true ]);
+	    $pwd = $make([ 'auth' => 'password', 'login' => 'glpi', 'password' => 'secret', 'appToken' => 'app-1' ]);
+	    $noApp = $make([ 'auth' => 'token', 'userToken' => 'tok-glpi' ]);
+	    if (!$tok || !$pwd || !$noApp)
+		return;
+	    $bad = $om->create('CredentialGlpi', [ 'name' => 'x', 'auth' => 'token', 'url' => 'http://glpi.example.com' ]);
+	    $bad->validates();
+	    $badKeys = array_values(array_intersect([ 'url', 'userToken' ], array_keys((array)$bad->errors())));
+	    $requests();
+	    $tt = $tok->test();
+	    $sent = $requests();
+	    $this->check('glpi: the form (https, the API token when signing in with it); Test: user_token and App-Token, the profile and the entity changed, the session closed; '
+		. 'login and password by Basic; a wrong App-Token said', [
+		[ 'url', 'userToken' ], 'connected to GLPI as Workflow Bot, profile Technician, entity Root entity',
+		[ '/apirest.php/initSession', 'user_token tok-glpi', 'app-1', '/apirest.php/changeActiveProfile', 6, '/apirest.php/changeActiveEntities', true, '/apirest.php/killSession' ], 0,
+		'connected to GLPI as Workflow Bot, profile Technician, entity Root entity', 'HTTP status 400: parameter app_token seems wrong (ERROR_WRONG_APP_TOKEN_PARAMETER)' ], [
+		$badKeys, $tt, [ $sent[0]['path'] ?? null, $sent[0]['headers']['auth'] ?? null, $sent[0]['headers']['app'] ?? null, $sent[1]['path'] ?? null, $sent[1]['body']['profiles_id'] ?? null,
+		    $sent[2]['path'] ?? null, $sent[2]['body']['is_recursive'] ?? null, end($sent)['path'] ?? null ], $sessions(), $pwd->test(), $thrown(fn() => $noApp->test()) ]);
+
+	    $step = function($fq, $cfg, $vars = [], $cred = null) use ($n, $e, $tok, $requests) {
+		$requests();
+		$exe = $this->runFlow("glpi {$fq}", [ $n('m', 'trigger::manual'), $n('s', $fq, $cfg + [ 'credential' => (string)($cred ?? $tok)->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $logOf = fn($exe, $prefix) => str_replace($prefix, '', (string)self::logLine($exe, $prefix));
+	    $TS = 'app::glpi-tickets';
+	    $posted = fn($sent, $path) => array_values(array_filter($sent, fn($r) => $r['method'] !== 'GET' && $r['path'] === "/apirest.php{$path}"))[0] ?? [];
+
+	    //create, get, update, status, actors
+	    [ $c1, $sent ] = $step($TS, [ 'operation' => 'create', 'name' => 'Printer down on {{ floor }}', 'content' => "Paper jam\nFloor {{ floor }}", 'type' => '1', 'urgency' => '4',
+		'category' => 'Hardware > Printers', 'requester' => 'guest@example.org', 'user' => 'ana', 'group' => 'Helpdesk', 'fields' => '{"locations_id": 1}', 'variable' => 't' ], [ 'floor' => 2 ]);
+	    $in = $posted($sent, '/Ticket')['body']['input'] ?? [];
+	    $t1 = $c1?->getVariable('t');
+	    [ $c2, ] = $step($TS, [ 'operation' => 'create', 'name' => 'X', 'content' => 'Y', 'category' => 'Printers', 'variable' => 't' ]);
+	    [ $c3, ] = $step($TS, [ 'operation' => 'create', 'name' => 'X', 'content' => '', 'variable' => 't' ]);
+	    $this->check('glpi: Tickets create: the description as HTML, the category by its complete name, a requester\'s email of no user notified, assigned by login, a group by name, '
+		. 'Other fields; the ticket read back (plain text, names); an ambiguous category; no description; the sessions closed', [
+		[ "<p>Paper jam<br>Floor 2</p>", 2, 0, 'guest@example.org', 5, 1, 1, 4, 1 ], [ 1, "Paper jam\nFloor 2", 'Processing (assigned)', 'High', 'Hardware > Printers', 'Incident', true ],
+		'Category: 2 match `Printers`: give its complete name (A > B) or its id', 'Description: required to create a ticket', 0 ], [
+		[ $in['content'] ?? null, $in['itilcategories_id'] ?? null, $in['_users_id_requester'] ?? null, $in['_users_id_requester_notif']['alternative_email'][0] ?? null,
+		    $in['_users_id_assign'] ?? null, $in['_groups_id_assign'] ?? null, $in['locations_id'] ?? null, $in['urgency'] ?? null, $in['type'] ?? null ],
+		[ $t1['id'] ?? null, $t1['content'] ?? null, $t1['status'] ?? null, $t1['urgency'] ?? null, $t1['category'] ?? null, $t1['type'] ?? null,
+		    str_ends_with((string)($t1['url'] ?? ''), '/front/ticket.form.php?id=1') ],
+		$logOf($c2, 'GLPI Tickets create: '), $logOf($c3, 'GLPI Tickets create: '), $sessions() ]);
+	    [ $g1, ] = $step($TS, [ 'operation' => 'get', 'ticket' => '{{ t }}', 'variable' => 'g' ], [ 't' => $t1 ]);
+	    $g = $g1?->getVariable('g');
+	    file_put_contents("{$dir}/expire.json", '1');
+	    [ $u1, $sent ] = $step($TS, [ 'operation' => 'update', 'ticket' => '1', 'name' => 'Printer down', 'impact' => '2', 'variable' => 'u' ]);
+	    [ $s1, $sent2 ] = $step($TS, [ 'operation' => 'status', 'ticket' => '1', 'newStatus' => 'pending', 'message' => 'Waiting for the part', 'private' => true, 'variable' => 's' ]);
+	    [ $a1, $sent3 ] = $step($TS, [ 'operation' => 'assign', 'ticket' => '1', 'role' => 'assigned', 'user' => 'dan@example.com', 'replace' => true, 'variable' => 'a' ]);
+	    [ $a2, ] = $step($TS, [ 'operation' => 'assign', 'ticket' => '1', 'role' => 'assigned', 'user' => '6', 'variable' => 'a' ]);
+	    $links = array_values(array_filter($db()['Ticket_User'] ?? [], fn($l) => $l['tickets_id'] === 1 && $l['type'] === 2));
+	    $this->check('glpi: Tickets get: the actors (an email, a user, a group); update (an expired session opened again); status with a private follow-up; an actor by email replacing '
+		. 'the others; already there: nothing done', [
+		[ [ [ 'kind' => 'email', 'email' => 'guest@example.org' ] ], [ 'user', 'Pop Ana' ], [ 'group', 'Helpdesk' ] ], [ 'Printer down', 'Low', 2 ],
+		[ 'Pending', 1, 4 ], [ 'user 5 removed', 'user 6 added' ], [ 6 ], '#1 assigned: already there' ], [
+		[ $g['requesters'] ?? null, [ $g['assigned'][0]['kind'] ?? null, $g['assigned'][0]['name'] ?? null ], [ $g['assigned'][1]['kind'] ?? null, $g['assigned'][1]['name'] ?? null ] ],
+		[ $u1?->getVariable('u')['name'] ?? null, $u1?->getVariable('u')['impact'] ?? null, count(array_filter($sent, fn($r) => $r['path'] === '/apirest.php/initSession')) ],
+		[ $s1?->getVariable('s')['status'] ?? null, $posted($sent2, '/ITILFollowup')['body']['input']['is_private'] ?? null, $posted($sent2, '/Ticket/1')['body']['input']['status'] ?? null ],
+		$a1?->getVariable('a')['changes'] ?? null, array_column($links, 'users_id'), $logOf($a2, 'GLPI Tickets assign: ') ]);
+
+	    //follow-ups, tasks, solution, attachment, search, delete
+	    $clock('2026-11-12 10:05:00');
+	    $step($TS, [ 'operation' => 'followup', 'ticket' => '1', 'message' => 'Part ordered', 'variable' => 'f' ]);
+	    [ $fl, ] = $step($TS, [ 'operation' => 'followups', 'ticket' => '1', 'variable' => 'f' ]);
+	    [ $tk, $sent ] = $step($TS, [ 'operation' => 'task', 'ticket' => '1', 'message' => 'Replaced the roller', 'duration' => 30, 'taskState' => 'done', 'technician' => 'dan', 'variable' => 'k' ]);
+	    [ $tks, ] = $step($TS, [ 'operation' => 'tasks', 'ticket' => '1', 'variable' => 'k' ]);
+	    [ $sv, $sent2 ] = $step($TS, [ 'operation' => 'solve', 'ticket' => '1', 'message' => 'Fixed', 'solutionType' => 'Fixed', 'variable' => 'v' ]);
+	    $this->check('glpi: Tickets follow-ups (the newest first, as text); a task (seconds, state, technician by login); tasks; a solution (its type by name): Solved', [
+		[ 'Part ordered', 'Waiting for the part' ], [ 1800, 2, 6 ], [ 30, 'done', 'Ionescu Dan' ], [ 1, 'Solved' ] ], [
+		array_column($fl?->getVariable('f')['items'] ?? [], 'content'),
+		[ $posted($sent, '/TicketTask')['body']['input']['actiontime'] ?? null, $posted($sent, '/TicketTask')['body']['input']['state'] ?? null, $posted($sent, '/TicketTask')['body']['input']['users_id_tech'] ?? null ],
+		[ $tks?->getVariable('k')['items'][0]['duration'] ?? null, $tks?->getVariable('k')['items'][0]['state'] ?? null, $tks?->getVariable('k')['items'][0]['technician'] ?? null ],
+		[ $posted($sent2, '/ITILSolution')['body']['input']['solutiontypes_id'] ?? null, $sv?->getVariable('v')['status'] ?? null ] ]);
+	    for ($k = 2; $k <= 4; $k++)
+		$step($TS, [ 'operation' => 'create', 'name' => "Disk {$k}", 'content' => 'full', 'variable' => 't' ]);
+	    [ $sr, $sent ] = $step($TS, [ 'operation' => 'search', 'statusFilter' => 'notold', 'text' => 'disk', 'order' => 'oldest', 'maxItems' => 2, 'variable' => 'r' ]);
+	    $r = $sr?->getVariable('r');
+	    [ $sa, ] = $step($TS, [ 'operation' => 'search', 'statusFilter' => '', 'criteria' => '[{"field": 7, "searchtype": "equals", "value": 2}]', 'variable' => 'r' ]);
+	    $file = \models\File::createFromString('log.txt', "line\n", [ 'metadata' => [ 'project' => $this->project->_id, 'aid' => $this->account->_id, 'owner' => null, 'source' => 'check' ] ]);
+	    $files[] = $file;
+	    [ $at, ] = $step($TS, [ 'operation' => 'attach', 'ticket' => '2', 'sourceFile' => (string)$file, 'variable' => 'd' ]);
+	    [ $dl, $sent2 ] = $step($TS, [ 'operation' => 'delete', 'ticket' => '4', 'variable' => 'x' ]);
+	    $doc = array_values($db()['Document'] ?? [])[0] ?? [];
+	    $this->check('glpi: Tickets search (not solved, a part of the title, the oldest first, At most: truncated; a category by GLPI\'s criteria, any status); attach (multipart, linked to '
+		. 'the ticket); delete to the trash', [
+		[ 2, true, [ 'Disk 2', 'Disk 3' ] ], [ 1 ], [ [ 'log.txt' ], 'Ticket', 2 ], [ 'false', 1 ] ], [
+		[ $r['count'] ?? null, $r['truncated'] ?? null, array_column($r['items'] ?? [], 'name') ], array_column($sa?->getVariable('r')['items'] ?? [], 'id'),
+		[ $doc['filename'] ?? null, $doc['itemtype'] ?? null, $doc['items_id'] ?? null ], [ $posted($sent2, '/Ticket/4')['query']['force_purge'] ?? null, $db()['Ticket']['4']['is_deleted'] ?? null ] ]);
+
+	    //assets, setup, API, tools
+	    $AS = 'app::glpi-assets';
+	    [ $ac, $sent ] = $step($AS, [ 'operation' => 'create', 'itemtype' => 'Computer', 'name' => 'srv-01', 'serial' => 'SN123', 'state' => 'In use', 'location' => 'HQ', 'variable' => 'c' ]);
+	    [ $al, ] = $step($AS, [ 'operation' => 'list', 'itemtype' => 'Computer', 'serial' => 'sn1', 'variable' => 'c' ]);
+	    [ $ag, $sent2 ] = $step($AS, [ 'operation' => 'get', 'itemtype' => 'Computer', 'item' => '1', 'with' => 'networkports, softwares', 'variable' => 'c' ]);
+	    $getReq = array_values(array_filter($sent2, fn($x) => $x['path'] === '/apirest.php/Computer/1'))[0] ?? [];
+	    [ $aw, ] = $step($AS, [ 'operation' => 'get', 'itemtype' => 'Computer', 'item' => '1', 'with' => 'gpus', 'variable' => 'c' ]);
+	    [ $ap, ] = $step($AS, [ 'operation' => 'delete', 'itemtype' => 'Computer', 'item' => '1', 'purge' => true, 'variable' => 'c' ]);
+	    $this->check('glpi: Assets create (the status and location by name); list by a part of the serial; get with sub-items; a wrong With; delete purged', [
+		[ 1, 1, 'In use', 'HQ' ], [ 1, 'srv-01' ], [ 'true', 'true' ], 'error', false ], [
+		[ $posted($sent, '/Computer')['body']['input']['states_id'] ?? null, $posted($sent, '/Computer')['body']['input']['locations_id'] ?? null, $ac?->getVariable('c')['states_id'] ?? null,
+		    $ac?->getVariable('c')['locations_id'] ?? null ],
+		[ $al?->getVariable('c')['count'] ?? null, $al?->getVariable('c')['items'][0]['name'] ?? null ],
+		[ $getReq['query']['with_networkports'] ?? null, $getReq['query']['with_softwares'] ?? null ],
+		$aw?->getVariable('route'), isset($db()['Computer']['1']) ]);
+	    $SU = 'app::glpi-setup';
+	    [ $su, ] = $step($SU, [ 'operation' => 'user', 'user' => 'ana@example.com', 'variable' => 'u' ]);
+	    [ $sc, ] = $step($SU, [ 'operation' => 'categories', 'search' => 'print', 'variable' => 'u' ]);
+	    [ $so, ] = $step($SU, [ 'operation' => 'searchOptions', 'itemtype' => 'Ticket', 'search' => 'stat', 'variable' => 'u' ]);
+	    [ $api, ] = $step('app::glpi-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => '/Ticket/{{ k }}', 'query' => '{"expand_dropdowns": true}', 'variable' => 'x' ], [ 'k' => 1 ]);
+	    [ $apiBad, ] = $step('app::glpi-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => '/initSession', 'variable' => 'x' ]);
+	    $ops = \util\AgentTools::operations('glpi');
+	    $this->check('glpi: Setup: a user by email (emails, groups, profiles; no secrets); categories (complete names); search options; API: any path (GLPI\'s answer as it is); the session\'s own refused; as AI tools', [
+		[ 5, [ 'ana@example.com' ], [ 'Helpdesk' ], 'Technician', false ], [ 'Hardware > Printers', 'Software > Printers' ], [ [ 12, 'Status' ] ], 'Hardware &#62; Printers', 'error',
+		[ false, true, false, true ] ], [
+		[ $su?->getVariable('u')['id'] ?? null, array_column($su?->getVariable('u')['emails'] ?? [], 'email'), $su?->getVariable('u')['groups'] ?? null,
+		    $su?->getVariable('u')['profiles'][0]['profile'] ?? null, array_key_exists('api_token', (array)($su?->getVariable('u')['fields'] ?? [])) ],
+		array_column($sc?->getVariable('u')['items'] ?? [], 'completename'), array_map(fn($o) => [ $o['field'], $o['name'] ], $so?->getVariable('u')['items'] ?? []),
+		$api?->getVariable('x')['itilcategories_id'] ?? null, $apiBad?->getVariable('route'),
+		[ $ops['glpi_tickets_search']['writes'] ?? null, $ops['glpi_tickets_create']['writes'] ?? null, $ops['glpi_setup_users']['writes'] ?? null, $ops['glpi_assets_delete']['writes'] ?? null ] ]);
+
+	    //the ticket trigger
+	    $wf = $this->workflow('glpi ticket', [ $n('t', 'trigger::glpi', [ 'credential' => (string)$tok->_id, 'statusFilter' => 'notold', 'event' => 'created', 'runs' => 'each',
+		'variable' => 'ticket', 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ ticket.id }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('glpi: ticket: the workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $TG = \models\node\NodeTriggerGlpi::class;
+	    $node = $wf->nodes['t'];
+	    [ $d0, $none ] = $TG::check($wf, $node, []);
+	    $clock('2026-11-12 10:10:00');
+	    $step($TS, [ 'operation' => 'create', 'name' => 'New A', 'content' => 'a', 'variable' => 't' ]);
+	    $step($TS, [ 'operation' => 'create', 'name' => 'New B', 'content' => 'b', 'variable' => 't' ]);
+	    [ $d1, $first ] = $TG::check($wf, $node, $d0);
+	    [ $d2, $second ] = $TG::check($wf, $node, $d1);
+	    $started = array_merge($started, $first, $second);
+	    $nodeU = array_replace_recursive($node, [ 'config' => [ 'event' => 'updated', 'statusFilter' => '' ] ]);
+	    [ $u0, ] = $TG::check($wf, $nodeU, $d2);
+	    $clock('2026-11-12 10:12:00');
+	    $step($TS, [ 'operation' => 'followup', 'ticket' => '2', 'message' => 'x', 'variable' => 'c' ]);
+	    $step($TS, [ 'operation' => 'create', 'name' => 'New C', 'content' => 'c', 'variable' => 't' ]);
+	    [ $u1, $upd ] = $TG::check($wf, $nodeU, $u0);
+	    [ , $upd2 ] = $TG::check($wf, $nodeU, $u1);
+	    $started = array_merge($started, $upd, $upd2);
+	    $this->check('glpi: ticket: the first check only notes the newest id; then the tickets created since, the oldest first; checked again: none; Created or updated: a follow-up '
+		. 'and a new ticket, their events, once',
+		[ [], 4, [ 'New A', 'New B' ], [ 'created', 'created' ], [], [ 'updated', '2026-11-12 10:10:00' ], [ [ 2, 'updated' ], [ 7, 'created' ] ], [], [ 'new', 'glpi' ] ], [
+		$none, $d0['last'] ?? null, array_map(fn($x) => $x->getVariable('ticket')['name'] ?? null, $first), array_map(fn($x) => $x->getVariable('ticket')['event'] ?? null, $first), $second,
+		[ $u0['mode'] ?? null, $u0['floor'] ?? null ], array_map(fn($x) => [ $x->getVariable('ticket')['id'] ?? null, $x->getVariable('ticket')['event'] ?? null ], $upd), $upd2,
+		[ $first[0]?->state ?? null, $first[0]?->trigger ?? null ] ]);
+	    $now = $TG::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('glpi: ticket: Run in the designer: the newest ticket; every session closed', [ 'Run with the newest ticket: #7 New C', 0 ], [ $now['message'] ?? null, $sessions() ]);
+	} finally {
+	    $G::$testing = false;
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($files as $f)
+		$om->findOne('File', [ '_id' => $f ])?->delete();
 	    foreach($creds as $c)
 		$c->delete();
 	    proc_terminate($proc);

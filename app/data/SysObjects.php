@@ -320,6 +320,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialHubSpot',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-12T21:00:00+02:00: a GLPI server (the GLPI steps and ticket trigger), core for every account
+	    'CredentialGlpi' => [
+		'class' => 'models\credential\CredentialGlpi',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-12T14:00:00+02:00: a Jira site (the Jira steps and issue trigger), core for every account
 	    'CredentialJira' => [
 		'class' => 'models\credential\CredentialJira',
@@ -669,6 +674,27 @@ class SysObjects {
 	    ],
 	    'NodeTriggerHubSpot' => [
 		'class' => 'models\node\NodeTriggerHubSpot',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-12T21:00:00+02:00: GLPI (one step per area, NodeAppGlpi their base; the ticket trigger: a search on a schedule), core for every account
+	    'NodeAppGlpiTickets' => [
+		'class' => 'models\node\NodeAppGlpiTickets',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGlpiAssets' => [
+		'class' => 'models\node\NodeAppGlpiAssets',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGlpiSetup' => [
+		'class' => 'models\node\NodeAppGlpiSetup',
+		'wfNode' => true,
+	    ],
+	    'NodeAppGlpiApi' => [
+		'class' => 'models\node\NodeAppGlpiApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerGlpi' => [
+		'class' => 'models\node\NodeTriggerGlpi',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-12T14:00:00+02:00: Jira (one step per area, NodeAppJira their base; the issue trigger: a JQL search on a schedule), core for every account
