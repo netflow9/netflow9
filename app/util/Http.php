@@ -26,6 +26,8 @@
 	                addresses, loopback), link-local or reserved ones on-premises servers, e.g. a GravityZone console: the account's allow_private_addresses)
 	insecure        the server's TLS certificate is not checked (a self-signed one)
 	auth            [ 'ntlm' | 'basic', user, password ]: curl signs in (NTLM: its challenge / response, e.g. Windows Remote Management); not sent to another host after a redirect
+	clientCert      a client certificate (PEM, its chain may follow) with clientKey (its PEM private key, unencrypted): TLS client authentication (mTLS), from memory
+	caCerts         PEM certificates also trusted for the server's certificate (the system's CAs stay trusted): a private or corporate CA
 
 	compressed      accept gzip / deflate / br (decoded)
 
@@ -66,6 +68,48 @@ class Http {
 	$headers = self::withDefault($headers, 'Expect', '');
 
 	$r = [ 'ok' => false, 'status' => 0, 'reason' => '', 'error' => null, 'tooLarge' => false, 'headers' => [], 'headerList' => [], 'body' => '', 'size' => 0, 'contentType' => '', 'mime' => '', 'url' => $url, 'time_ms' => 0 ];
+	//CLD: 2026-11-11T23:00:00+02:00: TLS client authentication and extra trusted CAs (the SAP plugin's Cloud Integration credentials: service keys with a certificate)
+	$tls = self::tlsOptions($o);
+	if (is_string($tls)) {
+	    $r['error'] = $tls;
+	    return $r;
+	}
+	try {
+	    return self::requestHops($method, $url, $o, $r, $tls, $timeout, $connectTimeout, $maxBytes, $https, $redirects, $sink, $upload, $headers, $body);
+	} finally {
+	    if (!empty($tls['caFile']))
+		@unlink($tls['caFile']);
+	}
+    }
+
+    //the TLS options of request(): [ cert, key, caFile (a temporary file: the system's CAs + caCerts) ], or the error (text)
+    protected static function tlsOptions(array $o) {
+	$tls = [];
+	if (trim((string)($o['clientCert'] ?? '')) !== '') {
+	    if (trim((string)($o['clientKey'] ?? '')) === '')
+		return 'a client certificate without its private key';
+	    if (!defined('CURLOPT_SSLCERT_BLOB'))
+		return 'client certificates need curl 7.71 or later';
+	    $tls['cert'] = (string)$o['clientCert'];
+	    $tls['key'] = (string)$o['clientKey'];
+	}
+	$cas = Certificate::certificates((string)($o['caCerts'] ?? ''));
+	foreach($cas as $pem) {
+	    if (@openssl_x509_read($pem) === false) {
+		Certificate::opensslError();
+		return 'a trusted CA certificate is not a valid certificate';
+	    }
+	}
+	if (trim((string)($o['caCerts'] ?? '')) !== '' && !$cas)
+	    return 'the trusted CA certificates hold no PEM certificate';
+	if ($cas) {
+	    $system = Certificate::systemCaFile();
+	    $tls['caFile'] = Certificate::tempFile(array_merge($system ? [ (string)file_get_contents($system) ] : [], $cas));
+	}
+	return $tls;
+    }
+
+    protected static function requestHops($method, $url, array $o, array $r, array $tls, $timeout, $connectTimeout, $maxBytes, $https, $redirects, $sink, $upload, array $headers, $body) {
 	$start = microtime(true);
 	for ($hop = 0; ; $hop++) {
 	    $left = $timeout * 1000 - (int)((microtime(true) - $start) * 1000);
@@ -78,7 +122,9 @@ class Http {
 	    $answer = self::once($method, $r['url'], $headers, $body, $upload, $sink, $maxBytes, $https, !empty($o['public']) ? (!empty($o['private']) ? 'private' : 'public') : false,
 		!empty($o['compressed']), $left, $connectTimeout, $follow, !empty($o['insecure']),
 		//auth, for the first host only
-		isset($o['auth']) && $hop > 0 && parse_url($r['url'], PHP_URL_HOST) !== parse_url($url, PHP_URL_HOST) ? null : ($o['auth'] ?? null));
+		isset($o['auth']) && $hop > 0 && parse_url($r['url'], PHP_URL_HOST) !== parse_url($url, PHP_URL_HOST) ? null : ($o['auth'] ?? null),
+		//the client certificate, for the first host only
+		$hop > 0 && parse_url($r['url'], PHP_URL_HOST) !== parse_url($url, PHP_URL_HOST) ? [ 'caFile' => $tls['caFile'] ?? null ] : $tls);
 	    $location = $answer['headers']['location'] ?? null;
 	    $r = array_merge($r, $answer);
 	    if ($answer['error'] !== null || $location === null || !in_array($answer['status'], self::REDIRECT_STATUSES, true) || !$follow)
@@ -153,7 +199,8 @@ class Http {
 
     //one exchange (no redirect followed): the answer's status, error, tooLarge, headers, headerList, body, size, contentType, mime; $follow: a redirect's body is not kept (it is followed)
     //$public: false, 'public' or 'private' (private network addresses accepted too); $insecure: the certificate not checked; $auth: [ ntlm | basic, user, password ] or null
-    protected static function once($method, $url, array $headers, $body, $upload, $sink, $maxBytes, $https, $public, $compressed, $timeoutMs, $connectTimeout, $follow, $insecure = false, $auth = null) {
+    //$tls: [ cert, key (PEM: a client certificate), caFile (the CAs trusted) ]
+    protected static function once($method, $url, array $headers, $body, $upload, $sink, $maxBytes, $https, $public, $compressed, $timeoutMs, $connectTimeout, $follow, $insecure = false, $auth = null, array $tls = []) {
 	$r = [ 'status' => 0, 'reason' => '', 'error' => null, 'tooLarge' => false, 'headers' => [], 'headerList' => [], 'body' => '', 'size' => 0, 'contentType' => '', 'mime' => '' ];
 	$parts = parse_url($url);
 	$scheme = strtolower((string)($parts['scheme'] ?? ''));
@@ -188,6 +235,14 @@ class Http {
 	    $opts[CURLOPT_SSL_VERIFYPEER] = false;
 	    $opts[CURLOPT_SSL_VERIFYHOST] = 0;
 	}
+	if (!empty($tls['cert'])) {
+	    $opts[CURLOPT_SSLCERT_BLOB] = $tls['cert'];
+	    $opts[CURLOPT_SSLCERTTYPE] = 'PEM';
+	    $opts[CURLOPT_SSLKEY_BLOB] = $tls['key'];
+	    $opts[CURLOPT_SSLKEYTYPE] = 'PEM';
+	}
+	if (!empty($tls['caFile']))
+	    $opts[CURLOPT_CAINFO] = $tls['caFile'];
 	//curl signs in
 	if (is_array($auth) && count($auth) === 3) {
 	    $opts[CURLOPT_HTTPAUTH] = $auth[0] === 'ntlm' ? CURLAUTH_NTLM : CURLAUTH_BASIC;

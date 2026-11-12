@@ -21,9 +21,10 @@ app.env
 /docker/.env
 # an installation's own settings (plugins.json, mcp.json, next to app.env, are not whitelisted above)
 *.local.php
-# plugins kept in their own repositories, cloned into app/plugins/ (each its own git repository): MultiTenant (toolmk/multitenant), RegionalRO (toolmk/regional-ro)
+# plugins kept in their own repositories, cloned into app/plugins/ (each its own git repository): MultiTenant (toolmk/multitenant), RegionalRO (toolmk/regional-ro), SAP (toolmk/sap)
 /app/plugins/MultiTenant/
 /app/plugins/RegionalRO/
+/app/plugins/SAP/
 *.key
 *.pem
 /haraka/

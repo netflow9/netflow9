@@ -54,6 +54,8 @@ class WfNode extends \sys\NestedModel {
 	'ai' => 'AI',
 	//the steps of a country or region (the Regional<code> plugins, e.g. RegionalRO)
 	'regional' => 'Regional',
+	//CLD: 2026-11-11T23:10:00+02:00: the SAP plugin's steps (SAP Cloud Integration; later SAP Business One, S/4HANA)
+	'sap' => 'SAP',
 	'developer' => 'Developer',
     ];
     //a step started by the daemon's scheduler on its schedule (config of models\wf\WfSchedule); the class implements runScheduled()
