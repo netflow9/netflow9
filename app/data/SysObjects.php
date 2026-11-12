@@ -310,6 +310,11 @@ class SysObjects {
 		'variant-of' => 'Credential',
 	    ],
 	    //CLD: 2026-11-12T10:00:00+02:00: a Shopify store's Admin API access (the Shopify steps and event trigger), core for every account
+	    //CLD: 2026-11-12T18:00:00+02:00: a Salesforce org's API access (the Salesforce steps and record trigger), core for every account
+	    'CredentialSalesforce' => [
+		'class' => 'models\credential\CredentialSalesforce',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-12T16:00:00+02:00: a HubSpot account's API access (the HubSpot steps and record trigger), core for every account
 	    'CredentialHubSpot' => [
 		'class' => 'models\credential\CredentialHubSpot',
@@ -630,6 +635,23 @@ class SysObjects {
 	    ],
 	    'NodeTriggerShopify' => [
 		'class' => 'models\node\NodeTriggerShopify',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-12T18:00:00+02:00: Salesforce (one step per area, NodeAppSalesforce their base; the record trigger: a SOQL query on a schedule), core for every account
+	    'NodeAppSfRecords' => [
+		'class' => 'models\node\NodeAppSfRecords',
+		'wfNode' => true,
+	    ],
+	    'NodeAppSfOrg' => [
+		'class' => 'models\node\NodeAppSfOrg',
+		'wfNode' => true,
+	    ],
+	    'NodeAppSfApi' => [
+		'class' => 'models\node\NodeAppSfApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerSalesforce' => [
+		'class' => 'models\node\NodeTriggerSalesforce',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-12T16:00:00+02:00: HubSpot (one step per area, NodeAppHubSpot their base; the record trigger: a CRM search on a schedule), core for every account

@@ -45,7 +45,7 @@ class WfNode extends \sys\NestedModel {
 	'monitoring' => 'Monitoring',
 	'virtualization' => 'Virtualization',
 	'domains' => 'Domains & DNS',
-	//CLD: 2026-11-12T16:00:00+02:00: the HubSpot steps
+	//CLD: 2026-11-12T18:00:00+02:00: the HubSpot and Salesforce steps
 	'crm' => 'CRM',
 	//CLD: 2026-11-12T14:00:00+02:00: the Jira steps
 	'work' => 'Work management',

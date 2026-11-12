@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -9394,6 +9394,203 @@ class CheckCommand extends \sys\BaseController {
 	} finally {
 	    $HS::$testUrl = null;
 	    $HS::forgetAccounts();
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-12T18:00:00+02:00: Salesforce against a fake org (commands/tests/SalesforceTestServer.php; util\Salesforce::$testing: http, no address guard): values (IDs, SOQL
+    //literals, SOSL escapes, records without attributes), the credential (client credentials; an expired session asked again once), the Records operations (SOQL paged, find from
+    //fields / where / order, search, get - none: null -, create with Salesforce's errors, update, upsert by an external ID, delete, an activity on a lead and an account), Org, the
+    //API step, the record trigger (UTC literals, floor, created / updated, seen)
+    private function suiteSalesforce() {
+	$SF = \util\Salesforce::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$thrown = function(\Closure $f) {
+	    try {
+		$f();
+		return 'no error';
+	    } catch (\Throwable $x) {
+		return $x->getMessage();
+	    }
+	};
+	$this->check('salesforce: values: IDs (15 / 18, of a record), SOQL quotes and UTC datetimes, SOSL escapes, a record without attributes (related ones too), its Lightning address', [
+	    '001000000000001AAA', 'Record: not a record ID (15 or 18 characters): `12345`', "'O\\'Brien'", '2026-11-12T10:00:00Z', 'a\\-b \\(c\\)',
+	    [ 'Id' => '003000000000001', 'Account' => [ 'Name' => 'Acme', 'type' => 'Account' ], 'type' => 'Contact', 'url' => 'https://acme.lightning.force.com/lightning/r/Contact/003000000000001/view' ],
+	    'Fields: not an API name: `Name; DROP`' ], [
+	    $SF::recordId([ 'Id' => '001000000000001AAA' ]), $thrown(fn() => $SF::recordId('12345')), $SF::quote("O'Brien"), $SF::datetime(1794477600250), \models\node\NodeAppSfRecords::sosl('a-b (c)'),
+	    $SF::record([ 'attributes' => [ 'type' => 'Contact' ], 'Id' => '003000000000001', 'Account' => [ 'attributes' => [ 'type' => 'Account' ], 'Name' => 'Acme' ] ], 'https://acme.my.salesforce.com'),
+	    $thrown(fn() => $SF::name('Name; DROP', 'Fields', true)) ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-sf-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$t0 = (int)floor(microtime(true) / 60) * 60000 - 600000;
+	$clock = fn($ms) => file_put_contents("{$dir}/now.txt", (string)$ms);
+	$clock($t0);
+	$server = $this->startServer('salesforce', 'SalesforceTestServer.php', $dir, [ 'SF_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$SF::$testing = true;
+	$SF::forgetTokens();
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$load = fn($name) => json_decode((string)@file_get_contents("{$dir}/{$name}.json"), true) ?? [];
+	$creds = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function($secret) use ($om, $port, &$creds) {
+		$c = $om->create('CredentialSalesforce', [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Salesforce ' . uniqid(),
+		    'domainUrl' => 'https://acme.my.salesforce.com', 'clientId' => 'ck-check', 'clientSecret' => $secret ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('salesforce: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		$c->domainUrl = "http://127.0.0.1:{$port}";
+		$c->save([ 'validate' => false ]);
+		return $om->findById('CredentialSalesforce', (string)$c->_id);
+	    };
+	    $cred = $make('cs-check');
+	    $wrong = $make('nope');
+	    if (!$cred || !$wrong)
+		return;
+	    $bad = $om->create('CredentialSalesforce', [ 'name' => 'x', 'domainUrl' => 'https://login.salesforce.com', 'clientId' => 'a', 'clientSecret' => 'b', 'apiVersion' => '64' ]);
+	    $bad->validates();
+	    $requests();
+	    $tested = $cred->test();
+	    $sent = $requests();
+	    file_put_contents("{$dir}/expired.json", json_encode([ $sent[1]['token'] ?? '' ]));
+	    $again = $cred->test();
+	    $sent2 = $requests();
+	    $this->check('salesforce: the form (My Domain, a version); Test: client credentials, the org and the run-as user; an expired session: a new token once; a wrong secret said', [
+		[ 'apiVersion', 'domainUrl' ], 'connected to Acme (Enterprise Edition), API 64.0 as Integration User <bot@acme.example>', 'client_credentials', true, [ '/services/oauth2/token', true ],
+		'Salesforce refused the sign-in: invalid client credentials (the consumer secret is wrong)' ], [
+		array_values(array_intersect([ 'apiVersion', 'domainUrl' ], array_keys((array)$bad->errors()))), $tested, $sent[0]['form']['grant_type'] ?? null, $again === $tested,
+		[ $sent2[1]['path'] ?? null, ($sent2[2]['token'] ?? '') !== ($sent[1]['token'] ?? '') ], $thrown(fn() => $wrong->test()) ]);
+
+	    $step = function($cfg, $vars = [], $fq = 'app::salesforce-records') use ($n, $e, $cred, $requests) {
+		$requests();
+		$exe = $this->runFlow("sf {$fq}", [ $n('m', 'trigger::manual'), $n('s', $fq, $cfg + [ 'credential' => (string)$cred->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $logOf = fn($exe, $prefix) => str_replace($prefix, '', (string)self::logLine($exe, $prefix));
+
+	    //create, get, update, upsert, delete
+	    [ $c1, $sent ] = $step([ 'operation' => 'create', 'object' => 'Lead', 'values' => '{"LastName": "{{ f.name }}", "Company": "Acme", "LeadSource": "Web"}', 'variable' => 'l' ], [ 'f' => [ 'name' => "O'Brien" ] ]);
+	    $lead = $c1?->getVariable('l');
+	    [ $c2, ] = $step([ 'operation' => 'create', 'object' => 'Lead', 'values' => '{"Company": "X"}', 'variable' => 'l' ]);
+	    [ $c3, ] = $step([ 'operation' => 'create', 'object' => 'Lead', 'values' => '{"Last Name": "X"}', 'variable' => 'l' ]);
+	    [ $g1, $gsent ] = $step([ 'operation' => 'get', 'object' => 'Lead', 'record' => '{{ l }}', 'fields' => 'Name, Company', 'variable' => 'g' ], [ 'l' => [ 'Id' => $lead['id'] ?? '' ] ]);
+	    [ $g2, ] = $step([ 'operation' => 'get', 'object' => 'Lead', 'record' => '00Q000000000999AAA', 'variable' => 'g' ]);
+	    $this->check('salesforce: Records create (the fields as JSON); Salesforce\'s required-field error said; a field that is not an API name refused; get (some fields, the type and '
+		. 'address); none: null', [
+		[ 'POST', "O'Brien", true ], 'HTTP status 400: Required fields are missing: [LastName] (REQUIRED_FIELD_MISSING) [LastName]', 'error', [ "O'Brien", 'Lead', true, 'Name,Company' ], [ null, null ] ], [
+		(function($r) use ($lead) { return [ $r['method'] ?? null, $r['body']['LastName'] ?? null, $lead['created'] ?? null ]; })(array_values(array_filter($sent, fn($r) => str_ends_with($r['path'], '/sobjects/Lead')))[0] ?? []), $logOf($c2, 'Salesforce Records create: '), $c3?->getVariable('route'),
+		[ $g1?->getVariable('g')['Name'] ?? null, $g1?->getVariable('g')['type'] ?? null, str_contains((string)($g1?->getVariable('g')['url'] ?? ''), '/lightning/r/Lead/'), end($gsent)['query']['fields'] ?? null ],
+		[ $g2?->getVariable('g'), $g2?->getVariable('route') ] ]);
+	    [ $u1, $sent ] = $step([ 'operation' => 'update', 'object' => 'Lead', 'record' => $lead['id'] ?? '', 'values' => '{"Status": "Working - Contacted"}', 'variable' => 'u' ]);
+	    [ $up1, $usent ] = $step([ 'operation' => 'upsert', 'object' => 'Account', 'externalField' => 'ERP_Id__c', 'externalValue' => 'C-100', 'values' => '{"Name": "Globex", "ERP_Id__c": "ignored"}', 'variable' => 'a' ]);
+	    [ $up2, ] = $step([ 'operation' => 'upsert', 'object' => 'Account', 'externalField' => 'ERP_Id__c', 'externalValue' => 'C-100', 'values' => '{"Industry": "Energy"}', 'variable' => 'a' ]);
+	    $accounts = $load('Account');
+	    $this->check('salesforce: Records update (PATCH); upsert by an external ID: created, then updated (the external field not in the body)', [
+		[ 'PATCH', 'Working - Contacted' ], [ '/services/data/v64.0/sobjects/Account/ERP_Id__c/C-100', [ 'Name' => 'Globex' ] ], [ true, false ], [ 1, 'Energy', 'C-100' ] ], [
+		[ end($sent)['method'] ?? null, $load('Lead')[0]['Status'] ?? null ], [ end($usent)['path'] ?? null, end($usent)['body'] ?? null ],
+		[ $up1?->getVariable('a')['created'] ?? null, $up2?->getVariable('a')['created'] ?? null ], [ count($accounts), $accounts[0]['Industry'] ?? null, $accounts[0]['ERP_Id__c'] ?? null ] ]);
+
+	    //query, find, search
+	    for ($k = 1; $k <= 5; $k++)
+		$step([ 'operation' => 'create', 'object' => 'Lead', 'values' => json_encode([ 'LastName' => "Lead {$k}", 'Company' => "Co {$k}", 'LeadSource' => $k % 2 ? 'Web' : 'Phone' ]), 'variable' => 'l' ]);
+	    [ $q1, $sent ] = $step([ 'operation' => 'query', 'soql' => 'SELECT Id, Name FROM Lead ORDER BY Name ASC', 'variable' => 'r' ]);
+	    [ $q2, ] = $step([ 'operation' => 'query', 'soql' => 'SELECT Id FROM Lead', 'maxItems' => 2, 'variable' => 'r' ]);
+	    [ $q3, ] = $step([ 'operation' => 'query', 'soql' => 'SELEKT nothing', 'variable' => 'r' ]);
+	    [ $f1, $fsent ] = $step([ 'operation' => 'find', 'object' => 'Lead', 'where' => "LeadSource = 'Web'", 'orderBy' => 'Name DESC', 'fields' => 'Name, Company', 'variable' => 'r' ]);
+	    [ $f2, ] = $step([ 'operation' => 'find', 'object' => 'Lead', 'orderBy' => 'Name; DELETE', 'variable' => 'r' ]);
+	    [ $s1, $ssent ] = $step([ 'operation' => 'search', 'object' => 'Lead', 'text' => 'Co 4', 'fields' => 'Name', 'variable' => 'r' ]);
+	    $this->check('salesforce: Records query: pages followed (nextRecordsUrl), the total; At most: truncated; Salesforce\'s SOQL error; find: the SOQL made (LIMIT one more); a bad ORDER BY '
+		. 'refused; search: SOSL', [
+		[ 6, 6, false, 2 ], [ 2, true ], 'error', [ [ 'Lead 5', 'Lead 3', 'Lead 1' ], "SELECT Name, Company FROM Lead WHERE LeadSource = 'Web' ORDER BY Name DESC LIMIT 101" ], 'error',
+		[ [ 'Lead 4' ], 'FIND {Co 4} IN ALL FIELDS RETURNING Lead(Name LIMIT 100)' ] ], [
+		[ $q1?->getVariable('r')['count'] ?? null, $q1?->getVariable('r')['total'] ?? null, $q1?->getVariable('r')['truncated'] ?? null, count($sent) ],
+		[ $q2?->getVariable('r')['count'] ?? null, $q2?->getVariable('r')['truncated'] ?? null ], $q3?->getVariable('route'),
+		[ array_values(array_filter(array_column($f1?->getVariable('r')['items'] ?? [], 'Name'), fn($x) => str_starts_with($x, 'Lead '))), $fsent[0]['query']['q'] ?? null ],
+		$f2?->getVariable('route'), [ array_column($s1?->getVariable('r')['items'] ?? [], 'Name'), $ssent[0]['query']['q'] ?? null ] ]);
+
+	    //activity, delete, Org, API, tools
+	    [ $a1, $asent ] = $step([ 'operation' => 'activity', 'record' => $lead['id'] ?? '', 'subject' => 'Call', 'description' => 'Interested in {{ p }}', 'variable' => 't' ], [ 'p' => 'Pro plan' ]);
+	    [ $a2, $asent2 ] = $step([ 'operation' => 'activity', 'record' => $accounts[0]['Id'] ?? '', 'subject' => 'Contract sent', 'variable' => 't' ]);
+	    [ $d1, ] = $step([ 'operation' => 'delete', 'object' => 'Lead', 'record' => $lead['id'] ?? '', 'variable' => 'x' ]);
+	    [ $ds, ] = $step([ 'operation' => 'describe', 'object' => 'Lead', 'search' => 'status', 'variable' => 'o' ], [], 'app::salesforce-org');
+	    [ $lm, ] = $step([ 'operation' => 'limits', 'variable' => 'o' ], [], 'app::salesforce-org');
+	    [ $api, ] = $step([ 'operation' => 'request', 'method' => 'GET', 'path' => '/limits', 'variable' => 'x' ], [], 'app::salesforce-api');
+	    [ $api2, ] = $step([ 'operation' => 'request', 'method' => 'GET', 'path' => '/services/oauth2/userinfo', 'variable' => 'x' ], [], 'app::salesforce-api');
+	    $ops = \util\AgentTools::operations('salesforce');
+	    $this->check('salesforce: an activity on a lead (WhoId), on an account (WhatId), completed; delete; Org describe (a picklist\'s values), limits; API below /services/data or from '
+		. '/services/; as AI tools', [
+		[ $lead['id'] ?? '', 'Completed', 'Interested in Pro plan' ], [ $accounts[0]['Id'] ?? '', null ], 5, [ 'Status', [ 'Open - Not Contacted', 'Working - Contacted' ] ], 99876, 100000, 'bot@acme.example',
+		[ false, true, false, true ] ], [
+		[ end($asent)['body']['WhoId'] ?? null, end($asent)['body']['Status'] ?? null, end($asent)['body']['Description'] ?? null ], [ end($asent2)['body']['WhatId'] ?? null, end($asent2)['body']['WhoId'] ?? null ],
+		count($load('Lead')), [ $ds?->getVariable('o')['items'][0]['name'] ?? null, array_column($ds?->getVariable('o')['items'][0]['picklistValues'] ?? [], 'value') ],
+		$lm?->getVariable('o')['DailyApiRequests']['Remaining'] ?? null, $api?->getVariable('x')['DailyApiRequests']['Max'] ?? null, $api2?->getVariable('x')['preferred_username'] ?? null,
+		[ $ops['salesforce_records_query']['writes'] ?? null, $ops['salesforce_records_upsert']['writes'] ?? null, $ops['salesforce_org_describe']['writes'] ?? null, $ops['salesforce_api_request']['writes'] ?? null ] ]);
+
+	    //the record trigger
+	    $wf = $this->workflow('salesforce record', [ $n('t', 'trigger::salesforce', [ 'credential' => (string)$cred->_id, 'object' => 'Lead', 'where' => "LeadSource = 'Web'", 'event' => 'created',
+		'runs' => 'each', 'variable' => 'record', 'mode' => 'interval', 'every' => 2, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ record.Name }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('salesforce: record: the workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $TS = \models\node\NodeTriggerSalesforce::class;
+	    $node = $wf->nodes['t'];
+	    [ $d0, $none ] = $TS::check($wf, $node, [], $t0 + 100000);
+	    $clock($t0 + 160000);
+	    $step([ 'operation' => 'create', 'object' => 'Lead', 'values' => '{"LastName": "Web A", "Company": "A", "LeadSource": "Web"}', 'variable' => 'l' ]);
+	    $step([ 'operation' => 'create', 'object' => 'Lead', 'values' => '{"LastName": "Phone B", "Company": "B", "LeadSource": "Phone"}', 'variable' => 'l' ]);
+	    $clock($t0 + 170500);
+	    $step([ 'operation' => 'create', 'object' => 'Lead', 'values' => '{"LastName": "Web C", "Company": "C", "LeadSource": "Web"}', 'variable' => 'l' ]);
+	    $requests();
+	    [ $d1, $first ] = $TS::check($wf, $node, $d0, $t0 + 200000);
+	    $q = array_values(array_filter($requests(), fn($r) => str_ends_with($r['path'], '/query')))[0]['query']['q'] ?? '';
+	    [ , $second ] = $TS::check($wf, $node, $d1, $t0 + 260000);
+	    $nodeU = array_replace_recursive($node, [ 'config' => [ 'event' => 'updated', 'where' => '' ] ]);
+	    [ $u0, ] = $TS::check($wf, $nodeU, [], $t0 + 175000);
+	    $clock($t0 + 180000);
+	    $webA = array_values(array_filter($load('Lead'), fn($r) => $r['LastName'] === 'Web A'))[0]['Id'] ?? '';
+	    $step([ 'operation' => 'update', 'object' => 'Lead', 'record' => $webA, 'values' => '{"Status": "Working - Contacted"}', 'variable' => 'u' ]);
+	    [ , $upd ] = $TS::check($wf, $nodeU, $u0, $t0 + 240000);
+	    $started = array_merge($started, $first, $second, $upd);
+	    $this->check('salesforce: record: the first check only notes the time; then leads created since that match the condition, the oldest first (CreatedDate >= a UTC literal); '
+		. 'again: none; Created or updated: SystemModstamp, an updated lead with its event', [
+		[], [ 'Web A', 'Web C' ], true, [], [ [ 'Web A', 'updated' ] ], [ 'new', 'salesforce' ] ], [
+		$none, array_map(fn($x) => $x->getVariable('record')['Name'] ?? null, $first),
+		str_contains($q, "WHERE (LeadSource = 'Web') AND CreatedDate >= " . $SF::datetime($t0 + 100001) . ' ORDER BY CreatedDate ASC, Id ASC'), $second,
+		array_map(fn($x) => [ $x->getVariable('record')['Name'] ?? null, $x->getVariable('record')['event'] ?? null ], $upd), [ $first[0]?->state ?? null, $first[0]?->trigger ?? null ] ]);
+	    $now = $TS::startNow($wf, $node);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('salesforce: record: Run in the designer: the newest matching record', [ 1, 'Web C' ], [ count($now['executions'] ?? []), ($now['executions'][0] ?? null)?->getVariable('record')['Name'] ?? null ]);
+	} finally {
+	    $SF::$testing = false;
+	    $SF::forgetTokens();
 	    foreach($started as $x) {
 		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
 		    $job->delete();

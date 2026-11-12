@@ -36,6 +36,8 @@ class AgentTools {
 	'wazuh' => [ 'label' => 'Wazuh', 'prefix' => 'wazuh', 'capability' => 'wazuh', 'base' => \models\node\NodeAppWazuh::class ],
 	//Namecheap's steps as tools
 	'namecheap' => [ 'label' => 'Namecheap', 'prefix' => 'namecheap', 'capability' => 'namecheap', 'base' => \models\node\NodeAppNamecheap::class ],
+	//CLD: 2026-11-12T18:00:00+02:00: Salesforce's steps as tools
+	'salesforce' => [ 'label' => 'Salesforce', 'prefix' => 'salesforce', 'capability' => 'salesforce', 'base' => \models\node\NodeAppSalesforce::class ],
 	//CLD: 2026-11-12T16:00:00+02:00: HubSpot's steps as tools
 	'hubspot' => [ 'label' => 'HubSpot', 'prefix' => 'hubspot', 'capability' => 'hubspot', 'base' => \models\node\NodeAppHubSpot::class ],
 	//CLD: 2026-11-12T14:00:00+02:00: Jira's steps as tools
