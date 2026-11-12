@@ -320,6 +320,11 @@ class SysObjects {
 		'class' => 'models\credential\CredentialHubSpot',
 		'variant-of' => 'Credential',
 	    ],
+	    //CLD: 2026-11-12T22:00:00+02:00: a Microsoft Intune tenant's app (the Intune steps and device trigger), core for every account
+	    'CredentialIntune' => [
+		'class' => 'models\credential\CredentialIntune',
+		'variant-of' => 'Credential',
+	    ],
 	    //CLD: 2026-11-12T21:00:00+02:00: a GLPI server (the GLPI steps and ticket trigger), core for every account
 	    'CredentialGlpi' => [
 		'class' => 'models\credential\CredentialGlpi',
@@ -674,6 +679,31 @@ class SysObjects {
 	    ],
 	    'NodeTriggerHubSpot' => [
 		'class' => 'models\node\NodeTriggerHubSpot',
+		'wfNode' => true,
+	    ],
+	    //CLD: 2026-11-12T22:00:00+02:00: Microsoft Intune (one step per area, NodeAppIntune their base; the device trigger: devices read on a schedule), core for every account
+	    'NodeAppIntuneDevices' => [
+		'class' => 'models\node\NodeAppIntuneDevices',
+		'wfNode' => true,
+	    ],
+	    'NodeAppIntunePolicies' => [
+		'class' => 'models\node\NodeAppIntunePolicies',
+		'wfNode' => true,
+	    ],
+	    'NodeAppIntuneApps' => [
+		'class' => 'models\node\NodeAppIntuneApps',
+		'wfNode' => true,
+	    ],
+	    'NodeAppIntuneAutopilot' => [
+		'class' => 'models\node\NodeAppIntuneAutopilot',
+		'wfNode' => true,
+	    ],
+	    'NodeAppIntuneApi' => [
+		'class' => 'models\node\NodeAppIntuneApi',
+		'wfNode' => true,
+	    ],
+	    'NodeTriggerIntune' => [
+		'class' => 'models\node\NodeTriggerIntune',
 		'wfNode' => true,
 	    ],
 	    //CLD: 2026-11-12T21:00:00+02:00: GLPI (one step per area, NodeAppGlpi their base; the ticket trigger: a search on a schedule), core for every account

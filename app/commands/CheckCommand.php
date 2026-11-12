@@ -14,7 +14,7 @@
 namespace commands;
 
 class CheckCommand extends \sys\BaseController {
-    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'glpi', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
+    const SUITES = [ 'j', 'expr', 'types', 'if', 'switch', 'loop', 'merge', 'mcp', 'vars', 'code', 'forms', 'email', 'file', 'images', 'invite', 'urls', 'select', 'json', 'nested', 'assistant', 'gdrive', 'gsheets', 'gmail', 'gcalendar', 'gdocs', 'microsoft', 'localai', 'kb', 'toolservers', 'http', 'suspend', 'markdown', 'ftp', 'ldap', 'database', 'gravityzone', 'veeam', 'fortigate', 'sophos', 'checkmk', 'vmware', 'proxmox', 'hyperV', 'zabbix', 'wazuh', 'namecheap', 'shopify', 'nextcloud', 'jira', 'hubspot', 'salesforce', 'glpi', 'intune', 'access', 'roles', 'sharing', 'saml', 'tenant', 'audit', 'signin', 'users', 'tiers', 'format', 'transfer', 'call', 'agenttools', 'agentapproval', 'agentguard', 'agenttrace', 'agentchat', 'agenteval', 'steps', 'tableexport', 'move' ];
     //not run unless named in --only
     const SLOW = [ 'steps' ];
 
@@ -9832,6 +9832,235 @@ class CheckCommand extends \sys\BaseController {
 		\models\TriggerState::beforeWorkflowDelete($wf);
 	    foreach($files as $f)
 		$om->findOne('File', [ '_id' => $f ])?->delete();
+	    foreach($creds as $c)
+		$c->delete();
+	    proc_terminate($proc);
+	    proc_close($proc);
+	    foreach(glob("{$dir}/*") as $f)
+		@unlink($f);
+	    @rmdir($dir);
+	}
+    }
+
+    //CLD: 2026-11-12T22:00:00+02:00: Microsoft Intune against a fake sign-in and Graph (commands/tests/IntuneTestServer.php; util\Intune::$testing: its address for both): values
+    //(OData quoting, filters, Intune's JSON error messages), the credential (client credentials, a wrong secret said), a token kept and asked again after a 401, a 429 waited for,
+    //Devices (filters, a device by name or serial number, apps, compliance states, remote actions and their bodies, delete), Policies, Apps (assignments added once and removed),
+    //Autopilot (import and its state, update, delete), the API step, the device trigger (enrolled: floor, seen; noncompliant: the set compared)
+    private function suiteIntune() {
+	$IN = \util\Intune::class;
+	$D = \models\node\NodeAppIntuneDevices::class;
+	$TI = \models\node\NodeTriggerIntune::class;
+	$om = \V::app()->om;
+	$n = [ self::class, 'node' ];
+	$e = [ self::class, 'edge' ];
+	$this->check('intune: values: an OData literal, filters joined, an id of an item, Intune\'s error message (its JSON\'s Message), a path below /v1.0, the trigger\'s filter', [
+	    "'O''Brien'", "(a eq 'x') and (b)", 'x-1', 'Defender scan is only supported (BadRequest)', 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=5',
+	    "(operatingSystem eq 'Windows') and (managedDeviceOwnerType eq 'company') and (complianceState eq 'noncompliant')" ], [
+	    $IN::quote("O'Brien"), \models\node\NodeAppIntune::filter([ "a eq 'x'", '', 'b' ]), $IN::id([ 'id' => 'x-1' ]),
+	    $IN::message([ 'error' => [ 'code' => 'BadRequest', 'message' => json_encode([ '_version' => 3, 'Message' => 'Defender scan is only supported - Operation ID (for customer support): 1' ]) ] ]),
+	    $IN::url('/deviceManagement/managedDevices', [ '$top' => 5, '$filter' => '' ]),
+	    $TI::filter([ 'os' => 'Windows', 'ownership' => 'company' ], "complianceState eq 'noncompliant'") ]);
+
+	$dir = sys_get_temp_dir() . '/rail22-check-intune-' . uniqid();
+	@mkdir($dir, 0700, true);
+	$server = $this->startServer('intune', 'IntuneTestServer.php', $dir, [ 'INTUNE_STATE' => $dir ]);
+	if (!$server)
+	    return;
+	[ $port, $proc ] = $server;
+	$IN::$testing = "http://127.0.0.1:{$port}";
+	$IN::forgetTokens();
+	$requests = function() use ($dir) {
+	    $list = array_map(fn($l) => json_decode($l, true), array_filter(explode("\n", (string)@file_get_contents("{$dir}/requests.jsonl"))));
+	    @unlink("{$dir}/requests.jsonl");
+	    return $list;
+	};
+	$db = fn() => json_decode((string)@file_get_contents("{$dir}/db.json"), true);
+	$creds = [];
+	$wfs = [];
+	$started = [];
+	try {
+	    $make = function(array $over) use ($om, &$creds) {
+		$c = $om->create('CredentialIntune', $over + [ 'aid' => $this->account->_id, 'project' => $this->project->_id, 'name' => 'Check: Intune ' . uniqid(), 'tenant' => 'contoso.onmicrosoft.com',
+		    'clientId' => '11111111-2222-3333-4444-555555555555' ]);
+		if (!$c->validates() || !$c->save()) {
+		    $this->fail('intune: the credential was not saved: ' . json_encode($c->errors()));
+		    return null;
+		}
+		$creds[] = $c;
+		return $om->findById('CredentialIntune', (string)$c->_id);
+	    };
+	    $ok = $make([ 'clientSecret' => 'sec-ok' ]);
+	    $wrong = $make([ 'clientSecret' => 'nope' ]);
+	    if (!$ok || !$wrong)
+		return;
+	    $bad = $om->create('CredentialIntune', [ 'name' => 'x', 'tenant' => 'contoso.onmicrosoft.com', 'clientId' => 'not-a-guid' ]);
+	    $bad->validates();
+	    $badKeys = array_values(array_intersect([ 'clientId', 'clientSecret' ], array_keys((array)$bad->errors())));
+	    $requests();
+	    $tt = $ok->test();
+	    $sent = $requests();
+	    $thrown = function(\Closure $f) {
+		try {
+		    $f();
+		    return 'no error';
+		} catch (\Throwable $x) {
+		    return $x->getMessage();
+		}
+	    };
+	    $this->check('intune: the form (a client ID is a GUID, the secret required); Test: client credentials for Graph\'s .default scope, the tenant\'s devices; a wrong secret said', [
+		[ 'clientId', 'clientSecret' ], 'connected to Intune: 4 enrolled devices (2 Windows, 1 macOS, 1 iOS / iPadOS)', [ '/contoso.onmicrosoft.com/oauth2/v2.0/token', 'client_credentials', 'Bearer tok-1' ],
+		'Microsoft refused the sign-in: AADSTS7000215: Invalid client secret provided.' ], [
+		$badKeys, $tt, [ $sent[0]['path'] ?? null, $sent[0]['body']['grant_type'] ?? null, $sent[1]['auth'] ?? null ], $thrown(fn() => $wrong->test()) ]);
+
+	    $step = function($fq, $cfg, $vars = []) use ($n, $e, $ok, $requests) {
+		$requests();
+		$exe = $this->runFlow("intune {$fq}", [ $n('m', 'trigger::manual'), $n('s', $fq, $cfg + [ 'credential' => (string)$ok->_id, 'onError' => 'output' ]),
+		    $n('err', 'app::set', [ 'variable' => 'route', 'value' => 'error' ]), $e('e1', 'm', 's'), $e('e2', 's', 'err', 1) ], $vars);
+		return [ $exe, $requests() ];
+	    };
+	    $logOf = fn($exe, $prefix) => str_replace($prefix, '', (string)self::logLine($exe, $prefix));
+	    $DV = 'app::intune-devices';
+
+	    //devices
+	    [ $l1, $sent ] = $step($DV, [ 'operation' => 'list', 'os' => 'Windows', 'compliance' => 'noncompliant', 'variable' => 'd' ]);
+	    [ $l2, ] = $step($DV, [ 'operation' => 'list', 'user' => 'ana@contoso.com', 'variable' => 'd' ]);
+	    [ $l3, ] = $step($DV, [ 'operation' => 'list', 'name' => 'laptop', 'maxItems' => 2, 'variable' => 'd' ]);
+	    [ $g1, $sent2 ] = $step($DV, [ 'operation' => 'get', 'device' => 'SN-C3', 'variable' => 'd' ]);
+	    [ $g2, ] = $step($DV, [ 'operation' => 'get', 'device' => 'LAPTOP-02', 'variable' => 'd' ]);
+	    [ $ap, ] = $step($DV, [ 'operation' => 'apps', 'device' => 'LAPTOP-01', 'variable' => 'd' ]);
+	    [ $cp, ] = $step($DV, [ 'operation' => 'compliance', 'device' => '{{ dev }}', 'variable' => 'd' ], [ 'dev' => [ 'id' => 'aaaaaaaa-0000-0000-0000-000000000002' ] ]);
+	    $this->check('intune: Devices list (an operating system and compliance as $filter; a user; a part of the name, At most: truncated); get by serial number (the device simplified, '
+		. 'its admin center address); a name of two devices said; its apps; its compliance states (a device of a variable)', [
+		[ [ 'LAPTOP-02' ], "(operatingSystem eq 'Windows') and (complianceState eq 'noncompliant')" ], [ 'LAPTOP-01', 'IPHONE-ANA' ], [ 2, true ],
+		[ 'IPHONE-ANA', 'iOS', 'personal', true ], 'Device: 2 devices are named `LAPTOP-02`: give the id', [ 'Google Chrome' ], [ 'noncompliant', 'nonCompliant' ] ], [
+		[ array_column($l1?->getVariable('d')['items'] ?? [], 'name'), $sent[1]['query']['$filter'] ?? ($sent[0]['query']['$filter'] ?? null) ],
+		array_column($l2?->getVariable('d')['items'] ?? [], 'name'), [ $l3?->getVariable('d')['count'] ?? null, $l3?->getVariable('d')['truncated'] ?? null ],
+		[ $g1?->getVariable('d')['name'] ?? null, $g1?->getVariable('d')['os'] ?? null, $g1?->getVariable('d')['ownership'] ?? null,
+		    str_ends_with((string)($g1?->getVariable('d')['url'] ?? ''), '/mdmDeviceId/aaaaaaaa-0000-0000-0000-000000000003') ],
+		$logOf($g2, 'Intune Devices get: '), array_column($ap?->getVariable('d')['items'] ?? [], 'name'),
+		[ $cp?->getVariable('d')['items'][0]['state'] ?? null, $cp?->getVariable('d')['items'][0]['settings'][0]['state'] ?? null ] ]);
+	    $step($DV, [ 'operation' => 'sync', 'device' => 'LAPTOP-01', 'variable' => 'a' ]);
+	    $step($DV, [ 'operation' => 'defenderScan', 'device' => 'SN-A1', 'fullScan' => true, 'variable' => 'a' ]);
+	    $step($DV, [ 'operation' => 'wipe', 'device' => 'SN-B2', 'keepUserData' => true, 'variable' => 'a' ]);
+	    [ $ds, ] = $step($DV, [ 'operation' => 'defenderScan', 'device' => 'SN-C3', 'variable' => 'a' ]);
+	    [ $dl, ] = $step($DV, [ 'operation' => 'delete', 'device' => 'aaaaaaaa-0000-0000-0000-000000000004', 'variable' => 'a' ]);
+	    $actions = array_map(fn($a) => [ substr($a[0], -1), $a[1], $a[2] ], $db()['actions'] ?? []);
+	    $this->check('intune: Devices remote actions (sync, a full Defender scan, a wipe keeping the user\'s data); Intune\'s refusal said; delete', [
+		[ [ '1', 'syncDevice', null ], [ '1', 'windowsDefenderScan', [ 'quickScan' => false ] ], [ '2', 'wipe', [ 'keepEnrollmentData' => false, 'keepUserData' => true ] ] ],
+		'HTTP status 400: Defender scan is only supported on Windows devices (BadRequest)', [ true, 3 ] ], [
+		$actions, $logOf($ds, 'Intune Devices defenderScan: '), [ $dl?->getVariable('a')['deleted'] ?? null, count($db()['devices'] ?? []) ] ]);
+
+	    //policies, apps
+	    $PO = 'app::intune-policies';
+	    [ $p1, ] = $step($PO, [ 'operation' => 'compliancePolicy', 'policy' => 'windows baseline', 'variable' => 'p' ]);
+	    [ $p2, ] = $step($PO, [ 'operation' => 'complianceStatuses', 'policy' => '{{ p }}', 'status' => 'nonCompliant', 'variable' => 'p' ], [ 'p' => $p1?->getVariable('p') ]);
+	    [ $p3, ] = $step($PO, [ 'operation' => 'configurationSummary', 'policy' => 'Windows restrictions', 'variable' => 'p' ]);
+	    [ $p4, ] = $step($PO, [ 'operation' => 'configurations', 'variable' => 'p' ]);
+	    $AP = 'app::intune-apps';
+	    [ $a1, ] = $step($AP, [ 'operation' => 'apps', 'assignedOnly' => true, 'variable' => 'x' ]);
+	    [ $a2, $sent ] = $step($AP, [ 'operation' => 'assign', 'app' => 'Notepad++', 'intent' => 'available', 'target' => 'group', 'group' => 'AAAAAAAA-0000-0000-0000-000000000301', 'variable' => 'x' ]);
+	    [ $a3, ] = $step($AP, [ 'operation' => 'assign', 'app' => 'Notepad++', 'intent' => 'available', 'target' => 'group', 'group' => 'aaaaaaaa-0000-0000-0000-000000000301', 'variable' => 'x' ]);
+	    [ $a4, ] = $step($AP, [ 'operation' => 'app', 'app' => 'Notepad++', 'variable' => 'x' ]);
+	    [ $a5, ] = $step($AP, [ 'operation' => 'unassign', 'app' => 'Notepad++', 'target' => 'group', 'group' => 'aaaaaaaa-0000-0000-0000-000000000301', 'allIntents' => true, 'variable' => 'x' ]);
+	    [ $a6, ] = $step($AP, [ 'operation' => 'discoveredDevices', 'app' => 'Google Chrome', 'variable' => 'x' ]);
+	    $posted = array_values(array_filter($sent, fn($r) => $r['method'] === 'POST' && str_ends_with($r['path'], '/assignments')))[0]['body'] ?? [];
+	    $this->check('intune: Policies: a compliance policy by name with its assignments; its device statuses of a status; a profile\'s summary; profiles listed (paged); Apps: assigned only; '
+		. 'an assignment to a group (Graph\'s types); the same again: nothing done; the app\'s assignments; removed; the devices of a discovered app', [
+		[ 'windows10CompliancePolicy', [ [ 'id' => 'as1', 'target' => 'groupAssignmentTarget', 'groupId' => 'aaaaaaaa-0000-0000-0000-000000000301' ] ] ], [ 'LAPTOP-02' ], [ 2, 1, 1 ], 1,
+		[ 'Company Portal' ], [ '#microsoft.graph.mobileAppAssignment', 'available', '#microsoft.graph.groupAssignmentTarget', 'aaaaaaaa-0000-0000-0000-000000000301', true ], false,
+		[ [ 'available', 'group' ] ], 1, [ 'LAPTOP-01', 'LAPTOP-02' ] ], [
+		[ $p1?->getVariable('p')['type'] ?? null, $p1?->getVariable('p')['assignments'] ?? null ], array_column($p2?->getVariable('p')['items'] ?? [], 'device'),
+		[ $p3?->getVariable('p')['success'] ?? null, $p3?->getVariable('p')['error'] ?? null, $p3?->getVariable('p')['pending'] ?? null ], $p4?->getVariable('p')['count'] ?? null,
+		array_column($a1?->getVariable('x')['items'] ?? [], 'name'),
+		[ $posted['@odata.type'] ?? null, $posted['intent'] ?? null, $posted['target']['@odata.type'] ?? null, $posted['target']['groupId'] ?? null, $a2?->getVariable('x')['changed'] ?? null ],
+		$a3?->getVariable('x')['changed'] ?? null, array_map(fn($x) => [ $x['intent'], $x['target'] ], $a4?->getVariable('x')['assignments'] ?? []), $a5?->getVariable('x')['count'] ?? null,
+		array_column($a6?->getVariable('x')['items'] ?? [], 'name') ]);
+
+	    //autopilot, API, tools
+	    $AU = 'app::intune-autopilot';
+	    [ $u1, ] = $step($AU, [ 'operation' => 'list', 'groupTag' => 'sales', 'variable' => 'y' ]);
+	    [ $u2, ] = $step($AU, [ 'operation' => 'import', 'serial' => 'AP-2000', 'hash' => "aGFy\nZHdhcmU=", 'groupTag' => 'IT', 'user' => 'ana@contoso.com', 'variable' => 'y' ]);
+	    [ $u3, ] = $step($AU, [ 'operation' => 'importStatus', 'import' => '{{ imp }}', 'variable' => 'y' ], [ 'imp' => $u2?->getVariable('y') ]);
+	    [ $u4, $sent ] = $step($AU, [ 'operation' => 'update', 'device' => 'AP-1001', 'groupTag' => 'Marketing', 'user' => 'dan@contoso.com', 'variable' => 'y' ]);
+	    [ $u5, ] = $step($AU, [ 'operation' => 'import', 'serial' => 'AP-2001', 'hash' => 'not base64!', 'variable' => 'y' ]);
+	    [ $u6, ] = $step($AU, [ 'operation' => 'delete', 'device' => 'AP-1002', 'variable' => 'y' ]);
+	    $upd = array_values(array_filter($sent, fn($r) => str_ends_with($r['path'], '/updateDeviceProperties')))[0]['body'] ?? [];
+	    [ $api, ] = $step('app::intune-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => '/beta/deviceManagement/managedDevices', 'query' => '{"$select": "id,deviceName", "$top": 10}', 'variable' => 'z' ]);
+	    [ $apiBad, ] = $step('app::intune-api', [ 'operation' => 'request', 'method' => 'GET', 'path' => 'https://example.com/v1.0/me', 'variable' => 'z' ]);
+	    $ops = \util\AgentTools::operations('intune');
+	    $this->check('intune: Autopilot: by group tag (no managed device); import (the hash without spaces) pending, then complete; update by serial number (the user addressable too); a wrong '
+		. 'hash; delete; API: Graph beta; another address refused; as AI tools', [
+		[ [ 'AP-1001' ], null ], [ 'pending', 'IT' ], [ 'complete', 'aaaaaaaa-0000-0000-0000-000000000777' ],
+		[ 'groupTag' => 'Marketing', 'userPrincipalName' => 'dan@contoso.com', 'addressableUserName' => 'dan@contoso.com' ], 'Hardware hash: not Base64', 1, 3, 'error',
+		[ false, true, false, true, true ] ], [
+		[ array_column($u1?->getVariable('y')['items'] ?? [], 'serialNumber'), array_key_exists('managedDeviceId', $u1?->getVariable('y')['items'][0] ?? []) ? $u1->getVariable('y')['items'][0]['managedDeviceId'] : 'missing' ],
+		[ $u2?->getVariable('y')['status'] ?? null, $u2?->getVariable('y')['groupTag'] ?? null ], [ $u3?->getVariable('y')['status'] ?? null, $u3?->getVariable('y')['deviceId'] ?? null ],
+		$upd, $logOf($u5, 'Intune Autopilot import: '), count($db()['autopilot'] ?? []), count($api?->getVariable('z')['value'] ?? []), $apiBad?->getVariable('route'),
+		[ $ops['intune_devices_list']['writes'] ?? null, $ops['intune_devices_wipe']['writes'] ?? null, $ops['intune_policies_compliance_statuses']['writes'] ?? null,
+		    $ops['intune_apps_assign']['writes'] ?? null, $ops['intune_autopilot_import']['writes'] ?? null ] ]);
+
+	    //the device trigger
+	    $wf = $this->workflow('intune device', [ $n('t', 'trigger::intune', [ 'credential' => (string)$ok->_id, 'event' => 'enrolled', 'runs' => 'each', 'os' => 'Windows', 'ownership' => '',
+		'variable' => 'device', 'mode' => 'interval', 'every' => 5, 'every_unit' => 'minutes' ]), $n('s', 'app::set', [ 'variable' => 'got', 'value' => '{{ device.name }}' ]), $e('e1', 't', 's') ]);
+	    $this->check('intune: device: the workflow is valid', true, $wf->validates());
+	    $wf->save();
+	    $this->created[] = $wf->_id;
+	    $wfs[] = $wf;
+	    $node = $wf->nodes['t'];
+	    $t0 = (int)floor(microtime(true) * 1000) - 3600000;
+	    $edit = function(\Closure $f) use ($dir, $db) {
+		$d = $db();
+		$f($d);
+		file_put_contents("{$dir}/db.json", json_encode($d, JSON_UNESCAPED_SLASHES));
+	    };
+	    $device = fn($n, $name, $os, $ms) => [ 'id' => sprintf('aaaaaaaa-0000-0000-0000-%012d', $n), 'deviceName' => $name, 'operatingSystem' => $os, 'complianceState' => 'compliant',
+		'managedDeviceOwnerType' => 'company', 'userPrincipalName' => 'new@contoso.com', 'serialNumber' => "SN-{$n}", 'enrolledDateTime' => $TI::iso($ms) ];
+	    [ $d0, $none ] = $TI::check($wf, $node, [], $t0);
+	    $edit(function(&$d) use ($device, $t0) {
+		$d['devices'][] = $device(11, 'NEW-WIN', 'Windows', $t0 + 60000);
+		$d['devices'][] = $device(12, 'NEW-MAC', 'macOS', $t0 + 61000);
+		$d['devices'][] = $device(13, 'OLD-WIN', 'Windows', $t0 - 60000);
+	    });
+	    $requests();
+	    [ $d1, $first ] = $TI::check($wf, $node, $d0, $t0 + 120000);
+	    $filter = array_values(array_filter($requests(), fn($r) => str_ends_with($r['path'], '/managedDevices')))[0]['query']['$filter'] ?? null;
+	    [ , $second ] = $TI::check($wf, $node, $d1, $t0 + 180000);
+	    $started = array_merge($started, $first, $second);
+	    $nodeN = array_replace_recursive($node, [ 'config' => [ 'event' => 'noncompliant', 'os' => '' ] ]);
+	    [ $n0, ] = $TI::check($wf, $nodeN, $d1);
+	    $set = fn($id, $state) => $edit(function(&$d) use ($id, $state) {
+		foreach($d['devices'] as &$x)
+		    if ($x['id'] === $id)
+			$x['complianceState'] = $state;
+	    });
+	    $set('aaaaaaaa-0000-0000-0000-000000000001', 'noncompliant');
+	    [ $n1, $nc ] = $TI::check($wf, $nodeN, $n0);
+	    [ $n2, $nc2 ] = $TI::check($wf, $nodeN, $n1);
+	    $set('aaaaaaaa-0000-0000-0000-000000000001', 'compliant');
+	    [ $n3, ] = $TI::check($wf, $nodeN, $n2);
+	    $set('aaaaaaaa-0000-0000-0000-000000000001', 'noncompliant');
+	    [ , $nc3 ] = $TI::check($wf, $nodeN, $n3);
+	    $started = array_merge($started, $nc, $nc2, $nc3);
+	    $this->check('intune: device: the first check only notes the time; then the Windows devices enrolled since (not before, not another system), their filter; checked again: none; '
+		. 'Becoming noncompliant: the first check notes those that are; one becoming noncompliant starts a run, once; compliant and noncompliant again: again', [
+		[ [], [ 'NEW-WIN' ], 'enrolled', "(operatingSystem eq 'Windows') and (enrolledDateTime ge " . $TI::iso($t0) . ')', [] ],
+		[ [ 'aaaaaaaa-0000-0000-0000-000000000002' ], [ [ 'LAPTOP-01', 'noncompliant' ] ], [], 1, [ 'new', 'intune' ] ] ], [
+		[ $none, array_map(fn($x) => $x->getVariable('device')['name'] ?? null, $first), $first[0]?->getVariable('device')['event'] ?? null, $filter, $second ],
+		[ $n0['ids'] ?? null, array_map(fn($x) => [ $x->getVariable('device')['name'] ?? null, $x->getVariable('device')['event'] ?? null ], $nc), $nc2, count($nc3),
+		    [ $nc[0]?->state ?? null, $nc[0]?->trigger ?? null ] ] ]);
+	    $now = $TI::startNow($wf, $nodeN);
+	    $started = array_merge($started, $now['executions'] ?? []);
+	    $this->check('intune: device: Run in the designer: a noncompliant device', 1, count($now['executions'] ?? []));
+	} finally {
+	    $IN::$testing = null;
+	    $IN::forgetTokens();
+	    foreach($started as $x) {
+		foreach($om->find('Job', [ 'job_spec' => '\\util\\Scheduler::start', 'job_data.exe' => (string)$x->_id ]) as $job)
+		    $job->delete();
+		$x->delete();
+	    }
+	    foreach($wfs as $wf)
+		\models\TriggerState::beforeWorkflowDelete($wf);
 	    foreach($creds as $c)
 		$c->delete();
 	    proc_terminate($proc);
