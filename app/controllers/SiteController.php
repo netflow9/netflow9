@@ -92,9 +92,11 @@ class SiteController extends \sys\BaseController {
 		    throw new \ErrorException('invite: the user was not saved: ' . json_encode($user->errors()));
 		\models\AuditLog::record('signup', $user, 'joined ' . $account->name . ' (invitation to ' . $project->name . ')', [], null, $user);
 		$joined = $invite->accept($user);
-		//signed in on the invited project (else the first one joined)
+		//CLD: 2026-11-13T10:00:00Z: signed in on the invited project (else the first one joined) as the last opened one: Boot then picks it and makes the personal project
 		$ids = array_map(fn($p) => (string)$p->_id, $joined);
-		\V::app()->user->crtProject = in_array((string)$project->_id, $ids, true) ? $project->_id : ($joined[0]->_id ?? null);
+		$first = in_array((string)$project->_id, $ids, true) ? $project->_id : ($joined[0]->_id ?? null);
+		if ($first)
+		    $user->rememberPrefs([ 'last_project' => $first ]);
 		$this->signIn($user);
 	    }
 	}

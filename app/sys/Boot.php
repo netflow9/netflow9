@@ -210,27 +210,23 @@ class Boot {
 	\V::app()->session->setState(Session::KEY_ACTIVE_TS, $now);
 
 	//set a project in session
-	//the project last opened (User prefs last_project), if the user still owns it or is a member,
-	//	else the personal project,
-	//	else the first project the user is a member of (e.g. a Participant),
-	//	else a personal project created now (as the seed command does);
+	//CLD: 2026-11-13T10:00:00Z: every user has a personal project: made here when the session picks its project and the user has none (also a user who is
+	//already a member of other projects: an invited one, one an administrator added to a project before the first sign-in)
+	//the project last opened (User prefs last_project), if the user still owns it or is a member, else the personal project;
 	//one kept in the session that is not in the account (deleted) is chosen again
 	if (!empty(\V::app()->user->crtProject) && \V::app()->om->count('Project', [ '_id' => \V::app()->user->crtProject, 'aid' => $account->_id ]) == 0)
 	    \V::app()->user->crtProject = null;
 	if (empty(\V::app()->user->crtProject)) {
 	    $uid = \V::app()->user->_id;
+	    $personal = \V::app()->om->findOne('Project', [ 'aid' => $account->_id, 'owner' => $uid, 'personal' => true ]);
+	    if (empty($personal)) {
+		$personal = \V::app()->om->create('Project', [ 'aid' => $account->_id, 'name' => 'Personal', 'owner' => $uid, 'personal' => true,
+		    'members' => [ (string)$uid => [ 'role' => \V::app()->user->role ] ] ]);
+		$personal->save();
+	    }
 	    $project = empty($prefs['last_project']) ? null : \V::app()->om->findOne('Project', [ '_id' => $prefs['last_project'], 'aid' => $account->_id,
 		'$or' => [ [ 'owner' => $uid ], [ 'members.' . (string)$uid => [ '$exists' => true ] ] ] ]);
-	    if (empty($project))
-		$project = \V::app()->om->findOne('Project', [ 'aid' => $account->_id, 'owner' => $uid, 'personal' => true ]);
-	    if (empty($project))
-		$project = \V::app()->om->findOne('Project', [ 'aid' => $account->_id, 'members.' . (string)$uid => [ '$exists' => true ] ], [ 'sort' => [ '_id' => 1 ] ]);
-	    if (empty($project)) {
-		$project = \V::app()->om->create('Project', [ 'aid' => $account->_id, 'name' => 'Personal', 'owner' => $uid, 'personal' => true,
-		    'members' => [ (string)$uid => [ 'role' => \V::app()->user->role ] ] ]);
-		$project->save();
-	    }
-	    \V::app()->user->crtProject = $project->_id;
+	    \V::app()->user->crtProject = ($project ?: $personal)->_id;
 	}
 	//a signed-in user always has a current project: what asks of it (sys\AAA, the controllers) relies on it
 	if (empty(\V::app()->user->crtProject))

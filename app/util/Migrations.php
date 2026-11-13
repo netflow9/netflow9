@@ -21,6 +21,8 @@ class Migrations {
 	[ 'id' => 'markdown2html', 'version' => '0.99.820', 'label' => 'the expression function markdown() renamed markdown2html()', 'method' => 'markdown2html' ],
 	//the users' UI fields into User prefs
 	[ 'id' => 'userPrefs', 'version' => '0.99.839', 'label' => 'the users\' last_project, sidebar_width, sidebar_collapsed, hide_advanced_steps moved into prefs', 'method' => 'userPrefs' ],
+	//CLD: 2026-11-13T10:00:00Z: the users without a personal project (invited, or added to a project before their first sign-in) get one
+	[ 'id' => 'personalProjects', 'version' => '0.99.868', 'label' => 'a personal project for each user who has none', 'method' => 'personalProjects' ],
     ];
 
     //the states of an execution that may still run (a Wait, a Human task): it runs from its own copy of the steps
@@ -156,5 +158,28 @@ class Migrations {
 	    $n++;
 	}
 	return ($dryRun ? 'would change ' : 'changed ') . Format::plural($n, 'user');
+    }
+
+    //0.99.868: each user of an account without a personal project gets one (named Personal, the user its owner and only member, with its account role), as Boot makes
+    //at a sign-in
+    protected static function personalProjects($dryRun) {
+	$users = \V::app()->mongo->selectCollection(\models\User::_database(), \models\User::_collection());
+	$projects = \V::app()->mongo->selectCollection(\models\Project::_database(), \models\Project::_collection());
+	$has = [];
+	foreach($projects->find([ 'personal' => true ], [ 'projection' => [ 'aid' => 1, 'owner' => 1 ], 'typeMap' => \sys\Mongo::TYPEMAP ]) as $p)
+	    $has[$p['aid'] . ':' . $p['owner']] = true;
+	$n = 0;
+	foreach($users->find([ 'aid' => [ '$ne' => null ] ], [ 'projection' => [ 'aid' => 1, 'role' => 1 ], 'typeMap' => \sys\Mongo::TYPEMAP ]) as $u) {
+	    if (isset($has[$u['aid'] . ':' . $u['_id']]))
+		continue;
+	    if (!$dryRun) {
+		$project = \V::app()->om->create('Project', [ 'aid' => $u['aid'], 'name' => 'Personal', 'owner' => $u['_id'], 'personal' => true,
+		    'members' => [ (string)$u['_id'] => [ 'role' => $u['role'] ?? null ] ] ]);
+		if (!$project->save())
+		    throw new \RuntimeException('personalProjects: the project of user ' . $u['_id'] . ' was not saved: ' . json_encode($project->errors()));
+	    }
+	    $n++;
+	}
+	return ($dryRun ? 'would make ' : 'made ') . Format::plural($n, 'personal project');
     }
 }
