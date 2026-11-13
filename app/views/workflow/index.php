@@ -735,7 +735,7 @@ $formOptions = [
 	    <button class="debug-icon-btn btn-exec-close" title="Close panel"><i class="bi bi-x-lg"></i></button>
 	</div>
     </div>
-    <?php //the list's width is in the theme (rail22/_workflow.scss: .exec-panel .exec-list): the list goes above the details on phones ?>
+    <?php //the list's width is in the theme (local/_workflow.scss: .exec-panel .exec-list): the list goes above the details on phones ?>
     <div class="debug-panel-body d-flex gap-3 p-0">
 	<div class="exec-list overflow-auto py-2 ps-3 pe-2 border-end border-secondary"></div>
 	<div class="exec-detail overflow-auto flex-grow-1 py-2 pe-3"><span style="color: var(--rail22-debug-muted)">Select an execution</span></div>

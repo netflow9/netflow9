@@ -34,7 +34,7 @@ window.app.sidebar = (function() {
 	    sidebar[0].style.setProperty('--sidebar-w', w + 'px');
     };
 
-    //below lg (theme rail22/_app.scss: media-breakpoint-down(lg)) the sidebar is a drawer: .sidebar-open on .app-shell shows it;
+    //below lg (theme local/_app.scss: media-breakpoint-down(lg)) the sidebar is a drawer: .sidebar-open on .app-shell shows it;
     //the desktop width and collapsed state are left as they are
     const mobileQuery = window.matchMedia('(max-width: 991.98px)');
     const isMobile = () => mobileQuery.matches;
@@ -127,7 +127,7 @@ window.app.sidebar = (function() {
 
 	    //pointer events (mouse, touch and pen), as the designer's panels
 	    //(app.workflow.js setupPanelResize): the pointer is captured by the handle, pointercancel ends the drag like pointerup; touch-action none on the
-	    //handle (theme rail22/_app.scss). Delegated on the sidebar: the handle is new after the aside is rendered again (sidebar::refresh)
+	    //handle (theme local/_app.scss). Delegated on the sidebar: the handle is new after the aside is rendered again (sidebar::refresh)
 	    sidebar.on('pointerdown', '.sidebar-resize-handle', (e) => {
 		//main button only (a touch or a pen contact is button 0 too)
 		if (e.button !== 0)

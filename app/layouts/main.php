@@ -16,7 +16,7 @@ ob_start();
     <aside class="sidebar<?= empty(\V::app()->var('rt.prefs')['sidebar_collapsed']) ? '' : ' collapsed' ?>" data-min-width="<?= \data\Constants::SIDEBAR_MIN_W ?>" data-max-width="<?= \data\Constants::SIDEBAR_MAX_W ?>"<?= $sidebarW ? ' style="--sidebar-w: ' . min(max($sidebarW, \data\Constants::SIDEBAR_MIN_W), \data\Constants::SIDEBAR_MAX_W) . 'px" data-width="' . $sidebarW . '"' : '' ?>>
 	<?php require(dirname(__FILE__) . '/main_aside.php') ?>
     </aside>
-    <?php //behind the sidebar when it is a drawer (small screens, theme rail22/_app.scss); a click closes it (app.sidebar) ?>
+    <?php //behind the sidebar when it is a drawer (small screens, theme local/_app.scss); a click closes it (app.sidebar) ?>
     <div class="sidebar-backdrop"></div>
 
     <!-- MAIN -->

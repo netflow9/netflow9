@@ -887,7 +887,7 @@ window.app.Workflow = (function() {
 	//pinch to zoom on touch screens (two fingers on the canvas; the wheel is setupZoom). The point between the fingers stays
 	//under them: the canvas zooms by the change of their distance and moves with their midpoint, so it also pans. Started when a second finger touches the canvas
 	//while the first one pans it (not during a step drag, resize or a new connection), ending that pan; ends when a finger lifts (the other one does not pan
-	//then: a new touch does). #canvas-wrap has touch-action none (theme rail22/_workflow.scss), so the browser does not zoom or scroll the page instead
+	//then: a new touch does). #canvas-wrap has touch-action none (theme local/_workflow.scss), so the browser does not zoom or scroll the page instead
 	setupPinch() {
 	    const touches = new Map(); //pointerId -> { x, y }, the fingers down on the canvas
 	    this.pinchState = null;
@@ -1764,7 +1764,7 @@ window.app.Workflow = (function() {
 	    const el = document.createElement('div');
 	    el.className = 'modal fade wf-editor';
 	    //two sizes: nearly full screen with a designer (.modal-near-fullscreen: a margin all around; the whole screen on phones,
-	    //modal-fullscreen-sm-down: theme rail22/_modal.scss), else extra-large
+	    //modal-fullscreen-sm-down: theme local/_modal.scss), else extra-large
 	    const dialogSize = configSchema.some((f) => [ 'formdesigner', 'emaildesigner' ].includes(f.type)) ? 'modal-near-fullscreen' : 'modal-xl';
 	    el.tabIndex = -1;
 	    el.innerHTML = `
@@ -2214,7 +2214,7 @@ window.app.Workflow = (function() {
 	    //namespaced, removed by destroy()
 	    this.unlisten.push(() => handle.off('.wfdesigner'));
 	    //pointer events (mouse, touch and pen), as setupPanelResize: the pointer is captured by the handle,
-	    //pointercancel ends the drag like pointerup; touch-action none on the handle (theme rail22/_workflow.scss)
+	    //pointercancel ends the drag like pointerup; touch-action none on the handle (theme local/_workflow.scss)
 	    handle.on('pointerdown.wfdesigner', (e) => {
 		//main button only (a touch or a pen contact is button 0 too)
 		if (e.button !== 0)
@@ -2292,7 +2292,7 @@ window.app.Workflow = (function() {
 	    this.unlisten.push(() => handle.off('.wfdesigner'));
 	    //pointer events (mouse, touch and pen). The pointer is captured by the
 	    //handle, so its moves come to the handle even outside it; pointercancel (e.g. the browser takes the gesture) ends the drag like pointerup.
-	    //The handle has touch-action none (theme rail22/_debug.scss), so a touch drag does not scroll the page
+	    //The handle has touch-action none (theme local/_debug.scss), so a touch drag does not scroll the page
 	    handle.on('pointerdown.wfdesigner', (e) => {
 		//main button only (a touch or a pen contact is button 0 too)
 		if (e.button !== 0)
